@@ -14,6 +14,7 @@ import {
   createDevelopmentRunService,
   defaultDevelopmentRunPersistenceAdapter,
 } from "./spec224DevelopmentRunPersistence";
+import { createSpec224WorkspaceLifecycleReceiptReader } from "./spec224WorkspaceLifecycleReceiptReader";
 import { settleMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerSettlement";
 
 const INTENT_EVENT = "SPEC224_CONTINUATION_PENDING";
@@ -147,7 +148,8 @@ export async function reconcileSpec224RunnerContinuations(
 
   const controlPlane = createJobControlPlane();
   const developmentRuns = createDevelopmentRunService(
-    defaultDevelopmentRunPersistenceAdapter
+    defaultDevelopmentRunPersistenceAdapter,
+    { workspaceLifecycleReceiptReader: createSpec224WorkspaceLifecycleReceiptReader(controlPlane) }
   );
   let reconciled = 0;
   let reviewRequired = 0;

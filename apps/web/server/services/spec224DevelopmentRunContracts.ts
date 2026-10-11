@@ -70,6 +70,106 @@ export type DevelopmentRun = {
 
 type WorkspaceLifecycleReceipt = Record<string, unknown>;
 
+export type Spec224WorkspaceLifecycleReceiptReadInput = Readonly<{
+  runId: string;
+  tenantId: string;
+  actorId: number;
+  repositoryRef: string;
+  projectId: string | null;
+  canonicalRef: string | null;
+  integratedSha: string | null;
+  convergenceEvidenceRef: string;
+  retirementEvidenceRef: string;
+  convergenceAuthorityJobId: string;
+  retirementAuthorityJobId: string;
+}>;
+
+export type Spec224WorkspaceLifecycleReceiptReadResult =
+  | Readonly<{
+      status: "VERIFIED";
+      convergenceReceipt: Record<string, unknown>;
+      retirementReceipt: Record<string, unknown>;
+      convergenceAuthorityJobId: string;
+      retirementAuthorityJobId: string;
+      verifiedAt: string;
+    }>
+  | Readonly<{ status: "PENDING"; reason: string }>;
+
+/**
+ * Read-only bridge to the existing persisted workspace authority. A production
+ * implementation must resolve each receipt from a successful canonical
+ * `workspace.authority.safe_action` job and bind that job's tenant/actor/project/
+ * repository/action to the persisted Python authority receipt. A worker-supplied
+ * receipt object is never an implementation of this interface.
+ */
+export type Spec224WorkspaceLifecycleReceiptReader = Readonly<{
+  readPersistedReceipts(
+    input: Spec224WorkspaceLifecycleReceiptReadInput
+  ): Promise<Spec224WorkspaceLifecycleReceiptReadResult>;
+}>;
+
+export async function readSpec224WorkspaceLifecycleReceipts(
+  reader: Spec224WorkspaceLifecycleReceiptReader | undefined,
+  run: DevelopmentRun,
+  evidenceRefs: readonly string[]
+): Promise<Spec224WorkspaceLifecycleReceiptReadResult> {
+  if (!reader) {
+    return { status: "PENDING", reason: "WORKSPACE_LIFECYCLE_AUTHORITY_UNAVAILABLE" };
+  }
+  const convergenceRefs = [...new Set(evidenceRefs.filter(ref =>
+    /^evidence:workspace-convergence:[A-Za-z0-9_./:@#-]{1,181}$/.test(ref)
+  ))];
+  const retirementRefs = [...new Set(evidenceRefs.filter(ref =>
+    /^evidence:worktree-retirement:[A-Za-z0-9_./:@#-]{1,181}$/.test(ref)
+  ))];
+  if (convergenceRefs.length !== 1 || retirementRefs.length !== 1) {
+    return { status: "PENDING", reason: "WORKSPACE_LIFECYCLE_RECEIPT_REF_MISMATCH" };
+  }
+  const convergenceJobRefs = [...new Set(evidenceRefs.flatMap(ref => {
+    const match = /^evidence:workspace-authority-action:convergence:([A-Za-z0-9][A-Za-z0-9_.:-]{0,159})$/.exec(ref);
+    return match ? [match[1]!] : [];
+  }))];
+  const retirementJobRefs = [...new Set(evidenceRefs.flatMap(ref => {
+    const match = /^evidence:workspace-authority-action:retirement:([A-Za-z0-9][A-Za-z0-9_.:-]{0,159})$/.exec(ref);
+    return match ? [match[1]!] : [];
+  }))];
+  if (convergenceJobRefs.length !== 1 || retirementJobRefs.length !== 1) {
+    return { status: "PENDING", reason: "WORKSPACE_AUTHORITY_JOB_REF_MISSING" };
+  }
+  const projectId = typeof run.metadata?.projectId === "string" ? run.metadata.projectId : null;
+  const canonicalRef = typeof run.metadata?.canonicalRef === "string" ? run.metadata.canonicalRef : null;
+  const integratedSha = typeof run.metadata?.integratedSha === "string" ? run.metadata.integratedSha : null;
+  if (!projectId || !canonicalRef || !integratedSha) {
+    return { status: "PENDING", reason: "WORKSPACE_LIFECYCLE_TARGET_BINDING_MISSING" };
+  }
+  try {
+    const result = await reader.readPersistedReceipts({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      repositoryRef: run.repositoryRef,
+      projectId,
+      canonicalRef,
+      integratedSha,
+      convergenceEvidenceRef: convergenceRefs[0]!,
+      retirementEvidenceRef: retirementRefs[0]!,
+      convergenceAuthorityJobId: convergenceJobRefs[0]!,
+      retirementAuthorityJobId: retirementJobRefs[0]!,
+    });
+    if (result.status !== "VERIFIED") return result;
+    if (
+      !result.convergenceAuthorityJobId || !result.retirementAuthorityJobId ||
+      result.convergenceAuthorityJobId === result.retirementAuthorityJobId ||
+      !Number.isFinite(Date.parse(result.verifiedAt))
+    ) {
+      return { status: "PENDING", reason: "WORKSPACE_LIFECYCLE_AUTHORITY_RESULT_INVALID" };
+    }
+    return result;
+  } catch {
+    return { status: "PENDING", reason: "WORKSPACE_LIFECYCLE_AUTHORITY_UNAVAILABLE" };
+  }
+}
+
 function isGitObjectId(value: unknown): value is string {
   return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
 }
@@ -101,6 +201,7 @@ export function workspaceLifecycleEvidenceErrorCode(
   }
   const expectedRepositoryId = run.repositoryRef.replace(/^repo:/, "");
   const expectedProjectId = typeof run.metadata?.projectId === "string" ? run.metadata.projectId : null;
+  const expectedIntegratedSha = typeof run.metadata?.integratedSha === "string" ? run.metadata.integratedSha : null;
   if (
     convergence.project_id !== retirement.project_id ||
     convergence.repository_id !== retirement.repository_id ||
@@ -115,6 +216,7 @@ export function workspaceLifecycleEvidenceErrorCode(
     convergence.result !== "USER_WORKSPACE_CONVERGED" ||
     convergence.dirty !== false ||
     (typeof run.metadata?.canonicalRef === "string" && convergence.canonical_ref !== run.metadata.canonicalRef) ||
+    (expectedIntegratedSha !== null && convergence.integrated_sha !== expectedIntegratedSha) ||
     !isGitObjectId(convergence.integrated_sha) ||
     !isGitObjectId(convergence.canonical_sha) ||
     convergence.canonical_user_workspace_sha !== convergence.canonical_sha ||

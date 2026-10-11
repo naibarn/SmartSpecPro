@@ -10,8 +10,10 @@ import {
 } from "./spec224VerificationProvenance";
 import {
   workspaceLifecycleEvidenceErrorCode,
+  readSpec224WorkspaceLifecycleReceipts,
   type DevelopmentEvent,
   type DevelopmentRun,
+  type Spec224WorkspaceLifecycleReceiptReader,
 } from "./spec224DevelopmentRunContracts";
 
 const FINAL_EVIDENCE_REF = /^evidence:final[-:][A-Za-z0-9_./:@#-]{1,181}$/;
@@ -28,8 +30,6 @@ export type Spec224FinalVerifyInput = {
   finalEvidenceRef: string;
   workspaceConvergenceEvidenceRef: string;
   worktreeRetirementEvidenceRef: string;
-  workspaceConvergenceReceipt: Record<string, unknown>;
-  worktreeRetirementReceipt: Record<string, unknown>;
   /** Optional until every canonical caller can provide the live tuple. */
   provenance?: Spec224VerificationProvenance;
 };
@@ -66,7 +66,8 @@ function assertFinalEvidenceRef(value: string): string {
 }
 
 export function createSpec224FinalVerifyService(
-  adapter: DevelopmentRunPersistenceAdapter
+  adapter: DevelopmentRunPersistenceAdapter,
+  options: { workspaceLifecycleReceiptReader?: Spec224WorkspaceLifecycleReceiptReader } = {}
 ) {
   const runs = createDevelopmentRunService(adapter);
   const closure = createRequirementClosurePersistenceService(adapter);
@@ -92,10 +93,24 @@ export function createSpec224FinalVerifyService(
         input.workspaceConvergenceEvidenceRef,
         input.worktreeRetirementEvidenceRef,
       ];
+      const lifecycleEvidence = await readSpec224WorkspaceLifecycleReceipts(
+        options.workspaceLifecycleReceiptReader,
+        record.run,
+        lifecycleEvidenceRefs
+      );
+      if (lifecycleEvidence.status !== "VERIFIED") {
+        return {
+          status: "WAIT",
+          outcome: "CONVERGENCE_PENDING",
+          reason: lifecycleEvidence.reason,
+          run: record.run,
+          revision: record.revision,
+        };
+      }
       const workspaceEvidenceError = workspaceLifecycleEvidenceErrorCode(
         record.run,
-        input.workspaceConvergenceReceipt,
-        input.worktreeRetirementReceipt,
+        lifecycleEvidence.convergenceReceipt,
+        lifecycleEvidence.retirementReceipt,
         lifecycleEvidenceRefs
       );
       if (workspaceEvidenceError) {
@@ -146,8 +161,10 @@ export function createSpec224FinalVerifyService(
           payload: {
             action: "final_verify_completed",
             finalEvidenceRef,
-            workspaceConvergenceReceipt: input.workspaceConvergenceReceipt,
-            worktreeRetirementReceipt: input.worktreeRetirementReceipt,
+            workspaceConvergenceReceipt: lifecycleEvidence.convergenceReceipt,
+            worktreeRetirementReceipt: lifecycleEvidence.retirementReceipt,
+            workspaceConvergenceAuthorityJobId: lifecycleEvidence.convergenceAuthorityJobId,
+            worktreeRetirementAuthorityJobId: lifecycleEvidence.retirementAuthorityJobId,
           },
           evidenceRefs: [
             finalEvidenceRef,
