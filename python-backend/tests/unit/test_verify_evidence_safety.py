@@ -6,6 +6,7 @@ never walk or read obviously sensitive files like `.git` or `.env`.
 
 from pathlib import Path
 import importlib.util
+import sys
 
 import pytest
 
@@ -22,6 +23,9 @@ def _load_module(rel_path: str, name: str):
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load module {name} from {path}")
     module = importlib.util.module_from_spec(spec)
+    # Dataclasses resolve the defining module through sys.modules while the
+    # module body executes. Dynamic imports must register before exec_module.
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
