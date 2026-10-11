@@ -259,9 +259,9 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
             return "COLLECT_FAILURE_EVIDENCE"
         if classify_failure(str(failure_class), has_safe_alternative=False) == "TRUE_BLOCKER":
             return "DENY_AND_CONTINUE_SAFE_WORK" if facts.get("independent_work") else "DENY_AND_WAIT_AUTHORITY"
-        if facts.get("compatible_fallback"):
+        if facts.get("compatible_fallback") and facts.get("fallback_authorized") is True:
             return "SUBSTITUTE"
-        if facts.get("safe_local_path"):
+        if facts.get("safe_local_path") and facts.get("local_path_authorized") is True:
             return "EXECUTE_SAFE_LOCAL_PATH"
         if facts.get("requirement_optional") and facts.get("scope_verified"):
             return "SKIP_OPTIONAL_AND_CONTINUE"
