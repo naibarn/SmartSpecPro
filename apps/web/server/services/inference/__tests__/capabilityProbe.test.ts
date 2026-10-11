@@ -88,6 +88,29 @@ const target: CapabilityProbeTarget = {
 };
 
 describe("Spec 231 live capability probe", () => {
+  it("stops after an asynchronous worker result instead of treating it as a completed probe", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      type: "worker_job",
+      jobId: "job-1",
+      providerName: "worker_app",
+    });
+    const persist = vi.fn(async () => undefined);
+
+    const result = await runInferenceCapabilityProbe(
+      { deploymentId: target.profile.deployment.deploymentId, actorUserId: 12 },
+      {
+        resolveTarget: async () => ({ ok: true, target }),
+        execute: execute as never,
+        persist,
+      },
+    );
+
+    expect(result).toMatchObject({ status: "incomplete" });
+    expect(result.reasonCode).toContain("PROBE_EXECUTION_UNSUPPORTED");
+    expect(execute).toHaveBeenCalledOnce();
+    expect(persist).toHaveBeenCalledOnce();
+  });
+
   it("probes pinned Chat Completions tool-call identity and one continuation round trip", async () => {
     const toolTarget: CapabilityProbeTarget = {
       ...target,

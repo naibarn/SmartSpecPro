@@ -59,6 +59,10 @@ type LimitProbePlanResult =
   | { ok: true; plan: LimitProbePlan }
   | { ok: false; reasonCode: string; evidence?: Record<string, number> };
 
+type PinnedProbeExecutionResult =
+  | { ok: true; response: unknown }
+  | { ok: false; reason: string };
+
 export type CapabilityProbeResult =
   | {
       runId: string;
@@ -293,7 +297,7 @@ export async function runInferenceCapabilityProbe(
     timeoutMs?: number;
     enableThinking?: boolean;
     extraBodyParams?: Record<string, unknown>;
-  }) => {
+  }): Promise<PinnedProbeExecutionResult> => {
     let result: Awaited<ReturnType<typeof executeWithFallback>>;
     try {
       result = await execute({
@@ -490,7 +494,7 @@ export async function runInferenceCapabilityProbe(
       strict.ok ? "STRICT_SCHEMA_EVIDENCE_MISSING" : strict.reason
     );
 
-  const reasoning = abortFurtherProviderCalls
+  const reasoning: PinnedProbeExecutionResult = abortFurtherProviderCalls
     ? { ok: false, reason: "PROBE_ABORTED_AFTER_BASELINE_FAILURE" }
     : await executePinned({
         prompt: "Reply with the single letter R and nothing else.",
@@ -714,7 +718,7 @@ export async function runInferenceCapabilityProbe(
     check => !implementedChecks.has(check) && !checks[check]
   );
   const unprobedCapabilityRefs = target.profile.model.capabilityRefs.filter(
-    ref => !probedCapabilityRefs.includes(ref)
+    (ref: string) => !probedCapabilityRefs.includes(ref)
   );
   if (unsupportedRequiredChecks.includes("regionRetention")) {
     reasonCodes.add("REGION_RETENTION_VERIFIER_UNAVAILABLE");
