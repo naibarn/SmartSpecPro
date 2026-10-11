@@ -818,12 +818,13 @@ function projectProgress(row: WorkerJobRow): {
   progressPhase: string | null;
 } {
   const progress = asRecord(row.progressJson);
+  const spec224 = asRecord(progress.spec224);
   return {
     progressPercent: safePercent(
       progress.progressPercent ?? progress.progress ?? progress.percent
     ) ?? null,
     progressPhase: safeBoundedString(
-      progress.phase ?? progress.stage ?? progress.status,
+      progress.phase ?? progress.stage ?? progress.status ?? spec224.state,
       128
     ) ?? null,
   };
