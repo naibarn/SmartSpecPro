@@ -14,7 +14,7 @@ from typing import AsyncGenerator, Generator
 
 from fastapi.testclient import TestClient
 from sqlalchemy import Column, Integer, Table
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.pool import StaticPool
@@ -60,6 +60,12 @@ for _shared_table_name in ("conversations", "messages"):
 def _compile_jsonb_for_sqlite_tests(_type, _compiler, **_kwargs):
     """Use SQLite's JSON storage affinity for PostgreSQL JSONB test columns."""
     return "JSON"
+
+
+@compiles(UUID, "sqlite")
+def _compile_uuid_for_sqlite_tests(_type, _compiler, **_kwargs):
+    """Store PostgreSQL UUID values as fixed-width text in SQLite tests."""
+    return "CHAR(32)"
 
 
 # Test database URL - using in-memory SQLite for fast tests
