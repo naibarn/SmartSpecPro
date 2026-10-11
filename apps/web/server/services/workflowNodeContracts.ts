@@ -563,8 +563,8 @@ const NODE_PROFILES: Record<
     invocation: NodeTypeManifest["execution"]["invocation"];
     suspension: NodeTypeManifest["execution"]["suspension"];
     determinism: NodeTypeManifest["execution"]["determinism"];
-    mutation: NodeTypeManifest["execution"]["effects"]["mutation"];
-    boundary: NodeTypeManifest["execution"]["effects"]["boundary"];
+    mutation: EffectContract["mutation"];
+    boundary: EffectContract["boundary"];
     intents: string[];
     capabilities: string[];
   }
@@ -1007,7 +1007,7 @@ export function validateNodeTypeManifest(manifest: NodeTypeManifest): true {
       !["none", "read", "write"].includes(declaredEffect.mutation) ||
       !["internal", "external"].includes(declaredEffect.boundary) ||
       (manifest.execution.effects.mode === "derived" && !["compile", "runtime-preflight"].includes(manifest.execution.effects.resolveAt)) ||
-      (manifest.execution.effects.reversible !== undefined && typeof manifest.execution.effects.reversible !== "boolean") ||
+      (declaredEffect.reversible !== undefined && typeof declaredEffect.reversible !== "boolean") ||
       (manifest.runtimeRequirement.protocolFamilies && !manifest.runtimeRequirement.protocolFamilies.every(item => ["native", "skill", "mcp", "a2a", "acp", "http", "custom"].includes(item))) ||
       (manifest.runtimeRequirement.placements && !manifest.runtimeRequirement.placements.every(item => ["server", "browser", "runner", "cloud-container", "external"].includes(item))) ||
       !["inline", "job", "either"].includes(manifest.execution.invocation))

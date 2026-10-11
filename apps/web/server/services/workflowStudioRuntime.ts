@@ -31,7 +31,7 @@ export class WorkflowRuntimeError extends Error {
     | "DEFINITION_INVALID"
     | "INPUT_INVALID";
 
-  constructor(code: WorkflowRuntimeError["code"], message = code) {
+  constructor(code: WorkflowRuntimeError["code"], message: string = code) {
     super(message);
     this.name = "WorkflowRuntimeError";
     this.code = code;
