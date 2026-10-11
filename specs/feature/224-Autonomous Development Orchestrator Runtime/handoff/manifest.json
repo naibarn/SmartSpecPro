@@ -875,11 +875,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "expected_canonical_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "The R10 synthetic implementation, failed-test repair, independent verification, worker process-crash recovery and stale-fence acceptance are integrated and exact-SHA focused tests pass. Do not retry central build until fresh resource admission permits it. Final Verify and live dispatch remain blocked on genuine workspace/Runner authority. Read-only next-workunit scan found no safe collision-free candidate yet: SPEC-268 has dirty historical ownership, SPEC-302 has active R7 ownership, and Feature 014 waits on migration ownership.",
+    "next_action": "The synthetic acceptance and worker recovery work are integrated; the latest exact-main focused PostgreSQL slice passed 4 files/24 tests. Wait for fresh resource admission before retrying the canonical build (the previous attempt was RESOURCE_BLOCKED before the web target started). Keep terminal completion/live dispatch denied pending genuine workspace and Runner authority. Read-only next-workunit scan found current high-ranked candidates blocked by ownership or authority; rerun that scan after owners reconcile.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
     "resume_point": "R10 source checkpoint 86d744878dcd67e1f8187a125f713b9364353573, based on canonical main b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc. Evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json. Four focused files/24 tests pass; all phases, real failing candidate, bounded repair, separate-process verifier, cancellation guard and fresh-process durable blocked state are proven. Final Verify reason is workspace_convergence_or_retirement_evidence_missing; no RUN_COMPLETED. R10 typecheck was stopped at about 3.3 GiB RSS; pre-existing CI baseline failures are classified in the evidence. Resume with lease expiry/reclaim and stale worker fencing, then normal PR gates.",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 59,
+  "generation": 60,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "canonical_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
     "integrated": true,
-    "integrated_at": "2026-10-11T08:07:51Z"
+    "integrated_at": "2026-10-11T08:13:33Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2346,7 +2346,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T08:10:27.175112Z",
+  "updated_at": "2026-10-11T08:14:20.789386Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2426,8 +2426,8 @@
       {
         "kind": "R10_SYNTHETIC_GIT_IMPLEMENTATION_REPAIR_AND_INDEPENDENT_VERIFY",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json",
-        "scope": "Exact post-integration SHA 1a817425cc14833d15d27f5048e496d8570dabbf passed the focused PostgreSQL slice (4 files/24 tests) after PRs #676, #677 and #678 each passed progressive_integration_gate. In one persisted DevelopmentRun, an authorized synthetic implementation worker committed the candidate then SIGKILLed before acknowledgment; same-run lease recovery advanced fence 1→2 and rejected stale settlement without result/output, while replacement recovered the same candidate without duplicate commit. Real failing TEST, bounded idempotent repair, passing TEST, separate-process VERIFY and fresh-process evidence read all passed. Final Verify remains WAIT for genuine workspace receipts. Central canonical build at exact integrated SHA 1a817425cc14833d15d27f5048e496d8570dabbf was resource-blocked before the web build started (<512 MiB swap headroom); no retry without fresh capacity evidence.",
-        "source_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+        "scope": "Exact post-integration SHA ad527e21f6174f7ed05782825a13d5ad3de2291c focused PostgreSQL slice passed 4 files/24 tests. PRs #676–#678 integrated the synthetic DevelopmentRun acceptance, lease reclaim and implementation worker-crash recovery; PR #680 integrated the central build resource evidence. The central web build was not started at code SHA 1a817425cc14833d15d27f5048e496d8570dabbf because preflight found <512 MiB swap headroom; do not retry without fresh capacity. Final Verify remains blocked on genuine workspace receipts.",
+        "source_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
         "status": "PASS"
       }
     ],
@@ -2435,7 +2435,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
     "status": "PARTIAL",
     "task_regressions": []
   }
