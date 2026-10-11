@@ -420,10 +420,78 @@ describe("AdminInferencePolicyPanel", () => {
     expect(screen.getByText("admin.llmProviders.profile.invalidJson")).toBeTruthy();
     expect(state.profilePublish).not.toHaveBeenCalled();
 
-    const candidate = { model: { lifecycle: "METADATA_VALIDATED" }, deployment: { status: "DEGRADED" } };
+    fireEvent.change(profileInput, { target: { value: "{}" } });
+    fireEvent.click(publish);
+    expect(screen.getByText("admin.llmProviders.profile.invalid (deployment, model)")).toBeTruthy();
+    expect(state.profilePublish).not.toHaveBeenCalled();
+
+    const candidate = {
+      model: {
+        logicalModelId: "model-a",
+        revision: "model-rev-1",
+        providerNativeModelId: "provider/model-a",
+        lifecycle: "METADATA_VALIDATED",
+        capabilityRefs: [],
+        capabilities: {
+          inputModalities: ["text"],
+          outputModalities: ["text"],
+          features: [],
+          toolContractRefs: [],
+          maxContextTokens: 1000,
+          maxOutputTokens: 100,
+        },
+      },
+      deployment: {
+        deploymentId: "deployment-a",
+        revision: "deployment-rev-1",
+        logicalModelId: "model-a",
+        logicalModelRevision: "model-rev-1",
+        providerId: "provider-a",
+        credentialOwnerRef: "owner-a",
+        endpointSurface: "chat_compatible",
+        executionSurface: "cloud",
+        region: "us-east",
+        allowedRegions: ["us-east"],
+        allowedPrivacyClasses: ["public"],
+        retention: "unknown",
+        status: "DEGRADED",
+        health: "degraded",
+        healthObservedAtMs: 100,
+        latencyP95Ms: 10,
+        resolvedAliasRevision: "model-rev-1",
+        probe: {
+          source: "catalog_metadata",
+          endpointSurface: "chat_compatible",
+          probeSuiteRevision: "catalog-suite-1",
+          evidenceRef: "catalog:metadata-a",
+          observedAtMs: 100,
+          validUntilMs: 200,
+          probedCapabilityRefs: [],
+          checks: {
+            basicRequestResponse: false,
+            chatResponsesParity: false,
+            streamingCancellation: false,
+            toolsContinuation: false,
+            strictSchema: false,
+            reasoningUsage: false,
+            multimodal: false,
+            contextOutputLimits: false,
+            regionRetention: false,
+            credentialOwnership: false,
+          },
+        },
+        price: {
+          currency: "USD_MICROS",
+          inputMicrosPerMillion: 0,
+          outputMicrosPerMillion: 0,
+          snapshotRef: "price:metadata-a",
+          validUntilMs: 200,
+        },
+      },
+    };
     fireEvent.change(profileInput, { target: { value: JSON.stringify(candidate) } });
     fireEvent.click(publish);
-    expect(state.profilePublish).toHaveBeenCalledWith({ profileInput: candidate });
+    expect(state.profilePublish).toHaveBeenCalledWith(candidate);
     await act(async () => {
       await state.profilePublishOptions?.onSuccess?.({
         ok: true,

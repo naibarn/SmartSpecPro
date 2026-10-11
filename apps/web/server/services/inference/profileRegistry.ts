@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { z } from "zod";
 import {
   llmInferenceProfileCandidateHeads,
   llmInferenceProfileCertifications,
@@ -10,38 +9,12 @@ import {
 } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import {
-  logicalModelProfileSchema,
-  providerDeploymentProfileSchema,
-  type LogicalModelProfile,
-  type ProviderDeploymentProfile,
-} from "./qualification";
-
-export const inferenceProfilePairSchema = z
-  .object({
-    model: logicalModelProfileSchema,
-    deployment: providerDeploymentProfileSchema,
-  })
-  .strict()
-  .superRefine(({ model, deployment }, context) => {
-    if (
-      deployment.logicalModelId !== model.logicalModelId ||
-      deployment.logicalModelRevision !== model.revision ||
-      deployment.resolvedAliasRevision !== model.revision
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["deployment", "logicalModelRevision"],
-        message: "deployment must pin the exact logical model revision",
-      });
-    }
-  });
+  inferenceProfilePairSchema,
+  type InferenceProfilePair,
+} from "../../../shared/inferenceProfileSchemas";
+export { inferenceProfilePairSchema } from "../../../shared/inferenceProfileSchemas";
 
 export const publishInferenceProfileInputSchema = inferenceProfilePairSchema;
-
-export type InferenceProfilePair = {
-  model: LogicalModelProfile;
-  deployment: ProviderDeploymentProfile;
-};
 
 export type ProfilePublicationValidation =
   | { ok: true; profile: InferenceProfilePair }
