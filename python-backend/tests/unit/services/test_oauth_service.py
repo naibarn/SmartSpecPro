@@ -151,7 +151,6 @@ class TestExchangeCodeForToken:
                 redirect_uri="http://localhost/callback",
                 client_id="client_id",
                 client_secret="client_secret",
-                state="state"
             )
         
         assert result is not None
@@ -182,7 +181,6 @@ class TestExchangeCodeForToken:
                 redirect_uri="http://localhost/callback",
                 client_id="client_id",
                 client_secret="client_secret",
-                state="state"
             )
         
         assert result is not None
@@ -200,7 +198,6 @@ class TestExchangeCodeForToken:
             redirect_uri="http://localhost/callback",
             client_id="client_id",
             client_secret="client_secret",
-            state="state"
         )
         
         assert result is None
@@ -225,7 +222,6 @@ class TestExchangeCodeForToken:
                 redirect_uri="http://localhost/callback",
                 client_id="client_id",
                 client_secret="client_secret",
-                state="state"
             )
         
         assert result is None
