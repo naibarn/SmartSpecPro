@@ -91,6 +91,7 @@ import {
   type UserRole,
 } from "@smartspec/shared";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
+import AdminDeploymentTargets from "@/components/admin/AdminDeploymentTargets";
 import AdminPlatformOperations from "./AdminPlatformOperations";
 import PublicContactProtectionSettingsPanel from "@/components/admin/PublicContactProtectionSettingsPanel";
 import DocumentOcrSettingsPanel from "@/components/admin/DocumentOcrSettingsPanel";
@@ -1159,6 +1160,10 @@ export default function AdminSettings() {
       infrastructure: {
         label: isThai ? "โครงสร้างพื้นฐาน" : "Infrastructure",
         sublabel: isThai ? "GCP / Redis / Tasks" : "GCP / Redis / Tasks",
+      },
+      deploymentTargets: {
+        label: isThai ? "Deployment targets" : "Deployment targets",
+        sublabel: isThai ? "Cloudflare preview / staging" : "Cloudflare preview / staging",
       },
       workerRuntime: {
         label: isThai ? "Worker Runtime" : "Worker Runtime",
@@ -2531,6 +2536,12 @@ export default function AdminSettings() {
       label: copy.nav.infrastructure.label,
       sublabel: copy.nav.infrastructure.sublabel,
       icon: Server,
+    },
+    {
+      key: "deployment_targets",
+      label: copy.nav.deploymentTargets.label,
+      sublabel: copy.nav.deploymentTargets.sublabel,
+      icon: Cloud,
     },
     {
       key: "platform_operations",
@@ -8348,6 +8359,10 @@ export default function AdminSettings() {
               {/* Main Menu Settings Tab */}
               <TabsContent value="infrastructure">
                 <InfrastructureSettingsPanel initialTab={legacyStorageRedirect ? "cloudflare-runtime" : undefined} />
+              </TabsContent>
+
+              <TabsContent value="deployment_targets">
+                <AdminDeploymentTargets />
               </TabsContent>
 
               <TabsContent value="platform_operations">
