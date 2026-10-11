@@ -99,7 +99,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 33,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -125,7 +125,15 @@
       "311bc1e39100a308efcadab61fa278d607a860aa",
       "06068ae9db6c433b9a10353f71f2becdba18218e"
     ],
-    "mapping": [],
+    "mapping": [
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "Cross-spec impact review for PR #578: the screenshot intake reused SPEC-224 DevelopmentRun authorization and the existing governed worker_jobs/outbox dispatch path; no Task Control schema, queue, recovery, or control-plane component was added. No SPEC-277 acceptance evidence is claimed.",
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+        "status": "UNVERIFIED"
+      }
+    ],
     "source_paths": [
       "apps/web/server/services/autoTeamProgressProjection.ts",
       "apps/web/server/services/autoTeamLedgerService.ts",
@@ -414,7 +422,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T15:47:01.585972Z",
+  "updated_at": "2026-10-11T00:25:42.580744Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -487,6 +495,15 @@
         "scope": "After PR #557 advanced main, the exact 12-file focused AutoTeam/SPEC-271/SPEC-302 regression suite passed 172 tests. This remains partial acceptance; stale TeamRun side-effect fencing, Task Control continuity and durable authoritative receipts are open.",
         "source_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "kind": "SPEC224_VISUAL_REFERENCE_TASK_CONTROL_IMPACT_REVIEW",
+        "path": "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "This slice used the existing SPEC-224 dispatch path and did not change or verify SPEC-277 Task Control/recovery requirements.",
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+        "status": "UNVERIFIED"
       }
     ],
     "freshness": "FRESH",
