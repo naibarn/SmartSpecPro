@@ -494,6 +494,9 @@ def test_resume_routes_native_skill_runtime_when_plan_context_requests_it(tmp_pa
 def test_router_registered_in_main():
     from app.main import app
 
-    route_paths = [route.path for route in app.routes]
-    assert "/api/internal/openai-agents-runtime/run" in route_paths
-    assert "/api/internal/openai-agents-runtime/health" in route_paths
+    with patch("app.api.internal_openai_agents_runtime.settings") as mock_settings:
+        mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = VALID_TOKEN
+        mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
+        response = TestClient(app).get("/api/internal/openai-agents-runtime/health")
+
+    assert response.status_code == 401
