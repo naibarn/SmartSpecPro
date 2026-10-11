@@ -296,9 +296,14 @@ export function assertStoryboardSkillInputs(
   }
   for (const [key, value] of Object.entries(values)) {
     if (value === undefined || value === null) continue;
-    const schema = properties[key];
-    if (!schema || typeof schema !== "object")
+    const rawSchema = properties[key];
+    if (
+      !rawSchema ||
+      typeof rawSchema !== "object" ||
+      Array.isArray(rawSchema)
+    )
       throw new Error(`Unknown skill input: ${key}`);
+    const schema = rawSchema as JsonObject;
     const enumValues = Array.isArray(schema.enum) ? schema.enum : [];
     if (enumValues.length > 0 && !enumValues.includes(value))
       throw new Error(`Invalid value for skill input: ${key}`);
@@ -315,7 +320,7 @@ export function assertStoryboardSkillInputs(
     if (types.length > 0 && !types.includes(actualType))
       throw new Error(`Invalid type for skill input: ${key}`);
     if (
-      actualType === "array" &&
+      Array.isArray(value) &&
       typeof schema.maxItems === "number" &&
       value.length > schema.maxItems
     )

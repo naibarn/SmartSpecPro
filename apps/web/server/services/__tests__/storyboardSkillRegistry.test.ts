@@ -67,6 +67,16 @@ describe("storyboard skill registry", () => {
     ).toThrow("age");
     expect(() =>
       assertStoryboardSkillInputs(skill, {
+        age: "18",
+      })
+    ).toThrow("age");
+    expect(() =>
+      assertStoryboardSkillInputs(skill, {
+        character_reference_images: Array.from({ length: 6 }, () => ({})),
+      })
+    ).toThrow("character_reference_images");
+    expect(() =>
+      assertStoryboardSkillInputs(skill, {
         child_count: 2,
         identity_lock_mode: "strong",
       })
