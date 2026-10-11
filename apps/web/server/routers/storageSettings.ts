@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { storageSettings } from "../../drizzle/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { S3Client, PutObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
@@ -114,7 +114,7 @@ export const storageSettingsRouter = router({
   // Admin: List all storage settings
   list: adminProcedure.query(async () => {
     try {
-      const settings = await db
+      const settings = await getDb()
         .select()
         .from(storageSettings)
         .orderBy(asc(storageSettings.name));
