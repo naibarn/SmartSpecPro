@@ -110,6 +110,7 @@ async def test_stream_events_include_sequence_and_idempotency_key():
     response = await adapter.run_streamed(
         _base_request(),
         gateway_attribution_token="platform-token",
+        gateway_base_url="http://gateway.internal",
         components=OpenAIAgentsRuntimeComponents(runner=runner),
     )
 
@@ -149,6 +150,7 @@ async def test_resume_references_checkpoint():
     response = await adapter.resume(
         request,
         gateway_attribution_token="platform-token",
+        gateway_base_url="http://gateway.internal",
         components=OpenAIAgentsRuntimeComponents(runner=runner),
     )
 
