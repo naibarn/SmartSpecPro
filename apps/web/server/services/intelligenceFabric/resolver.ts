@@ -258,8 +258,9 @@ function rejectOffer(
   if (health.state !== "healthy") return health.rejectionCode;
   if (requirement.minimumCoverage !== undefined && (offer.coverageScore ?? 0) < requirement.minimumCoverage) return "COVERAGE_INSUFFICIENT";
   if (requirement.requiredFields?.some(field => !offer.availableFields?.includes(field))) return "REQUIRED_FIELDS_MISSING";
+  const cost = offer.estimatedCost;
   if (requirement.maximumCostCredits !== undefined &&
-    (offer.estimatedCost.kind === "unknown" || offer.estimatedCost.credits > requirement.maximumCostCredits)) return "COST_LIMIT_EXCEEDED";
+    (cost.kind === "unknown" || (cost.kind !== "zero" && cost.credits > requirement.maximumCostCredits))) return "COST_LIMIT_EXCEEDED";
   if (requirement.privacyClass && offer.privacyClass !== requirement.privacyClass) return "PRIVACY_CLASS_MISMATCH";
   if (options.allowedPlacements && !options.allowedPlacements.includes(offer.placement)) return "PLACEMENT_UNAVAILABLE";
   return undefined;
