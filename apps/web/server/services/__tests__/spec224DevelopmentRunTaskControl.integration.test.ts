@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { closeDb } from "../../db";
 import { createSpec277DisposablePostgres } from "./support/spec277DisposablePostgres";
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
+import { createSpec224DisposableGitSession, type CandidateResult, type CandidateTestResult, type Spec224DisposableGitAcceptance, type Spec224DisposableGitSession } from "./support/spec224DisposableGitAcceptance";
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +29,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       PGUSER: process.env.PGUSER,
       PGPASSWORD: process.env.PGPASSWORD,
     };
+    let disposableSession: Spec224DisposableGitSession | null = null;
 
     try {
       await fixture.assertOwned();
@@ -286,11 +288,14 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       if (!persisted) throw new Error("SPEC224_RUN_NOT_PERSISTED_AFTER_RESTART");
 
       const { createAndBindNextPhase } = await import("../spec224PhaseController");
-      const { runSpec224DisposableGitAcceptance } = await import("./support/spec224DisposableGitAcceptance");
       let current = persisted;
       let currentPhase = current.run.state;
       let nextPlanRevision = 3;
-      let acceptance: Awaited<ReturnType<typeof runSpec224DisposableGitAcceptance>> | null = null;
+      let candidate: CandidateResult | null = null;
+      let failedTest: CandidateTestResult | null = null;
+      let repairedTest: CandidateTestResult | null = null;
+      let acceptance: Spec224DisposableGitAcceptance | null = null;
+      let activeLease: Awaited<ReturnType<typeof controlPlane.claim>> = null;
       let firstTestFailure = true;
       const exercisedPhases = ["DISCOVERY"];
 
@@ -303,23 +308,56 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
           adapter: "test",
         });
         if (!currentLease) throw new Error(`SPEC224_PHASE_NOT_CLAIMED:${currentPhase}`);
+        activeLease = currentLease;
         await controlPlane.start(currentLease);
         exercisedPhases.push(currentPhase);
         const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
 
         if (currentPhase === "IMPLEMENT") {
-          acceptance = await runSpec224DisposableGitAcceptance(
+          disposableSession = await createSpec224DisposableGitSession(
             { runId, tenantId, actorId, workUnitId: `work-${runId}` },
-            async () => {
-              const status = await controlPlane.getStatus(currentLease.jobId, {
-                tenantId,
-                requestedByUserId: actorId,
-              });
+            async ({ stage, repoPath }) => {
+              if (!activeLease) throw new Error("SPEC224_ACTIVE_JOB_LEASE_MISSING");
+              const status = await controlPlane.getStatus(activeLease.jobId, { tenantId, requestedByUserId: actorId });
               if (status?.status !== "running" || !status.lease.active || status.errorMessage?.startsWith("cancel_requested:")) {
-                throw new Error("SPEC224_IMPLEMENTATION_JOB_NOT_ACTIVE");
+                throw new Error(`SPEC224_${stage.toUpperCase()}_JOB_NOT_ACTIVE:${repoPath}`);
               }
             },
           );
+          candidate = await disposableSession.implementCandidate();
+          await controlPlane.complete(currentLease, {
+            resultRef: `evidence:spec224-disposable:${runId}:candidate`,
+            output: { baseSha: candidate.baseSha, failedCandidateSha: candidate.failedCandidateSha, mode: "SYNTHETIC" },
+          });
+        } else if (expectedTestFailure) {
+          if (!disposableSession || !candidate) throw new Error("SPEC224_SYNTHETIC_IMPLEMENTATION_MISSING");
+          failedTest = await disposableSession.runCandidateTest();
+          firstTestFailure = false;
+          await controlPlane.fail(currentLease, {
+            code: "FUNCTIONAL_TEST_FAILURE",
+            message: "Initial disposable candidate failed the acceptance tests",
+            class: "permanent",
+            metadata: { candidateSha: candidate.failedCandidateSha, evidenceRef: failedTest.artifactRef, stderrDigest: failedTest.stderrDigest },
+          });
+        } else if (currentPhase === "DEBUG_REPAIR") {
+          if (!disposableSession) throw new Error("SPEC224_DISPOSABLE_SESSION_MISSING");
+          const repair = await disposableSession.repairCandidate();
+          expect(repair.candidateSha).toBe(repair.retryCandidateSha);
+          expect(repair.attempts).toBe(2);
+          await controlPlane.complete(currentLease, {
+            resultRef: `evidence:spec224-disposable:${runId}:repair`,
+            output: { candidateSha: repair.candidateSha, attempts: repair.attempts },
+          });
+        } else if (currentPhase === "TEST" && !firstTestFailure) {
+          if (!disposableSession) throw new Error("SPEC224_DISPOSABLE_SESSION_MISSING");
+          repairedTest = await disposableSession.runRepairedTest();
+          await controlPlane.complete(currentLease, {
+            resultRef: `evidence:spec224-disposable:${runId}:repair-test`,
+            output: { exitCode: repairedTest.exitCode, evidenceRef: repairedTest.artifactRef, stderrDigest: repairedTest.stderrDigest },
+          });
+        } else if (currentPhase === "VERIFY") {
+          if (!disposableSession || !candidate || !failedTest || !repairedTest) throw new Error("SPEC224_ACCEPTANCE_EVIDENCE_INCOMPLETE");
+          acceptance = await disposableSession.independentlyVerify();
           expect(acceptance).toMatchObject({
             mode: "SYNTHETIC",
             scope: { runId, tenantId, actorId, workUnitId: `work-${runId}` },
@@ -329,31 +367,20 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
             verifierSourceSha: acceptance.candidateSha,
           });
           expect(acceptance.initialTestExitCode).not.toBe(0);
-          expect(acceptance.failedCandidateSha).not.toBe(acceptance.candidateSha);
+          expect(acceptance.failedCandidateSha).toBe(candidate.failedCandidateSha);
           expect(acceptance.verifierPid).not.toBe(process.pid);
           expect(acceptance.artifactRefs).toHaveLength(4);
           await controlPlane.complete(currentLease, {
-            resultRef: `evidence:spec224-disposable:${runId}:candidate`,
+            resultRef: `evidence:spec224-disposable:${runId}:verification`,
             output: { evidenceRefs: acceptance.artifactRefs, syntheticAcceptance: acceptance },
-          });
-        } else if (expectedTestFailure) {
-          if (!acceptance) throw new Error("SPEC224_SYNTHETIC_IMPLEMENTATION_MISSING");
-          firstTestFailure = false;
-          await controlPlane.fail(currentLease, {
-            code: "FUNCTIONAL_TEST_FAILURE",
-            message: "Initial disposable candidate failed the acceptance tests",
-            class: "permanent",
-            metadata: { candidateSha: acceptance.failedCandidateSha, evidenceRefs: acceptance.artifactRefs },
           });
         } else {
           await controlPlane.complete(currentLease, {
             resultRef: `evidence:phase-${currentPhase}-${runId}`,
             output: {
-              evidenceRefs: currentPhase === "DEBUG_REPAIR" || currentPhase === "TEST"
+              evidenceRefs: currentPhase === "TEST"
                 ? acceptance?.artifactRefs ?? []
                 : [`evidence:phase-${currentPhase}-${runId}`],
-              ...(currentPhase === "DEBUG_REPAIR" && acceptance ? { repairedCandidateSha: acceptance.candidateSha } : {}),
-              ...(currentPhase === "TEST" && acceptance ? { independentVerifierPid: acceptance.verifierPid, sourceSha: acceptance.verifierSourceSha } : {}),
             },
           });
         }
@@ -446,11 +473,11 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         }) + "\n");
       }
       expect(acceptance.verifierSourceSha).toBe(acceptance.candidateSha);
-      const [implementationEvidence] = await client.unsafe(
+      const [verificationEvidence] = await client.unsafe(
         `SELECT "outputJson" FROM worker_jobs WHERE "resultRef" = $1`,
-        [`evidence:spec224-disposable:${runId}:candidate`]
+        [`evidence:spec224-disposable:${runId}:verification`]
       );
-      expect(implementationEvidence?.outputJson).toMatchObject({
+      expect(verificationEvidence?.outputJson).toMatchObject({
         syntheticAcceptance: {
           mode: "SYNTHETIC",
           candidateSha: acceptance.candidateSha,
@@ -470,7 +497,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         const scope = { runId, tenantId: process.env.TEST_TENANT_ID, actorId: Number(process.env.TEST_ACTOR_ID) };
         const run = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get(scope);
         const sql = postgres(process.env.DATABASE_URL, { max: 1 });
-        const [job] = await sql.unsafe('SELECT "outputJson" FROM worker_jobs WHERE "resultRef" = $1', [process.env.TEST_IMPLEMENTATION_RESULT_REF]);
+        const [job] = await sql.unsafe('SELECT "outputJson" FROM worker_jobs WHERE "resultRef" = $1', [process.env.TEST_VERIFICATION_RESULT_REF]);
         const acceptance = job?.outputJson?.syntheticAcceptance;
         const artifacts = acceptance?.evidenceArtifacts ?? [];
         const actualDigest = createHash("sha256").update(JSON.stringify(artifacts.map(({ ref, sha256 }) => ({ ref, sha256 })))).digest("hex");
@@ -499,7 +526,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
           TEST_RUN_ID: runId,
           TEST_TENANT_ID: tenantId,
           TEST_ACTOR_ID: String(actorId),
-          TEST_IMPLEMENTATION_RESULT_REF: `evidence:spec224-disposable:${runId}:candidate`,
+          TEST_VERIFICATION_RESULT_REF: `evidence:spec224-disposable:${runId}:verification`,
         },
         timeout: 20_000,
         maxBuffer: 24 * 1024,
@@ -517,6 +544,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         candidateSha: acceptance.candidateSha,
       });
     } finally {
+      await disposableSession?.close();
       await closeDb();
       if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
       else process.env.DATABASE_URL = previousDatabaseUrl;
