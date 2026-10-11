@@ -118,6 +118,73 @@ describe("authenticated provider callback persistence", () => {
           currentBusinessAttempt: 2,
         },
       });
+
+      const concurrentJobId = randomUUID();
+      await client.unsafe(
+        `INSERT INTO worker_jobs (
+          id, "tenantId", "runtimeType", "jobType", status, "executionClass",
+          "contractVersion", "inputJson", "instructionsJson", "retryPolicyJson",
+          "timeoutPolicyJson", attempt, "maxAttempts", "fencingVersion"
+        ) VALUES (
+          $1, $2, 'node_job_worker', 'auto-team.recovery.evaluate', 'running', 'long',
+          'auto-team-recovery-v1', '{}', '{}',
+          '{"deadlineMode":"fixed","deadlineMs":60000,"baseDelayMs":1,"maxDelayMs":1}'::jsonb,
+          '{"softTimeoutMs":0,"hardTimeoutMs":60000}'::jsonb, 1, 4, 1
+        )`,
+        [concurrentJobId, tenantId]
+      );
+      let signalAttemptUpdate!: () => void;
+      const attemptUpdateReady = new Promise<void>(resolve => {
+        signalAttemptUpdate = resolve;
+      });
+      let releaseAttemptUpdate!: () => void;
+      const holdAttemptUpdate = new Promise<void>(resolve => {
+        releaseAttemptUpdate = resolve;
+      });
+      const attemptUpdate = client.begin(async tx => {
+        await tx.unsafe(`UPDATE worker_jobs SET attempt = 2 WHERE id = $1`, [concurrentJobId]);
+        signalAttemptUpdate();
+        await holdAttemptUpdate;
+      });
+      await attemptUpdateReady;
+      let callbackFinished = false;
+      const concurrentCallback = recordAuthenticatedJobCallback({
+        ...callback,
+        jobId: concurrentJobId,
+        providerEventId: "event-r7-concurrent-stale-attempt",
+        businessAttempt: 1,
+      }).then(result => {
+        callbackFinished = true;
+        return result;
+      });
+      try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(callbackFinished).toBe(false);
+      } finally {
+        releaseAttemptUpdate();
+      }
+      await attemptUpdate;
+      expect((await concurrentCallback).disposition).toBe("rejected");
+      const [concurrentState] = await client.unsafe(
+        `SELECT j.attempt, c.disposition, c."workerJobId" AS worker_job_id,
+          e."payloadJson" AS event_payload
+         FROM worker_jobs j
+         JOIN worker_job_callbacks c ON c."workerJobId" = j.id
+         JOIN worker_job_events e ON e."workerJobId" = j.id AND e."eventType" = 'CALLBACK_REJECTED'
+         WHERE j.id = $1 AND c."providerEventId" = 'event-r7-concurrent-stale-attempt'`,
+        [concurrentJobId]
+      );
+      expect(concurrentState).toEqual({
+        attempt: 2,
+        disposition: "rejected",
+        worker_job_id: concurrentJobId,
+        event_payload: {
+          adapterNamespace: "r7-synthetic-provider",
+          disposition: "rejected",
+          callbackBusinessAttempt: 1,
+          currentBusinessAttempt: 2,
+        },
+      });
     } finally {
       await closeDb();
       if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;

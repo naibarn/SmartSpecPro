@@ -73,6 +73,7 @@ export function leaseDurationMs(executionClass: string): number {
 }
 export type TxRepo = {
   findJob(jobId: string): Promise<WorkerJob | null>;
+  findJobForUpdate?(jobId: string): Promise<WorkerJob | null>;
   findByIdempotency(
     tenantId: string,
     idempotencyKey: string
@@ -582,6 +583,17 @@ function buildDefaultRepository(): JobControlPlaneRepository {
             const query = tx as any;
             const repo: TxRepo = {
               async findJob(jobId) {
+                const [row] = await query
+                  .select()
+                  .from(workerJobs)
+                  .where(eq(workerJobs.id, jobId))
+                  .limit(1);
+                return row ?? null;
+              },
+              async findJobForUpdate(jobId) {
+                await query.execute(
+                  sql`SELECT "id" FROM "worker_jobs" WHERE "id" = ${jobId} FOR UPDATE`
+                );
                 const [row] = await query
                   .select()
                   .from(workerJobs)
@@ -1877,7 +1889,9 @@ export async function recordAuthenticatedJobCallback(
         callbackIdempotencyKey: `${input.adapterNamespace}:${callbackKey}`,
       };
 
-    const job = input.jobId ? await repo.findJob(input.jobId) : null;
+    const job = input.jobId
+      ? await (repo.findJobForUpdate?.(input.jobId) ?? repo.findJob(input.jobId))
+      : null;
     const jobTenantCorrelated = Boolean(
       job && (!input.tenantId || job.tenantId === input.tenantId)
     );
