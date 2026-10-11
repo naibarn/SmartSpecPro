@@ -34,7 +34,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+    "expected_canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
     "expected_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99"
   },
   "continuation": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 20,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -108,7 +108,9 @@
       "904723c3b33365cb971a668e816d64f1adff7622",
       "5b9730424642f45dbf58a2af45aeb1beebc303ab",
       "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
-      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
+      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+      "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
+      "9bfe80208293b47153b4736e5c8a29ac98609e8b"
     ],
     "mapping": [
       {
@@ -163,6 +165,19 @@
         "scope": "PARTIAL: existing Factory UAT stage receives bounded visual comparison/repair requirements and functional-regression priority. No browser screenshot, visual diff, repair, functional journey, or durable acceptance receipt has executed; acceptance remains UNKNOWN.",
         "source_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
         "status": "PARTIAL"
+      },
+      {
+        "canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
+        "coverage": "PARTIAL; visual render/compare/repair and functional regression are declared in the existing Factory UAT stage contract, but no independent browser or functional acceptance receipt was produced.",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/596",
+        "scope": "PR #596 (merged as e61dc75cc86b0108f12b49b7c94fb8b53c4d3018) adds same-viewport visual comparison and at most two focused repair rounds to the existing SPEC-224 Factory UAT stage contract, requires functional regression after repairs, and separates visual from functional outcomes. This is not a SPEC-271 acceptance receipt. Browser capability remains unauthenticated/untrusted; no rendered screenshot, repair receipt, or functional UAT evidence exists.",
+        "source_paths": [
+          "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
+          "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/functional-generation-bridge-20261011.json"
+        ],
+        "source_sha": "9c4a89bea0bf2abacd1d0236ce35a96bc4319968",
+        "status": "PARTIAL"
       }
     ],
     "source_paths": [
@@ -179,9 +194,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+    "canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
     "integrated": true,
-    "integrated_at": "2026-10-11T01:12:53Z"
+    "integrated_at": "2026-10-11T01:32:34Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -941,7 +956,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T01:14:48.572511Z",
+  "updated_at": "2026-10-11T01:32:42.480225Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
