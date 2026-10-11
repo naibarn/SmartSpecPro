@@ -91,12 +91,21 @@ def test_orchestra_preflight_rejects_agency_origin_without_running_sdk():
     }
     from app.services.openai_agents_contracts import AgentRuntimeRequest
     request = AgentRuntimeRequest.model_validate(payload)
+
+    adapter_called = False
+
+    async def adapter_run(_request, **_kwargs):
+        nonlocal adapter_called
+        adapter_called = True
+
     try:
-        preflight_orchestra_request(request)
+        asyncio.run(run_orchestra(request, adapter_run))
     except OrchestraAdmissionError as exc:
         assert exc.finding.code == "agency_origin_forbidden"
     else:
         raise AssertionError("Agency origin must be rejected before SDK execution")
+
+    assert adapter_called is False
 
 
 def test_orchestra_marks_completed_artifact_provider_ready_and_checks_hash():

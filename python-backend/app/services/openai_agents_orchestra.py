@@ -28,6 +28,14 @@ class OrchestraAdmissionError(ValueError):
 
 
 def preflight_orchestra_request(request: AgentRuntimeRequest) -> AssuranceRequest | None:
+    if request.planContext and request.planContext.get("originSurface") == "agency":
+        raise OrchestraAdmissionError(
+            AssuranceFinding(
+                code="agency_origin_forbidden",
+                severity="blocking",
+                message="retired_agency_origin_forbidden",
+            )
+        )
     assurance = request.assurance
     if assurance is None:
         return None
