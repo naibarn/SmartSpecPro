@@ -209,6 +209,41 @@ describe("handleChatWithRouter", () => {
     expect(mockExecuteWithFallback).not.toHaveBeenCalled();
   });
 
+  it("fails closed when policy inference is not executable", async () => {
+    mockResolveChatModelSelection.mockResolvedValue({
+      selectionMode: "auto-global",
+      selection: { mode: "auto-global" },
+      resolvedModelId: "gpt-4o",
+      strictProviderPin: false,
+      routeFamily: "chat-completions",
+      requirements: {},
+      continuityApplied: false,
+      shouldPersistSelectionState: false,
+    });
+    mockExecuteChatThroughInferenceGateway.mockResolvedValue({
+      status: "executed",
+      result: { status: "not_executable", reason: "INVALID_CALL_CONTEXT" },
+      creditsReserved: 0,
+    });
+    const res = mockRes();
+
+    await handleChatWithRouter({
+      messages: [{ role: "user", content: "hello" }],
+      userId: 7,
+      tenantId: "tenant-1",
+      res,
+    });
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      error: {
+        message: "Policy-routed inference is not executable",
+        code: "POLICY_INFERENCE_NOT_EXECUTABLE",
+      },
+    });
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+  });
+
   it("returns the existing in-flight attempt receipt for a duplicate request", async () => {
     mockResolveChatModelSelection.mockResolvedValue({
       selectionMode: "auto-global",
@@ -223,6 +258,7 @@ describe("handleChatWithRouter", () => {
     mockExecuteChatThroughInferenceGateway.mockResolvedValue({
       status: "executed",
       result: {
+        status: "executed",
         execution: {
           status: "duplicate_attempt",
           attemptId: "attempt-existing",
@@ -266,6 +302,7 @@ describe("handleChatWithRouter", () => {
     mockExecuteChatThroughInferenceGateway.mockResolvedValue({
       status: "executed",
       result: {
+        status: "executed",
         execution: {
           status: "duplicate_attempt",
           attemptId: "attempt-terminal",
@@ -537,6 +574,7 @@ describe("handleStreamWithRouter", () => {
     mockExecuteChatThroughInferenceGateway.mockResolvedValue({
       status: "executed",
       result: {
+        status: "executed",
         planning: { planId: "plan-1", selectedDeploymentId: "deployment-1" },
         execution: {
           status: "completed",
@@ -658,6 +696,38 @@ describe("handleStreamWithRouter", () => {
     expect(mockExecuteWithFallback).not.toHaveBeenCalled();
   });
 
+  it("returns an SSE error when policy inference is not executable", async () => {
+    mockResolveChatModelSelection.mockResolvedValue({
+      selectionMode: "auto-global",
+      selection: { mode: "auto-global" },
+      resolvedModelId: "gpt-4o",
+      strictProviderPin: false,
+      routeFamily: "chat-completions",
+      requirements: {},
+      continuityApplied: false,
+      shouldPersistSelectionState: false,
+    });
+    mockExecuteChatThroughInferenceGateway.mockResolvedValue({
+      status: "executed",
+      result: { status: "not_executable", reason: "INVALID_CALL_CONTEXT" },
+      creditsReserved: 0,
+    });
+    const res = mockRes();
+
+    await handleStreamWithRouter({
+      messages: [{ role: "user", content: "hello" }],
+      userId: 7,
+      tenantId: "tenant-1",
+      res,
+    });
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.write).toHaveBeenCalledWith(
+      expect.stringContaining("POLICY_INFERENCE_NOT_EXECUTABLE")
+    );
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+  });
+
   it("returns the existing in-flight attempt receipt as an SSE event", async () => {
     mockResolveChatModelSelection.mockResolvedValue({
       selectionMode: "auto-global",
@@ -672,6 +742,7 @@ describe("handleStreamWithRouter", () => {
     mockExecuteChatThroughInferenceGateway.mockResolvedValue({
       status: "executed",
       result: {
+        status: "executed",
         execution: {
           status: "duplicate_attempt",
           attemptId: "attempt-existing",
