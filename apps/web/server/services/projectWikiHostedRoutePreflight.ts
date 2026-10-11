@@ -7,6 +7,15 @@ import {
 } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
 import type { MigrationEvidence } from "./drizzleMigrationEvidence";
+import {
+  createDrizzleProjectWikiCandidateRepository,
+  ProjectWikiReleaseCandidateError,
+  readProjectWikiReleaseCandidate,
+  projectWikiCandidateStorage,
+  type ProjectWikiCandidateIdentity,
+  type ProjectWikiCandidateRepository,
+  type ProjectWikiCandidateStore,
+} from "./projectWikiReleaseCandidate";
 import { resolveProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
 import { collectRuntimeHealthEvidence } from "./runtimeHealthMonitor";
 
@@ -815,7 +824,8 @@ export type ProjectWikiHostedRoutePreflightProviders = {
     target: ProjectWikiHostedRouteAuthorities["target"]
   ): Promise<ProjectWikiHostedRouteAuthorities["host"]>;
   observePackage(
-    identity: HostedRouteIdentity
+    identity: HostedRouteIdentity,
+    db: DrizzleDB
   ): Promise<ProjectWikiHostedRouteAuthorities["package"]>;
   observeDatabase(
     identity: HostedRouteIdentity
@@ -847,6 +857,59 @@ export type ProjectWikiHostedRoutePreflightProviders = {
   ): Promise<ProjectWikiHostedRouteAuthorities["uat"]>;
 };
 
+export async function observeProjectWikiPersistedPackageCandidate(input: {
+  identity: ProjectWikiCandidateIdentity;
+  repository: ProjectWikiCandidateRepository;
+  storage: ProjectWikiCandidateStore;
+  now?: Date;
+}): Promise<ProjectWikiHostedRouteAuthorities["package"]> {
+  const source = "project_wiki_package_candidate+content_storage";
+  try {
+    const result = await readProjectWikiReleaseCandidate(
+      input.identity,
+      input.repository,
+      input.storage
+    );
+    if (!result)
+      return unknownFact(
+        source,
+        "package_candidate_not_registered",
+        input.identity
+      );
+    const candidate = result.candidate;
+    if (
+      candidate.tenantId !== input.identity.tenantId ||
+      candidate.projectId !== input.identity.projectId ||
+      candidate.appId !== input.identity.appId
+    )
+      return unknownFact(
+        source,
+        "package_candidate_scope_mismatch",
+        input.identity
+      );
+    return {
+      state: "OBSERVED",
+      source,
+      observedAt: (input.now ?? new Date()).toISOString(),
+      scope: input.identity,
+      evidenceRef: candidate.id,
+      value: {
+        sourceRevision: candidate.sourceRevision,
+        packageDigest: candidate.packageDigest,
+        archiveSha256: result.storedBytesSha256,
+        contentVerified: true,
+        appId: candidate.appId,
+      },
+    };
+  } catch (error) {
+    const reason =
+      error instanceof ProjectWikiReleaseCandidateError
+        ? `package_candidate_${error.code.toLowerCase()}`
+        : "package_candidate_readback_unavailable";
+    return unknownFact(source, reason, input.identity);
+  }
+}
+
 function unknownProviders(): Omit<
   ProjectWikiHostedRoutePreflightProviders,
   "observeProject" | "observeTarget"
@@ -858,12 +921,12 @@ function unknownProviders(): Omit<
         "smartspec_web_host_capability_not_registered",
         identity
       ),
-    observePackage: async identity =>
-      unknownFact(
-        "mini-app-factory-package-evidence",
-        "package_evidence_not_bound_to_project",
-        identity
-      ),
+    observePackage: async (identity, db) =>
+      observeProjectWikiPersistedPackageCandidate({
+        identity,
+        repository: createDrizzleProjectWikiCandidateRepository(db),
+        storage: projectWikiCandidateStorage,
+      }),
     observeDatabase: async identity =>
       unknownFact(
         "staging-database-authority",
@@ -1070,7 +1133,7 @@ export async function composeProjectWikiHostedRoutePreflight(input: {
   const target = await providers.observeTarget(input.db, identity);
   const [host, packageFact, database] = await Promise.all([
     providers.observeHost(identity, target),
-    providers.observePackage(identity),
+    providers.observePackage(identity, input.db),
     providers.observeDatabase(identity),
   ]);
   const [migration, recovery, trustedQualification, deployment, smoke, uat] =
