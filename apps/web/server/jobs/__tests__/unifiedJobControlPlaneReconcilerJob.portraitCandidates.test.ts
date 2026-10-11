@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockRunJobReconciler,
   mockReconcilePortraitCandidates,
+  mockReconcileApprovalDecisions,
+  mockCreateApprovalDecisionReconciler,
 } = vi.hoisted(() => ({
   mockRunJobReconciler: vi.fn(),
   mockReconcilePortraitCandidates: vi.fn(),
+  mockReconcileApprovalDecisions: vi.fn(),
+  mockCreateApprovalDecisionReconciler: vi.fn(),
 }));
 
 vi.mock("../../services/jobReconciler", () => ({
@@ -33,6 +37,18 @@ vi.mock("../../services/cloudflareRuntimeTarget", () => ({
 vi.mock("../../services/verticalDramaPortraitCandidateSettlement", () => ({
   reconcileStalePortraitCandidates: mockReconcilePortraitCandidates,
 }));
+vi.mock("../../services/spec224ApprovalContinuation", () => ({
+  createSpec224ExternalApprovalAuthority: vi.fn(() => ({
+    id: "test-authority",
+  })),
+  createSpec224ApprovalDecisionReconciler: (...args: unknown[]) => {
+    mockCreateApprovalDecisionReconciler(...args);
+    return mockReconcileApprovalDecisions;
+  },
+}));
+vi.mock("../../services/jobControlPlane", () => ({
+  createJobControlPlane: vi.fn(() => ({ id: "test-control-plane" })),
+}));
 
 import { runUnifiedJobControlPlaneReconcilerOnce } from "../unifiedJobControlPlaneReconcilerJob";
 
@@ -59,6 +75,15 @@ describe("unified control-plane reconciler portrait recovery hook", () => {
       settled: 1,
       errors: 0,
     });
+    mockReconcileApprovalDecisions.mockResolvedValue({
+      claimed: 0,
+      resumed: 0,
+      failed: 0,
+      duplicate: 0,
+      operatorReview: 0,
+      ignored: 0,
+      errors: 0,
+    });
   });
 
   it("runs bounded stale portrait recovery on each canonical reconciler pass", async () => {
@@ -71,8 +96,34 @@ describe("unified control-plane reconciler portrait recovery hook", () => {
     mockReconcilePortraitCandidates.mockRejectedValueOnce(
       new Error("database unavailable")
     );
-    await expect(runUnifiedJobControlPlaneReconcilerOnce()).resolves.toMatchObject({
+    await expect(
+      runUnifiedJobControlPlaneReconcilerOnce()
+    ).resolves.toMatchObject({
       reconciliationErrors: 0,
     });
+  });
+
+  it("runs durable approval reconciliation without blocking the job pass on authority errors", async () => {
+    mockReconcileApprovalDecisions.mockRejectedValueOnce(
+      new Error("approval authority unavailable")
+    );
+
+    await expect(
+      runUnifiedJobControlPlaneReconcilerOnce()
+    ).resolves.toMatchObject({
+      approvalDecisionReconciliation: { claimed: 0, errors: 1 },
+    });
+
+    expect(mockRunJobReconciler).toHaveBeenCalledTimes(1);
+    expect(mockCreateApprovalDecisionReconciler).toHaveBeenCalledWith(
+      {
+        authority: { id: "test-authority" },
+        controlPlane: { id: "test-control-plane" },
+      },
+      expect.objectContaining({
+        workerId: expect.stringMatching(/^spec224-approval-reconciler:/),
+        limit: 25,
+      })
+    );
   });
 });
