@@ -226,7 +226,7 @@ export function parseSpaasManifest(
       schema: yaml.JSON_SCHEMA,
       maxDepth: limitResult.limits.yamlDepth,
       maxTotalMergeKeys: 0,
-    });
+    } as yaml.LoadOptions & { maxDepth: number });
   } catch (error) {
     const duplicate = error instanceof Error && /duplicated mapping key/i.test(error.message);
     const limit = error instanceof Error && /nesting exceeded maxDepth|merge keys exceeded maxTotalMergeKeys/i.test(error.message);
