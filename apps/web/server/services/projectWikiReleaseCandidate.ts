@@ -387,7 +387,12 @@ export function createDrizzleProjectWikiCandidateRepository(db: DrizzleDB): Proj
           projectWikiPackageCandidates.appId, projectWikiPackageCandidates.packageDigest],
       }).returning();
       if (inserted) return inserted as ProjectWikiCandidateRecord;
-      const existing = await this.getByIdentity({ ...record, packageDigest: record.packageDigest });
+      const existing = await this.getByIdentity({
+        tenantId: record.tenantId,
+        projectId: record.projectId,
+        appId: record.appId,
+        packageDigest: record.packageDigest,
+      });
       if (!existing) fail("CANDIDATE_CONCURRENT_INSERT_UNRESOLVED");
       return existing;
     },

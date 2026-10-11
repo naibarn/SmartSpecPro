@@ -1,4 +1,4 @@
-import type { Diagnostic, SpaasValidationLimitOverrides } from "../model";
+import type { Diagnostic, SpaasManifest, SpaasValidationLimitOverrides } from "../model";
 import { resolveValidationLimits } from "../limits";
 import type { PackageStructureResult } from "../paths";
 
