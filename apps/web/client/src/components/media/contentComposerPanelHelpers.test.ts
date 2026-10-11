@@ -7,15 +7,14 @@ describe("content composer helpers", () => {
   it("generates a readable article draft shell", () => {
     const html = generateArticleDraftHtml({
       topic: "Launch plan",
-      executionSource: "agency",
-      agencyName: "Launch Agency",
-      skillId: null,
+      executionSource: "skill",
+      skillId: "Launch Skill",
       requiresWebSearch: true,
       requiresThinking: false,
     });
 
     expect(html).toContain("<h1>Launch plan</h1>");
-    expect(html).toContain("Launch Agency");
+    expect(html).toContain("Launch Skill");
     expect(html).toContain("Web search: enabled");
     expect(html).toContain("Thinking: disabled");
   });
