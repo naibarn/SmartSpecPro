@@ -169,6 +169,69 @@ describe("provider poll result persistence and cancellation fencing", () => {
       );
       expect(afterDuplicate).toEqual({ completions: 1, active_count: 0 });
 
+      const reclaimTarget = await seedWaitingProviderJob(
+        randomUUID(),
+        `r7-provider-poll-reclaim:${randomUUID()}`
+      );
+      const [staleRecord] = await providerRepository.claimDue({
+        now,
+        limit: 10,
+        leaseMs: 30_000,
+      });
+      expect(staleRecord?.reservationId).toBe(reclaimTarget.reservationId);
+      const reclaimedAt = new Date(now.getTime() + 31_000);
+      const [currentRecord] = await providerRepository.claimDue({
+        now: reclaimedAt,
+        limit: 10,
+        leaseMs: 30_000,
+      });
+      expect(currentRecord?.reservationId).toBe(reclaimTarget.reservationId);
+      expect(currentRecord?.pollerLeaseTokenHash).not.toBe(
+        staleRecord?.pollerLeaseTokenHash
+      );
+      const reclaimedObservation = {
+        status: "completed" as const,
+        resultRef: `https://storage.example/tenant-r7-provider-poll/${reclaimTarget.jobId}/reclaimed.mp4`,
+      };
+      await providerRepository.recordObservation({
+        record: staleRecord,
+        observation: reclaimedObservation,
+        nextPollAt: null,
+        now: reclaimedAt,
+      });
+      const [afterStaleObservation] = await client.unsafe(
+        `SELECT j.status, r."reservationStatus" AS reservation_status,
+          r."pollerLeaseTokenHash" AS lease_token,
+          (SELECT "activeCount" FROM provider_scheduler_states WHERE "providerPoolKey" = $2 AND "userKey" = $3) AS active_count
+         FROM worker_jobs j JOIN worker_job_provider_reservations r ON r."workerJobId" = j.id
+         WHERE j.id = $1`,
+        [reclaimTarget.jobId, providerPoolKey, userKey]
+      );
+      expect(afterStaleObservation).toEqual({
+        status: "waiting_external",
+        reservation_status: "reserved",
+        lease_token: currentRecord.pollerLeaseTokenHash,
+        active_count: 1,
+      });
+      await providerRepository.recordObservation({
+        record: currentRecord,
+        observation: reclaimedObservation,
+        nextPollAt: null,
+        now: reclaimedAt,
+      });
+      const [afterCurrentObservation] = await client.unsafe(
+        `SELECT j.status, r."reservationStatus" AS reservation_status,
+          (SELECT "activeCount" FROM provider_scheduler_states WHERE "providerPoolKey" = $2 AND "userKey" = $3) AS active_count
+         FROM worker_jobs j JOIN worker_job_provider_reservations r ON r."workerJobId" = j.id
+         WHERE j.id = $1`,
+        [reclaimTarget.jobId, providerPoolKey, userKey]
+      );
+      expect(afterCurrentObservation).toEqual({
+        status: "succeeded",
+        reservation_status: "released",
+        active_count: 0,
+      });
+
       const racedJobs = await Promise.all(
         Array.from({ length: 3 }, () =>
           seedWaitingProviderJob(
