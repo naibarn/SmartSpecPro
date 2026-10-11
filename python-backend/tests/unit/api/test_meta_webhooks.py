@@ -80,14 +80,22 @@ async def test_post_accepts_valid_signature_stores_raw_payload_and_dispatches_on
     db.commit = AsyncMock()
 
     monkeypatch.setattr(meta_webhooks, "_load_meta_webhook_secret", AsyncMock(return_value="app-secret"))
+    monkeypatch.setenv("FEATURE_186_SYSTEM_TENANT_ID", "tenant-social-webhook")
     dispatch = MagicMock()
-    monkeypatch.setattr(meta_webhooks.process_social_webhook_event, "delay", dispatch)
+    monkeypatch.setattr("app.services.job_control_plane.dispatch_python_task", dispatch)
 
     result = await meta_webhooks.ingest_meta_webhook_payload(raw_body, request, db)
 
     assert result["ok"] is True
     assert result["raw_event_id"] == 17
-    dispatch.assert_called_once_with(17)
+    dispatch.assert_called_once_with(
+        meta_webhooks.process_social_webhook_event.name,
+        args=[17],
+        tenant_id="tenant-social-webhook",
+        idempotency_key="social:webhook:17",
+        correlation_id="meta:webhook:17",
+        legacy_task=meta_webhooks.process_social_webhook_event,
+    )
     stored_headers = db.execute.await_args_list[0].args[1]["headers"]
     assert stored_headers == {
         "content-type": "application/json",
@@ -109,7 +117,7 @@ async def test_post_rejects_invalid_signature(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_post_returns_200_even_when_celery_dispatch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_post_returns_200_even_when_control_plane_dispatch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     raw_body = json.dumps({"object": "page", "entry": [{"id": "page-1", "messaging": []}]}).encode("utf-8")
     signature = "sha256=" + hmac.new(b"app-secret", raw_body, hashlib.sha256).hexdigest()
     request = SimpleNamespace(headers={"X-Hub-Signature-256": signature, "X-Hub-Delivery": "delivery-123"})
@@ -119,12 +127,15 @@ async def test_post_returns_200_even_when_celery_dispatch_fails(monkeypatch: pyt
     db.commit = AsyncMock()
 
     monkeypatch.setattr(meta_webhooks, "_load_meta_webhook_secret", AsyncMock(return_value="app-secret"))
-    monkeypatch.setattr(meta_webhooks.process_social_webhook_event, "delay", MagicMock(side_effect=RuntimeError("boom")))
+    monkeypatch.setenv("FEATURE_186_SYSTEM_TENANT_ID", "tenant-social-webhook")
+    dispatch = MagicMock(side_effect=RuntimeError("boom"))
+    monkeypatch.setattr("app.services.job_control_plane.dispatch_python_task", dispatch)
 
     result = await meta_webhooks.ingest_meta_webhook_payload(raw_body, request, db)
 
     assert result["ok"] is True
     assert result["raw_event_id"] == 17
+    dispatch.assert_called_once()
 
 
 def test_signature_validator_uses_constant_time_compare() -> None:
