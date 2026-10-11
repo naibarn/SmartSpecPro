@@ -67,6 +67,7 @@ import {
   type ProjectWikiApprovalEvidence,
 } from "../services/projectWikiReleaseCandidate";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -128,6 +129,36 @@ async function createProjectWikiApprovalRequest(input: {
     label: "projectWikiStagingApproval.create",
   });
   if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : "BAD_GATEWAY", message: "Unable to create staging approval request" });
+  const row = await response.json() as Record<string, unknown>;
+  if (typeof row.id !== "string") throw new TRPCError({ code: "BAD_GATEWAY", message: "Approval service returned an invalid request" });
+  return { id: row.id, expiresAt: typeof row.expires_at === "string" ? row.expires_at : null };
+}
+
+async function createProjectWikiProvisioningApprovalRequest(input: {
+  request: z.infer<typeof projectWikiStagingProvisioningRequestSchema>;
+  userToken: string;
+}): Promise<{ id: string; expiresAt: string | null }> {
+  const runtime = await getAppRuntimeConfig();
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/v1/approvals/requests`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.userToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      // The Control Plane persists a closed ApprovalType enum. Keep the
+      // operation identity in the strictly validated payload and use CUSTOM.
+      request_type: "CUSTOM",
+      title: "Project Wiki isolated staging provisioning",
+      description: "Authorize the exact staging target and dedicated PostgreSQL provisioning scope. Approval does not execute provisioning or deployment.",
+      project_id: input.request.identity.projectId,
+      payload: input.request,
+      risk_level: "critical",
+      required_approvers: 2,
+      timeout_minutes: 1440,
+    }),
+    timeoutMs: 15000,
+    retryPolicy: "connect-only",
+    label: "projectWikiStagingProvisioningApproval.create",
+  });
+  if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : "BAD_GATEWAY", message: "Unable to create staging provisioning approval request" });
   const row = await response.json() as Record<string, unknown>;
   if (typeof row.id !== "string") throw new TRPCError({ code: "BAD_GATEWAY", message: "Approval service returned an invalid request" });
   return { id: row.id, expiresAt: typeof row.expires_at === "string" ? row.expires_at : null };
@@ -523,6 +554,23 @@ export const infrastructureRouter = router({
         requestType: "project_wiki_staging_approval", requestPayload: { approvalRef: approval.id, tenantId, projectId: input.identity.projectId,
           packageDigest: input.candidate.packageDigest, archiveSha256: input.candidate.archiveSha256, targetId: input.target.targetId }, statusCode: 201 });
       return { approvalRef: approval.id, expiresAt: approval.expiresAt, status: "pending" as const };
+    }),
+
+  requestProjectWikiStagingProvisioningApproval: exactAdminProcedure
+    .input(projectWikiStagingProvisioningRequestSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.identity.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Provisioning request must match the authenticated tenant" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Authenticated user token required" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const identity = { ...input.identity };
+      if (!await createDrizzleProjectWikiCandidateRepository(db).isActiveBinding(identity)) throw new TRPCError({ code: "FORBIDDEN", message: "Project Wiki app is not actively bound to this project" });
+      const approval = await createProjectWikiProvisioningApprovalRequest({ request: input, userToken: ctx.userToken });
+      auditLogger.log({ eventType: "project_wiki_staging_provisioning_approval_requested", userId: ctx.user?.id ?? null,
+        requestType: "project_wiki_staging_provisioning", requestPayload: { approvalRef: approval.id, tenantId, projectId: input.identity.projectId,
+          targetId: input.target.deploymentTargetId, databaseId: input.database.databaseId, migrationPlan: input.database.migrationPlan }, statusCode: 201 });
+      return { approvalRef: approval.id, expiresAt: approval.expiresAt, status: "pending" as const, mutationPerformed: false as const };
     }),
 
   registerProjectWikiReleaseCandidate: exactAdminProcedure
