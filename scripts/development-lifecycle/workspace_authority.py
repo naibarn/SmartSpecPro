@@ -46,6 +46,8 @@ class WorkspaceAuthorityError(RuntimeError):
 
 
 _RESOLVER_DEADLINE: contextvars.ContextVar[float | None] = contextvars.ContextVar("workspace_resolver_deadline", default=None)
+_RECOVERY_CAPTURE_STATE: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("workspace_recovery_capture_state", default=None)
+_WORKSPACE_OPERATION_BUDGET_SECONDS = 15.0
 
 
 _CONVERGENCE_CONTRACT_SPEC = importlib.util.spec_from_file_location(
@@ -57,15 +59,22 @@ _CONVERGENCE_CONTRACT = importlib.util.module_from_spec(_CONVERGENCE_CONTRACT_SP
 _CONVERGENCE_CONTRACT_SPEC.loader.exec_module(_CONVERGENCE_CONTRACT)
 
 
-def _git(repo: Path, *args: str, check: bool = True, binary: bool = False) -> str | bytes:
+def _git_process(repo: Path, *args: str, binary: bool = False) -> subprocess.CompletedProcess[Any]:
     deadline = _RESOLVER_DEADLINE.get()
-    timeout = max(0.05, min(3.0, deadline - time.monotonic())) if deadline is not None else None
-    result = subprocess.run(
+    remaining = deadline - time.monotonic() if deadline is not None else None
+    if remaining is not None and remaining <= 0:
+        raise subprocess.TimeoutExpired(["git", "-C", str(repo), *args], timeout=0)
+    timeout = min(3.0, remaining) if remaining is not None else None
+    return subprocess.run(
         ["git", "-C", str(repo), *args],
         text=not binary,
         capture_output=True,
         timeout=timeout,
     )
+
+
+def _git(repo: Path, *args: str, check: bool = True, binary: bool = False) -> str | bytes:
+    result = _git_process(repo, *args, binary=binary)
     if check and result.returncode:
         stderr = result.stderr.decode(errors="replace") if binary else result.stderr
         raise WorkspaceAuthorityError(f"GIT_COMMAND_FAILED: git {' '.join(args)}: {stderr.strip()}")
@@ -74,6 +83,17 @@ def _git(repo: Path, *args: str, check: bool = True, binary: bool = False) -> st
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+
+
+@contextlib.contextmanager
+def _bounded_workspace_operation() -> Iterator[None]:
+    current = _RESOLVER_DEADLINE.get()
+    proposed = time.monotonic() + _WORKSPACE_OPERATION_BUDGET_SECONDS
+    token = _RESOLVER_DEADLINE.set(min(current, proposed) if current is not None else proposed)
+    try:
+        yield
+    finally:
+        _RESOLVER_DEADLINE.reset(token)
 
 
 def _sha256(value: bytes) -> str:
@@ -594,11 +614,8 @@ def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = No
 
 
 def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
-    token = _RESOLVER_DEADLINE.set(time.monotonic() + 15.0)
-    try:
+    with _bounded_workspace_operation():
         return _resolve_project_authority_bounded(repo, policy_path)
-    finally:
-        _RESOLVER_DEADLINE.reset(token)
 
 
 def _commit_ahead_behind(repo: Path | None, canonical_sha: str | None, workspace_sha: str | None) -> dict[str, Any]:
@@ -1008,9 +1025,7 @@ def _fetch_canonical(repo: Path, policy: dict[str, Any]) -> str:
 
 
 def _is_ancestor(repo: Path, left: str, right: str) -> bool:
-    return subprocess.run(
-        ["git", "-C", str(repo), "merge-base", "--is-ancestor", left, right], capture_output=True
-    ).returncode == 0
+    return _git_process(repo, "merge-base", "--is-ancestor", left, right).returncode == 0
 
 
 def detect_workspace_divergence(
@@ -1050,6 +1065,37 @@ def _write_bytes(path: Path, content: bytes) -> dict[str, Any]:
     return {"path": str(path), "bytes": len(content), "sha256": _sha256(content)}
 
 
+def _copy_file_with_deadline(source: Path, destination: Path) -> dict[str, Any]:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.partial")
+    digest = hashlib.sha256()
+    total_bytes = 0
+    try:
+        with source.open("rb") as input_file, temporary.open("xb") as output_file:
+            while True:
+                deadline = _RESOLVER_DEADLINE.get()
+                remaining = deadline - time.monotonic() if deadline is not None else None
+                if remaining is not None and remaining <= 0:
+                    raise subprocess.TimeoutExpired(["copy", str(source)], timeout=0)
+                chunk = input_file.read(1024 * 1024)
+                if not chunk:
+                    break
+                deadline = _RESOLVER_DEADLINE.get()
+                if deadline is not None and deadline <= time.monotonic():
+                    raise subprocess.TimeoutExpired(["copy", str(source)], timeout=0)
+                output_file.write(chunk)
+                digest.update(chunk)
+                total_bytes += len(chunk)
+            output_file.flush()
+            os.fsync(output_file.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, destination)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    return {"path": str(destination), "bytes": total_bytes, "sha256": digest.hexdigest()}
+
+
 def _safe_recovery_root(repo: Path, policy: dict[str, Any]) -> Path:
     configured = policy.get("recovery_root")
     root = Path(configured).resolve() if configured else _common_dir(repo) / "workspace-recovery"
@@ -1065,7 +1111,7 @@ def _safe_recovery_root(repo: Path, policy: dict[str, Any]) -> Path:
     return root
 
 
-def preserve_dirty_workspace(
+def _preserve_dirty_workspace(
     repo: Path,
     policy_path: Path | None,
     workspace: Path | None = None,
@@ -1082,6 +1128,24 @@ def preserve_dirty_workspace(
     recovery = root / policy["project_id"] / registered["workspace_id"].replace(":", "-") / stamp
     recovery.mkdir(parents=True, mode=0o700)
     os.chmod(recovery, 0o700)
+    manifest_path = recovery / "manifest.json"
+    capture_marker = {
+        "schema_version": 1,
+        "project_id": policy["project_id"],
+        "repository_id": policy["repository_id"],
+        "workspace_id": registered["workspace_id"],
+        "workspace_location": str(target),
+        "status": "CAPTURE_IN_PROGRESS",
+        "recovery_path": str(recovery),
+        "started_at": _now(),
+    }
+    _write_bytes(manifest_path, (json.dumps(capture_marker, sort_keys=True, indent=2) + "\n").encode())
+    capture_state = _RECOVERY_CAPTURE_STATE.get()
+    if capture_state is not None:
+        capture_state.update({"manifest_path": manifest_path, "manifest": capture_marker})
+    with _db(repo) as db:
+        db.execute("UPDATE workspaces SET recovery_linkage=?,convergence_state='RECOVERY_PENDING',last_verified_at=? WHERE workspace_id=?", (str(manifest_path), _now(), registered["workspace_id"]))
+        db.execute("UPDATE projects SET convergence_state='RECOVERY_PENDING',updated_at=? WHERE project_id=? AND repository_id=?", (_now(), policy["project_id"], policy["repository_id"]))
     staged = bytes(_git(target, "diff", "--cached", "--binary", "HEAD", binary=True))
     unstaged = bytes(_git(target, "diff", "--binary", binary=True))
     staged_record = _write_bytes(recovery / "staged.patch", staged)
@@ -1090,27 +1154,35 @@ def preserve_dirty_workspace(
     status_record = _write_bytes(recovery / "status.porcelain.z", status)
     untracked_raw = bytes(_git(target, "ls-files", "--others", "--exclude-standard", "-z", binary=True))
     copied = []
-    for raw_path in untracked_raw.split(b"\0"):
-        if not raw_path:
-            continue
-        relative = os.fsdecode(raw_path)
-        posix = PurePosixPath(relative)
-        if posix.is_absolute() or ".." in posix.parts:
-            raise WorkspaceAuthorityError("UNTRACKED_PATH_UNSAFE")
-        source = target / relative
-        dest = recovery / "untracked" / Path(*posix.parts)
-        if source.is_symlink():
-            link = os.readlink(source)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.symlink_to(link)
-            copied.append({"path": relative, "kind": "symlink", "target": link, "sha256": _sha256(os.fsencode(link))})
-        elif source.is_file():
-            record = _write_bytes(dest, source.read_bytes())
-            record["path"] = relative
-            record["kind"] = "file"
-            copied.append(record)
-        else:
-            raise WorkspaceAuthorityError("UNTRACKED_PATH_TYPE_UNSUPPORTED")
+    try:
+        for raw_path in untracked_raw.split(b"\0"):
+            deadline = _RESOLVER_DEADLINE.get()
+            if deadline is not None and deadline <= time.monotonic():
+                raise subprocess.TimeoutExpired(["workspace-authority", "copy-untracked"], timeout=0)
+            if not raw_path:
+                continue
+            relative = os.fsdecode(raw_path)
+            posix = PurePosixPath(relative)
+            if posix.is_absolute() or ".." in posix.parts:
+                raise WorkspaceAuthorityError("UNTRACKED_PATH_UNSAFE")
+            source = target / relative
+            dest = recovery / "untracked" / Path(*posix.parts)
+            if source.is_symlink():
+                link = os.readlink(source)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.symlink_to(link)
+                copied.append({"path": relative, "kind": "symlink", "target": link, "sha256": _sha256(os.fsencode(link))})
+            elif source.is_file():
+                record = _copy_file_with_deadline(source, dest)
+                record["path"] = relative
+                record["kind"] = "file"
+                copied.append(record)
+            else:
+                raise WorkspaceAuthorityError("UNTRACKED_PATH_TYPE_UNSUPPORTED")
+    except subprocess.TimeoutExpired:
+        capture_marker.update({"status": "CAPTURE_INCOMPLETE", "completed_files": copied, "timed_out_at": _now()})
+        _write_bytes(manifest_path, (json.dumps(capture_marker, sort_keys=True, indent=2) + "\n").encode())
+        raise
     manifest = {
         "schema_version": 1,
         "project_id": policy["project_id"],
@@ -1129,7 +1201,6 @@ def preserve_dirty_workspace(
         "disposition": "PRESERVED_UNCLASSIFIED",
         "recovery_path": str(recovery),
     }
-    manifest_path = recovery / "manifest.json"
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
     manifest_record = _write_bytes(manifest_path, manifest_bytes)
     manifest["manifest_sha256"] = manifest_record["sha256"]
@@ -1143,6 +1214,33 @@ def preserve_dirty_workspace(
             db.rollback()
             raise
     return {"status": "DIRTY_WORK_PRESERVED", "workspace_id": registered["workspace_id"], "recovery_path": str(recovery), "manifest": str(manifest_path), "manifest_sha256": manifest_record["sha256"], "dirty_path_count": facts["dirty_path_count"]}
+
+
+def preserve_dirty_workspace(
+    repo: Path,
+    policy_path: Path | None,
+    workspace: Path | None = None,
+) -> dict[str, Any]:
+    capture_state: dict[str, Any] = {}
+    capture_token = _RECOVERY_CAPTURE_STATE.set(capture_state)
+    try:
+        with _bounded_workspace_operation():
+            return _preserve_dirty_workspace(repo, policy_path, workspace)
+    except subprocess.TimeoutExpired:
+        manifest_path = capture_state.get("manifest_path")
+        marker = capture_state.get("manifest")
+        if isinstance(manifest_path, Path) and isinstance(marker, dict):
+            marker.update({"status": "CAPTURE_INCOMPLETE", "timed_out_at": _now()})
+            _write_bytes(manifest_path, (json.dumps(marker, sort_keys=True, indent=2) + "\n").encode())
+            return {
+                "status": "DIRTY_WORK_PRESERVATION_INCOMPLETE",
+                "workspace_id": marker["workspace_id"],
+                "recovery_path": marker["recovery_path"],
+                "manifest": str(manifest_path),
+            }
+        return {"status": "DIRTY_WORK_PRESERVATION_TIMEOUT", "workspace_state": "UNKNOWN"}
+    finally:
+        _RECOVERY_CAPTURE_STATE.reset(capture_token)
 
 
 def preserve_registered_workspace(
@@ -1166,9 +1264,7 @@ def preserve_registered_workspace(
 def _local_commit_classification(repo: Path, head: str, target: str) -> dict[str, Any]:
     if _is_ancestor(repo, head, target):
         return {"state": "ALREADY_IN_CANONICAL", "unique_commits": []}
-    result = subprocess.run(
-        ["git", "-C", str(repo), "cherry", target, head], text=True, capture_output=True
-    )
+    result = _git_process(repo, "cherry", target, head)
     if result.returncode:
         raise WorkspaceAuthorityError("COMMIT_EQUIVALENCE_CLASSIFICATION_FAILED")
     output = result.stdout
@@ -1279,7 +1375,7 @@ def _branch_in_other_worktree(repo: Path, branch: str, selected: Path) -> str | 
     return None
 
 
-def converge_canonical_workspace(
+def _converge_canonical_workspace(
     repo: Path,
     policy_path: Path | None = None,
     *,
@@ -1293,7 +1389,9 @@ def converge_canonical_workspace(
     target_root = Path(canonical["location"]).resolve()
     initial = detect_workspace_divergence(repo, policy_path, target_root)
     if initial["dirty"]:
-        return {"status": "DIRTY_WORK_PRESERVED", "divergence": initial, "recovery_receipt": preserve_dirty_workspace(repo, policy_path, target_root)}
+        recovery = preserve_dirty_workspace(repo, policy_path, target_root)
+        status = "DIRTY_WORK_PRESERVED" if recovery.get("status") == "DIRTY_WORK_PRESERVED" else "DIRTY_WORK_PRESERVATION_INCOMPLETE"
+        return {"status": status, "divergence": initial, "recovery_receipt": recovery}
     requested_sha = None
     if integrated_sha:
         requested_sha = str(_git(repo, "rev-parse", f"{integrated_sha}^{{commit}}", check=False) or "").strip()
@@ -1308,7 +1406,9 @@ def converge_canonical_workspace(
             return {"status": "INTEGRATION_SHA_NOT_CANONICAL", "integrated_sha": requested_sha, "canonical_sha": tip}
         facts = _git_facts(target_root)
         if facts["dirty"]:
-            return {"status": "DIRTY_WORK_PRESERVED", "divergence": initial, "recovery_receipt": preserve_dirty_workspace(repo, policy_path, target_root)}
+            recovery = preserve_dirty_workspace(repo, policy_path, target_root)
+            status = "DIRTY_WORK_PRESERVED" if recovery.get("status") == "DIRTY_WORK_PRESERVED" else "DIRTY_WORK_PRESERVATION_INCOMPLETE"
+            return {"status": status, "divergence": initial, "recovery_receipt": recovery}
         classification = _local_commit_classification(target_root, facts["head_sha"], tip)
         if classification["unique_commits"]:
             bundle = _preserve_local_commits(target_root, policy, {**canonical, **facts}, tip)
@@ -1321,7 +1421,7 @@ def converge_canonical_workspace(
             # canonical branch is open in another checkout. Keep its branch
             # identity and let the guarded fast-forward below converge this path.
             if not other:
-                switch = subprocess.run(["git", "-C", str(target_root), "switch", branch], text=True, capture_output=True)
+                switch = _git_process(target_root, "switch", branch)
                 if switch.returncode:
                     tracking = _remote_tracking_ref(policy)
                     if _git(target_root, "show-ref", "--verify", f"refs/heads/{branch}", check=False):
@@ -1378,7 +1478,60 @@ def converge_canonical_workspace(
     return {"status": "CANONICAL_ADVANCED_DURING_CONVERGENCE", "last_checked_sha": last_tip, "refresh_limit": max_ref_refreshes}
 
 
+def converge_canonical_workspace(
+    repo: Path,
+    policy_path: Path | None = None,
+    *,
+    integrated_sha: str | None = None,
+    task_id: str | None = None,
+    max_ref_refreshes: int = 3,
+) -> dict[str, Any]:
+    try:
+        with _bounded_workspace_operation():
+            return _converge_canonical_workspace(
+                repo, policy_path, integrated_sha=integrated_sha, task_id=task_id,
+                max_ref_refreshes=max_ref_refreshes,
+            )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "CONVERGENCE_TIMEOUT",
+            "reason": "WORKSPACE_AUTHORITY_DEADLINE_EXCEEDED",
+            "integrated_sha": integrated_sha,
+            "workspace_state": "UNKNOWN",
+        }
+
+
 def verify_canonical_convergence(
+    repo: Path,
+    policy_path: Path | None = None,
+    *,
+    integrated_sha: str | None = None,
+    task_workspace_id: str | None = None,
+) -> dict[str, Any]:
+    try:
+        with _bounded_workspace_operation():
+            return _verify_canonical_convergence(
+                repo, policy_path, integrated_sha=integrated_sha,
+                task_workspace_id=task_workspace_id,
+            )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "CONVERGENCE_PENDING",
+            "project_id": None,
+            "repository_id": None,
+            "integrated_sha": integrated_sha,
+            "canonical_sha": None,
+            "canonical_user_workspace_id": None,
+            "canonical_user_workspace_sha": None,
+            "canonical_user_workspace_dirty": None,
+            "task_workspace_id": task_workspace_id,
+            "task_workspace_lifecycle": None,
+            "reasons": ["WORKSPACE_AUTHORITY_DEADLINE_EXCEEDED", "WORKSPACE_STATE_UNKNOWN"],
+            "verified_at": _now(),
+        }
+
+
+def _verify_canonical_convergence(
     repo: Path,
     policy_path: Path | None = None,
     *,

@@ -145,6 +145,45 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         finally:
             authority._RESOLVER_DEADLINE.reset(original_deadline)
 
+    def test_convergence_establishes_deadline_and_returns_unknown_on_git_timeout(self) -> None:
+        before = git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all")
+        observed_deadlines: list[float | None] = []
+
+        def timed_out(repo: Path, *args: str, **kwargs: object) -> subprocess.CompletedProcess[object]:
+            observed_deadlines.append(authority._RESOLVER_DEADLINE.get())
+            raise subprocess.TimeoutExpired(["git", *args], timeout=0.01)
+
+        with patch.object(authority, "_git_process", side_effect=timed_out):
+            result = authority.converge_canonical_workspace(self.canonical, self.policy)
+
+        self.assertEqual(result["status"], "CONVERGENCE_TIMEOUT")
+        self.assertEqual(result["workspace_state"], "UNKNOWN")
+        self.assertEqual(len(observed_deadlines), 1)
+        self.assertIsNotNone(observed_deadlines[0])
+        self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), before)
+
+    def test_convergence_git_calls_never_start_after_deadline(self) -> None:
+        expired = authority._RESOLVER_DEADLINE.set(time.monotonic() - 1)
+        try:
+            with patch.object(authority.subprocess, "run") as run:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    authority._git(self.canonical, "status", "--short")
+                run.assert_not_called()
+        finally:
+            authority._RESOLVER_DEADLINE.reset(expired)
+
+    def test_verification_returns_pending_unknown_on_git_timeout(self) -> None:
+        def timed_out(repo: Path, *args: str, **kwargs: object) -> subprocess.CompletedProcess[object]:
+            self.assertIsNotNone(authority._RESOLVER_DEADLINE.get())
+            raise subprocess.TimeoutExpired(["git", *args], timeout=0.01)
+
+        with patch.object(authority, "_git_process", side_effect=timed_out):
+            result = authority.verify_canonical_convergence(self.canonical, self.policy)
+
+        self.assertEqual(result["status"], "CONVERGENCE_PENDING")
+        self.assertIn("WORKSPACE_STATE_UNKNOWN", result["reasons"])
+        self.assertIsNone(result["canonical_user_workspace_dirty"])
+
     def test_corrupt_registry_returns_unavailable_without_rebuilding_it(self) -> None:
         registry = authority._registry_path(self.canonical)
         registry.write_bytes(b"not a sqlite database")
@@ -575,6 +614,23 @@ class WorkspaceAuthorityTests(unittest.TestCase):
                 self.assertEqual((self.canonical / "tracked.txt").read_text(encoding="utf-8"), content)
                 self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), before)
                 self.assertNotIn("completion_receipt", result)
+
+    def test_dirty_capture_timeout_is_explicit_and_leaves_source_untouched(self) -> None:
+        (self.canonical / "new-large-file.bin").write_bytes(b"valuable user data")
+        before = git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all")
+        with patch.object(
+            authority,
+            "_copy_file_with_deadline",
+            side_effect=subprocess.TimeoutExpired(["copy"], timeout=0.01),
+        ):
+            result = authority.converge_canonical_workspace(self.canonical, self.policy)
+
+        self.assertEqual(result["status"], "DIRTY_WORK_PRESERVATION_INCOMPLETE")
+        self.assertEqual(result["recovery_receipt"]["status"], "DIRTY_WORK_PRESERVATION_INCOMPLETE")
+        marker = json.loads(Path(result["recovery_receipt"]["manifest"]).read_text(encoding="utf-8"))
+        self.assertEqual(marker["status"], "CAPTURE_INCOMPLETE")
+        self.assertEqual((self.canonical / "new-large-file.bin").read_bytes(), b"valuable user data")
+        self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), before)
 
     def test_workspace_retirement_is_dry_run_by_default_and_refuses_live_or_dirty_work(self) -> None:
         task = self.root / "task-tree"
