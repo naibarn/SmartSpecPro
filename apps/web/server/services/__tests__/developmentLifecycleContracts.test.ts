@@ -202,6 +202,7 @@ describe("project-agnostic development lifecycle contract", () => {
       producerWorkId: "work-producer-c",
     }, "2026-10-05T00:02:01.000Z");
     expect(resumed.dependencies[0]?.state).toBe("SATISFIED");
+    expect(resumed.dependencies[0]?.watcher.status).toBe("STOPPED");
     expect(resumed.progress.state).toBe("WORKING");
     expect(resumed.progress.immediatelyRunnableScope).toEqual(["add-client", "publish-api"]);
   });
