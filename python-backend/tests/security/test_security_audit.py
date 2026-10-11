@@ -9,6 +9,16 @@ import pytest
 from starlette.testclient import TestClient
 import uuid
 
+from app.core.security import rate_limiter
+
+
+@pytest.fixture(autouse=True)
+def reset_test_client_rate_limit():
+    """Keep shared TestClient IP state from leaking between security cases."""
+    rate_limiter.reset("ip:testclient")
+    yield
+    rate_limiter.reset("ip:testclient")
+
 
 class TestSQLInjection:
     """Test SQL injection vulnerabilities"""
@@ -278,7 +288,11 @@ class TestSecureHeaders:
     
     def test_security_headers_present(self, client: TestClient):
         """Test that security headers are present or endpoint works"""
-        response = client.get("/health")
+        # The health endpoint intentionally returns 503 when its required
+        # worker_jobs table is unavailable in the SQLite unit-test database.
+        # The root route exercises the same application security middleware
+        # without weakening or bypassing health semantics.
+        response = client.get("/")
         
         # Endpoint should work
         assert response.status_code == 200
