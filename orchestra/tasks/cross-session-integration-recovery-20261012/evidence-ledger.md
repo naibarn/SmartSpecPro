@@ -98,3 +98,39 @@ an empty PATH, and workflow wiring.
   conflict failures are not retried.
 - Tests use isolated temporary Git repositories for merge-lock behavior; they
   never contend with the host repository's integration lock.
+
+## Checkpoint 2 — PR #824 integration and handoff
+
+- PR: https://github.com/naibarn/SmartSpecPro/pull/824
+- Final source head: `72b7aa6430f601dea22b7ef36645bb40e9edc1a2`.
+- The first preflight correctly blocked while the required gate was in progress.
+  That observation exposed a reporter-only classification bug: pending checks
+  were labeled `APPLICATION`. Removed that mapping and added a regression test;
+  pending now stays `UNKNOWN` while remaining a merge blocker.
+- Required `progressive_integration_gate` run `38185418652`, job
+  `114606579858`, passed in 58 seconds on the final head. Checkout, setup-python,
+  and the affected lifecycle test command all completed successfully.
+- Integration Controller revalidated the exact head and clean merge state, then
+  used the normal GitHub squash merge. PR merged at 2026-10-11 23:46:10 UTC as
+  `a94e824375f3c63050296e70df1f7084a1a1c907`; the SHA was verified reachable
+  from fetched `origin/main` before this handoff.
+- Local regression slice: 32 focused lifecycle/integration tests passed. The
+  pending-check classification test then passed with the follow-up change
+  (15 tests in the PR-controller suite). `git diff --check` and Python
+  compilation passed. No full local typecheck or repository-wide suite ran.
+- Post-merge CI run `38185524332` was queued/running at handoff. Track all its
+  jobs against merge SHA `a94e8243`; do not interpret a pending result as a
+  failure. The vertical migration run `38185523545` reported failure but
+  exposes no jobs or logs, so its cause remains `UNKNOWN`; next action is to
+  inspect the run again when GitHub exposes logs or request the workflow owner
+  to recover the missing run evidence. No migration was attempted here.
+- The registered canonical user workspace remains unresolved: authority verify
+  for the integrated SHA returned `CONVERGENCE_PENDING` with
+  `WORKSPACE_AUTHORITY_DEADLINE_EXCEEDED` and `WORKSPACE_STATE_UNKNOWN`. Preserve
+  the dirty primary checkout; next action is a bounded authority/runtime audit
+  from a current canonical checkout before any convergence or retirement.
+- Discovery fallback: the required `skills/development-lifecycle/git_capabilities.py`
+  inspect helper is absent in this checkout. Git state was inspected with
+  targeted `git status`, `git diff --check`, commit ancestry, and GitHub PR/run
+  evidence instead. No branch force-push, destructive cleanup, or primary
+  workspace sync occurred.
