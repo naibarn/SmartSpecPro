@@ -119,3 +119,19 @@ def test_models(monkeypatch):
     assert r.status_code == 200
     j = r.json()
     assert j["object"] == "list"
+
+
+@pytest.mark.unit
+def test_legacy_tool_approval_route_is_not_exposed():
+    c = TestClient(app, client=("127.0.0.1", 50000))
+    csrf_token = csrf_protection.generate_token()
+    c.cookies.set(csrf_protection.cookie_name, csrf_token)
+    headers = {csrf_protection.header_name: csrf_token, "x-proxy-token": "test-proxy-token"}
+
+    response = c.post(
+        "/v1/tool-approve",
+        headers=headers,
+        json={"traceId": "legacy-test", "toolCallId": "legacy-test", "approved": True},
+    )
+
+    assert response.status_code == 404
