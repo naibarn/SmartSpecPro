@@ -50,4 +50,15 @@ describe("gasCityProvider", () => {
       })
     ).toMatchObject({ status: "blocked" });
   });
+
+  it("reports a missing pinned manifest with its explicit reason", () => {
+    const registry = new GasCityProviderRegistry();
+    expect(() =>
+      registry.buildSessionConfig({
+        providerId: "missing",
+        tenantId: "tenant-1",
+        workspaceId: "ws-1",
+      })
+    ).toThrowError("Provider manifest is not registered");
+  });
 });
