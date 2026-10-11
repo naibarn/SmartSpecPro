@@ -11,6 +11,20 @@ from app.services.playwright_script_generator import PlaywrightAction, Playwrigh
 from app.services.self_healing_executor import SelfHealingExecutor
 
 
+@pytest.fixture(autouse=True)
+def mock_ephemeral_policy_counter_store(monkeypatch):
+    """Keep executor policy tests independent of the PostgreSQL-only store."""
+    from app.services import postgres_ephemeral_store
+
+    monkeypatch.setattr(postgres_ephemeral_store, "delete_value", AsyncMock())
+    monkeypatch.setattr(postgres_ephemeral_store, "read_value", AsyncMock(return_value={}))
+    monkeypatch.setattr(
+        postgres_ephemeral_store,
+        "increment_object_field",
+        AsyncMock(return_value=1),
+    )
+
+
 @pytest.fixture
 def mock_browser_pool():
     mock_context = AsyncMock()
