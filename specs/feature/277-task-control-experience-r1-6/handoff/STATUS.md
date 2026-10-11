@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 431 unresolved of 431
-- Next action: Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.
-- Manifest generation: 43
+- Next action: Promote the direct PostgreSQL outbox publisher lease-reclaim fix after its integration gate passes, then continue callback stale-attempt and pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.
+- Manifest generation: 45

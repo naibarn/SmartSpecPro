@@ -130395,7 +130395,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
+      "canonical_sha": "b8610ac021e55981ab67b1edb0f87389cdd98c1c",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130853,7 +130853,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-11T01:58:46.354041Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
+      "next_action": "Promote the direct PostgreSQL outbox publisher lease-reclaim fix after its integration gate passes, then continue callback stale-attempt and pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,

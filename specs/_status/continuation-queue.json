@@ -4782,7 +4782,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
+      "next_action": "Promote the direct PostgreSQL outbox publisher lease-reclaim fix after its integration gate passes, then continue callback stale-attempt and pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
