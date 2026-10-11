@@ -67,7 +67,7 @@ import {
   type ProjectWikiApprovalEvidence,
 } from "../services/projectWikiReleaseCandidate";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-import { projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
+import { projectWikiProvisioningIntentMatchesTenant, projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -560,7 +560,7 @@ export const infrastructureRouter = router({
     .input(projectWikiStagingProvisioningRequestSchema)
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
-      if (!tenantId || tenantId !== input.identity.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Provisioning request must match the authenticated tenant" });
+      if (!projectWikiProvisioningIntentMatchesTenant(input, tenantId)) throw new TRPCError({ code: "FORBIDDEN", message: "Provisioning request must match the authenticated tenant" });
       if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Authenticated user token required" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -569,7 +569,9 @@ export const infrastructureRouter = router({
       const approval = await createProjectWikiProvisioningApprovalRequest({ request: input, userToken: ctx.userToken });
       auditLogger.log({ eventType: "project_wiki_staging_provisioning_approval_requested", userId: ctx.user?.id ?? null,
         requestType: "project_wiki_staging_provisioning", requestPayload: { approvalRef: approval.id, tenantId, projectId: input.identity.projectId,
-          targetId: input.target.deploymentTargetId, databaseId: input.database.databaseId, migrationPlan: input.database.migrationPlan }, statusCode: 201 });
+          accountId: input.target.cloudflareAccountId, credentialRef: input.target.credentialRef,
+          targetName: input.target.deploymentTargetName, databaseName: input.database.desiredName,
+          budget: input.budget, migrationPlan: input.database.migrationPlan }, statusCode: 201 });
       return { approvalRef: approval.id, expiresAt: approval.expiresAt, status: "pending" as const, mutationPerformed: false as const };
     }),
 
