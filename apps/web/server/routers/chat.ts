@@ -63,9 +63,9 @@ import {
   startPythonSkillTask,
   estimateSkillCost,
   canAutoExecute,
-  type SkillCreateAction,
   type SkillExecutionResult,
 } from "../services/skillExecutor";
+import { parseSkillCreateAction } from "../services/skillActionContract";
 import { signBearerToken } from "../_core/tokens";
 import {
   skillDetectionLimiter,
@@ -3689,39 +3689,20 @@ export const chatRouter = router({
       );
 
       // Handle structured actions from Python skills (e.g. ISC create_skill)
-      const action = result._action;
-      const skillCreateAction =
-        action &&
-        action.type === "create_skill" &&
-        typeof action.name === "string" &&
-        typeof action.slug === "string" &&
-        typeof action.description === "string" &&
-        typeof action.skillContent === "string" &&
-        Array.isArray(action.triggerPatterns)
-          ? {
-              type: "create_skill" as const,
-              name: action.name,
-              slug: action.slug,
-              description: action.description,
-              skillContent: action.skillContent,
-              triggerPatterns: action.triggerPatterns.filter(
-                (pattern): pattern is string => typeof pattern === "string",
-              ),
-            }
-          : null;
-      if (result.success && skillCreateAction) {
+      const skillCreateAction = parseSkillCreateAction(result._action);
+      if (result.success && skillCreateAction !== null) {
         const createResult = await handleIscCreateSkill(
           skillCreateAction,
           ctx.user.id
         );
-        if ("skillId" in createResult) {
+        if (createResult.ok) {
           result = {
             ...result,
             message:
               (result.message ?? "") +
               `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`,
           };
-        } else if ("reason" in createResult) {
+        } else {
           result = {
             ...result,
             message:
