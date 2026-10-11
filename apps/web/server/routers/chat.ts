@@ -414,14 +414,6 @@ async function handleIscCreateSkill(
   return { ok: true, skillId: newSkill.id };
 }
 
-type SkillCreateResult = Awaited<ReturnType<typeof handleIscCreateSkill>>;
-
-function isSkillCreateSuccess(
-  result: SkillCreateResult,
-): result is Extract<SkillCreateResult, { ok: true }> {
-  return result.ok === true;
-}
-
 // Helper to create secure token for skill execution
 function createSkillToken(userId: number, tenantId?: string | null): string {
   return signBearerToken(
@@ -3701,24 +3693,28 @@ export const chatRouter = router({
 
       // Handle structured actions from Python skills (e.g. ISC create_skill)
       const skillCreateAction = parseSkillCreateAction(result._action);
-      if (result.success && skillCreateAction !== null) {
+      if (result.success && skillCreateAction) {
         const createResult = await handleIscCreateSkill(
           skillCreateAction,
           ctx.user.id
         );
-        if (isSkillCreateSuccess(createResult)) {
+        const savedSkillId =
+          "skillId" in createResult ? createResult.skillId : undefined;
+        const createFailureReason =
+          "reason" in createResult ? createResult.reason : undefined;
+        if (savedSkillId !== undefined) {
           result = {
             ...result,
             message:
               (result.message ?? "") +
-              `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`,
+              `\n\n✅ **Skill saved** (id: ${savedSkillId}) — visible in your Skills panel.`,
           };
         } else {
           result = {
             ...result,
             message:
               (result.message ?? "") +
-              `\n\n⚠️ **Could not save skill**: ${createResult.reason}`,
+              `\n\n⚠️ **Could not save skill**: ${createFailureReason ?? "Unknown error"}`,
           };
         }
       }
