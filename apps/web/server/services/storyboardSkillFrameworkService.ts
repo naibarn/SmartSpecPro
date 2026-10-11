@@ -998,7 +998,7 @@ export async function getStoryboardSkillRun(input: {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const [run] = await db
-    .select(getTableColumns(storyboardSkillRuns))
+    .select()
     .from(storyboardSkillRuns)
     .where(
       and(
@@ -1021,7 +1021,7 @@ export async function getStoryboardSkillRun(input: {
     )
     .limit(1);
   const shots = await db
-    .select(getTableColumns(storyboardSkillShots))
+    .select()
     .from(storyboardSkillShots)
     .where(
       and(
