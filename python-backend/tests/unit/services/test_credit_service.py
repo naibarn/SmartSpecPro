@@ -154,11 +154,11 @@ class TestCreditServiceDeduction:
         )
         
         assert transaction is not None
-        assert transaction.type == "deduction"
-        assert transaction.amount == 1000
-        assert transaction.balance_before == initial_balance
+        assert transaction.type == "usage"
+        assert transaction.amount == -1000
+        assert transaction.meta["balance_before"] == initial_balance
         assert transaction.balance_after == initial_balance - 1000
-        assert transaction.metadata["model"] == "gpt-4"
+        assert transaction.meta["model"] == "gpt-4"
     
     @pytest.mark.asyncio
     async def test_deduct_credits_insufficient(self, test_db, test_user):
@@ -179,7 +179,7 @@ class TestCreditServiceDeduction:
     async def test_deduct_credits_nonexistent_user(self, test_db):
         """Test credit deduction for non-existent user"""
         service = CreditService(test_db)
-        fake_user_id = str(uuid.uuid4())
+        fake_user_id = -1
         
         with pytest.raises(ValueError, match="User not found"):
             await service.deduct_credits(
@@ -208,11 +208,11 @@ class TestCreditServiceTopup:
         )
         
         assert transaction is not None
-        assert transaction.type == "topup"
+        assert transaction.type == "purchase"
         # With 15% markup: $100 / 1.15 ≈ $86.96 → 86956 credits
         assert transaction.amount > 0
         assert transaction.balance_after > initial_balance
-        assert "payment_method" in transaction.metadata
+        assert "payment_method" in transaction.meta
     
     @pytest.mark.asyncio
     async def test_add_credits_direct(self, test_db, test_user):
