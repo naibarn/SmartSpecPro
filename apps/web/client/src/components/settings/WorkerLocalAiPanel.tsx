@@ -16,6 +16,7 @@ export function WorkerLocalAiPanel() {
   return (
     <DashboardCard className="rounded-2xl border border-white/50 bg-white/70 shadow-lg shadow-blue-500/5 backdrop-blur-xl" bodyClassName="p-6">
       <DashboardSectionHeader
+        eyebrow={t("settings.workers.localAi.eyebrow", "Connected worker models")}
         title={t("settings.workers.localAi.title", "Worker Local AI")}
         description={t("settings.workers.localAi.description", "Models published by your connected Worker Apps. Configure providers and credentials in the Worker App; sharing stays controlled by the Worker owner.")}
       />

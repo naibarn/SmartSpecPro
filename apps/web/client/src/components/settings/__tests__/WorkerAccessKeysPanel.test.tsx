@@ -348,6 +348,9 @@ describe("WorkerAccessKeysPanel", () => {
     render(<WorkerAccessKeysPanel tenantName="Acme Labs" />);
 
     expect(screen.getByText("Create registration key")).toBeTruthy();
+    expect(
+      screen.getByRole("option", { name: "Local LLM Worker" })
+    ).toBeTruthy();
     expect(screen.getByText("Choose the correct connection")).toBeTruthy();
     expect(screen.getByText("How each worker reaches MCP")).toBeTruthy();
     expect(screen.getByText("MCP & Connected Devices (primary)")).toBeTruthy();

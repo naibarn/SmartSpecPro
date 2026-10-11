@@ -39,6 +39,7 @@ describe("WorkerLocalAiPanel", () => {
   it("renders every visible Worker Local AI model", () => {
     render(<WorkerLocalAiPanel />);
 
+    expect(screen.getByText("Connected worker models")).toBeTruthy();
     expect(screen.getByText("Worker Local AI")).toBeTruthy();
     expect(screen.getByText("Qwen Local")).toBeTruthy();
     expect(screen.getByText(/Office Worker · ollama/)).toBeTruthy();
