@@ -8,6 +8,11 @@
 import { eq, and, sql, count, desc, inArray, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
 import {
+  getAutoTeamRunMutationFenceContext,
+  persistAutoTeamRunMutation,
+  withAutoTeamRunMutationFence,
+} from "./autoTeamRunMutationFence";
+import {
   teamRuns,
   teamRooms,
   teamRoomMessages,
@@ -1369,7 +1374,10 @@ async function pauseRunForRuntimeDispatchGate(input: {
       : input.policy.stepId) ??
     input.policy.stepId;
 
-  await db
+  await persistAutoTeamRunMutation({
+    executor: db,
+    runId: input.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "paused",
@@ -1396,7 +1404,8 @@ async function pauseRunForRuntimeDispatchGate(input: {
           : {}),
       },
     })
-    .where(eq(teamRuns.id, input.run.id));
+    .where(eq(teamRuns.id, input.run.id)),
+  });
 
   stopAutoStopChecker(input.run.id);
   clearQueuedAutoAdvance(input.run.id);
@@ -1499,7 +1508,10 @@ async function pauseRunForRuntimeBudgetGate(input: {
     budgetRecoveryRequested &&
     budgetRecoveryAttempts < AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS;
 
-  await db
+  await persistAutoTeamRunMutation({
+    executor: db,
+    runId: input.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "paused",
@@ -1527,7 +1539,8 @@ async function pauseRunForRuntimeBudgetGate(input: {
             }),
       },
     })
-    .where(eq(teamRuns.id, input.run.id));
+    .where(eq(teamRuns.id, input.run.id)),
+  });
 
   stopAutoStopChecker(input.run.id);
   clearQueuedAutoAdvance(input.run.id);
@@ -5033,11 +5046,15 @@ async function autoPauseRunForDependency(params: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [updated] = await db
-    .update(teamRuns)
-    .set({ status: "paused", stopReason: params.reason })
-    .where(eq(teamRuns.id, params.run.id))
-    .returning();
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId: params.run.id,
+    mutate: async executor => executor
+      .update(teamRuns)
+      .set({ status: "paused", stopReason: params.reason })
+      .where(and(eq(teamRuns.id, params.run.id), eq(teamRuns.status, "running")))
+      .returning(),
+  });
 
   stopAutoStopChecker(params.run.id);
   clearQueuedAutoAdvance(params.run.id);
@@ -5213,11 +5230,15 @@ async function autoPauseRunForExplorationChoice(params: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [updated] = await db
-    .update(teamRuns)
-    .set({ status: "paused", stopReason: "awaiting_human_choice" })
-    .where(eq(teamRuns.id, params.run.id))
-    .returning();
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId: params.run.id,
+    mutate: async executor => executor
+      .update(teamRuns)
+      .set({ status: "paused", stopReason: "awaiting_human_choice" })
+      .where(and(eq(teamRuns.id, params.run.id), eq(teamRuns.status, "running")))
+      .returning(),
+  });
 
   stopAutoStopChecker(params.run.id);
   clearQueuedAutoAdvance(params.run.id);
@@ -5678,7 +5699,10 @@ async function pauseAutoTeamRunForPlanningFailure(params: {
     issues: params.issues ?? [],
     stepCount: params.planArtifact?.steps.length ?? 0,
   });
-  const [pausedRun] = await params.db
+  const [pausedRun] = await persistAutoTeamRunMutation({
+    executor: params.db,
+    runId: params.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "paused",
@@ -5700,7 +5724,8 @@ async function pauseAutoTeamRunForPlanningFailure(params: {
       },
     })
     .where(eq(teamRuns.id, params.run.id))
-    .returning();
+    .returning(),
+  });
 
   try {
     await monitoringService.captureSnapshot(params.run.id, params.tenantId, {
@@ -5942,13 +5967,17 @@ async function replanAfterRejectedExploration(params: {
     idempotencyKey: `planning.replanned.exploration:${params.run.id}:${choiceDeadlineAt.toISOString()}`,
   });
 
-  await db
+  await persistAutoTeamRunMutation({
+    executor: db,
+    runId: params.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "paused",
       stopReason: "awaiting_human_choice",
     })
-    .where(eq(teamRuns.id, params.run.id));
+    .where(eq(teamRuns.id, params.run.id)),
+  });
 
   await postAutoTeamPlanReadyMessage({
     run: params.run,
@@ -6131,7 +6160,10 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
     } as Partial<monitoringService.RunRuntimeState>,
   });
 
-  const [updated] = await input.db
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: input.db,
+    runId: input.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "running",
@@ -6150,7 +6182,8 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
       },
     })
     .where(eq(teamRuns.id, input.run.id))
-    .returning();
+    .returning(),
+  });
 
   if (updated) {
     startAutoStopChecker(updated.id);
@@ -6325,7 +6358,10 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
     } as Partial<monitoringService.RunRuntimeState>,
   });
 
-  const [updated] = await input.db
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: input.db,
+    runId: input.run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "running",
@@ -6347,7 +6383,8 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
       },
     })
     .where(eq(teamRuns.id, input.run.id))
-    .returning();
+    .returning(),
+  });
 
   if (updated) {
     startAutoStopChecker(updated.id);
@@ -6595,7 +6632,10 @@ export async function recoverPromptPackageValidationAutoTeamRun(
     } as Partial<monitoringService.RunRuntimeState>,
   });
 
-  const [updated] = await db
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId: run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: progression.isComplete ? "paused" : "running",
@@ -6627,7 +6667,8 @@ export async function recoverPromptPackageValidationAutoTeamRun(
       },
     })
     .where(eq(teamRuns.id, run.id))
-    .returning();
+    .returning(),
+  });
 
   if (updated && !progression.isComplete) {
     const assistantId = await resolveCurrentAssistantId(db, updated).catch(
@@ -6951,7 +6992,10 @@ export async function recoverBudgetBlockedAutoTeamRun(
     });
   });
 
-  const [updated] = await db
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId: run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "running",
@@ -6966,7 +7010,8 @@ export async function recoverBudgetBlockedAutoTeamRun(
       },
     })
     .where(eq(teamRuns.id, run.id))
-    .returning();
+    .returning(),
+  });
   if (updated) {
     startAutoStopChecker(updated.id);
     queueAutoAdvance(updated.id, tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
@@ -7039,7 +7084,10 @@ export async function recoverCapabilityGapAutoTeamRun(
     },
   });
 
-  const [updated] = await db
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId: run.id,
+    mutate: async executor => executor
     .update(teamRuns)
     .set({
       status: "running",
@@ -7054,7 +7102,8 @@ export async function recoverCapabilityGapAutoTeamRun(
       },
     })
     .where(eq(teamRuns.id, run.id))
-    .returning();
+    .returning(),
+  });
 
   if (updated) {
     startAutoStopChecker(updated.id);
@@ -7158,10 +7207,14 @@ async function pauseRunForFinalApproval(params: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db
-    .update(teamRuns)
-    .set({ status: "paused", stopReason: "awaiting_final_approval" })
-    .where(eq(teamRuns.id, params.run.id));
+  await persistAutoTeamRunMutation({
+    executor: db,
+    runId: params.run.id,
+    mutate: async executor => executor
+      .update(teamRuns)
+      .set({ status: "paused", stopReason: "awaiting_final_approval" })
+      .where(and(eq(teamRuns.id, params.run.id), eq(teamRuns.status, "running"))),
+  });
 
   stopAutoStopChecker(params.run.id);
   clearQueuedAutoAdvance(params.run.id);
@@ -8100,13 +8153,17 @@ async function replanAfterRejectedFinalReview(params: {
     idempotencyKey: `planning.replanned.final_review:${params.run.id}:${choiceDeadlineAt.toISOString()}`,
   });
 
-  await db
-    .update(teamRuns)
-    .set({
-      status: "paused",
-      stopReason: "awaiting_human_choice",
-    })
-    .where(eq(teamRuns.id, params.run.id));
+  await persistAutoTeamRunMutation({
+    executor: db,
+    runId: params.run.id,
+    mutate: async executor => executor
+      .update(teamRuns)
+      .set({
+        status: "paused",
+        stopReason: "awaiting_human_choice",
+      })
+      .where(eq(teamRuns.id, params.run.id)),
+  });
 
   await postAutoTeamPlanReadyMessage({
     run: params.run,
@@ -8961,11 +9018,19 @@ export async function pauseRun(
     );
   }
 
-  const [updated] = await db
-    .update(teamRuns)
-    .set({ status: "paused", stopReason: "user_paused" })
-    .where(eq(teamRuns.id, runId))
-    .returning();
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId,
+    mutate: async executor => {
+      const [row] = await executor
+      .update(teamRuns)
+      .set({ status: "paused", stopReason: "user_paused" })
+      .where(and(eq(teamRuns.id, runId), eq(teamRuns.status, "running")))
+      .returning();
+      if (!row) throw new Error("TEAM_RUN_STATE_ALREADY_CHANGED");
+      return [row];
+    },
+  });
 
   stopAutoStopChecker(runId);
   clearQueuedAutoAdvance(runId);
@@ -9012,16 +9077,24 @@ export async function resumeRun(
     );
   }
 
-  const [updated] = await db
-    .update(teamRuns)
-    .set({
-      status: "running",
-      stopReason: null,
-      endedAt: null,
-      ...(run.executionMode === "auto_team" ? { startedAt: new Date() } : {}),
-    })
-    .where(eq(teamRuns.id, runId))
-    .returning();
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId,
+    mutate: async executor => {
+      const [row] = await executor
+      .update(teamRuns)
+      .set({
+        status: "running",
+        stopReason: null,
+        endedAt: null,
+        ...(run.executionMode === "auto_team" ? { startedAt: new Date() } : {}),
+      })
+      .where(and(eq(teamRuns.id, runId), eq(teamRuns.status, "paused")))
+      .returning();
+      if (!row) throw new Error("TEAM_RUN_STATE_ALREADY_CHANGED");
+      return [row];
+    },
+  });
 
   // Restart auto-stop checker
   startAutoStopChecker(runId);
@@ -9812,7 +9885,10 @@ export async function runNextTurn(
             !Array.isArray(run.runtimeStateJson)
               ? (run.runtimeStateJson as Record<string, unknown>)
               : {};
-          await db
+          await persistAutoTeamRunMutation({
+            executor: db,
+            runId,
+            mutate: async executor => executor
             .update(teamRuns)
             .set({
               status: "paused",
@@ -9837,7 +9913,8 @@ export async function runNextTurn(
                 },
               },
             })
-            .where(eq(teamRuns.id, runId));
+            .where(eq(teamRuns.id, runId)),
+          });
           await monitoringService.captureSnapshot(runId, tenantId, {
             artifactCountJson: { planArtifact: autoTeamPlanArtifact },
             runtimeState: {
@@ -9918,7 +9995,10 @@ export async function runNextTurn(
         } else if (!stepValidation.retryable) {
           const capabilityGapResolution =
             getCapabilityGapResolutionFromMetadata(turnResponse.metadata ?? {});
-          await db
+          await persistAutoTeamRunMutation({
+            executor: db,
+            runId,
+            mutate: async executor => executor
             .update(teamRuns)
             .set({
               status: "paused",
@@ -9962,7 +10042,8 @@ export async function runNextTurn(
                   : {}),
               },
             })
-            .where(eq(teamRuns.id, runId));
+            .where(eq(teamRuns.id, runId)),
+          });
           autoTeamPausedByGate = true;
           autoTeamPauseNextSpeakerReason = "auto_team_step_validation_failed";
           clearQueuedAutoAdvance(runId);
@@ -10093,14 +10174,18 @@ export async function runNextTurn(
           if (asyncMediaPipelineStatus === "failed") {
             finalCompletionBlockedReason =
               "Auto Team media pipeline failed before final evidence could be completed.";
-            await db
+            await persistAutoTeamRunMutation({
+              executor: db,
+              runId,
+              mutate: async executor => executor
               .update(teamRuns)
               .set({
                 status: "paused",
                 stopReason: "auto_team_media_pipeline_failed",
                 runtimeTerminalReason: finalCompletionBlockedReason,
               })
-              .where(eq(teamRuns.id, runId));
+              .where(eq(teamRuns.id, runId)),
+            });
             autoTeamPausedByGate = true;
             autoTeamPauseNextSpeakerReason = "auto_team_media_pipeline_failed";
             clearQueuedAutoAdvance(runId);
@@ -10121,13 +10206,17 @@ export async function runNextTurn(
               idempotencyKey: `planning.media_pipeline_failed:${run.id}:${progression.completedStepKey}`,
             });
           } else if (awaitingAsyncMediaPipeline) {
-            await db
+            await persistAutoTeamRunMutation({
+              executor: db,
+              runId,
+              mutate: async executor => executor
               .update(teamRuns)
               .set({
                 status: "paused",
                 stopReason: "awaiting_async_media_pipeline",
               })
-              .where(eq(teamRuns.id, runId));
+              .where(eq(teamRuns.id, runId)),
+            });
             autoTeamPausedByGate = true;
             autoTeamPauseNextSpeakerReason = "awaiting_async_media_pipeline";
             clearQueuedAutoAdvance(runId);
@@ -10171,14 +10260,18 @@ export async function runNextTurn(
                 ?.unresolvedRefs.length
                 ? `Unresolved final evidence refs: ${finalEvidenceValidation.unresolvedRefs.join(", ")}`
                 : "Final evidence gate rejected automatic completion for this Auto Team plan.";
-              await db
+              await persistAutoTeamRunMutation({
+                executor: db,
+                runId,
+                mutate: async executor => executor
                 .update(teamRuns)
                 .set({
                   status: "paused",
                   stopReason: "auto_team_final_evidence_unresolved",
                   runtimeTerminalReason: finalCompletionBlockedReason,
                 })
-                .where(eq(teamRuns.id, runId));
+                .where(eq(teamRuns.id, runId)),
+              });
               autoTeamPausedByGate = true;
               autoTeamPauseNextSpeakerReason =
                 "auto_team_final_evidence_unresolved";
@@ -10344,7 +10437,14 @@ export async function runNextTurn(
       runTurnUpdate.runtimeTerminalReason = null;
     }
 
-    await db.update(teamRuns).set(runTurnUpdate).where(eq(teamRuns.id, runId));
+    await persistAutoTeamRunMutation({
+      executor: db,
+      runId,
+      mutate: async executor => executor
+        .update(teamRuns)
+        .set(runTurnUpdate)
+        .where(eq(teamRuns.id, runId)),
+    });
 
     await monitoringService.recordEvent({
       tenantId,
@@ -10720,7 +10820,7 @@ export async function stopRun(
   const normalizedStatus =
     reason === "user_requested" ? "stopped" : "completed";
 
-  const [updated] = await db.transaction(async tx => {
+  const persistStop = async (tx: any) => {
     // Update run status
     const [updatedRun] = await tx
       .update(teamRuns)
@@ -10729,8 +10829,9 @@ export async function stopRun(
         stopReason: reason,
         endedAt: now,
       })
-      .where(eq(teamRuns.id, runId))
+      .where(and(eq(teamRuns.id, runId), inArray(teamRuns.status, ["running", "paused"])))
       .returning();
+    if (!updatedRun) throw new Error("TEAM_RUN_TERMINAL_STATE_ALREADY_CHANGED");
 
     // Generate agent run summaries
     const participants = await tx
@@ -10760,7 +10861,11 @@ export async function stopRun(
     }
 
     return [updatedRun];
-  });
+  };
+  const fenceContext = getAutoTeamRunMutationFenceContext(tenantId ?? "", runId);
+  const [updated] = fenceContext
+    ? await withAutoTeamRunMutationFence({ ...fenceContext, mutate: persistStop })
+    : await db.transaction(persistStop);
 
   stopAutoStopChecker(runId);
   clearQueuedAutoAdvance(runId);
@@ -10876,16 +10981,24 @@ export async function failRun(
       `Run must be active to fail, current status: ${run.status}`
     );
   }
-  const [updated] = await db
-    .update(teamRuns)
-    .set({
-      status: "failed",
-      stopReason: reason,
-      runtimeTerminalReason: reason,
-      endedAt: new Date(),
-    })
-    .where(eq(teamRuns.id, runId))
-    .returning();
+  const [updated] = await persistAutoTeamRunMutation({
+    executor: db,
+    runId,
+    mutate: async executor => {
+      const [row] = await executor
+      .update(teamRuns)
+      .set({
+        status: "failed",
+        stopReason: reason,
+        runtimeTerminalReason: reason,
+        endedAt: new Date(),
+      })
+      .where(and(eq(teamRuns.id, runId), inArray(teamRuns.status, ["queued", "running", "paused"])))
+      .returning();
+      if (!row) throw new Error("TEAM_RUN_TERMINAL_STATE_ALREADY_CHANGED");
+      return [row];
+    },
+  });
   stopAutoStopChecker(runId);
   clearQueuedAutoAdvance(runId);
   return updated;

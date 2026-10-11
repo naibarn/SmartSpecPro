@@ -6,6 +6,9 @@ import * as automationFabricService from "./workAutomationFabricService";
 import * as autoTeamMediaCompletionService from "./autoTeamMediaCompletionService";
 import { createCanonicalJobInTransaction } from "./jobControlPlane";
 import {
+  persistAutoTeamRunMutation,
+} from "./autoTeamRunMutationFence";
+import {
   AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS,
   buildAutoTeamRecoveryEvaluationJob,
   fingerprintAutoTeamRecoveryState,
@@ -269,14 +272,21 @@ export async function sweepPendingAutoTeamRuns(options: {
           tenantId: run.tenantId,
           mediaPipelineStatus: status,
         });
-        await db
-          .update(teamRuns)
-          .set({
-            stopReason: "auto_team_media_pipeline_state_missing",
-            runtimeTerminalReason:
-              "Async media pipeline wait cannot continue because the pipeline state is missing or inactive.",
-          })
-          .where(eq(teamRuns.id, run.id));
+        await persistAutoTeamRunMutation({
+          executor: db,
+          tenantId: run.tenantId,
+          runId: run.id,
+          mutate: async executor => {
+            await executor
+            .update(teamRuns)
+            .set({
+              stopReason: "auto_team_media_pipeline_state_missing",
+              runtimeTerminalReason:
+                "Async media pipeline wait cannot continue because the pipeline state is missing or inactive.",
+            })
+            .where(eq(teamRuns.id, run.id));
+          },
+        });
         const constraints =
           currentRun.constraintsJson &&
           typeof currentRun.constraintsJson === "object" &&
