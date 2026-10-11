@@ -3,17 +3,24 @@ Integration tests for Marketplace system
 Tests the complete user flows including purchase, review, and security fixes
 """
 
-import pytest
 import asyncio
+
+import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 from sqlalchemy.pool import StaticPool
-from app.models.user import Role, User
-from app.models.marketplace_template import MarketplaceTemplate, TemplatePurchase, TemplateStatus, TemplateCategory
-from app.services.marketplace_service import MarketplaceService
-from app.core.database import Base
 
+from app.core.database import Base
+from app.models.credit import CreditTransaction, TransactionType
+from app.models.marketplace_template import (
+    MarketplaceTemplate,
+    TemplateCategory,
+    TemplatePurchase,
+    TemplateStatus,
+)
+from app.models.user import Role, User
+from app.services.marketplace_service import MarketplaceService
 
 # Test configuration
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -137,7 +144,17 @@ class TestMarketplacePurchaseFlow:
 
         assert buyer.credits == initial_buyer_balance - 1000
         assert creator.credits == initial_creator_balance + 850
-        assert distribution == {"creator_revenue": 850, "platform_commission": 150}
+        assert distribution == {"total": 1000, "creator": 850, "platform": 150}
+
+        transactions = (await db_session.scalars(select(CreditTransaction))).all()
+        assert {transaction.type for transaction in transactions} == {
+            TransactionType.usage,
+            TransactionType.bonus,
+        }
+        purchase_transaction = next(tx for tx in transactions if tx.type == TransactionType.usage)
+        assert purchase_transaction.amount == -1000
+        assert purchase_transaction.meta["transaction_category"] == "template_purchase"
+        assert purchase_transaction.meta["balance_before"] == initial_buyer_balance
 
         # Verify template stats updated
         await db_session.refresh(test_template)
@@ -254,8 +271,9 @@ class TestMarketplaceSecurityFixes:
     @pytest.mark.asyncio
     async def test_url_validation(self, db_session, test_users):
         """Test that only HTTPS URLs from approved domains are accepted"""
-        from app.api.v1.marketplace import CreateTemplateRequest
         from pydantic import ValidationError
+
+        from app.api.v1.marketplace import CreateTemplateRequest
 
         # Test invalid URL (HTTP)
         with pytest.raises(ValidationError, match="HTTPS protocol"):
@@ -302,8 +320,9 @@ class TestMarketplaceSecurityFixes:
     @pytest.mark.asyncio
     async def test_slug_validation(self, db_session, test_users):
         """Test slug validation prevents reserved words"""
-        from app.api.v1.marketplace import CreateTemplateRequest
         from pydantic import ValidationError
+
+        from app.api.v1.marketplace import CreateTemplateRequest
 
         # Test reserved slug
         with pytest.raises(ValidationError, match="reserved"):
