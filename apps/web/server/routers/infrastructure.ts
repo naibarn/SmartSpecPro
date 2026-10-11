@@ -11,8 +11,8 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
-import { systemSettings } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { canonicalProjects, systemSettings } from "../../drizzle/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
   getAllQueueMetrics,
@@ -263,6 +263,21 @@ async function provisionMcpOAuthSigningKey(
 // ============================================================
 
 export const infrastructureRouter = router({
+  listDeploymentTargetProjects: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return db.select({
+        projectId: canonicalProjects.projectId,
+        title: canonicalProjects.title,
+        projectType: canonicalProjects.projectType,
+      }).from(canonicalProjects).where(and(
+        eq(canonicalProjects.tenantId, input.tenantId),
+        eq(canonicalProjects.lifecycle, "ACTIVE"),
+      )).orderBy(asc(canonicalProjects.title));
+    }),
+
   getGeoMapConfiguration: exactAdminProcedure.query(async () => {
     const configuration = await getGeoMapAdminConfiguration();
     return { ...configuration, providerHealth: getGeoMapProviderHealth() };
