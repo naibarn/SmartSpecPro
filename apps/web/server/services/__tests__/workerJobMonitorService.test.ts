@@ -156,6 +156,54 @@ function createRepo(overrides: Partial<WorkerJobMonitorRepository> = {}): Worker
 }
 
 describe("workerJobMonitorService", () => {
+  it("projects the durable SPEC-224 stage into Task Control without inventing progress", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-spec224-final-verify",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "external_runtime",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        status: "running",
+        statusReason: null,
+        resourceProfile: "long_running",
+        progressJson: {
+          spec224: {
+            runId: "run-spec224-1",
+            state: "FINAL_VERIFY",
+            projectionVersion: 3,
+          },
+        },
+        outputJson: {},
+        failureReason: null,
+        errorCode: null,
+        errorMessage: null,
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: null,
+        worker: null,
+      }),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const detail = await getUserWorkerJobDetail(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-spec224-final-verify" },
+      { repo },
+    );
+
+    expect(detail).toMatchObject({
+      id: "job-spec224-final-verify",
+      status: "running",
+      progressPhase: "FINAL_VERIFY",
+      progressPercent: null,
+    });
+  });
+
   it("requeues a safe retry-scheduled job through the canonical control plane", async () => {
     const repo = createRepo({
       getUserJob: vi.fn().mockResolvedValue({
