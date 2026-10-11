@@ -41,7 +41,7 @@ JOB_ID = "job-uuid-12345"
 @pytest.mark.asyncio
 async def test_valid_webhook_signature_updates_job_to_done(client):
     """Valid webhook with correct HMAC signature updates job status to 'done'
-    and enqueues a media-job processing Cloud Task."""
+    without publishing a duplicate provider-specific processing task."""
     payload = {
         "taskId": KIE_JOB_ID,
         "status": "completed",
@@ -56,6 +56,7 @@ async def test_valid_webhook_signature_updates_job_to_done(client):
     mock_task.id = JOB_ID
     mock_task.status = "processing"
     mock_task.media_type = "image"
+    mock_task.user_id = 42
 
     with (
         patch.dict("os.environ", {"KIE_AI_WEBHOOK_SECRET": WEBHOOK_SECRET}),
@@ -66,8 +67,9 @@ async def test_valid_webhook_signature_updates_job_to_done(client):
             "app.api.v1.kie_webhooks.MediaTaskService"
         ) as MockTaskService,
         patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
-        ) as mock_enqueue,
+            "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
+            new_callable=AsyncMock,
+        ) as mock_dispatch,
         patch("app.api.v1.kie_webhooks.AsyncSessionLocal") as MockSession,
     ):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=False)
@@ -89,14 +91,17 @@ async def test_valid_webhook_signature_updates_job_to_done(client):
     data = resp.json()
     assert data["success"] is True
     MockTaskService.update_task_status.assert_awaited_once()
-    mock_enqueue.assert_awaited_once()
+    mock_dispatch.assert_awaited_once_with(42)
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_valid_webhook_enqueues_media_processing_task(client):
-    """After updating job status, webhook handler enqueues
-    POST /tasks/process-media via Cloud Tasks 'media-jobs' queue."""
+async def test_valid_webhook_advances_pending_image_tasks(client):
+    """The webhook records provider state and advances the user's pending queue.
+
+    Canonical polling/settlement owns processing this task's result; callbacks
+    must not enqueue a duplicate provider-specific processing task.
+    """
     payload = {
         "taskId": KIE_JOB_ID,
         "status": "completed",
@@ -111,6 +116,7 @@ async def test_valid_webhook_enqueues_media_processing_task(client):
     mock_task.id = JOB_ID
     mock_task.status = "processing"
     mock_task.media_type = "image"
+    mock_task.user_id = 42
 
     with (
         patch.dict("os.environ", {"KIE_AI_WEBHOOK_SECRET": WEBHOOK_SECRET}),
@@ -121,8 +127,9 @@ async def test_valid_webhook_enqueues_media_processing_task(client):
             "app.api.v1.kie_webhooks.MediaTaskService"
         ) as MockTaskService,
         patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
-        ) as mock_enqueue,
+            "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
+            new_callable=AsyncMock,
+        ) as mock_dispatch,
         patch("app.api.v1.kie_webhooks.AsyncSessionLocal") as MockSession,
     ):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=False)
@@ -141,18 +148,14 @@ async def test_valid_webhook_enqueues_media_processing_task(client):
         )
 
     assert resp.status_code == 200
-    mock_enqueue.assert_awaited_once()
-    call_kwargs = mock_enqueue.call_args
-    assert call_kwargs.kwargs["queue_name"] == "media-jobs"
-    assert call_kwargs.kwargs["handler_path"] == "/tasks/process-media"
-    assert "job_id" in call_kwargs.kwargs["payload"]
+    mock_dispatch.assert_awaited_once_with(42)
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_duplicate_webhook_returns_200_without_reprocessing(client):
     """If kie_job_id already completed in Redis dedup, return 200 immediately.
-    No Cloud Task is enqueued."""
+    No job lookup or queue dispatch occurs."""
     payload = {"taskId": KIE_JOB_ID, "status": "completed", "data": {"successFlag": 1}}
     sig = _sign_payload(payload, WEBHOOK_SECRET)
 
@@ -161,9 +164,7 @@ async def test_duplicate_webhook_returns_200_without_reprocessing(client):
         patch(
             "app.api.v1.kie_webhooks.WebhookDedupService"
         ) as MockDedup,
-        patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
-        ) as mock_enqueue,
+        patch("app.api.v1.kie_webhooks.MediaTaskService") as MockTaskService,
     ):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=True)
 
@@ -176,7 +177,7 @@ async def test_duplicate_webhook_returns_200_without_reprocessing(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data.get("duplicate") is True
-    mock_enqueue.assert_not_awaited()
+    MockTaskService.get_task_by_external_id.assert_not_called()
 
 
 @pytest.mark.unit
@@ -221,8 +222,7 @@ async def test_webhook_invalid_signature_returns_401(client):
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_webhook_unknown_kie_job_id_returns_404(client):
-    """Webhook referencing a kie_job_id not found in the jobs table
-    returns 404. No side effects."""
+    """Webhook referencing an unknown provider ID returns 404 without settlement."""
     payload = {
         "taskId": "nonexistent-id",
         "status": "completed",
@@ -238,13 +238,12 @@ async def test_webhook_unknown_kie_job_id_returns_404(client):
         patch(
             "app.api.v1.kie_webhooks.MediaTaskService"
         ) as MockTaskService,
-        patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
-        ) as mock_enqueue,
         patch("app.api.v1.kie_webhooks.AsyncSessionLocal") as MockSession,
     ):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=False)
+        MockDedup.return_value.mark_processed = AsyncMock()
         MockTaskService.get_task_by_external_id = AsyncMock(return_value=None)
+        MockTaskService.update_task_status = AsyncMock()
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -257,7 +256,8 @@ async def test_webhook_unknown_kie_job_id_returns_404(client):
         )
 
     assert resp.status_code == 404
-    mock_enqueue.assert_not_awaited()
+    MockTaskService.update_task_status.assert_not_awaited()
+    MockDedup.return_value.mark_processed.assert_not_awaited()
 
 
 @pytest.mark.unit
@@ -279,6 +279,7 @@ async def test_webhook_stores_dedup_key_in_redis(client):
     mock_task.id = JOB_ID
     mock_task.status = "processing"
     mock_task.media_type = "image"
+    mock_task.user_id = 42
 
     with (
         patch.dict("os.environ", {"KIE_AI_WEBHOOK_SECRET": WEBHOOK_SECRET}),
@@ -289,7 +290,8 @@ async def test_webhook_stores_dedup_key_in_redis(client):
             "app.api.v1.kie_webhooks.MediaTaskService"
         ) as MockTaskService,
         patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
+            "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
+            new_callable=AsyncMock,
         ),
         patch("app.api.v1.kie_webhooks.AsyncSessionLocal") as MockSession,
     ):
@@ -329,9 +331,6 @@ async def test_webhook_checks_redis_dedup_before_db(client):
         patch(
             "app.api.v1.kie_webhooks.MediaTaskService"
         ) as MockTaskService,
-        patch(
-            "app.api.v1.kie_webhooks.enqueue_task", new_callable=AsyncMock
-        ),
     ):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=True)
 
