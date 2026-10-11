@@ -72,6 +72,26 @@ function memoryStore(): Spec224RunnerInputStagingStore {
 }
 
 describe("Spec224 Runner input staging", () => {
+  it("stages supported screenshot formats and rejects unsafe or executable paths", async () => {
+    const service = createSpec224RunnerInputStagingService(memoryStore());
+    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).toString("base64");
+    await expect(service.preStageRunnerInput({
+      tenantId: "tenant-1",
+      startRef: "development-run:image",
+      files: [{ path: "design-references/screen.png", contentBase64: png }],
+    })).resolves.toMatchObject({ totalBytes: 8 });
+    await expect(service.preStageRunnerInput({
+      tenantId: "tenant-1",
+      startRef: "development-run:unsafe",
+      files: [{ path: "design-references/run.sh", contentBase64: png }],
+    })).rejects.toMatchObject({ code: "SPEC224_RUNNER_INPUT_PATH_INVALID" });
+    await expect(service.preStageRunnerInput({
+      tenantId: "tenant-1",
+      startRef: "development-run:signature",
+      files: [{ path: "design-references/fake.png", contentBase64: Buffer.from("not PNG").toString("base64") }],
+    })).rejects.toMatchObject({ code: "SPEC224_RUNNER_INPUT_IMAGE_SIGNATURE_INVALID" });
+  });
+
   it("pre-stages immutable bytes, binds them to a lease, then rejects fetch-grant replay", async () => {
     const service = createSpec224RunnerInputStagingService(memoryStore(), {
       inputSourceRef: () => "spec224-source:one",

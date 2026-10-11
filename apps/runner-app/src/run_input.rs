@@ -70,7 +70,18 @@ fn safe_relative_file(path: &str) -> bool {
             candidate
                 .extension()
                 .and_then(|extension| extension.to_str()),
-            Some("md") | Some("MD") | Some("json") | Some("JSON")
+            Some("md")
+                | Some("MD")
+                | Some("json")
+                | Some("JSON")
+                | Some("png")
+                | Some("PNG")
+                | Some("jpg")
+                | Some("JPG")
+                | Some("jpeg")
+                | Some("JPEG")
+                | Some("webp")
+                | Some("WEBP")
         )
         && candidate
             .components()
@@ -398,6 +409,15 @@ mod tests {
             input_ref: "spec224-input:one".into(),
             payload: json!({"taskId":"task-1"}),
         }
+    }
+
+    #[test]
+    fn accepts_screenshot_files_and_rejects_unsafe_or_executable_paths() {
+        assert!(safe_relative_file("design-references/screen-1.png"));
+        assert!(safe_relative_file("design-references/screen-2.webp"));
+        assert!(safe_relative_file("design-references/screen-3.jpeg"));
+        assert!(!safe_relative_file("../screen.png"));
+        assert!(!safe_relative_file("design-references/run.sh"));
     }
 
     #[test]

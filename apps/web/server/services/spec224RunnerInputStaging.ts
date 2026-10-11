@@ -16,7 +16,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const MAX_FILES = 64;
 export const SPEC224_RUNNER_INPUT_MAX_BYTES = 2 * 1024 * 1024;
 const MAX_FILE_BYTES = 1024 * 1024;
-const SAFE_PATH = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9][A-Za-z0-9._/-]*\.(?:md|json)$/i;
+const SAFE_PATH = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9][A-Za-z0-9._/-]*\.(?:md|json|png|jpe?g|webp)$/i;
 
 export class Spec224RunnerInputStagingError extends Error {
   constructor(readonly code: string) {
@@ -159,6 +159,16 @@ function safePath(value: string): string {
   return path;
 }
 
+function validateImageFileSignature(path: string, bytes: Buffer): void {
+  const extension = path.split(".").pop()?.toLowerCase();
+  if (extension === "png" && (bytes.length < 8 || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))))
+    fail("SPEC224_RUNNER_INPUT_IMAGE_SIGNATURE_INVALID");
+  if ((extension === "jpg" || extension === "jpeg") && (bytes.length < 3 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff))
+    fail("SPEC224_RUNNER_INPUT_IMAGE_SIGNATURE_INVALID");
+  if (extension === "webp" && (bytes.length < 12 || bytes.toString("ascii", 0, 4) !== "RIFF" || bytes.toString("ascii", 8, 12) !== "WEBP"))
+    fail("SPEC224_RUNNER_INPUT_IMAGE_SIGNATURE_INVALID");
+}
+
 /** The byte framing is implemented identically by the Runner. */
 export function digestSpec224RunnerInput(
   files: Array<{ path: string; bytes: Buffer }>
@@ -187,6 +197,7 @@ function normalizeFiles(files: Spec224RunnerInputFile[]): {
     if (seen.has(path)) fail("SPEC224_RUNNER_INPUT_PATH_DUPLICATE");
     seen.add(path);
     const bytes = decodeBase64(file?.contentBase64);
+    validateImageFileSignature(path, bytes);
     totalBytes += bytes.length;
     if (totalBytes > SPEC224_RUNNER_INPUT_MAX_BYTES)
       fail("SPEC224_RUNNER_INPUT_TOTAL_SIZE_INVALID");
