@@ -15,7 +15,9 @@ describe("Drizzle migration evidence", () => {
     expect(result).toMatchObject({ status: "OBSERVED", source: "drizzle.__drizzle_migrations", value: {
       databaseIdentity: "smartaihub_test/public",
       expectedMigrationHead: { tag: "0002_second", hash: "b" },
+      expectedMigrations: [{ tag: "0001_first", hash: "a" }, { tag: "0002_second", hash: "b" }],
       observedAppliedHead: { tag: "0001_first", hash: "a", appliedAt: 100 },
+      appliedMigrations: [{ tag: "0001_first", hash: "a", appliedAt: 100 }],
       pendingMigrations: [{ tag: "0002_second", hash: "b" }],
       currentState: "PARTIALLY_APPLIED",
       failureHistory: "FAILURE_HISTORY_UNAVAILABLE",

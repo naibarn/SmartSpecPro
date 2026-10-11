@@ -27,7 +27,11 @@ export type MigrationEvidence = {
     environment: string;
     databaseIdentity: string;
     expectedMigrationHead: { tag: string; hash: string } | null;
+    /** Full normalized journal for consumers that must prove named prerequisites. */
+    expectedMigrations?: Array<{ tag: string; hash: string }>;
     observedAppliedHead: { tag: string | null; hash: string; appliedAt: number | null } | null;
+    /** Applied identities are included so callers never infer a prerequisite from a later head alone. */
+    appliedMigrations?: Array<{ tag: string | null; hash: string; appliedAt: number | null }>;
     pendingMigrations: Array<{ tag: string; hash: string }>;
       currentState: "APPLIED" | "PENDING" | "PARTIALLY_APPLIED" | "FAILED" | "IN_PROGRESS" | "INTERRUPTED" | "UNKNOWN";
       failureHistory: "TRACKED" | "FAILURE_HISTORY_UNAVAILABLE";
@@ -83,7 +87,10 @@ export function projectDrizzleMigrationEvidence(input: {
       environment: input.environment,
       databaseIdentity: input.databaseIdentity,
       expectedMigrationHead: expectedHead,
+      expectedMigrations: input.expected,
       observedAppliedHead: latest ? { tag: latestTag, hash: latest.hash, appliedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
+      appliedMigrations: applied.map(row => ({ tag: migrationTagByHash.get(row.hash) ?? null, hash: row.hash,
+        appliedAt: row.created_at === null ? null : Number(row.created_at) })),
       pendingMigrations,
       currentState,
       failureHistory: "FAILURE_HISTORY_UNAVAILABLE",
