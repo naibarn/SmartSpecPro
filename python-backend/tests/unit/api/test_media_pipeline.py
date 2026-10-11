@@ -74,7 +74,7 @@ async def test_process_media_downloads_from_kie_result_url(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_download.return_value = ("/tmp/result.png", 1024, "image/png")
         mock_thumb.return_value = "/tmp/thumb.jpg"
@@ -115,7 +115,7 @@ async def test_process_media_generates_image_thumbnail(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_download.return_value = ("/tmp/result.png", 1024, "image/png")
         mock_thumb.return_value = "/tmp/thumb.jpg"
@@ -156,7 +156,7 @@ async def test_process_media_uploads_to_r2(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_download.return_value = ("/tmp/result.png", 1024, "image/png")
         mock_thumb.return_value = "/tmp/thumb.jpg"
@@ -200,7 +200,7 @@ async def test_process_media_updates_db_with_results(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_download.return_value = ("/tmp/result.png", 1024, "image/png")
         mock_meta.return_value = {"file_size_bytes": 1024, "width": 800, "height": 600}
@@ -219,8 +219,8 @@ async def test_process_media_updates_db_with_results(client):
 
     assert resp.status_code == 200
     # DB should be updated with result data
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
-    call_kwargs = MockTaskService.update_task_by_external_id.call_args
+    MockTaskService.update_task_status.assert_awaited_once()
+    call_kwargs = MockTaskService.update_task_status.call_args
     assert "result_url" in call_kwargs.kwargs or len(call_kwargs.args) > 3
 
 
@@ -304,7 +304,7 @@ async def test_process_media_200_on_permanent_error(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock()
+        MockTaskService.update_task_status = AsyncMock()
 
         mock_download.side_effect = httpx.HTTPStatusError(
             "Not Found",
@@ -321,7 +321,7 @@ async def test_process_media_200_on_permanent_error(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data.get("status") == "failed"
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
 
 
 @pytest.mark.unit
@@ -367,7 +367,7 @@ async def test_process_media_dead_letter_on_final_retry(client):
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
         MockSession.return_value.__aexit__ = AsyncMock(return_value=False)
         MockTaskService.get_task = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock()
+        MockTaskService.update_task_status = AsyncMock()
         mock_download.side_effect = httpx.TimeoutException("Connection timed out")
         mock_dlq.return_value = True  # Final retry
 
@@ -380,4 +380,4 @@ async def test_process_media_dead_letter_on_final_retry(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data.get("status") == "dead_letter"
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
