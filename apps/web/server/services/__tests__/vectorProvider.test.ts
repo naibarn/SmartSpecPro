@@ -640,6 +640,43 @@ describe("vectorProvider adapter contract", () => {
     ).rejects.toMatchObject({ code: "vector_scope_invalid" });
   });
 
+  it("validates ownership for every returned Vectorize vector", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).endsWith("/get_by_ids")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              result: {
+                vectors: [
+                  { id: "v-1", metadata: { tenantId: "tenant-1", itemId: 10 } },
+                  { id: "v-2", metadata: { tenantId: "tenant-2", itemId: 10 } },
+                ],
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        throw new Error("unexpected Vectorize request");
+      })
+    );
+
+    await expect(
+      verifyVectorizeVectorOwnership({
+        indexName: "docs-index",
+        ids: ["v-1", "v-2"],
+        tenantId: "tenant-1",
+        itemId: 10,
+        providerConfig: {
+          provider: "cloudflare_vectorize",
+          vectorizeAccountId: "a",
+          vectorizeApiToken: "t",
+        },
+      })
+    ).rejects.toMatchObject({ code: "vector_scope_invalid" });
+  });
+
   it("validates every Vectorize vector and rejects provider-incompatible requests", async () => {
     const valid = {
       id: "v-1",

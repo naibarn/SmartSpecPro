@@ -1290,8 +1290,9 @@ export async function verifyVectorizeVectorOwnership(params: {
       }
     }
 
-    return records;
   }
+
+  return records;
 }
 
 export async function dispatchVectorOperation(
