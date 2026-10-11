@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import { registerMcpPublicRoutes } from "../mcpPublicServer";
+import type { McpToolSession } from "../mcpRegistry";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 let mockRedisData: Record<string, string> = {};
+let mockMcpSessions: Record<string, McpToolSession> = {};
 
 const {
   mockDelegatedManifest,
@@ -137,6 +139,18 @@ vi.mock("../../services/redisClients", () => ({
       return 1;
     }),
   }),
+}));
+
+vi.mock("../../services/mcpPostgresState", () => ({
+  saveMcpSession: vi.fn(async (id: string, session: McpToolSession, _ttlSeconds: number) => {
+    mockMcpSessions[id] = session;
+  }),
+  loadMcpSession: vi.fn(async (id: string) => mockMcpSessions[id] ?? null),
+  deleteMcpSession: vi.fn(async (id: string) => {
+    delete mockMcpSessions[id];
+  }),
+  loadMcpToolReplay: vi.fn(async () => null),
+  saveMcpToolReplay: vi.fn(async () => undefined),
 }));
 
 vi.mock("../../services/tenantFeatureFlagService", async () => {
@@ -308,6 +322,7 @@ async function initializeSession(app: any): Promise<string> {
 
 beforeEach(() => {
   mockRedisData = {};
+  mockMcpSessions = {};
   vi.clearAllMocks();
 });
 
@@ -343,7 +358,7 @@ describe("POST /v1/mcp — protocol", () => {
     expect(res.status).toBe(200);
     expect(res.body.result.protocolVersion).toBe("2025-03-26");
     const sessionId = res.headers["mcp-session-id"];
-    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    const stored = mockMcpSessions[sessionId]!;
     expect(stored.authMode).toBe("delegated_worker");
     expect(stored.ownerUserId).toBe(7);
     expect(stored.workerId).toBe("worker-1");
@@ -770,16 +785,16 @@ describe("POST /v1/mcp — protocol", () => {
 // ---------------------------------------------------------------------------
 
 describe("Session management", () => {
-  it("creates Redis session with key pattern mcp:session:{id}", async () => {
+  it("persists MCP session state by session ID", async () => {
     const app = makeApp();
     const sessionId = await initializeSession(app);
-    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+    expect(mockMcpSessions[sessionId]).toBeDefined();
   });
 
   it("session data contains state, tenantId, userId", async () => {
     const app = makeApp();
     const sessionId = await initializeSession(app);
-    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    const stored = mockMcpSessions[sessionId]!;
     expect(stored.state).toBe("ready");
     expect(stored.tenantId).toBe("tenant-1");
     expect(stored.userId).toBe(1);
@@ -795,7 +810,7 @@ describe("Session management", () => {
       scopes: ["mcp:read", "mcp:write"],
     });
     const sessionId = await initializeSession(app);
-    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    const stored = mockMcpSessions[sessionId]!;
 
     expect(stored.tenantId).toBe("tenant-bearer");
     expect(stored.userId).toBe(42);
@@ -811,7 +826,7 @@ describe("Session management", () => {
       scopes: ["mcp:read", "mcp:write"],
     });
     const sessionId = await initializeSession(app);
-    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    const stored = mockMcpSessions[sessionId]!;
 
     expect(stored.tenantId).toBe("tenant-session");
     expect(stored.userId).toBe(7);
@@ -832,7 +847,7 @@ describe("Session management", () => {
       },
     );
     const sessionId = await initializeSession(app);
-    const stored = JSON.parse(mockRedisData[`mcp:session:${sessionId}`]);
+    const stored = mockMcpSessions[sessionId]!;
 
     expect(stored.tenantId).toBe("tenant-internal");
     expect(stored.userId).toBe(91);
@@ -1226,7 +1241,7 @@ describe("MCP Spec Compliance — Session termination (DELETE)", () => {
     const sessionId = await initializeSession(app);
 
     // Verify session exists
-    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+    expect(mockMcpSessions[sessionId]).toBeDefined();
 
     // Terminate
     const del = await request(app)
@@ -1235,8 +1250,8 @@ describe("MCP Spec Compliance — Session termination (DELETE)", () => {
 
     expect(del.status).toBe(204);
 
-    // Session should be deleted from Redis
-    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeUndefined();
+    // Session should be removed from persistent state.
+    expect(mockMcpSessions[sessionId]).toBeUndefined();
   });
 
   it("subsequent request after session termination returns 404", async () => {
@@ -1294,14 +1309,14 @@ describe("MCP Spec Compliance — additional edge cases", () => {
   it("modern DELETE never deletes a legacy session even if a session header is present", async () => {
     const app = makeApp();
     const sessionId = await initializeSession(app);
-    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+    expect(mockMcpSessions[sessionId]).toBeDefined();
 
     const res = await request(app)
       .delete("/v1/mcp")
       .set("MCP-Protocol-Version", "2026-07-28")
       .set("Mcp-Session-Id", sessionId);
     expect(res.status).toBe(204);
-    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+    expect(mockMcpSessions[sessionId]).toBeDefined();
   });
 
   it("batch with notification excluded from response array", async () => {
@@ -1336,19 +1351,19 @@ describe("MCP Spec Compliance — additional edge cases", () => {
     expect(res.body.error.message).toMatch(/at most one initialize/i);
   });
 
-  it("DELETE with non-UUID session ID returns 204 without Redis call", async () => {
+  it("DELETE with non-UUID session ID returns 204 without a persistent state call", async () => {
     const app = makeApp();
     const res = await request(app)
       .delete("/v1/mcp")
       .set("Mcp-Session-Id", "../other:key");
 
     expect(res.status).toBe(204);
-    // The crafted key should NOT have been deleted from Redis
+    // The crafted ID must not affect a valid persistent session.
   });
 });
 
 describe("MCP 2026-07-28 compatibility adapter", () => {
-  it("serves server/discover without creating a legacy Redis session", async () => {
+  it("serves server/discover without creating an MCP session", async () => {
     const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
     process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
     try {
@@ -1362,7 +1377,7 @@ describe("MCP 2026-07-28 compatibility adapter", () => {
       expect(res.body.result.protocolVersions).toContain("2026-07-28");
       expect(res.body.result.serverInfo.name).toBe("SmartAIHub");
       expect(res.headers["mcp-session-id"]).toBeUndefined();
-      expect(Object.keys(mockRedisData)).toHaveLength(0);
+      expect(Object.keys(mockMcpSessions)).toHaveLength(0);
     } finally {
       if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
       else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
