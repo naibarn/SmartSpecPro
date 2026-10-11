@@ -37,6 +37,27 @@ describe("pinned geospatial source transport", () => {
     expect(result.body.toString()).toBe('{"ok":true}');
   });
 
+  it("uses the first value when a response contains duplicate headers", async () => {
+    const result = await fetchGeoSource(
+      "https://data.example.org/api/v1/stations",
+      policy,
+      {
+        resolveAddresses: async () => ["8.8.8.8"],
+        requestOnce: async () => ({
+          status: 200,
+          headers: {
+            "content-type": ["application/json; charset=utf-8", "text/html"],
+            "content-encoding": ["identity", "gzip"],
+          },
+          body: Buffer.from('{"ok":true}'),
+        }),
+      },
+    );
+
+    expect(result.mediaType).toBe("application/json");
+    expect(result.body.toString()).toBe('{"ok":true}');
+  });
+
   it("re-resolves and pins every allowlisted redirect target", async () => {
     const resolveAddresses = vi.fn(async (host: string) => host === "data.example.org" ? ["8.8.8.8"] : ["1.1.1.1"]);
     const requestOnce = vi.fn()
