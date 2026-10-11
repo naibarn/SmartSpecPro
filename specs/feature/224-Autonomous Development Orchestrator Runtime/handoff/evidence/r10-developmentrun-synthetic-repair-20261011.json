@@ -1,0 +1,166 @@
+{
+  "schema_version": "spec224.r10.synthetic-developmentrun-evidence.v1",
+  "observed_at": "2026-10-11T07:52:34Z",
+  "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+  "canonical_base_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+  "workunit_id": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
+  "run": {
+    "run_id": "1db4a788-fbde-4488-b48a-7243f98e440a",
+    "tenant_id": "527118a5-fdba-441e-8f64-cac0344fb6f9",
+    "actor_id": 22401,
+    "workunit_identity": "work-1db4a788-fbde-4488-b48a-7243f98e440a",
+    "environment": "owner-marked disposable PostgreSQL and owner-marked temporary Git repository",
+    "execution_mode": "SYNTHETIC",
+    "provider_generated": false
+  },
+  "acceptance_contract": {
+    "objective": "Normalize nonblank text labels; reject blank and non-string inputs.",
+    "tests": [
+      "trims outer whitespace",
+      "rejects blank label",
+      "rejects non-string label"
+    ],
+    "base_sha": "d0a025877f2e28be998830cfeec82d5471aad609",
+    "failed_candidate_sha": "bba048c542f6c5dba5cbe589cddc583231e4cc83",
+    "repaired_candidate_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "diff_sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
+  },
+  "phases": [
+    "DISCOVERY",
+    "PLANNING",
+    "PLAN_VERIFY",
+    "IMPLEMENT",
+    "BUILD",
+    "TEST",
+    "DEBUG_REPAIR",
+    "TEST",
+    "REVIEW",
+    "VERIFY",
+    "REGRESSION",
+    "FINAL_VERIFY"
+  ],
+  "repair": {
+    "initial_test_command": "python3 -m unittest -v",
+    "initial_exit_code": 1,
+    "initial_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "initial_stderr_sha256": "ed9d5fd3535eef5a314ebd6104f841a6266168939a8f48313853d14b3e9e1168",
+    "failure_classification": "FUNCTIONAL_TEST_FAILURE",
+    "policy_result": "canonical reconciliation admitted DEBUG_REPAIR",
+    "attempts": 2,
+    "maximum_attempts": 2,
+    "third_attempt": "rejected with REPAIR_ATTEMPT_LIMIT_REACHED",
+    "retry_candidate_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "repair_retry_created_duplicate_commit": false,
+    "repaired_test_command": "python3 -m unittest -v",
+    "repaired_exit_code": 0,
+    "repaired_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "repaired_stderr_sha256": "42f0eaef49492dbde1ed4a71eff6c6dab88d5f11894f1b53583defef08d4af4e"
+  },
+  "cancellation_guard": {
+    "result": "PASS",
+    "test": "apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts",
+    "behavior": "the test adapter rechecked active-job authority before repair; after cancellation it rejected before changing app.py or creating another commit",
+    "observed_candidate_commit_count_before_repair": 2
+  },
+  "independent_verification": {
+    "result": "PASS",
+    "process_id": 870514,
+    "profile": "synthetic-disposable-python-unittest-v1",
+    "source_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "checks": [
+      "candidate HEAD equals expected repaired Git SHA",
+      "base commit is an ancestor of candidate",
+      "app.py exists in the actual base-to-candidate diff",
+      "evidence artifacts exist and match the evidence bundle digest",
+      "acceptance tests are independently re-executed and pass",
+      "stale candidate SHA is rejected",
+      "foreign tenant binding is rejected",
+      "conflicting evidence digest is rejected"
+    ],
+    "evidence_bundle_sha256": "450df7a698a1fea8ab3728217ee055456dc9c29d40c78c2b9082e82c1455c581",
+    "artifact_digests": [
+      {
+        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:acceptance.json",
+        "sha256": "c8172ea52f83e557188470e68949b39fad8db4f87c6d5414cfd7af725e20717b"
+      },
+      {
+        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:candidate.diff",
+        "sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
+      },
+      {
+        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:failed-test.json",
+        "sha256": "53550cdddce49b774fd35bd60e8b154710fdbee8af7814f929001e969d1279f7"
+      },
+      {
+        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:repair-test.json",
+        "sha256": "b99284cc905e096a01fa47c019aff7e18fc9a02b8addb985aba7d8366806d49d"
+      }
+    ]
+  },
+  "durability": {
+    "database": "owner-marked disposable PostgreSQL cluster; no inherited DATABASE_URL; loopback only",
+    "same_development_run_and_workunit_reused": true,
+    "phase_jobs": "existing worker_jobs and outbox control plane",
+    "task_control_projection": "PLANNING projection observed after independent worker-process restart",
+    "verifier_result_and_artifact_bytes": "stored in the independent VERIFY worker job output and rehashed after a fresh Node process restart",
+    "final_run_state_after_restart": "WAITING_HUMAN_DECISION",
+    "run_completed_events": 0
+  },
+  "final_verify": {
+    "result": "PARTIAL_BLOCKED",
+    "canonical_action": "WAIT",
+    "reason": "workspace_convergence_or_retirement_evidence_missing",
+    "missing_authority": [
+      "genuine canonical user-workspace convergence receipt bound to this run",
+      "genuine task-worktree retirement receipt bound to this run",
+      "complete requirement-closure graph and implementation-completion evidence"
+    ],
+    "fabricated_receipts_created": false,
+    "run_completion_claimed": false
+  },
+  "focused_verification": {
+    "profile": "integration",
+    "command": "SPEC224_EMIT_EVIDENCE=1 node_modules/.bin/vitest run --config apps/web/vitest.config.ts apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts",
+    "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+    "result": "PASS",
+    "files_passed": 4,
+    "tests_passed": 24,
+    "tests_failed": 0,
+    "observed_at": "2026-10-11T07:52:34Z",
+    "phase_ordering": "verified in order: IMPLEMENT candidate write; TEST failure; DEBUG_REPAIR bounded source repair; TEST pass; VERIFY separate-process verifier"
+  },
+  "typecheck": {
+    "result": "NOT_COMPLETED_RESOURCE_PROTECTED",
+    "command": "bounded tsc --noEmit over changed service and test files",
+    "observation": "manual scoped invocation expanded through repository imports to about 3.3 GiB RSS and emitted broad existing project errors; stopped before it could burden the shared host",
+    "repository_policy": "full repository npm run typecheck not run"
+  },
+  "ci_baseline": {
+    "canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+    "ci_run": "https://github.com/naibarn/SmartSpecPro/actions/runs/38120077317",
+    "python_job": "370 failed, 4379 passed, 41 skipped; failures span unrelated cloud-task, media, MCP, presentation, and other services",
+    "typecheck_job": "failed on this pre-R10 SHA with many unrelated compile errors; no spec224DisposableGitAcceptance diagnostics",
+    "migration_workflow": "https://github.com/naibarn/SmartSpecPro/actions/runs/38120076733",
+    "migration_workflow_result": "failed with zero jobs; not retried; no shared or production migration was applied",
+    "classification": "pre-existing baseline / unrelated workflow configuration"
+  },
+  "live_runner_readiness": {
+    "result": "NOT_VERIFIED_LIVE; protected dispatch remains DENY",
+    "registered_windows_session": "no fresh registry/session evidence available to this task",
+    "installed_binary_version_and_provenance": "unknown; the SPEC-205 review candidate remains pending owner authorization and installation acceptance",
+    "fresh_capabilities_and_codex_readiness": "not evidenced",
+    "workspace_and_source_binding": "not evidenced",
+    "remote_source_trust": "owner approval/issuer verification remains unresolved",
+    "explicit_job_authorization_and_budget": "not evidenced",
+    "evidence_storage_and_independent_verifier_access": "synthetic fixture only; production authority not evidenced",
+    "shortest_nonproduction_path": [
+      "obtain owner authorization for the existing unsigned Windows review build at the exact merged Runner SHA",
+      "install and accept that candidate on the authorized Windows host without disturbing the active installation",
+      "capture fresh session, binary provenance, capability/Codex acknowledgement, workspace/source binding, and verifier-access evidence",
+      "bind the non-production job to an explicit grant, approval, bounded budget reservation, and evidence-retention policy",
+      "re-evaluate protected dispatch; keep it DENY until each authoritative binding passes"
+    ]
+  },
+  "production_migration_applied": false,
+  "production_readiness": "NOT_ESTABLISHED"
+}
