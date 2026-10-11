@@ -76,6 +76,7 @@ function approvalContinuation(input: ComputerUseBrowserInput): ApprovalContinuat
     || !requiredContinuationText(value.runnerSessionId, "SESSION_ID")
     || !requiredContinuationText(value.capabilitySnapshotId, "CAPABILITY_SNAPSHOT_ID")
     || !requiredContinuationText(value.capabilitySnapshotRevision, "CAPABILITY_SNAPSHOT_REVISION")
+    || typeof fencingVersion !== "number"
     || !Number.isSafeInteger(fencingVersion)
     || fencingVersion < 1
     || Object.keys(semanticState).length === 0
@@ -89,7 +90,7 @@ function approvalContinuation(input: ComputerUseBrowserInput): ApprovalContinuat
     runnerSessionId: value.runnerSessionId as string,
     capabilitySnapshotId: value.capabilitySnapshotId as string,
     capabilitySnapshotRevision: value.capabilitySnapshotRevision as string,
-    fencingVersion: fencingVersion as number,
+    fencingVersion,
     semanticState,
   };
 }
