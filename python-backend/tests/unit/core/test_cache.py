@@ -134,7 +134,7 @@ class TestCacheManagerKeyGeneration:
         
         assert key is not None
         assert isinstance(key, str)
-        assert len(key) == 32  # MD5 hash length
+        assert len(key) == 64  # SHA-256 digest length
     
     def test_generate_key_deterministic(self):
         """Test that key generation is deterministic"""
