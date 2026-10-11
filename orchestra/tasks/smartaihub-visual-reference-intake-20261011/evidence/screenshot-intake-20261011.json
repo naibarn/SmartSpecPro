@@ -7,12 +7,34 @@
   "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
   "merged_at": "2026-10-11T00:24:02Z",
   "checks": [
-    {"name": "Focused Vitest", "status": "PASSED", "scope": "4 files; 11 passed, 21 skipped by test-name filter"},
-    {"name": "Runner Rust unit tests", "status": "PASSED", "scope": "run_input::tests; 3 passed"},
-    {"name": "rustfmt --check", "status": "PASSED"},
-    {"name": "git diff --check", "status": "PASSED"},
-    {"name": "progressive_integration_gate", "status": "PASSED", "duration_seconds": 49},
-    {"name": "build-preview", "status": "UNVERIFIED", "detail": "GitHub workflow skipped this check"}
+    {
+      "name": "Focused Vitest",
+      "status": "PASSED",
+      "scope": "4 files; 11 passed, 21 skipped by test-name filter"
+    },
+    {
+      "name": "Runner Rust unit tests",
+      "status": "PASSED",
+      "scope": "run_input::tests; 3 passed"
+    },
+    {
+      "name": "rustfmt --check",
+      "status": "PASSED"
+    },
+    {
+      "name": "git diff --check",
+      "status": "PASSED"
+    },
+    {
+      "name": "progressive_integration_gate",
+      "status": "PASSED",
+      "duration_seconds": 49
+    },
+    {
+      "name": "build-preview",
+      "status": "UNVERIFIED",
+      "detail": "GitHub workflow skipped this check"
+    }
   ],
   "broader_test_observation": {
     "status": "FAILED",
@@ -33,5 +55,28 @@
     "Rendered viewport comparison, bounded autonomous repair, functional regression, or end-to-end Mini App acceptance"
   ],
   "acceptance": "UNVERIFIED",
-  "next_workunit": "SPEC-224_VISUAL_REFERENCE_FACTORY_ASSET_AND_BLUEPRINT_BINDING"
+  "next_workunit": "SPEC-224_VISUAL_REFERENCE_FACTORY_ASSET_AND_BLUEPRINT_BINDING",
+  "ui_rights_repair": {
+    "status": "PASSED",
+    "source_sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
+    "canonical_sha": "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/581",
+    "merged_at": "2026-10-11T00:34:07Z",
+    "change": "Image asset reuse stays disabled for unknown or third-party rights and becomes available only for user_owned/authorized rights, matching the shared schema and API validation.",
+    "focused_test": "UniversalControlPlanePanel.test.tsx -t \"stages an attached screenshot\": 1 passed on the candidate including latest main.",
+    "ci": "progressive_integration_gate passed; build-preview skipped."
+  },
+  "post_integration_checks": {
+    "canonical_sha": "5f7992fc1e562db8cd24c00e03c0273b0720c7b0",
+    "status": "PASSED",
+    "vitest": "4 files; 11 passed, 21 skipped by test-name filter",
+    "runner_rust": "run_input::tests; 3 passed",
+    "rustfmt": "PASSED",
+    "diff_check": "PASSED"
+  },
+  "security_and_runtime_dependencies": {
+    "design_runtime": "BLOCKED_BY_EXISTING_G0: no durable design-artifact owner/retention/delete/recovery/asset-reference closure is approved; no production provider adapter/credential binding/terms/egress certification exists; provider gates remain default-off. Do not add DDL or enable providers before the existing G0 obligations close.",
+    "arbitrary_url_capture": "BLOCKED_SECURITY: the existing browser capture worker is restricted to a fixed internal route and is not a DNS-pinned, redirect-safe, network-isolated arbitrary-site capture boundary.",
+    "end_to_end_acceptance": "UNVERIFIED: no authorized non-production Mini App Factory generation/render/compare/repair run has been recorded."
+  }
 }
