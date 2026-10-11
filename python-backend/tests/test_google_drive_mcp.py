@@ -285,7 +285,9 @@ async def test_get_drive_file_info_returns_metadata():
 
     assert result["name"] == "Test Doc"
     assert result["mimeType"] == "application/vnd.google-apps.document"
-    assert result["owners"][0]["emailAddress"] == "user@example.com"
+    # Owner email addresses are intentionally excluded by the security
+    # hardening contract, even if the Drive API response contains them.
+    assert "owners" not in result
 
 
 # ── Tool Registry ───────────────────────────────────────────────────────
