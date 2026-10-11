@@ -202,6 +202,15 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
       return;
     }
     if (routed.status === "executed") {
+      if (routed.result.status !== "executed") {
+        res.status(503).json({
+          error: {
+            message: "Policy-routed inference is not executable",
+            code: "POLICY_INFERENCE_NOT_EXECUTABLE",
+          },
+        });
+        return;
+      }
       const execution = routed.result.execution;
       if (execution.status === "completed") {
         const data = execution.response as Record<string, any> | null;
@@ -471,6 +480,9 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
       res.setHeader("Connection", "keep-alive");
       if (routed.status === "blocked") {
         res.write(`event: error\ndata: ${JSON.stringify({ error: "Policy-routed inference is unavailable", code: routed.reason, statusCode: 503 })}\n\n`);
+      } else if (routed.result.status !== "executed") {
+        res.status(503);
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "Policy-routed inference is not executable", code: "POLICY_INFERENCE_NOT_EXECUTABLE", statusCode: 503 })}\n\n`);
       } else if (routed.result.execution.status === "completed") {
         const execution = routed.result.execution;
         const response = execution.response as Record<string, any> | null;
