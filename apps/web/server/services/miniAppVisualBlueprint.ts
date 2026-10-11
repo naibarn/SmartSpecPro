@@ -42,6 +42,10 @@ const VisualBlueprintSchema = z.object({
 
 export type MiniAppVisualBlueprint = z.infer<typeof VisualBlueprintSchema>;
 
+export function parseMiniAppVisualBlueprint(value: unknown): MiniAppVisualBlueprint {
+  return VisualBlueprintSchema.parse(value);
+}
+
 export type MiniAppVisualReferenceImage = {
   id: string;
   fileName: string;

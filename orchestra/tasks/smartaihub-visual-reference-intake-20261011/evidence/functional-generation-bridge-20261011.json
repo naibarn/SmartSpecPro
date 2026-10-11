@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "workunit": "SPEC-224_VISUAL_REFERENCE_FUNCTIONAL_GENERATION_BRIDGE",
+  "status": "PARTIAL",
+  "source_sha": "9c4a89bea0bf2abacd1d0236ce35a96bc4319968",
+  "canonical_base_sha": "791139798bf7ea5cf5eab09c1f1dccb9faa35820",
+  "completed": {
+    "vision_blueprint_generated_path": "The Create Mini App factory intake now invokes the existing enabled/healthy vision-capable model selector on the exact staged screenshot bytes; successful output is schema-validated, hashed, and staged as visual-blueprint.json.",
+    "generation_binding": "The immutable blueprint and metadata are carried into the initial intake input and re-staged to downstream factory stages after integrity/schema checks; child runs preserve the blueprint metadata.",
+    "bounded_uat_contract": "The existing UAT stage receives same-viewport comparison, separate visual/functional outcomes, and a maximum of two focused repair rounds with functional regression checks. This is an execution contract only, not proof that render/repair occurred.",
+    "backward_compatibility": "The added path runs only for factory requests with image references; spec/JSON-only and non-factory paths retain their prior behavior. If no enabled vision model exists, the authorized Runner vision fallback remains available."
+  },
+  "verification": {
+    "profile": "integration",
+    "revision": "9c4a89bea0bf2abacd1d0236ce35a96bc4319968",
+    "command": "pnpm --dir apps/web exec vitest run server/routers/__tests__/spec226DevelopmentControl.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts server/services/__tests__/miniAppVisualBlueprint.test.ts server/services/miniAppFactoryPipeline.test.ts",
+    "outcome": "PASSED",
+    "test_files": 4,
+    "tests_passed": 26,
+    "diff_check": "PASSED",
+    "note": "Dependencies were temporarily symlinked from the shared checkout for this scoped test and those symlinks were removed afterward. No full typecheck/build was run."
+  },
+  "acceptance": {
+    "VISION_BLUEPRINT_GENERATED": "CODE_IMPLEMENTED; actual provider response UNVERIFIED because no local database or configured model/provider environment was available.",
+    "FUNCTIONAL_APP_GENERATED": "UNVERIFIED",
+    "BROWSER_RENDER_PASSED": "UNVERIFIED",
+    "VISUAL_COMPARE_PASSED": "UNVERIFIED",
+    "BOUNDED_REPAIR_VERIFIED": "UNVERIFIED",
+    "FUNCTIONAL_UAT_PASSED": "UNVERIFIED",
+    "ISOLATED_E2E_PASSED": "UNVERIFIED; no isolated app runtime or provider execution was available.",
+    "LIVE_E2E_PASSED": "BLOCKED"
+  },
+  "runner_readiness": {
+    "runner_id": "local-runner",
+    "version": "0.2.23",
+    "protocol_compatibility": "PASS_PROTOCOL_COMPATIBLE",
+    "ready_tool_count": 0,
+    "codex_cli": "codex-cli 0.160.0; local login reports logged in using ChatGPT, but Runner auth remains UNKNOWN",
+    "codex": { "install": "ready", "auth": "unknown", "availability": "unknown", "health": "unknown", "trust": "discovered", "reason": "probe_required", "authorization_evidence_ref": null, "probe_evidence_ref": null },
+    "browser": { "install": "ready", "auth": "unknown", "availability": "unknown", "health": "unknown", "trust": "discovered", "reason": "probe_required", "authorization_evidence_ref": null, "probe_evidence_ref": null },
+    "classification": {
+      "VERSION": "PASS_PROTOCOL_COMPATIBLE; no evidence supports a version upgrade as the fix.",
+      "AUTH": "BLOCKED_RUNNER_AUTH_UNKNOWN; local Codex login does not prove Runner auth.",
+      "TRUST": "BLOCKED_PROBE_REQUIRED; trust remains discovered.",
+      "CAPABILITY": "BLOCKED_ZERO_READY_TOOLS.",
+      "SESSION": "BLOCKED_NO_AUTHORIZED_REGISTERED_SESSION_EVIDENCE.",
+      "BROWSER": "BLOCKED_PROBE_REQUIRED; installed state is ready but health and trust are unknown."
+    }
+  },
+  "environment": {
+    "DATABASE_URL": "missing",
+    "configured_provider_credentials": "not present in the inspected OPENAI_API_KEY, ANTHROPIC_API_KEY, and GEMINI_API_KEY environment variables",
+    "live_or_isolated_runtime": "not available for this acceptance run"
+  },
+  "not_run": [
+    "No actual Vision provider request, screenshot-derived app generation, browser screenshot, visual diff, repair, or functional UAT was executed.",
+    "No Runner rescan, authentication probe, trust mutation, or dispatch was attempted; the discovered local profile did not establish an owner-authorized non-production session."
+  ],
+  "next_action": "Promote this tested bridge checkpoint, then continue isolated runtime provisioning only through an already-authorized environment/provider. For live acceptance, obtain a non-production identity and complete the existing Runner auth/probe/trust/session flow, then run the full worker_jobs-to-receipt path.",
+  "next_workunit": "SPEC-224_VISUAL_REFERENCE_ISOLATED_GENERATION_AND_LIVE_RUNNER_RECOVERY"
+}

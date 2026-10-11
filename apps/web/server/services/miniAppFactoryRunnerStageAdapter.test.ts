@@ -179,7 +179,7 @@ describe("Mini App Factory trusted Runner stage adapter", () => {
     expect(analyzeVisualReferences.mock.calls[0]![0].references[0]).toMatchObject({ id: "shot-1", contentBase64: imageBase64, pageHint: "Dashboard", stateHint: "empty", viewportHint: "desktop" });
     expect(stagedFiles.map(file => file.path)).toEqual(expect.arrayContaining(["mini-app-factory-stage.json", "visual-reference-manifest.json", "design-references/screen.png", "design-references/flow.mp4", "visual-blueprint.json"]));
     expect(JSON.parse(Buffer.from(stagedFiles.find(file => file.path === "mini-app-factory-stage.json")!.contentBase64, "base64").toString("utf8"))).toMatchObject({ visualBlueprintRequired: true, visualBlueprintDigest: "e".repeat(64), visualBlueprintModelId: "enabled-vision-model", visualBlueprintOutputPath: "visual-blueprint.json" });
-    expect(createRun.mock.calls[0]![0].run.goal).toContain("schema-validated visual-blueprint.json");
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("immutable staged visual-blueprint.json");
   });
 
   it("adds bounded visual comparison and repair to the existing UAT stage when references exist", async () => {
@@ -214,5 +214,59 @@ describe("Mini App Factory trusted Runner stage adapter", () => {
     expect(createRun.mock.calls[0]![0].run.goal).toContain("per-viewport visual comparison report");
     expect(createRun.mock.calls[0]![0].run.goal).toContain("at most two focused repair rounds");
     expect(createRun.mock.calls[0]![0].run.goal).toContain("report UNVERIFIED");
+  });
+
+  it("re-stages the same integrity-bound blueprint for downstream generation stages", async () => {
+    const parent = makeParent();
+    const blueprint = {
+      schemaVersion: "mini-app-visual-blueprint.v1",
+      summary: "Settings overview",
+      pages: [{ page: "Settings", referenceIds: ["shot"], layout: "Sidebar and form", hierarchy: ["Title", "Form"], components: [] }],
+      designTokens: [], responsiveTargets: [], confidence: 0.8,
+    };
+    const blueprintBytes = Buffer.from(JSON.stringify(blueprint));
+    const blueprintBase64 = blueprintBytes.toString("base64");
+    const blueprintSha = createHash("sha256").update(blueprintBytes).digest("hex");
+    parent.metadata = {
+      ...parent.metadata,
+      spec224Input: { inputSourceRef: "source-ref", inputDigest: "d".repeat(64) },
+      spec224VisualBlueprint: { schemaVersion: "mini-app-visual-blueprint.v1", sha256: blueprintSha, modelId: "enabled/vision", inputDigest: "e".repeat(64) },
+    };
+    const image = Buffer.from("reference image");
+    const manifest = { schemaVersion: "spec224-visual-reference-manifest.v1", trust: "untrusted-visual-evidence", references: [{ id: "shot", filePath: "design-references/page.png", fileName: "page.png", mimeType: "image/png", sha256: createHash("sha256").update(image).digest("hex") }] };
+    const stagedPaths: string[] = [];
+    const createRun = vi.fn(async (value: any) => ({ run: { ...value.run, workerJobId: "child-job-id" }, jobRef: { jobId: "child-job-id", created: true } }));
+
+    await createMiniAppFactoryRunnerStage({
+      pipeline,
+      stage: { id: "ui_implementation", dependsOn: ["spec_compile"], inputs: ["appSpec", "visualBlueprint"], outputs: ["appSource"] },
+      run: { runId: parent.runId, tenantId: parent.tenantId, actorId: parent.actorId },
+      service: { get: async () => ({ run: parent, revision: 4, events: [] }) } as any,
+      controlPlane: { getContext: async () => ({ jobType: "external_agent_task", input: { manifest: parentManifest() } }) } as any,
+      getBoundSource: vi.fn(async () => ({ files: [
+        { path: "visual-reference-manifest.json", contentBase64: Buffer.from(JSON.stringify(manifest)).toString("base64") },
+        { path: "design-references/page.png", contentBase64: image.toString("base64") },
+        { path: "visual-blueprint.json", contentBase64: blueprintBase64 },
+      ] })) as any,
+      analyzeVisualReferences: vi.fn() as any,
+      stageInput: async files => {
+        stagedPaths.push(...files.map(file => file.path));
+        const received = files.find(file => file.path === "visual-blueprint.json");
+        expect(received?.contentBase64).toBe(blueprintBase64);
+        return { inputSourceRef: "child-source", inputDigest: "f".repeat(64), totalBytes: 100 };
+      },
+      createRun: createRun as any,
+      bindInput: vi.fn(async () => true) as any,
+    });
+
+    expect(stagedPaths).toContain("visual-blueprint.json");
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("apply the immutable staged visual-blueprint.json");
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("page mapping, layout, components, design tokens, and responsive targets");
+    expect(createRun.mock.calls[0]![0].run.metadata.spec224VisualBlueprint).toEqual({
+      schemaVersion: "mini-app-visual-blueprint.v1",
+      sha256: blueprintSha,
+      modelId: "enabled/vision",
+      inputDigest: "e".repeat(64),
+    });
   });
 });

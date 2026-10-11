@@ -41,6 +41,12 @@ describe("Mini App Factory pipeline evaluator", () => {
       pipelineId: pipeline.pipelineId,
       stages: pipeline.stages,
     });
+    expect(pipeline.stages.find(stage => stage.id === "requirements_intake")?.inputs).toContain("visualReferences");
+    expect(pipeline.stages.find(stage => stage.id === "spec_compile")?.inputs).toContain("visualBlueprint");
+    expect(pipeline.stages.find(stage => stage.id === "ui_implementation")?.outputs).toContain("responsiveUI");
+    expect(pipeline.stages.find(stage => stage.id === "uat")?.outputs).toEqual(expect.arrayContaining([
+      "visualComparison", "visualRepairEvidence", "functionalRegressionEvidence",
+    ]));
   });
 
   it("production worker composition uses the trusted Runner adapter and disables synthetic execution", async () => {
