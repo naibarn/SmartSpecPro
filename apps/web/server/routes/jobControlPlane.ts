@@ -81,6 +81,7 @@ const callbackSchema = z.object({
   occurredAt: z.string().datetime({ offset: true }),
   tenantId: z.string().trim().min(1).max(36).optional(),
   jobId: z.string().trim().min(1).max(36).optional(),
+  businessAttempt: z.number().int().positive().optional(),
   payload: z.record(z.unknown()),
 }).refine(value => Boolean(value.providerEventId) !== Boolean(value.replayKey), { message: "Callback requires exactly one replay identity" });
 

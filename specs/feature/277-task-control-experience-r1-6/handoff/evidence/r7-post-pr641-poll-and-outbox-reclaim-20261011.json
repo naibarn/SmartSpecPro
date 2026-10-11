@@ -2,7 +2,7 @@
   "schema_version": 1,
   "spec_id": "277",
   "workunit": "R7 post-PR-641 provider polling and outbox publisher lease-reclaim acceptance",
-  "observed_at": "2026-10-11T05:00:27Z",
+  "observed_at": "2026-10-11T05:04:28Z",
   "environment": {
     "node": "v22.22.3",
     "pnpm": "10.4.1",
@@ -101,6 +101,44 @@
         "passed_tests": 4
       },
       "residual": "External transport dedupe under response loss, durable receipts, and full SPEC-277 acceptance remain open."
+    },
+    {
+      "kind": "R7_POST_PR646_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+      "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamStaleOutbox.integration.test.ts server/services/__tests__/autoTeamRunMutationFence.integration.test.ts server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/autoTeamRecoveryUsefulWork.integration.test.ts server/services/__tests__/autoTeamRecoveryNoProgress.integration.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts server/services/__tests__/providerSchedulerService.test.ts server/services/__tests__/autoTeamProviderPollPersistence.integration.test.ts server/services/__tests__/jobOutboxPublisher.test.ts server/services/__tests__/autoTeamOutboxPublisherReclaim.integration.test.ts",
+      "scope": "Latest-main regression after PR #646 for stale outbox settlement, TeamRun fencing, callback persistence, recovery, Task Control continuity, provider scheduler/polling, and publisher lease reclaim.",
+      "started_at": "2026-10-11T05:03:35Z",
+      "finished_at": "2026-10-11T05:04:22Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS",
+      "tests": {
+        "files": 10,
+        "passed_files": 10,
+        "tests": 17,
+        "passed_tests": 17
+      }
+    },
+    {
+      "kind": "R7_PROVIDER_CALLBACK_STALE_ATTEMPT_POST_PR646_CANDIDATE",
+      "source_sha": "31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c",
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/648",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/jobControlPlane.test.ts server/routes/jobControlPlane.ready.test.ts",
+      "scope": "After merging current main f76f60a02d03ac52498d5290e9981cc19ba9755e into the candidate, the callback integration races an attempt 1 callback with a concurrent retry to attempt 2 and verifies rejected job-bound evidence with no lifecycle mutation.",
+      "started_at": "2026-10-11T05:03:00Z",
+      "finished_at": "2026-10-11T05:03:05Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS_PARTIAL_ACCEPTANCE",
+      "tests": {
+        "files": 3,
+        "passed_files": 3,
+        "tests": 76,
+        "passed_tests": 76
+      },
+      "residual": "Callbacks omitting businessAttempt remain compatible and cannot be correlated to an attempt; durable receipt authority and full SPEC-277 acceptance remain open."
     }
   ],
   "next_ready_workunit": "Promote the stale outbox publisher lease-reclaim fix after its integration gate passes; then continue direct acceptance for late provider callback attempt correlation and pending receipt/outbox consistency. Keep SPEC-277 PARTIAL."

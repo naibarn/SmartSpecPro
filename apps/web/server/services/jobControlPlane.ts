@@ -73,6 +73,7 @@ export function leaseDurationMs(executionClass: string): number {
 }
 export type TxRepo = {
   findJob(jobId: string): Promise<WorkerJob | null>;
+  findJobForUpdate?(jobId: string): Promise<WorkerJob | null>;
   findByIdempotency(
     tenantId: string,
     idempotencyKey: string
@@ -582,6 +583,17 @@ function buildDefaultRepository(): JobControlPlaneRepository {
             const query = tx as any;
             const repo: TxRepo = {
               async findJob(jobId) {
+                const [row] = await query
+                  .select()
+                  .from(workerJobs)
+                  .where(eq(workerJobs.id, jobId))
+                  .limit(1);
+                return row ?? null;
+              },
+              async findJobForUpdate(jobId) {
+                await query.execute(
+                  sql`SELECT "id" FROM "worker_jobs" WHERE "id" = ${jobId} FOR UPDATE`
+                );
                 const [row] = await query
                   .select()
                   .from(workerJobs)
@@ -1825,6 +1837,14 @@ export async function recordAuthenticatedJobCallback(
       "CALLBACK_INVALID",
       "Callback adapter namespace is invalid"
     );
+  if (
+    input.businessAttempt !== undefined &&
+    (!Number.isSafeInteger(input.businessAttempt) || input.businessAttempt < 1)
+  )
+    throw new JobControlPlaneError(
+      "CALLBACK_INVALID",
+      "Callback business attempt is invalid"
+    );
   const providerEventId = input.providerEventId?.trim() || undefined;
   const replayKey = input.replayKey?.trim() || undefined;
   const callbackKey = providerEventId || replayKey;
@@ -1869,21 +1889,31 @@ export async function recordAuthenticatedJobCallback(
         callbackIdempotencyKey: `${input.adapterNamespace}:${callbackKey}`,
       };
 
-    const job = input.jobId ? await repo.findJob(input.jobId) : null;
-    const correlated = Boolean(
+    const job = input.jobId
+      ? await (repo.findJobForUpdate?.(input.jobId) ?? repo.findJob(input.jobId))
+      : null;
+    const jobTenantCorrelated = Boolean(
       job && (!input.tenantId || job.tenantId === input.tenantId)
     );
+    const attemptCorrelated =
+      input.businessAttempt === undefined || job?.attempt === input.businessAttempt;
+    const correlated = jobTenantCorrelated && attemptCorrelated;
     const disposition = correlated ? "accepted" : "rejected";
     const inserted = await repo.insertCallback({
       id: randomUUID(),
       adapterNamespace: input.adapterNamespace,
       providerEventId: providerEventId ?? null,
       replayKey: replayKey ?? null,
-      tenantId: correlated ? (job?.tenantId ?? null) : (input.tenantId ?? null),
-      workerJobId: correlated ? (job?.id ?? null) : null,
+      tenantId: jobTenantCorrelated ? (job?.tenantId ?? null) : (input.tenantId ?? null),
+      workerJobId: jobTenantCorrelated ? (job?.id ?? null) : null,
       signatureVerified: true,
       disposition,
-      payloadJson: redactJobPayload(input.payload) as Record<string, unknown>,
+      payloadJson: redactJobPayload({
+        ...input.payload,
+        ...(input.businessAttempt === undefined
+          ? {}
+          : { callbackBusinessAttempt: input.businessAttempt }),
+      }) as Record<string, unknown>,
       occurredAt,
       observedAt: new Date(),
     });
@@ -1901,7 +1931,7 @@ export async function recordAuthenticatedJobCallback(
         callbackIdempotencyKey: `${input.adapterNamespace}:${callbackKey}`,
       };
     }
-    if (job && correlated) {
+    if (job && jobTenantCorrelated) {
       await repo.insertEvent({
         workerJobId: job.id,
         eventType:
@@ -1913,7 +1943,16 @@ export async function recordAuthenticatedJobCallback(
           input.adapterNamespace,
           callbackKey
         ),
-        payloadJson: { adapterNamespace: input.adapterNamespace, disposition },
+        payloadJson: {
+          adapterNamespace: input.adapterNamespace,
+          disposition,
+          ...(input.businessAttempt === undefined
+            ? {}
+            : { callbackBusinessAttempt: input.businessAttempt }),
+          ...(input.businessAttempt !== undefined && !attemptCorrelated
+            ? { currentBusinessAttempt: job.attempt }
+            : {}),
+        },
       });
     }
     return {
