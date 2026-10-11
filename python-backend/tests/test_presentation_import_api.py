@@ -9,14 +9,14 @@ Uses httpx.AsyncClient + ASGITransport. Celery tasks and DB are mocked.
 Auth bypassed via FastAPI dependency_overrides.
 """
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, ASGITransport
 
-from app.main import app
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.core.auth import get_current_user
+from app.main import app
 from app.services.presentation_importer import ImportResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,53 +68,46 @@ class TestStartImportEndpoint:
         """Valid PPTX request enqueues task and returns 202 + task_id."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with (
-                patch("app.api.v1.presentation_import.CELERY_ENABLED", True),
-                patch("app.api.v1.presentation_import.import_presentation_task") as mock_task,
-            ):
-                mock_task.apply_async.return_value = MagicMock(id="celery-task-uuid-001")
+            with patch("app.api.v1.presentation_import.dispatch_python_task", return_value=MagicMock(id="job-001")) as dispatch:
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
                         "/api/v1/presentation-import/start",
                         json=_VALID_PPTX_PAYLOAD,
                     )
+                dispatch.assert_called_once()
+                assert dispatch.call_args.kwargs["queue"] == "presentation_import"
+                assert dispatch.call_args.kwargs["idempotency_key"] == "presentation-import:tenant-test:42"
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 202
-        assert response.json()["task_id"] == "celery-task-uuid-001"
+        assert response.json()["task_id"] == "job-001"
 
     async def test_valid_gslides_request_enqueues_task(self):
         """Valid Google Slides request enqueues task and returns 202 + task_id."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with (
-                patch("app.api.v1.presentation_import.CELERY_ENABLED", True),
-                patch("app.api.v1.presentation_import.import_presentation_task") as mock_task,
-            ):
-                mock_task.apply_async.return_value = MagicMock(id="celery-task-uuid-002")
+            with patch("app.api.v1.presentation_import.dispatch_python_task", return_value=MagicMock(id="job-002")) as dispatch:
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
                         "/api/v1/presentation-import/start",
                         json=_VALID_GSLIDES_PAYLOAD,
                     )
+                dispatch.assert_called_once()
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 202
-        assert response.json()["task_id"] == "celery-task-uuid-002"
+        assert response.json()["task_id"] == "job-002"
 
     async def test_mismatched_user_id_returns_403(self):
         """Request body user_id that doesn't match auth user returns 403."""
         app.dependency_overrides[get_current_user] = _override_auth(user_id=1, tenant_id="tenant-test")
         try:
             payload = {**_VALID_PPTX_PAYLOAD, "user_id": 999}  # 999 != current_user.id (1)
-            with (
-                patch("app.api.v1.presentation_import.CELERY_ENABLED", True),
-                patch("app.api.v1.presentation_import.import_presentation_task"),
-            ):
+            with patch("app.api.v1.presentation_import.dispatch_python_task") as dispatch:
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post("/api/v1/presentation-import/start", json=payload)
@@ -122,16 +115,14 @@ class TestStartImportEndpoint:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 403
+        dispatch.assert_not_called()
 
     async def test_mismatched_tenant_id_returns_403(self):
         """Request body tenant_id that doesn't match auth tenant returns 403."""
         app.dependency_overrides[get_current_user] = _override_auth(user_id=1, tenant_id="tenant-test")
         try:
             payload = {**_VALID_PPTX_PAYLOAD, "tenant_id": "tenant-other"}  # mismatch
-            with (
-                patch("app.api.v1.presentation_import.CELERY_ENABLED", True),
-                patch("app.api.v1.presentation_import.import_presentation_task"),
-            ):
+            with patch("app.api.v1.presentation_import.dispatch_python_task") as dispatch:
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post("/api/v1/presentation-import/start", json=payload)
@@ -139,6 +130,7 @@ class TestStartImportEndpoint:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 403
+        dispatch.assert_not_called()
 
     async def test_pptx_missing_source_library_item_id_returns_422(self):
         """PPTX import without source_library_item_id returns 422."""
@@ -179,15 +171,15 @@ class TestStartImportEndpoint:
 
         assert response.status_code == 422
 
-    async def test_unauthenticated_request_returns_403(self):
-        """Request without auth header returns 403."""
+    async def test_unauthenticated_request_returns_401(self):
+        """Request without auth header is rejected before task dispatch."""
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/presentation-import/start",
                 json=_VALID_PPTX_PAYLOAD,
             )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 @pytest.mark.integration
@@ -267,11 +259,11 @@ class TestStatusEndpoint:
         assert response.status_code == 404
 
     async def test_status_requires_authentication(self):
-        """Unauthenticated status request returns 403."""
+        """Unauthenticated status request returns the auth dependency's 401."""
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/presentation-import/status/42")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 @pytest.mark.integration
@@ -538,7 +530,7 @@ class TestImportPresentationTask:
 
     async def test_slides_json_over_8mb_is_truncated_with_fidelity_warning(self):
         """Slides JSON exceeding 8MB is truncated and a warning is appended."""
-        from app.tasks.presentation_import_tasks import _import_async, _SLIDES_JSON_MAX_BYTES
+        from app.tasks.presentation_import_tasks import _SLIDES_JSON_MAX_BYTES, _import_async
 
         # Create slides where total JSON > 8MB but 1 slide < 8MB
         big_element = {"type": "text", "content": "x" * 100_000}
@@ -718,7 +710,7 @@ class TestTruncateSlides:
 
     def test_truncates_to_fit_within_limit(self):
         """Binary search truncates slides to fit within 8MB limit."""
-        from app.tasks.presentation_import_tasks import _truncate_slides, _SLIDES_JSON_MAX_BYTES
+        from app.tasks.presentation_import_tasks import _SLIDES_JSON_MAX_BYTES, _truncate_slides
 
         big_slide = {"content": "x" * 100_000}
         n = (_SLIDES_JSON_MAX_BYTES // len(json.dumps(big_slide))) + 10
@@ -732,7 +724,7 @@ class TestTruncateSlides:
 
     def test_preserves_at_least_one_slide_when_possible(self):
         """If one slide fits, at least one slide is kept."""
-        from app.tasks.presentation_import_tasks import _truncate_slides, _SLIDES_JSON_MAX_BYTES
+        from app.tasks.presentation_import_tasks import _truncate_slides
 
         small_slide = {"content": "hello"}
         slides = [small_slide] * 5
