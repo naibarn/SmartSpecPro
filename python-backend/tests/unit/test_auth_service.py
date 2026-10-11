@@ -171,26 +171,25 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_reset_password_success(self, auth_service, mock_db):
         """Test resetting password"""
-        with patch.object(auth_service, "verify_password_reset_token", return_value="user_123"), \
-             patch("app.services.auth_service.get_password_hash", return_value="new_hash"), \
+        with patch("app.services.auth_service.get_password_hash", return_value="new_hash"), \
              patch.object(auth_service, "logout_all_sessions"):
             
             # Mock User lookup
             user_mock = User(id="user_123")
             
             # Mock Token lookup
-            token_mock = PasswordResetToken()
+            token_mock = PasswordResetToken(
+                user_id="user_123",
+                expires_at=datetime.utcnow() + timedelta(hours=1),
+            )
             
             # Configure db execute side effects
-            # 1. User lookup -> returns user
-            # 2. Token lookup -> returns token
+            mock_result_token = MagicMock()
+            mock_result_token.scalar_one_or_none.return_value = token_mock
             mock_result_user = MagicMock()
             mock_result_user.scalar_one_or_none.return_value = user_mock
             
-            mock_result_token = MagicMock()
-            mock_result_token.scalar_one_or_none.return_value = token_mock
-            
-            mock_db.execute.side_effect = [mock_result_user, mock_result_token]
+            mock_db.execute.side_effect = [mock_result_token, mock_result_user]
             
             result = await auth_service.reset_password("token", "new_pass")
             
