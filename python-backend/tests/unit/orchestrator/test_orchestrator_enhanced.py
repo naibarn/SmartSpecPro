@@ -291,14 +291,21 @@ class TestMiddlewareIntegration:
         """Test rate limiter check function."""
         from app.core.security import RateLimiter
         
-        limiter = RateLimiter(max_requests=5, window_seconds=60)
+        limiter = RateLimiter(
+            max_requests_anonymous=5,
+            max_requests_authenticated=5,
+            window_seconds=60,
+            burst_multiplier=1.0,
+        )
         
         # First 5 requests should pass
         for _ in range(5):
-            assert limiter.check_rate_limit("test_client") is True
-        
+            allowed, _ = limiter.check_rate_limit("test_client")
+            assert allowed is True
+
         # 6th request should fail
-        assert limiter.check_rate_limit("test_client") is False
+        allowed, _ = limiter.check_rate_limit("test_client")
+        assert allowed is False
     
     def test_security_headers_middleware_import(self):
         """Test security headers middleware can be imported."""
