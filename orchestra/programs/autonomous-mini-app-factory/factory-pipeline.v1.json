@@ -20,7 +20,7 @@
     "Deployment, runtime health, acceptance, and production readiness remain separate states."
   ],
   "stages": [
-    { "id": "requirements_intake", "dependsOn": [], "inputs": ["requirements"], "outputs": ["requirementSet", "acceptanceCriteria", "visualBlueprint"], "gate": "requirements have an authoritative source and a bounded app scope" },
+    { "id": "requirements_intake", "dependsOn": [], "inputs": ["requirements", "visualReferences"], "outputs": ["requirementSet", "acceptanceCriteria", "visualBlueprint"], "gate": "requirements have an authoritative source and a bounded app scope" },
     { "id": "spec_compile", "dependsOn": ["requirements_intake"], "inputs": ["requirementSet", "acceptanceCriteria", "visualBlueprint"], "outputs": ["appSpec", "traceabilityMap"], "gate": "the app slice is traceable to its source requirements and explicit non-goals" },
     { "id": "plan", "dependsOn": ["spec_compile"], "inputs": ["appSpec", "target", "capabilities"], "outputs": ["workPlan", "dependencyGraph"], "gate": "work scopes, dependencies, validation, and non-production constraints are explicit" },
     { "id": "manifest_validate", "dependsOn": ["plan"], "inputs": ["manifest"], "outputs": ["validatedManifest", "contractReport"], "gate": "all required fields and capability declarations are valid" },
@@ -35,7 +35,7 @@
     { "id": "deploy", "dependsOn": ["package"], "inputs": ["portableArtifact", "packageDigest", "target"], "outputs": ["deploymentReceipt", "runtimeIdentity"], "gate": "deployment consumes the recorded artifact on an isolated non-production target" },
     { "id": "migrate", "dependsOn": ["deploy", "data_migration"], "inputs": ["target", "migrationSet", "sourceRevision"], "outputs": ["migrationReceipt", "schemaEvidence"], "gate": "normal migration path records STARTED and SUCCEEDED for the declared target" },
     { "id": "smoke", "dependsOn": ["deploy", "migrate"], "inputs": ["target", "fixture", "runtimeIdentity"], "outputs": ["healthEvidence", "apiEvidence", "jobEvidence"], "gate": "authenticated API and required background behavior pass without production access" },
-    { "id": "uat", "dependsOn": ["smoke", "tests"], "inputs": ["fixture", "runtimeIdentity", "packageDigest"], "outputs": ["journeyEvidence", "isolationEvidence"], "gate": "end-to-end user and equivalent headless journeys pass across required viewports" },
+    { "id": "uat", "dependsOn": ["smoke", "tests"], "inputs": ["fixture", "runtimeIdentity", "packageDigest", "visualReferences", "visualBlueprint"], "outputs": ["journeyEvidence", "isolationEvidence", "visualComparison", "visualRepairEvidence", "functionalRegressionEvidence"], "gate": "end-to-end user and equivalent headless journeys pass across required viewports; visual evidence is reported separately from functional acceptance" },
     { "id": "evidence", "dependsOn": ["uat"], "inputs": ["contractReport", "testEvidence", "deploymentReceipt", "migrationReceipt", "journeyEvidence"], "outputs": ["handoff", "milestoneReport"], "gate": "all claims bind to exact revisions, target, artifact, and evidence freshness" },
     { "id": "recovery", "dependsOn": ["requirements_intake"], "inputs": ["sourceRevision", "target", "packageDigest"], "outputs": ["checkpoint", "resumeCapsule"], "gate": "waiting stages have a durable owner, predicate, retry policy, and next ready stage" }
   ],
