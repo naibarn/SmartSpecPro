@@ -399,7 +399,7 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    if (isSessionRevoked(user, (claims as Record<string, unknown>).iat)) {
+    if (isSessionRevoked(user, claims.iat)) {
       throw ForbiddenError("Token revoked");
     }
 
