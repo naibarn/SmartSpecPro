@@ -23,9 +23,14 @@ export type Spec224DisposableGitAcceptance = {
   retryCandidateSha: string;
   initialTestExitCode: number;
   repairedTestExitCode: number;
+  initialTestStdoutDigest: string;
+  initialTestStderrDigest: string;
+  repairedTestStdoutDigest: string;
+  repairedTestStderrDigest: string;
   diffDigest: string;
   evidenceDigest: string;
   artifactRefs: string[];
+  artifactDigests: Array<{ ref: string; sha256: string }>;
   evidenceArtifacts: Array<{ ref: string; sha256: string; contentBase64: string }>;
   verifierPid: number;
   verifierProfile: string;
@@ -262,9 +267,14 @@ export async function runSpec224DisposableGitAcceptance(scope: FixtureScope): Pr
       retryCandidateSha,
       initialTestExitCode: initial.exitCode,
       repairedTestExitCode: repaired.exitCode,
+      initialTestStdoutDigest: sha256(initial.stdout),
+      initialTestStderrDigest: sha256(initial.stderr),
+      repairedTestStdoutDigest: sha256(repaired.stdout),
+      repairedTestStderrDigest: sha256(repaired.stderr),
       diffDigest,
       evidenceDigest,
       artifactRefs,
+      artifactDigests: artifacts.map(({ ref, sha256: digest }) => ({ ref, sha256: digest })),
       evidenceArtifacts: await Promise.all(artifacts.map(async artifact => ({
         ref: artifact.ref,
         sha256: artifact.sha256,
