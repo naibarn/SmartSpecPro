@@ -149,19 +149,20 @@ class RBACService:
         self,
         role_id: str,
         updates: Dict[str, Any],
+        tenant_id: Optional[str] = None,
     ) -> Optional[Role]:
         """Update a role."""
         role = self._roles.get(role_id)
-        if not role:
+        if not role or role.tenant_id != tenant_id:
             return None
         
         if role.is_system:
             raise ValueError("Cannot modify system roles")
         
-        allowed_fields = ["name", "description", "is_default", "priority"]
+        allowed_fields = ["name", "description", "is_default", "priority", "permissions"]
         for field, value in updates.items():
             if field in allowed_fields:
-                setattr(role, field, value)
+                setattr(role, field, set(value) if field == "permissions" else value)
         
         role.updated_at = datetime.utcnow()
         
@@ -171,10 +172,14 @@ class RBACService:
         self._logger.info("role_updated", role_id=role_id)
         return role
     
-    async def delete_role(self, role_id: str) -> bool:
+    async def delete_role(
+        self,
+        role_id: str,
+        tenant_id: Optional[str] = None,
+    ) -> bool:
         """Delete a role."""
         role = self._roles.get(role_id)
-        if not role:
+        if not role or role.tenant_id != tenant_id:
             return False
         
         if role.is_system:
@@ -276,6 +281,8 @@ class RBACService:
         scope_id: Optional[str] = None,
         assigned_by: Optional[str] = None,
         expires_in_days: Optional[int] = None,
+        expires_at: Optional[datetime] = None,
+        reason: Optional[str] = None,
     ) -> RoleAssignment:
         """
         Assign a role to a user.
@@ -288,6 +295,8 @@ class RBACService:
             scope_id: Optional resource ID for scoped assignment
             assigned_by: Who assigned the role
             expires_in_days: Optional expiration
+            expires_at: Optional absolute expiration timestamp
+            reason: Optional assignment audit reason
         
         Returns:
             Role assignment
@@ -296,6 +305,8 @@ class RBACService:
         role = self._roles.get(role_id)
         if not role:
             raise ValueError(f"Role '{role_id}' not found")
+        if role.tenant_id is not None and role.tenant_id != tenant_id:
+            raise ValueError("Role is outside the requested tenant")
         
         # Check for existing assignment
         existing = await self._find_assignment(
@@ -312,9 +323,12 @@ class RBACService:
             scope_type=scope_type,
             scope_id=scope_id,
             assigned_by=assigned_by,
+            reason=reason,
         )
         
-        if expires_in_days:
+        if expires_at:
+            assignment.expires_at = expires_at
+        elif expires_in_days:
             assignment.expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
         
         self._assignments[assignment.assignment_id] = assignment
@@ -336,6 +350,56 @@ class RBACService:
         )
         
         return assignment
+
+    async def list_assignments(
+        self,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        role_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ) -> List[RoleAssignment]:
+        """List active and revoked assignments within the requested scope."""
+        assignments = []
+        for assignment in self._assignments.values():
+            if tenant_id is not None and assignment.tenant_id != tenant_id:
+                continue
+            if user_id is not None and assignment.user_id != user_id:
+                continue
+            if role_id is not None and assignment.role_id != role_id:
+                continue
+            if project_id is not None and (
+                assignment.scope_type != ResourceType.PROJECT
+                or assignment.scope_id != project_id
+            ):
+                continue
+            assignments.append(assignment)
+        return assignments
+
+    async def revoke_assignment(
+        self,
+        assignment_id: str,
+        tenant_id: Optional[str] = None,
+        revoked_by: Optional[str] = None,
+    ) -> bool:
+        """Revoke one assignment, refusing cross-tenant identifiers."""
+        assignment = self._assignments.get(assignment_id)
+        if not assignment or assignment.tenant_id != tenant_id:
+            return False
+        assignment.revoke(revoked_by)
+        self._invalidate_user_cache(assignment.user_id)
+        return True
+
+    async def list_permissions(self, resource: Optional[str] = None) -> List[Permission]:
+        """List known permissions, optionally restricted to a resource type."""
+        permissions = list(self._permissions.values())
+        if resource:
+            permissions = [
+                permission
+                for permission in permissions
+                if permission.resource_type
+                and permission.resource_type.value == resource
+            ]
+        return permissions
     
     async def revoke_role(
         self,
