@@ -4,9 +4,9 @@ Tests for Admin Alerts API
 Tests threshold checking, deduplication, and email sending.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
+
+import pytest
 
 
 @pytest.mark.unit
@@ -14,45 +14,37 @@ class TestAdminAlerts:
     """Test alert threshold checking logic."""
 
     @pytest.mark.asyncio
-    async def test_check_dedup_returns_false_without_redis(self):
-        """Dedup check returns False (not duplicate) when Redis unavailable."""
-        from app.api.admin_alerts import _check_dedup
-        result = await _check_dedup(None, "test_metric")
-        assert result is False
+    async def test_claim_dedup_returns_false_when_claim_succeeds(self):
+        """A newly claimed metric is not considered a duplicate."""
+        from app.api.admin_alerts import _claim_alert_dedup
+        with patch("app.services.postgres_ephemeral_store.claim_value", new=AsyncMock(return_value=True)) as claim:
+            assert await _claim_alert_dedup("test_metric") is False
+        claim.assert_awaited_once_with("admin_alert_dedupe", "test_metric", {"claimed": True}, 3600)
 
     @pytest.mark.asyncio
-    async def test_set_dedup_without_redis_is_noop(self):
-        """Setting dedup without Redis is a no-op (does not raise)."""
-        from app.api.admin_alerts import _set_dedup
-        await _set_dedup(None, "test_metric")  # Should not raise
+    async def test_claim_dedup_returns_true_when_key_is_already_claimed(self):
+        """An existing unexpired claim suppresses duplicate notifications."""
+        from app.api.admin_alerts import _claim_alert_dedup
+        with patch("app.services.postgres_ephemeral_store.claim_value", new=AsyncMock(return_value=False)):
+            assert await _claim_alert_dedup("error_rate_5xx") is True
 
     @pytest.mark.asyncio
-    async def test_check_dedup_returns_true_when_key_exists(self):
-        """Dedup check returns True when Redis key exists."""
-        from app.api.admin_alerts import _check_dedup
-        mock_redis = AsyncMock()
-        mock_redis.exists.return_value = 1
-        result = await _check_dedup(mock_redis, "error_rate_5xx")
-        assert result is True
-        mock_redis.exists.assert_called_once_with("alert:error_rate_5xx:sent")
+    async def test_release_dedup_allows_retry_after_delivery_failure(self):
+        """A failed delivery can release its persistent dedupe claim."""
+        from app.api.admin_alerts import _release_alert_dedup
+        with patch("app.services.postgres_ephemeral_store.delete_value", new=AsyncMock(return_value=True)) as delete:
+            await _release_alert_dedup("error_rate_5xx")
+        delete.assert_awaited_once_with("admin_alert_dedupe", "error_rate_5xx")
 
     @pytest.mark.asyncio
-    async def test_check_dedup_returns_false_when_key_missing(self):
-        """Dedup check returns False when Redis key does not exist."""
-        from app.api.admin_alerts import _check_dedup
-        mock_redis = AsyncMock()
-        mock_redis.exists.return_value = 0
-        result = await _check_dedup(mock_redis, "error_rate_5xx")
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_set_dedup_sets_key_with_ttl(self):
-        """Setting dedup creates Redis key with 1-hour TTL."""
-        from app.api.admin_alerts import _set_dedup, ALERT_DEDUP_TTL
-        mock_redis = AsyncMock()
-        await _set_dedup(mock_redis, "error_rate_5xx")
-        mock_redis.set.assert_called_once_with(
-            "alert:error_rate_5xx:sent", "1", ex=ALERT_DEDUP_TTL
+    async def test_claim_dedup_uses_one_hour_ttl(self):
+        """The persistent dedupe claim uses the configured one-hour expiry."""
+        from app.api.admin_alerts import ALERT_DEDUP_TTL, _claim_alert_dedup
+        with patch("app.services.postgres_ephemeral_store.claim_value", new=AsyncMock(return_value=True)) as claim:
+            await _claim_alert_dedup("error_rate_5xx")
+        assert ALERT_DEDUP_TTL == 3600
+        claim.assert_awaited_once_with(
+            "admin_alert_dedupe", "error_rate_5xx", {"claimed": True}, ALERT_DEDUP_TTL
         )
 
     @pytest.mark.asyncio
