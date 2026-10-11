@@ -95,7 +95,12 @@ If validate-env.sh was run and `valid == false`:
 
 **Check if user provided @file at invocation AND it's a spec file (ends with `.md`).**
 
-If NO @file was provided OR the path doesn't end with `.md`, output this and STOP:
+If no valid `@file` was supplied, first resolve the existing planning input
+from the active Orchestra task packet, canonical handoff or session config.
+If the user supplied sufficient requirements directly, persist a task-local
+planning brief and use it; do not create a duplicate normative SPEC. Ask for
+input only if neither the requirements nor their authoritative source can be
+recovered. In that case, show the following usage guidance:
 ```
 ═══════════════════════════════════════════════════════════════
 DEEP-PLAN: Spec File Required
@@ -116,7 +121,8 @@ To RESUME an existing plan:
 Example: /deep-plan @planning/my-feature-spec.md
 ═══════════════════════════════════════════════════════════════
 ```
-**Do not continue. Wait for user to re-invoke with a .md file path.**
+Continue immediately with the recovered input. A missing slash-command
+argument is not itself a user-authority boundary.
 
 ### 4. Setup Planning Session
 
@@ -148,7 +154,10 @@ This script:
 5. Returns `workflow_backend = "file_based"` when no task list is available and uses only planning-directory state
 6. If `sections/index.md` exists and task-list mode is active, also writes section tasks
 
-**If `success == false`:** The script failed validation. Display the error and stop:
+**If `success == false`:** Inspect the validation error, preserve existing
+state and repair recoverable paths/configuration automatically. Retry only
+after changing the failed input. If requirements remain unavailable or a real
+authority/safety boundary remains, show the error and exact missing input:
 ```
 ═══════════════════════════════════════════════════════════════
 DEEP-PLAN: Setup Failed
@@ -158,7 +167,8 @@ Error: {error}
 Please fix the issue and re-run: /deep-plan @path/to/your-spec.md
 ═══════════════════════════════════════════════════════════════
 ```
-**Do not continue. Wait for user to fix the issue and re-invoke.**
+Resume automatically after a safe repair; do not require the user to re-invoke
+the skill for a recoverable setup error.
 
 Common errors:
 - "Spec file not found" → User provided a path to a file that doesn't exist

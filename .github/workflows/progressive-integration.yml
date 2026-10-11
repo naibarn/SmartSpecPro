@@ -25,7 +25,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths.txt"
-          if ! rg -q '^(skills/(development-lifecycle|orchestra|integration-controller|session-finish|deep-plan|deep-implement|deep-plan-quick|deep-project)/|scripts/development-lifecycle/|\.github/workflows/progressive-integration\.yml$)' "$RUNNER_TEMP/changed-paths.txt"; then
+          if ! rg -q '^(AGENTS\.md$|skills/(brainstorming|development-lifecycle|orchestra|integration-controller|session-finish|deep-plan|deep-implement|deep-plan-quick|deep-project)/|scripts/development-lifecycle/|\.github/workflows/progressive-integration\.yml$)' "$RUNNER_TEMP/changed-paths.txt"; then
             echo "No progressive-integration policy changes; gate is not applicable."
             exit 0
           fi

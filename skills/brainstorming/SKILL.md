@@ -8,23 +8,43 @@ argument-hint: "<feature-or-idea>"
 
 This is a Codex-adapted portable skill. Tool commands use local assets under `${CODEX_HOME:-$HOME/.codex}/skills/brainstorming/tools/`. Use Codex shell/file tools such as `exec_command`, `apply_patch`, `rg`, and targeted file reads instead of platform-specific tool names. Do not assume platform-specific slash commands or browser MCP tools exist.
 
-External side effects such as deploys, pushes, tags, npm publishes, production smoke tests with credentials, or destructive fixes require explicit user confirmation immediately before execution. For read-only scans, proceed normally.
+External operations require the applicable execution authority. Reuse authority
+already granted by the user's task or session for normal protected integration;
+do not request confirmation again. Production deployment, publication and
+irreversible destructive operations retain their own required authority gates.
+
+## Implementation-ready requests
+
+When the user supplies concrete behavior, constraints and acceptance criteria,
+or asks to finish an already approved plan, use those as the accepted design.
+Briefly explain the smallest safe implementation approach and proceed directly
+to implementation and verification. Skip approval-dependent interview and
+design-review steps below unless source inspection exposes genuinely
+undecidable product outcomes or a real authority/safety boundary. Ordinary
+technical choices, scoped tests, repair and authorized progressive integration
+do not require a new human checkpoint. This mode also applies to bounded bug
+fixes with established expected behavior.
 
 # Brainstorming Ideas Into Designs
 
 Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+For unresolved product intent, start by understanding the project, then ask
+only the questions needed to resolve that choice and obtain its approval.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+For new work with unresolved product intent, resolve the product choice before
+implementation. An implementation-ready request uses the accepted design mode
+above; it does not require the user to approve the same scope again.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Size alone does not resolve product ambiguity. Use a brief design when a small
+request leaves a real product choice open. Implementation-ready requests use
+the accepted-design path without another approval round.
 
-## Checklist
+## Checklist for unresolved product intent
 
 You MUST create a task for each of these items and complete them in order:
 
@@ -73,7 +93,9 @@ digraph brainstorming {
 }
 ```
 
-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+For the unresolved-product-intent path, transition to the applicable planning
+skill after the design is accepted. The accepted-design path may transition
+directly to implementation using the existing approved plan.
 
 ## The Process
 

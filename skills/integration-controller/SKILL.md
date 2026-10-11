@@ -85,9 +85,35 @@ reviews, rulesets, and merge queues. Treat `MERGE_QUEUED_OR_PENDING` as pending,
 not integrated. Record integration only after the returned merge SHA is proven
 reachable from the configured canonical ref.
 
+The executor holds a nonblocking repository-common Git lock only for the final
+refresh/check/merge/reachability section. All worktrees on the same Linux host
+share it. A busy lock is a retry predicate, not a request for human approval.
+Across hosts, use the configured GitHub merge queue and existing coordination
+authority; a local lock does not provide cross-host fencing.
+
+For a registered external worker, supply `--workunits <ledger-export.json>`,
+`--worker-command '["<authorized-worker>", "<args>"]'`,
+`--next-worktree <new-absolute-path>`, and `--receipt <new-receipt.json>` with
+`--execute`. The ledger export uses existing `workunits`,
+`completed_workunits`, `satisfied_predicates`, and `prohibited_retries` fields;
+it is data and cannot supply executable commands. Only explicit trusted CLI
+argv authorizes the worker. The controller uses the shared lifecycle selector,
+writes the integration receipt before dispatch, releases the merge lock,
+creates a clean detached workspace at the verified canonical SHA, and invokes
+the worker there with `--workunit-id <id> --canonical-sha <sha>`.
+The worker owns implementation, required verification and subsequent normal
+promotion; its successful process exit alone does not close requirements.
+Persist the receipt through the existing canonical handoff writer. A worker
+failure preserves `MERGED` plus a separate failed continuation outcome, so
+recovery resumes the WorkUnit without repeating an already successful merge.
+
 After each verified merge, the active Orchestra conductor reconciles to that
 exact canonical SHA and selects the next ready independent WorkUnit in the
 same execution. A waiting WorkUnit does not end the run while another is ready.
+Inline conductor execution remains the default when no external worker is
+registered: immediately perform the selected WorkUnit rather than ending the
+turn with a handoff. No additional approval is needed for previously authorized
+implementation, scoped tests or protected normal promotion.
 This skill is loaded by the Codex conductor; this repository has no separate
 background scheduler that wakes a completed Codex turn. Do not claim automatic
 background dispatch or event-driven resume without evidence from a registered

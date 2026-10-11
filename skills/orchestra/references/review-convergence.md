@@ -51,8 +51,11 @@ clean rounds, except in Codex standard light mode where implementation-ready med
 finish after one clean targeted conductor review plus fresh relevant gates.
 
 If `agent-loop-policy.md` is active, also apply its `max_repair_rounds`. The effective
-maximum repair/review rounds is the lower of this table and the active loop policy. Stop
-with `loop_policy_repair_limit` when the loop policy limit is reached before convergence.
+maximum repair/review rounds for the current strategy is the lower of this table
+and the active loop policy. On `loop_policy_repair_limit`, preserve evidence,
+change strategy and continue safe in-scope closure automatically. A local
+default counter does not create a human approval requirement; explicit
+user/platform limits and real authority/safety blockers still apply.
 
 ## Material Finding
 

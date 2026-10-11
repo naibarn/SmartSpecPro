@@ -103,9 +103,13 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
             if command[:3] == ["gh", "pr", "view"] and "mergeCommit" in command[-1]:
                 return subprocess.CompletedProcess(command, 0, json.dumps({
                     "state": "MERGED", "mergeCommit": {"oid": merge_sha},
+                    "mergedAt": "2026-10-10T12:00:00Z",
                 }), "")
             if command[:3] == ["gh", "pr", "view"]:
-                return subprocess.CompletedProcess(command, 0, json.dumps(pull_request()), "")
+                return subprocess.CompletedProcess(command, 0, json.dumps(pull_request(
+                    commits=[{"committedDate": "2026-10-10T11:00:00Z"}],
+                    changedFiles=2, additions=5, deletions=1,
+                )), "")
             if command[:3] == ["gh", "pr", "checks"]:
                 return subprocess.CompletedProcess(command, 0, json.dumps([
                     {"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"},
@@ -133,6 +137,12 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
 
         self.assertEqual("MERGED", result["status"])
         self.assertEqual(merge_sha, result["merge_sha"])
+        self.assertEqual(1, result["metrics"]["branch_age_hours"])
+        self.assertEqual({"commits": 1, "files": 2, "insertions": 5, "deletions": 1},
+                         result["metrics"]["integration_delta"])
+        self.assertEqual("UNKNOWN", result["metrics"]["merge_latency_minutes"])
+        self.assertEqual({"sha": merge_sha, "status": "PENDING_POST_INTEGRATION"},
+                         result["metrics"]["main_build_health"])
         self.assertEqual(2, sum(command[:3] == ["gh", "pr", "view"] for command in commands))
         merge_command = next(command for command in commands if command[:3] == ["gh", "pr", "merge"])
         self.assertIn("--match-head-commit", merge_command)
