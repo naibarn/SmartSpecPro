@@ -1330,7 +1330,7 @@ export async function reconcileCommercialObjectReference(
       userId: actor.userId,
       seriesId: episode.seriesId,
       episodeId: episode.id,
-      objectReferenceId: object.id,
+      objectReferenceId: numberId(object.id),
       role: "commercial_object",
       source: "special_tie_in",
       reviewedSnapshot: input.reviewedSnapshot ?? {
