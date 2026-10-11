@@ -140,7 +140,7 @@ class TestLLMProxyInitialization:
 class TestLLMSelection:
     """Test LLM selection logic"""
     
-    def test_select_llm_planning_quality(self, llm_proxy):
+    def test_select_llm_planning_quality(self, mock_llm_proxy):
         """Test LLM selection for planning with quality priority"""
         request = LLMRequest(
             prompt="Test",
@@ -148,12 +148,12 @@ class TestLLMSelection:
             budget_priority="quality"
         )
         
-        provider, model = llm_proxy.select_llm(request)
+        provider, model = mock_llm_proxy.select_llm(request)
         
         # Should select a valid provider
         assert provider in ['openai', 'google', 'groq', 'anthropic', 'ollama', 'openrouter', 'zai']
     
-    def test_select_llm_code_generation_cost(self, llm_proxy):
+    def test_select_llm_code_generation_cost(self, mock_llm_proxy):
         """Test LLM selection for code generation with cost priority"""
         request = LLMRequest(
             prompt="Test",
@@ -161,18 +161,15 @@ class TestLLMSelection:
             budget_priority="cost"
         )
         
-        provider, model = llm_proxy.select_llm(request)
+        provider, model = mock_llm_proxy.select_llm(request)
         
         # Should select a valid provider
         assert provider in ['ollama', 'groq', 'google', 'anthropic', 'openai', 'openrouter', 'zai']
     
-    def test_select_llm_preferred_provider(self, llm_proxy):
+    def test_select_llm_preferred_provider(self, mock_llm_proxy):
         """Test LLM selection with user preference"""
-        # Find first enabled provider
-        enabled_providers = [p for p in llm_proxy.providers.values() if p.enabled]
-        if not enabled_providers:
-            pytest.skip("No enabled providers")
-        
+        # Injected test providers make this contract deterministic without secrets.
+        enabled_providers = [p for p in mock_llm_proxy.providers.values() if p.enabled]
         provider = enabled_providers[0]
         
         request = LLMRequest(
@@ -182,11 +179,11 @@ class TestLLMSelection:
             preferred_model=provider.models[0] if provider.models else None
         )
         
-        selected_provider, selected_model = llm_proxy.select_llm(request)
+        selected_provider, selected_model = mock_llm_proxy.select_llm(request)
         
         assert selected_provider == provider.type
     
-    def test_select_llm_analysis_quality(self, llm_proxy):
+    def test_select_llm_analysis_quality(self, mock_llm_proxy):
         """Test LLM selection for analysis with quality priority"""
         request = LLMRequest(
             prompt="Test",
@@ -194,12 +191,12 @@ class TestLLMSelection:
             budget_priority="quality"
         )
         
-        provider, model = llm_proxy.select_llm(request)
+        provider, model = mock_llm_proxy.select_llm(request)
         
         # Should select a valid provider
         assert provider in ['openai', 'google', 'groq', 'anthropic', 'ollama', 'openrouter', 'zai']
     
-    def test_select_llm_decision_speed(self, llm_proxy):
+    def test_select_llm_decision_speed(self, mock_llm_proxy):
         """Test LLM selection for decision with speed priority"""
         request = LLMRequest(
             prompt="Test",
@@ -207,12 +204,12 @@ class TestLLMSelection:
             budget_priority="speed"
         )
         
-        provider, model = llm_proxy.select_llm(request)
+        provider, model = mock_llm_proxy.select_llm(request)
         
         # Should select a valid provider
         assert provider in ['openai', 'google', 'groq', 'anthropic', 'ollama', 'openrouter', 'zai']
     
-    def test_select_llm_simple_cost(self, llm_proxy):
+    def test_select_llm_simple_cost(self, mock_llm_proxy):
         """Test LLM selection for simple with cost priority"""
         request = LLMRequest(
             prompt="Test",
@@ -220,7 +217,7 @@ class TestLLMSelection:
             budget_priority="cost"
         )
         
-        provider, model = llm_proxy.select_llm(request)
+        provider, model = mock_llm_proxy.select_llm(request)
         
         # Should select a valid provider
         assert provider in ['openai', 'google', 'groq', 'anthropic', 'ollama', 'openrouter', 'zai']
@@ -509,12 +506,12 @@ class TestBackwardCompatibility:
         """Test that LLMProviderError is a subclass of ProviderError"""
         assert issubclass(LLMProviderError, ProviderError)
     
-    def test_select_llm_alias(self, llm_proxy):
+    def test_select_llm_alias(self, mock_llm_proxy):
         """Test that select_llm is an alias for select_provider"""
         request = LLMRequest(prompt="Test", task_type="simple")
         
-        result1 = llm_proxy.select_llm(request)
-        result2 = llm_proxy.select_provider(request)
+        result1 = mock_llm_proxy.select_llm(request)
+        result2 = mock_llm_proxy.select_provider(request)
         
         # Both should return the same result
         assert result1 == result2
