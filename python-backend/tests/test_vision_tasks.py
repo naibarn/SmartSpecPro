@@ -9,6 +9,15 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+@pytest.fixture(autouse=True)
+def mock_system_settings_api_key(monkeypatch):
+    """Keep tests independent of the live system_settings table."""
+    monkeypatch.setattr(
+        "app.tasks.vision_tasks.get_google_ai_api_key",
+        AsyncMock(return_value="test-google-api-key"),
+    )
+
+
 GEMINI_VISION_RESPONSE = {
     "candidates": [
         {
@@ -117,6 +126,7 @@ class TestAnalyzeImageTaskGeminiCall:
             mock_settings.SMARTSPEC_PROXY_TOKEN = "token"
 
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -158,6 +168,7 @@ class TestAnalyzeImageTaskStoresResult:
             mock_settings.GOOGLE_API_KEY = "fake-key"
 
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -195,6 +206,7 @@ class TestAnalyzeImageTaskStatusUpdate:
             mock_settings.GOOGLE_API_KEY = "fake-key"
 
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -231,6 +243,7 @@ class TestAnalyzeImageTaskEmbeddingCall:
         with patch("app.tasks.vision_tasks.settings") as mock_settings:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -260,6 +273,7 @@ class TestAnalyzeImageTaskEmbeddingCall:
         with patch("app.tasks.vision_tasks.settings") as mock_settings:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -291,6 +305,7 @@ class TestAnalyzeImageTaskNSFW:
         with patch("app.tasks.vision_tasks.settings") as mock_settings:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -322,6 +337,7 @@ class TestAnalyzeImageTaskNSFW:
             mock_settings.GOOGLE_API_KEY = "fake-key"
 
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -380,6 +396,7 @@ class TestAnalyzeImageTaskFailure:
 
             # Should not raise — failure is handled internally
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -409,6 +426,7 @@ class TestAnalyzeImageTaskIdempotent:
             mock_settings.GOOGLE_API_KEY = "fake-key"
 
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -445,6 +463,7 @@ class TestAnalyzeImageTaskNonNSFW:
         with patch("app.tasks.vision_tasks.settings") as mock_settings:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -478,6 +497,7 @@ class TestAnalyzeImageTaskNonNSFW:
         with patch("app.tasks.vision_tasks.settings") as mock_settings:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
@@ -517,6 +537,7 @@ class TestAnalyzeImageTaskGeminiMalformed:
             mock_settings.GOOGLE_API_KEY = "fake-key"
             # Should not raise — malformed JSON is handled internally (sets status='failed')
             analyze_image_task(
+                None,
                 asset_id=1,
                 image_url="https://example.com/img.jpg",
                 tenant_id="tenant-1",
