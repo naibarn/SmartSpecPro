@@ -290,10 +290,12 @@ export function RenderPanel({
                 label={pickCopy(lang, { th: "ไม่ใช้ (OFF)", en: "OFF" })}
                 onClick={() => setDigitalWatermarkChoice("off")}
               />
-              <Text type="supporting" color={digitalWatermarkChoice === "on" ? "success" : "secondary"}>
-                {digitalWatermarkChoice === "on"
-                  ? pickCopy(lang, { th: "ON: ไฟล์สุดท้ายจะยังไม่ publish จนกว่าตรวจสอบผ่าน", en: "ON: publication waits for verification" })
-                  : pickCopy(lang, { th: "OFF: ผู้ใช้เลือกไม่ใช้ ไฟล์นี้จะถูกระบุว่า unprotected", en: "OFF: user-disabled and explicitly unprotected" })}
+              <Text type="supporting" color="secondary">
+                <span className={digitalWatermarkChoice === "on" ? "text-emerald-600" : undefined}>
+                  {digitalWatermarkChoice === "on"
+                    ? pickCopy(lang, { th: "ON: ไฟล์สุดท้ายจะยังไม่ publish จนกว่าตรวจสอบผ่าน", en: "ON: publication waits for verification" })
+                    : pickCopy(lang, { th: "OFF: ผู้ใช้เลือกไม่ใช้ ไฟล์นี้จะถูกระบุว่า unprotected", en: "OFF: user-disabled and explicitly unprotected" })}
+                </span>
               </Text>
             </HStack>
             <Link
