@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
+    "expected_canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Inspect actual provider callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from this service-level projection test alone.",
+    "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "PR #670 integrated at 2ab08d51f9a34d6d216545f4b3ede3040e05a8b7 adds synthetic SPEC-224 DevelopmentRun stage visibility to Task Control. Its evidence is recorded at specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-task-control-projection-20261011.json. No SPEC-277 requirement was promoted to PASS; broader UI/user-acceptance obligations remain open. Continue the callback producer/attempt-correlation review without inventing a producer and retain schema/ownership authorization gates.",
+    "resume_point": "PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 repairs DevelopmentRun phase persistence and Task Control projection across separately admitted worker jobs. Exact synthetic evidence is in specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-developmentrun-phase-restart-20261011.json. No SPEC-277 requirement was promoted to PASS; its callback producer/attempt-correlation review remains the next independent WorkUnit.",
     "waiting_predicate": "Provider polling, callback evidence safety, and outbox/terminal fencing now have direct native-PostgreSQL evidence. The next independent review is whether any actual producer sends callback attempt metadata. Durable receipt schema/migration waits on identified SPEC-302 owner and explicit authorization. Do not repeat primary workspace convergence while it remains dirty/stale."
   },
   "continuation_assessment": {
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 55,
+  "generation": 56,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -253,9 +253,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
+    "canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
     "integrated": true,
-    "integrated_at": "2026-10-11T06:41:09Z"
+    "integrated_at": "2026-10-11T06:57:53Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -616,7 +616,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:42:12.212012Z",
+  "updated_at": "2026-10-11T06:58:34.305025Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
