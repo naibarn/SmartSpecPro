@@ -3706,7 +3706,7 @@ function EpisodeWorkspaceShell({
     segment?: VerticalDramaShotBrollSegment,
     existing?: VerticalDramaShotBrollBinding,
     patch?: {
-      fitMode?: string;
+      fitMode?: VerticalDramaShotBrollBinding["fitMode"];
       inSeconds?: number | null;
       outSeconds?: number | null;
       displayDurationSeconds?: number | null;
@@ -3810,7 +3810,7 @@ function EpisodeWorkspaceShell({
     shotNumber: number,
     binding: VerticalDramaShotBrollBinding,
     patch: {
-      fitMode?: string;
+      fitMode?: VerticalDramaShotBrollBinding["fitMode"];
       inSeconds?: number | null;
       outSeconds?: number | null;
       displayDurationSeconds?: number | null;
@@ -6610,6 +6610,7 @@ function EpisodeWorkspaceShell({
       return next;
     });
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
+    let shouldReauthor = reauthor;
     try {
       const plan = episodeDetailQuery.data?.startFramePlan as
         | {
@@ -6650,7 +6651,7 @@ function EpisodeWorkspaceShell({
       // current synopsis/reference/location change. Preserve render-only
       // semantics for a plain manual prompt edit (`prompt_changed`) when no
       // authoritative source changed underneath it.
-      const shouldReauthor = reauthor || requiresCurrentStateRefresh;
+      shouldReauthor = reauthor || requiresCurrentStateRefresh;
 
       // The start-frame plan is a materialized snapshot. This button is
       // "สร้างพรอมต์และภาพ" — it ALWAYS re-authors the shot's prompt through

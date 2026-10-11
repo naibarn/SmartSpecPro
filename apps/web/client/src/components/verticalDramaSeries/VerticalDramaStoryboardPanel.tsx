@@ -1409,7 +1409,7 @@ interface VerticalDramaStoryboardPanelProps {
       shotNumber: number,
       binding: VerticalDramaShotBrollBinding,
       patch: {
-        fitMode?: string;
+        fitMode?: VerticalDramaShotBrollBinding["fitMode"];
         inSeconds?: number | null;
         outSeconds?: number | null;
         displayDurationSeconds?: number | null;

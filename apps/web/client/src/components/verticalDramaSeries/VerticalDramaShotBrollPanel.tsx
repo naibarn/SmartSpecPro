@@ -2,7 +2,15 @@ import { ImageIcon, Loader2, Pencil, Video } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ShotBrollTransform } from "@shared/verticalDramaSeries/visualSource";
+import {
+  VISUAL_FIT_MODES,
+  type ShotBrollTransform,
+  type VisualFitMode,
+} from "@shared/verticalDramaSeries/visualSource";
+
+function isVisualFitMode(value: string): value is VisualFitMode {
+  return VISUAL_FIT_MODES.some(mode => mode === value);
+}
 
 export type VerticalDramaShotBrollSegment = {
   segmentId: string;
@@ -37,7 +45,7 @@ export type VerticalDramaShotBrollBinding = {
   bindingId: string;
   shotNumber: number;
   order: number;
-  fitMode: string;
+  fitMode: VisualFitMode;
   active: boolean;
   status: string;
   mediaType: "image" | "video";
@@ -71,7 +79,7 @@ export interface VerticalDramaShotBrollPanelProps {
   onUpdateBinding?: (
     binding: VerticalDramaShotBrollBinding,
     patch: {
-      fitMode?: string;
+      fitMode?: VisualFitMode;
       inSeconds?: number | null;
       outSeconds?: number | null;
       displayDurationSeconds?: number | null;
@@ -107,7 +115,7 @@ function BrollTransformEditor({
   binding: VerticalDramaShotBrollBinding;
   source?: VerticalDramaShotBrollSource;
   onCommit: (patch: {
-    fitMode?: string;
+    fitMode?: VisualFitMode;
     inSeconds?: number | null;
     outSeconds?: number | null;
     displayDurationSeconds?: number | null;
@@ -120,7 +128,9 @@ function BrollTransformEditor({
     ...defaultBrollTransform,
     ...(binding.transform ?? {}),
   });
-  const [fitMode, setFitMode] = React.useState(binding.fitMode || "cover");
+  const [fitMode, setFitMode] = React.useState<VisualFitMode>(
+    binding.fitMode || "cover"
+  );
   const [inSeconds, setInSeconds] = React.useState(binding.inSeconds ?? 0);
   const [outSeconds, setOutSeconds] = React.useState(
     binding.outSeconds ?? source?.durationSeconds ?? 3,
@@ -208,8 +218,10 @@ function BrollTransformEditor({
           value={fitMode}
           disabled={disabled}
           onChange={event => {
-            setFitMode(event.target.value);
-            onCommit({ fitMode: event.target.value, transform });
+            const nextFitMode = event.target.value;
+            if (!isVisualFitMode(nextFitMode)) return;
+            setFitMode(nextFitMode);
+            onCommit({ fitMode: nextFitMode, transform });
           }}
           className="h-7 rounded border border-input bg-background px-1.5 text-xs text-foreground"
         >

@@ -452,7 +452,7 @@ export interface VerticalDramaStoryboardPanelData {
       shotNumber: number,
       binding: VerticalDramaShotBrollBinding,
       patch: {
-        fitMode?: string;
+        fitMode?: VerticalDramaShotBrollBinding["fitMode"];
         inSeconds?: number | null;
         outSeconds?: number | null;
         displayDurationSeconds?: number | null;
@@ -942,6 +942,8 @@ export interface VerticalDramaStoryboardPanelData {
   tieInDeferScheduleAtRisk?: boolean;
   /** `getEpisodeDetail.seasonTieInPlacement` (task #31, spec §7.7.2/§7.7.3) — season-plan status line, threaded straight through to `VerticalDramaStoryboardPanel`'s prop of the same name. */
   seasonTieInPlacement?: VerticalDramaSeasonTieInPlacementView | null;
+  /** Starts a tenant-scoped repair for the selected shot's audio take. */
+  onTriggerSurgicalAudioRepair?: (shotNumber: number) => void;
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
