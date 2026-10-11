@@ -132405,7 +132405,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
+      "canonical_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -132863,7 +132863,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-11T01:58:46.354041Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
+      "next_action": "Promote PR #646 after its refreshed integration gate passes, then integrate PR #648 stale-attempt callback correlation and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
