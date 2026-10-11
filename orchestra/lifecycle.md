@@ -174,10 +174,10 @@ Completion invariants:
 
 ## Active outcome: SPEC224 Mini App visual-reference intake (2026-10-11)
 
-- State: `PARTIAL_INTEGRATED`; source checkpoint `4f76b17f338e8b3f6e2f642dec0ddfd36dbfdea3` is reachable from `origin/main`.
-- Canonical WorkUnit and evidence: Spec 270 `handoff/manifest.json`, `handoff/requirement-ledger.json`; PRs #570 and #571.
-- Resume from: `IMPLEMENT`; next ready WorkUnit `SPEC-224_VISUAL_REFERENCE_CREATE_UI_AND_CAPTURE`.
-- Integrated: additive provider-neutral reference schema, rights/default-similarity validation, tenant/project asset authorization port, immutable-draft persistence, focused tests.
-- Open gap: no user-facing Create Mini App reference intake or connected capture → blueprint → render/compare → bounded repair path was found. Extend an existing authoring surface if one is present in the next canonical audit; otherwise reconcile the missing entrypoint with the Mini App Factory owner before adding a new flow.
-- Next action: inspect the current Mini App Factory and workflow authoring call paths at the latest canonical SHA, then implement multi-asset intake and connect it to the existing authorized storage and Runner/UAT authorities.
-- Acceptance remains `UNVERIFIED`; do not infer end-to-end completion from schema tests or visual similarity alone.
+- State: `PARTIAL_INTEGRATED`; PR #578 merged as `bb832db746f11db7a2bf15533ac9135634ad3db9` from tested head `6663706dc01c94c4982c62f023ffafb723e38647`.
+- Canonical WorkUnit and evidence: Spec 224/270/271/277 handoffs plus `orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json`.
+- Completed slice: the existing authorized SPEC-224 workspace panel can optionally accept up to six PNG/JPEG/WebP screenshots, page/state/viewport hints, rights/reuse choices, similarity mode, responsive targets and notes. The API validates rights and file signatures/sizes, stages immutable tenant/run-bound files plus a resumable manifest, and the existing Runner materializer admits only the safe image types. No-reference prompt and spec-set requests retain their old contract.
+- Evidence: focused Vitest 11/11 and Runner Rust tests 3/3 passed; `rustfmt --check`, `git diff --check`, and GitHub `progressive_integration_gate` passed. `build-preview` was skipped. A broader panel suite had one assertion failure in the pre-existing harness-state wording test; it was not reproduced by the focused filtered run and was not baseline-compared.
+- Still open and `UNVERIFIED`: this panel is not the Mini App Factory Create workflow; no Library asset-ID/project ACL selection, video/URL capture, visual-understanding blueprint, Design Runtime/Factory code generation, rendered viewport comparison, bounded repair, or functional UAT evidence is connected. No end-to-end Mini App generation is claimed.
+- Next ready WorkUnit: `SPEC-224_VISUAL_REFERENCE_FACTORY_ASSET_AND_BLUEPRINT_BINDING`. Audit the current Factory owner and bind the existing authorized asset authority and provider-neutral design runtime; then add safe URL/video acquisition and UAT compare/repair as separate evidence-backed slices. Never bypass SPEC-224 dispatch authorization or run arbitrary-site capture without a DNS-pinned, isolated browser path.
+- Preserve the separate active Windows Runner capability/authorization handoff in SPEC-224; this visual-reference checkpoint does not satisfy or replace that authorization gate.

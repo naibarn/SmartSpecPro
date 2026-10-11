@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
+    "expected_canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
     "expected_spec_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 36,
+  "generation": 37,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -1084,7 +1084,8 @@
   "implementation": {
     "checkpoint_shas": [
       "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
-      "76d88dd7e9c81f6a8a244074463e1a850410769b"
+      "76d88dd7e9c81f6a8a244074463e1a850410769b",
+      "bb832db746f11db7a2bf15533ac9135634ad3db9"
     ],
     "mapping": [
       {
@@ -1119,6 +1120,21 @@
           "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts"
         ],
         "source_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19"
+      },
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "coverage": "PARTIAL; screenshot intake only; Factory generation and visual acceptance remain open",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "PR #578 integrates optional screenshot intake into the existing authorized SPEC-224 Runner workspace flow. Focused Vitest passed 11/11, Runner Rust tests 3/3, rustfmt/diff checks and progressive_integration_gate passed. The slice stores a tenant/run-bound manifest and safe image files. It does not implement Mini App Factory generation, URL/video acquisition, visual blueprinting, render/compare/repair, or end-to-end acceptance; acceptance remains UNVERIFIED.",
+        "source_paths": [
+          "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/spec224VisualReferenceIntake.ts",
+          "apps/web/server/services/spec224RunnerInputStaging.ts",
+          "apps/runner-app/src/run_input.rs",
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json"
+        ],
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647"
       }
     ],
     "source_paths": [
@@ -1131,16 +1147,21 @@
       "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
       "apps/web/server/jobs/workspaceAuthorityGithub.ts",
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
-      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts"
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts",
+      "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
+      "apps/web/server/routers/spec226DevelopmentControl.ts",
+      "apps/web/server/services/spec224VisualReferenceIntake.ts",
+      "apps/web/server/services/spec224RunnerInputStaging.ts",
+      "apps/runner-app/src/run_input.rs"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
+    "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
     "integrated": true,
-    "integrated_at": "2026-10-10T09:37:07Z"
+    "integrated_at": "2026-10-11T00:24:02Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3428,7 +3449,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T09:42:55.605865Z",
+  "updated_at": "2026-10-11T00:25:42.444235Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3474,13 +3495,22 @@
         "scope": "Focused test-name filter on exact source SHA d47d551d705603070893af7b50f481f3495ec1e2: 5 tests passed for lease exclusivity, capability-incompatible paging, bounded scan, and compatible work dispatch without head-of-line blocking. Mock-backed unit evidence only; no isolated database, crash/restart, or lease-expiration live scenario.",
         "source_sha": "d47d551d705603070893af7b50f481f3495ec1e2",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "kind": "SPEC224_VISUAL_REFERENCE_SCREENSHOT_INTAKE_PARTIAL",
+        "path": "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "PR #578 integrates optional screenshot intake into the existing authorized SPEC-224 Runner workspace flow. Focused Vitest passed 11/11, Runner Rust tests 3/3, rustfmt/diff checks and progressive_integration_gate passed. The slice stores a tenant/run-bound manifest and safe image files. It does not implement Mini App Factory generation, URL/video acquisition, visual blueprinting, render/compare/repair, or end-to-end acceptance; acceptance remains UNVERIFIED.",
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "d47d551d705603070893af7b50f481f3495ec1e2",
+    "sha": "6663706dc01c94c4982c62f023ffafb723e38647",
     "status": "PARTIAL",
     "task_regressions": []
   }

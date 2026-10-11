@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -138,6 +138,13 @@
         "scope": "WP2A requires authorization and enforces scope; production tenant/project policy adapter remains open. Oracle decision and artifact references now require exact run/attempt/scenario/schema/environment identity.",
         "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "status": "PARTIAL"
+      },
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "Cross-spec impact review for PR #578: no SPEC-271 UAT harness, render comparison, repair receipt, or functional regression was connected or exercised. Visual acceptance remains UNVERIFIED; existing WP2B receipt/persistence work remains the next work unit.",
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+        "status": "UNVERIFIED"
       }
     ],
     "source_paths": [
@@ -915,7 +922,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:15:20.334987Z",
+  "updated_at": "2026-10-11T00:25:42.536440Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1025,6 +1032,15 @@
         "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: combined focused security and acceptance run: 21 files / 261 tests passed; includes SPEC-271 receipt/oracle and SPEC-224 synthetic DevelopmentRun/final verification contracts. No direct T-01–T-23 memory acceptance, real runner restart, remote trust, or protected dispatch.",
         "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+        "kind": "SPEC224_VISUAL_REFERENCE_UAT_IMPACT_REVIEW",
+        "path": "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+        "scope": "The screenshot intake tests are not visual UAT; no rendered app, comparison, repair, or functional regression evidence exists.",
+        "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+        "status": "UNVERIFIED"
       }
     ],
     "freshness": "FRESH",

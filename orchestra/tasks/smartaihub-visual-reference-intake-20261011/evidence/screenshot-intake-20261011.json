@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "task": "SPEC-224_VISUAL_REFERENCE_CREATE_UI_AND_CAPTURE",
+  "status": "PARTIAL_INTEGRATED",
+  "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+  "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/578",
+  "merged_at": "2026-10-11T00:24:02Z",
+  "checks": [
+    {"name": "Focused Vitest", "status": "PASSED", "scope": "4 files; 11 passed, 21 skipped by test-name filter"},
+    {"name": "Runner Rust unit tests", "status": "PASSED", "scope": "run_input::tests; 3 passed"},
+    {"name": "rustfmt --check", "status": "PASSED"},
+    {"name": "git diff --check", "status": "PASSED"},
+    {"name": "progressive_integration_gate", "status": "PASSED", "duration_seconds": 49},
+    {"name": "build-preview", "status": "UNVERIFIED", "detail": "GitHub workflow skipped this check"}
+  ],
+  "broader_test_observation": {
+    "status": "FAILED",
+    "scope": "Unfiltered UniversalControlPlanePanel.test.tsx run had one assertion failure in the harness-state wording test (expected Thai wording). The filtered screenshot-intake test passed; baseline was not compared, so this is not classified as pre-existing."
+  },
+  "implemented": [
+    "Optional multi-image screenshot intake in the existing authorized SPEC-224 workspace panel",
+    "Page/state/viewport hints, ownership/reuse rights, similarity mode, responsive targets, and design notes",
+    "Server-side schema, rights, signature, duplicate-ID, filename, and size validation",
+    "Tenant/run-bound immutable image staging and a resumable reference manifest",
+    "Safe PNG/JPEG/WebP Runner materialization with existing path and integrity controls",
+    "Legacy no-reference prompt and spec-set request compatibility"
+  ],
+  "not_implemented_or_verified": [
+    "Mini App Factory Create workflow integration and Library asset-ID/project ACL selection",
+    "Video intake and safe website URL capture",
+    "Visual analysis/blueprint integration with the Design Runtime and Factory code generation",
+    "Rendered viewport comparison, bounded autonomous repair, functional regression, or end-to-end Mini App acceptance"
+  ],
+  "acceptance": "UNVERIFIED",
+  "next_workunit": "SPEC-224_VISUAL_REFERENCE_FACTORY_ASSET_AND_BLUEPRINT_BINDING"
+}
