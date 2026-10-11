@@ -136,6 +136,29 @@ type AdminModelListCandidate = {
   configJson?: Record<string, unknown> | null;
 };
 
+type PublicMediaModelRow = Pick<
+  typeof mediaModels.$inferSelect,
+  | "id"
+  | "modelId"
+  | "name"
+  | "description"
+  | "modelType"
+  | "provider"
+  | "creditCost"
+  | "aspectRatios"
+  | "sizes"
+  | "durations"
+  | "voices"
+  | "thinkingModeDefault"
+  | "thinkingModes"
+  | "priority"
+  | "configJson"
+>;
+type PublicMediaProviderRow = Pick<
+  typeof mediaProviders.$inferSelect,
+  "providerName" | "isEnabled"
+>;
+
 const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
 
 function getProviderReadiness(provider: MediaProviderStatusRow | undefined): {
@@ -1144,7 +1167,11 @@ export const mediaModelsRouter = router({
           );
         }
 
-        const [models, providerRows, connectedMcpProviderKeys] = await Promise.all([
+        const [models, providerRows, connectedMcpProviderKeys]: [
+          PublicMediaModelRow[],
+          PublicMediaProviderRow[],
+          Set<string>,
+        ] = await Promise.all([
           db
             .select({
               id: mediaModels.id,
