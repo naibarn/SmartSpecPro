@@ -9,7 +9,7 @@ fi
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="${MINI_APP_PGVECTOR_IMAGE:-pgvector/pgvector:pg15}"
 CONTAINER="miniapp-authenticated-pgvector-$$"
-RUNTIME_DIR="$(mktemp -d /tmp/miniapp-pgvector-runtime.XXXXXX)"
+RUNTIME_DIR="$(mktemp -d "${TMPDIR:-/tmp}/miniapp-pgvector-runtime.XXXXXX")"
 PORT=""
 PASSED=0
 
