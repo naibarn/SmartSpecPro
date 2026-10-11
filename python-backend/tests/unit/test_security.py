@@ -18,7 +18,12 @@ def validator():
 @pytest.fixture
 def rate_limiter():
     """Create rate limiter"""
-    return RateLimiter(max_requests=5, window_seconds=60)
+    return RateLimiter(
+        max_requests_anonymous=5,
+        max_requests_authenticated=5,
+        window_seconds=60,
+        burst_multiplier=1,
+    )
 
 
 # SecurityValidator Tests
@@ -170,7 +175,8 @@ def test_sanitize_llm_output(validator):
 def test_rate_limiter_allow(rate_limiter):
     """Test rate limiter allows requests under limit"""
     for i in range(5):
-        assert rate_limiter.check_rate_limit("user1") is True
+        allowed, _ = rate_limiter.check_rate_limit("user1")
+        assert allowed is True
 
 
 def test_rate_limiter_block(rate_limiter):
@@ -178,9 +184,10 @@ def test_rate_limiter_block(rate_limiter):
     # Use up the limit
     for i in range(5):
         rate_limiter.check_rate_limit("user2")
-    
+
     # Next request should be blocked
-    assert rate_limiter.check_rate_limit("user2") is False
+    allowed, _ = rate_limiter.check_rate_limit("user2")
+    assert allowed is False
 
 
 def test_rate_limiter_separate_keys(rate_limiter):
@@ -188,9 +195,10 @@ def test_rate_limiter_separate_keys(rate_limiter):
     # User 1 uses up limit
     for i in range(5):
         rate_limiter.check_rate_limit("user1")
-    
+
     # User 2 should still be allowed
-    assert rate_limiter.check_rate_limit("user2") is True
+    allowed, _ = rate_limiter.check_rate_limit("user2")
+    assert allowed is True
 
 
 def test_rate_limiter_reset(rate_limiter):
@@ -201,6 +209,7 @@ def test_rate_limiter_reset(rate_limiter):
     
     # Reset
     rate_limiter.reset("user1")
-    
+
     # Should be allowed again
-    assert rate_limiter.check_rate_limit("user1") is True
+    allowed, _ = rate_limiter.check_rate_limit("user1")
+    assert allowed is True
