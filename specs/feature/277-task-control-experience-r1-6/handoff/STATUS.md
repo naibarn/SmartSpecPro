@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 431 unresolved of 431
-- Next action: Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.
-- Manifest generation: 42
+- Next action: Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.
+- Manifest generation: 43

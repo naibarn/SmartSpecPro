@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "spec_id": "277",
+  "workunit": "R7 post-PR-632 verification and TeamRun-to-Task-Control identity acceptance",
+  "observed_at": "2026-10-11T04:32:16Z",
+  "environment": {
+    "node": "v22.22.3",
+    "pnpm": "10.4.1",
+    "install": "pnpm install --filter @smartspec/web... --frozen-lockfile --offline; 1630 packages linked, 1626 reused from the pnpm store, no tracked manifest or lockfile changes",
+    "missing_workspace_artifact_repair": "pnpm --filter @smartspec/remotion-render build generated the ignored dist entrypoints needed by workerRuntime imports",
+    "postgres": "Each integration test created and deleted its own owner-marked PostgreSQL cluster, bound to 127.0.0.1 on an ephemeral port; inherited DATABASE_URL was unset and rejected by the test. Host PostgreSQL was not used.",
+    "resource_observation": "Focused tests ran with one Vitest worker. No per-process memory sample was collected; no OOM, signal, or resource interruption occurred."
+  },
+  "checks": [
+    {
+      "kind": "R7_PR_632_EXACT_MERGE_ACCEPTANCE",
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/632",
+      "source_sha": "c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamStaleOutbox.integration.test.ts",
+      "scope": "Exact merged PR #632 stale retry-outbox and terminal-settlement rejection acceptance",
+      "started_at": "2026-10-11T04:26:58+00:00",
+      "finished_at": "2026-10-11T04:27:03+00:00",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS",
+      "tests": { "files": 1, "passed_files": 1, "tests": 1, "passed_tests": 1 }
+    },
+    {
+      "kind": "R7_LATEST_MAIN_FOCUSED_REGRESSION",
+      "source_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamStaleOutbox.integration.test.ts server/services/__tests__/autoTeamRunMutationFence.integration.test.ts server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/autoTeamRecoveryUsefulWork.integration.test.ts server/services/__tests__/autoTeamRecoveryNoProgress.integration.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts",
+      "scope": "Stale outbox, TeamRun mutation fencing, provider callback persistence boundary, useful-work recovery, no-progress suppression, and Task Control lease continuity",
+      "started_at": "2026-10-11T04:27:43+00:00",
+      "finished_at": "2026-10-11T04:28:24.890+00:00",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS",
+      "tests": { "files": 6, "passed_files": 6, "tests": 6, "passed_tests": 6 }
+    },
+    {
+      "kind": "R7_TEAMRUN_TASK_CONTROL_IDENTITY_ACCEPTANCE",
+      "source_sha": "93ef923eed95c13e8181b85b340b757b8e1c0bda",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/taskControlLeaseContinuity.integration.test.ts",
+      "scope": "A persisted TeamRun ID is passed through the production external-dispatch projection into worker_jobs.workflowRunId and remains the Task Control group identity through worker interruption, lease reclaim, retry, provider wait/resume, final Verify, and authorized readback.",
+      "started_at": "2026-10-11T04:32:00+00:00",
+      "finished_at": "2026-10-11T04:32:09.020+00:00",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS_PARTIAL_ACCEPTANCE",
+      "tests": { "files": 1, "passed_files": 1, "tests": 1, "passed_tests": 1 },
+      "residual": "This proves the TeamRun-to-Task-Control logical group identity for the tested external connector dispatch path. It does not cover every AutoTeam job producer or complete SPEC-277 acceptance."
+    },
+    {
+      "kind": "R7_TEST_ENVIRONMENT_SETUP_ATTEMPT",
+      "source_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
+      "profile": "integration",
+      "scope": "Initial latest-main focused run before building @smartspec/remotion-render",
+      "outcome": "ENVIRONMENT_BLOCKED_NOT_PRODUCT_FAILURE",
+      "detail": "Three worker-based suites could not import the workspace package because its generated dist/remotionRenderVideoSchema.js was absent. Built the declared workspace package from the frozen lockfile, then reran the complete focused set successfully."
+    }
+  ],
+  "next_ready_workunit": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code."
+}

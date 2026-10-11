@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+    "expected_canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
-    "next_ready_workunit": "R7-A1 residual: inventory provider-result/poll artifact persistence and outbox/cancellation mutations; add stale-generation acceptance at the real durable write boundary. Then bind a stable AutoTeam TeamRun identity to Task Control and prove retry/provider-wait/recovery/final-verify readback.",
+    "next_action": "Continue direct provider poll/result and cancellation-versus-completion acceptance. Keep SPEC-277 PARTIAL until all applicable durable mutation boundaries and full Task Control acceptance are proven.",
+    "next_ready_workunit": "R7-A1 continuation: prove provider poll result persistence and cancellation competing with completion/reclaim in disposable PostgreSQL; first reproduce a durable-boundary defect, then repair only if reproduced.",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Canonical main is ed660aece65261f47200ea991473a8bbf83eda39. PR #623 fences timer-driven async media pipeline advancement through the recovery evaluator; PR #626 revalidates the exact lease after protected DB mutation and proves expiry rollback with disposable PostgreSQL. PRs #607/#608 retain useful-work/no-progress evidence and #611 retains worker-job Task Control continuity. Provider callback/outbox/cancellation effects and TeamRun-to-Task-ID linkage remain open.",
+    "resume_point": "Latest observed origin/main is 15b890f9bb334cc01cc83d7c80e68cc48d04e2d7. Exact PR #632 merged-SHA test passed 1/1 at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b; six focused PostgreSQL suites passed 6/6 on 15b890f9bb334cc01cc83d7c80e68cc48d04e2d7. Candidate 93ef923eed95c13e8181b85b340b757b8e1c0bda directly ties the TeamRun ID through the production dispatch projection to the Task Control workflow group across interruption, retry, provider wait/resume, and final Verify. Continue with provider poll-result and cancellation/reclaim acceptance; durable receipt authority boundaries remain gated.",
     "waiting_predicate": "Provider callback/outbox/cancellation acceptance and TeamRun-to-Task-Control binding are runnable from canonical main. Only durable receipt schema/migration work waits for an accountable schema owner and explicit approval; all existing dirty historical worktrees remain preserved."
   },
   "continuation_assessment": {
@@ -95,10 +95,18 @@
         "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
         "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "kind": "R7_TEAMRUN_TASK_CONTROL_IDENTITY_CANDIDATE_ACCEPTANCE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr632-and-task-control-linkage-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/632",
+        "scope": "Candidate exact source passes direct TeamRun-to-Task-Control group identity acceptance. Awaiting protected integration.",
+        "source_sha": "93ef923eed95c13e8181b85b340b757b8e1c0bda",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
-    "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
-    "rationale": "Canonical main now has post-merge focused evidence at 38e73d24dbd6db077565f11fe50942ab35e9010f: 4 suites / 40 tests passed, including repeated process-level reclaim races and commit-time lease-expiry rollback. Timer-driven media advancement uses the fenced recovery evaluator. Provider-result/callback/outbox/cancellation races and TeamRun-to-Task-Control binding remain unproven; full Spec and deployment acceptance remain open.",
+    "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
+    "rationale": "Exact PR #632 merge acceptance passed at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b, the six-file disposable-PostgreSQL regression set passed on latest canonical main 15b890f9bb334cc01cc83d7c80e68cc48d04e2d7, and candidate 93ef923eed95c13e8181b85b340b757b8e1c0bda passed direct TeamRun-to-Task-Control group identity continuity. Provider poll/result persistence, callback attempt binding, cancellation/reclaim races, other AutoTeam producer paths, and full SPEC-277 acceptance remain open.",
     "residual_requirements": [
       "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
       "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -134,7 +142,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 42,
+  "generation": 43,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -201,9 +209,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+    "canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
     "integrated": true,
-    "integrated_at": "2026-10-11T03:40:46Z"
+    "integrated_at": "2026-10-11T11:24:43+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -287,10 +295,18 @@
           "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
           "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
           "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "kind": "R7_TEAMRUN_TASK_CONTROL_IDENTITY_CANDIDATE_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr632-and-task-control-linkage-20261011.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/632",
+          "scope": "Candidate exact source passes direct TeamRun-to-Task-Control group identity acceptance. Awaiting protected integration.",
+          "source_sha": "93ef923eed95c13e8181b85b340b757b8e1c0bda",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
         }
       ],
-      "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
-      "rationale": "Canonical main now has post-merge focused evidence at 38e73d24dbd6db077565f11fe50942ab35e9010f: 4 suites / 40 tests passed, including repeated process-level reclaim races and commit-time lease-expiry rollback. Timer-driven media advancement uses the fenced recovery evaluator. Provider-result/callback/outbox/cancellation races and TeamRun-to-Task-Control binding remain unproven; full Spec and deployment acceptance remain open.",
+      "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
+      "rationale": "Exact PR #632 merge acceptance passed at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b, the six-file disposable-PostgreSQL regression set passed on latest canonical main 15b890f9bb334cc01cc83d7c80e68cc48d04e2d7, and candidate 93ef923eed95c13e8181b85b340b757b8e1c0bda passed direct TeamRun-to-Task-Control group identity continuity. Provider poll/result persistence, callback attempt binding, cancellation/reclaim races, other AutoTeam producer paths, and full SPEC-277 acceptance remain open.",
       "residual_requirements": [
         "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
         "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -512,7 +528,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T03:44:02.367933Z",
+  "updated_at": "2026-10-11T04:33:41.005226Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -626,6 +642,15 @@
         "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
         "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
+        "kind": "R7_POST_PR632_AND_TASK_CONTROL_CONTINUITY_ACCEPTANCE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr632-and-task-control-linkage-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/632",
+        "scope": "Exact PR #632 merged-SHA acceptance passed 1/1; latest canonical main focused PostgreSQL acceptance passed 6 files / 6 tests; TeamRun-to-Task-Control identity acceptance passed on the candidate and proves the production dispatch projection plus user-visible workflow group continuity for the external connector path.",
+        "source_sha": "93ef923eed95c13e8181b85b340b757b8e1c0bda",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "PARTIAL",
@@ -633,7 +658,7 @@
       "quick",
       "integration"
     ],
-    "sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+    "sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
     "status": "PARTIAL",
     "task_regressions": []
   }

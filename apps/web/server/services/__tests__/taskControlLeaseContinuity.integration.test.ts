@@ -36,6 +36,7 @@ describe("Task Control worker lease continuity", () => {
     const userId = 2701;
     const jobId = randomUUID();
     const workflowRunId = randomUUID();
+    const roomId = randomUUID();
     const workers = new Set<ReturnType<typeof spawn>>();
     const childEnv = {
       ...process.env,
@@ -112,6 +113,39 @@ describe("Task Control worker lease continuity", () => {
       await fixture.assertOwned();
       await installSpec277AutoTeamRuntimeSchema(client);
       await client.unsafe(
+        `INSERT INTO team_rooms (
+          id, "tenantId", "teamId", "orchestratorUserId", "roomType", title
+        ) VALUES ($1, $2, 'team-r7-task-control', $3, 'auto_team', 'Task Control continuity')`,
+        [roomId, tenantId, userId]
+      );
+      await client.unsafe(
+        `INSERT INTO team_runs (
+          id, "roomId", "teamId", "initiatedByUserId", "executionMode", status, "startedAt"
+        ) VALUES ($1, $2, 'team-r7-task-control', $3, 'auto_team', 'running', now())`,
+        [workflowRunId, roomId, userId]
+      );
+      const { buildExternalConnectorDispatchJobInput } = await import("../runEngine");
+      const dispatchInput = buildExternalConnectorDispatchJobInput({
+        tenantId,
+        run: {
+          id: workflowRunId,
+          roomId,
+          teamId: "team-r7-task-control",
+          initiatedByUserId: userId,
+        },
+        candidate: {
+          workItemId: "work-item-r7-task-control",
+          externalWorkerId: "worker-r7-task-control",
+          runtimeType: "hermes_agent_gateway",
+          memberId: "member-r7-task-control",
+          title: "Continue task",
+          objective: "Persist Task Control continuity",
+          status: "in_progress",
+          threadRootMessageId: null,
+        },
+      });
+      expect(dispatchInput.workflowRunId).toBe(workflowRunId);
+      await client.unsafe(
         `INSERT INTO worker_jobs (
           id, "tenantId", "requestedByUserId", "runtimeType", "workflowRunId", "jobType", status,
           "executionClass", "contractVersion", "inputJson", "instructionsJson", "retryPolicyJson",
@@ -126,8 +160,11 @@ describe("Task Control worker lease continuity", () => {
           jobId,
           tenantId,
           userId,
-          workflowRunId,
-          JSON.stringify({ logicalTaskId: `task-${jobId}` }),
+          dispatchInput.workflowRunId,
+          JSON.stringify({
+            ...dispatchInput.inputJson,
+            logicalTaskId: `task-${jobId}`,
+          }),
         ]
       );
 
