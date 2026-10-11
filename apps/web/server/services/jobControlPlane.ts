@@ -1808,6 +1808,13 @@ export type RecordJobCallbackResult = {
   originalDisposition?: "accepted" | "rejected";
 };
 
+const TERMINAL_CALLBACK_JOB_STATES = new Set([
+  "succeeded",
+  "failed",
+  "cancelled",
+  "expired",
+]);
+
 function callbackReplayWindowMs(): number {
   const configured = Number(
     process.env.FEATURE_186_CALLBACK_REPLAY_WINDOW_SECONDS
@@ -1895,9 +1902,23 @@ export async function recordAuthenticatedJobCallback(
     const jobTenantCorrelated = Boolean(
       job && (!input.tenantId || job.tenantId === input.tenantId)
     );
+    const missingAttemptAfterRetry =
+      input.businessAttempt === undefined &&
+      job !== null &&
+      job.attempt > 1;
     const attemptCorrelated =
-      input.businessAttempt === undefined || job?.attempt === input.businessAttempt;
-    const correlated = jobTenantCorrelated && attemptCorrelated;
+      input.businessAttempt === undefined
+        ? !missingAttemptAfterRetry
+        : job?.attempt === input.businessAttempt;
+    const terminalJob = Boolean(
+      job && TERMINAL_CALLBACK_JOB_STATES.has(job.status)
+    );
+    const correlated = jobTenantCorrelated && attemptCorrelated && !terminalJob;
+    const callbackCorrelationReason = terminalJob
+      ? "job_already_terminal"
+      : missingAttemptAfterRetry
+        ? "business_attempt_missing_after_retry"
+        : undefined;
     const disposition = correlated ? "accepted" : "rejected";
     const inserted = await repo.insertCallback({
       id: randomUUID(),
@@ -1913,6 +1934,7 @@ export async function recordAuthenticatedJobCallback(
         ...(input.businessAttempt === undefined
           ? {}
           : { callbackBusinessAttempt: input.businessAttempt }),
+        ...(callbackCorrelationReason ? { callbackCorrelationReason } : {}),
       }) as Record<string, unknown>,
       occurredAt,
       observedAt: new Date(),
@@ -1951,6 +1973,12 @@ export async function recordAuthenticatedJobCallback(
             : { callbackBusinessAttempt: input.businessAttempt }),
           ...(input.businessAttempt !== undefined && !attemptCorrelated
             ? { currentBusinessAttempt: job.attempt }
+            : {}),
+          ...(callbackCorrelationReason
+            ? {
+                ...(job ? { currentBusinessAttempt: job.attempt } : {}),
+                callbackCorrelationReason,
+              }
             : {}),
         },
       });
