@@ -15,12 +15,14 @@ def mock_settings(monkeypatch):
 def test_auth_headers(mock_settings):
     headers = web_gateway._auth_headers("test-trace")
     assert headers["x-trace-id"] == "test-trace"
-    assert headers["Authorization"] == "Bearer test-token"
+    assert headers["x-internal-token"] == "test-token"
+    assert "Authorization" not in headers
 
 def test_auth_headers_no_token(monkeypatch):
     monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None)
     headers = web_gateway._auth_headers("test-trace")
     assert "Authorization" not in headers
+    assert "x-internal-token" not in headers
 
 def test_base_urls(mock_settings):
     base, mcp = web_gateway._base_urls()
@@ -103,6 +105,7 @@ async def test_forward_chat_json(mock_settings):
 @pytest.mark.asyncio
 async def test_forward_chat_stream(mock_settings):
     mock_client = MagicMock()
+    mock_client.__aenter__.return_value = mock_client
     mock_resp = MagicMock()
     mock_resp.aiter_bytes.return_value = [b"chunk1", b"chunk2"]
     
