@@ -142,6 +142,46 @@ class LLMGateway:
         self.credit_service = CreditService(db)
         self.web_gateway = get_gateway_client()
 
+    async def get_user_balance(self, user: User) -> Dict[str, Any]:
+        """Return the authenticated user's credit balance and transaction stats."""
+        balance_credits = await self.credit_service.get_balance(user.id)
+        balance_usd = await self.credit_service.get_balance_usd(user.id)
+        stats = await self.credit_service.get_transaction_stats(user.id)
+        return {
+            "balance_credits": balance_credits,
+            "balance_usd": float(balance_usd),
+            "stats": stats,
+        }
+
+    async def get_available_models(self) -> Dict[str, Any]:
+        """Return provider availability and the gateway's recommended model matrix."""
+        recommended_models: Dict[str, Dict[str, str]] = {}
+        for (task_type, priority), model in MODEL_MATRIX.items():
+            recommended_models.setdefault(task_type, {})[priority] = model
+
+        direct_providers = self.unified_client.direct_providers
+        if isinstance(direct_providers, dict):
+            provider_availability = {
+                name: bool(client) for name, client in direct_providers.items()
+            }
+        else:
+            provider_availability = {name: True for name in direct_providers}
+
+        return {
+            "openrouter": {
+                "enabled": self.unified_client.openrouter_client is not None,
+                "models": "420+",
+                "features": [
+                    "Load balancing",
+                    "Automatic fallbacks",
+                    "Privacy controls (ZDR)",
+                    "Cost controls",
+                ],
+            },
+            "direct_providers": provider_availability,
+            "recommended_models": recommended_models,
+        }
+
     @staticmethod
     def _normalize_model_id(model: Optional[str]) -> str:
         if not model:

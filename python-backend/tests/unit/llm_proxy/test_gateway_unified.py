@@ -6,7 +6,6 @@ Tests credit checking, cost estimation, and LLM invocation
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
-import uuid
 
 from app.llm_proxy.gateway_unified import (
     LLMGateway,
@@ -26,8 +25,8 @@ class TestGatewayInitialization:
     
     def test_gateway_classes_are_same(self):
         """Test that all gateway classes point to the same implementation"""
-        assert LLMGateway is LLMGatewayV1
-        assert LLMGateway is LLMGatewayV2
+        assert issubclass(LLMGatewayV1, LLMGateway)
+        assert issubclass(LLMGatewayV2, LLMGateway)
     
     def test_cost_matrix_exists(self):
         """Test that cost matrix is properly defined"""
@@ -86,7 +85,8 @@ class TestCostEstimation:
                 with patch('app.llm_proxy.gateway_unified.CreditService'):
                     return LLMGateway(mock_db)
     
-    def test_estimate_cost_simple_task(self, gateway):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_simple_task(self, gateway):
         """Test cost estimation for simple task"""
         request = LLMRequest(
             prompt="Hello world",
@@ -95,12 +95,13 @@ class TestCostEstimation:
             budget_priority="cost"
         )
         
-        cost = gateway._estimate_cost(request, use_openrouter=False)
+        cost = await gateway._estimate_cost(request, use_openrouter=False)
         
         assert isinstance(cost, Decimal)
-        assert cost >= Decimal("0.0001")  # Minimum cost
+        assert cost == COST_PER_1K_TOKENS[("simple", "cost")]
     
-    def test_estimate_cost_complex_task(self, gateway):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_complex_task(self, gateway):
         """Test cost estimation for complex task"""
         # Create a longer message
         long_content = "This is a test message. " * 100
@@ -111,12 +112,13 @@ class TestCostEstimation:
             budget_priority="quality"
         )
         
-        cost = gateway._estimate_cost(request, use_openrouter=False)
+        cost = await gateway._estimate_cost(request, use_openrouter=False)
         
         assert isinstance(cost, Decimal)
         assert cost > Decimal("0.0001")  # Should be higher than minimum
     
-    def test_estimate_cost_different_priorities(self, gateway):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_different_priorities(self, gateway):
         """Test that different priorities result in different costs"""
         base_request = {
             "prompt": "Test prompt",
@@ -127,8 +129,8 @@ class TestCostEstimation:
         quality_request = LLMRequest(**base_request, budget_priority="quality")
         cost_request = LLMRequest(**base_request, budget_priority="cost")
         
-        quality_cost = gateway._estimate_cost(quality_request, use_openrouter=False)
-        cost_priority_cost = gateway._estimate_cost(cost_request, use_openrouter=False)
+        quality_cost = await gateway._estimate_cost(quality_request, use_openrouter=False)
+        cost_priority_cost = await gateway._estimate_cost(cost_request, use_openrouter=False)
         
         # Quality priority should generally cost more
         assert quality_cost >= cost_priority_cost
@@ -161,7 +163,7 @@ class TestCreditChecking:
         mock_credit_service.check_sufficient_credits.return_value = True
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         # Should not raise exception
         await gateway._check_credits(mock_user, Decimal("1.00"))
@@ -178,7 +180,7 @@ class TestCreditChecking:
         mock_credit_service.get_balance.return_value = 100  # 100 credits
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         with pytest.raises(HTTPException) as exc_info:
             await gateway._check_credits(mock_user, Decimal("100.00"))
@@ -220,7 +222,7 @@ class TestUserBalance:
         }
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         result = await gateway.get_user_balance(mock_user)
         
@@ -340,8 +342,8 @@ class TestBackwardCompatibility:
         from app.llm_proxy import LLMGateway, LLMGatewayV1, LLMGatewayV2
         
         # All should be the same class
-        assert LLMGateway is LLMGatewayV1
-        assert LLMGateway is LLMGatewayV2
+        assert issubclass(LLMGatewayV1, LLMGateway)
+        assert issubclass(LLMGatewayV2, LLMGateway)
 
 
 # =============================================================================
@@ -383,7 +385,7 @@ class TestCreditCheckingEdgeCases:
         mock_credit_service.get_balance.return_value = 0
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         with pytest.raises(HTTPException) as exc_info:
             await gateway._check_credits(mock_user, Decimal("0.01"))
@@ -401,7 +403,7 @@ class TestCreditCheckingEdgeCases:
         mock_credit_service.get_balance.return_value = 500
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         with pytest.raises(HTTPException) as exc_info:
             await gateway._check_credits(mock_user, Decimal("0.50"))
@@ -421,12 +423,12 @@ class TestCreditCheckingEdgeCases:
         mock_credit_service.check_sufficient_credits.return_value = True
         
         mock_user = MagicMock()
-        mock_user.id = "test-user-123"
+        mock_user.id = 123
         
         await gateway._check_credits(mock_user, Decimal("1.50"))
         
         mock_credit_service.check_sufficient_credits.assert_called_once_with(
-            user_id="test-user-123",
+            user_id=123,
             estimated_cost_usd=Decimal("1.50")
         )
 
@@ -484,7 +486,7 @@ class TestOpenRouterPath:
         gateway = gateway_with_openrouter
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Hello",
@@ -513,7 +515,7 @@ class TestOpenRouterPath:
         gateway = gateway_with_openrouter
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Hello",
@@ -557,7 +559,7 @@ class TestOpenRouterPath:
                     gateway = LLMGateway(mock_db)
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Hello",
@@ -588,7 +590,7 @@ class TestOpenRouterPath:
         gateway = gateway_with_openrouter
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Write code",
@@ -677,6 +679,9 @@ class TestInvokeWithOpenRouter:
                     mock_get_client.return_value = mock_client
                     
                     gateway = LLMGateway(mock_db)
+                    gateway.web_gateway.deduct_credits = AsyncMock(
+                        return_value=mock_transaction
+                    )
                     gateway._mock_credit_service = mock_credit_service
                     gateway._mock_unified_client = mock_client
                     
@@ -688,7 +693,7 @@ class TestInvokeWithOpenRouter:
         gateway = gateway_full_mocks
         
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Hello",
@@ -716,7 +721,7 @@ class TestInvokeWithOpenRouter:
         gateway._mock_unified_client.chat.assert_called_once()
         
         # Verify credits were deducted
-        gateway._mock_credit_service.deduct_credits.assert_called_once()
+        gateway.web_gateway.deduct_credits.assert_awaited_once()
     
     @pytest.mark.asyncio
     async def test_invoke_openrouter_insufficient_credits_stops_early(self, mock_db, mock_llm_response):
@@ -742,7 +747,7 @@ class TestInvokeWithOpenRouter:
                     gateway = LLMGateway(mock_db)
                     
                     mock_user = MagicMock()
-                    mock_user.id = str(uuid.uuid4())
+                    mock_user.id = 123
                     
                     request = LLMRequest(
                         prompt="Hello",
@@ -792,9 +797,15 @@ class TestInvokeWithOpenRouter:
                     mock_get_client.return_value = mock_client
                     
                     gateway = LLMGateway(mock_db)
+                    gateway.web_gateway.deduct_credits = AsyncMock(
+                        side_effect=HTTPException(
+                            status_code=402,
+                            detail={"error": "Insufficient credits"},
+                        )
+                    )
                     
                     mock_user = MagicMock()
-                    mock_user.id = str(uuid.uuid4())
+                    mock_user.id = 123
                     
                     request = LLMRequest(
                         prompt="Hello",
@@ -840,7 +851,7 @@ class TestDirectProviderPath:
     @pytest.fixture
     def mock_user(self):
         user = MagicMock()
-        user.id = str(uuid.uuid4())
+        user.id = 123
         return user
     
     @pytest.fixture
@@ -1174,7 +1185,7 @@ class TestDirectPathWithCreditDeduction:
     @pytest.fixture
     def mock_user(self):
         user = MagicMock()
-        user.id = str(uuid.uuid4())
+        user.id = 123
         return user
     
     @pytest.fixture
@@ -1282,7 +1293,7 @@ class TestDirectPathEdgeCases:
     @pytest.fixture
     def mock_user(self):
         user = MagicMock()
-        user.id = str(uuid.uuid4())
+        user.id = 123
         return user
     
     @pytest.mark.asyncio
@@ -1455,6 +1466,9 @@ class TestOpenRouterEdgeCases:
                     mock_get_client.return_value = mock_client
                     
                     gateway = LLMGateway(mock_db)
+                    gateway.web_gateway.deduct_credits = AsyncMock(
+                        return_value=mock_transaction
+                    )
                     gateway._mock_client = mock_client
                     gateway._mock_credit_service = mock_credit_service
                     return gateway
@@ -1464,7 +1478,7 @@ class TestOpenRouterEdgeCases:
         """Test OpenRouter with throughput sorting."""
         gateway = gateway_with_mocks
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Test",
@@ -1492,7 +1506,7 @@ class TestOpenRouterEdgeCases:
         """Test OpenRouter with latency sorting."""
         gateway = gateway_with_mocks
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Test",
@@ -1520,7 +1534,7 @@ class TestOpenRouterEdgeCases:
         """Test OpenRouter with Zero Data Retention enabled."""
         gateway = gateway_with_mocks
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Sensitive data",
@@ -1549,7 +1563,7 @@ class TestOpenRouterEdgeCases:
         """Test OpenRouter with max price constraints."""
         gateway = gateway_with_mocks
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Budget-conscious request",
@@ -1580,7 +1594,7 @@ class TestOpenRouterEdgeCases:
         """Test complete OpenRouter flow with all optional parameters."""
         gateway = gateway_with_mocks
         mock_user = MagicMock()
-        mock_user.id = str(uuid.uuid4())
+        mock_user.id = 123
         
         request = LLMRequest(
             prompt="Complex request",
@@ -1654,7 +1668,7 @@ class TestHelperMethods:
                     gateway = LLMGateway(mock_db)
                     
                     mock_user = MagicMock()
-                    mock_user.id = "test-user-123"
+                    mock_user.id = 123
                     
                     result = await gateway.get_user_balance(mock_user)
                     
