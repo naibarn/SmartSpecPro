@@ -510,6 +510,10 @@ def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = No
             if registered["session_state"] == "ACTIVE_SESSION":
                 discovery["skipped_active"] += 1
                 continue
+            if not location.is_dir():
+                # `git worktree list` may retain prunable entries. Keep their
+                # registry evidence intact and let unrelated work continue.
+                continue
             _upsert_workspace(repo, policy, path)
             discovery["observed"] += 1
         except (OSError, sqlite3.Error, WorkspaceAuthorityError, subprocess.TimeoutExpired) as error:
@@ -540,6 +544,34 @@ def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = No
                 item["dirty"] = bool(item["dirty"])
                 item["session_state"] = _owner_state(item)
                 workspaces.append(item)
+            workspace_warnings = []
+            for item in workspaces:
+                location = Path(str(item.get("location") or ""))
+                if location.is_dir():
+                    continue
+                git_metadata_exists = bool(item.get("git_dir") and Path(str(item["git_dir"])).exists())
+                if item["session_state"] == "ACTIVE_SESSION":
+                    classification = "OWNERSHIP_CONFLICT"
+                elif not git_metadata_exists:
+                    classification = "STALE_METADATA"
+                elif item.get("recovery_linkage"):
+                    classification = "MISSING_UNVERIFIED"
+                else:
+                    classification = "MISSING_UNVERIFIED"
+                workspace_warnings.append({
+                    "workspace_id": item["workspace_id"],
+                    "classification": classification,
+                    "location": item.get("location"),
+                    "role": item.get("role"),
+                    "head_sha": item.get("head_sha"),
+                    "branch": item.get("branch"),
+                    "owner_state": item["session_state"],
+                    "last_verified_at": item.get("last_verified_at"),
+                    "git_metadata_exists": git_metadata_exists,
+                    "dirty_recorded": bool(item.get("dirty")),
+                    "dirty_state_verified": False,
+                    "recovery_linkage_present": bool(item.get("recovery_linkage")),
+                })
     except (OSError, sqlite3.Error, WorkspaceAuthorityError) as error:
         return {
             "status": "AUTHORITY_UNAVAILABLE",
@@ -557,6 +589,7 @@ def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = No
     project_data["active_sessions"] = sum(row["session_state"] == "ACTIVE_SESSION" for row in workspaces)
     project_data["convergence_receipt"] = json.loads(convergence_row[0]) if convergence_row else None
     project_data["worktree_discovery"] = discovery
+    project_data["workspace_warnings"] = workspace_warnings
     return project_data
 
 

@@ -5,6 +5,7 @@ import io
 import importlib.util
 import re
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -107,6 +108,23 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             result = authority.resolve_project_authority(self.canonical, self.policy)
         self.assertEqual(result["worktree_discovery"]["skipped_foreign_or_unregistered"], 1)
         self.assertTrue(result["worktree_discovery"]["complete"])
+
+    def test_resolver_reports_missing_registered_worktree_and_continues(self) -> None:
+        missing = self.root / "missing-task-worktree"
+        git(self.canonical, "worktree", "add", "-b", "task/missing", str(missing), "HEAD")
+        registered = authority.register_workspace(
+            self.canonical, self.policy, missing, role="TASK_WORKTREE", task_id="task-missing"
+        )
+        shutil.rmtree(missing)
+
+        result = authority.resolve_project_authority(self.canonical, self.policy)
+
+        self.assertEqual(result["worktree_discovery"]["observed"], 1)
+        self.assertTrue(result["worktree_discovery"]["complete"])
+        warning = next(item for item in result["workspace_warnings"] if item["workspace_id"] == registered["workspace_id"])
+        self.assertEqual(warning["classification"], "MISSING_UNVERIFIED")
+        self.assertFalse(warning["dirty_state_verified"])
+        self.assertTrue(any(row["workspace_id"] == registered["workspace_id"] for row in result["workspaces"]))
 
     def test_resolver_caps_linked_worktree_discovery_and_marks_partial(self) -> None:
         paths = [self.root / f"unregistered-{index}" for index in range(24)]
