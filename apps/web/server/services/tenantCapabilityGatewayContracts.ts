@@ -208,7 +208,8 @@ export function buildSafeGatewayQuery(input: Record<string, unknown>): SafeGatew
   })))
     throw new GatewayContractError("GATEWAY_QUERY_UNSAFE");
   const limit = input.limit === undefined ? 50 : input.limit;
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new GatewayContractError("GATEWAY_QUERY_LIMIT_INVALID");
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100)
+    throw new GatewayContractError("GATEWAY_QUERY_LIMIT_INVALID");
   return {
     ...(fields ? { fields: [...fields] as string[] } : {}),
     ...(filters ? { filters: structuredClone(filters) as SafeGatewayFilter[] } : {}),

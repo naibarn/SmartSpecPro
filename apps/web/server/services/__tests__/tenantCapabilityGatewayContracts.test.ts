@@ -96,6 +96,10 @@ describe("Spec 220 gateway contracts", () => {
     expect(() => buildSafeGatewayQuery({
       filters: [{ field: "authorization", operator: "raw_sql" }],
     })).toThrowError(expect.objectContaining({ code: "GATEWAY_QUERY_UNSAFE" }));
+    for (const limit of [null, "25", 0, 101, 1.5]) {
+      expect(() => buildSafeGatewayQuery({ limit }))
+        .toThrowError(expect.objectContaining({ code: "GATEWAY_QUERY_LIMIT_INVALID" }));
+    }
   });
 
   it("redacts sensitive audit values and scopes idempotency by principal", () => {
