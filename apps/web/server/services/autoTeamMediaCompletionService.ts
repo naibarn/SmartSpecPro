@@ -44,6 +44,7 @@ import {
   parseManagedMediaUrl,
   resolveUploadsManagedPath,
 } from "./managedMediaAccessService";
+import { persistAutoTeamRunMutation } from "./autoTeamRunMutationFence";
 
 const VIDEO_POLL_INTERVAL_MS = 30_000;
 const CONCAT_POLL_INTERVAL_MS = 20_000;
@@ -701,12 +702,17 @@ async function writePipeline(
     ...pipeline,
     updatedAt: new Date().toISOString(),
   };
-  await db
-    .update(teamRuns)
-    .set({
-      runtimeStateJson: sql`jsonb_set(COALESCE(${teamRuns.runtimeStateJson}, '{}'::jsonb), '{autoTeamMediaPipeline}', ${JSON.stringify(nextPipeline)}::jsonb, true)`,
-    })
-    .where(eq(teamRuns.id, run.id));
+  await persistAutoTeamRunMutation({
+    executor: db,
+    tenantId: run.tenantId,
+    runId: run.id,
+    mutate: async executor => executor
+      .update(teamRuns)
+      .set({
+        runtimeStateJson: sql`jsonb_set(COALESCE(${teamRuns.runtimeStateJson}, '{}'::jsonb), '{autoTeamMediaPipeline}', ${JSON.stringify(nextPipeline)}::jsonb, true)`,
+      })
+      .where(eq(teamRuns.id, run.id)),
+  });
 }
 
 async function failPipeline(
@@ -722,14 +728,19 @@ async function failPipeline(
   pipeline.errorMessage = safeMessage;
   await writePipeline(run, pipeline);
   if (db) {
-    await db
-      .update(teamRuns)
-      .set({
-        status: "paused",
-        stopReason: failure.reasonCode,
-        runtimeTerminalReason: failure.reasonCode.slice(0, 120),
-      })
-      .where(eq(teamRuns.id, run.id));
+    await persistAutoTeamRunMutation({
+      executor: db,
+      tenantId: run.tenantId,
+      runId: run.id,
+      mutate: async executor => executor
+        .update(teamRuns)
+        .set({
+          status: "paused",
+          stopReason: failure.reasonCode,
+          runtimeTerminalReason: failure.reasonCode.slice(0, 120),
+        })
+        .where(eq(teamRuns.id, run.id)),
+    });
   }
   const providerFailureContent: LocalizedPipelineContent =
     failure.reasonCode === "media_provider_not_configured"
@@ -1869,14 +1880,19 @@ async function pauseRunForFinalEvidenceGate(input: {
   const db = await getDb();
   const safeReason = redactSensitiveText(input.reason);
   if (db) {
-    await db
-      .update(teamRuns)
-      .set({
-        status: "paused",
-        stopReason: "auto_team_media_final_evidence_unresolved",
-        runtimeTerminalReason: "auto_team_media_final_evidence_unresolved",
-      })
-      .where(eq(teamRuns.id, input.run.id));
+    await persistAutoTeamRunMutation({
+      executor: db,
+      tenantId: input.run.tenantId,
+      runId: input.run.id,
+      mutate: async executor => executor
+        .update(teamRuns)
+        .set({
+          status: "paused",
+          stopReason: "auto_team_media_final_evidence_unresolved",
+          runtimeTerminalReason: "auto_team_media_final_evidence_unresolved",
+        })
+        .where(eq(teamRuns.id, input.run.id)),
+    });
   }
   await postPipelineMessage(
     input.pipeline,
@@ -2861,14 +2877,19 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
       const db = await getDb();
       if (db) {
         const safeReviewSummary = redactSensitiveText(review.summary);
-        await db
-          .update(teamRuns)
-          .set({
-            status: "paused",
-            stopReason: "auto_team_media_final_review_failed",
-            runtimeTerminalReason: "auto_team_media_final_review_failed",
-          })
-          .where(eq(teamRuns.id, run.id));
+        await persistAutoTeamRunMutation({
+          executor: db,
+          tenantId: run.tenantId,
+          runId: run.id,
+          mutate: async executor => executor
+            .update(teamRuns)
+            .set({
+              status: "paused",
+              stopReason: "auto_team_media_final_review_failed",
+              runtimeTerminalReason: "auto_team_media_final_review_failed",
+            })
+            .where(eq(teamRuns.id, run.id)),
+        });
       }
     }
     await postPipelineMessage(

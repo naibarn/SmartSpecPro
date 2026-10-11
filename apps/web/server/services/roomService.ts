@@ -15,6 +15,7 @@ import {
   type TeamRoomMessage,
 } from "../../drizzle/schema";
 import crypto from "crypto";
+import { persistAutoTeamRunSideEffect } from "./autoTeamRunMutationFence";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -520,27 +521,33 @@ export async function sendMessage(
     }
   }
 
-  const [message] = await db
-    .insert(teamRoomMessages)
-    .values({
-      roomId: input.roomId,
-      runId: input.runId ?? null,
-      senderType: input.senderType,
-      senderUserId: input.senderUserId ?? null,
-      senderAssistantId: input.senderAssistantId ?? null,
-      recipientType: input.recipientType,
-      recipientAssistantId: input.recipientAssistantId ?? null,
-      recipientGroupJson: input.recipientGroupJson ?? null,
-      turnType: (input.turnType as any) ?? "discussion",
-      visibility: (input.visibility as any) ?? "transparent",
-      content: input.content,
-      summaryContent: input.summaryContent ?? null,
-      artifactRefsJson: input.artifactRefsJson ?? null,
-      memoryRefsJson: input.memoryRefsJson ?? null,
-      metadataJson: input.metadataJson ?? null,
-      tokenUsageJson: input.tokenUsageJson ?? null,
-    })
-    .returning();
+  const [message] = await persistAutoTeamRunSideEffect({
+    executor: db,
+    tenantId: input.tenantId,
+    runId: input.runId,
+    mutate: async executor =>
+      executor
+        .insert(teamRoomMessages)
+        .values({
+          roomId: input.roomId,
+          runId: input.runId ?? null,
+          senderType: input.senderType,
+          senderUserId: input.senderUserId ?? null,
+          senderAssistantId: input.senderAssistantId ?? null,
+          recipientType: input.recipientType,
+          recipientAssistantId: input.recipientAssistantId ?? null,
+          recipientGroupJson: input.recipientGroupJson ?? null,
+          turnType: (input.turnType as any) ?? "discussion",
+          visibility: (input.visibility as any) ?? "transparent",
+          content: input.content,
+          summaryContent: input.summaryContent ?? null,
+          artifactRefsJson: input.artifactRefsJson ?? null,
+          memoryRefsJson: input.memoryRefsJson ?? null,
+          metadataJson: input.metadataJson ?? null,
+          tokenUsageJson: input.tokenUsageJson ?? null,
+        })
+        .returning(),
+  });
 
   // Publish to Redis pub/sub for SSE (Section 11)
   try {

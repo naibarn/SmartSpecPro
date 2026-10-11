@@ -3,8 +3,11 @@ import { getTableConfig, PgDialect, type PgTable } from "drizzle-orm/pg-core";
 import type postgres from "postgres";
 import {
   agentActivityEvents,
+  assistantProfiles,
+  agentRunSummaries,
   runSnapshots,
   teamRooms,
+  teamRoomMessages,
   teamRuns,
   workerJobAttempts,
   workerJobDispatches,
@@ -36,9 +39,12 @@ export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql) 
     workerJobDispatches,
     workerJobSettlements,
     teamRooms,
+    teamRoomMessages,
     teamRuns,
     runSnapshots,
     agentActivityEvents,
+    assistantProfiles,
+    agentRunSummaries,
   ] as PgTable[]).map(getTableConfig);
   const enums = new Map<string, string[]>();
   for (const table of configs) {
