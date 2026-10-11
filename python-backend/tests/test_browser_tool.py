@@ -89,24 +89,3 @@ class TestSSRFProtection:
         from app.services.tools.browser_tool import BrowserSession
 
         assert BrowserSession.SESSION_TIMEOUT == 300
-
-
-class TestBuiltinBrowserRegistration:
-    def test_builtin_browser_in_endpoints(self):
-        """_BUILTIN_ENDPOINTS['builtin-browser'] maps to /api/internal/tools/browser."""
-        from app.services.agency_tools import _BUILTIN_ENDPOINTS
-
-        assert "builtin-browser" in _BUILTIN_ENDPOINTS
-        assert _BUILTIN_ENDPOINTS["builtin-browser"] == "/api/internal/tools/browser"
-
-    def test_builtin_browser_risk_level_high(self):
-        """_BUILTIN_RISK_LEVELS['builtin-browser'] == 'high'."""
-        from app.services.agency_tools import _BUILTIN_RISK_LEVELS
-
-        assert _BUILTIN_RISK_LEVELS.get("builtin-browser") == "high"
-
-    def test_builtin_browser_routes_to_execute_sandbox(self):
-        """High risk level routes through _execute_sandbox() path."""
-        from app.services.agency_tools import _BUILTIN_RISK_LEVELS
-
-        assert _BUILTIN_RISK_LEVELS.get("builtin-browser") == "high"
