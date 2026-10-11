@@ -9,7 +9,7 @@ import {
   verticalDramaSeries,
   verticalDramaCharacters,
 } from "../../drizzle/schema";
-import { db } from "../db";
+import { getDb } from "../db";
 import {
   findSimilarVerticalDramaLocationCandidates,
   normalizeVerticalDramaLocationName,
@@ -32,12 +32,6 @@ export type SpecialSceneLocationCandidate = {
   score: number;
 };
 
-type SpecialSceneLocationRow = {
-  id: number;
-  locationKey: string;
-  name: string;
-};
-
 export async function findSpecialStorySceneMatches(input: {
   actor: SpecialReferenceActor;
   seriesId: number;
@@ -48,7 +42,7 @@ export async function findSpecialStorySceneMatches(input: {
 }> {
   const label = input.label.trim();
   if (!label) return { similar: [] };
-  const rows: SpecialSceneLocationRow[] = await db
+  const rows = await getDb()
     .select({
       id: verticalDramaLocations.id,
       locationKey: verticalDramaLocations.locationKey,
@@ -102,7 +96,7 @@ export async function resolveSpecialStorySceneSlotDecision(input: {
     if (!input.locationId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "A location is required when reusing a scene" });
     }
-    const [location] = await db
+    const [location] = await getDb()
       .select({ id: verticalDramaLocations.id, locationKey: verticalDramaLocations.locationKey })
       .from(verticalDramaLocations)
       .where(
@@ -166,7 +160,7 @@ export async function reconcileSpecialStorySceneSlot(input: {
     };
   }
   const locationKey = buildSpecialSceneLocationKey(input.seriesId, label);
-  const [location] = await db
+  const [location] = await getDb()
     .insert(verticalDramaLocations)
     .values({
       tenantId: input.actor.tenantId,
@@ -228,7 +222,7 @@ export async function resolveSpecialCharacterBindings(input: {
     .map(value => Number(value))
     .filter(Number.isInteger);
   if (ids.length === 0) return [];
-  const characters = await db
+  const characters = await getDb()
     .select({
       id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
@@ -251,7 +245,7 @@ export async function resolveSpecialCharacterBindings(input: {
       code: "FORBIDDEN",
       message: "One or more characters are not in this series",
     });
-  const assets = await db
+  const assets = await getDb()
     .select({
       characterId: verticalDramaCharacterAssets.characterId,
       mediaAssetId: verticalDramaCharacterAssets.mediaAssetId,
@@ -334,7 +328,7 @@ export async function assertOwnedSpecialMediaAssets(
       message: "Special references must be managed media assets",
     });
   if (ids.length === 0) return;
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: mediaAssets.id,
       status: mediaAssets.status,
@@ -349,7 +343,7 @@ export async function assertOwnedSpecialMediaAssets(
         eq(mediaAssets.userId, actor.userId)
       )
     );
-  const allowed = new Map(rows.map(row => [String(row.id), row]));
+  const allowed = new Map(rows.map(row => [String(row.id), row] as const));
   if (mediaAssetIds.some(id => !allowed.has(id)))
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -413,7 +407,7 @@ export async function materializeMarketplaceImageReference(input: {
   url: string;
   provenance: Record<string, unknown>;
 }> {
-  const [series] = await db
+  const [series] = await getDb()
     .select({ id: verticalDramaSeries.id })
     .from(verticalDramaSeries)
     .where(
@@ -443,7 +437,7 @@ export async function materializeMarketplaceImageReference(input: {
         seriesId: input.seriesId,
         mediaType: "image",
         sourceStorageKey: image.storageKey,
-        mimeType: image.mimeType ?? "image/png",
+        mimeType: "image/png",
         identity: `marketplace:${input.productId}:${input.imageId}`,
         purpose: "special-tie-in-reference",
       })
@@ -466,7 +460,7 @@ export async function materializeMarketplaceImageReference(input: {
       marketplaceProductId: input.productId,
       marketplaceImageId: input.imageId,
       imageType: image.type,
-      accessType: bundle.accessType,
+      accessType: bundle.product.accessType,
     },
   };
 }
@@ -491,7 +485,7 @@ export async function reconcileSpecialLocationSlot(input: {
     )
     .digest("hex");
   const locationKey = `special-${fingerprint.slice(0, 56)}`;
-  const [location] = await db
+  const [location] = await getDb()
     .insert(verticalDramaLocations)
     .values({
       tenantId: input.actor.tenantId,
@@ -522,7 +516,7 @@ export async function reconcileSpecialLocationSlot(input: {
       message: "Could not create Scenes slot",
     });
   for (const mediaAssetId of input.mediaAssetIds) {
-    const [existingAsset] = await db
+    const [existingAsset] = await getDb()
       .select({ id: verticalDramaLocationAssets.id })
       .from(verticalDramaLocationAssets)
       .where(
@@ -537,7 +531,7 @@ export async function reconcileSpecialLocationSlot(input: {
       )
       .limit(1);
     if (!existingAsset) {
-      await db.insert(verticalDramaLocationAssets).values({
+      await getDb().insert(verticalDramaLocationAssets).values({
         tenantId: input.actor.tenantId,
         userId: input.actor.userId,
         seriesId: input.seriesId,
@@ -562,7 +556,7 @@ export async function resolveSpecialReferenceBindings(
     actor,
     bindings.map(binding => binding.mediaAssetId)
   );
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: mediaAssets.id,
       originalUrl: mediaAssets.originalUrl,
@@ -576,7 +570,7 @@ export async function resolveSpecialReferenceBindings(
         eq(mediaAssets.userId, actor.userId)
       )
     );
-  const byId = new Map(rows.map(row => [String(row.id), row]));
+  const byId = new Map(rows.map(row => [String(row.id), row] as const));
   return bindings.map(binding => {
     const row = byId.get(binding.mediaAssetId);
     if (
