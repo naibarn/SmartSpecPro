@@ -24,9 +24,10 @@ class TestLLMAPI:
     def mock_user(self):
         """Mock authenticated user with credits"""
         user = User(
-            id="user_123",
+            id=123,
+            name="Test User",
             email="test@example.com",
-            credits_balance=1000
+            credits=1000,
         )
         return user
 
