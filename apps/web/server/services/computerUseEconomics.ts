@@ -88,7 +88,7 @@ export function evaluateComputerUseEffect(input: {
     idempotencyKey: `computer-use:${input.idempotencyKey}`,
   });
   const result = {
-    decision: "approved",
+    decision: "approved" as const,
     fallbackEligible: !input.routeReady,
     reasonCode: input.routeReady
       ? "ROUTE_READY"
