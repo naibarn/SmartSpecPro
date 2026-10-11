@@ -3,7 +3,7 @@
 from sqlalchemy.dialects.sqlite import dialect
 
 from app.core.database import Base
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 
 def test_shared_chat_foreign_key_targets_exist_in_test_metadata():
@@ -20,3 +20,7 @@ def test_shared_chat_foreign_key_targets_exist_in_test_metadata():
 
 def test_jsonb_columns_compile_for_sqlite_test_database():
     assert JSONB().compile(dialect=dialect()) == "JSON"
+
+
+def test_uuid_columns_compile_for_sqlite_test_database():
+    assert UUID(as_uuid=True).compile(dialect=dialect()) == "CHAR(32)"
