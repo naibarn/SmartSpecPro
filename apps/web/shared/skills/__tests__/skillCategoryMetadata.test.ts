@@ -43,18 +43,16 @@ describe("skillCategoryMetadata", () => {
 
   it("returns recommended execution modes by category", () => {
     expect(getRecommendedExecutionModeForSkillCategory("article_generation")).toBe("llm-only");
-    expect(getRecommendedExecutionModeForSkillCategory("slide_generation")).toBe("sandbox-command");
+    expect(getRecommendedExecutionModeForSkillCategory("slide_generation")).toBe("llm-only");
     expect(getRecommendedExecutionModeForSkillCategory("video_generation")).toBe("media-generate");
   });
 
-  it("allows slide-generation skills to use sandbox execution", () => {
+  it("does not offer retired sandbox execution for slide-generation skills", () => {
     expect(getAllowedExecutionModesForSkillCategory("slide_generation")).toEqual([
-      "sandbox-command",
-      "sandbox-code",
       "llm-only",
     ]);
-    expect(isExecutionModeCompatibleWithSkillCategory("slide_generation", "sandbox-command")).toBe(true);
-    expect(isExecutionModeCompatibleWithSkillCategory("slide_generation", "sandbox-code")).toBe(true);
+    expect(isExecutionModeCompatibleWithSkillCategory("slide_generation", "sandbox-command")).toBe(false);
+    expect(isExecutionModeCompatibleWithSkillCategory("slide_generation", "sandbox-code")).toBe(false);
     expect(isExecutionModeCompatibleWithSkillCategory("slide_generation", "media-generate")).toBe(false);
   });
 
