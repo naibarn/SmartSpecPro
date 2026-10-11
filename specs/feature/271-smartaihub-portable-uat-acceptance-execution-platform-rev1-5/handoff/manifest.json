@@ -34,7 +34,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+    "expected_canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
     "expected_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99"
   },
   "continuation": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 18,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -106,7 +106,8 @@
       "2683115b5508fdffa17d48e851c526e1194a8871",
       "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
       "904723c3b33365cb971a668e816d64f1adff7622",
-      "5b9730424642f45dbf58a2af45aeb1beebc303ab"
+      "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b"
     ],
     "mapping": [
       {
@@ -145,6 +146,16 @@
         "scope": "Cross-spec impact review for PR #578: no SPEC-271 UAT harness, render comparison, repair receipt, or functional regression was connected or exercised. Visual acceptance remains UNVERIFIED; existing WP2B receipt/persistence work remains the next work unit.",
         "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
         "status": "UNVERIFIED"
+      },
+      {
+        "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+        "coverage": "UNVERIFIED UAT; integration tests establish bridge contracts, not independent acceptance. No live generated app/browser visual compare/repair/functional receipt. Waiting for authorized non-production identity and fresh trusted Runner session.",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/585",
+        "source_paths": [
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json"
+        ],
+        "source_sha": "fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64",
+        "status": "UNVERIFIED"
       }
     ],
     "source_paths": [
@@ -153,16 +164,17 @@
       "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
       "apps/web/server/services/spec271DurableEvidenceReceiptStore.ts",
       "apps/web/server/services/spec271IndependentAcceptance.ts",
-      "apps/web/server/services/spec271PortableEvidenceReceipt.ts"
+      "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json"
     ],
     "started": true,
     "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+    "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
     "integrated": true,
-    "integrated_at": "2026-10-08T09:06:31Z"
+    "integrated_at": "2026-10-11T00:54:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -922,7 +934,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:25:42.536440Z",
+  "updated_at": "2026-10-11T00:56:43.480466Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

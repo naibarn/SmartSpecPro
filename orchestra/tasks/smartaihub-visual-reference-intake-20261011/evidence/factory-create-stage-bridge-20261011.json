@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "workunit": "SPEC-224_VISUAL_REFERENCE_FACTORY_CREATE_STAGE_BRIDGE",
+  "status": "PARTIAL_INTEGRATED",
+  "source_sha": "fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64",
+  "integrated_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+  "canonical_sha_observed": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/585",
+  "merged_at": "2026-10-11T00:54:00Z",
+  "ci": {
+    "progressive_integration_gate": "PASSED",
+    "build_preview": "UNVERIFIED_SKIPPED"
+  },
+  "focused_verification": {
+    "profile": "integration",
+    "revision": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "command": "pnpm --dir apps/web exec vitest run server/services/spec224RunnerInputStaging.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts server/services/miniAppFactoryRunnerSettlement.test.ts server/services/miniAppFactoryPipeline.test.ts server/routers/__tests__/spec226DevelopmentControl.test.ts client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx",
+    "outcome": "PASSED",
+    "test_files": 6,
+    "tests_passed": 36,
+    "duration_seconds": 3.73
+  },
+  "integrated_behavior": [
+    "Create Mini App start requests now initialize the existing Factory WorkUnit and durable stage state while preserving prompt/spec-only requests.",
+    "The staged screenshot manifest and exact tenant/run/job/digest-bound image bytes are passed to existing Factory Runner stages.",
+    "Requirements intake asks the existing authorized Runner to analyze staged images and emit a visual blueprint; downstream compile and UI implementation stages receive that reference context.",
+    "Initial intake settlement checkpoints the same authorized DevelopmentRun and schedules the next stage through existing worker_jobs/outbox settlement and idempotency.",
+    "The panel suite expectation was corrected after a clean baseline reproduction showed the current auth-probe wording and the prior assertion mismatch were pre-existing."
+  ],
+  "actual_e2e": {
+    "status": "BLOCKED",
+    "fresh_read_only_runner_status": {
+      "runner_id": "local-runner",
+      "runner_version": "0.2.23",
+      "state": "ready",
+      "ready_tool_count": 0,
+      "codex_install_state": "ready",
+      "codex_auth_state": "unknown",
+      "codex_trust_state": "discovered",
+      "codex_reason_codes": ["probe_required"],
+      "browser_install_state": "ready",
+      "browser_availability_state": "unknown",
+      "browser_trust_state": "discovered",
+      "browser_reason_codes": ["probe_required"],
+      "observation_epoch_ms": 1791680211708,
+      "command": "smartaihub-runner status --json",
+      "interpretation": "Read-only discovery only; the Runner is not currently eligible for an authorized Codex/browser execution. No probe or job was run."
+    },
+    "not_run": [
+      "No authenticated non-production user/project identity was available to create a real screenshot-backed Mini App run.",
+      "The fresh local Runner observation reports zero ready tools and unknown Codex auth; browser trust/availability also require a probe. The registered Windows Runner's latest recorded capability/auth evidence remains stale and degraded. No authorized live Runner session/attestation was available to this workunit.",
+      "No live screenshot-to-blueprint-to-generation-to-browser-render-to-visual-compare-to-repair receipt exists. Unit tests and synthetic Factory worker runtime are not accepted as E2E evidence."
+    ],
+    "next_action": "Use an owner-authorized non-production account and a freshly authenticated/trusted SPEC-224 Runner capability snapshot bound to this DevelopmentRun, source SHA, workspace, and staged reference; then execute browser/UAT and persist the independent receipt."
+  },
+  "unverified_or_out_of_scope": [
+    "Live vision-model invocation and image-derived blueprint quality.",
+    "Generated Mini App code and runtime browser render.",
+    "Visual comparison, budgeted autonomous repair, and functional regression in a real generated app.",
+    "SPEC-270 G0 provider/design-artifact authority remains unresolved; no provider was enabled or DDL added.",
+    "Arbitrary URL capture remains security-blocked; screenshot-only is independent of it."
+  ],
+  "next_workunit": "SPEC-224_VISUAL_REFERENCE_LIVE_RUNNER_GENERATION_AND_UAT"
+}
