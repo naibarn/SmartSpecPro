@@ -436,7 +436,8 @@
       "event": "recovery_challenge",
       "facts": {
         "failure_class": "TOOL_CAPABILITY_MISSING",
-        "safe_local_path": true
+        "safe_local_path": true,
+        "local_path_authorized": true
       },
       "expected": "EXECUTE_SAFE_LOCAL_PATH"
     },
@@ -456,7 +457,8 @@
       "facts": {
         "failure_class": "CRITICAL_SECURITY_ACCEPTANCE",
         "safe_local_path": true,
-        "independent_work": false
+        "independent_work": false,
+        "local_path_authorized": true
       },
       "expected": "DENY_AND_WAIT_AUTHORITY"
     },
@@ -478,6 +480,26 @@
         "scope_verified": true
       },
       "expected": "SKIP_OPTIONAL_AND_CONTINUE"
+    },
+    {
+      "id": "AC-49",
+      "event": "recovery_challenge",
+      "facts": {
+        "failure_class": "TOOL_CAPABILITY_MISSING",
+        "safe_local_path": true,
+        "local_path_authorized": false
+      },
+      "expected": "ROOT_CAUSE_AND_REPLAN"
+    },
+    {
+      "id": "AC-50",
+      "event": "recovery_challenge",
+      "facts": {
+        "failure_class": "ENVIRONMENT_FAILURE",
+        "compatible_fallback": true,
+        "fallback_authorized": false
+      },
+      "expected": "ROOT_CAUSE_AND_REPLAN"
     }
   ]
 }
