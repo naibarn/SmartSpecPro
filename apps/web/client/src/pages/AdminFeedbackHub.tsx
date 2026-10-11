@@ -420,7 +420,7 @@ export default function AdminFeedbackHub() {
         uploadedIds.length !== filesToUpload.length
       ) {
         await Promise.allSettled(
-          uploadedIds.map(attachmentId =>
+          uploadedIds.map((attachmentId: number) =>
             deleteAttachmentMutation.mutateAsync({ attachmentId })
           )
         );
