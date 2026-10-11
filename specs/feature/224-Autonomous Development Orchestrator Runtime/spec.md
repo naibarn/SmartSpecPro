@@ -16553,7 +16553,7 @@ Spec/contract analysis
 → deterministic scripted DOM/browser journeys
 → accessibility/semantic automation
 → optional WebMCP/tool-path verification when available
-→ optional bounded Jev-style decision assistance where justified
+→ optional bounded Clef-first Decision Model assistance where justified
 → Vision/Computer Use only for residual cases requiring perceptual judgment or unsupported interaction
 → human exploratory review where policy calls for it
 ```
@@ -16573,9 +16573,9 @@ a missing WebMCP implementation does not invalidate a normal user UI
 WebMCP security/authorization never bypass server policy
 ```
 
-# 588. Jev / Computer Use / Vision Boundary
+# 588. Decision Model / Computer Use / Vision Boundary
 
-Jev-like System-One selection, Computer Use and screenshot/vision reasoning MAY be useful for bounded residual cases such as ambiguous semantic element selection, visual layout quality, browser-only behavior or exploratory UX.
+Clef-first System-One selection, Computer Use and screenshot/vision reasoning MAY be useful for bounded residual cases such as ambiguous semantic element selection, visual layout quality, browser-only behavior or exploratory UX. This Decision Model reference concerns Jev only when it is used as a model provider; it does not refer to unrelated deterministic automation technology with the same name.
 
 They SHALL NOT be the primary proof of:
 
@@ -17252,3 +17252,13 @@ This additive conformance layer makes evidence-driven autonomous execution indep
 The existing durable Git lifecycle audit MAY discover and enqueue integration work only when the pull request's canonical repository, target branch, head branch and exact head SHA match a clean registered task worktree and its current trusted Runner workspace snapshot. The Runner owner must be unambiguous, its snapshot fresh, and neither the Runner nor task worktree may have an active session. Fork PRs, drafts, stale snapshots, dirty worktrees, changed heads, unknown owners, and unavailable authority evidence MUST remain untouched.
 
 Discovery MUST enqueue through the existing `worker_jobs` plus outbox control plane with stable PR/head idempotency. The existing integration action MUST re-read current authority and PR facts, evaluate repository-required checks (including skipped checks as non-passing), and use the normal GitHub merge endpoint with the expected head SHA. A successful API response is not final completion: the integrated SHA must be verified against the configured canonical ref and post-merge convergence recorded before any owned worktree can be retired through the existing ownership-aware retirement policy. CI repair and conflict repair require their own candidate-bound repair and verification evidence; a failed or blocked PR is not completion.
+
+# Mini App Factory Decision Model boundary (2026-10-11)
+
+**Current-state assessment:** Spec 224 already assigns execution, coding, durable evidence, settlement, and final verification to its existing orchestrator and job/control-plane contracts. The repository's Spec 224 handoff is still unresolved/approval-waiting; this amendment does not claim Clef or any SPEC-224 work is implemented. Canonical Clef policy and API/usage requirements are in [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+The Decision Model may classify request types, rank eligible Skills/capabilities, recommend tools/agents, classify diagnostics, and recommend an authorized recovery path. It must not replace Reasoning/Coding LLMs used to interpret requirements, analyze screenshots, design or implement the Mini App, debug defects, or repair failed implementations. Clef must not reduce coding/reasoning quality to save inference cost and must not become a new blocking dependency. If Clef is unavailable or fails validation, continue through existing deterministic routing or the existing eligible Reasoning LLM path; if no safe route exists, return the existing recoverable failure state. Do not strand an autonomous run solely because a Clef request failed.
+
+Tests, rendering, functional verification, durable execution evidence, final settlement, and completion remain owned by the existing execution infrastructure and final evidence gates. Decision confidence never satisfies those gates. Do not weaken authorization, approvals for effects that already require them, credit accounting, or final verification; do not add a new mandatory approval step for low-risk decisions. Existing in-flight jobs keep their pinned provider/policy snapshot.
+
+Acceptance: shadow evaluation includes Mini App creation and Screenshot-to-Code end-to-end completion/cost; rollout compares full task completion and cost per successfully completed Mini App, not only decision token price; and provider fallback leaves current autonomous completion and evidence requirements intact. Production Clef use is not claimed by this Spec update.

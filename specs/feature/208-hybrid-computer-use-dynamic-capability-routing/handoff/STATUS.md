@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 358 unresolved of 358
+- Requirements: 0 pass / 363 unresolved of 363
 - Next action: Continue W2 now: wire the app Runner-owned Moli process to the merged non-production isolation boundary and test cancellation/cleanup. W3 waits for an explicitly approved disposable worker_jobs database and Runner authorization target. W4 fixed dependency candidates are identified; reproducible rebuild, publisher provenance, deployed-target inventory, and notices review remain open.
-- Manifest generation: 42
+- Manifest generation: 43
 
 ## Source-declared status and relationship claims
 
