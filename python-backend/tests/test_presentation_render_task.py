@@ -1,5 +1,5 @@
 """
-Unit tests for the presentation_render Celery task.
+Unit tests for the presentation_render worker task.
 
 All tests mock Playwright, FFmpeg (subprocess.run), and R2 storage.
 No real browser, FFmpeg binary, or external storage services are required.
@@ -354,7 +354,7 @@ class TestMakeSlideToken:
             mock_stage1.return_value = ["slide_0000.png"]
             from app.tasks.presentation_render import render_presentation
 
-            render_presentation.run.__wrapped__.__func__(
+            render_presentation.run(
                 task_self,
                 render_spec,
                 "standard",
@@ -807,7 +807,7 @@ class TestDynamicVideoExportPath:
             mock_upload.return_value = {"output_url": "https://presigned.example.com/out.mp4?token=x", "output_bytes": 120}
             from app.tasks.presentation_render import render_presentation
 
-            result = render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "mp4")
+            result = render_presentation.run(task_self, render_spec, "standard", "mp4")
 
         assert result["output_url"].startswith("https://presigned.example.com/")
         mock_clips.assert_called_once()
@@ -1304,8 +1304,7 @@ class TestTempDirCleanup:
             mock_upload.return_value = {"output_url": "https://presigned.example.com/out.zip?token=x", "output_bytes": 100}
             from app.tasks.presentation_render import render_presentation
 
-            # Call the underlying function directly (bypass Celery)
-            render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
+            render_presentation.run(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1326,7 +1325,7 @@ class TestTempDirCleanup:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(RuntimeError, match="Playwright crash"):
-                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1347,7 +1346,7 @@ class TestTempDirCleanup:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(TimeoutError):
-                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1372,7 +1371,7 @@ class TestRenderSpecValidation:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(ValueError, match="deckId"):
-                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run(task_self, render_spec, "standard", "png")
 
     def test_missing_slides_raises_value_error(self, monkeypatch, tmp_path):
         """ValueError is raised when slides is absent from render_spec."""
@@ -1385,4 +1384,4 @@ class TestRenderSpecValidation:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(ValueError, match="slides"):
-                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run(task_self, render_spec, "standard", "png")
