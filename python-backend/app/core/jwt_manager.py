@@ -81,7 +81,8 @@ class JWTManager:
     def create_access_token(
         self,
         user_id: int,
-        additional_claims: Optional[Dict[str, Any]] = None
+        additional_claims: Optional[Dict[str, Any]] = None,
+        expires_delta: Optional[timedelta] = None,
     ) -> str:
         """
         Create access token with short expiration
@@ -95,13 +96,14 @@ class JWTManager:
         """
         now = datetime.utcnow()
         jti = str(uuid.uuid4())
+        lifetime = expires_delta or timedelta(minutes=self.access_token_expire)
 
         payload = {
             "sub": str(user_id),
             "type": "access",
             "jti": jti,
             "iat": now,
-            "exp": now + timedelta(minutes=self.access_token_expire)
+            "exp": now + lifetime,
         }
 
         # Add additional claims if provided

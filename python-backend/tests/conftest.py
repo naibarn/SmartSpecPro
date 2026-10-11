@@ -199,11 +199,10 @@ async def test_user(test_db: AsyncSession, test_tenant) -> User:
     """Create a test user for authentication tests."""
     user = User(
         email="test@example.com",
-        password_hash=get_password_hash("testpassword123"),  # Match test expectation
-        full_name="Test User",
-        credits_balance=100000,
-        is_active=True,
-        email_verified=True,
+        password=get_password_hash("testpassword123"),
+        name="Test User",
+        credits=100000,
+        isDisabled=False,
         currentTenantId=test_tenant.id,
     )
 

@@ -399,7 +399,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if not user_id:
         raise ValueError("user_id (sub) is required in token data")
     additional = {k: v for k, v in data.items() if k not in ("sub", "exp", "iat", "user_id", "type")}
-    return mgr.create_access_token(int(user_id), additional_claims=additional)
+    return mgr.create_access_token(
+        int(user_id),
+        additional_claims=additional,
+        expires_delta=expires_delta,
+    )
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Creates a new refresh token via unified jwt_manager."""

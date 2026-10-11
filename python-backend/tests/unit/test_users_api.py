@@ -3,6 +3,7 @@ Unit tests for User API
 """
 
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 from app.main import app
@@ -24,14 +25,15 @@ class TestUserAPI:
     def mock_user(self):
         """Mock authenticated user"""
         user = User(
-            id="user_123",
+            id=123,
             email="test@example.com",
-            full_name="Test User",
-            hashed_password="hashed_password",
-            credits_balance=100,
-            is_admin=False,
-            created_at="2024-01-01T00:00:00",
-            updated_at="2024-01-01T00:00:00"
+            name="Test User",
+            password="hashed_password",
+            credits=100,
+            role="user",
+            createdAt=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            updatedAt=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            lastSignedIn=datetime(2024, 1, 1, tzinfo=timezone.utc),
         )
         return user
 
@@ -44,6 +46,10 @@ class TestUserAPI:
         """Client with auth override"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
+        csrf_response = client.get("/api/users/me")
+        csrf_token = csrf_response.cookies.get("csrf_token")
+        client.cookies.set("csrf_token", csrf_token)
+        client.headers["X-CSRF-Token"] = csrf_token
         yield client
         app.dependency_overrides = {}
 
@@ -84,7 +90,7 @@ class TestUserAPI:
         """Test PUT /me email collision"""
         # Mock collision
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = User(id="other")
+        mock_result.scalar_one_or_none.return_value = User(id=456)
         mock_db.execute.return_value = mock_result
         
         payload = {"email": "taken@example.com"}
@@ -110,7 +116,7 @@ class TestUserAPI:
             response = client_with_auth.put("/api/users/me/password", json=payload)
             
             assert response.status_code == 200
-            assert mock_user.hashed_password == "new_hash"
+            assert mock_user.password == "new_hash"
             mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -128,7 +134,7 @@ class TestUserAPI:
     async def test_delete_account_success(self, client_with_auth, mock_db, mock_user):
         """Test DELETE /me"""
         # Ensure 0 balance
-        mock_user.credits_balance = 0
+        mock_user.credits = 0
         
         with patch("app.api.users.verify_password", return_value=True):
             response = client_with_auth.delete("/api/users/me?password=Password1!")
@@ -140,7 +146,7 @@ class TestUserAPI:
     @pytest.mark.asyncio
     async def test_delete_account_with_credits(self, client_with_auth, mock_user):
         """Test DELETE /me with credits"""
-        mock_user.credits_balance = 100
+        mock_user.credits = 100
         
         with patch("app.api.users.verify_password", return_value=True):
             response = client_with_auth.delete("/api/users/me?password=Password1!")
