@@ -64,6 +64,34 @@ test("unauthenticated visitors are redirected to login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+for (const viewport of viewports) {
+  test(`Project Wiki hosted route renders and completes authenticated page CRUD on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await authenticate(page);
+    await page.goto("/apps/project-wiki-pages");
+    await expect(page.getByRole("heading", { name: "Project Wiki Pages" })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Project" })).toContainText("Synthetic Wiki Project");
+    await expect(page.getByText("No pages yet")).toBeVisible();
+
+    await page.getByRole("button", { name: "Create first page" }).click();
+    const pageTitle = `Hosted route ${crypto.randomUUID()}`;
+    await page.getByRole("textbox", { name: "Page title" }).fill(pageTitle);
+    await page.getByRole("textbox", { name: "Page path" }).fill(`browser-${crypto.randomUUID()}`);
+    await page.getByRole("textbox", { name: "Page content" }).fill("Synthetic authenticated hosted-route browser acceptance.");
+    await page.getByRole("button", { name: "Create page" }).click();
+    await expect(page.getByRole("button", { name: pageTitle })).toBeVisible();
+
+    await page.getByRole("textbox", { name: "Page content" }).fill("Updated hosted-route browser acceptance.");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText(/Saved content SHA-256:/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Archive page" }).click();
+    await page.getByRole("button", { name: "Confirm archive" }).click();
+    await expect(page.getByRole("button", { name: pageTitle })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  });
+}
+
 test("the Mini App shows its loading state while app identity is resolving", async ({ page }) => {
   await authenticate(page);
   let releaseResolver!: () => void;
