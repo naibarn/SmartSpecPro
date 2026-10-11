@@ -3,10 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { JobResult } from "./jobControlPlaneTypes";
 import type { ExternalAgentTaskDispatchInput } from "./externalAgentTaskExecutor";
 import { dispatchRunnerJobCommand } from "./runnerJobCommandClient";
-import {
-  validateRunnerJobCommand,
-  type RunnerJobCommand,
-} from "./runnerJobCommandContracts";
+import { validateRunnerJobCommand } from "./runnerJobCommandContracts";
 import {
   createExecutionSessionProjection,
   transitionExecutionSessionProjection,
@@ -16,6 +13,7 @@ import type { ExecutionSessionProjectionInput } from "./runnerExecutionSessionCo
 import { issueRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
+import type { RunnerJobCommand } from "./runnerContracts";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
 
 type DispatchResult = {

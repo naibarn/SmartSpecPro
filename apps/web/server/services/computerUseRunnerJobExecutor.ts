@@ -8,11 +8,9 @@ import {
   buildSemanticActionCommand,
   buildSemanticObservePayload,
 } from "./computerUseSemanticHandshake";
-import {
-  validateRunnerJobCommand,
-  type RunnerJobCommand,
-} from "./runnerJobCommandContracts";
+import { validateRunnerJobCommand } from "./runnerJobCommandContracts";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
+import type { RunnerJobCommand } from "./runnerContracts";
 
 type ComputerUseBrowserInput = {
   traceId: string;
