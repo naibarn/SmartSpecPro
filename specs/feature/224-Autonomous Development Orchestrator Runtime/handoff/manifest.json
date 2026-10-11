@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+    "expected_canonical_sha": "86d744878dcd67e1f8187a125f713b9364353573",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "Continue SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE with a same-run disposable-PostgreSQL lease-expiry/reclaim and stale-worker fencing acceptance. Then submit the coherent slice through a normal PR and guarded Integration Controller; do not bypass required checks. Preserve Final Verify blocked until genuine run-bound convergence/retirement receipts and requirement-closure evidence exist. Continue the next independent ready WorkUnit if live Runner authority or CI remains unavailable.",
+    "next_action": "Submit the same-run lease expiry/reclaim and stale-worker fencing checkpoint through a normal PR and guarded Integration Controller. Keep Final Verify partial until genuine run-bound workspace convergence/retirement receipts and complete requirement-closure evidence exist; continue the next independent ready WorkUnit after this integration.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "R10 source checkpoint e4628527ad4013c4bc699f1f2f8a7df2d2bf3780, based on canonical main b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc. Evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json. Four focused files/24 tests pass; all phases, real failing candidate, bounded repair, separate-process verifier, cancellation guard and fresh-process durable blocked state are proven. Final Verify reason is workspace_convergence_or_retirement_evidence_missing; no RUN_COMPLETED. R10 typecheck was stopped at about 3.3 GiB RSS; pre-existing CI baseline failures are classified in the evidence. Resume with lease expiry/reclaim and stale worker fencing, then normal PR gates.",
+    "resume_point": "R10 source checkpoint 86d744878dcd67e1f8187a125f713b9364353573, based on canonical main b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc. Evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json. Four focused files/24 tests pass; all phases, real failing candidate, bounded repair, separate-process verifier, cancellation guard and fresh-process durable blocked state are proven. Final Verify reason is workspace_convergence_or_retirement_evidence_missing; no RUN_COMPLETED. R10 typecheck was stopped at about 3.3 GiB RSS; pre-existing CI baseline failures are classified in the evidence. Resume with lease expiry/reclaim and stale worker fencing, then normal PR gates.",
     "waiting_predicate": "Live Windows Runner readiness still requires owner-authorized review build installation and fresh session, capability/Codex, source/workspace binding, grant, approval, budget and verifier-access evidence. Protected dispatch remains DENY. This wait does not block independent synthetic WorkUnits."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 52,
+  "generation": 54,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+    "canonical_sha": "86d744878dcd67e1f8187a125f713b9364353573",
     "integrated": true,
-    "integrated_at": "2026-10-11T07:03:11Z"
+    "integrated_at": "2026-10-11T07:56:01Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2346,7 +2346,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T07:53:50.345874Z",
+  "updated_at": "2026-10-11T07:58:15.184174Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried."
@@ -2425,8 +2425,8 @@
       {
         "kind": "R10_SYNTHETIC_GIT_IMPLEMENTATION_REPAIR_AND_INDEPENDENT_VERIFY",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json",
-        "scope": "Owner-marked disposable PostgreSQL and temporary Git repository; same WorkUnit/run traversed all 12 phases in canonical order: IMPLEMENT wrote the candidate, TEST reproduced unittest failure, DEBUG_REPAIR applied a bounded idempotent repair, TEST passed, and VERIFY launched a separate OS process. Verifier checked exact source/diff/artifacts and reran tests; cancellation guard refused repair write; fresh process reread VERIFY evidence. Final Verify correctly stopped at missing genuine workspace lifecycle receipts. No live Runner/provider or production authority.",
-        "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+        "scope": "Focused PostgreSQL exact-candidate run on follow-up source f42e3d9f241b457b02b5c41248046055afa50023 passed 4 files/24 tests. The same DevelopmentRun also expired/reclaimed its PLANNING worker job: fencing advanced 1→2, stale completion returned JOB_LEASE_STALE and persisted no result/output. All 12 phases continued; independent VERIFY persisted evidence read by a fresh process. Final Verify remains blocked on genuine workspace lifecycle receipts.",
+        "source_sha": "f42e3d9f241b457b02b5c41248046055afa50023",
         "status": "PASS"
       }
     ],
@@ -2434,7 +2434,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+    "sha": "f42e3d9f241b457b02b5c41248046055afa50023",
     "status": "PARTIAL",
     "task_regressions": []
   }

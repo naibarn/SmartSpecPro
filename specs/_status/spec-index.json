@@ -93659,7 +93659,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+      "canonical_sha": "86d744878dcd67e1f8187a125f713b9364353573",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
