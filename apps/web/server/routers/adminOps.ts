@@ -29,6 +29,21 @@ function isProviderUsageLogUnavailableError(error: unknown): boolean {
   );
 }
 
+type JobsHealthResult = {
+  countsByStatus: Record<string, number>;
+  recentFailures: Array<{
+    id: string;
+    taskId: string;
+    queue: string;
+    error: string | null;
+    attempts: number;
+    createdAt: string | undefined;
+  }>;
+  unpublishedOutbox?: number;
+  degraded: boolean;
+  reason: string | null;
+};
+
 export const adminOpsRouter = router({
   /**
    * Traffic & Auth Panel - Daily user activity and login metrics
@@ -216,7 +231,7 @@ export const adminOpsRouter = router({
   /**
    * Jobs Health Panel - canonical worker_jobs metrics
    */
-  jobsHealth: domainAdminProcedure.query(async () => {
+  jobsHealth: domainAdminProcedure.query(async (): Promise<JobsHealthResult> => {
     const { getDb } = await import("../db");
     const db = await getDb();
     if (!db) {
