@@ -111,6 +111,17 @@ describe("autoTeamRecoveryService", () => {
     } as any, now)).toBe(false);
   });
 
+  it("suppresses recovery evaluation for a paused run waiting on a dependency", () => {
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+
+    expect(isRecoveryEvaluationEligible({
+      id: "run-dependency-wait",
+      status: "paused",
+      stopReason: "waiting_for_dependency",
+      runtimeState: { dependencyId: "job-prerequisite" },
+    } as any, new Date("2026-10-11T08:00:00.000Z"))).toBe(false);
+  });
+
   it("continues dispatching independent runs when one candidate cannot be read", async () => {
     const tx = {
       execute: vi.fn().mockResolvedValue(undefined),
