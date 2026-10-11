@@ -320,6 +320,11 @@ function extractPythonSkillLineage(
   return lineage;
 }
 
+type PythonSkillPaths = {
+  skillDir: string;
+  scriptPath: string;
+};
+
 function resolvePythonSkillPaths(
   skill: SkillDefinition
 ): PythonSkillPaths | null {
