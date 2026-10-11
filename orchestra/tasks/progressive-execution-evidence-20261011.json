@@ -1,0 +1,140 @@
+{
+  "source_revision": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/603",
+  "integration": {
+    "status": "MERGED",
+    "merge_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "canonical_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "head_sha": "5f9a2a9fa12608ae594c2dda7e38b70eb14c66c7",
+    "checks": [
+      {
+        "link": "https://github.com/naibarn/SmartSpecPro/actions/runs/38104164471/job/114366013035",
+        "name": "progressive_integration_gate",
+        "state": "SUCCESS"
+      },
+      {
+        "link": "https://github.com/naibarn/SmartSpecPro/actions/runs/38104164454/job/114366014033",
+        "name": "build-preview",
+        "state": "SKIPPED"
+      }
+    ],
+    "continuation": {
+      "canonical_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+      "exit_code": 0,
+      "status": "WORKER_SUCCEEDED",
+      "workspace": "/home/dev/worktrees/orchestra-progressive-runtime-20261011",
+      "workunit_id": "verify-integrated-sha-and-publish-runtime"
+    },
+    "metrics": {
+      "branch_age_hours": 0.041666666666666664,
+      "conflict_attempts": 0,
+      "conflict_rate": 0,
+      "integration_delta": {
+        "commits": 2,
+        "deletions": 30,
+        "files": 15,
+        "insertions": 586
+      },
+      "main_build_health": {
+        "sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+        "status": "PENDING_POST_INTEGRATION"
+      },
+      "merge_latency_minutes": "UNKNOWN",
+      "promotion_attempts": 1,
+      "time_to_first_preview_minutes": "UNKNOWN"
+    }
+  },
+  "next_workunit": {
+    "workunit_id": "verify-integrated-sha-and-publish-runtime",
+    "canonical_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "workspace": "/home/dev/worktrees/orchestra-progressive-runtime-20261011",
+    "checks": [
+      {
+        "name": "canonical-head",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/canonical-head.log"
+      },
+      {
+        "name": "clean-baseline",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/clean-baseline.log"
+      },
+      {
+        "name": "canonical-preflight",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/canonical-preflight.log"
+      },
+      {
+        "name": "integration-controller-tests",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/integration-controller-tests.log"
+      },
+      {
+        "name": "orchestra-tests",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/orchestra-tests.log"
+      },
+      {
+        "name": "cross-skill-tests",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/cross-skill-tests.log"
+      },
+      {
+        "name": "installed-skill-sync",
+        "exit_code": 0,
+        "log": "/tmp/orchestra-progressive-live-20261011/installed-skill-sync.log"
+      }
+    ],
+    "published_skills": [
+      "orchestra",
+      "deep-plan",
+      "deep-implement",
+      "deep-plan-quick",
+      "development-lifecycle",
+      "integration-controller",
+      "session-finish",
+      "brainstorming"
+    ],
+    "backup": "/home/dev/.codex/skill-backups/progressive-dc3e352fddcd",
+    "published_file_count": 15,
+    "status": "VERIFIED_AND_PUBLISHED"
+  },
+  "skill_audit": {
+    "exit_code": 0,
+    "log": "/tmp/orchestra-progressive-final-audit-20261011.log",
+    "deep_implement_tests": 140,
+    "deep_project_tests": 166,
+    "deep_plan_tests": 331,
+    "orchestra_tests": 18
+  },
+  "workspace_verification": {
+    "canonical_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "canonical_user_workspace_dirty": true,
+    "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
+    "canonical_user_workspace_sha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "integrated_sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "project_id": "smartspecpro",
+    "reasons": [
+      "USER_WORKSPACE_NOT_SYNCED",
+      "USER_WORKSPACE_DIRTY"
+    ],
+    "repository_id": "smartspecpro",
+    "status": "CONVERGENCE_PENDING",
+    "task_workspace_id": null,
+    "task_workspace_lifecycle": null,
+    "verified_at": "2026-10-11T02:11:23.130+00:00"
+  },
+  "mainline_ci": {
+    "run_id": 38104260284,
+    "sha": "dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef",
+    "status": "IN_PROGRESS",
+    "passed_jobs": [
+      "marketplace_extension",
+      "control_plane",
+      "api_generator",
+      "skill_pack"
+    ],
+    "evidence_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38104260284"
+  },
+  "proof_boundary": "Local Git/process E2E proves two implemented slices merged with SPEC OPEN. Live GitHub promotion automatically dispatches the canonical verification/publication WorkUnit. Full main health remains pending CI; no background host wake is claimed."
+}

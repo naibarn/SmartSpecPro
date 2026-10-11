@@ -295,7 +295,7 @@ If both commands return empty output, skip this check silently and proceed.
 
 **Git/GitHub recovery rule:** For repo-local work, treat git history and the GitHub-backed repository as the primary recovery mechanism. Do not stop for confirmation merely because rollback might be needed later. Instead, prefer recoverable workflows: preserve history, avoid destructive rewrites, keep artifacts in git, and continue automatically. Ask only when the next action could destroy data that git/GitHub cannot restore (for example DB table loss, external state deletion, or irreversible side effects outside the repository).
 
-**Continuous canonicalization rule:** `origin/main` is the latest integrated development state, not a claim that the code is release-ready, production-ready, or fully validated. During implementation, promote every coherent, safe, valuable checkpoint after the FAST INTEGRATION GATE; task completion is not required. Use isolated/disabled boundaries for unfinished behavior where needed, and keep release, tag, and production deployment behind their own gates. Read `references/continuous-canonicalization.md` and use `$session-finish` at safe checkpoints and before any pause, stop, quota/context boundary, provider timeout, ownership transfer, or end-of-session handoff. Use `$integration-controller` to reconcile and promote partial or complete work promptly. Never use a readiness marker or pending heavy check as a reason to leave safe progress outside `main`.
+**Continuous canonicalization rule:** `origin/main` is the latest integrated development state, not a claim that the code is release-ready, production-ready, or fully validated. During implementation, promote every coherent, safe, valuable checkpoint after its slice/repository-required checks and FAST INTEGRATION GATE; task completion is not required. Use isolated/disabled boundaries for unfinished behavior where needed, and keep release, tag, and production deployment behind their own gates. Read `references/continuous-canonicalization.md` and use `$session-finish` at safe checkpoints and before any pause, stop, quota/context boundary, provider timeout, ownership transfer, or end-of-session handoff. Use `$integration-controller` to reconcile and promote partial or complete work promptly. Never use a readiness marker or pending unrelated heavy check as a reason to leave safe progress outside `main`.
 
 **Canonical workspace freshness rule:** At fresh start/resume and after each
 promotion, consume the shared Workspace Authority Resolver and verify the
@@ -672,7 +672,10 @@ selected, requested, or blocked by resources.
 | Review Convergence Gate | Apply `references/review-convergence.md` | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached |
 
 **Blocking policy:**
-- LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
+- Repository-required and slice-required gate failures block the affected
+  integration at every risk level. Risk labels never waive required checks.
+- Optional LOW/MEDIUM gates may produce warnings; record their impact and
+  continue independent safe work.
 - HIGH/CRITICAL risk tasks: gate failures block progression to next wave
 - In standard light mode, run the smallest relevant gate set for `small`/`medium` work:
   focused tests/lint and the Test Design Gate for changed behavior. Do not launch
@@ -714,7 +717,7 @@ selected, requested, or blocked by resources.
 not close the lifecycle stage. Before stopping, create/update a lifecycle gap
 with `classification`, evidence, attempts, stale gates, and `resume_from`.
 Continue through `completion-loop.md` when the repair is safe and in scope. If
-the loop policy or an external blocker prevents recovery, stop as
+an explicit user/platform limit or a true external blocker prevents recovery, stop as
 `implemented_but_blocked` with the open gap and exact resume stage.
 
 Resource failures are not code-failure retries. If the process is killed by
@@ -771,6 +774,11 @@ its dependents. If post-merge checks find a regression, use the existing
 repair/revert path before further integration. Use targeted impact closure to
 identify newly affected paths, tests, contracts, and stale evidence; skip
 revalidation only when inputs are unchanged and repository policy permits it.
+Use the Integration Controller's executable continuation options when a
+registered worker adapter is available; otherwise execute the next WorkUnit
+inline. A successful checkpoint must not end the turn while authorized ready
+work remains. Default local counters trigger checkpoint/replanning rather than
+another human command.
 
 ## Step 7: Progress Update
 

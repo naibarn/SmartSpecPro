@@ -103,6 +103,11 @@ creates a clean detached workspace at the verified canonical SHA, and invokes
 the worker there with `--workunit-id <id> --canonical-sha <sha>`.
 The worker owns implementation, required verification and subsequent normal
 promotion; its successful process exit alone does not close requirements.
+Long-running skill, agent and external-worker execution must still enter the
+repository's existing worker-job/outbox control plane through its registered
+adapter. This continuation hook grants no runtime, production or deployment
+authority and does not replace that control plane. Short local verification
+and runtime-publication WorkUnits may execute synchronously when authorized.
 Persist the receipt through the existing canonical handoff writer. A worker
 failure preserves `MERGED` plus a separate failed continuation outcome, so
 recovery resumes the WorkUnit without repeating an already successful merge.
