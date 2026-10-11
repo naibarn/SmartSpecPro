@@ -414,6 +414,8 @@ class McpClientManager:
         return {
             "server_count": len(self._connections),
             "active_connections": len(self._connections),
+            # stdio transport is retired; this process owns no stdio servers.
+            "stdio_process_count": 0,
         }
 
     # -------------------------------------------------------------------
