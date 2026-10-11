@@ -65,3 +65,36 @@ library scope classifier. Its CLI emits only `run` or `skip`; read/encoding
 errors exit nonzero so GitHub Actions' `set -e` fails the gate closed. Focused
 tests cover relevant and unrelated paths, malformed/unreadable input, use with
 an empty PATH, and workflow wiring.
+
+## Checkpoint 1 — PR #822
+
+- PR: https://github.com/naibarn/SmartSpecPro/pull/822
+- Source head: `79207eadbbb7e957a081b7dbc9ef86e24a4d5a6a`.
+- `progressive_integration_gate`: run `38184675273`, job `114604348402`, passed
+  in 59 seconds with checkout, setup-python, and the full affected-skill test
+  command all completed.
+- Normal merge: `46228e296c9ae711325ad350fd3f403cde5d2076`; verified reachable
+  from fetched `origin/main` at the time of verification.
+- Metrics: branch age `0.0339h`; merge latency `UNKNOWN`; delta 1 commit / 5
+  files / 234 insertions / 5 deletions; 0 conflicts; main build health pending
+  on the integrated SHA; preview timing `UNKNOWN`.
+- Canonical user workspace convergence remains pending. The registered
+  workspace is dirty and 576 commits behind at task start; resolver verification
+  exceeded its deadline. No checkout sync or destructive cleanup was attempted.
+- Post-merge run `38184773842` (CI) was still in progress when checked.
+  Migration run `38184773054` failed but GitHub returned no jobs/log payload;
+  failure class remains `UNKNOWN` and is not attributed to application code,
+  checkout, a session, or DB contention.
+
+## Checkpoint 2 — current recovery slice
+
+- New WorkUnit baseline: `46228e296c9ae711325ad350fd3f403cde5d2076`.
+- Added live-PR-state reconciliation for merged-by-another-session, closed, and
+  superseded PRs; already-merged state requires fresh canonical fetch plus
+  merge-SHA ancestry proof before continuation.
+- Added bounded three-attempt exponential retry for classified transport and
+  command-timeout failures. Receipts retain attempt number, failure class,
+  diagnostic digest, and a short redacted excerpt. Application, authority, and
+  conflict failures are not retried.
+- Tests use isolated temporary Git repositories for merge-lock behavior; they
+  never contend with the host repository's integration lock.

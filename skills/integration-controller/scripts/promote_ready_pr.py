@@ -6,12 +6,15 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 from typing import Any, Callable
@@ -23,7 +26,7 @@ Runner = Callable[..., subprocess.CompletedProcess[str]]
 def run_command(
     command: list[str], *, cwd: Path, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False)
+    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False, timeout=60)
     if check and result.returncode:
         raise RuntimeError(f"COMMAND_FAILED: {command[0]} exit={result.returncode}")
     return result
@@ -42,6 +45,97 @@ def write_receipt(path: Path, result: dict[str, Any]) -> None:
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
+
+
+def classify_failure(evidence: str, *, blockers: list[str] | None = None) -> str:
+    """Classify an observed failure without treating unknowns as infrastructure."""
+    normalized = f"{evidence} {' '.join(blockers or [])}".lower()
+    if any(marker in normalized for marker in (
+        "timed out", "timeout", "connection reset", "connection refused",
+        "temporary failure in name resolution", "could not resolve host",
+        "network is unreachable", "502 bad gateway", "503 service unavailable",
+        "504 gateway timeout", "http 500", "http 502", "http 503", "http 504",
+    )):
+        return "INFRASTRUCTURE"
+    if any(marker in normalized for marker in (
+        "merge conflict", "conflict", "expected_head_mismatch", "base_ref_stale",
+        "pr_not_mergeable", "pr_superseded",
+    )):
+        return "CONFLICT"
+    if any(marker in normalized for marker in (
+        "permission denied", "resource not accessible", "review_required",
+        "changes_requested", "branch protection", "protected branch", "pr_closed_externally",
+    )):
+        return "AUTHORITY"
+    if any(marker in normalized for marker in (
+        "check failed", "tests failed", "build failed",
+        "conclusion=failure", "state=failure",
+    )):
+        return "APPLICATION"
+    return "UNKNOWN"
+
+
+def _diagnostic_excerpt(diagnostic: str) -> str:
+    redacted = re.sub(
+        r"(?i)(authorization|token|password|secret|api[_-]?key)(\s*[:=]\s*)[^\s,;]+",
+        r"\1\2[REDACTED]",
+        diagnostic,
+    )
+    redacted = re.sub(r"\b(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})\b", "[REDACTED_TOKEN]", redacted)
+    return " ".join(redacted.split())[:240]
+
+
+class RetryingCommandRunner:
+    """Retry only observed transient Git/GitHub transport failures, with a hard bound."""
+
+    def __init__(
+        self,
+        runner: Runner = run_command,
+        *,
+        max_attempts: int = 3,
+        base_delay_seconds: float = 0.5,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self.runner = runner
+        self.max_attempts = max(1, max_attempts)
+        self.base_delay_seconds = max(0, base_delay_seconds)
+        self.sleep = sleep
+        self.history: list[dict[str, Any]] = []
+
+    def __call__(
+        self, command: list[str], *, cwd: Path, check: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        result = None
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                result = self.runner(command, cwd=cwd, check=False)
+            except subprocess.TimeoutExpired as error:
+                stdout = error.stdout.decode("utf-8", "replace") if isinstance(error.stdout, bytes) else error.stdout or ""
+                stderr = error.stderr.decode("utf-8", "replace") if isinstance(error.stderr, bytes) else error.stderr or ""
+                result = subprocess.CompletedProcess(command, 124, stdout, f"{stderr}\ncommand timed out")
+            diagnostic = f"{result.stdout}\n{result.stderr}"
+            failure_class = classify_failure(diagnostic) if result.returncode else "UNKNOWN"
+            self.history.append({
+                "attempt": attempt,
+                "command": f"{Path(command[0]).name} {command[1] if len(command) > 1 else ''}".strip(),
+                "exit_code": result.returncode,
+                "failure_class": failure_class,
+                "diagnostic_sha256": hashlib.sha256(diagnostic.encode("utf-8", "replace")).hexdigest(),
+                "diagnostic_excerpt": _diagnostic_excerpt(diagnostic),
+            })
+            if result.returncode == 0 or failure_class != "INFRASTRUCTURE" or attempt == self.max_attempts:
+                break
+            self.sleep(self.base_delay_seconds * (2 ** (attempt - 1)))
+
+        assert result is not None
+        if check and result.returncode:
+            last = self.history[-1]
+            raise RuntimeError(
+                f"COMMAND_FAILED: {last['command']} exit={result.returncode} "
+                f"class={last['failure_class']} attempts={last['attempt']} "
+                f"evidence_sha256={last['diagnostic_sha256']}"
+            )
+        return result
 
 
 @contextlib.contextmanager
@@ -71,7 +165,7 @@ def continue_next_workunit(
     command: list[str], workspace: Path, *, runner: Runner = run_command,
 ) -> dict[str, Any]:
     """Dispatch an explicitly authorized worker using the existing WorkUnit policy."""
-    if result.get("status") != "MERGED":
+    if result.get("status") not in {"MERGED", "ALREADY_MERGED"}:
         return {"status": "NOT_INTEGRATED"}
     policy_source = repo / "skills/development-lifecycle/lifecycle_policy.py"
     spec = importlib.util.spec_from_file_location("integration_lifecycle_policy", policy_source)
@@ -156,10 +250,22 @@ def evaluate_pull_request(
         if state not in {"SUCCESS", "SKIPPED"}:
             blockers.append(f"CHECK_NOT_PASSING:{check.get('name', 'unnamed')}")
 
+    failure_class = classify_failure("", blockers=blockers)
+    if pull_request.get("state") == "CLOSED":
+        failure_class = "AUTHORITY"
+    elif expected_head and head_sha != expected_head:
+        failure_class = "CONFLICT"
+    elif any(check.get("state") == "FAILURE" for check in checks):
+        failure_class = "APPLICATION"
+
     return {
         "status": "READY" if not blockers else "BLOCKED",
         "blockers": blockers,
+        "failure_class": failure_class,
+        "pull_request_state": pull_request.get("state", "UNKNOWN"),
         "head_sha": head_sha,
+        "merge_sha": (pull_request.get("mergeCommit") or {}).get("oid"),
+        "merged_at": pull_request.get("mergedAt"),
         "base_branch": pull_request.get("baseRefName"),
         "merge_state": pull_request.get("mergeStateStatus"),
         "checks": [
@@ -206,7 +312,7 @@ def preflight(
     pull_request = _json_command(
         [
             "gh", "pr", "view", str(pr_number), "--json",
-            "state,isDraft,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,url,commits,changedFiles,additions,deletions",
+            "state,isDraft,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,url,commits,changedFiles,additions,deletions,mergeCommit,mergedAt",
         ],
         cwd=repo,
         runner=runner,
@@ -231,6 +337,85 @@ def preflight(
     return result, policy
 
 
+def _integration_metrics(
+    plan: dict[str, Any], merge_sha: str, canonical_sha: str, merged_at_value: str | None,
+) -> dict[str, Any]:
+    age: float | str = "UNKNOWN"
+    try:
+        committed = [datetime.datetime.fromisoformat(row["committedDate"].replace("Z", "+00:00"))
+                     for row in plan.get("slice_commits", [])]
+        merged_at = datetime.datetime.fromisoformat(str(merged_at_value).replace("Z", "+00:00"))
+        if committed:
+            age = max(0, (merged_at - min(committed)).total_seconds() / 3600)
+    except (KeyError, TypeError, ValueError):
+        pass
+    return {
+        "branch_age_hours": age,
+        "merge_latency_minutes": "UNKNOWN",
+        "integration_delta": plan["integration_delta"],
+        "conflict_attempts": 0,
+        "promotion_attempts": 1,
+        "conflict_rate": 0,
+        "main_build_health": {"sha": merge_sha, "status": "PENDING_POST_INTEGRATION"},
+        "time_to_first_preview_minutes": "UNKNOWN",
+    }
+
+
+def _reconcile_pr_lifecycle(
+    repo: Path,
+    pr_number: int,
+    plan: dict[str, Any],
+    observed: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    runner: Runner,
+) -> dict[str, Any] | None:
+    """Reconcile PR state changed by another session before reporting blocked."""
+    state = observed.get("pull_request_state")
+    expected_head = plan.get("head_sha")
+    if state == "MERGED":
+        merge_sha = observed.get("merge_sha")
+        if not merge_sha:
+            return {**observed, "status": "MERGED_SHA_NOT_REPORTED", "merge_source": "ANOTHER_SESSION"}
+        runner(["git", "fetch", "--no-tags", policy["remote"], policy["canonical_ref"]], cwd=repo)
+        canonical_sha = runner(["git", "rev-parse", "FETCH_HEAD"], cwd=repo).stdout.strip()
+        ancestry = runner(
+            ["git", "merge-base", "--is-ancestor", merge_sha, canonical_sha],
+            cwd=repo,
+            check=False,
+        )
+        if ancestry.returncode:
+            return {
+                **observed,
+                "status": "MERGED_SHA_NOT_YET_VERIFIED_ON_CANONICAL_REF",
+                "merge_source": "ANOTHER_SESSION",
+                "merge_sha": merge_sha,
+                "canonical_sha": canonical_sha,
+            }
+        return {
+            **observed,
+            "status": "ALREADY_MERGED",
+            "merge_source": "ANOTHER_SESSION",
+            "merge_sha": merge_sha,
+            "canonical_sha": canonical_sha,
+            "metrics": _integration_metrics(plan, merge_sha, canonical_sha, observed.get("merged_at")),
+        }
+    if state == "CLOSED":
+        return {
+            **observed,
+            "status": "PR_CLOSED_EXTERNALLY",
+            "failure_class": "AUTHORITY",
+        }
+    if state == "OPEN" and expected_head and observed.get("head_sha") != expected_head:
+        return {
+            **observed,
+            "status": "PR_SUPERSEDED",
+            "failure_class": "CONFLICT",
+            "expected_head": expected_head,
+        }
+    return None
+
+
 def execute_merge(
     repo: Path,
     pr_number: int,
@@ -247,12 +432,14 @@ def _execute_merge(
     repo: Path, pr_number: int, plan: dict[str, Any], policy: dict[str, Any],
     *, runner: Runner = run_command,
 ) -> dict[str, Any]:
-    if plan["status"] != "READY":
-        return {**plan, "status": "BLOCKED"}
-
     latest, latest_policy = preflight(
-        repo, pr_number, expected_head=plan["head_sha"], runner=runner
+        repo, pr_number, expected_head=plan.get("head_sha"), runner=runner
     )
+    reconciled = _reconcile_pr_lifecycle(
+        repo, pr_number, plan, latest, latest_policy, runner=runner,
+    )
+    if reconciled is not None:
+        return reconciled
     if latest["status"] != "READY":
         return {**latest, "status": "BLOCKED_BEFORE_MERGE"}
     if latest_policy != policy:
@@ -270,7 +457,21 @@ def _execute_merge(
         check=False,
     )
     if merge.returncode:
-        return {**plan, "status": "MERGE_REFUSED_BY_GITHUB"}
+        refreshed, refreshed_policy = preflight(
+            repo, pr_number, expected_head=plan["head_sha"], runner=runner,
+        )
+        reconciled = _reconcile_pr_lifecycle(
+            repo, pr_number, plan, refreshed, refreshed_policy, runner=runner,
+        )
+        if reconciled is not None:
+            return reconciled
+        failure = classify_failure(f"{merge.stdout}\n{merge.stderr}")
+        return {
+            **refreshed,
+            "status": "MERGE_REFUSED_BY_GITHUB",
+            "failure_class": failure,
+            "merge_error_observed": True,
+        }
 
     refreshed = _json_command(
         ["gh", "pr", "view", str(pr_number), "--json", "state,mergeCommit,mergeStateStatus,mergedAt"],
@@ -301,22 +502,7 @@ def _execute_merge(
             "merge_sha": merge_sha,
             "canonical_sha": canonical_sha,
         }
-    age: float | str = "UNKNOWN"
-    try:
-        committed = [datetime.datetime.fromisoformat(row["committedDate"].replace("Z", "+00:00"))
-                     for row in plan.get("slice_commits", [])]
-        merged_at = datetime.datetime.fromisoformat(refreshed["mergedAt"].replace("Z", "+00:00"))
-        if committed:
-            age = max(0, (merged_at - min(committed)).total_seconds() / 3600)
-    except (KeyError, TypeError, ValueError):
-        pass
-    metrics = {
-        "branch_age_hours": age, "merge_latency_minutes": "UNKNOWN",
-        "integration_delta": plan["integration_delta"],
-        "conflict_attempts": 0, "promotion_attempts": 1, "conflict_rate": 0,
-        "main_build_health": {"sha": merge_sha, "status": "PENDING_POST_INTEGRATION"},
-        "time_to_first_preview_minutes": "UNKNOWN",
-    }
+    metrics = _integration_metrics(plan, merge_sha, canonical_sha, refreshed.get("mergedAt"))
     return {**plan, "status": "MERGED", "merge_sha": merge_sha, "canonical_sha": canonical_sha,
             "metrics": metrics}
 
@@ -332,6 +518,7 @@ def main(argv: list[str] | None = None, *, runner: Runner = run_command) -> int:
     parser.add_argument("--next-worktree", type=Path, help="new isolated path for the next ready WorkUnit")
     parser.add_argument("--receipt", type=Path, help="new durable integration receipt, written before worker dispatch")
     args = parser.parse_args(argv)
+    retrying_runner = RetryingCommandRunner(runner)
     try:
         continuation = [args.workunits, args.worker_command, args.next_worktree]
         work = None
@@ -356,15 +543,19 @@ def main(argv: list[str] | None = None, *, runner: Runner = run_command) -> int:
                 json.dump({"status": "INTEGRATION_PENDING", "pr_number": args.pr}, receipt)
                 receipt.flush()
                 os.fsync(receipt.fileno())
-        repo = Path(str(runner(["git", "rev-parse", "--show-toplevel"], cwd=args.repository, check=True).stdout).strip())
-        plan, policy = preflight(repo, args.pr, expected_head=args.expected_head, runner=runner)
-        if args.execute and plan["status"] == "READY":
-            result = execute_merge(repo, args.pr, plan, policy, runner=runner)
+        repo = Path(str(retrying_runner(["git", "rev-parse", "--show-toplevel"], cwd=args.repository, check=True).stdout).strip())
+        plan, policy = preflight(repo, args.pr, expected_head=args.expected_head, runner=retrying_runner)
+        if args.execute:
+            result = execute_merge(repo, args.pr, plan, policy, runner=retrying_runner)
         else:
             result = plan
+        result["retry_history"] = [
+            item for item in retrying_runner.history
+            if item["attempt"] > 1 or item["exit_code"] != 0
+        ]
         if args.receipt:
             write_receipt(args.receipt, result)
-        if work is not None and result["status"] == "MERGED":
+        if work is not None and result["status"] in {"MERGED", "ALREADY_MERGED"}:
             # execute_merge has released its lock: implementation runs in parallel.
             try:
                 result["continuation"] = continue_next_workunit(
@@ -376,9 +567,27 @@ def main(argv: list[str] | None = None, *, runner: Runner = run_command) -> int:
         print(json.dumps(result, sort_keys=True))
         if result.get("continuation", {}).get("status") in {"WORKER_FAILED", "WORKER_BLOCKED"}:
             return 3
-        return 0 if result["status"] in {"READY", "MERGED"} else 3
+        return 0 if result["status"] in {"READY", "MERGED", "ALREADY_MERGED"} else 3
     except (OSError, RuntimeError, KeyError, TypeError, ValueError) as error:
-        print(json.dumps({"status": "CONTROLLER_ERROR", "reason": str(error)}, sort_keys=True))
+        last_attempt = retrying_runner.history[-1] if retrying_runner.history else None
+        failed_attempt = last_attempt if last_attempt and last_attempt["exit_code"] != 0 else None
+        result = {
+            "status": "CONTROLLER_ERROR",
+            "reason": str(error),
+            "failure_class": failed_attempt["failure_class"] if failed_attempt else classify_failure(str(error)),
+            "retry_history": [
+                item for item in retrying_runner.history
+                if item["attempt"] > 1 or item["exit_code"] != 0
+            ],
+        }
+        if args.receipt and args.receipt.exists():
+            try:
+                current_receipt = json.loads(args.receipt.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                current_receipt = None
+            if isinstance(current_receipt, dict) and current_receipt.get("status") == "INTEGRATION_PENDING":
+                write_receipt(args.receipt, result)
+        print(json.dumps(result, sort_keys=True))
         return 2
 
 

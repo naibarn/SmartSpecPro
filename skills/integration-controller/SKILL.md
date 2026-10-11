@@ -85,6 +85,16 @@ reviews, rulesets, and merge queues. Treat `MERGE_QUEUED_OR_PENDING` as pending,
 not integrated. Record integration only after the returned merge SHA is proven
 reachable from the configured canonical ref.
 
+When execution refreshes PR state, reconcile a PR already merged by another
+session as `ALREADY_MERGED` only after proving its merge SHA is reachable from
+the configured canonical ref. Report externally closed PRs and changed open
+heads as authority/conflict outcomes; do not issue a duplicate merge. The
+executor retries recognized Git/GitHub transport failures at most three times
+with bounded exponential backoff, recording attempt number, failure class, and
+a diagnostic digest in the receipt. Application, conflict, and authority
+failures are not retried. Failed or pending CI checks remain merge blockers;
+transport retries do not rerun or bypass CI.
+
 The executor holds a nonblocking repository-common Git lock only for the final
 refresh/check/merge/reachability section. All worktrees on the same Linux host
 share it. A busy lock is a retry predicate, not a request for human approval.
