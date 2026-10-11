@@ -129,7 +129,8 @@ function isJobEnvelope(value: GeoSourceRefreshJobEnvelope): boolean {
 }
 
 function validBinding(value: GeoHydroRecordBinding | undefined): value is GeoHydroRecordBinding {
-  return Boolean(value) && ID.test(value.stationRef) && typeof value.displayName === "string" && value.displayName.trim().length > 0 && value.displayName.length <= 200 &&
+  if (!value) return false;
+  return ID.test(value.stationRef) && typeof value.displayName === "string" && value.displayName.trim().length > 0 && value.displayName.length <= 200 &&
     ["water_level", "discharge", "rainfall"].includes(value.metric) && VARIABLE_CODE.test(value.variableCode) &&
     ["unknown", "valid", "suspect", "invalid", "corrected", "estimated", "missing", "censored", "rejected"].includes(value.qualityCode) &&
     ["current", "stale", "delayed", "unknown"].includes(value.freshnessCode) &&

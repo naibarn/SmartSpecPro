@@ -235,6 +235,19 @@ describe("geo source refresh pipeline", () => {
     expect(dependencies.hydroRepository.insertObservationIfAbsent).not.toHaveBeenCalled();
   });
 
+  it("rejects malformed station bindings before creating an immutable capture", async () => {
+    const dependencies = createDependencies({ bindings: { resolve: vi.fn(() => ({
+      stationRef: "rid-station-001", displayName: " ", metric: "water_level", variableCode: "water_level",
+      qualityCode: "valid", freshnessCode: "current",
+    }) as never) } });
+
+    await expect(runGeoSourceRefreshPipeline(input, dependencies)).resolves.toEqual({
+      ok: false,
+      code: "GEO_HYDRO_BINDING_INVALID",
+    });
+    expect(dependencies.captureStore.putImmutable).not.toHaveBeenCalled();
+  });
+
   it("does not append hydro history when the fence is stale immediately before persistence", async () => {
     const assertActive = vi.fn()
       .mockResolvedValueOnce(undefined)
