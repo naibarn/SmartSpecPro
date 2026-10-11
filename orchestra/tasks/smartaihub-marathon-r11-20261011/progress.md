@@ -26,6 +26,11 @@ Loop policy:
 - [BLOCKED, EXTERNAL AUTHORITY] Live Runner readiness — no current trusted Runner/snapshot; protected dispatch remains DENY. Exact owner/action recorded in `lifecycle.md`.
 - [PENDING] One bounded next-WorkUnit selection after checkpoint promotion; do not manufacture a WorkUnit while current R11 proof depends on external authority.
 
+- [IMPLEMENTED, FOCUSED TESTS PASS] Bounded convergence repair — `converge` and `verify` now establish a shared 15-second operation deadline; Git subprocesses use the remaining budget; untracked files copy in 1 MiB chunks to atomic private recovery files. Interrupted capture records `CAPTURE_INCOMPLETE` and remains recovery-pending, never yielding `USER_WORKSPACE_CONVERGED`. `py_compile` passed; workspace authority regression passed 57 tests. Primary checkout was not used.
+
+- [INTEGRATED] PR #691 implementation at `0683e8eec2324672355e3329f9d05a987462f6b7`; PR #692 canonical handoff at `98fd45a8aaf7491dbe6063b6be178ee3d40643e2`.
+- [CONVERGENCE PENDING] The registered user checkout is the known dirty primary. Do not run `converge` there until the bounded-repair checkpoint is integrated and re-reconciled. No primary files were changed, staged, stashed, or fast-forwarded. After integration, retry through the deadline-aware authority path; timeout remains unknown/pending.
+
 Evidence references: `plan.md`, `test-design.md`, `lifecycle.md`, SPEC-224 R10 evidence under `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`.
 
 Receipt trust-boundary implementation is integrated by PR #691 at `0683e8eec2324672355e3329f9d05a987462f6b7`; live Runner/PostgreSQL acceptance remains open under the blocker above. The canonical SPEC handoff records the exact SHA, test evidence, owner action, and resume predicate.
