@@ -110,233 +110,84 @@ class TestQueryBuilder:
 
 
 # ============================================================================
-# Tests for Cache Optimization
+# Tests for the current PostgreSQL-backed cache
 # ============================================================================
 
-class TestCacheEntry:
-    """Tests for CacheEntry class"""
-    
-    def test_is_expired_with_ttl(self):
-        """Test expiration check with TTL"""
-        from app.core.cache_optimized import CacheEntry
-        
-        # Not expired
-        entry = CacheEntry(
-            value="test",
-            created_at=datetime.utcnow(),
-            ttl=300
-        )
-        assert not entry.is_expired
-        
-        # Expired
-        entry = CacheEntry(
-            value="test",
-            created_at=datetime.utcnow() - timedelta(seconds=400),
-            ttl=300
-        )
-        assert entry.is_expired
-    
-    def test_is_expired_no_ttl(self):
-        """Test expiration check without TTL"""
-        from app.core.cache_optimized import CacheEntry
-        
-        entry = CacheEntry(
-            value="test",
-            created_at=datetime.utcnow() - timedelta(days=365),
-            ttl=0  # No expiration
-        )
-        assert not entry.is_expired
-    
-    def test_touch(self):
-        """Test touch updates access tracking"""
-        from app.core.cache_optimized import CacheEntry
-        
-        entry = CacheEntry(
-            value="test",
-            created_at=datetime.utcnow(),
-            ttl=300
-        )
-        
-        assert entry.access_count == 0
-        
-        entry.touch()
-        assert entry.access_count == 1
-        
-        entry.touch()
-        assert entry.access_count == 2
+class TestCacheManager:
+    """Tests for the current PostgreSQL-backed cache contract."""
 
+    def test_generate_key_uses_sha256_and_arguments(self):
+        from app.core.cache import CacheManager
 
-class TestLRUCache:
-    """Tests for LRUCache class"""
-    
+        cache = CacheManager()
+        first = cache._generate_key("user", 7, role="admin")
+
+        assert len(first) == 64
+        assert first == cache._generate_key("user", 7, role="admin")
+        assert first != cache._generate_key("user", 8, role="admin")
+
     @pytest.mark.asyncio
-    async def test_set_and_get(self):
-        """Test basic set and get"""
-        from app.core.cache_optimized import LRUCache, CacheEntry
-        
-        cache = LRUCache(max_size=10)
-        
-        entry = CacheEntry(value="test_value", created_at=datetime.utcnow(), ttl=300)
-        await cache.set("key1", entry)
-        
-        result = await cache.get("key1")
-        assert result is not None
-        assert result.value == "test_value"
-    
+    async def test_set_persists_value_and_get_reads_it(self, monkeypatch):
+        import app.core.cache as cache_module
+
+        persisted = {"value": {"status": "ready"}}
+        put_value = AsyncMock()
+        read_value = AsyncMock(side_effect=lambda _namespace, key: persisted.get(key))
+        monkeypatch.setattr(cache_module, "put_value", put_value)
+        monkeypatch.setattr(cache_module, "read_value", read_value)
+        cache = cache_module.CacheManager()
+
+        await cache.set("value", {"status": "ready"}, ttl=60)
+
+        assert await cache.get("value") == {"status": "ready"}
+        put_value.assert_awaited_once_with(
+            "application_cache", "value", {"status": "ready"}, 60
+        )
+        read_value.assert_awaited_once_with("application_cache", "value")
+
     @pytest.mark.asyncio
-    async def test_get_nonexistent(self):
-        """Test get for nonexistent key"""
-        from app.core.cache_optimized import LRUCache
-        
-        cache = LRUCache(max_size=10)
-        result = await cache.get("nonexistent")
-        assert result is None
-    
+    async def test_get_falls_back_to_memory_when_database_is_unavailable(self, monkeypatch):
+        import app.core.cache as cache_module
+
+        monkeypatch.setattr(
+            cache_module,
+            "read_value",
+            AsyncMock(side_effect=ConnectionError("database unavailable")),
+        )
+        cache = cache_module.CacheManager()
+        cache.memory_cache["key"] = "cached"
+
+        assert await cache.get("key") == "cached"
+
     @pytest.mark.asyncio
-    async def test_lru_eviction(self):
-        """Test LRU eviction when at capacity"""
-        from app.core.cache_optimized import LRUCache, CacheEntry
-        
-        cache = LRUCache(max_size=3)
-        
-        # Fill cache
-        for i in range(3):
-            entry = CacheEntry(value=f"value{i}", created_at=datetime.utcnow(), ttl=300)
-            await cache.set(f"key{i}", entry)
-        
-        assert cache.size() == 3
-        
-        # Add one more - should evict oldest (key0)
-        entry = CacheEntry(value="value3", created_at=datetime.utcnow(), ttl=300)
-        await cache.set("key3", entry)
-        
-        assert cache.size() == 3
-        assert await cache.get("key0") is None  # Evicted
-        assert await cache.get("key3") is not None  # New entry
-    
+    async def test_delete_removes_persistent_and_memory_value(self, monkeypatch):
+        import app.core.cache as cache_module
+
+        delete_value = AsyncMock()
+        monkeypatch.setattr(cache_module, "delete_value", delete_value)
+        cache = cache_module.CacheManager()
+        cache.memory_cache["key"] = "cached"
+
+        await cache.delete("key")
+
+        delete_value.assert_awaited_once_with("application_cache", "key")
+        assert "key" not in cache.memory_cache
+
     @pytest.mark.asyncio
-    async def test_delete(self):
-        """Test delete operation"""
-        from app.core.cache_optimized import LRUCache, CacheEntry
-        
-        cache = LRUCache(max_size=10)
-        
-        entry = CacheEntry(value="test", created_at=datetime.utcnow(), ttl=300)
-        await cache.set("key1", entry)
-        
-        result = await cache.delete("key1")
-        assert result is True
-        
-        result = await cache.delete("key1")
-        assert result is False
-    
-    @pytest.mark.asyncio
-    async def test_clear(self):
-        """Test clear operation"""
-        from app.core.cache_optimized import LRUCache, CacheEntry
-        
-        cache = LRUCache(max_size=10)
-        
-        for i in range(5):
-            entry = CacheEntry(value=f"value{i}", created_at=datetime.utcnow(), ttl=300)
-            await cache.set(f"key{i}", entry)
-        
-        assert cache.size() == 5
-        
+    async def test_clear_namespace_clears_database_and_memory(self, monkeypatch):
+        import app.core.cache as cache_module
+
+        delete_namespace = AsyncMock()
+        monkeypatch.setattr(cache_module, "delete_namespace", delete_namespace)
+        cache = cache_module.CacheManager()
+        cache.memory_cache.update({"a": 1, "b": 2})
+
         await cache.clear()
-        assert cache.size() == 0
+
+        delete_namespace.assert_awaited_once_with("application_cache")
+        assert cache.memory_cache == {}
 
 
-class TestCircuitBreaker:
-    """Tests for CircuitBreaker class"""
-    
-    def test_initial_state(self):
-        """Test initial state is closed"""
-        from app.core.cache_optimized import CircuitBreaker, CircuitState
-        
-        cb = CircuitBreaker()
-        assert cb.state == CircuitState.CLOSED
-    
-    def test_opens_after_threshold(self):
-        """Test circuit opens after failure threshold"""
-        from app.core.cache_optimized import CircuitBreaker, CircuitState
-        
-        cb = CircuitBreaker(failure_threshold=3)
-        
-        cb.record_failure()
-        assert cb.state == CircuitState.CLOSED
-        
-        cb.record_failure()
-        assert cb.state == CircuitState.CLOSED
-        
-        cb.record_failure()
-        assert cb.state == CircuitState.OPEN
-    
-    def test_success_resets_count(self):
-        """Test success resets failure count"""
-        from app.core.cache_optimized import CircuitBreaker, CircuitState
-        
-        cb = CircuitBreaker(failure_threshold=3)
-        
-        cb.record_failure()
-        cb.record_failure()
-        cb.record_success()
-        
-        assert cb.failure_count == 0
-        assert cb.state == CircuitState.CLOSED
-    
-    def test_can_execute_when_closed(self):
-        """Test can execute when circuit is closed"""
-        from app.core.cache_optimized import CircuitBreaker
-        
-        cb = CircuitBreaker()
-        assert cb.can_execute() is True
-    
-    def test_cannot_execute_when_open(self):
-        """Test cannot execute when circuit is open"""
-        from app.core.cache_optimized import CircuitBreaker
-        
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=60)
-        cb.record_failure()
-        
-        assert cb.can_execute() is False
-
-
-class TestCacheStats:
-    """Tests for CacheStats class"""
-    
-    def test_hit_rate_calculation(self):
-        """Test hit rate calculation"""
-        from app.core.cache_optimized import CacheStats
-        
-        stats = CacheStats()
-        
-        # No requests yet
-        assert stats.hit_rate == 0.0
-        
-        # 3 hits, 1 miss = 75% hit rate
-        stats.hits = 3
-        stats.misses = 1
-        assert stats.hit_rate == 0.75
-    
-    def test_to_dict(self):
-        """Test stats serialization"""
-        from app.core.cache_optimized import CacheStats
-        
-        stats = CacheStats()
-        stats.hits = 10
-        stats.misses = 5
-        stats.writes = 15
-        
-        result = stats.to_dict()
-        
-        assert result["hits"] == 10
-        assert result["misses"] == 5
-        assert result["writes"] == 15
-        assert result["hit_rate"] == 66.67  # 10/(10+5) * 100
-
-
-# ============================================================================
 # Tests for Background Tasks
 # ============================================================================
 
@@ -577,12 +428,22 @@ class TestCacheIntegration:
     """Integration tests for caching system"""
     
     @pytest.mark.asyncio
-    async def test_cached_decorator(self):
+    async def test_cached_decorator(self, monkeypatch):
         """Test cached decorator"""
-        from app.core.cache_optimized import cached, cache_manager
+        from app.core.cache import cached, cache_manager
         
         call_count = 0
-        
+        values = {}
+
+        async def get_cached(key):
+            return values.get(key)
+
+        async def set_cached(key, value, ttl=None):
+            values[key] = value
+
+        monkeypatch.setattr(cache_manager, "get", get_cached)
+        monkeypatch.setattr(cache_manager, "set", set_cached)
+
         @cached(ttl=60, key_prefix="test")
         async def expensive_function(x: int):
             nonlocal call_count
