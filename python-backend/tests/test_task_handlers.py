@@ -1,11 +1,18 @@
 """Tests for Cloud Tasks handler endpoints under /tasks/*."""
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
 
 from app.api.v1.task_handlers import router
+
+
+def _mock_async_session():
+    session_context = MagicMock()
+    session_context.__aenter__ = AsyncMock(return_value=MagicMock())
+    session_context.__aexit__ = AsyncMock(return_value=False)
+    return session_context
 
 
 def create_test_app() -> FastAPI:
@@ -21,15 +28,30 @@ class TestPollJobHandler:
 
     @pytest.mark.asyncio
     async def test_returns_200_for_valid_request(self):
-        """Handler accepts valid request and returns 200."""
+        """A valid poll request for an unknown job is acknowledged without DB access."""
         app = create_test_app()
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/tasks/poll-job",
-                json={"job_id": "test-123", "kie_job_id": "kie-456", "attempt": 0},
-            )
-            assert response.status_code == 200
+        with (
+            patch(
+                "app.api.v1.task_handlers.ensure_media_tasks_cloud_task_id_column",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.api.v1.task_handlers.AsyncSessionLocal",
+                return_value=_mock_async_session(),
+            ),
+            patch(
+                "app.api.v1.task_handlers.MediaTaskService.get_task",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/tasks/poll-job",
+                    json={"job_id": "test-123", "kie_job_id": "kie-456", "attempt": 0},
+                )
+                assert response.status_code == 200
 
 
 @pytest.mark.unit
@@ -101,11 +123,22 @@ class TestCleanupExpiredHandler:
         """Handler returns 200 with deleted_count."""
         app = create_test_app()
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post("/tasks/cleanup-expired", json={})
-            assert response.status_code == 200
-            data = response.json()
-            assert "deleted_count" in data
+        with (
+            patch(
+                "app.api.v1.task_handlers.ensure_media_tasks_cloud_task_id_column",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.tasks.media_tasks._cleanup_expired_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"deleted_count": 0},
+            ),
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post("/tasks/cleanup-expired", json={})
+                assert response.status_code == 200
+                data = response.json()
+                assert "deleted_count" in data
 
 
 @pytest.mark.unit
@@ -151,15 +184,50 @@ class TestAllTaskEndpoints:
         """All endpoints accept JSON payloads."""
         app = create_test_app()
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            endpoints = [
-                ("/tasks/poll-job", {"job_id": "j1", "kie_job_id": "k1", "attempt": 0}),
-                ("/tasks/process-media", {"job_id": "j1", "kie_job_id": "k1"}),
-                ("/tasks/cleanup-expired", {}),
-                ("/tasks/retry-failed", {}),
-                ("/tasks/recover-stuck", {}),
-            ]
+        with (
+            patch(
+                "app.api.v1.task_handlers.ensure_media_tasks_cloud_task_id_column",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.api.v1.task_handlers.AsyncSessionLocal",
+                return_value=_mock_async_session(),
+            ),
+            patch(
+                "app.api.v1.task_handlers.MediaTaskService.get_task",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "app.tasks.media_tasks._cleanup_expired_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"deleted_count": 0},
+            ),
+            patch(
+                "app.tasks.media_tasks._retry_failed_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"retried_count": 0},
+            ),
+            patch(
+                "app.tasks.media_tasks._recover_stuck_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"status": "success", "recovered_count": 0, "failed_count": 0},
+            ),
+            patch(
+                "app.tasks.media_tasks._recover_stuck_pending_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"recovered": 0},
+            ),
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                endpoints = [
+                    ("/tasks/poll-job", {"job_id": "j1", "kie_job_id": "k1", "attempt": 0}),
+                    ("/tasks/process-media", {"job_id": "j1", "kie_job_id": "k1"}),
+                    ("/tasks/cleanup-expired", {}),
+                    ("/tasks/retry-failed", {}),
+                    ("/tasks/recover-stuck", {}),
+                ]
 
-            for path, payload in endpoints:
-                response = await client.post(path, json=payload)
-                assert response.status_code == 200, f"{path} failed with {response.status_code}"
+                for path, payload in endpoints:
+                    response = await client.post(path, json=payload)
+                    assert response.status_code == 200, f"{path} failed with {response.status_code}"
