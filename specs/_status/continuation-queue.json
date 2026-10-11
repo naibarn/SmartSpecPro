@@ -4782,7 +4782,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Keep SPEC-277 partial. Preserve and reconcile the unregistered dirty R7 fencing worktrees against current main; finish direct provider callback/outbox/cancellation stale-worker acceptance and the TeamRun-to-Task-Control identity binding. Migration/receipt work remains explicitly approval-gated.",
+      "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",

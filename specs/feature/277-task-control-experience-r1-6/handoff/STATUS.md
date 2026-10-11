@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 431 unresolved of 431
-- Next action: Keep SPEC-277 partial. Preserve and reconcile the unregistered dirty R7 fencing worktrees against current main; finish direct provider callback/outbox/cancellation stale-worker acceptance and the TeamRun-to-Task-Control identity binding. Migration/receipt work remains explicitly approval-gated.
-- Manifest generation: 38
+- Next action: Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.
+- Manifest generation: 39
