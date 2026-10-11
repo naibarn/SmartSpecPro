@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { db } from "../db";
+import { getDb } from "../db";
 import {
   mediaAssets,
   verticalDramaEpisodes,
@@ -96,7 +96,7 @@ async function ownedSeries(
   actor: VerticalDramaObjectReferenceActor,
   seriesId: string | number
 ) {
-  const [row] = await db
+  const [row] = await getDb()
     .select({ id: verticalDramaSeries.id })
     .from(verticalDramaSeries)
     .where(
@@ -115,7 +115,7 @@ async function ownedObject(
   actor: VerticalDramaObjectReferenceActor,
   objectReferenceId: string | number
 ) {
-  const [row] = await db
+  const [row] = await getDb()
     .select()
     .from(verticalDramaObjectReferences)
     .where(
@@ -136,7 +136,7 @@ export async function listVerticalDramaObjectReferences(
   options: { includeArchived?: boolean } = {}
 ) {
   const id = await ownedSeries(actor, seriesId);
-  const objects = await db
+  const objects = await getDb()
     .select()
     .from(verticalDramaObjectReferences)
     .where(
@@ -154,7 +154,7 @@ export async function listVerticalDramaObjectReferences(
       asc(verticalDramaObjectReferences.name)
     );
   if (objects.length === 0) return [];
-  const assets = await db
+  const assets = await getDb()
     .select({
       id: verticalDramaObjectReferenceAssets.id,
       objectReferenceId: verticalDramaObjectReferenceAssets.objectReferenceId,
@@ -219,7 +219,7 @@ export async function getVerticalDramaObjectReferenceGenerationContext(
   input: { objectReferenceId: string; sceneContext?: string }
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
-  const assets = await db
+  const assets = await getDb()
     .select({
       id: verticalDramaObjectReferenceAssets.id,
       role: verticalDramaObjectReferenceAssets.role,
@@ -298,7 +298,7 @@ export async function requestVerticalDramaObjectReferencePrompt(
     inputFingerprint,
     paid: false,
   };
-  const [created] = await db
+  const [created] = await getDb()
     .insert(verticalDramaObjectReferencePromptRuns)
     .values({
       tenantId: actor.tenantId,
@@ -314,7 +314,7 @@ export async function requestVerticalDramaObjectReferencePrompt(
     .onConflictDoNothing()
     .returning();
   if (created) return { ...created, id: String(created.id), resultJson };
-  const [existing] = await db
+  const [existing] = await getDb()
     .select()
     .from(verticalDramaObjectReferencePromptRuns)
     .where(
@@ -357,7 +357,7 @@ export async function createVerticalDramaObjectReference(
     marketplaceCaptureId: input.marketplaceCaptureId,
     marketplaceProductId: input.marketplaceProductId,
   });
-  const [row] = await db
+  const [row] = await getDb()
     .insert(verticalDramaObjectReferences)
     .values({
       tenantId: actor.tenantId,
@@ -420,7 +420,7 @@ export async function updateVerticalDramaObjectReference(
     current.revision !== input.expectedRevision
   )
     throw new Error("Object reference revision conflict");
-  const [row] = await db
+  const [row] = await getDb()
     .update(verticalDramaObjectReferences)
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
@@ -462,7 +462,7 @@ export async function archiveVerticalDramaObjectReference(
   id: string
 ) {
   await ownedObject(actor, id);
-  await db
+  await getDb()
     .update(verticalDramaObjectReferences)
     .set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() })
     .where(
@@ -480,7 +480,7 @@ export async function restoreVerticalDramaObjectReference(
   id: string
 ) {
   await ownedObject(actor, id);
-  const [row] = await db
+  const [row] = await getDb()
     .update(verticalDramaObjectReferences)
     .set({ status: "active", archivedAt: null, updatedAt: new Date() })
     .where(
@@ -505,7 +505,7 @@ export async function addVerticalDramaObjectReferenceAsset(
   }
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
-  const [asset] = await db
+  const [asset] = await getDb()
     .select({ id: mediaAssets.id })
     .from(mediaAssets)
     .where(
@@ -517,7 +517,7 @@ export async function addVerticalDramaObjectReferenceAsset(
     )
     .limit(1);
   if (!asset) throw new Error("Media asset not found");
-  const [row] = await db
+  const [row] = await getDb()
     .insert(verticalDramaObjectReferenceAssets)
     .values({
       tenantId: actor.tenantId,
@@ -551,7 +551,7 @@ export async function removeVerticalDramaObjectReferenceAsset(
   actor: VerticalDramaObjectReferenceActor,
   id: string
 ) {
-  const [asset] = await db
+  const [asset] = await getDb()
     .select({
       objectReferenceId: verticalDramaObjectReferenceAssets.objectReferenceId,
     })
@@ -564,7 +564,7 @@ export async function removeVerticalDramaObjectReferenceAsset(
       )
     )
     .limit(1);
-  await db
+  await getDb()
     .update(verticalDramaObjectReferenceAssets)
     .set({ state: "removed", removedAt: new Date() })
     .where(
@@ -586,7 +586,7 @@ export async function restoreVerticalDramaObjectReferenceAsset(
   actor: VerticalDramaObjectReferenceActor,
   id: string
 ) {
-  const [asset] = await db
+  const [asset] = await getDb()
     .select({
       objectReferenceId: verticalDramaObjectReferenceAssets.objectReferenceId,
     })
@@ -599,7 +599,7 @@ export async function restoreVerticalDramaObjectReferenceAsset(
       )
     )
     .limit(1);
-  await db
+  await getDb()
     .update(verticalDramaObjectReferenceAssets)
     .set({ state: "active", removedAt: null })
     .where(
@@ -623,7 +623,7 @@ export async function setVerticalDramaObjectReferenceCanonicalAsset(
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
   const assetId = numberId(input.assetId);
-  const [asset] = await db
+  const [asset] = await getDb()
     .select({ id: verticalDramaObjectReferenceAssets.id })
     .from(verticalDramaObjectReferenceAssets)
     .where(
@@ -637,7 +637,7 @@ export async function setVerticalDramaObjectReferenceCanonicalAsset(
     )
     .limit(1);
   if (!asset) throw new Error("Object reference asset not found");
-  await db.transaction(async tx => {
+  await getDb().transaction(async tx => {
     await tx
       .update(verticalDramaObjectReferenceAssets)
       .set({ role: "alternate" })
@@ -664,7 +664,7 @@ export async function reorderVerticalDramaObjectReferenceAssets(
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
   const assetIds = input.assetIds.map(numberId);
-  const assets = await db
+  const assets = await getDb()
     .select({ id: verticalDramaObjectReferenceAssets.id })
     .from(verticalDramaObjectReferenceAssets)
     .where(
@@ -681,7 +681,7 @@ export async function reorderVerticalDramaObjectReferenceAssets(
     new Set(assetIds).size !== assetIds.length
   )
     throw new Error("Invalid object reference asset order");
-  await db.transaction(async tx => {
+  await getDb().transaction(async tx => {
     for (const [sortOrder, assetId] of assetIds.entries()) {
       await tx
         .update(verticalDramaObjectReferenceAssets)
@@ -716,7 +716,7 @@ async function removeObjectReferenceProjections(
     "episodeId" | "shotNumber" | "objectReferenceId"
   >
 ) {
-  const projections = await db
+  const projections = await getDb()
     .select({
       id: verticalDramaObjectReferenceProjections.id,
       shotReferenceId: verticalDramaObjectReferenceProjections.shotReferenceId,
@@ -738,7 +738,7 @@ async function removeObjectReferenceProjections(
       )
     );
   if (projections.length === 0) return;
-  await db.delete(verticalDramaObjectReferenceProjections).where(
+  await getDb().delete(verticalDramaObjectReferenceProjections).where(
     and(
       eq(verticalDramaObjectReferenceProjections.tenantId, actor.tenantId),
       eq(verticalDramaObjectReferenceProjections.userId, actor.userId),
@@ -748,7 +748,7 @@ async function removeObjectReferenceProjections(
       )
     )
   );
-  await db.delete(verticalDramaShotReferences).where(
+  await getDb().delete(verticalDramaShotReferences).where(
     and(
       eq(verticalDramaShotReferences.tenantId, actor.tenantId),
       eq(verticalDramaShotReferences.userId, actor.userId),
@@ -766,7 +766,7 @@ async function projectObjectReferenceAssets(
   input: ObjectReferenceProjectionInput,
   revision: number
 ) {
-  const assets = await db
+  const assets = await getDb()
     .select({
       id: verticalDramaObjectReferenceAssets.id,
       mediaAssetId: verticalDramaObjectReferenceAssets.mediaAssetId,
@@ -798,7 +798,7 @@ async function projectObjectReferenceAssets(
     ? [selected, ...orderedAssets].slice(0, 5)
     : orderedAssets;
   for (const [sortOrder, asset] of projectedAssets.entries()) {
-    const [inserted] = await db
+    const [inserted] = await getDb()
       .insert(verticalDramaShotReferences)
       .values({
         tenantId: actor.tenantId,
@@ -816,7 +816,7 @@ async function projectObjectReferenceAssets(
     const reference = inserted
       ? inserted
       : (
-          await db
+          await getDb()
             .select({ id: verticalDramaShotReferences.id })
             .from(verticalDramaShotReferences)
             .where(
@@ -835,7 +835,7 @@ async function projectObjectReferenceAssets(
             .limit(1)
         )[0];
     if (!reference) continue;
-    await db
+    await getDb()
       .insert(verticalDramaObjectReferenceProjections)
       .values({
         tenantId: actor.tenantId,
@@ -855,7 +855,7 @@ export async function reconcileVerticalDramaObjectReferenceShotProjections(
   objectReferenceId: number
 ) {
   const object = await ownedObject(actor, objectReferenceId);
-  const links = await db
+  const links = await getDb()
     .select({
       episodeId: verticalDramaShotObjectReferences.episodeId,
       shotNumber: verticalDramaShotObjectReferences.shotNumber,
@@ -899,7 +899,7 @@ export async function upsertVerticalDramaObjectReferenceAliases(
   const object = await ownedObject(actor, input.objectReferenceId);
   const aliases = normalizeObjectReferenceAliases(input.aliases);
   for (const alias of aliases) {
-    await db
+    await getDb()
       .insert(verticalDramaObjectReferenceAliases)
       .values({
         tenantId: actor.tenantId,
@@ -925,7 +925,7 @@ export async function listVerticalDramaObjectReferenceAliases(
   objectReferenceId: string
 ) {
   const object = await ownedObject(actor, objectReferenceId);
-  return db
+  return getDb()
     .select()
     .from(verticalDramaObjectReferenceAliases)
     .where(
@@ -951,7 +951,7 @@ export async function linkVerticalDramaShotObjectReference(
   }
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
-  const [episode] = await db
+  const [episode] = await getDb()
     .select({
       id: verticalDramaEpisodes.id,
       seriesId: verticalDramaEpisodes.seriesId,
@@ -971,7 +971,7 @@ export async function linkVerticalDramaShotObjectReference(
     ? numberId(input.selectedMediaAssetId)
     : null;
   if (selectedMediaAssetId !== null) {
-    const [selectedAsset] = await db
+    const [selectedAsset] = await getDb()
       .select({ id: verticalDramaObjectReferenceAssets.id })
       .from(verticalDramaObjectReferenceAssets)
       .where(
@@ -987,7 +987,7 @@ export async function linkVerticalDramaShotObjectReference(
     if (!selectedAsset)
       throw new Error("Selected object reference asset not found");
   }
-  const [row] = await db
+  const [row] = await getDb()
     .insert(verticalDramaShotObjectReferences)
     .values({
       tenantId: actor.tenantId,
@@ -1042,7 +1042,7 @@ export async function unlinkVerticalDramaShotObjectReference(
   actor: VerticalDramaObjectReferenceActor,
   id: string
 ) {
-  const [link] = await db
+  const [link] = await getDb()
     .select({
       episodeId: verticalDramaShotObjectReferences.episodeId,
       shotNumber: verticalDramaShotObjectReferences.shotNumber,
@@ -1057,7 +1057,7 @@ export async function unlinkVerticalDramaShotObjectReference(
       )
     )
     .limit(1);
-  const [row] = await db
+  const [row] = await getDb()
     .update(verticalDramaShotObjectReferences)
     .set({
       status: "removed",
@@ -1090,7 +1090,7 @@ export async function listVerticalDramaObjectReferenceUsages(
   input: { objectReferenceId: string; includeRemoved?: boolean }
 ) {
   const object = await ownedObject(actor, input.objectReferenceId);
-  return db
+  return getDb()
     .select()
     .from(verticalDramaShotObjectReferences)
     .where(
@@ -1114,7 +1114,7 @@ export async function listVerticalDramaShotObjectReferences(
   episodeId: string | number
 ) {
   const id = numberId(episodeId);
-  const [episode] = await db
+  const [episode] = await getDb()
     .select({ seriesId: verticalDramaEpisodes.seriesId })
     .from(verticalDramaEpisodes)
     .where(
@@ -1126,7 +1126,7 @@ export async function listVerticalDramaShotObjectReferences(
     )
     .limit(1);
   if (!episode) throw new Error("Episode not found");
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: verticalDramaShotObjectReferences.id,
       shotNumber: verticalDramaShotObjectReferences.shotNumber,
@@ -1170,7 +1170,7 @@ export async function reviewVerticalDramaObjectReferenceSuggestion(
   input: { suggestionId: string; decision: "accepted" | "rejected" | "reset" }
 ) {
   const suggestionId = numberId(input.suggestionId);
-  const [suggestion] = await db
+  const [suggestion] = await getDb()
     .select()
     .from(verticalDramaObjectDetectionSuggestions)
     .where(
@@ -1182,7 +1182,7 @@ export async function reviewVerticalDramaObjectReferenceSuggestion(
     )
     .limit(1);
   if (!suggestion) throw new Error("Object suggestion not found");
-  await db
+  await getDb()
     .update(verticalDramaObjectDetectionSuggestions)
     .set({
       decision: input.decision,
@@ -1208,7 +1208,7 @@ export async function listVerticalDramaObjectReferenceSuggestions(
   episodeId: string | number
 ) {
   const id = numberId(episodeId);
-  return db
+  return getDb()
     .select({
       id: verticalDramaObjectDetectionSuggestions.id,
       objectReferenceId:
@@ -1245,7 +1245,7 @@ export async function resetVerticalDramaObjectReferenceShotDecision(
   actor: VerticalDramaObjectReferenceActor,
   id: string
 ) {
-  const [row] = await db
+  const [row] = await getDb()
     .update(verticalDramaShotObjectReferences)
     .set({
       status: "active",
@@ -1307,7 +1307,7 @@ export async function reconcileCommercialObjectReference(
 ) {
   const object = await ensureCommercialObjectReference(actor, input);
   const episodeId = numberId(input.episodeId);
-  const [episode] = await db
+  const [episode] = await getDb()
     .select({
       id: verticalDramaEpisodes.id,
       seriesId: verticalDramaEpisodes.seriesId,
@@ -1323,7 +1323,7 @@ export async function reconcileCommercialObjectReference(
     )
     .limit(1);
   if (!episode) throw new Error("Episode not found");
-  const [binding] = await db
+  const [binding] = await getDb()
     .insert(verticalDramaEpisodeObjectReferences)
     .values({
       tenantId: actor.tenantId,
@@ -1359,7 +1359,7 @@ export async function detectAndLinkVerticalDramaObjectReferences(
   episodeId: string | number
 ) {
   const id = numberId(episodeId);
-  const [episode] = await db
+  const [episode] = await getDb()
     .select({
       seriesId: verticalDramaEpisodes.seriesId,
       episodeNumber: verticalDramaEpisodes.episodeNumber,
@@ -1381,7 +1381,7 @@ export async function detectAndLinkVerticalDramaObjectReferences(
     !Array.isArray((episode.storyboard as { shots?: unknown[] } | null)?.shots)
   )
     return { linked: 0 };
-  const objects = await db
+  const objects = await getDb()
     .select()
     .from(verticalDramaObjectReferences)
     .where(
@@ -1432,7 +1432,7 @@ export async function suggestVerticalDramaObjectReferences(
   episodeId: string | number
 ) {
   const id = numberId(episodeId);
-  const [episode] = await db
+  const [episode] = await getDb()
     .select({
       seriesId: verticalDramaEpisodes.seriesId,
       episodeNumber: verticalDramaEpisodes.episodeNumber,
@@ -1454,7 +1454,7 @@ export async function suggestVerticalDramaObjectReferences(
     !Array.isArray((episode.storyboard as { shots?: unknown[] } | null)?.shots)
   )
     return { suggestions: [], warnings: [] };
-  const [series] = await db
+  const [series] = await getDb()
     .select({
       title: verticalDramaSeries.title,
       bible: verticalDramaSeries.bible,
@@ -1469,7 +1469,7 @@ export async function suggestVerticalDramaObjectReferences(
       )
     )
     .limit(1);
-  const [previousEpisode] = await db
+  const [previousEpisode] = await getDb()
     .select({
       episodeNumber: verticalDramaEpisodes.episodeNumber,
       title: verticalDramaEpisodes.title,
@@ -1489,7 +1489,7 @@ export async function suggestVerticalDramaObjectReferences(
       )
     )
     .limit(1);
-  const objects = await db
+  const objects = await getDb()
     .select()
     .from(verticalDramaObjectReferences)
     .where(
@@ -1500,7 +1500,7 @@ export async function suggestVerticalDramaObjectReferences(
         eq(verticalDramaObjectReferences.status, "active")
       )
     );
-  const aliases = await db
+  const aliases = await getDb()
     .select()
     .from(verticalDramaObjectReferenceAliases)
     .where(
@@ -1550,7 +1550,7 @@ export async function suggestVerticalDramaObjectReferences(
       if (!matched) continue;
       const confidence = matched === object.name ? 0.92 : 0.78;
       const fingerprint = objectReferenceContextFingerprint(context);
-      await db
+      await getDb()
         .insert(verticalDramaObjectDetectionSuggestions)
         .values({
           tenantId: actor.tenantId,
