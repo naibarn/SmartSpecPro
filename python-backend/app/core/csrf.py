@@ -8,14 +8,28 @@ import hmac
 import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Request, HTTPException, status
+from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 import structlog
 
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+
+def _csrf_rejection(error: str, message: str) -> JSONResponse:
+    """Return a middleware-safe rejection response without raising an exception."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={
+            "detail": {
+                "error": error,
+                "message": message,
+                "details": {},
+            }
+        },
+    )
 
 
 class CSRFProtection:
@@ -279,13 +293,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 method=request.method
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "CSRF_TOKEN_MISSING",
-                    "message": "CSRF token cookie not found. Please refresh the page.",
-                    "details": {}
-                }
+            return _csrf_rejection(
+                "CSRF_TOKEN_MISSING",
+                "CSRF token cookie not found. Please refresh the page.",
             )
 
         # Get token from header
@@ -296,13 +306,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 method=request.method
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "CSRF_HEADER_MISSING",
-                    "message": f"CSRF token required in {csrf_protection.header_name} header.",
-                    "details": {}
-                }
+            return _csrf_rejection(
+                "CSRF_HEADER_MISSING",
+                f"CSRF token required in {csrf_protection.header_name} header.",
             )
 
         # Verify both tokens match and are valid
@@ -312,13 +318,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 method=request.method
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "CSRF_TOKEN_MISMATCH",
-                    "message": "CSRF token validation failed.",
-                    "details": {}
-                }
+            return _csrf_rejection(
+                "CSRF_TOKEN_MISMATCH",
+                "CSRF token validation failed.",
             )
 
         # Verify token is valid
@@ -328,13 +330,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 method=request.method
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "CSRF_TOKEN_INVALID",
-                    "message": "CSRF token is invalid or expired. Please refresh the page.",
-                    "details": {}
-                }
+            return _csrf_rejection(
+                "CSRF_TOKEN_INVALID",
+                "CSRF token is invalid or expired. Please refresh the page.",
             )
 
         # CSRF validation passed

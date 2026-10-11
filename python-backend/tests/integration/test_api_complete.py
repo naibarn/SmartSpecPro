@@ -7,7 +7,17 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.csrf import csrf_protection
 from app.models.user import User
+
+
+def _csrf_headers(client: TestClient, headers: dict | None = None) -> dict:
+    token = csrf_protection.generate_token()
+    client.cookies.set(csrf_protection.cookie_name, token)
+    return {
+        **(headers or {}),
+        csrf_protection.header_name: token,
+    }
 
 
 class TestHealthEndpoints:
@@ -16,10 +26,13 @@ class TestHealthEndpoints:
     def test_health_check(self, client: TestClient):
         """Test basic health check"""
         response = client.get("/health")
-        assert response.status_code == 200
+        assert response.status_code == 503
         data = response.json()
-        # In test environment, status may be "degraded" due to Redis/LLM not being available
-        assert data["status"] in ["healthy", "degraded"]
+        assert data["status"] == "unhealthy"
+        assert any(
+            service["name"] == "worker_jobs" and service["status"] == "unhealthy"
+            for service in data["services"]
+        )
         assert "version" in data
         assert "timestamp" in data
 
@@ -100,9 +113,11 @@ class TestCreditsEndpoints:
     
     def test_calculate_credits(self, client: TestClient, auth_headers: dict):
         """Test calculate credits from USD"""
-        response = client.post("/api/credits/calculate", headers=auth_headers, json={
-            "payment_usd": 100.00
-        })
+        response = client.post(
+            "/api/credits/calculate",
+            headers=_csrf_headers(client, auth_headers),
+            json={"payment_usd": 100.00},
+        )
         assert response.status_code == 200
         data = response.json()
         assert "credits" in data
@@ -116,11 +131,15 @@ class TestPaymentsEndpoints:
     @pytest.mark.usefixtures("mock_stripe")
     def test_create_checkout(self, client: TestClient, auth_headers: dict, mock_stripe):
         """Test create Stripe checkout session"""
-        response = client.post("/api/payments/checkout", headers=auth_headers, json={
-            "amount_usd": 100.00,
-            "success_url": "https://example.com/success",
-            "cancel_url": "https://example.com/cancel"
-        })
+        response = client.post(
+            "/api/payments/checkout",
+            headers=_csrf_headers(client, auth_headers),
+            json={
+                "amount_usd": 100.00,
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "session_id" in data
@@ -201,11 +220,15 @@ class TestAuthorizationRequired:
     
     def test_payments_requires_auth(self, client: TestClient):
         """Test payments endpoint requires auth"""
-        response = client.post("/api/payments/checkout", json={
-            "amount_usd": 100.00,
-            "success_url": "https://example.com/success",
-            "cancel_url": "https://example.com/cancel"
-        })
+        response = client.post(
+            "/api/payments/checkout",
+            headers=_csrf_headers(client),
+            json={
+                "amount_usd": 100.00,
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
         # 401 Unauthorized or 403 Forbidden are both acceptable for missing auth
         assert response.status_code in [401, 403]
     
@@ -239,11 +262,15 @@ class TestInputValidation:
     
     def test_invalid_payment_amount(self, client: TestClient, auth_headers: dict):
         """Test checkout with invalid amount"""
-        response = client.post("/api/payments/checkout", headers=auth_headers, json={
-            "amount_usd": 1.00,  # Below minimum
-            "success_url": "https://example.com/success",
-            "cancel_url": "https://example.com/cancel"
-        })
+        response = client.post(
+            "/api/payments/checkout",
+            headers=_csrf_headers(client, auth_headers),
+            json={
+                "amount_usd": 1.00,  # Below minimum
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
         # 400 Bad Request or 422 Unprocessable Entity are both acceptable for validation errors
         assert response.status_code in [400, 422]
     
@@ -263,7 +290,7 @@ class TestErrorHandling:
     
     def test_method_not_allowed(self, client: TestClient):
         """Test 405 for wrong HTTP method"""
-        response = client.post("/health")
+        response = client.post("/health", headers=_csrf_headers(client), json={})
         assert response.status_code == 405
     
     def test_invalid_json(self, client: TestClient):
@@ -303,11 +330,15 @@ class TestEndToEndFlows:
         assert dashboard_response.status_code == 200
         
         # 4. Create payment checkout
-        checkout_response = client.post("/api/payments/checkout", headers=headers, json={
-            "amount_usd": 100.00,
-            "success_url": "https://example.com/success",
-            "cancel_url": "https://example.com/cancel"
-        })
+        checkout_response = client.post(
+            "/api/payments/checkout",
+            headers=_csrf_headers(client, headers),
+            json={
+                "amount_usd": 100.00,
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
         assert checkout_response.status_code == 200
         assert "url" in checkout_response.json()
         

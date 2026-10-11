@@ -1,9 +1,9 @@
 """Regression tests for server-to-server CSRF exemptions."""
 
 import asyncio
+import json
 
 import pytest
-from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
@@ -53,8 +53,7 @@ def test_vector_db_admin_bridge_paths_bypass_browser_csrf(path: str):
 def test_other_admin_paths_remain_csrf_protected():
     middleware = CSRFMiddleware(lambda *_args, **_kwargs: None)
 
-    with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(middleware.dispatch(_request("/api/admin/users"), _next))
+    response = asyncio.run(middleware.dispatch(_request("/api/admin/users"), _next))
 
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.detail["error"] == "CSRF_TOKEN_MISSING"
+    assert response.status_code == 403
+    assert json.loads(response.body)["detail"]["error"] == "CSRF_TOKEN_MISSING"
