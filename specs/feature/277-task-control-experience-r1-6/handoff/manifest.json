@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
+    "expected_canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
@@ -86,10 +86,19 @@
         "scope": "Disposable PostgreSQL fixture keeps a leased worker inside a protected TeamRun transaction until its lease expires; commit-time revalidation rejects the mutation and the transaction rolls it back. Existing repeated process-level stale reclaim/restart acceptance passes.",
         "source_sha": "ceb5374548d3ee4f4a71c0d1827cd67af28b7dda",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+        "kind": "POST_INTEGRATION_FOCUSED_VERIFICATION",
+        "path": "apps/web/server/services/__tests__/autoTeamRunMutationFence.integration.test.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/628",
+        "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
+        "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
-    "rationale": "Canonical main contains recovery-worker fencing, timer dispatch through the fenced evaluator, persistent useful-work and no-progress acceptance, worker-job Task Control continuity, repeated process-level stale reclaim/restart acceptance, and commit-time lease-expiry rollback. Provider-result/callback/outbox/cancellation races and AutoTeam TeamRun-to-Task-ID binding remain unproven; SPEC-277 remains partial.",
+    "rationale": "Canonical main now has post-merge focused evidence at 38e73d24dbd6db077565f11fe50942ab35e9010f: 4 suites / 40 tests passed, including repeated process-level reclaim races and commit-time lease-expiry rollback. Timer-driven media advancement uses the fenced recovery evaluator. Provider-result/callback/outbox/cancellation races and TeamRun-to-Task-Control binding remain unproven; full Spec and deployment acceptance remain open.",
     "residual_requirements": [
       "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
       "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -125,7 +134,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 41,
+  "generation": 42,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -152,7 +161,8 @@
       "06068ae9db6c433b9a10353f71f2becdba18218e",
       "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
       "1f9de0a308a77a4484a88e761bb08bb1da392cba",
-      "ed660aece65261f47200ea991473a8bbf83eda39"
+      "ed660aece65261f47200ea991473a8bbf83eda39",
+      "38e73d24dbd6db077565f11fe50942ab35e9010f"
     ],
     "mapping": [
       {
@@ -191,9 +201,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
+    "canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
     "integrated": true,
-    "integrated_at": "2026-10-11T03:37:45Z"
+    "integrated_at": "2026-10-11T03:40:46Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -268,10 +278,19 @@
           "scope": "Disposable PostgreSQL fixture keeps a leased worker inside a protected TeamRun transaction until its lease expires; commit-time revalidation rejects the mutation and the transaction rolls it back. Existing repeated process-level stale reclaim/restart acceptance passes.",
           "source_sha": "ceb5374548d3ee4f4a71c0d1827cd67af28b7dda",
           "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+          "kind": "POST_INTEGRATION_FOCUSED_VERIFICATION",
+          "path": "apps/web/server/services/__tests__/autoTeamRunMutationFence.integration.test.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/628",
+          "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
+          "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
         }
       ],
       "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
-      "rationale": "Canonical main contains recovery-worker fencing, timer dispatch through the fenced evaluator, persistent useful-work and no-progress acceptance, worker-job Task Control continuity, repeated process-level stale reclaim/restart acceptance, and commit-time lease-expiry rollback. Provider-result/callback/outbox/cancellation races and AutoTeam TeamRun-to-Task-ID binding remain unproven; SPEC-277 remains partial.",
+      "rationale": "Canonical main now has post-merge focused evidence at 38e73d24dbd6db077565f11fe50942ab35e9010f: 4 suites / 40 tests passed, including repeated process-level reclaim races and commit-time lease-expiry rollback. Timer-driven media advancement uses the fenced recovery evaluator. Provider-result/callback/outbox/cancellation races and TeamRun-to-Task-Control binding remain unproven; full Spec and deployment acceptance remain open.",
       "residual_requirements": [
         "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
         "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -493,7 +512,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T03:39:06.420754Z",
+  "updated_at": "2026-10-11T03:44:02.367933Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -598,6 +617,15 @@
         "scope": "Exact candidate source 711d0f70c1d4022d5fa4635a0ba64cb90cc21d71 on canonical main base 45c8357329f033d9e9aca8559f3e5c8fd2258b28: 1 direct disposable-PostgreSQL integration test passed, repeating three OS-process lease-reclaim races. Stale terminal stop, explicit user_requested cancellation, room message, activity event, and snapshot reject; after SIGKILL, later generation 3 completes with exactly one terminal event. Provider callback/outbox, TeamRun-to-Task-Control, durable receipts, SPEC-224, and full SPEC-277 remain open.",
         "source_sha": "711d0f70c1d4022d5fa4635a0ba64cb90cc21d71",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+        "kind": "POST_INTEGRATION_FOCUSED_VERIFICATION",
+        "path": "apps/web/server/services/__tests__/autoTeamRunMutationFence.integration.test.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/628",
+        "scope": "Exact canonical source 38e73d24dbd6db077565f11fe50942ab35e9010f passed 4 focused suites / 40 tests after merge. Disposable PostgreSQL integration repeated three process-level lease-reclaim races and verified commit-time expiry rollback. Test-only JWT_SECRET was supplied. build-preview was skipped and is not build evidence; full build/typecheck and remaining R7 acceptance stay pending.",
+        "source_sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "PARTIAL",
@@ -605,7 +633,7 @@
       "quick",
       "integration"
     ],
-    "sha": "711d0f70c1d4022d5fa4635a0ba64cb90cc21d71",
+    "sha": "38e73d24dbd6db077565f11fe50942ab35e9010f",
     "status": "PARTIAL",
     "task_regressions": []
   }
