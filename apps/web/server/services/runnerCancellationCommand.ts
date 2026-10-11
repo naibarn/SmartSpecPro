@@ -1,10 +1,8 @@
 import { createHash } from "node:crypto";
 
 import type { WorkerJob } from "../../drizzle/schema";
-import {
-  validateRunnerJobCommand,
-  type RunnerJobCommand,
-} from "./runnerJobCommandContracts";
+import { validateRunnerJobCommand } from "./runnerJobCommandContracts";
+import type { RunnerJobCommand } from "./runnerContracts";
 
 type CommandTemplate = Record<string, unknown>;
 
