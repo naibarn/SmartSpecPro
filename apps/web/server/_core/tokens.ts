@@ -36,6 +36,7 @@ export interface TokenClaims {
   workerConnectionId?: string;
   workerTokenSetId?: string;
   runnerId?: string;
+  runnerSessionId?: string;
   runnerProfile?: "local_device" | "shared_container";
   runnerNodeKind?: "local_device" | "managed_container";
   deviceId?: string;
