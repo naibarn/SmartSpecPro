@@ -66,8 +66,9 @@ class TestLLMAPI:
             # Defaults for moderation
             mock_mod_service.moderate_request.return_value = {
                 "flagged": False,
-                "action": "allow",
-                "reason": None
+                "categories": {},
+                "action": "allowed",
+                "reason": "Content passed moderation"
             }
             mock_mod_service.moderate_response.return_value = {
                 "flagged": False,
@@ -151,7 +152,7 @@ class TestLLMAPI:
     async def test_chat_stream_init(self, client_with_auth, mock_services):
         """Test POST /chat/stream init"""
         with patch("app.api.llm_v1.StreamingService") as mock_stream_class:
-            mock_stream_service = Mock()
+            mock_stream_service = MagicMock()
             mock_stream_class.return_value = mock_stream_service
             
             # Mock generator
@@ -172,7 +173,7 @@ class TestLLMAPI:
 
     def test_moderate_content(self, client_with_auth, mock_services):
         """Test POST /moderate"""
-        response = client_with_auth.post("/api/v1/llm/moderate?content=test")
+        response = client_with_auth.post("/api/v1/llm/moderate?content=test", json={})
         
         assert response.status_code == 200
-        assert response.json()["action"] == "allow"
+        assert response.json()["action"] == "allowed"
