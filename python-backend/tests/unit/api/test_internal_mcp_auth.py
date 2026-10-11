@@ -19,15 +19,15 @@ class TestToolListAuth:
     async def test_no_user_id_returns_only_browser_tools(self):
         """When user_id is None, only browser tools are returned (no Drive/OneDrive)."""
         from app.api.internal_mcp import list_tools
+        from app.mcp.browser_tools_mcp import BROWSER_TOOLS
 
         with patch("app.api.internal_mcp._verify_proxy_token", AsyncMock()):
             result = await list_tools(user_id=None)
 
         tools = result["tools"]
         tool_names = [t["name"] for t in tools]
-        # Browser tools should be present
-        assert "browser.execute_actions" in tool_names
-        assert "sandbox.exec_command" in tool_names
+        # With no user identity, the gateway exposes exactly the browser tools.
+        assert set(tool_names) == {tool["name"] for tool in BROWSER_TOOLS}
         # OAuth-dependent tools should NOT be present
         for name in tool_names:
             assert "drive" not in name.lower(), f"OAuth tool '{name}' should not be listed without user_id"
