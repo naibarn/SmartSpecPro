@@ -5,21 +5,34 @@ Tests SSRF prevention, path traversal rejection, resource limits, and
 input sanitization for FFmpeg command construction.
 """
 
+import socket
+
 import pytest
 
-from app.core.media_job_validators import (
-    validate_provider_result_uri,
-    validate_job_spec_security,
-    validate_uri_no_ssrf,
-    validate_output_path,
-    validate_codec,
-    FFMPEG_TIMEOUT_SECONDS,
-    MAX_OUTPUT_FILE_BYTES,
-    MAX_CLIPS,
-    MAX_RESOLUTION_PIXELS,
-    ALLOWED_CODECS,
-)
 
+@pytest.fixture(autouse=True)
+def resolve_placeholder_cdn_as_public(monkeypatch):
+    """Keep SSRF tests deterministic without using the runner's DNS service."""
+    original_getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host == "cdn.example.com":
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", 443))]
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+from app.core.media_job_validators import (
+    FFMPEG_TIMEOUT_SECONDS,
+    MAX_CLIPS,
+    MAX_OUTPUT_FILE_BYTES,
+    MAX_RESOLUTION_PIXELS,
+    validate_codec,
+    validate_job_spec_security,
+    validate_output_path,
+    validate_provider_result_uri,
+    validate_uri_no_ssrf,
+)
 
 # ========================================
 # SSRF Prevention
@@ -67,6 +80,18 @@ class TestSSRFPrevention:
     def test_allows_public_http_url(self):
         result = validate_uri_no_ssrf("http://cdn.example.com/media/video.mp4")
         assert result == "http://cdn.example.com/media/video.mp4"
+
+    def test_rejects_public_hostname_that_resolves_to_private_ip(self, monkeypatch):
+        monkeypatch.setattr(
+            socket,
+            "getaddrinfo",
+            lambda *_args, **_kwargs: [
+                (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("10.0.0.5", 443))
+            ],
+        )
+
+        with pytest.raises(ValueError, match="private"):
+            validate_uri_no_ssrf("https://cdn.example.com/media/video.mp4")
 
 
 # ========================================
