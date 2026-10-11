@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
-import type { LocalSituationFeedItem } from "@shared/emergency/feedSemantics";
+import type { LocalSituationFeedItem } from "@smartspec/shared/src/emergency/feedSemantics";
 import EmergencyPublicMap from "@/components/emergency/EmergencyPublicMap";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, KeyRound, Loader2, Map, RefreshCw, Save, ShieldAlert, XCircle } from "lucide-react";

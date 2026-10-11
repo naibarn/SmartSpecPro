@@ -206,7 +206,7 @@ export default function EmergencyPublicMap({ items, onItemsChange, onFeedChange,
         zoom: styleConfig.zoom,
         minZoom: styleConfig.minZoom,
         maxZoom: styleConfig.maxZoom,
-        attributionControl: styleConfig.renderer.kind !== "google-raster-proxy",
+        attributionControl: styleConfig.renderer.kind === "google-raster-proxy" ? false : undefined,
       });
     } catch {
       setMapError(true);
@@ -217,19 +217,20 @@ export default function EmergencyPublicMap({ items, onItemsChange, onFeedChange,
     map.addControl(new NavigationControl({ showCompass: true }), "top-right");
     let recoverGoogleMap: () => void = () => { void loadProviderFallback(); };
     let lastProviderStateCheckAt = 0;
-    if (styleConfig.renderer.kind === "google-raster-proxy") {
+    const googleRenderer = styleConfig.renderer.kind === "google-raster-proxy" ? styleConfig.renderer : null;
+    if (googleRenderer) {
       let recoveryInProgress = false;
       const recoverExpiredGoogleSession = async () => {
         if (recoveryInProgress) return;
         recoveryInProgress = true;
-        const expiresAt = Date.parse(styleConfig.renderer.sessionExpiresAt);
+        const expiresAt = Date.parse(googleRenderer.sessionExpiresAt);
         if (!sessionRefreshAttemptedRef.current && Number.isFinite(expiresAt) && expiresAt <= Date.now() + 60_000) {
           sessionRefreshAttemptedRef.current = true;
           const refreshController = new AbortController();
           try {
             const refreshed = await getMapConfiguration(refreshController.signal);
             if (refreshed.renderer.kind === "google-raster-proxy" &&
-                refreshed.renderer.sessionToken !== styleConfig.renderer.sessionToken) {
+                refreshed.renderer.sessionToken !== googleRenderer.sessionToken) {
               sessionRefreshAttemptedRef.current = false;
               setMapError(false);
               setStyleConfig(refreshed);
@@ -274,7 +275,7 @@ export default function EmergencyPublicMap({ items, onItemsChange, onFeedChange,
         const west = span >= 360 ? -180 : normalizeLongitude(bounds.getWest());
         const east = span >= 360 ? 180 : normalizeLongitude(bounds.getEast());
         const query = new URLSearchParams({
-          session: styleConfig.renderer.sessionToken,
+          session: googleRenderer.sessionToken,
           zoom: String(Math.max(0, Math.round(map.getZoom()))),
           north: bounds.getNorth().toFixed(6), south: bounds.getSouth().toFixed(6),
           east: east.toFixed(6), west: west.toFixed(6),
@@ -314,14 +315,14 @@ export default function EmergencyPublicMap({ items, onItemsChange, onFeedChange,
       map.once("remove", () => { if (attributionRetryTimer) window.clearTimeout(attributionRetryTimer); });
     }
     const handleMapError = () => {
-      if (styleConfig.renderer.kind === "google-raster-proxy") {
+      if (googleRenderer) {
         const now = Date.now();
         if (now - lastProviderStateCheckAt < 5_000) return;
         lastProviderStateCheckAt = now;
         const controller = new AbortController();
         void getMapConfiguration(controller.signal).then(nextConfig => {
           const shouldSwitch = nextConfig.renderer.kind !== "google-raster-proxy" ||
-            nextConfig.renderer.sessionToken !== styleConfig.renderer.sessionToken;
+            nextConfig.renderer.sessionToken !== googleRenderer.sessionToken;
           if (!shouldSwitch) return;
           if (nextConfig.renderer.kind === "google-raster-proxy") sessionRefreshAttemptedRef.current = false;
           map.remove();

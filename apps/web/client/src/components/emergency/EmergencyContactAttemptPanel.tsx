@@ -37,7 +37,7 @@ export default function EmergencyContactAttemptPanel({ caseId }: { caseId: strin
     <label>{t("contactAttempt.outcome")}<select value={outcome} onChange={event => setOutcome(event.target.value)}>
       {["no_answer", "reached", "unsafe", "invalid_contact"].map(value => <option key={value} value={value}>{t(`contactAttempt.outcomes.${value}`)}</option>)}
     </select></label>
-    <TextArea label={t("contactAttempt.reason")} minLength={8} maxLength={500} isRequired value={reason} onChange={setReason} />
+    <TextArea label={t("contactAttempt.reason")} isRequired value={reason} onChange={value => setReason(value.slice(0, 500))} />
     <Button type="submit" isDisabled={state === "saving" || reason.trim().length < 8} label={t(state === "saving" ? "contactAttempt.saving" : "contactAttempt.submit")} />
     {state === "saved" && <Text>{t("contactAttempt.saved")}</Text>}
     {state === "failed" && <Text role="alert">{t("contactAttempt.failed")}</Text>}
