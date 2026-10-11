@@ -28,4 +28,4 @@ Loop policy:
 
 Evidence references: `plan.md`, `test-design.md`, `lifecycle.md`, SPEC-224 R10 evidence under `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`.
 
-Current R11 source changes are still uncommitted on the isolated task branch. They are a partial safety improvement and must be fast-gated and promoted before this task pauses. Post-integration live acceptance remains open.
+Receipt trust-boundary implementation is integrated by PR #691 at `0683e8eec2324672355e3329f9d05a987462f6b7`; live Runner/PostgreSQL acceptance remains open under the blocker above. The canonical SPEC handoff records the exact SHA, test evidence, owner action, and resume predicate.
