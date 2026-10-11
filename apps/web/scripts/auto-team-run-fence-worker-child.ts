@@ -74,6 +74,9 @@ async function run() {
         await expectFenced("MUTATION", () =>
           runEngine.stopRun(input.runId, "stale_worker", input.tenantId)
         );
+        await expectFenced("CANCELLATION", () =>
+          runEngine.stopRun(input.runId, "user_requested", input.tenantId)
+        );
         await expectFenced("MESSAGE", () =>
           roomService.sendMessage({
             roomId: "room-r7-fence",
