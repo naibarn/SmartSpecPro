@@ -12,13 +12,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../db", () => ({
-  db: {
+  getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn().mockResolvedValue(mocks.rows),
       })),
     })),
-  },
+  })),
 }));
 vi.mock("../verticalDramaMediaAssetService", () => ({
   copyAuthorizedManagedMediaToVerticalDrama: vi.fn(),

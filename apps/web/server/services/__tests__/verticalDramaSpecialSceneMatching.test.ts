@@ -22,7 +22,7 @@ vi.mock("../../db", () => {
     };
     return builder;
   }
-  return { db: { select: vi.fn(() => makeSelectBuilder()) } };
+  return { getDb: vi.fn(() => ({ select: vi.fn(() => makeSelectBuilder()) })) };
 });
 
 import { findSpecialStorySceneMatches } from "../verticalDramaSpecialReferences";
