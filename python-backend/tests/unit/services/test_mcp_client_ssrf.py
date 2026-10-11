@@ -73,10 +73,12 @@ class TestDiscoverToolsSSRF:
     @pytest.mark.asyncio
     async def test_allows_valid_public_url(self):
         mock_client = _mock_httpx_success()
-        with patch("app.services.mcp_client.httpx.AsyncClient") as mock_factory:
-            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
-            result = await discover_tools("https://mcp.example.com/rpc", "token", tenant_id=1)
+        with patch("app.services.mcp_client_manager._resolve_and_validate_dns", new_callable=AsyncMock) as mock_dns:
+            with patch("app.services.mcp_client.httpx.AsyncClient") as mock_factory:
+                mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+                mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+                result = await discover_tools("https://mcp.example.com/rpc", "token", tenant_id=1)
+        mock_dns.assert_awaited_once_with("mcp.example.com")
         assert len(result) > 0
         assert result[0].name == "search"
 
@@ -124,15 +126,17 @@ class TestTenantCacheIsolation:
 
         # Single mock that always returns tool_a
         mock_client = _mock_httpx_success(tool_a)
-        with patch("app.services.mcp_client.httpx.AsyncClient") as mock_factory:
-            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("app.services.mcp_client_manager._resolve_and_validate_dns", new_callable=AsyncMock) as mock_dns:
+            with patch("app.services.mcp_client.httpx.AsyncClient") as mock_factory:
+                mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+                mock_factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            # Populate cache for tenant 1
-            result_t1 = await discover_tools("https://mcp.example.com", tenant_id=1)
-            # Tenant 2 should NOT get tenant 1's cache — must make a new HTTP call
-            result_t2 = await discover_tools("https://mcp.example.com", tenant_id=2)
+                # Populate cache for tenant 1
+                result_t1 = await discover_tools("https://mcp.example.com", tenant_id=1)
+                # Tenant 2 should NOT get tenant 1's cache — must make a new HTTP call
+                result_t2 = await discover_tools("https://mcp.example.com", tenant_id=2)
 
+        assert mock_dns.await_count == 2
         assert result_t1[0].name == "tool_a"
         assert result_t2[0].name == "tool_a"
         # Key assertion: HTTP was called twice (once per tenant), proving cache isolation
