@@ -75,7 +75,7 @@ class TestJWTTokens:
     
     def test_create_access_token(self):
         """Test creating access token"""
-        data = {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+        data = {"sub": "12345", "email": "test@example.com"}
         
         token = create_access_token(data)
         
@@ -85,7 +85,7 @@ class TestJWTTokens:
     
     def test_create_access_token_with_expiry(self):
         """Test creating access token with custom expiry"""
-        data = {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+        data = {"sub": "12345", "email": "test@example.com"}
         expires = timedelta(hours=1)
         
         token = create_access_token(data, expires)
@@ -95,7 +95,7 @@ class TestJWTTokens:
     
     def test_create_refresh_token(self):
         """Test creating refresh token"""
-        data = {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+        data = {"sub": "12345", "email": "test@example.com"}
         
         token = create_refresh_token(data)
         
@@ -105,7 +105,7 @@ class TestJWTTokens:
     
     def test_decode_valid_token(self):
         """Test decoding valid token"""
-        user_id = str(uuid.uuid4())
+        user_id = "12345"
         email = "test@example.com"
         data = {"sub": user_id, "email": email}
         
@@ -123,7 +123,7 @@ class TestJWTTokens:
     
     def test_decode_expired_token(self):
         """Test decoding expired token"""
-        data = {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+        data = {"sub": "12345", "email": "test@example.com"}
         # Create token that expires immediately
         token = create_access_token(data, timedelta(seconds=-1))
         
@@ -133,12 +133,17 @@ class TestJWTTokens:
     
     def test_access_and_refresh_tokens_different(self):
         """Test that access and refresh tokens are different"""
-        data = {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+        data = {"sub": "12345", "email": "test@example.com"}
         
         access_token = create_access_token(data)
         refresh_token = create_refresh_token(data)
         
         assert access_token != refresh_token
+
+    def test_create_access_token_rejects_non_integer_subject(self):
+        """The Python user model uses integer IDs for JWT subjects."""
+        with pytest.raises(ValueError):
+            create_access_token({"sub": str(uuid.uuid4())})
 
 
 class TestTokenBlacklist:
