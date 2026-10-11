@@ -3,23 +3,24 @@ Marketplace Service
 Handles template marketplace operations, purchases, and revenue distribution
 """
 
-from typing import Optional, List, Dict, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, desc
-from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-import structlog
+from typing import Dict, List, Optional, Tuple
 
+import structlog
+from sqlalchemy import and_, desc, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.credit import CreditTransaction, TransactionType
 from app.models.marketplace_template import (
     MarketplaceTemplate,
-    TemplatePurchase,
-    TemplateReview,
-    TemplateRevenueLedger,
-    TemplateStatus,
     TemplateCategory,
+    TemplatePurchase,
+    TemplateRevenueLedger,
+    TemplateReview,
+    TemplateStatus,
 )
 from app.models.user import User
-from app.models.credit import CreditTransaction
 
 logger = structlog.get_logger()
 
@@ -372,16 +373,25 @@ class MarketplaceService:
         template = template_lock_result.scalar_one()
 
         # Record balances before transaction
-        # Use user.credits (the actual column) not user.credits_balance (read-only property)
         buyer_balance_before = buyer.credits
         creator_balance_before = creator.credits
 
-        # Execute credit transfers
-        # 1. Deduct from buyer
-        buyer.credits -= total_credits
-
-        # 2. Add to creator
-        creator.credits += creator_revenue
+        # Apply balance changes as atomic SQL updates. Row locks protect the
+        # PostgreSQL path; arithmetic updates also avoid lost writes on engines
+        # such as SQLite that ignore SELECT ... FOR UPDATE.
+        buyer_balance_after = await db.scalar(
+            update(User)
+            .where(User.id == buyer.id)
+            .values(credits=User.credits - total_credits)
+            .returning(User.credits)
+        )
+        creator_balance_after = await db.scalar(
+            update(User)
+            .where(User.id == creator.id)
+            .values(credits=User.credits + creator_revenue)
+            .returning(User.credits)
+        )
+        creator_balance_before = creator_balance_after - creator_revenue
 
         # 3. Platform commission (tracked but not added to any user)
         # Platform earnings are tracked separately
@@ -394,21 +404,26 @@ class MarketplaceService:
             creator_revenue=creator_revenue,
             platform_commission=platform_commission,
             buyer_balance_before=buyer_balance_before,
-            buyer_balance_after=buyer.credits,
+            buyer_balance_after=buyer_balance_after,
             template_version=template.version
         )
         db.add(purchase)
+        await db.flush()
 
         # Create credit transactions for audit trail
         # Buyer transaction (debit)
         buyer_tx = CreditTransaction(
             user_id=buyer.id,
             amount=-total_credits,
-            balance_before=buyer_balance_before,
-            balance_after=buyer.credits_balance,
-            transaction_type="template_purchase",
+            type=TransactionType.usage,
+            balance_after=buyer_balance_after,
             description=f"Purchased template: {template.name}",
-            metadata={"template_id": template_id, "purchase_id": purchase.id}
+            meta={
+                "transaction_category": "template_purchase",
+                "balance_before": buyer_balance_before,
+                "template_id": template_id,
+                "purchase_id": purchase.id,
+            },
         )
         db.add(buyer_tx)
 
@@ -416,11 +431,16 @@ class MarketplaceService:
         creator_tx = CreditTransaction(
             user_id=creator.id,
             amount=creator_revenue,
-            balance_before=creator_balance_before,
-            balance_after=creator.credits_balance,
-            transaction_type="template_sale",
+            type=TransactionType.bonus,
+            balance_after=creator_balance_after,
             description=f"Sale of template: {template.name}",
-            metadata={"template_id": template_id, "purchase_id": purchase.id, "buyer_id": buyer.id}
+            meta={
+                "transaction_category": "template_sale",
+                "balance_before": creator_balance_before,
+                "template_id": template_id,
+                "purchase_id": purchase.id,
+                "buyer_id": buyer.id,
+            },
         )
         db.add(creator_tx)
 
@@ -436,10 +456,16 @@ class MarketplaceService:
         )
         db.add(ledger)
 
-        # Update template statistics
-        template.purchase_count += 1
-        template.total_revenue_credits += creator_revenue
-        template.platform_commission_credits += platform_commission
+        # Update counters atomically so concurrent purchases cannot lose increments.
+        await db.execute(
+            update(MarketplaceTemplate)
+            .where(MarketplaceTemplate.id == template_id)
+            .values(
+                purchase_count=MarketplaceTemplate.purchase_count + 1,
+                total_revenue_credits=MarketplaceTemplate.total_revenue_credits + creator_revenue,
+                platform_commission_credits=MarketplaceTemplate.platform_commission_credits + platform_commission,
+            )
+        )
 
         # Commit with IntegrityError handling for duplicate purchases
         try:
