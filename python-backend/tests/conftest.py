@@ -53,6 +53,23 @@ def event_loop() -> Generator:
     loop.close()
 
 
+@pytest.fixture(autouse=True)
+def restore_default_event_loop_after_test() -> Generator[None, None, None]:
+    """Restore the main-thread loop after synchronous tests call asyncio.run().
+
+    asyncio.run() clears the thread's current loop when it exits. pytest-asyncio
+    0.23 expects a current loop while preparing later async tests, so repair that
+    test-runner state between tests without changing application runtime code.
+    """
+    yield
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = None
+    if loop is None or loop.is_closed():
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+
 @pytest.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
     """
