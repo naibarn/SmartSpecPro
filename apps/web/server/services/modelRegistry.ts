@@ -148,14 +148,18 @@ export function filterModelsByDisabledProviders<T extends { provider?: string | 
   ));
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function mcpProviderKeyForModel(model: {
   id?: string | null;
   modelId?: string | null;
   provider?: string | null;
-  configJson?: Record<string, any> | null;
+  configJson?: unknown;
 }): string | null {
-  const config = model.configJson ?? {};
-  const mcpConfig = config.mcp as Record<string, unknown> | undefined;
+  const config = isPlainRecord(model.configJson) ? model.configJson : {};
+  const mcpConfig = isPlainRecord(config.mcp) ? config.mcp : undefined;
   const transport = typeof config.transport === "string"
     ? config.transport.trim().toLowerCase()
     : "";
@@ -198,7 +202,7 @@ export function filterModelsByMcpProviderAccess<T extends {
   id?: string | null;
   modelId?: string | null;
   provider?: string | null;
-  configJson?: Record<string, any> | null;
+  configJson?: unknown;
 }>(models: readonly T[], connectedProviderKeys: ReadonlySet<string>): T[] {
   const connected = new Set(
     [...connectedProviderKeys].map(provider => normalizeMediaProviderName(provider)),
