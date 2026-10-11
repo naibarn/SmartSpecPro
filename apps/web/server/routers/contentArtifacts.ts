@@ -30,6 +30,8 @@ export const contentArtifactsRouter = router({
           claims_unverified: z.number(),
           quality_gate_passed: z.boolean(),
           seo_complete: z.boolean(),
+          structured_data_valid: z.boolean().nullable().optional(),
+          structured_data_errors: z.array(z.string()).optional(),
           errors: z.array(z.string()),
           warnings: z.array(z.string()),
         }),
@@ -43,7 +45,11 @@ export const contentArtifactsRouter = router({
         skillSlug: input.skillSlug,
         outputFormat: input.outputFormat,
         contentJson: input.contentJson,
-        qualityScore: input.qualityScore,
+        qualityScore: {
+          ...input.qualityScore,
+          structured_data_valid: input.qualityScore.structured_data_valid ?? null,
+          structured_data_errors: input.qualityScore.structured_data_errors ?? [],
+        },
         refreshCadenceDays: input.refreshCadenceDays,
       });
     }),
