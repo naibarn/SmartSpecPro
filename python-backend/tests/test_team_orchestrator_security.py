@@ -87,7 +87,7 @@ class TestRouterRegistration:
     def test_team_orchestrator_router_in_app(self):
         from app.main import app
 
-        route_paths = [r.path for r in app.routes]
+        route_paths = app.openapi()["paths"].keys()
         team_routes = [p for p in route_paths if "team-orchestrator" in p]
         assert len(team_routes) >= 1, (
             f"Expected at least 1 team-orchestrator route, got: {team_routes}"
@@ -96,7 +96,7 @@ class TestRouterRegistration:
     def test_execute_turn_route_removed(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes]
+        paths = app.openapi()["paths"]
         assert "/api/team-orchestrator/execute-turn" not in paths, (
             "execute-turn route should have been removed"
         )
@@ -104,7 +104,7 @@ class TestRouterRegistration:
     def test_generate_summary_route_exists(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes]
+        paths = app.openapi()["paths"]
         assert "/api/team-orchestrator/generate-summary" in paths
 
 
