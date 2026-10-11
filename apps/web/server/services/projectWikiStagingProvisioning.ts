@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROJECT_WIKI_CANDIDATE, PROJECT_WIKI_MIGRATION_PLAN } from "./projectWikiReleaseCandidate";
+import { deploymentCredentialRef } from "./providerDeploymentTargetAuthority";
 
 /** Approval request only; this contract never provisions Cloudflare or database resources. */
 export const projectWikiStagingProvisioningRequestSchema = z.object({
@@ -13,7 +14,8 @@ export const projectWikiStagingProvisioningRequestSchema = z.object({
   }).strict(),
   target: z.object({
     /** Desired names are intent; provider-generated resource IDs are not known yet. */
-    accountScope: z.string().trim().min(1).max(120),
+    cloudflareAccountId: z.string().trim().regex(/^[a-f0-9]{32}$/i),
+    credentialRef: z.string().trim().min(1).max(255),
     deploymentTargetName: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,62}$/),
     containerApplicationName: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,62}$/),
     hostRevision: z.string().trim().regex(/^[a-f0-9]{40}$/i),
@@ -27,7 +29,20 @@ export const projectWikiStagingProvisioningRequestSchema = z.object({
     recoveryPolicy: z.literal("encrypted-backup-and-restore-rehearsal"),
     migrationPlan: z.array(z.object({ tag: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).length(3),
   }).strict(),
+  budget: z.object({
+    currency: z.literal("USD"),
+    monthlyCapUsd: z.number().finite().positive(),
+    oneTimeCapUsd: z.number().finite().nonnegative(),
+  }).strict(),
 }).strict().superRefine((request, context) => {
+  const expectedCredentialRef = deploymentCredentialRef({
+    ...request.identity,
+    environment: request.environment,
+    provider: request.provider,
+  });
+  if (request.target.credentialRef !== expectedCredentialRef) {
+    context.addIssue({ code: "custom", path: ["target", "credentialRef"], message: "Credential reference does not match the requested staging identity" });
+  }
   request.database.migrationPlan.forEach((migration, index) => {
     const expected = PROJECT_WIKI_MIGRATION_PLAN[index];
     if (!expected || migration.tag !== expected.tag || migration.sha256 !== expected.sha256) {

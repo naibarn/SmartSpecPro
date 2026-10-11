@@ -569,7 +569,9 @@ export const infrastructureRouter = router({
       const approval = await createProjectWikiProvisioningApprovalRequest({ request: input, userToken: ctx.userToken });
       auditLogger.log({ eventType: "project_wiki_staging_provisioning_approval_requested", userId: ctx.user?.id ?? null,
         requestType: "project_wiki_staging_provisioning", requestPayload: { approvalRef: approval.id, tenantId, projectId: input.identity.projectId,
-          targetName: input.target.deploymentTargetName, databaseName: input.database.desiredName, migrationPlan: input.database.migrationPlan }, statusCode: 201 });
+          accountId: input.target.cloudflareAccountId, credentialRef: input.target.credentialRef,
+          targetName: input.target.deploymentTargetName, databaseName: input.database.desiredName,
+          budget: input.budget, migrationPlan: input.database.migrationPlan }, statusCode: 201 });
       return { approvalRef: approval.id, expiresAt: approval.expiresAt, status: "pending" as const, mutationPerformed: false as const };
     }),
 
