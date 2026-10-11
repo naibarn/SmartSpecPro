@@ -682,3 +682,48 @@ class TestGatewayErrorHandling:
             )
         
         assert exc_info.value.status_code == 402
+
+
+class TestActualCostResolution:
+    """Regression coverage for the billing path after a provider response."""
+
+    def test_prefers_provider_reported_cost(self, gateway, mock_unified_client):
+        response = LLMResponse(
+            content="ok", provider="openai", model="gpt-4o",
+            tokens_used=100, cost=0.025,
+        )
+
+        cost = gateway._calculate_actual_cost(
+            response, use_openrouter=True, fallback_cost=Decimal("0.01")
+        )
+
+        assert cost == Decimal("0.025")
+        mock_unified_client.estimate_cost.assert_not_called()
+
+    def test_uses_reported_token_breakdown_when_provider_cost_is_missing(
+        self, gateway, mock_unified_client
+    ):
+        from types import SimpleNamespace
+
+        response = SimpleNamespace(
+            cost=None,
+            model="gpt-4o",
+            tokens_used=150,
+            usage=SimpleNamespace(prompt_tokens=50, completion_tokens=100),
+        )
+
+        cost = gateway._calculate_actual_cost(response, use_openrouter=False)
+
+        assert cost == Decimal("0.001")
+        mock_unified_client.estimate_cost.assert_called_once_with("gpt-4o", 50, 100)
+
+    def test_uses_preflight_estimate_if_usage_is_unavailable(self, gateway):
+        response = LLMResponse(
+            content="ok", provider="openai", model="gpt-4o", cost=None,
+        )
+
+        cost = gateway._calculate_actual_cost(
+            response, use_openrouter=False, fallback_cost=Decimal("0.004")
+        )
+
+        assert cost == Decimal("0.004")

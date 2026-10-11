@@ -879,7 +879,9 @@ class LLMGateway:
             response = await self._invoke_via_direct(request, user)
         
         # Step 4: Calculate actual cost
-        actual_cost = self._calculate_actual_cost(response, use_openrouter)
+        actual_cost = self._calculate_actual_cost(
+            response, use_openrouter, fallback_cost=estimated_cost
+        )
         logger.info(
             "llm_cost_actual",
             user_id=user.id,
@@ -2860,6 +2862,53 @@ class LLMGateway:
         except Exception as e:
             logger.error("audio_generation_failed", user_id=user.id, error=str(e))
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Audio generation failed: {str(e)}")
+
+    def _calculate_actual_cost(
+        self,
+        response: LLMResponse,
+        use_openrouter: bool,
+        fallback_cost: Optional[Decimal] = None,
+    ) -> Decimal:
+        """Resolve the charge from provider cost or reported token usage.
+
+        If the provider omits usage, retain the preflight estimate instead of
+        failing after a successful provider call or silently charging zero.
+        """
+        provider_cost = getattr(response, "cost", None)
+        if provider_cost is not None:
+            return max(Decimal("0"), Decimal(str(provider_cost)))
+
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", None) if usage else None
+        completion_tokens = getattr(usage, "completion_tokens", None) if usage else None
+        model = getattr(response, "model", None)
+        if (
+            isinstance(prompt_tokens, int)
+            and isinstance(completion_tokens, int)
+            and prompt_tokens >= 0
+            and completion_tokens >= 0
+            and isinstance(model, str)
+            and model
+        ):
+            return max(
+                Decimal("0"),
+                Decimal(str(self.unified_client.estimate_cost(
+                    model, prompt_tokens, completion_tokens
+                ))),
+            )
+
+        tokens_used = getattr(response, "tokens_used", None)
+        if isinstance(tokens_used, int) and tokens_used > 0 and isinstance(model, str) and model:
+            # Treat unclassified tokens as output tokens, which is the higher
+            # per-token rate for the supported model pricing table.
+            return max(
+                Decimal("0"),
+                Decimal(str(self.unified_client.estimate_cost(model, 0, tokens_used))),
+            )
+
+        if fallback_cost is not None:
+            return max(Decimal("0"), Decimal(str(fallback_cost)))
+        return Decimal("0")
 
     async def _estimate_cost(self, request: Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest], use_openrouter: bool) -> Decimal:
         """Estimate cost based on request type, preferring Web Gateway if available."""
