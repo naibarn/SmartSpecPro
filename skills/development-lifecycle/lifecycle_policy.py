@@ -250,6 +250,27 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     event = scenario["event"]
     facts = scenario.get("facts", {})
 
+    if event == "recovery_challenge":
+        # The caller must provide an evidenced failure classification, not a
+        # generic BLOCKED label. Return an actionable next operation; the
+        # conductor/authorized worker executes it and records progress delta.
+        failure_class = facts.get("failure_class")
+        if not failure_class:
+            return "COLLECT_FAILURE_EVIDENCE"
+        if classify_failure(str(failure_class), has_safe_alternative=False) == "TRUE_BLOCKER":
+            return "DENY_AND_CONTINUE_SAFE_WORK" if facts.get("independent_work") else "DENY_AND_WAIT_AUTHORITY"
+        if facts.get("compatible_fallback"):
+            return "SUBSTITUTE"
+        if facts.get("safe_local_path"):
+            return "EXECUTE_SAFE_LOCAL_PATH"
+        if facts.get("requirement_optional") and facts.get("scope_verified"):
+            return "SKIP_OPTIONAL_AND_CONTINUE"
+        if int(facts.get("repeat_count", 0)) >= 3 and not facts.get("meaningful_delta", False):
+            return "REPLAN_WITH_NEW_STRATEGY"
+        if facts.get("independent_work"):
+            return "ISOLATE_BLOCKER_AND_CONTINUE"
+        return "ROOT_CAUSE_AND_REPLAN"
+
     if event == "same_blocker_no_delta":
         return blocker_strategy(int(facts.get("repeat_count", 0)), meaningful_delta=bool(facts.get("meaningful_delta")))
     if event == "critical_security_finding":
@@ -277,9 +298,10 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event == "missing_optional_runner":
         if facts.get("compatible_fallback"):
             return "SUBSTITUTE"
-        return "WAITING_CAPABILITY" if facts.get("verification_optional") else "BLOCKED_CAPABILITY"
+        # A genuinely optional check cannot be an eligibility prerequisite.
+        return "SKIP_OPTIONAL_VERIFICATION_AND_CONTINUE" if facts.get("verification_optional") else "BLOCKED_CAPABILITY"
     if event == "nonproduction_preview_unavailable":
-        return "WAITING_CAPABILITY" if facts.get("preview_optional") else "BLOCKED_CAPABILITY"
+        return "CONTINUE_WITHOUT_OPTIONAL_PREVIEW" if facts.get("preview_optional") else "BLOCKED_CAPABILITY"
     if event == "deployed_feature_gate_unresolved":
         return "WAITING_DEPENDENCY"
     if event == "unauthorized_action":
