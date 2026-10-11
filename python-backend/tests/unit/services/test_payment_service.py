@@ -528,7 +528,7 @@ class TestPaymentServiceWebhooks:
         mock_payment_tx.id = 1
         mock_payment_tx.status = "pending"
         mock_payment_tx.stripe_payment_intent_id = "pi_test_123"
-        mock_payment_tx.metadata = {}
+        mock_payment_tx.meta_data = {}
         
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_payment_tx
@@ -544,7 +544,7 @@ class TestPaymentServiceWebhooks:
         
         # Verify status was updated
         assert mock_payment_tx.status == "failed"
-        assert mock_payment_tx.metadata['failure_reason'] == 'Card declined'
+        assert mock_payment_tx.meta_data['failure_reason'] == 'Card declined'
         mock_db.commit.assert_called()
 
 
