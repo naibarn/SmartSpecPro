@@ -13,10 +13,14 @@ export async function settleMiniAppFactoryRunnerStage(input: {
   tenantId: string;
   actorId: number;
   receiptEventId: string;
+  receiptEventType: string;
   pipeline?: MiniAppFactoryPipeline;
   developmentRuns: DevelopmentRunService;
   createRunnerStage?: MiniAppFactoryStageWorkerRuntime["createRunnerStage"];
 }): Promise<{ stageId: string; nextStageId: string | null; nextJobId: string | null; created: boolean }> {
+  if (input.receiptEventType !== "RUNNER_EXECUTION_COMPLETED") {
+    throw new Error("FACTORY_RUNNER_STAGE_RECEIPT_NOT_SUCCESSFUL");
+  }
   const child = await input.developmentRuns.get(input);
   const rawLink = child.run.metadata?.miniAppFactoryStage;
   if (!rawLink || typeof rawLink !== "object" || Array.isArray(rawLink)) {
