@@ -163,4 +163,21 @@ describe("filterModelsByMcpProviderAccess", () => {
     ]);
     expect(filterModelsByMcpProviderAccess(models, new Set(["magnific", "higgsfield"]))).toEqual(models);
   });
+
+  it("preserves database rows with numeric primary keys", () => {
+    const databaseModels = [
+      {
+        id: 42,
+        modelId: "higgsfield/nano_banana_2",
+        name: "Nano Banana 2",
+        provider: "higgsfield",
+        configJson: { transport: "mcp" },
+      },
+    ];
+
+    expect(filterModelsByMcpProviderAccess(databaseModels, new Set())).toEqual([]);
+    expect(
+      filterModelsByMcpProviderAccess(databaseModels, new Set(["higgsfield"]))
+    ).toEqual(databaseModels);
+  });
 });
