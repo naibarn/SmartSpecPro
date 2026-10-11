@@ -881,18 +881,26 @@
       "next_action": "Provide an owner-authorized disposable Runner registration with fresh capability/source/workspace binding and a disposable PostgreSQL database using the supported app schema; then run real guarded integration, independent verification, receipt readback and restart acceptance. Keep protected dispatch DENY until those exact grants are verified.",
       "owner": "SPEC-224/workspace-authority maintainer",
       "root_cause": "Read-only inventory of the local shared test database found zero trusted, non-revoked Runner registrations with fresh snapshots and no DevelopmentRun table; there is no authorized disposable Runner/database fixture that can issue genuine lifecycle receipts."
+    },
+    {
+      "class": "WORKSPACE_LIFECYCLE",
+      "classification": "TRUE_EXTERNAL",
+      "id": "R11_CANONICAL_WORKSPACE_CONVERGENCE",
+      "next_action": "Do not retry without changed filesystem or owner-activity evidence. Obtain a different bounded filesystem/owner diagnostic, then retry once conditions change; preserve the original dirty content and require exact-SHA clean-state verification before closure.",
+      "owner": "workspace-authority maintainers / canonical user workspace owner",
+      "root_cause": "The registered canonical user checkout is dirty. After PR #694 integrated the 15-second bounded converge/verify path, a single attempt returned CONVERGENCE_TIMEOUT with workspace_state UNKNOWN before recovery capture. No convergence receipt or recovery archive was created, and the primary remained unchanged."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
+    "expected_canonical_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. Six focused Vitest files/40 tests passed and progressive_integration_gate passed. R11 remains PARTIAL: no trusted Runner with a fresh snapshot and no DevelopmentRun table were found in the read-only shared test DB, so genuine authority-issued lifecycle completion, disposable Git/Postgres end-to-end acceptance and post-restart terminal readback remain open. Keep RUN_COMPLETED blocked without persisted authority receipts and protected dispatch DENY. Next: obtain an owner-authorized disposable Runner plus supported disposable database, then rerun the positive and negative acceptance; server-managed target policy also requires SPEC-224 owner/security approval before it can omit user-workspace convergence. Rescan for independent ready WorkUnits after owners reconcile.",
+    "next_action": "PR #694 integrated the bounded converge/verify and dirty-capture repair at 5bc461753c6fbf968b9874257892631ad8c4b089. The post-integration 57-test authority suite passed and CI git_lifecycle/progressive_integration_gate passed. One bounded call against the registered dirty primary returned CONVERGENCE_TIMEOUT/UNKNOWN before recovery capture; no receipt/archive was created and source files were unchanged. Do not retry without changed filesystem/owner evidence. Genuine disposable Runner/PostgreSQL acceptance remains blocked: no trusted Runner with fresh snapshot or supported DevelopmentRun schema was available. Keep RUN_COMPLETED fail-closed and protected dispatch DENY.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
-    "reactivation_predicate": "An owner-authorized disposable Runner is registered with a fresh trusted snapshot and exact source/workspace binding, and a supported disposable PostgreSQL app-schema target is available; if testing server-managed delivery without local convergence, SPEC-224 owner and security approval plus immutable server-side target binding are durably recorded.",
-    "resume_point": "R11 PR #691 is integrated at 0683e8eec2324672355e3329f9d05a987462f6b7 on refs/heads/main. Focused suite passed 6 files/40 tests; progressive_integration_gate passed. Evidence and blocker: orchestra/tasks/smartaihub-marathon-r11-20261011/{progress.md,lifecycle.md,policy-proposal.md}. Synthetic implementation only. Resume with owner-authorized disposable Runner/PostgreSQL positive acceptance and exact source SHA; do not repeat workspace_authority resolve on the stale dirty primary checkout. Preserve R10 run 69d8af56-b919-435b-ac03-7f877a4c92c7 as PARTIAL.",
-    "waiting_predicate": "No live execution until an owner-authorized disposable Runner and supported disposable PostgreSQL target are available. Recheck runner trust, snapshot expiry, capability/Codex, exact source/workspace binding, job authorization, budget, evidence storage and independent verifier scope at reactivation. This wait does not authorize shared/production DB mutation or protected dispatch."
+    "reactivation_predicate": "New bounded filesystem/owner evidence or changed capacity is available for a single convergence retry, and an owner-authorized disposable Runner plus supported disposable PostgreSQL app-schema target are available. Server-managed delivery without local convergence additionally requires durable SPEC-224 owner/security approval and immutable server-side target binding.",
+    "resume_point": "PR #691 receipt trust code integrated at 0683e8eec2324672355e3329f9d05a987462f6b7; PR #692 handoff integrated at 98fd45a8aaf7491dbe6063b6be178ee3d40643e2; PR #694 bounded convergence repair integrated at 5bc461753c6fbf968b9874257892631ad8c4b089. Focused tests: TS 6 files/40 tests at 0683e8e, Python authority 57 tests at 5bc4617; PR #694 lifecycle and progressive gates passed. One bounded primary attempt returned timeout/unknown before recovery capture. Evidence: orchestra/tasks/smartaihub-marathon-r11-20261011/{progress.md,lifecycle.md,policy-proposal.md}. Next: wait for changed filesystem/owner evidence before retry; obtain authorized disposable Runner/PostgreSQL fixture. Preserve R10 run 69d8af56-b919-435b-ac03-7f877a4c92c7 as PARTIAL.",
+    "waiting_predicate": "Do not retry primary convergence without changed filesystem or owner-activity evidence; do not use unbounded status/fetch/copy operations. No live acceptance until authorized disposable Runner and supported disposable PostgreSQL target are available. Recheck trust, snapshot freshness, source/workspace binding, budget, evidence store and independent verifier scope at resume."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1044,7 +1052,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. The authority-receipt trust boundary is implemented and focused synthetic verification passed 6 files/40 tests. R11 remains PARTIAL because local read-only Runner inventory found no trusted fresh Runner and the shared test database lacks DevelopmentRun schema; genuine disposable Git/PostgreSQL acceptance and post-restart terminal readback remain open. Next action: obtain the owner-authorized disposable Runner and supported disposable database described in blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE; retain user-workspace convergence as default, and require SPEC-224 owner/security approval before any server-managed target can omit it.",
+    "next_action": "R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1074,7 +1082,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 62,
+  "generation": 64,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1100,7 +1108,8 @@
       "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
       "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
       "9bfe80208293b47153b4736e5c8a29ac98609e8b",
-      "0683e8eec2324672355e3329f9d05a987462f6b7"
+      "0683e8eec2324672355e3329f9d05a987462f6b7",
+      "5bc461753c6fbf968b9874257892631ad8c4b089"
     ],
     "mapping": [
       {
@@ -1208,6 +1217,16 @@
           "apps/web/server/services/spec224RunnerContinuationReconciler.ts"
         ],
         "source_sha": "0683e8eec2324672355e3329f9d05a987462f6b7"
+      },
+      {
+        "coverage": "PARTIAL; bounds Git/remote convergence work and dirty recovery capture; primary workspace still returns timeout/unknown and no live receipt is issued",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/694",
+        "scope": "PR #694: shared 15-second converge/verify deadline, remaining-budget Git subprocesses, atomic chunked untracked recovery files, explicit incomplete capture state on timeout",
+        "source_paths": [
+          "scripts/development-lifecycle/workspace_authority.py",
+          "scripts/development-lifecycle/test_workspace_authority.py"
+        ],
+        "source_sha": "5bc461753c6fbf968b9874257892631ad8c4b089"
       }
     ],
     "source_paths": [
@@ -1229,18 +1248,20 @@
       "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
       "apps/web/server/services/spec224WorkspaceLifecycleReceiptReader.ts",
       "apps/web/server/services/__tests__/spec224WorkspaceLifecycleReceiptReader.test.ts",
-      "orchestra/tasks/smartaihub-marathon-r11-20261011/policy-proposal.md"
+      "orchestra/tasks/smartaihub-marathon-r11-20261011/policy-proposal.md",
+      "scripts/development-lifecycle/workspace_authority.py",
+      "scripts/development-lifecycle/test_workspace_authority.py"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
+    "canonical_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
     "integrated": true,
-    "integrated_at": "2026-10-11T09:15:20Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/691",
-    "source_sha": "6eaff66eb1c59245198ded3c3fdd7f7b2fa2395b"
+    "integrated_at": "2026-10-11T09:29:24Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/694",
+    "source_sha": "bb38f0df3b3b5669b4a66f08d62141c1660e960e"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2275,7 +2296,7 @@
           "path": "apps/web/server/routes/jobControlPlane.ts"
         }
       ],
-      "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. The authority-receipt trust boundary is implemented and focused synthetic verification passed 6 files/40 tests. R11 remains PARTIAL because local read-only Runner inventory found no trusted fresh Runner and the shared test database lacks DevelopmentRun schema; genuine disposable Git/PostgreSQL acceptance and post-restart terminal readback remain open. Next action: obtain the owner-authorized disposable Runner and supported disposable database described in blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE; retain user-workspace convergence as default, and require SPEC-224 owner/security approval before any server-managed target can omit it.",
+      "next_action": "R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -2374,7 +2395,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T09:17:01.629775Z",
+  "updated_at": "2026-10-11T09:31:14.759744Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2469,13 +2490,25 @@
         "scope": "Six focused Vitest files passed. Synthetic reader injection and worker-object denial only; live Runner, real disposable Git integration, PostgreSQL receipt persistence and restart readback remain unverified.",
         "source_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
         "status": "PARTIAL"
+      },
+      {
+        "canonical_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
+        "command": "python3 scripts/development-lifecycle/test_workspace_authority.py",
+        "failed": 0,
+        "kind": "SPEC224_R11_BOUNDED_WORKSPACE_AUTHORITY_TESTS",
+        "passed": 57,
+        "path": "scripts/development-lifecycle/test_workspace_authority.py",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/694",
+        "scope": "Deadline, unknown-on-timeout, incomplete dirty-capture, and source preservation behavior. A bounded attempt on the registered dirty primary returned CONVERGENCE_TIMEOUT/UNKNOWN; no receipt/archive was emitted.",
+        "source_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
+    "sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
     "status": "PARTIAL",
     "task_regressions": []
   }

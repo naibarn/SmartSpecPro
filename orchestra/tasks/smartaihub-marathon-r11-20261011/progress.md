@@ -27,9 +27,10 @@ Loop policy:
 - [PENDING] One bounded next-WorkUnit selection after checkpoint promotion; do not manufacture a WorkUnit while current R11 proof depends on external authority.
 
 - [IMPLEMENTED, FOCUSED TESTS PASS] Bounded convergence repair — `converge` and `verify` now establish a shared 15-second operation deadline; Git subprocesses use the remaining budget; untracked files copy in 1 MiB chunks to atomic private recovery files. Interrupted capture records `CAPTURE_INCOMPLETE` and remains recovery-pending, never yielding `USER_WORKSPACE_CONVERGED`. `py_compile` passed; workspace authority regression passed 57 tests. Primary checkout was not used.
+- [INTEGRATED] PR #694 merged at `5bc461753c6fbf968b9874257892631ad8c4b089`; `git_lifecycle` and `progressive_integration_gate` passed.
 
 - [INTEGRATED] PR #691 implementation at `0683e8eec2324672355e3329f9d05a987462f6b7`; PR #692 canonical handoff at `98fd45a8aaf7491dbe6063b6be178ee3d40643e2`.
-- [CONVERGENCE PENDING] The registered user checkout is the known dirty primary. Do not run `converge` there until the bounded-repair checkpoint is integrated and re-reconciled. No primary files were changed, staged, stashed, or fast-forwarded. After integration, retry through the deadline-aware authority path; timeout remains unknown/pending.
+- [CONVERGENCE PENDING] One deadline-aware convergence attempt on the registered dirty primary returned `CONVERGENCE_TIMEOUT` / `WORKSPACE_STATE_UNKNOWN`. The timeout occurred before recovery capture began, so no receipt/archive was created. Primary files remain unchanged, unstaged, unstashed, and not fast-forwarded. Do not retry absent changed filesystem/authority conditions.
 
 Evidence references: `plan.md`, `test-design.md`, `lifecycle.md`, SPEC-224 R10 evidence under `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`.
 
