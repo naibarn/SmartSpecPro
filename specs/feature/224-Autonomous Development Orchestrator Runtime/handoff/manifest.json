@@ -875,15 +875,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
+    "expected_canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "On the authorized Windows host, after the normal Control Plane release containing PR #412 is verified, click Connect via browser and approve the Runner again. Then capture status, doctor, capabilities, explicit rescan, session continuity, authenticated Control Plane acknowledgement, Codex readiness, and workspace/source binding. Capture exact installed version/source SHA; the screenshot does not prove binary provenance. Do not dispatch a protected task.",
-    "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_FRESH_CAPABILITY_AND_CODEX_READINESS",
+    "next_action": "Continue the independent non-protected slice by adding one owner-marked native PostgreSQL acceptance that joins canonical DevelopmentRun/WorkUnit persistence, a deterministic synthetic executor result, bounded repair/retry, independent evidence-gated Final Verify, Task Control visibility, and fresh-process reconstruction. Do not use TeamRun as a prerequisite. Keep live Runner/Windows authorization and protected dispatch DENY unchanged.",
+    "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "Latest canonical source at review-build time: a709ec4084243386848785bd276f53445c7d36b8. Windows Runner review artifact 0.2.27 (Actions artifact 11612928361) built successfully from that exact SHA, SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755, unsigned-review only; exact evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. It contains the integrated 409 recovery, session refresh/continuity, manual refresh, and PR #401 Codex login-status changes. No Windows installation or acceptance, live backend SHA, current session/capability acknowledgement, workspace/source binding, owner P-RECOVERY approval, remote trust approval, or economic provisioning is established. Keep protected dispatch ineligible and both remote trust classes DENY. Windows review build 0.2.27 completed from source a709ec4084243386848785bd276f53445c7d36b8; artifact 11612928361 is unsigned-review only (see runner-desktop-review-build-0.2.27-20261009.md). The user screenshot shows the Runner stopped and automatic refresh rejected with HTTP 400; its clipped version line and absent response body do not prove installed source or backend SHA. PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a corrects unexpected refresh exception classification to sanitized HTTP 500; route tests passed 24/24. Deployment, browser reconnection, session/capability acknowledgement, Codex policy, and workspace/source binding remain unverified. Evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md.",
-    "waiting_predicate": "Reactivate after the authorized owner verifies the normal Control Plane release containing PR #412, completes Windows browser reconnection, and supplies fresh authenticated session/capability/Codex/workspace-source evidence. SPEC-224 dispatch remains separately gated by remote-trust approval, tenant-owner P-RECOVERY, economics, and persisted proof."
+    "resume_point": "R9 evidence is unchanged by documentation-only PR #666, integrated at 3ad29b4049661dff1437e4d79691d5616c2f2195. Provider poll/callback/Task Control service tests ran at ee21738005c66ed9ca80a15048df0acdd34d2d2f; outbox fencing tests ran at b6ca0541d192913414834744ed215d9fa7ec0c14. All tested runtime files are unchanged through current canonical. Exact evidence remains in the R9 handoff evidence file.",
+    "waiting_predicate": "Live Windows Runner readiness remains waiting for authorized owner reconnection and fresh capability/Codex/source binding evidence. Protected dispatch remains DENY. Independent synthetic native-PostgreSQL DevelopmentRun slice is READY and must continue without TeamRun coupling."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 42,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
+    "canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
     "integrated": true,
-    "integrated_at": "2026-10-11T01:32:34Z"
+    "integrated_at": "2026-10-11T06:28:36Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2344,7 +2344,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T01:58:44.972631Z",
+  "updated_at": "2026-10-11T06:29:21.321296Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
