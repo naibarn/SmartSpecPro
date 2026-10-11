@@ -14,6 +14,7 @@ import { isFunnelEnabled } from "../services/funnelRollout";
 // ── Constants ──
 
 export const MAX_RANGE_DAYS = 90;
+const CACHE_PREFIX = "funnel:analytics:";
 
 /**
  * Maximum rows returned per export operation.
@@ -345,6 +346,7 @@ export const funnelAnalyticsRouter = router({
             eventName: r.eventName,
             total: Number(r.total),
             uniqueUsers: Number(r.uniqueUsers),
+            latestObservedEventAt: r.latestObservedEventAt,
           }));
         },
         { bypass: input.bypassCache },
@@ -409,6 +411,7 @@ export const funnelAnalyticsRouter = router({
             bucket: r.bucket,
             eventName: r.eventName,
             total: Number(r.total),
+            latestObservedEventAt: r.latestObservedEventAt,
           }));
         },
         { bypass: input.bypassCache },
