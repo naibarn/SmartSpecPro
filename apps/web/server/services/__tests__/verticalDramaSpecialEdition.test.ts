@@ -36,6 +36,20 @@ const { mockExecuteWithFallback } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
 }));
 
+const { mockLoadVerticalDramaGenerationSettings } = vi.hoisted(() => ({
+  mockLoadVerticalDramaGenerationSettings: vi.fn(),
+}));
+
+vi.mock("../verticalDramaLlmPolicy", async () => {
+  const actual = await vi.importActual<typeof import("../verticalDramaLlmPolicy")>(
+    "../verticalDramaLlmPolicy"
+  );
+  return {
+    ...actual,
+    loadVerticalDramaGenerationSettings: mockLoadVerticalDramaGenerationSettings,
+  };
+});
+
 vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
@@ -160,6 +174,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockHasEnoughCredits.mockResolvedValue(true);
   mockCalculateCreditsForLLM.mockReturnValue(2);
+  mockLoadVerticalDramaGenerationSettings.mockResolvedValue({});
 });
 
 describe("synthesizeSpecialEditionBrief — real skill.md loader (no fs/skillFiles mocks)", () => {
@@ -251,6 +266,11 @@ describe("synthesizeSpecialEditionBrief — real skill.md loader (no fs/skillFil
     expect(result.draft).toEqual(VALID_LLM_DRAFT);
     expect(result.suggestedUserPremise).toContain(VALID_LLM_DRAFT.premise);
     expect(result.suggestedUserPremise).toContain("Personal stake:");
+    expect(mockLoadVerticalDramaGenerationSettings).toHaveBeenCalledWith({
+      seriesId: 16,
+      taskClass: "story_architecture",
+      userId: 1,
+    });
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 

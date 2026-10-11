@@ -251,7 +251,7 @@ export async function synthesizeSeasonCarryOver(
     schema: seasonCarryOverLlmDraftSchema,
     label: "Season carry-over planning",
     verticalDramaContext: {
-      seriesId: params.seriesId,
+      seriesId: params.lineageContext.parentSeriesId,
       taskClass: "story_architecture",
     },
   });
