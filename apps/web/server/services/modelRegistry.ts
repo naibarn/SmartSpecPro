@@ -153,7 +153,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function mcpProviderKeyForModel(model: {
-  id?: string | null;
+  id?: string | number | null;
   modelId?: string | null;
   provider?: string | null;
   configJson?: unknown;
@@ -199,7 +199,7 @@ function mcpProviderKeyForModel(model: {
  * ordinary API catalog (`magnific/*`).
  */
 export function filterModelsByMcpProviderAccess<T extends {
-  id?: string | null;
+  id?: string | number | null;
   modelId?: string | null;
   provider?: string | null;
   configJson?: unknown;
