@@ -435,7 +435,7 @@ type EditableSkillExecutionMode = Exclude<
 >;
 
 function isEditableSkillExecutionMode(
-  executionMode: SkillExecutionMode
+  executionMode: SkillExecutionMode | null | undefined
 ): executionMode is EditableSkillExecutionMode {
   return (
     executionMode === "llm-only" ||
@@ -3757,11 +3757,6 @@ export default function AdminSkills() {
       description: newSkillData.description || undefined,
       author: newSkillData.author || undefined,
       executionMode: newSkillData.executionMode,
-      sandboxProfileSlug: newSkillData.sandboxProfileSlug,
-      requiresNetwork: newSkillData.requiresNetwork,
-      requiresBrowser: newSkillData.requiresBrowser,
-      maxRuntimeSeconds: newSkillData.maxRuntimeSeconds,
-      maxInputMb: newSkillData.maxInputMb,
       bundleType: newSkillData.bundleType,
       bundleProfile: newSkillData.bundleProfile,
       systemPrompt: newSkillData.systemPrompt || undefined,
@@ -3932,11 +3927,6 @@ export default function AdminSkills() {
         isEditableSkillExecutionMode(editingSkill.executionMode)
           ? editingSkill.executionMode
           : undefined,
-      sandboxProfileSlug: editingSkill.sandboxProfileSlug,
-      requiresNetwork: editingSkill.requiresNetwork,
-      requiresBrowser: editingSkill.requiresBrowser,
-      maxRuntimeSeconds: editingSkill.maxRuntimeSeconds,
-      maxInputMb: editingSkill.maxInputMb,
       systemPrompt: editingSkill.systemPrompt,
       skillContent: editingSkill.skillContent,
       marketplaceContent: editingSkill.marketplaceContent,
@@ -9189,15 +9179,24 @@ export default function AdminSkills() {
                       <Select
                         value={newSkillData.category}
                         onValueChange={value => {
+                          const currentExecutionMode =
+                            newSkillData.executionMode;
+                          const recommendedExecutionMode =
+                            getRecommendedExecutionModeForSkillCategory(value);
                           const nextExecutionMode =
+                            isEditableSkillExecutionMode(
+                              currentExecutionMode
+                            ) &&
                             isExecutionModeCompatibleWithSkillCategory(
                               value,
-                              newSkillData.executionMode
+                              currentExecutionMode
                             )
-                              ? newSkillData.executionMode
-                              : getRecommendedExecutionModeForSkillCategory(
-                                  value
-                                ) || "llm-only";
+                              ? currentExecutionMode
+                              : isEditableSkillExecutionMode(
+                                    recommendedExecutionMode
+                                  )
+                                ? recommendedExecutionMode
+                                : "llm-only";
                           setNewSkillData(
                             applySandboxDefaultsToNewSkill(
                               {
@@ -10306,8 +10305,7 @@ export default function AdminSkills() {
               </div>
 
               {editingSkill !== null &&
-                isSandboxExecutionMode(editingSkill.executionMode) &&
-                false && (
+                isSandboxExecutionMode(editingSkill.executionMode) && (
                 <div className="space-y-4 rounded-xl border p-4">
                   <div>
                     <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
