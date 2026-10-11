@@ -127,7 +127,7 @@ async def test_spec224_cancellation_intent_fails_closed_on_tenant_mismatch():
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_spec224_decision_ack_is_idempotent_for_same_delivery_digest():
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
 
     from app.services.approval_db_service import ApprovalDBService
 
@@ -149,6 +149,13 @@ async def test_spec224_decision_ack_is_idempotent_for_same_delivery_digest():
     )
     ApprovalDBService._record_spec224_decision_intent(request, "approved", 52, request.resolved_at)
     delivery = request.extra_data["spec224DecisionDeliveryV1"]
+    delivery.update(
+        {
+            "leaseOwner": "worker-224",
+            "leaseEpoch": 3,
+            "leaseExpiresAt": (request.resolved_at + timedelta(minutes=1)).isoformat(),
+        }
+    )
     receipt = {"deliveryId": delivery["event"]["deliveryId"], "payloadDigest": delivery["payloadDigest"], "result": "resumed"}
     db = AsyncMock()
     db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=request))
@@ -158,6 +165,7 @@ async def test_spec224_decision_ack_is_idempotent_for_same_delivery_digest():
         assert await service.acknowledge_spec224_decision_delivery(
             "approval-224", "tenant-224", "job-224", "op-224",
             receipt["deliveryId"], delivery["payloadDigest"], receipt,
+            lease_owner="worker-224", lease_epoch=3, now=request.resolved_at,
         )
     assert db.commit.await_count == 1
     assert hasattr(ApprovalDBService, 'submit_decision')
