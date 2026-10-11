@@ -2,10 +2,14 @@
 Final Unit tests for Rate Limit Service (Renamed to avoid conflicts)
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from app.services.rate_limit_service import RateLimitService, RateLimit
+
 from app.models.credit import SystemConfig
+from app.services.postgres_rate_limit import SlidingWindowDecision
+from app.services.rate_limit_service import RateLimit, RateLimitService
+
 
 @pytest.fixture
 def rl_core_db_mock():
@@ -23,24 +27,15 @@ class TestRLServiceUnique:
     async def test_initialization(self, rl_core_service_instance, rl_core_db_mock):
         """Test service initialization"""
         assert rl_core_service_instance.db == rl_core_db_mock
-        assert rl_core_service_instance.redis_client is None
         assert rl_core_service_instance._default_limits_cache is None
 
     async def test_get_redis_lazy_loading(self, rl_core_service_instance):
-        """Test lazy loading of Redis client"""
-        with patch("app.services.rate_limit_service.redis.from_url") as mock_from_url:
-            mock_client = AsyncMock()
-            mock_from_url.return_value = mock_client
-            
-            # First call should create client
-            client1 = await rl_core_service_instance._get_redis()
-            assert client1 == mock_client
-            mock_from_url.assert_called_once()
-            
-            # Second call should return cached client
-            client2 = await rl_core_service_instance._get_redis()
-            assert client2 == mock_client
-            mock_from_url.assert_called_once() # Still called only once
+        """Rate checks delegate to the shared PostgreSQL sliding-window store."""
+        rl_core_service_instance._get_limit_for_scope = AsyncMock(return_value=RateLimit(10, 60))
+        decision = SlidingWindowDecision(True, count=1, remaining=9, retry_after_seconds=0)
+        with patch("app.services.rate_limit_service.consume_sliding_window", new=AsyncMock(return_value=decision)) as consume:
+            assert await rl_core_service_instance.check_rate_limit("user1", "api") == (True, 9, 0)
+        consume.assert_awaited_once_with("python-rate-limit", "api\0user1", 10, 60)
 
     async def test_load_default_limits(self, rl_core_service_instance, rl_core_db_mock):
         """Test loading defaults from DB"""
@@ -103,72 +98,37 @@ class TestRLServiceUnique:
 
     async def test_check_rate_limit_below_limit(self, rl_core_service_instance):
         """Test request below limit allowed"""
-        # Mock Redis
-        mock_redis = AsyncMock()
-        rl_core_service_instance._get_redis = AsyncMock(return_value=mock_redis)
-        
-        # Mock limit
         rl_core_service_instance._get_limit_for_scope = AsyncMock(return_value=RateLimit(10, 60))
-        
-        # Mock get current count (first pipeline)
-        # pipeline enter return value
-        mock_pipe = AsyncMock()
-        mock_redis.pipeline.return_value.__aenter__.return_value = mock_pipe
-        
-        # First execution (get) returns e.g. 5
-        # Second execution (incr/expire) returns new count e.g. 6
-        mock_pipe.execute.side_effect = [[5], [6]]
-        
-        mock_redis.ttl.return_value = 50
-
-        allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
+        decision = SlidingWindowDecision(True, count=6, remaining=4, retry_after_seconds=0)
+        with patch("app.services.rate_limit_service.consume_sliding_window", new=AsyncMock(return_value=decision)) as consume:
+            allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
 
         assert allowed is True
         assert remaining == 4 # 10 - 6
-        assert ttl == 50
-        
-        # Verify first pipeline calls
-        assert mock_pipe.get.call_count == 1
-        
-        # Verify second pipeline calls
-        assert mock_pipe.incr.call_count == 1
-        assert mock_pipe.expire.call_count == 1
+        assert ttl == 0
+        consume.assert_awaited_once_with("python-rate-limit", "api\0user1", 10, 60)
 
     async def test_check_rate_limit_exceeded(self, rl_core_service_instance):
         """Test request exceeded limit denied"""
-        mock_redis = AsyncMock()
-        rl_core_service_instance._get_redis = AsyncMock(return_value=mock_redis)
         rl_core_service_instance._get_limit_for_scope = AsyncMock(return_value=RateLimit(10, 60))
-        
-        # Current count is 10 (at limit)
-        mock_pipe = AsyncMock()
-        mock_redis.pipeline.return_value.__aenter__.return_value = mock_pipe
-        mock_pipe.execute.side_effect = [[10]] # First execution
-        
-        mock_redis.ttl.return_value = 30
-
-        allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
+        decision = SlidingWindowDecision(False, count=10, remaining=0, retry_after_seconds=30)
+        with patch("app.services.rate_limit_service.consume_sliding_window", new=AsyncMock(return_value=decision)) as consume:
+            allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
 
         assert allowed is False
         assert remaining == 0
         assert ttl == 30
         
-        # Verify no increment called
-        mock_pipe.incr.assert_not_called()
+        consume.assert_awaited_once_with("python-rate-limit", "api\0user1", 10, 60)
 
     async def test_check_rate_limit_first_request(self, rl_core_service_instance):
         """Test first request (key doesn't exist)"""
-        mock_redis = AsyncMock()
-        rl_core_service_instance._get_redis = AsyncMock(return_value=mock_redis)
         rl_core_service_instance._get_limit_for_scope = AsyncMock(return_value=RateLimit(10, 60))
-        
-        mock_pipe = AsyncMock()
-        mock_redis.pipeline.return_value.__aenter__.return_value = mock_pipe
-        mock_pipe.execute.side_effect = [[None], [1]] # None for get, 1 for incr
-        
-        mock_redis.ttl.return_value = 60
-
-        allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
+        decision = SlidingWindowDecision(True, count=1, remaining=9, retry_after_seconds=0)
+        with patch("app.services.rate_limit_service.consume_sliding_window", new=AsyncMock(return_value=decision)) as consume:
+            allowed, remaining, ttl = await rl_core_service_instance.check_rate_limit("user1", "api")
 
         assert allowed is True
         assert remaining == 9
+        assert ttl == 0
+        consume.assert_awaited_once_with("python-rate-limit", "api\0user1", 10, 60)
