@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+    "expected_canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
     "expected_spec_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 40,
+  "generation": 41,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -1088,7 +1088,9 @@
       "bb832db746f11db7a2bf15533ac9135634ad3db9",
       "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
       "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
-      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
+      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+      "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
+      "9bfe80208293b47153b4736e5c8a29ac98609e8b"
     ],
     "mapping": [
       {
@@ -1168,6 +1170,21 @@
           "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/vision-blueprint-uat-bridge-20261011.json"
         ],
         "source_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
+      },
+      {
+        "canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
+        "coverage": "PARTIAL; screenshot-derived blueprint reaches downstream Factory generation with integrity/schema validation; no real provider response, generated app, browser render, visual UAT, repair, or functional acceptance is evidenced.",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/596",
+        "scope": "PR #596 (merged as e61dc75cc86b0108f12b49b7c94fb8b53c4d3018) connects enabled-provider Vision analysis of exact staged screenshot bytes to Create Mini App Factory intake, stages a validated/hash-bound blueprint, and carries it into downstream Factory generations. UAT receives a bounded comparison/repair contract only. Focused tests passed 26/26 and progressive_integration_gate passed; preview was SKIPPED. Live Runner reports zero ready tools and no authorized session evidence. No E2E claim.",
+        "source_paths": [
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/miniAppVisualBlueprint.ts",
+          "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
+          "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/functional-generation-bridge-20261011.json"
+        ],
+        "source_sha": "9c4a89bea0bf2abacd1d0236ce35a96bc4319968",
+        "status": "PARTIAL"
       }
     ],
     "source_paths": [
@@ -1193,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+    "canonical_sha": "9bfe80208293b47153b4736e5c8a29ac98609e8b",
     "integrated": true,
-    "integrated_at": "2026-10-11T01:12:53Z"
+    "integrated_at": "2026-10-11T01:32:34Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3483,7 +3500,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T01:14:48.524996Z",
+  "updated_at": "2026-10-11T01:32:42.389289Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
