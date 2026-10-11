@@ -217,16 +217,28 @@ async def test_unclaimed_image_recovery_uses_cursor_to_continue_past_first_user_
         "dispatch_failures": 0,
         "next_after_user_id": 60,
     }
-    compiled = session.execute.await_args.args[0].compile()
+    # Recovery now executes a second bounded query for provider polls; assert
+    # against the first query, which enumerates unclaimed users.
+    compiled = session.execute.await_args_list[0].args[0].compile()
     assert "user_id_1" in compiled.params
     assert compiled.params["user_id_1"] == 10
     assert "user_id >" in str(compiled).lower()
 
 
 def test_recovery_only_requeues_unclaimed_images_during_hard_cutover():
+    from unittest.mock import AsyncMock, patch
+
     from app.tasks.media_tasks import recover_stuck_tasks
 
-    result = recover_stuck_tasks()
+    with patch(
+        "app.tasks.media_tasks._feature_186_hard_cutover_enabled",
+        return_value=True,
+    ), patch(
+        "app.tasks.media_tasks._recover_unclaimed_pending_image_tasks_async",
+        new_callable=AsyncMock,
+        return_value={"dispatched": 0, "dispatch_failures": 0},
+    ):
+        result = recover_stuck_tasks()
 
     assert result == {
         "status": "success",
