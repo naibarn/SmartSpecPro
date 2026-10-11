@@ -3,9 +3,9 @@
 Loop policy:
   orchestra_id: smartaihub-marathon-r10-20261011
   purpose: synthetic DevelopmentRun implementation, bounded repair, independent verification and durable evidence
-  current_stage: VERIFY
-  resume_from: VERIFY
-  iteration: 8/12
+  current_stage: REVIEW
+  resume_from: REVIEW
+  iteration: 9/12
   tool_call_batches: 18/30
   dispatch_waves: 0/6
   active_subagents: 0/4
@@ -19,13 +19,13 @@ Progress delta:
 - Real PostgreSQL lifecycle exposed and repaired a phase-projection snapshot bug; repaired-phase success now continues to TEST.
 - Synthetic disposable Git implementation now executes in canonical order across actual phase jobs: IMPLEMENT writes a failing candidate; TEST reproduces the unittest failure; DEBUG_REPAIR performs bounded idempotent repair; the next TEST passes; VERIFY passes an independent OS-process verifier.
 - One DevelopmentRun traversed all 12 phases. A fresh process recovered the evidence and the nonterminal Final Verify block. No RUN_COMPLETED event.
-- Cancellation gate now checks active worker authority before candidate/repair writes; focused no-write-after-cancel test passed. Same-run PLANNING lease expiry/reclaim advanced worker fencing 1→2; stale settlement was rejected and wrote no result/output.
+- Cancellation gate now checks active worker authority before candidate/repair writes; focused no-write-after-cancel test passed. In IMPLEMENT, a lease-bound Node worker committed the candidate and was SIGKILLed before acknowledgment; the recovered attempt advanced fencing 1→2, rejected stale settlement without output/result writes, and recovered the same candidate with exactly two total Git commits (baseline + candidate).
 - Focused gates: 4 files / 24 tests passed. Scoped `tsc` expanded to about 3.3 GiB RSS and was stopped for shared-host protection; not a code-failure classification.
 
 Open gaps:
-- GAP-1 — Follow-up lease-fencing PR checks are pending; PR #676 passed `progressive_integration_gate` and merged. The pre-R10 baseline failures remain separately recorded.
-- GAP-2 — CLOSED for the bounded acceptance: same-run lease expiry/reclaim advanced fencing 1→2; stale settlement returned `JOB_LEASE_STALE` and left result/output unchanged.
+- GAP-1 — Crash-recovery checkpoint PR checks are pending; PRs #676 and #677 passed `progressive_integration_gate` and merged. The pre-R10 baseline failures remain separately recorded.
+- GAP-2 — CLOSED for the bounded acceptance: implementation worker process terminated after candidate commit; same-run lease recovery advanced fencing 1→2, rejected stale settlement, and resumed from the existing candidate without a duplicate commit.
 - GAP-3 — Final Verify requires genuine run-bound canonical workspace convergence and worktree-retirement receipts plus a complete closure graph; none were fabricated.
 - GAP-4 — Current Windows Runner session/version/capability/job-grant/budget evidence is unavailable; protected dispatch remains DENY.
 
-Resume action: submit the follow-up through a normal PR, inspect exact checks, then continue the earliest independently ready WorkUnit. Keep SPEC-224 open.
+Resume action: submit the worker-crash recovery checkpoint through a normal PR, inspect exact checks, then inspect ownership for the earliest collision-free independent WorkUnit. SPEC-268 has historical worktrees with dirty owned paths and must not be modified until ownership is reconciled. Keep SPEC-224 open.

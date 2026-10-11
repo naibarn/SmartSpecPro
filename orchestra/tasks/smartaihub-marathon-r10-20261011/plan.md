@@ -30,6 +30,6 @@
 
 - Clean isolated worktree: `/home/dev/worktrees/r10-developmentrun-acceptance-20261011`
 - Canonical base: `b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc`
-- Integrated checkpoint: PR #676 merge `86d744878dcd67e1f8187a125f713b9364353573`. Follow-up checkpoint: `f42e3d9f241b457b02b5c41248046055afa50023`
+- Integrated checkpoint: PR #676 merge `86d744878dcd67e1f8187a125f713b9364353573`. Follow-up checkpoint: `f42e3d9f241b457b02b5c41248046055afa50023`. Crash-recovery checkpoint: `caf8bc7930fb94c220adbb27e44d8b6ac6690267`
 - Focused PostgreSQL/persistence evidence: `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`
-- Next action: open a follow-up PR for the same-run stale-lease proof, run exact gates, and obey the guarded promotion result. If CI is blocked by the known baseline failures, preserve the PR and continue the next ready independent WorkUnit without bypass.
+- Next action: open a follow-up PR for implementation worker-crash recovery, run exact gates, and obey the guarded promotion result. If CI is blocked by the known baseline failures, preserve the PR and continue the next ready independent WorkUnit without bypass.

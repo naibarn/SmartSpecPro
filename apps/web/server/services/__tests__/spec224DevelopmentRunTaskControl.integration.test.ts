@@ -296,7 +296,12 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       let repairedTest: CandidateTestResult | null = null;
       let acceptance: Spec224DisposableGitAcceptance | null = null;
       let activeLease: Awaited<ReturnType<typeof controlPlane.claim>> = null;
-      let leaseRecovery: { oldFencingVersion: number; newFencingVersion: number; staleSettlementRejected: boolean } | null = null;
+      let leaseRecovery: {
+        oldFencingVersion: number;
+        newFencingVersion: number;
+        staleSettlementRejected: boolean;
+        implementationWorkerExitSignal: string;
+      } | null = null;
       let firstTestFailure = true;
       const exercisedPhases = ["DISCOVERY"];
 
@@ -311,8 +316,23 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         if (!currentLease) throw new Error(`SPEC224_PHASE_NOT_CLAIMED:${currentPhase}`);
         activeLease = currentLease;
         await controlPlane.start(currentLease);
-        if (currentPhase === "PLANNING" && !leaseRecovery) {
+        exercisedPhases.push(currentPhase);
+        const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
+
+        if (currentPhase === "IMPLEMENT") {
+          disposableSession = await createSpec224DisposableGitSession(
+            { runId, tenantId, actorId, workUnitId: `work-${runId}` },
+            async ({ stage, repoPath }) => {
+              if (!activeLease) throw new Error("SPEC224_ACTIVE_JOB_LEASE_MISSING");
+              const status = await controlPlane.getStatus(activeLease.jobId, { tenantId, requestedByUserId: actorId });
+              if (status?.status !== "running" || !status.lease.active || status.errorMessage?.startsWith("cancel_requested:")) {
+                throw new Error(`SPEC224_${stage.toUpperCase()}_JOB_NOT_ACTIVE:${repoPath}`);
+              }
+            },
+          );
           const staleLease = currentLease;
+          const workerExitSignal = await disposableSession.runImplementationWorkerAndCrash(currentLease);
+          expect(workerExitSignal).toBe("SIGKILL");
           const expiredAt = new Date(Date.now() + 1_000);
           await client.unsafe(
             `UPDATE worker_jobs SET "leaseExpiresAt" = now() - interval '1 second' WHERE id = $1`,
@@ -346,27 +366,15 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
           if (currentLease.fencingVersion <= staleLease.fencingVersion) {
             throw new Error("SPEC224_RECLAIM_FENCE_DID_NOT_ADVANCE");
           }
+          candidate = await disposableSession.implementCandidate();
+          const { stdout: implementationCommitCount } = await execFileAsync("git", ["rev-list", "--count", "HEAD"], { cwd: disposableSession.repoPath });
+          expect(implementationCommitCount.trim()).toBe("2");
           leaseRecovery = {
             oldFencingVersion: staleLease.fencingVersion,
             newFencingVersion: currentLease.fencingVersion,
             staleSettlementRejected: true,
+            implementationWorkerExitSignal: workerExitSignal,
           };
-        }
-        exercisedPhases.push(currentPhase);
-        const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
-
-        if (currentPhase === "IMPLEMENT") {
-          disposableSession = await createSpec224DisposableGitSession(
-            { runId, tenantId, actorId, workUnitId: `work-${runId}` },
-            async ({ stage, repoPath }) => {
-              if (!activeLease) throw new Error("SPEC224_ACTIVE_JOB_LEASE_MISSING");
-              const status = await controlPlane.getStatus(activeLease.jobId, { tenantId, requestedByUserId: actorId });
-              if (status?.status !== "running" || !status.lease.active || status.errorMessage?.startsWith("cancel_requested:")) {
-                throw new Error(`SPEC224_${stage.toUpperCase()}_JOB_NOT_ACTIVE:${repoPath}`);
-              }
-            },
-          );
-          candidate = await disposableSession.implementCandidate();
           await controlPlane.complete(currentLease, {
             resultRef: `evidence:spec224-disposable:${runId}:candidate`,
             output: { baseSha: candidate.baseSha, failedCandidateSha: candidate.failedCandidateSha, mode: "SYNTHETIC" },

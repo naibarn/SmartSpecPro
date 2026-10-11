@@ -59,6 +59,7 @@ export type Spec224DisposableGitAcceptance = {
 
 export type Spec224DisposableGitSession = {
   repoPath: string;
+  runImplementationWorkerAndCrash(lease: { jobId: string; attemptId: string; leaseToken: string; fencingVersion: number }): Promise<"SIGKILL">;
   implementCandidate(): Promise<CandidateResult>;
   runCandidateTest(): Promise<CandidateTestResult>;
   repairCandidate(): Promise<RepairResult>;
@@ -133,6 +134,31 @@ const testSource = [
   "",
 ].join("\n");
 
+export async function applySpec224CandidateToOwnedRepository(input: {
+  repoPath: string;
+  scope: FixtureScope;
+}): Promise<CandidateResult> {
+  const marker = JSON.parse(await readFile(path.join(input.repoPath, OWNER_MARKER), "utf8")) as FixtureScope;
+  if (["runId", "tenantId", "actorId", "workUnitId"].some(key => marker[key as keyof FixtureScope] !== input.scope[key as keyof FixtureScope])) {
+    throw new Error("FOREIGN_RUN_EVIDENCE");
+  }
+
+  const head = await git(input.repoPath, "rev-parse", "HEAD");
+  const subject = await git(input.repoPath, "log", "-1", "--format=%s");
+  const source = await readFile(path.join(input.repoPath, "app.py"), "utf8");
+  if (subject === "Synthetic implementation candidate" && source === appSource("candidate")) {
+    return { baseSha: await git(input.repoPath, "rev-parse", "HEAD^"), failedCandidateSha: head };
+  }
+  if (subject !== "Acceptance fixture baseline" || source !== appSource("base")) {
+    throw new Error("DISPOSABLE_FIXTURE_CANDIDATE_STATE_UNEXPECTED");
+  }
+
+  await writeFile(path.join(input.repoPath, "app.py"), appSource("candidate"));
+  await git(input.repoPath, "add", "--", "app.py");
+  await git(input.repoPath, "commit", "--quiet", "-m", "Synthetic implementation candidate");
+  return { baseSha: head, failedCandidateSha: await git(input.repoPath, "rev-parse", "HEAD") };
+}
+
 export async function createSpec224DisposableGitSession(
   scope: FixtureScope,
   assertJobActive: AssertJobActive,
@@ -179,15 +205,40 @@ export async function createSpec224DisposableGitSession(
 
   return {
     repoPath,
+    async runImplementationWorkerAndCrash(lease) {
+      await requireOpen();
+      await assertJobActive({ stage: "implementation", repoPath });
+      const helperPath = fileURLToPath(import.meta.url);
+      const controlPlanePath = fileURLToPath(new URL("../../jobControlPlane.ts", import.meta.url));
+      const dbPath = fileURLToPath(new URL("../../../db.ts", import.meta.url));
+      const childScript = `
+        import { applySpec224CandidateToOwnedRepository } from ${JSON.stringify(helperPath)};
+        import { createJobControlPlane } from ${JSON.stringify(controlPlanePath)};
+        import { closeDb } from ${JSON.stringify(dbPath)};
+        const input = JSON.parse(process.env.SPEC224_IMPLEMENTATION_INPUT);
+        await createJobControlPlane().assertActive(input.lease);
+        await applySpec224CandidateToOwnedRepository(input);
+        await closeDb();
+        process.kill(process.pid, "SIGKILL");
+      `;
+      try {
+        await execFileAsync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", childScript], {
+          cwd: process.cwd(),
+          env: { ...process.env, SPEC224_IMPLEMENTATION_INPUT: JSON.stringify({ repoPath, scope, lease }) },
+          timeout: 30_000,
+          maxBuffer: 128 * 1024,
+        });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).signal === "SIGKILL") return "SIGKILL";
+        throw error;
+      }
+      throw new Error("SPEC224_IMPLEMENTATION_WORKER_DID_NOT_CRASH");
+    },
     async implementCandidate() {
       await requireOpen();
       if (candidate) return candidate;
       await assertJobActive({ stage: "implementation", repoPath });
-      const baseSha = await git(repoPath, "rev-parse", "HEAD");
-      await writeFile(path.join(repoPath, "app.py"), appSource("candidate"));
-      await git(repoPath, "add", "--", "app.py");
-      await git(repoPath, "commit", "--quiet", "-m", "Synthetic implementation candidate");
-      candidate = { baseSha, failedCandidateSha: await git(repoPath, "rev-parse", "HEAD") };
+      candidate = await applySpec224CandidateToOwnedRepository({ repoPath, scope });
       return candidate;
     },
     async runCandidateTest() {
