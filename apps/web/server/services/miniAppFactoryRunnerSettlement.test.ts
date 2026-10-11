@@ -13,6 +13,27 @@ const pipeline: MiniAppFactoryPipeline = {
 };
 
 describe("Mini App Factory trusted Runner settlement", () => {
+  it.each(["RUNNER_EXECUTION_FAILED", "RUNNER_COMMAND_REJECTED", "RUNNER_UNKNOWN_OUTCOME"])(
+    "does not settle non-completed Runner receipt %s as a Factory stage",
+    async receiptEventType => {
+      const get = vi.fn();
+      const createRunnerStage = vi.fn();
+
+      await expect(settleMiniAppFactoryRunnerStage({
+        runId: "factory-child-run",
+        tenantId: "tenant-real-ref",
+        actorId: 42,
+        receiptEventId: "failed-runner-receipt-event",
+        receiptEventType,
+        developmentRuns: { get } as any,
+        createRunnerStage: createRunnerStage as any,
+      })).rejects.toThrow("FACTORY_RUNNER_STAGE_RECEIPT_NOT_SUCCESSFUL");
+
+      expect(get).not.toHaveBeenCalled();
+      expect(createRunnerStage).not.toHaveBeenCalled();
+    }
+  );
+
   it("settles a completed receipt on the parent DevelopmentRun before selecting the next stage", async () => {
     const sha = "a".repeat(40);
     const unit = createDevelopmentWorkUnit({
@@ -71,6 +92,7 @@ describe("Mini App Factory trusted Runner settlement", () => {
       tenantId: parent.tenantId,
       actorId: parent.actorId,
       receiptEventId: "real-runner-receipt-event",
+      receiptEventType: "RUNNER_EXECUTION_COMPLETED",
       pipeline,
       developmentRuns: service as any,
       createRunnerStage,

@@ -312,10 +312,12 @@ export async function reconcileSpec224RunnerContinuations(
     }
 
     if (alreadyContinued.length) {
-      await settleMiniAppFactoryRunnerStage({
-        runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
-        receiptEventId: intent.receiptEventId, developmentRuns,
-      });
+      if (intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED") {
+        await settleMiniAppFactoryRunnerStage({
+          runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
+          receiptEventId: intent.receiptEventId, receiptEventType: intent.receiptEventType, developmentRuns,
+        });
+      }
       await markOperation(
         intent,
         "SPEC224_CONTINUATION_RECONCILED",
@@ -397,10 +399,12 @@ export async function reconcileSpec224RunnerContinuations(
       );
       reviewRequired += 1;
     } else {
-      await settleMiniAppFactoryRunnerStage({
-        runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
-        receiptEventId: intent.receiptEventId, developmentRuns,
-      });
+      if (intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED") {
+        await settleMiniAppFactoryRunnerStage({
+          runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
+          receiptEventId: intent.receiptEventId, receiptEventType: intent.receiptEventType, developmentRuns,
+        });
+      }
       await markOperation(
         intent,
         "SPEC224_CONTINUATION_RECONCILED",
