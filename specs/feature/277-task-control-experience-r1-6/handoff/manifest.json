@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+    "expected_canonical_sha": "b6ca0541d192913414834744ed215d9fa7ec0c14",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-    "next_ready_workunit": "R7-A1 continuation: integrate PR #648 stale-attempt callback rejection against current main; then continue receipt/outbox consistency acceptance without crossing SPEC-302 owner or migration gates.",
+    "next_action": "Continue direct acceptance within existing worker_jobs/outbox authority: inspect receipt/outbox consistency and attempt metadata for any real provider producer. Callback remains audit-only unless caller evidence proves otherwise. Do not add a callback producer, durable receipt schema or migration without SPEC-302 ownership/authorization. Keep SPEC-277 PARTIAL.",
+    "next_ready_workunit": "SPEC277_PROVIDER_RECEIPT_OUTBOX_CONSISTENCY_AND_PRODUCER_ATTEMPT_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Latest canonical origin/main is a3521d7e42e36b2e905ce4c3f228d326d05b2def. PR #651 dependency-wait suppression is integrated; exact canonical focused acceptance passed 11 files / 30 tests. Recovery coverage includes useful work, no-progress suppression, approval/provider/resource/dependency waits, one terminal event, and Task Control continuity. Next inspect independently executable receipt/outbox consistency within current control-plane authority and continue attempt-correlation review for producers that can provide metadata. Do not change SPEC-277 from PARTIAL.",
-    "waiting_predicate": "Provider callback/outbox/cancellation acceptance and TeamRun-to-Task-Control binding are runnable from canonical main. Only durable receipt schema/migration work waits for an accountable schema owner and explicit approval; all existing dirty historical worktrees remain preserved."
+    "resume_point": "R9 exact source SHA ee21738005c66ed9ca80a15048df0acdd34d2d2f: disposable-PostgreSQL provider poll settlement, replay, stale poll lease and cancellation race passed; callback callback-safety test passed; separate DevelopmentRun/Final Verify suites passed. Evidence: specs/feature/277-task-control-experience-r1-6/handoff/evidence/r9-provider-poll-callback-acceptance-20261011.json. No SPEC-277 requirement was closed because the reviewed candidate requirements have wider obligations than these focused persistence tests.",
+    "waiting_predicate": "Independent poll/callback and DevelopmentRun service tests are runnable. Durable receipt schema work waits on identified SPEC-302 owner and explicit migration authorization. Do not repeat primary workspace convergence while the registered primary remains dirty/stale."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 50,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -253,9 +253,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+    "canonical_sha": "b6ca0541d192913414834744ed215d9fa7ec0c14",
     "integrated": true,
-    "integrated_at": "2026-10-11T12:15:12+07:00"
+    "integrated_at": "2026-10-11T06:24:10Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -616,7 +616,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T05:17:02.202962Z",
+  "updated_at": "2026-10-11T06:26:27.728502Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
