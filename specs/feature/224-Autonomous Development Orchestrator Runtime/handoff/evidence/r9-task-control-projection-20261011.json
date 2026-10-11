@@ -1,0 +1,59 @@
+{
+  "workunit_id": "SPEC224_TASK_CONTROL_DURABLE_STAGE_PROJECTION",
+  "canonical_ref": "refs/heads/main",
+  "integrated_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
+  "source_sha": "128dbc11b6c4f5b632fddc35d69e255e35727375",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/670",
+  "merged_at": "2026-10-11T06:41:09Z",
+  "classification": "SYNTHETIC_TASK_CONTROL_PROJECTION",
+  "environment": "Owner-marked disposable PostgreSQL fixture; fresh child Node process; no shared or production database migration was applied",
+  "commands": [
+    "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest run server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts",
+    "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest run server/services/__tests__/workerJobMonitorService.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts",
+    "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest run server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts server/services/__tests__/workerJobMonitorService.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts"
+  ],
+  "results": [
+    {
+      "suite": "DevelopmentRun-to-Task-Control PostgreSQL projection",
+      "files": 1,
+      "tests": 1,
+      "passed": 1,
+      "source_sha": "128dbc11b6c4f5b632fddc35d69e255e35727375"
+    },
+    {
+      "suite": "Task Control projection and lease continuity regression",
+      "files": 2,
+      "tests": 20,
+      "passed": 20,
+      "source_sha": "128dbc11b6c4f5b632fddc35d69e255e35727375"
+    },
+    {
+      "suite": "All focused Task Control checks after canonical reconciliation",
+      "files": 3,
+      "tests": 21,
+      "passed": 21,
+      "source_sha": "128dbc11b6c4f5b632fddc35d69e255e35727375"
+    },
+    {
+      "suite": "Progressive Integration Gate",
+      "result": "PASS",
+      "source_sha": "128dbc11b6c4f5b632fddc35d69e255e35727375"
+    }
+  ],
+  "assertions": [
+    "Idempotent DevelopmentRun creation returns one canonical worker job identity",
+    "DevelopmentRun stage PLANNING is persisted through the canonical service path and remains readable after a fresh child process",
+    "Task Control projects the durable SPEC-224 stage as progressPhase=PLANNING and leaves progressPercent null",
+    "The PostgreSQL enum accepts the external_runtime job type in the disposable fixture"
+  ],
+  "limitations": [
+    "This proves persistence and read-model visibility only; it does not execute a WorkUnit, implementation/test/repair cycle, independent Final Verify, or completion settlement",
+    "It does not prove live Runner/Codex authorization, production migration application, deployment, or protected dispatch",
+    "No SPEC-277 requirement was promoted to PASS"
+  ],
+  "post_integration": {
+    "main_build_health": "PENDING",
+    "owner": "R9 conductor",
+    "next_action": "Queue or record the configured build health check against integrated SHA 2ab08d51f9a34d6d216545f4b3ede3040e05a8b7"
+  }
+}

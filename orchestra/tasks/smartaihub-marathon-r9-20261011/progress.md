@@ -27,3 +27,10 @@
 - `npx vitest run ...` targeted outputs recorded in evidence JSON; no full typecheck/build was run.
 - `python3 -m tools.spec_handoff validate --spec-dir ...` for SPEC-224 and SPEC-277 returned `valid: true`; completion remains ineligible by design with requirements open and authority/reconciliation unresolved.
 - Overall R9 remains open; synthetic evidence is not live provider/Runner acceptance and is not Autonomous Completion.
+
+## PR #670 — SPEC-224 Task Control Projection
+- Added `progressJson.spec224.state` fallback to the Task Control phase projection; progress percentage remains unset absent an actual numeric value.
+- Added owner-marked disposable PostgreSQL continuity proof: idempotent run/job identity, PLANNING persistence, a fresh child Node process read, and Task Control projection. Focused checks passed 21/21 on candidate `128dbc11b6c4f5b632fddc35d69e255e35727375`; the Progressive Integration Gate passed on the same candidate.
+- PR #670 merged through the normal protected path at `2ab08d51f9a34d6d216545f4b3ede3040e05a8b7`; this SHA was verified reachable from `origin/main`. Main build health remains pending against that SHA; preview was skipped.
+- Evidence: `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-task-control-projection-20261011.json`. Official SPEC-224 and SPEC-277 handoffs are updated to the integrated SHA through the shared writer and both validate; no SPEC-277 row was closed.
+- This is a persistence/read-model sub-slice only. It does not prove WorkUnit execution, repair/retry, independent Final Verify, settlement or live Runner/Codex acceptance. Next ready WorkUnit remains `SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE`; continue without TeamRun as a prerequisite and keep protected dispatch denied.
