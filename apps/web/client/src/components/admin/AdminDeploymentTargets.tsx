@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
@@ -90,7 +90,7 @@ function TargetEditor({
   const set = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
     setFields(current => ({ ...current, [key]: event.target.value }));
   return (
-    <VStack as="form" gap={2} onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); onSave(fields); }}>
+    <VStack as="form" gap={2} onSubmit={event => { event.preventDefault(); onSave(fields); }}>
       <Label htmlFor={`target-id-${target.id}`}>{text("Deployment target identity", "ตัวตนของ deployment target")}</Label>
       <Input id={`target-id-${target.id}`} value={fields.deploymentTargetId} onChange={set("deploymentTargetId")} required maxLength={160} />
       <HStack gap={2} wrap="wrap">
@@ -256,7 +256,7 @@ export default function AdminDeploymentTargets() {
       {validScope ? (
         <details>
           <summary>{text("Record an explicitly approved Cloudflare target", "บันทึก Cloudflare target ที่ได้รับอนุมัติแล้ว")}</summary>
-          <VStack as="form" gap={2} onSubmit={(event: FormEvent<HTMLFormElement>) => {
+          <VStack as="form" gap={2} onSubmit={event => {
             event.preventDefault();
             createMutation.mutate({
               ...scope,
