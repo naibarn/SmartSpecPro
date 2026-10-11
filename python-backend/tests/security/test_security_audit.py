@@ -5,19 +5,23 @@ Tests for common security vulnerabilities
 Uses TestClient from conftest.py for consistency with other tests
 """
 
-import pytest
-from starlette.testclient import TestClient
 import uuid
 
+import pytest
+from starlette.testclient import TestClient
+
+from app.api.auth import _AUTH_RATE
 from app.core.security import rate_limiter
 
 
 @pytest.fixture(autouse=True)
 def reset_test_client_rate_limit():
-    """Keep shared TestClient IP state from leaking between security cases."""
+    """Keep shared middleware and auth endpoint limiter state isolated per case."""
     rate_limiter.reset("ip:testclient")
+    _AUTH_RATE.pop("auth:testclient", None)
     yield
     rate_limiter.reset("ip:testclient")
+    _AUTH_RATE.pop("auth:testclient", None)
 
 
 class TestSQLInjection:
@@ -191,7 +195,15 @@ class TestInputValidation:
     
     def test_negative_amounts(self, client: TestClient, auth_headers: dict):
         """Test that negative amounts are rejected"""
-        response = client.post("/api/payments/checkout", headers=auth_headers, json={
+        client.get("/")  # Receive the normal CSRF cookie issued on safe requests.
+        csrf_token = client.cookies.get("csrf_token")
+        assert csrf_token
+        headers = {
+            **auth_headers,
+            "Cookie": f"csrf_token={csrf_token}",
+            "X-CSRF-Token": csrf_token,
+        }
+        response = client.post("/api/payments/checkout", headers=headers, json={
             "amount_usd": -10.00,
             "success_url": "https://example.com/success",
             "cancel_url": "https://example.com/cancel"
