@@ -1,0 +1,17 @@
+{
+  "kind": "R7_POST_PR651_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+  "canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+  "source_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/651",
+  "status": "PASS_PARTIAL_ACCEPTANCE",
+  "profile": "integration",
+  "command": "env -u DATABASE_URL JWT_SECRET=<synthetic-test-secret> pnpm exec vitest run --maxWorkers=1 <11 focused R7 files>",
+  "scope": "Exact merged-main focused acceptance: 11 files / 30 tests passed. Includes PR #651 dependency-wait suppression; useful-work recovery persisted final_approved and exactly one terminal event; no-progress suppression; Task Control job identity across interruption/retry/provider wait/final Verify; provider poll persistence and stale-result rejection; outbox publisher lease-reclaim fencing; and callback attempt correlation.",
+  "started_at": "2026-10-11T05:15:27Z",
+  "completed_at": "2026-10-11T05:16:14Z",
+  "environment": "Disposable loopback PostgreSQL fixture; inherited DATABASE_URL unset; synthetic local JWT secret. Node v22.22.3, pnpm 10.4.1.",
+  "limitations": [
+    "SPEC-277 remains PARTIAL. SPEC-271 WP2B owner/authority, SPEC-302 Phase 2 receipt schema/migration ownership and authorization, and SPEC-224 protected dispatch DENY remain unresolved.",
+    "No production database, migration, deployment, protected dispatch, or external spending."
+  ]
+}

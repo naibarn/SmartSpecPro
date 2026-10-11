@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+    "expected_canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+    "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
     "next_ready_workunit": "R7-A1 continuation: integrate PR #648 stale-attempt callback rejection against current main; then continue receipt/outbox consistency acceptance without crossing SPEC-302 owner or migration gates.",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Latest canonical origin/main is f76f60a02d03ac52498d5290e9981cc19ba9755e. Exact PR #632 merged-SHA acceptance passed at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b. PR #639 TeamRun-to-Task-Control identity and PR #641 provider poll timestamp/stale lease fixes are integrated. PR #646 outbox publisher lease fencing is integrated at f76f60a02d03ac52498d5290e9981cc19ba9755e; the 10-file/17-test focused suite passed on that exact main SHA. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed 3 files/76 tests after main reconciliation, including a direct PostgreSQL concurrent retry/callback race that rejects attempt 1 against current attempt 2. Integrate PR #648 after its gate; callbacks without attempt metadata and durable receipt authority remain unresolved, along with full SPEC-277 acceptance.",
+    "resume_point": "Latest canonical origin/main is a3521d7e42e36b2e905ce4c3f228d326d05b2def. PR #651 dependency-wait suppression is integrated; exact canonical focused acceptance passed 11 files / 30 tests. Recovery coverage includes useful work, no-progress suppression, approval/provider/resource/dependency waits, one terminal event, and Task Control continuity. Next inspect independently executable receipt/outbox consistency within current control-plane authority and continue attempt-correlation review for producers that can provide metadata. Do not change SPEC-277 from PARTIAL.",
     "waiting_predicate": "Provider callback/outbox/cancellation acceptance and TeamRun-to-Task-Control binding are runnable from canonical main. Only durable receipt schema/migration work waits for an accountable schema owner and explicit approval; all existing dirty historical worktrees remain preserved."
   },
   "continuation_assessment": {
@@ -149,8 +149,8 @@
         "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
-    "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-    "rationale": "PR #632 exact merged-SHA acceptance passed. PR #639 TeamRun-to-Task-Control identity, PR #641 provider poll serialization/fencing, and PR #646 outbox publisher lease-reclaim settlement are integrated. Ten focused R7/provider/outbox suites passed at latest canonical main f76f60a02d03ac52498d5290e9981cc19ba9755e. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed direct PostgreSQL callback retry-race and 3-file/76-test focused checks. Callback producers without attempt metadata, durable receipt authority, remaining recovery classification, and full SPEC-277 acceptance remain open.",
+    "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+    "rationale": "PR #651 added direct coverage that a paused dependency wait is suppressed. Exact merged origin/main a3521d7e42e36b2e905ce4c3f228d326d05b2def passed 11 focused files / 30 tests, including no-progress and useful-work recovery, exactly-one finalization event, Task Control continuity, provider polling/callback attempt correlation, and outbox lease-reclaim fencing. SPEC-277 remains PARTIAL: receipt authority and migration authorization remain gated, SPEC-224 protected dispatch remains DENY, and full requirement reconciliation/UAT are open.",
     "residual_requirements": [
       "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
       "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 49,
+  "generation": 50,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -253,9 +253,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+    "canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
     "integrated": true,
-    "integrated_at": "2026-10-11T12:02:41+07:00"
+    "integrated_at": "2026-10-11T12:15:12+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -393,8 +393,8 @@
           "status": "PASS_PARTIAL_ACCEPTANCE"
         }
       ],
-      "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-      "rationale": "PR #632 exact merged-SHA acceptance passed. PR #639 TeamRun-to-Task-Control identity, PR #641 provider poll serialization/fencing, and PR #646 outbox publisher lease-reclaim settlement are integrated. Ten focused R7/provider/outbox suites passed at latest canonical main f76f60a02d03ac52498d5290e9981cc19ba9755e. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed direct PostgreSQL callback retry-race and 3-file/76-test focused checks. Callback producers without attempt metadata, durable receipt authority, remaining recovery classification, and full SPEC-277 acceptance remain open.",
+      "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+      "rationale": "PR #651 added direct coverage that a paused dependency wait is suppressed. Exact merged origin/main a3521d7e42e36b2e905ce4c3f228d326d05b2def passed 11 focused files / 30 tests, including no-progress and useful-work recovery, exactly-one finalization event, Task Control continuity, provider polling/callback attempt correlation, and outbox lease-reclaim fencing. SPEC-277 remains PARTIAL: receipt authority and migration authorization remain gated, SPEC-224 protected dispatch remains DENY, and full requirement reconciliation/UAT are open.",
       "residual_requirements": [
         "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
         "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -616,7 +616,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T05:04:53.618204Z",
+  "updated_at": "2026-10-11T05:17:02.202962Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -799,6 +799,23 @@
         "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/648",
         "source_sha": "31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+        "command": "env -u DATABASE_URL JWT_SECRET=<synthetic-test-secret> pnpm exec vitest run --maxWorkers=1 <11 focused R7 files>",
+        "completed_at": "2026-10-11T05:16:14Z",
+        "environment": "Disposable loopback PostgreSQL fixture; inherited DATABASE_URL unset; synthetic local JWT secret. Node v22.22.3, pnpm 10.4.1.",
+        "kind": "R7_POST_PR651_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+        "limitations": [
+          "SPEC-277 remains PARTIAL. SPEC-271 WP2B owner/authority, SPEC-302 Phase 2 receipt schema/migration ownership and authorization, and SPEC-224 protected dispatch DENY remain unresolved.",
+          "No production database, migration, deployment, protected dispatch, or external spending."
+        ],
+        "profile": "integration",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/651",
+        "scope": "Exact merged-main focused acceptance: 11 files / 30 tests passed. Includes PR #651 dependency-wait suppression; useful-work recovery persisted final_approved and exactly one terminal event; no-progress suppression; Task Control job identity across interruption/retry/provider wait/final Verify; provider poll persistence and stale-result rejection; outbox publisher lease-reclaim fencing; and callback attempt correlation.",
+        "source_sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+        "started_at": "2026-10-11T05:15:27Z",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "PARTIAL",
@@ -806,7 +823,7 @@
       "quick",
       "integration"
     ],
-    "sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+    "sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
     "status": "PARTIAL",
     "task_regressions": []
   }
