@@ -58,22 +58,26 @@ else
   npm install
 fi
 
-# The SmartSpecWeb tests import this workspace package's public schema entry
-# point. Its source is intentionally bundled separately from the heavyweight
-# Remotion renderer, so build that single entrypoint after dependencies exist
-# and before Vitest resolves the package export.
+# SmartSpecWeb tests import the Remotion schema and render-video-job workspace
+# exports. These entrypoints are intentionally bundled separately from the
+# heavyweight composition bundle, so build both after dependencies exist and
+# before Vitest resolves the package exports.
 if [ "$PKG" = "apps/web" ]; then
   REMOTION_SCHEMA_ROOT="$ROOT/packages/remotion-render"
-  REMOTION_SCHEMA_BUILDER="$ROOT/apps/web/node_modules/.bin/esbuild"
-  if [ ! -x "$REMOTION_SCHEMA_BUILDER" ]; then
+  REMOTION_BUILDER="$ROOT/apps/web/node_modules/.bin/esbuild"
+  if [ ! -x "$REMOTION_BUILDER" ]; then
     echo "esbuild is required to prepare the SmartSpecWeb Remotion schema" >&2
     exit 127
   fi
   mkdir -p "$REMOTION_SCHEMA_ROOT/dist"
-  "$REMOTION_SCHEMA_BUILDER" \
+  "$REMOTION_BUILDER" \
     "$REMOTION_SCHEMA_ROOT/src/remotionRenderVideoSchema.ts" \
     --bundle --platform=neutral --format=esm --target=es2022 --external:zod \
     --outfile="$REMOTION_SCHEMA_ROOT/dist/remotionRenderVideoSchema.js"
+  "$REMOTION_BUILDER" \
+    "$REMOTION_SCHEMA_ROOT/src/renderVideoJobEntry.ts" \
+    --bundle --platform=node --format=esm --target=node22 --external:zod \
+    --outfile="$REMOTION_SCHEMA_ROOT/dist/renderVideoJobEntry.js"
 fi
 
 if npm run | grep -q "test:coverage"; then
