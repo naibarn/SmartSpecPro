@@ -140,7 +140,10 @@ export async function independentlyVerifySpec224DisposableGitAcceptance(input: {
   return { pid: process.pid, sourceSha, profile: "synthetic-disposable-python-unittest-v1", testsPassed: true };
 }
 
-export async function runSpec224DisposableGitAcceptance(scope: FixtureScope): Promise<Spec224DisposableGitAcceptance> {
+export async function runSpec224DisposableGitAcceptance(
+  scope: FixtureScope,
+  assertJobActive: (input: { stage: "implementation" | "repair"; repoPath: string }) => Promise<void>,
+): Promise<Spec224DisposableGitAcceptance> {
   const root = await mkdtemp(path.join(tmpdir(), "spec224-disposable-git-"));
   const repoPath = path.join(root, "repository");
   const evidenceDir = path.join(root, "evidence");
@@ -166,6 +169,7 @@ export async function runSpec224DisposableGitAcceptance(scope: FixtureScope): Pr
     const baseSha = await git(repoPath, "rev-parse", "HEAD");
 
     // Deterministic synthetic implementation adapter: this is a real source edit in its owned Git repo.
+    await assertJobActive({ stage: "implementation", repoPath });
     await writeFile(path.join(repoPath, "app.py"), appSource("candidate"));
     await git(repoPath, "add", "--", "app.py");
     await git(repoPath, "commit", "--quiet", "-m", "Synthetic implementation candidate");
@@ -183,6 +187,7 @@ export async function runSpec224DisposableGitAcceptance(scope: FixtureScope): Pr
     let repairAttempts = 0;
     const applyBoundedRepair = async (): Promise<string> => {
       if (repairAttempts >= MAX_REPAIR_ATTEMPTS) throw new Error("REPAIR_ATTEMPT_LIMIT_REACHED");
+      await assertJobActive({ stage: "repair", repoPath });
       repairAttempts += 1;
       await writeFile(path.join(repoPath, "app.py"), appSource("repaired"));
       await git(repoPath, "add", "--", "app.py");

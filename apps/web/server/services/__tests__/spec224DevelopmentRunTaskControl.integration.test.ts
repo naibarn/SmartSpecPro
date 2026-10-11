@@ -308,7 +308,18 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
 
         if (currentPhase === "IMPLEMENT") {
-          acceptance = await runSpec224DisposableGitAcceptance({ runId, tenantId, actorId, workUnitId: `work-${runId}` });
+          acceptance = await runSpec224DisposableGitAcceptance(
+            { runId, tenantId, actorId, workUnitId: `work-${runId}` },
+            async () => {
+              const status = await controlPlane.getStatus(currentLease.jobId, {
+                tenantId,
+                requestedByUserId: actorId,
+              });
+              if (status?.status !== "running" || !status.lease.active || status.errorMessage?.startsWith("cancel_requested:")) {
+                throw new Error("SPEC224_IMPLEMENTATION_JOB_NOT_ACTIVE");
+              }
+            },
+          );
           expect(acceptance).toMatchObject({
             mode: "SYNTHETIC",
             scope: { runId, tenantId, actorId, workUnitId: `work-${runId}` },
