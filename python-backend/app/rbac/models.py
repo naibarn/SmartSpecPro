@@ -248,6 +248,7 @@ class RoleAssignment:
     
     # Assignment metadata
     assigned_by: Optional[str] = None
+    reason: Optional[str] = None
     assigned_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: Optional[datetime] = None
     
@@ -280,6 +281,7 @@ class RoleAssignment:
             "scope_type": self.scope_type.value if self.scope_type else None,
             "scope_id": self.scope_id,
             "assigned_by": self.assigned_by,
+            "reason": self.reason,
             "assigned_at": self.assigned_at.isoformat(),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_active": self.is_active,

@@ -390,6 +390,8 @@ class PolicyEngine:
         policies = await self.list_policies(tenant_id, resource_type)
         
         evaluated = 0
+        matching_allow: Optional[Policy] = None
+        matching_deny: Optional[Policy] = None
         for policy in policies:
             if not policy.matches(resource_type, action):
                 continue
@@ -398,22 +400,30 @@ class PolicyEngine:
             effect = policy.evaluate(context)
             
             if effect is not None:
-                allowed = effect == PolicyEffect.ALLOW
-                
                 self._logger.debug(
                     "policy_evaluated",
                     policy_id=policy.policy_id,
                     effect=effect.value,
                     action=action,
                 )
-                
-                return PolicyEvaluationResult(
-                    allowed=allowed,
-                    effect=effect,
-                    matching_policy=policy,
-                    evaluated_policies=evaluated,
-                    reason=f"Policy '{policy.name}' matched",
-                )
+                if effect == PolicyEffect.DENY:
+                    matching_deny = matching_deny or policy
+                elif matching_allow is None:
+                    matching_allow = policy
+
+        # Explicit deny is authoritative across matching policies. Priority
+        # selects the representative policy within each effect, but cannot
+        # make a matching deny lose to an allow.
+        matching_policy = matching_deny or matching_allow
+        if matching_policy:
+            effect = PolicyEffect.DENY if matching_deny else PolicyEffect.ALLOW
+            return PolicyEvaluationResult(
+                allowed=effect == PolicyEffect.ALLOW,
+                effect=effect,
+                matching_policy=matching_policy,
+                evaluated_policies=evaluated,
+                reason=f"Policy '{matching_policy.name}' matched",
+            )
         
         # Default deny if no policy matched
         return PolicyEvaluationResult(
