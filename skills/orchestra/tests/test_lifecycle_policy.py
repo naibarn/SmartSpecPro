@@ -20,7 +20,7 @@ SCENARIOS = ROOT / "skills/orchestra/references/autonomous-completion-scenarios.
 class AutonomousCompletionPolicyTests(unittest.TestCase):
     def test_required_scenarios(self):
         cases = json.loads(SCENARIOS.read_text(encoding="utf-8"))["scenarios"]
-        self.assertEqual(41, len(cases))
+        self.assertEqual(50, len(cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"], decide_closure(case))
@@ -173,7 +173,7 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
         cases = [
             ("UI work beside unrelated runtime blocker", "local_blocker_with_independent_work", {"independent_work": True, "blocker_scoped": True}, "ISOLATE_BLOCKER_AND_CONTINUE"),
             ("unrelated advisory beside independent work", "unrelated_baseline_failure", {"task_regression": False, "independent_work": True}, "ISOLATE_AND_CONTINUE"),
-            ("optional preview remains a capability wait", "nonproduction_preview_unavailable", {"preview_optional": True}, "WAITING_CAPABILITY"),
+            ("optional preview does not block deliverable", "nonproduction_preview_unavailable", {"preview_optional": True}, "CONTINUE_WITHOUT_OPTIONAL_PREVIEW"),
             ("deployed but unresolved tenant flag remains inactive", "deployed_feature_gate_unresolved", {"global_flag_enabled": False, "tenant_flag_resolved": False}, "WAITING_DEPENDENCY"),
             ("no-progress handoff changes strategy", "same_blocker_no_delta", {"repeat_count": 3, "meaningful_delta": False, "alternative_available": True}, "STALLED_STRATEGY"),
             ("external wait leaves independent work runnable", "full_verification_resource_wait", {"ready_independent_unit": True}, "QUEUE_AND_CONTINUE"),
@@ -184,6 +184,34 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             with self.subTest(regression=label):
                 self.assertEqual(expected, decide_closure({"event": event, "facts": facts}))
         self.assertEqual("TRUE_BLOCKER", classify_failure("CRITICAL_SECURITY_ACCEPTANCE"))
+
+    def test_recovery_challenge_prefers_safe_delivery_and_never_bypasses_authority(self):
+        def decide(**facts):
+            return decide_closure({"event": "recovery_challenge", "facts": facts})
+
+        self.assertEqual("COLLECT_FAILURE_EVIDENCE", decide())
+        self.assertEqual("SUBSTITUTE", decide(failure_class="ENVIRONMENT_FAILURE", compatible_fallback=True, fallback_authorized=True))
+        self.assertEqual("EXECUTE_SAFE_LOCAL_PATH", decide(failure_class="TOOL_CAPABILITY_MISSING", safe_local_path=True, local_path_authorized=True))
+        self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
+            failure_class="TOOL_CAPABILITY_MISSING", safe_local_path=True, local_path_authorized=False))
+        self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
+            failure_class="ENVIRONMENT_FAILURE", compatible_fallback=True, fallback_authorized=False))
+        self.assertEqual("SKIP_OPTIONAL_AND_CONTINUE", decide(
+            failure_class="ENVIRONMENT_FAILURE", requirement_optional=True, scope_verified=True))
+        self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
+            failure_class="ENVIRONMENT_FAILURE", requirement_optional=True, scope_verified=False))
+        self.assertEqual("REPLAN_WITH_NEW_STRATEGY", decide(
+            failure_class="ENVIRONMENT_FAILURE", repeat_count=3, meaningful_delta=False))
+        self.assertEqual("ISOLATE_BLOCKER_AND_CONTINUE", decide(
+            failure_class="EXTERNAL_DEPENDENCY", independent_work=True))
+        self.assertEqual("DENY_AND_WAIT_AUTHORITY", decide(
+            failure_class="MISSING_CREDENTIAL_NO_FALLBACK", safe_local_path=True))
+        self.assertEqual("DENY_AND_CONTINUE_SAFE_WORK", decide(
+            failure_class="CRITICAL_SECURITY_ACCEPTANCE", independent_work=True))
+        self.assertEqual("BLOCKED_CAPABILITY", decide_closure({
+            "event": "missing_optional_runner", "facts": {"verification_optional": False}}))
+        self.assertEqual("BLOCKED_CAPABILITY", decide_closure({
+            "event": "nonproduction_preview_unavailable", "facts": {"preview_optional": False}}))
 
     def test_safe_pr_integration_requires_slice_readiness_and_all_merge_controls(self):
         required_facts = {

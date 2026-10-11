@@ -104,6 +104,22 @@ no real security or data-safety boundary. Preserve system/platform controls,
 secrets, external irreversible-operation boundaries, and critical security
 stops. A partial canonical checkpoint never means the task is complete.
 
+## Outcome-first recovery and fresh builds
+
+Apply the executable recovery obligation in
+`skills/orchestra/references/autonomous-completion-contract.md`. A missing
+optional Runner, browser, or preview gate must not prevent a safe functional
+deliverable. A blocker report or handoff never substitutes for executing an
+authorized fallback or an independent ready WorkUnit. Require explicit evidence
+before declaring an external authority blocker. Only genuine safety/authority
+gates can stop the affected path; never bypass them.
+
+When the user requests Build, build from the latest policy-selected canonical
+ref, not the primary checkout. The canonical build CLI retries bounded stale
+revisions, never converts RESOURCE_BLOCKED or CODE_FAILED into PASS, and keeps
+Build, Preview, Release and Production Deploy as distinct outcomes. Prove
+published artifact/source parity before claiming that the user sees new code.
+
 ## Orchestra
 
 Prefer the `orchestra` skill when the user's request is not merely a factual
