@@ -90,6 +90,15 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
                 )
                 self.assertEqual("BLOCKED", result["status"])
 
+    def test_pending_check_is_not_misclassified_as_application_failure(self):
+        result = PROMOTER.evaluate_pull_request(
+            pull_request(),
+            [{"name": "focused-tests", "state": "IN_PROGRESS", "bucket": "pending"}],
+            expected_head=None,
+        )
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual("UNKNOWN", result["failure_class"])
+
     def test_review_requirement_or_head_drift_blocks_merge(self):
         checks = [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}]
         for pr, expected_head in (

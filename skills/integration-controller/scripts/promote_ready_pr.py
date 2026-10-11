@@ -68,7 +68,7 @@ def classify_failure(evidence: str, *, blockers: list[str] | None = None) -> str
     )):
         return "AUTHORITY"
     if any(marker in normalized for marker in (
-        "check_not_passing", "check failed", "tests failed", "build failed",
+        "check failed", "tests failed", "build failed",
         "conclusion=failure", "state=failure",
     )):
         return "APPLICATION"
