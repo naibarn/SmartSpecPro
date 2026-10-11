@@ -13,6 +13,7 @@ import {
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
+  type VectorEntry,
   type VectorProviderConfig,
 } from "./vectorProvider";
 import {
@@ -38,22 +39,6 @@ function resolveMediaIndex(config: VectorProviderConfig): string {
     process.env.VECTORIZE_MEDIA_INDEX?.trim() ||
     "smartaihub-media-v1"
   );
-}
-
-interface VectorMetadata {
-  tenantId: string;
-  type: string;
-  createdAt: number;
-  title: string;
-  sourceUrl: string;
-  description?: string;
-  [key: string]: string | number | boolean | undefined;
-}
-
-interface VectorEntry {
-  id: string;
-  values: number[];
-  metadata: VectorMetadata;
 }
 
 export interface VectorizeMutationEvidence {
