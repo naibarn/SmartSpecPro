@@ -19,10 +19,9 @@ class TestCustomSkillPromptModel:
         """Test creating a custom skill prompt"""
         # Create user
         user = User(
-            id=str(uuid.uuid4()),
             email="test@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -50,10 +49,9 @@ class TestCustomSkillPromptModel:
     async def test_custom_prompt_to_dict(self, test_db):
         """Test to_dict method"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test2@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -82,10 +80,9 @@ class TestCustomSkillPromptModel:
     async def test_template_variables(self, test_db):
         """Test template variables storage"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test3@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()

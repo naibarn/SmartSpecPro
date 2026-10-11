@@ -3,8 +3,6 @@ Tests for SkillPromptService
 """
 
 import pytest
-import uuid
-
 from app.services.skill_prompt_service import SkillPromptService
 from app.models.custom_skill_prompt import CustomSkillPrompt, SkillPromptTemplate
 from app.models.user import User
@@ -18,10 +16,9 @@ class TestSkillPromptService:
     async def test_get_effective_prompt_default(self, test_db):
         """Test getting default prompt when no custom exists"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -39,10 +36,9 @@ class TestSkillPromptService:
     async def test_get_effective_prompt_custom(self, test_db):
         """Test getting custom prompt when exists"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test2@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -68,10 +64,9 @@ class TestSkillPromptService:
     async def test_get_effective_prompt_inactive(self, test_db):
         """Test that inactive custom prompts are ignored"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test3@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -98,10 +93,9 @@ class TestSkillPromptService:
     async def test_save_custom_prompt_new(self, test_db):
         """Test saving new custom prompt"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test4@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -124,10 +118,9 @@ class TestSkillPromptService:
     async def test_save_custom_prompt_update(self, test_db):
         """Test updating existing custom prompt"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test5@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -155,10 +148,9 @@ class TestSkillPromptService:
     async def test_save_custom_prompt_validation_empty(self, test_db):
         """Test validation rejects empty prompts"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test6@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -175,10 +167,9 @@ class TestSkillPromptService:
     async def test_save_custom_prompt_validation_too_long(self, test_db):
         """Test validation rejects prompts that are too long"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test7@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -195,10 +186,9 @@ class TestSkillPromptService:
     async def test_save_custom_prompt_validation_dangerous(self, test_db):
         """Test validation blocks dangerous patterns"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test8@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -215,10 +205,9 @@ class TestSkillPromptService:
     async def test_delete_custom_prompt(self, test_db):
         """Test deleting custom prompt"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test9@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -252,10 +241,9 @@ class TestSkillPromptService:
     async def test_toggle_prompt_active(self, test_db):
         """Test toggling prompt active status"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test10@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -292,10 +280,9 @@ class TestSkillPromptService:
     async def test_list_user_custom_prompts(self, test_db):
         """Test listing all user's custom prompts"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test11@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -346,10 +333,9 @@ class TestSkillPromptService:
     async def test_template_variables_formatting(self, test_db):
         """Test template variable substitution"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test12@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
