@@ -318,7 +318,7 @@ export async function finalizeWorkerRuntimeRunnerArtifactUpload(input: {
   const filePath = await downloadStorageObjectToTemp(input.upload.storageKey);
   try {
     const fileSha256 = await hashFileSha256(filePath);
-    if (input.fileSha256 && input.fileSha256.toLowerCase() !== fileSha256) {
+    if (input.upload.fileSha256 && input.upload.fileSha256.toLowerCase() !== fileSha256) {
       throw new WorkerRuntimeRunnerArtifactError(
         "worker_runtime_runner_hash_mismatch",
         422,
