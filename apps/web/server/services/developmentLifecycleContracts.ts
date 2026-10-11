@@ -144,7 +144,7 @@ export type DevelopmentDependencyContract = {
   state: DevelopmentDependencyState;
   watcher: {
     watcherId: string;
-    status: "ACTIVE" | "MISSING";
+    status: "ACTIVE" | "MISSING" | "STOPPED";
     registeredAt: string;
     lastCheckedAt?: string;
     lastEvidenceRef?: string;
