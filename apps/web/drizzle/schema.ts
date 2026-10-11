@@ -15691,6 +15691,7 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "local_llm_worker",
   "node_job_worker",
   "python_job_worker",
+  "external_runtime",
 ]);
 
 export const workerStatusEnum = pgEnum("worker_status", [
