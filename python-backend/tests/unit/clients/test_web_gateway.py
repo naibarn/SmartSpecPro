@@ -107,7 +107,12 @@ async def test_forward_chat_stream(mock_settings):
     mock_client = MagicMock()
     mock_client.__aenter__.return_value = mock_client
     mock_resp = MagicMock()
-    mock_resp.aiter_bytes.return_value = [b"chunk1", b"chunk2"]
+
+    async def iter_bytes():
+        yield b"chunk1"
+        yield b"chunk2"
+
+    mock_resp.aiter_bytes.return_value = iter_bytes()
     
     # Mocking the async context managers
     mock_client.stream.return_value.__aenter__.return_value = mock_resp
