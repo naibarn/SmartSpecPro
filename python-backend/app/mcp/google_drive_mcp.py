@@ -493,7 +493,7 @@ GOOGLE_DRIVE_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "get_drive_file_info",
-        "description": "Get metadata about a Google Drive file including name, type, size, modification date, and owners.",
+        "description": "Get safe metadata about a Google Drive file including name, type, size, and modification date. Owner email addresses and parent references are excluded.",
         "inputSchema": {
             "type": "object",
             "properties": {
