@@ -45,6 +45,7 @@ class TestHealthMcp:
         assert "server_count" in health
         assert "active_connections" in health
         assert "stdio_process_count" in health
+        assert health["stdio_process_count"] == 0
 
 
 # ---------------------------------------------------------------------------
