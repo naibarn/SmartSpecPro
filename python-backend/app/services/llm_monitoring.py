@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 import structlog
 
-from app.models.credit import CreditTransaction
+from app.models.credit import CreditTransaction, TransactionType
 from app.models.user import User
 
 logger = structlog.get_logger()
@@ -113,7 +113,7 @@ class LLMMonitoringService:
         ).where(
             and_(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.transaction_type == "deduction",
+                CreditTransaction.type == TransactionType.usage,
                 CreditTransaction.created_at >= since
             )
         )
@@ -133,9 +133,12 @@ class LLMMonitoringService:
         
         from app.core.credits import credits_to_usd
         
-        total_credits = int(row.total_credits or 0)
+        # Usage entries follow the shared schema convention: deductions are
+        # stored as negative transaction amounts, while this API reports usage
+        # as a positive quantity.
+        total_credits = abs(int(row.total_credits or 0))
         total_usd = credits_to_usd(total_credits)
-        avg_credits = int(row.avg_credits_per_request or 0)
+        avg_credits = abs(int(row.avg_credits_per_request or 0))
         avg_usd = credits_to_usd(avg_credits)
         
         return {
@@ -168,7 +171,7 @@ class LLMMonitoringService:
         stmt = select(CreditTransaction).where(
             and_(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.transaction_type == "deduction",
+                CreditTransaction.type == TransactionType.usage,
                 CreditTransaction.created_at >= since
             )
         ).order_by(CreditTransaction.created_at.desc())
@@ -180,10 +183,11 @@ class LLMMonitoringService:
         provider_stats: Dict[str, Dict[str, Any]] = {}
         
         for tx in transactions:
-            if not tx.metadata or "provider" not in tx.metadata:
+            metadata = tx.meta or {}
+            if "provider" not in metadata:
                 continue
             
-            provider = tx.metadata["provider"]
+            provider = metadata["provider"]
             
             if provider not in provider_stats:
                 provider_stats[provider] = {
@@ -194,10 +198,10 @@ class LLMMonitoringService:
                 }
             
             provider_stats[provider]["requests"] += 1
-            provider_stats[provider]["credits"] += tx.amount
+            provider_stats[provider]["credits"] += abs(tx.amount)
             
-            if "tokens" in tx.metadata:
-                provider_stats[provider]["tokens"] += tx.metadata["tokens"]
+            if "tokens" in metadata:
+                provider_stats[provider]["tokens"] += metadata["tokens"]
         
         # Convert to list and add USD amounts
         from app.core.credits import credits_to_usd
@@ -233,7 +237,7 @@ class LLMMonitoringService:
         stmt = select(CreditTransaction).where(
             and_(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.transaction_type == "deduction",
+                CreditTransaction.type == TransactionType.usage,
                 CreditTransaction.created_at >= since
             )
         ).order_by(CreditTransaction.created_at.desc())
@@ -245,10 +249,11 @@ class LLMMonitoringService:
         model_stats: Dict[str, Dict[str, Any]] = {}
         
         for tx in transactions:
-            if not tx.metadata or "model" not in tx.metadata:
+            metadata = tx.meta or {}
+            if "model" not in metadata:
                 continue
             
-            model = tx.metadata["model"]
+            model = metadata["model"]
             
             if model not in model_stats:
                 model_stats[model] = {
@@ -259,10 +264,10 @@ class LLMMonitoringService:
                 }
             
             model_stats[model]["requests"] += 1
-            model_stats[model]["credits"] += tx.amount
+            model_stats[model]["credits"] += abs(tx.amount)
             
-            if "tokens" in tx.metadata:
-                model_stats[model]["tokens"] += tx.metadata["tokens"]
+            if "tokens" in metadata:
+                model_stats[model]["tokens"] += metadata["tokens"]
         
         # Convert to list and add USD amounts
         from app.core.credits import credits_to_usd
@@ -298,7 +303,7 @@ class LLMMonitoringService:
         stmt = select(CreditTransaction).where(
             and_(
                 CreditTransaction.user_id == user_id,
-                CreditTransaction.transaction_type == "deduction",
+                CreditTransaction.type == TransactionType.usage,
                 CreditTransaction.created_at >= since
             )
         ).order_by(CreditTransaction.created_at.desc())
@@ -310,10 +315,11 @@ class LLMMonitoringService:
         task_stats: Dict[str, Dict[str, Any]] = {}
         
         for tx in transactions:
-            if not tx.metadata or "task_type" not in tx.metadata:
+            metadata = tx.meta or {}
+            if "task_type" not in metadata:
                 continue
             
-            task_type = tx.metadata["task_type"]
+            task_type = metadata["task_type"]
             
             if task_type not in task_stats:
                 task_stats[task_type] = {
@@ -324,10 +330,10 @@ class LLMMonitoringService:
                 }
             
             task_stats[task_type]["requests"] += 1
-            task_stats[task_type]["credits"] += tx.amount
+            task_stats[task_type]["credits"] += abs(tx.amount)
             
-            if "tokens" in tx.metadata:
-                task_stats[task_type]["tokens"] += tx.metadata["tokens"]
+            if "tokens" in metadata:
+                task_stats[task_type]["tokens"] += metadata["tokens"]
         
         # Convert to list and add USD amounts
         from app.core.credits import credits_to_usd

@@ -6,7 +6,18 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from decimal import Decimal
 from app.services.llm_monitoring import LLMMonitoringService, ProviderHealthMonitor, _provider_health
-from app.models.credit import CreditTransaction
+from app.models.credit import CreditTransaction, TransactionType
+
+
+def make_usage_transaction(amount, meta):
+    """Create a transaction using the current shared credit schema."""
+    return CreditTransaction(
+        user_id=1,
+        type=TransactionType.usage,
+        amount=-amount,
+        balance_after=0,
+        meta=meta,
+    )
 
 class TestLLMMonitoringService:
     """Test LLMMonitoringService class"""
@@ -45,8 +56,8 @@ class TestLLMMonitoringService:
         # Mock DB result row
         row = Mock()
         row.total_requests = 10
-        row.total_credits = 1000
-        row.avg_credits_per_request = 100
+        row.total_credits = -1000
+        row.avg_credits_per_request = -100
         
         mock_result = MagicMock()
         mock_result.first.return_value = row
@@ -74,8 +85,8 @@ class TestLLMMonitoringService:
     async def test_get_provider_usage_breakdown(self, monitor_service, mock_db):
         """Test provider breakdown"""
         # Mock transactions
-        tx1 = CreditTransaction(amount=100, metadata={"provider": "openai", "tokens": 10})
-        tx2 = CreditTransaction(amount=50, metadata={"provider": "anthropic", "tokens": 5})
+        tx1 = make_usage_transaction(100, {"provider": "openai", "tokens": 10})
+        tx2 = make_usage_transaction(50, {"provider": "anthropic", "tokens": 5})
         
         mock_result = MagicMock()
         mock_result.scalars().all.return_value = [tx1, tx2]
@@ -91,7 +102,7 @@ class TestLLMMonitoringService:
     @pytest.mark.asyncio
     async def test_get_model_usage_breakdown(self, monitor_service, mock_db):
         """Test model breakdown"""
-        tx1 = CreditTransaction(amount=100, metadata={"model": "gpt-4"})
+        tx1 = make_usage_transaction(100, {"model": "gpt-4"})
         
         mock_result = MagicMock()
         mock_result.scalars().all.return_value = [tx1]
@@ -105,7 +116,7 @@ class TestLLMMonitoringService:
     @pytest.mark.asyncio
     async def test_get_task_type_breakdown(self, monitor_service, mock_db):
         """Test task type breakdown"""
-        tx1 = CreditTransaction(amount=100, metadata={"task_type": "chat"})
+        tx1 = make_usage_transaction(100, {"task_type": "chat"})
         
         mock_result = MagicMock()
         mock_result.scalars().all.return_value = [tx1]
@@ -167,4 +178,3 @@ class TestProviderHealthMonitor:
              ProviderHealthMonitor.record_request("p1", "m1", False, 10.0)
         # Total 11 fails, 0 success
         assert ProviderHealthMonitor.is_provider_healthy("p1", "m1") is False
-
