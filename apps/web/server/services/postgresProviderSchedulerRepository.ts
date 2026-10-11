@@ -41,6 +41,10 @@ function dateValue(row: ProviderRow, key: string): Date | null {
   return null;
 }
 
+function timestampParameter(value: Date): string {
+  return value.toISOString();
+}
+
 function providerKind(provider: string): "llm" | "media" {
   return provider.trim().toLowerCase().replace(/[.\-]/g, "_") === "openrouter" ? "llm" : "media";
 }
@@ -118,7 +122,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         FROM "provider_scheduler_states"
         WHERE "providerPoolKey" = ${input.providerPoolKey}
           AND "userKey" <> ${input.userKey}
-          AND ("fairnessEligibleAt" IS NULL OR "fairnessEligibleAt" <= ${input.now})
+          AND ("fairnessEligibleAt" IS NULL OR "fairnessEligibleAt" <= ${timestampParameter(input.now)})
         LIMIT 1
       `);
       return {
@@ -158,7 +162,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
               JOIN "llm_providers" p ON p."id" = a."providerId"
               WHERE lower(replace(replace(p."providerName", '.', '_'), '-', '_')) = lower(${provider})
                 AND a."isEnabled" = true AND a."hasApiKey" = true
-                AND (a."cooldownUntil" IS NULL OR a."cooldownUntil" <= ${input.now})
+                AND (a."cooldownUntil" IS NULL OR a."cooldownUntil" <= ${timestampParameter(input.now)})
               ORDER BY a."accountSlot" ASC
               LIMIT 5
               FOR UPDATE OF a
@@ -169,7 +173,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
               JOIN "media_providers" p ON p."id" = a."providerId"
               WHERE lower(replace(replace(p."providerName", '.', '_'), '-', '_')) = lower(${provider})
                 AND a."isEnabled" = true AND a."hasApiKey" = true
-                AND (a."cooldownUntil" IS NULL OR a."cooldownUntil" <= ${input.now})
+                AND (a."cooldownUntil" IS NULL OR a."cooldownUntil" <= ${timestampParameter(input.now)})
               ORDER BY a."accountSlot" ASC
               LIMIT 5
               FOR UPDATE OF a
@@ -205,7 +209,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
             INSERT INTO "provider_admission_windows" (
               "providerKind", "providerName", "providerAccountId", "windowKind",
               "windowStartedAt", "windowSeconds", "usedCount", "maxCount"
-            ) VALUES (${kind}, ${provider}, ${accountId}, 'submission', ${windowStart}, ${limits.submissionWindowSeconds}, 1, ${limits.submissionWindowMax})
+            ) VALUES (${kind}, ${provider}, ${accountId}, 'submission', ${timestampParameter(windowStart)}, ${limits.submissionWindowSeconds}, 1, ${limits.submissionWindowMax})
             ON CONFLICT ("providerKind", "providerName", "providerAccountId", "windowKind", "windowStartedAt")
             DO UPDATE SET "usedCount" = "provider_admission_windows"."usedCount" + 1, "updatedAt" = now()
             WHERE "provider_admission_windows"."usedCount" < "provider_admission_windows"."maxCount"
@@ -222,7 +226,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
               INSERT INTO "provider_admission_windows" (
                 "providerKind", "providerName", "providerAccountId", "windowKind",
                 "windowStartedAt", "windowSeconds", "usedCount", "maxCount"
-              ) VALUES (${kind}, ${provider}, ${accountId}, 'daily', ${dailyWindowStart}, ${limits.dailyWindowSeconds}, 1, ${limits.dailyWindowMax})
+              ) VALUES (${kind}, ${provider}, ${accountId}, 'daily', ${timestampParameter(dailyWindowStart)}, ${limits.dailyWindowSeconds}, 1, ${limits.dailyWindowMax})
               ON CONFLICT ("providerKind", "providerName", "providerAccountId", "windowKind", "windowStartedAt")
               DO UPDATE SET "usedCount" = "provider_admission_windows"."usedCount" + 1, "updatedAt" = now()
               WHERE "provider_admission_windows"."usedCount" < "provider_admission_windows"."maxCount"
@@ -236,7 +240,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
                   AND "providerName" = ${provider}
                   AND "providerAccountId" = ${accountId}
                   AND "windowKind" = 'submission'
-                  AND "windowStartedAt" = ${windowStart}
+                  AND "windowStartedAt" = ${timestampParameter(windowStart)}
               `);
               continue;
             }
@@ -244,7 +248,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
 
           await query.execute(sql`
             INSERT INTO "provider_scheduler_states" ("providerKind", "providerPoolKey", "userKey", "activeCount", "lastServedAt", "fairnessEligibleAt")
-            VALUES (${kind}, ${providerPoolKey}, ${input.candidate.userKey}, 1, ${input.now}, ${nextFairnessEligibleAt(input.now, limits.fairnessCooldownMs)})
+            VALUES (${kind}, ${providerPoolKey}, ${input.candidate.userKey}, 1, ${timestampParameter(input.now)}, ${timestampParameter(nextFairnessEligibleAt(input.now, limits.fairnessCooldownMs))})
             ON CONFLICT ("providerPoolKey", "userKey") DO UPDATE SET
               "activeCount" = "provider_scheduler_states"."activeCount" + 1,
               "lastServedAt" = EXCLUDED."lastServedAt",
@@ -255,7 +259,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
             INSERT INTO "worker_job_provider_reservations" (
               "workerJobId", "attemptId", "businessAttempt", "providerKind", "providerName", "providerAccountId",
               "reservationKind", "reservationStatus", "userKey", "operationKey", "providerDeadlineAt"
-            ) VALUES (${input.candidate.jobId}, NULL, ${input.candidate.businessAttempt}, ${kind}, ${provider}, ${accountId}, 'running', 'reserved', ${input.candidate.userKey}, ${input.operationKey}, ${new Date(input.now.getTime() + limits.providerDeadlineMs)})
+            ) VALUES (${input.candidate.jobId}, NULL, ${input.candidate.businessAttempt}, ${kind}, ${provider}, ${accountId}, 'running', 'reserved', ${input.candidate.userKey}, ${input.operationKey}, ${timestampParameter(new Date(input.now.getTime() + limits.providerDeadlineMs))})
             ON CONFLICT DO NOTHING
             RETURNING "id"
           `);
@@ -333,15 +337,15 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
       const result = await (getDb() as any).execute(sql`
         UPDATE "worker_job_provider_reservations"
         SET "pollerLeaseTokenHash" = encode(digest(gen_random_uuid()::text, 'sha256'), 'hex'),
-            "pollerLeaseExpiresAt" = ${new Date(input.now.getTime() + input.leaseMs)},
+            "pollerLeaseExpiresAt" = ${timestampParameter(new Date(input.now.getTime() + input.leaseMs))},
             "pollAttempt" = "pollAttempt" + 1,
-            "updatedAt" = ${input.now}
+            "updatedAt" = ${timestampParameter(input.now)}
         WHERE "id" IN (
           SELECT "id" FROM "worker_job_provider_reservations"
           WHERE "reservationKind" = 'running'
             AND "reservationStatus" = 'reserved'
-            AND "nextPollAt" IS NOT NULL AND "nextPollAt" <= ${input.now}
-            AND ("pollerLeaseExpiresAt" IS NULL OR "pollerLeaseExpiresAt" <= ${input.now})
+            AND "nextPollAt" IS NOT NULL AND "nextPollAt" <= ${timestampParameter(input.now)}
+            AND ("pollerLeaseExpiresAt" IS NULL OR "pollerLeaseExpiresAt" <= ${timestampParameter(input.now)})
           ORDER BY "nextPollAt" ASC, "id" ASC
           FOR UPDATE SKIP LOCKED
           LIMIT ${Math.min(500, Math.max(1, input.limit))}
@@ -398,7 +402,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
       if (!input.nextPollAt && released.length > 0) {
         await (getDb() as any).execute(sql`
           UPDATE "provider_scheduler_states"
-          SET "activeCount" = GREATEST(0, "activeCount" - 1), "updatedAt" = ${input.now}
+          SET "activeCount" = GREATEST(0, "activeCount" - 1), "updatedAt" = ${timestampParameter(input.now)}
           WHERE "providerPoolKey" = ${input.record.providerPoolKey}
             AND "userKey" = ${input.record.userKey}
         `);
@@ -473,7 +477,7 @@ export async function registerPostgresProviderOperation(input: {
       ) VALUES (
         ${input.jobId}, NULL, ${numberValue(job, "attempt") ?? 1}, ${kind}, ${normalizedProvider}, NULL,
         'running', 'reserved', ${userKey}, ${input.operationKey}, ${input.providerJobId},
-        ${input.nextPollAt}, ${input.providerDeadlineAt}
+        ${input.nextPollAt ? timestampParameter(input.nextPollAt) : null}, ${input.providerDeadlineAt ? timestampParameter(input.providerDeadlineAt) : null}
       )
       RETURNING "id"
     `));
@@ -481,7 +485,7 @@ export async function registerPostgresProviderOperation(input: {
     await query.execute(sql`
       INSERT INTO "provider_scheduler_states" (
         "providerKind", "providerPoolKey", "userKey", "activeCount", "lastServedAt", "fairnessEligibleAt"
-      ) VALUES (${kind}, ${poolKey}, ${userKey}, 1, now(), ${nextFairnessEligibleAt(new Date(), limits.fairnessCooldownMs)})
+      ) VALUES (${kind}, ${poolKey}, ${userKey}, 1, now(), ${timestampParameter(nextFairnessEligibleAt(new Date(), limits.fairnessCooldownMs))})
       ON CONFLICT ("providerPoolKey", "userKey") DO UPDATE SET
         "activeCount" = "provider_scheduler_states"."activeCount" + 1,
         "updatedAt" = now()
