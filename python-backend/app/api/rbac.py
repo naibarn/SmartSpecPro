@@ -11,9 +11,60 @@ from datetime import datetime
 from app.core.auth import get_current_user, get_current_admin_user as get_current_admin
 from app.models.user import User
 from app.rbac.rbac_service import RBACService, get_rbac_service
+from app.rbac.models import Permission, ResourceType, Role, RoleAssignment
 from app.multitenancy.tenant_context import get_current_tenant_id
 
 router = APIRouter(prefix="/api/v1/rbac")
+
+
+def _role_response(role: Role) -> dict:
+    """Adapt the domain role model to the stable HTTP response contract."""
+    return {
+        "id": role.role_id,
+        "name": role.code,
+        "display_name": role.name,
+        "description": role.description,
+        "tenant_id": role.tenant_id,
+        "scope": "tenant" if role.tenant_id else "global",
+        "permissions": sorted(role.permissions),
+        "is_system": role.is_system,
+        "is_default": role.is_default,
+        "priority": role.priority,
+        "created_at": role.created_at,
+        "updated_at": role.updated_at,
+    }
+
+
+def _assignment_response(assignment: RoleAssignment) -> dict:
+    return {
+        "id": assignment.assignment_id,
+        "user_id": assignment.user_id,
+        "role_id": assignment.role_id,
+        "tenant_id": assignment.tenant_id,
+        "project_id": assignment.scope_id
+        if assignment.scope_type == ResourceType.PROJECT
+        else None,
+        "assigned_by": assignment.assigned_by,
+        "reason": assignment.reason,
+        "is_active": assignment.is_active,
+        "expires_at": assignment.expires_at,
+        "created_at": assignment.assigned_at,
+    }
+
+
+def _permission_response(permission: Permission) -> dict:
+    return {
+        "id": permission.permission_id,
+        "name": permission.code,
+        "display_name": permission.name,
+        "description": permission.description,
+        "resource": permission.resource_type.value
+        if permission.resource_type
+        else permission.code.split(":", 1)[0],
+        "action": permission.action,
+        "scope": permission.scope.value,
+        "is_system": permission.is_system,
+    }
 
 
 # ==========================================
@@ -129,7 +180,7 @@ async def list_roles(
         tenant_id=tenant_id,
         include_system=include_system,
     )
-    return roles
+    return [_role_response(role) for role in roles]
 
 
 @router.post("/roles", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
@@ -145,10 +196,10 @@ async def create_role(
     Custom roles are scoped to the current tenant.
     """
     # Check permission
-    has_permission = await rbac_service.check_permission(
+    has_permission = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission="roles:write",
+        permission_code="role:write",
     )
     
     if not has_permission:
@@ -158,10 +209,10 @@ async def create_role(
         )
     
     role = await rbac_service.create_role(
-        name=data.name,
-        display_name=data.display_name,
+        name=data.display_name,
+        code=data.name,
         description=data.description,
-        permissions=data.permissions,
+        permissions=set(data.permissions),
         tenant_id=tenant_id,
         parent_role_id=data.parent_role_id,
     )
@@ -172,13 +223,14 @@ async def create_role(
             detail="Failed to create role. Name may already exist.",
         )
     
-    return role
+    return _role_response(role)
 
 
 @router.get("/roles/{role_id}", response_model=RoleResponse)
 async def get_role(
     role_id: str,
     current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
     rbac_service: RBACService = Depends(get_rbac_service),
 ):
     """
@@ -186,13 +238,13 @@ async def get_role(
     """
     role = await rbac_service.get_role(role_id)
     
-    if not role:
+    if not role or (role.tenant_id is not None and role.tenant_id != tenant_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Role not found",
         )
     
-    return role
+    return _role_response(role)
 
 
 @router.patch("/roles/{role_id}", response_model=RoleResponse)
@@ -223,10 +275,10 @@ async def update_role(
         )
     
     # Check permission
-    has_permission = await rbac_service.check_permission(
+    has_permission = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission="roles:write",
+        permission_code="role:write",
     )
     
     if not has_permission:
@@ -235,12 +287,23 @@ async def update_role(
             detail="Permission denied",
         )
     
+    updates = data.model_dump(exclude_unset=True)
+    if "display_name" in updates:
+        updates["name"] = updates.pop("display_name")
+    if "permissions" in updates:
+        updates["permissions"] = set(updates["permissions"])
     updated_role = await rbac_service.update_role(
-        role_id=role_id,
-        **data.model_dump(exclude_unset=True),
+        role_id,
+        updates,
+        tenant_id=tenant_id,
     )
-    
-    return updated_role
+    if not updated_role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Role not found",
+        )
+
+    return _role_response(updated_role)
 
 
 @router.delete("/roles/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -270,10 +333,10 @@ async def delete_role(
         )
     
     # Check permission
-    has_permission = await rbac_service.check_permission(
+    has_permission = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission="roles:delete",
+        permission_code="role:delete",
     )
     
     if not has_permission:
@@ -282,7 +345,12 @@ async def delete_role(
             detail="Permission denied",
         )
     
-    await rbac_service.delete_role(role_id)
+    deleted = await rbac_service.delete_role(role_id, tenant_id=tenant_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Role not found",
+        )
 
 
 # ==========================================
@@ -300,10 +368,10 @@ async def assign_role(
     Assign a role to a user.
     """
     # Check permission
-    has_permission = await rbac_service.check_permission(
+    has_permission = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission="roles:assign",
+        permission_code="role:assign",
     )
     
     if not has_permission:
@@ -316,7 +384,8 @@ async def assign_role(
         user_id=data.user_id,
         role_id=data.role_id,
         tenant_id=tenant_id,
-        project_id=data.project_id,
+        scope_type=ResourceType.PROJECT if data.project_id else None,
+        scope_id=data.project_id,
         assigned_by=current_user.id,
         reason=data.reason,
         expires_at=data.expires_at,
@@ -328,7 +397,7 @@ async def assign_role(
             detail="Failed to assign role",
         )
     
-    return assignment
+    return _assignment_response(assignment)
 
 
 @router.get("/assignments", response_model=List[RoleAssignmentResponse])
@@ -349,7 +418,7 @@ async def list_role_assignments(
         role_id=role_id,
         project_id=project_id,
     )
-    return assignments
+    return [_assignment_response(assignment) for assignment in assignments]
 
 
 @router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -363,10 +432,10 @@ async def revoke_role_assignment(
     Revoke a role assignment.
     """
     # Check permission
-    has_permission = await rbac_service.check_permission(
+    has_permission = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission="roles:assign",
+        permission_code="role:assign",
     )
     
     if not has_permission:
@@ -375,7 +444,16 @@ async def revoke_role_assignment(
             detail="Permission denied",
         )
     
-    await rbac_service.revoke_assignment(assignment_id)
+    revoked = await rbac_service.revoke_assignment(
+        assignment_id,
+        tenant_id=tenant_id,
+        revoked_by=current_user.id,
+    )
+    if not revoked:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Role assignment not found",
+        )
 
 
 # ==========================================
@@ -392,7 +470,7 @@ async def list_permissions(
     List available permissions.
     """
     permissions = await rbac_service.list_permissions(resource=resource)
-    return permissions
+    return [_permission_response(permission) for permission in permissions]
 
 
 @router.post("/check", response_model=PermissionCheckResponse)
@@ -405,10 +483,10 @@ async def check_permission(
     """
     Check if the current user has a specific permission.
     """
-    allowed = await rbac_service.check_permission(
+    allowed = await rbac_service.has_permission(
         user_id=current_user.id,
         tenant_id=tenant_id,
-        permission=data.permission,
+        permission_code=data.permission,
         resource_id=data.resource_id,
     )
     
@@ -431,7 +509,7 @@ async def get_my_roles(
         user_id=current_user.id,
         tenant_id=tenant_id,
     )
-    return roles
+    return [_role_response(role) for role in roles]
 
 
 @router.get("/me/permissions", response_model=List[str])
