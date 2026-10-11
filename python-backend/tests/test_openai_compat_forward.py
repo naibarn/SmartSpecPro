@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.config import settings
+from app.core.csrf import csrf_protection
 
 
 class _MockStreamResponse:
@@ -71,7 +72,7 @@ def _set_gateway_env(monkeypatch):
     monkeypatch.setattr(settings, "SMARTSPEC_USE_WEB_GATEWAY", True, raising=False)
     monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://web.local", raising=False)
     monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "t", raising=False)
-    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "", raising=False)
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "test-proxy-token", raising=False)
     yield
 
 
@@ -81,8 +82,11 @@ def test_chat_completions_json(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", _MockClient)
 
-    c = TestClient(app)
-    r = c.post("/v1/chat/completions", json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]})
+    c = TestClient(app, client=("127.0.0.1", 50000))
+    csrf_token = csrf_protection.generate_token()
+    c.cookies.set(csrf_protection.cookie_name, csrf_token)
+    headers = {csrf_protection.header_name: csrf_token, "x-proxy-token": "test-proxy-token"}
+    r = c.post("/v1/chat/completions", headers=headers, json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 200
     j = r.json()
     assert j["choices"][0]["message"]["content"] == "ok"
@@ -94,8 +98,11 @@ def test_chat_completions_stream(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", _MockClient)
 
-    c = TestClient(app)
-    r = c.post("/v1/chat/completions", json={"stream": True, "model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]})
+    c = TestClient(app, client=("127.0.0.1", 50000))
+    csrf_token = csrf_protection.generate_token()
+    c.cookies.set(csrf_protection.cookie_name, csrf_token)
+    headers = {csrf_protection.header_name: csrf_token, "x-proxy-token": "test-proxy-token"}
+    r = c.post("/v1/chat/completions", headers=headers, json={"stream": True, "model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 200
     # Should contain SSE done
     assert "[DONE]" in r.text
@@ -107,8 +114,8 @@ def test_models(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", _MockClient)
 
-    c = TestClient(app)
-    r = c.get("/v1/models")
+    c = TestClient(app, client=("127.0.0.1", 50000))
+    r = c.get("/v1/models", headers={"x-proxy-token": "test-proxy-token"})
     assert r.status_code == 200
     j = r.json()
     assert j["object"] == "list"
