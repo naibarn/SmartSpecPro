@@ -125,13 +125,13 @@ export function VerticalDramaObjectReferenceTab({
   const generateObjectImage =
     trpc.verticalDramaSeries.generateObjectReferenceImage.useMutation({
       onSuccess: result => {
-        setGenerationTaskId(result.taskId);
+        setGenerationTaskId(result.taskId ?? result.id);
         setGeneratedObjectId(generateObjectId);
         setGenerateObjectId(null);
         toast.success(
           isTh
-            ? `ส่งงานสร้างภาพแล้ว ใช้เครดิต ${result.creditCost ?? 0}`
-            : `Image task submitted (${result.creditCost ?? 0} credits)`
+            ? `ส่งงานสร้างภาพแล้ว ใช้เครดิต ${result.creditsUsed ?? 0}`
+            : `Image task submitted (${result.creditsUsed ?? 0} credits)`
         );
       },
       onError: error => toast.error(error.message),
