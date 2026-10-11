@@ -246,8 +246,10 @@ describe("UniversalControlPlanePanel", () => {
     const screenshotBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
     const screenshot = new File([screenshotBytes], "dashboard.png", { type: "image/png" });
     fireEvent.change(screen.getByLabelText("แนบภาพอ้างอิงหลายภาพ"), { target: { files: [screenshot] } });
+    expect(screen.getByLabelText("อนุญาตให้นำ asset ในภาพไปใช้ซ้ำ")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Page hint 1"), { target: { value: "/dashboard" } });
     fireEvent.change(screen.getByLabelText("Reference rights 1"), { target: { value: "user_owned" } });
+    expect(screen.getByLabelText("อนุญาตให้นำ asset ในภาพไปใช้ซ้ำ")).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
     await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
