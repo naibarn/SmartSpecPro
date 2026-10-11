@@ -659,6 +659,12 @@ The JSON must strictly conform to the expected schema.`;
       );
     }
 
+    if (result.type === "worker_job") {
+      throw new Error(
+        "Structured output is not supported for asynchronous worker jobs",
+      );
+    }
+
     // Extract content and usage
     const usage = result.response?.usage ?? {
       prompt_tokens: 0,
