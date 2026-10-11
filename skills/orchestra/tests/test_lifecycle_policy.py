@@ -20,7 +20,7 @@ SCENARIOS = ROOT / "skills/orchestra/references/autonomous-completion-scenarios.
 class AutonomousCompletionPolicyTests(unittest.TestCase):
     def test_required_scenarios(self):
         cases = json.loads(SCENARIOS.read_text(encoding="utf-8"))["scenarios"]
-        self.assertEqual(48, len(cases))
+        self.assertEqual(50, len(cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"], decide_closure(case))
@@ -190,8 +190,12 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             return decide_closure({"event": "recovery_challenge", "facts": facts})
 
         self.assertEqual("COLLECT_FAILURE_EVIDENCE", decide())
-        self.assertEqual("SUBSTITUTE", decide(failure_class="ENVIRONMENT_FAILURE", compatible_fallback=True))
-        self.assertEqual("EXECUTE_SAFE_LOCAL_PATH", decide(failure_class="TOOL_CAPABILITY_MISSING", safe_local_path=True))
+        self.assertEqual("SUBSTITUTE", decide(failure_class="ENVIRONMENT_FAILURE", compatible_fallback=True, fallback_authorized=True))
+        self.assertEqual("EXECUTE_SAFE_LOCAL_PATH", decide(failure_class="TOOL_CAPABILITY_MISSING", safe_local_path=True, local_path_authorized=True))
+        self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
+            failure_class="TOOL_CAPABILITY_MISSING", safe_local_path=True, local_path_authorized=False))
+        self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
+            failure_class="ENVIRONMENT_FAILURE", compatible_fallback=True, fallback_authorized=False))
         self.assertEqual("SKIP_OPTIONAL_AND_CONTINUE", decide(
             failure_class="ENVIRONMENT_FAILURE", requirement_optional=True, scope_verified=True))
         self.assertEqual("ROOT_CAUSE_AND_REPLAN", decide(
