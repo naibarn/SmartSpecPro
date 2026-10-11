@@ -4,9 +4,12 @@ import json
 import os
 import sys
 import tempfile
+from pathlib import Path
 import pytest
 
 from app.orchestrator.rag.evaluator import EvalDataset, EvalItem
+
+PYTHON_BACKEND_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestCLIWithValidDataset:
@@ -42,11 +45,11 @@ class TestCLIWithValidDataset:
                     "--dataset", dataset_path,
                     "--k", "5",
                 ],
-                cwd="/home/dev/projects/SmartSpecPro/python-backend",
+                cwd=PYTHON_BACKEND_ROOT,
                 capture_output=True,
                 text=True,
                 timeout=30,
-                env={**os.environ, "VIRTUAL_ENV": "/home/dev/projects/SmartSpecPro/python-backend/.venv"},
+                env=os.environ.copy(),
             )
             assert result.returncode == 0, f"CLI failed: {result.stderr}"
         finally:
@@ -82,11 +85,11 @@ class TestCLIProducesOutputFile:
                     "--dataset", dataset_path,
                     "--output", output_path,
                 ],
-                cwd="/home/dev/projects/SmartSpecPro/python-backend",
+                cwd=PYTHON_BACKEND_ROOT,
                 capture_output=True,
                 text=True,
                 timeout=30,
-                env={**os.environ, "VIRTUAL_ENV": "/home/dev/projects/SmartSpecPro/python-backend/.venv"},
+                env=os.environ.copy(),
             )
             assert result.returncode == 0, f"CLI failed: {result.stderr}"
             assert os.path.exists(output_path)
@@ -127,11 +130,11 @@ class TestCLIOutputContent:
                     "--dataset", dataset_path,
                     "--output", output_path,
                 ],
-                cwd="/home/dev/projects/SmartSpecPro/python-backend",
+                cwd=PYTHON_BACKEND_ROOT,
                 capture_output=True,
                 text=True,
                 timeout=30,
-                env={**os.environ, "VIRTUAL_ENV": "/home/dev/projects/SmartSpecPro/python-backend/.venv"},
+                env=os.environ.copy(),
             )
             assert result.returncode == 0
             content = open(output_path).read()
@@ -154,11 +157,11 @@ class TestCLIInvalidDataset:
                 sys.executable, "-m", "app.orchestrator.rag.evaluator",
                 "--dataset", "/nonexistent/path.json",
             ],
-            cwd="/home/dev/projects/SmartSpecPro/python-backend",
+            cwd=PYTHON_BACKEND_ROOT,
             capture_output=True,
             text=True,
             timeout=10,
-            env={**os.environ, "VIRTUAL_ENV": "/home/dev/projects/SmartSpecPro/python-backend/.venv"},
+            env=os.environ.copy(),
         )
         assert result.returncode != 0
         assert "not found" in result.stderr.lower() or "error" in result.stderr.lower()
@@ -175,11 +178,11 @@ class TestCLIInvalidDataset:
                     sys.executable, "-m", "app.orchestrator.rag.evaluator",
                     "--dataset", path,
                 ],
-                cwd="/home/dev/projects/SmartSpecPro/python-backend",
+                cwd=PYTHON_BACKEND_ROOT,
                 capture_output=True,
                 text=True,
                 timeout=10,
-                env={**os.environ, "VIRTUAL_ENV": "/home/dev/projects/SmartSpecPro/python-backend/.venv"},
+                env=os.environ.copy(),
             )
             assert result.returncode != 0
         finally:
