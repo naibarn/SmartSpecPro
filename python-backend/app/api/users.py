@@ -50,7 +50,7 @@ class ChangePasswordRequest(BaseModel):
             raise ValueError('Password must contain at least one uppercase letter')
         if not re.search(r'[a-z]', v):
             raise ValueError('Password must contain at least one lowercase letter')
-        if not re.search(r'\\d', v):
+        if not re.search(r'\d', v):
             raise ValueError('Password must contain at least one digit')
         if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', v):
             raise ValueError('Password must contain at least one special character')
@@ -98,7 +98,7 @@ async def update_profile(
     """
     # Update full_name
     if request.full_name is not None:
-        current_user.full_name = request.full_name
+        current_user.name = request.full_name
     
     # Update email (check uniqueness)
     if request.email is not None and request.email != current_user.email:
@@ -115,7 +115,7 @@ async def update_profile(
             )
         
         current_user.email = request.email
-        current_user.email_verified = False  # Require re-verification
+        # The active SmartSpecWeb user schema has no email verification state.
     
     await db.commit()
     await db.refresh(current_user)
@@ -147,21 +147,21 @@ async def change_password(
     - Invalidates all sessions (logout all devices)
     """
     # Verify current password
-    if not verify_password(request.current_password, current_user.hashed_password):
+    if not verify_password(request.current_password, current_user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
     
     # Check if new password is same as current
-    if verify_password(request.new_password, current_user.hashed_password):
+    if verify_password(request.new_password, current_user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be different from current password"
         )
     
     # Update password
-    current_user.hashed_password = get_password_hash(request.new_password)
+    current_user.password = get_password_hash(request.new_password)
     
     await db.commit()
     
@@ -191,7 +191,7 @@ async def delete_account(
     - Cannot be undone
     """
     # Verify password
-    if not verify_password(password, current_user.hashed_password):
+    if not verify_password(password, current_user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password is incorrect"

@@ -15,13 +15,18 @@ from app.services.token_revocation import is_jti_revoked
 from app.models.password_reset import PasswordResetToken
 
 
+def _auth_user_id() -> str:
+    """Return a numeric ID matching the active SQLAlchemy/JWT contract."""
+    return str(uuid.uuid4().int % 2_147_483_647 or 1)
+
+
 class TestAuthServiceTokenGeneration:
     """Test token generation methods"""
     
     def test_create_access_token(self, test_db):
         """Test access token creation"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token = service.create_access_token(user_id, email)
@@ -33,7 +38,7 @@ class TestAuthServiceTokenGeneration:
     def test_create_access_token_with_custom_expiry(self, test_db):
         """Test access token creation with custom expiry"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         expires_delta = timedelta(hours=1)
         
@@ -45,7 +50,7 @@ class TestAuthServiceTokenGeneration:
     def test_create_refresh_token(self, test_db):
         """Test refresh token creation"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token = service.create_refresh_token(user_id, email)
@@ -57,7 +62,7 @@ class TestAuthServiceTokenGeneration:
     def test_create_refresh_token_with_custom_expiry(self, test_db):
         """Test refresh token creation with custom expiry"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         expires_delta = timedelta(days=7)
         
@@ -69,7 +74,7 @@ class TestAuthServiceTokenGeneration:
     def test_create_token_pair(self, test_db):
         """Test creating access and refresh token pair"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         tokens = service.create_token_pair(user_id, email)
@@ -84,7 +89,7 @@ class TestAuthServiceTokenGeneration:
     def test_token_pair_contains_different_tokens(self, test_db):
         """Test that token pair contains different tokens"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         tokens = service.create_token_pair(user_id, email)
@@ -98,7 +103,7 @@ class TestAuthServiceTokenVerification:
     def test_verify_valid_token(self, test_db):
         """Test verification of valid token"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token = service.create_access_token(user_id, email)
@@ -110,7 +115,7 @@ class TestAuthServiceTokenVerification:
     def test_verify_token_contains_user_id(self, test_db):
         """Test that verified token contains user_id"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token = service.create_access_token(user_id, email)
@@ -122,7 +127,7 @@ class TestAuthServiceTokenVerification:
     def test_verify_token_contains_jti(self, test_db):
         """Test that verified token contains JTI"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token = service.create_access_token(user_id, email)
@@ -158,7 +163,7 @@ class TestAuthServiceTokenVerification:
     def test_verify_expired_token(self, test_db):
         """Test verification of expired token"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         # Create token with negative expiry (already expired)
@@ -185,22 +190,22 @@ class TestAuthServiceTokenBlacklist:
     async def test_logout_blacklists_token(self, test_db):
         """Test that logout blacklists the token"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         access_token = service.create_access_token(user_id, email)
-        
+        payload = service.verify_token(access_token)
+
         result = await service.logout(access_token)
 
         assert result is True
-        payload = service.verify_token(access_token)
         assert await is_jti_revoked(test_db, payload["jti"]) is True
     
     @pytest.mark.asyncio
     async def test_logout_with_refresh_token(self, test_db):
         """Test logout with both access and refresh tokens"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         access_token = service.create_access_token(user_id, email)
@@ -252,7 +257,7 @@ class TestAuthServiceRefreshToken:
     async def test_refresh_access_token_with_access_token(self, test_db):
         """Test refresh with access token (should fail)"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         # Try to use access token as refresh token
@@ -391,7 +396,7 @@ class TestAuthServiceEdgeCases:
     def test_multiple_token_creation(self, test_db):
         """Test creating multiple tokens for same user"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         tokens = [service.create_access_token(user_id, email) for _ in range(5)]
@@ -402,7 +407,7 @@ class TestAuthServiceEdgeCases:
     def test_tokens_have_unique_jti(self, test_db):
         """Test that each token has unique JTI"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         token1 = service.create_access_token(user_id, email)
@@ -417,7 +422,7 @@ class TestAuthServiceEdgeCases:
     async def test_logout_multiple_times(self, test_db):
         """Test logging out same token multiple times"""
         service = AuthService(test_db)
-        user_id = str(uuid.uuid4())
+        user_id = _auth_user_id()
         email = "test@example.com"
         
         access_token = service.create_access_token(user_id, email)
