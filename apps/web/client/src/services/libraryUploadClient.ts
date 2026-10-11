@@ -183,7 +183,7 @@ export async function replaceLibraryFileDirect(
   itemId: number,
   options: Pick<
     LibraryUploadOptions,
-    "changeDescription" | "metadata" | "onProgress"
+    "changeDescription" | "metadata" | "onProgress" | "signal"
   > = {}
 ): Promise<any> {
   if (file.size > MAX_LIBRARY_UPLOAD_BYTES) {
