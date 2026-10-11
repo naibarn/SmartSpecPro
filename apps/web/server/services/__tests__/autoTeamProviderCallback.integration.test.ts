@@ -55,6 +55,10 @@ describe("authenticated provider callback persistence", () => {
       };
       const first = await recordAuthenticatedJobCallback(callback);
       const duplicate = await recordAuthenticatedJobCallback(callback);
+      const conflictingDuplicate = await recordAuthenticatedJobCallback({
+        ...callback,
+        payload: { kind: "status_update", status: "failed" },
+      });
       const legacyCallback = await recordAuthenticatedJobCallback({
         adapterNamespace: callback.adapterNamespace,
         providerEventId: "event-r7-legacy-no-attempt",
@@ -77,6 +81,10 @@ describe("authenticated provider callback persistence", () => {
 
       expect(first.disposition).toBe("accepted");
       expect(duplicate.disposition).toBe("duplicate");
+      expect(conflictingDuplicate).toMatchObject({
+        disposition: "duplicate",
+        originalDisposition: "accepted",
+      });
       expect(legacyCallback.disposition).toBe("rejected");
       expect(staleAttempt.disposition).toBe("rejected");
       expect(crossTenant.disposition).toBe("rejected");
@@ -118,6 +126,11 @@ describe("authenticated provider callback persistence", () => {
         rejected_unbound_count: 1,
         rejected_stale_attempt_count: 2,
       });
+      const [originalReceipt] = await client.unsafe(
+        `SELECT disposition, "payloadJson"->>'status' AS status
+         FROM worker_job_callbacks WHERE "providerEventId" = 'event-r7-1'`,
+      );
+      expect(originalReceipt).toEqual({ disposition: "accepted", status: "succeeded" });
       expect(callbackEventCounts).toEqual({ accepted_count: 1, rejected_count: 2 });
       expect(staleCallbackEvidence).toEqual({
         worker_job_id: jobId,
