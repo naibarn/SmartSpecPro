@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,6 +15,7 @@ def _result(rows=None):
 
 
 def _scheduled_row(*, provider: str = "meta", page_status: str = "active", media_refs=None):
+    token_expires_at = datetime.now(timezone.utc) + timedelta(days=1)
     return (
         11,  # post id
         "tenant-1",
@@ -31,11 +32,11 @@ def _scheduled_row(*, provider: str = "meta", page_status: str = "active", media
         page_status,
         "page-7",
         "encrypted-page-token" if provider == "meta" else None,
-        datetime(2026, 3, 25, 11, 30, tzinfo=timezone.utc),
+        token_expires_at,
         provider,
         "encrypted-provider-token" if provider != "meta" else None,
         None,
-        datetime(2026, 3, 25, 11, 30, tzinfo=timezone.utc),
+        token_expires_at,
     )
 
 
