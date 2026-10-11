@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   mockGetActiveStorageConfig: vi.fn(async () => ({ provider: "local" })),
   mockGetUploadsDir: vi.fn(() => "/tmp/uploads"),
   mockAssertPublicIp: vi.fn(),
+  mockDispatchPendingAutoTeamEvaluations: vi.fn(),
 }));
 
 vi.mock("../callLLMStructured", () => ({
@@ -92,6 +93,11 @@ vi.mock("../runEngine", () => ({
   validateFinalApprovalEvidenceForRun: (...args: unknown[]) =>
     mocks.mockValidateFinalApprovalEvidenceForRun(...args),
   stopRun: (...args: unknown[]) => mocks.mockStopRun(...args),
+}));
+
+vi.mock("../autoTeamRecoveryService", () => ({
+  dispatchPendingAutoTeamEvaluations: (...args: unknown[]) =>
+    mocks.mockDispatchPendingAutoTeamEvaluations(...args),
 }));
 
 import {
@@ -293,6 +299,48 @@ describe("autoTeamMediaCompletionService", () => {
     mocks.mockPostWorkUpdate.mockResolvedValue({ id: "message-final" });
     mocks.mockSubmitInternalMediaJob.mockReset();
     mocks.mockGetInternalMediaJobStatus.mockReset();
+  });
+
+  it("queues timer-driven pipeline progress through the fenced recovery worker", async () => {
+    vi.useFakeTimers();
+    mocks.mockDispatchPendingAutoTeamEvaluations.mockResolvedValue(1);
+
+    try {
+      __autoTeamMediaCompletionTestHooks.schedulePipelinePoll("run-1", 5_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      expect(mocks.mockDispatchPendingAutoTeamEvaluations).toHaveBeenCalledOnce();
+      expect(mocks.mockDispatchPendingAutoTeamEvaluations).toHaveBeenCalledWith(
+        expect.any(Date),
+        "run-1",
+      );
+      expect(mocks.mockGetDb).not.toHaveBeenCalled();
+      expect(mocks.mockDbUpdate).not.toHaveBeenCalled();
+      expect(mocks.mockGetMediaTask).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  it("bounds retries when a fenced pipeline evaluation is not queued", async () => {
+    vi.useFakeTimers();
+    mocks.mockDispatchPendingAutoTeamEvaluations.mockResolvedValue(0);
+
+    try {
+      __autoTeamMediaCompletionTestHooks.schedulePipelinePoll("run-no-queue", 1_000);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(mocks.mockDispatchPendingAutoTeamEvaluations).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(3 * 60 * 60_000);
+
+      expect(mocks.mockDispatchPendingAutoTeamEvaluations).toHaveBeenCalledTimes(3);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(mocks.mockGetDb).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it("passes final review only after probe duration satisfies the target", async () => {

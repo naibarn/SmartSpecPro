@@ -45,6 +45,7 @@ import {
   resolveUploadsManagedPath,
 } from "./managedMediaAccessService";
 import { persistAutoTeamRunMutation } from "./autoTeamRunMutationFence";
+import { AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS } from "./autoTeamRecoveryEvaluationJob";
 
 const VIDEO_POLL_INTERVAL_MS = 30_000;
 const CONCAT_POLL_INTERVAL_MS = 20_000;
@@ -194,6 +195,8 @@ interface ClassifiedPipelineFailure {
 
 const scheduledPolls = new Map<string, NodeJS.Timeout>();
 const activePipelineAdvances = new Set<string>();
+const scheduledPollDispatchAttempts = new Map<string, number>();
+const MAX_PIPELINE_DISPATCH_ATTEMPTS = 3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -929,18 +932,52 @@ async function postPipelineMessage(
   }
 }
 
-function schedulePipelinePoll(runId: string, delayMs = VIDEO_POLL_INTERVAL_MS): void {
+function schedulePipelinePoll(
+  runId: string,
+  delayMs = VIDEO_POLL_INTERVAL_MS,
+  isDispatchRetry = false,
+): void {
+  if (!isDispatchRetry) scheduledPollDispatchAttempts.delete(runId);
   const existing = scheduledPolls.get(runId);
   if (existing) clearTimeout(existing);
   const timeout = setTimeout(() => {
     scheduledPolls.delete(runId);
-    void advanceAutoTeamMediaPipeline(runId).catch(error => {
-      console.warn("[auto-team-media] pipeline poll failed", {
-        runId,
-        error: error instanceof Error ? error.message : error,
+    // Polling is an autonomous TeamRun mutation. Route it through the canonical
+    // recovery worker so every write is checked against a fresh worker lease.
+    void import("./autoTeamRecoveryService")
+      .then(({ dispatchPendingAutoTeamEvaluations }) =>
+        dispatchPendingAutoTeamEvaluations(new Date(), runId),
+      )
+      .then(queued => {
+        if (queued > 0) {
+          scheduledPollDispatchAttempts.delete(runId);
+          return;
+        }
+        const attempts = (scheduledPollDispatchAttempts.get(runId) ?? 0) + 1;
+        if (attempts < MAX_PIPELINE_DISPATCH_ATTEMPTS) {
+          scheduledPollDispatchAttempts.set(runId, attempts);
+          schedulePipelinePoll(runId, AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS, true);
+          return;
+        }
+        scheduledPollDispatchAttempts.delete(runId);
+        console.warn("[auto-team-media] fenced pipeline evaluation was not queued after bounded retries", {
+          runId,
+          attempts,
+        });
+      })
+      .catch(error => {
+        console.warn("[auto-team-media] failed to queue fenced pipeline evaluation", {
+          runId,
+          error: error instanceof Error ? error.message : error,
+        });
+        const attempts = (scheduledPollDispatchAttempts.get(runId) ?? 0) + 1;
+        if (attempts < MAX_PIPELINE_DISPATCH_ATTEMPTS) {
+          scheduledPollDispatchAttempts.set(runId, attempts);
+          schedulePipelinePoll(runId, AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS, true);
+        } else {
+          scheduledPollDispatchAttempts.delete(runId);
+        }
       });
-      schedulePipelinePoll(runId, VIDEO_POLL_INTERVAL_MS);
-    });
   }, Math.max(1_000, delayMs));
   scheduledPolls.set(runId, timeout);
 }
@@ -2986,4 +3023,5 @@ export const __autoTeamMediaCompletionTestHooks = {
   extractDurationSeconds,
   attachFinalMediaEvidenceToPlanArtifact,
   finalizeCompletedMediaPipeline,
+  schedulePipelinePoll,
 };
