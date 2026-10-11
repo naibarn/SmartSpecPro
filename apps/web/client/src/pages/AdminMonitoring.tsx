@@ -43,6 +43,7 @@ import {
   ChevronRight,
   BellRing,
   CheckCheck,
+  ClipboardList,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
