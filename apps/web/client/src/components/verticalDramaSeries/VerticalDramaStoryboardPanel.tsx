@@ -8379,8 +8379,12 @@ export function VerticalDramaStoryboardPanel({
                         candidate?.videoPromptVariants,
                         (candidate ?? { prompt: "" }) as Record<string, unknown>
                       ).store;
+                      const candidateVariantId =
+                        viewedVariant === "enhanced_full"
+                          ? "enhanced"
+                          : viewedVariant;
                       return (
-                        candidateStore?.variants[viewedVariant]?.status ===
+                        candidateStore?.variants[candidateVariantId]?.status ===
                         "ready"
                       );
                     });
@@ -8867,7 +8871,6 @@ export function VerticalDramaStoryboardPanel({
                                     nativeAudioEnabled ?? true
                                   }
                                   videoUrl={clip?.videoTask?.videoUrl}
-                                  audioUrl={clip?.videoTask?.audioUrl}
                                   onTriggerRepair={() => {
                                     if (onTriggerSurgicalAudioRepair) {
                                       onTriggerSurgicalAudioRepair(shotNumber);

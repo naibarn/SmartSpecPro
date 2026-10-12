@@ -551,7 +551,10 @@ export function VerticalDramaEmotionScorePanel({
                       {take.modelName} / {take.modelRevision}
                     </span>
                     <span className="text-muted-foreground">
-                      {take.measuredLufs ?? "—"} LUFS
+                      {typeof take.measuredLufs === "number" ||
+                      typeof take.measuredLufs === "string"
+                        ? take.measuredLufs
+                        : "—"} LUFS
                     </span>
                     <span className="text-muted-foreground">
                       sha {take.checksum.slice(0, 10)}…
