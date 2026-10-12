@@ -18,6 +18,19 @@ The configured canonical ref is the shared **development** baseline, not a fully
 
 If a delta is not integration-ready, split out a smaller independently useful checkpoint and preserve the rest. If an actual required GitHub check cannot pass, keep the PR open with the precise failing check and actionable repair; proceed on independent work. Never mark a skipped, resource-blocked or absent check PASS.
 
+
+## Promote a ready PR
+
+After the owned change passes required checks and the PR head is current, invoke the existing executor from the repository root:
+
+```bash
+python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number> --expected-head <sha> --execute
+```
+
+The executor rechecks the head, base, review and required checks, then merges with a head guard. Treat `ALREADY_MERGED` as a recovery result: verify the canonical SHA and record the existing merge receipt without merging again. Reconcile changed head/base/check state before retrying; retry at most three times, then preserve the blocker and continue independent work.
+
+After integration, continue with the next ready independent WorkUnit. A parent task may remain open after partial canonicalization.
+
 ## Resume and repository recovery
 
 A user-requested *repository recovery* may inventory old PRs, merged/squash-equivalent branches, dirty worktrees and unique unpushed work. That expensive inventory is **not** part of every normal feature merge. Never delete, clean, prune, reset or retire another session's work without ownership and preservation proof. A dirty canonical user checkout is preserved; it does not prevent integration from a clean registered task checkout.
@@ -25,3 +38,5 @@ A user-requested *repository recovery* may inventory old PRs, merged/squash-equi
 ## Completion report
 
 Provide only source branch/owned scope, canonical SHA before/after, required check status, integrated result (or actual merge blocker), and HandOff next action. For Spec-backed work update the existing canonical HandOff using `skills/development-lifecycle/spec-handoff-contract.md` when available. Integration does not certify UAT or production readiness.
+
+If development previews are part of the workflow, track time-to-first-preview as a delivery metric; a preview is not requirement acceptance.

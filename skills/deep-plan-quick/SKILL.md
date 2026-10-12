@@ -348,3 +348,4 @@ A section commit is not final SPEC acceptance. Record the commit/Main SHA, remai
 ## Canonical Spec handoff
 
 For Specs in repositories with a configured canonical handoff root, follow `skills/development-lifecycle/spec-handoff-contract.md`. Load or reconcile the canonical manifest and ledger before planning; map quick-plan sections to requirement IDs and plan only the unsatisfied delta. Initialize a handoff for a new canonical Spec. The plan cannot assign overall completion.
+Keep the requirement ledger and evidence freshness explicit under the [shared development lifecycle](../development-lifecycle/SKILL.md); a quick plan still needs clear closure evidence.
