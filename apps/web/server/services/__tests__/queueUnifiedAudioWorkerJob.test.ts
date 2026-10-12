@@ -15,7 +15,15 @@ function deps() {
   return {
     repo,
     rows,
-    getFeatureFlags: async () => ({ verticalDramaSeries: true, verticalDramaSeriesVoiceChain: true } as any),
+    getFeatureFlags: async () => ({
+      openClawExternalRuntime: false,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+      verticalDramaSeries: true,
+      verticalDramaSeriesVoiceChain: true,
+    }),
     reserveCredits: vi.fn(async () => ({ reservationId: "res-1", reservedCredits: 5, sourceType: "worker_runtime" as const })),
   };
 }
