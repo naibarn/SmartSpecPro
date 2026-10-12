@@ -1082,7 +1082,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 65,
+  "generation": 67,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -2312,6 +2312,31 @@
         "R10 synthetic Git implementation, bounded repair, independent verification and durable nonterminal Final Verify evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json at source e4628527ad4013c4bc699f1f2f8a7df2d2bf3780; live Runner/owner approval and actual workspace lifecycle authority remain unresolved."
       ],
       "updated_at": "2026-10-08T02:06:09.264229Z"
+    },
+    "requirements": {
+      "REQ-40DB4E03A676": {
+        "applicability": "APPLICABLE",
+        "applicability_rationale": "Factory durable stage dispatch is directly governed by Spec 224 canonical job/outbox requirements and Feature 195 authority. Existing program evidence proves partial synthetic worker/outbox execution only; live Runner and receipt authority remain open. G0 evidence: orchestra/programs/autonomous-mini-app-factory/evidence/g0-spec-reconciliation-20261012.md, source SHA d0b558f7b1e511bbb866b35bae7f3880b742277c.",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2461"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2461",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "G3 must retain worker_jobs/outbox as the sole long-running execution path; verify trusted live Runner dispatch and receipt/accounting separately before closure.",
+        "requirement_digest": "e3756b41fe468b9129544f19a656cc10e88dde86773c2293f856f46563d5129f",
+        "requirement_id": "REQ-40DB4E03A676",
+        "requirement_text": "Dispatch to Runner/provider SHALL occur through the canonical reliable job/outbox path.",
+        "source_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      }
     }
   },
   "reconciliation": {
@@ -2386,7 +2411,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -2395,7 +2420,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T09:35:15.677311Z",
+  "updated_at": "2026-10-12T01:30:08.088061Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
