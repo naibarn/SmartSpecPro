@@ -982,16 +982,19 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                       </label>
                       <Button
                         variant="outline"
-                        onClick={() =>
+                        onClick={() => {
+                          const evidencePackage = createEvidencePackage.data?.package;
+                          if (evidencePackage?.publicCaseId !== item.publicCaseId) return;
+
                           createReviewerLink.mutate({
-                            packageId: createEvidencePackage.data.package.id,
+                            packageId: evidencePackage.id,
                             expiresInHours: 24,
                             scope: [
                               "technical_evidence",
                               ...(reviewerAllowsPackageDownload ? ["package_download"] : []),
                             ],
-                          })
-                        }
+                          });
+                        }}
                         disabled={createReviewerLink.isPending}
                       >
                         {t("createReviewerLink")}
