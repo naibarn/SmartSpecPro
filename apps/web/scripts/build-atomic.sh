@@ -166,6 +166,7 @@ resource_preflight() {
   local minimum_memory_max_headroom=$((8 * gib))
   local minimum_swap_headroom=$((512 * 1024 * 1024))
   local minimum_host_available_kb=$((6 * 1024 * 1024))
+  local minimum_host_available_without_swap_kb=$((8 * 1024 * 1024))
 
   available_kb="$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
   psi_avg10="$(awk '$1 == "some" { for (i = 2; i <= NF; i++) if ($i ~ /^avg10=/) { split($i, value, "="); print value[2] } }' /proc/pressure/memory 2>/dev/null || true)"
@@ -220,8 +221,16 @@ resource_preflight() {
   if [ "${swap_max}" != "max" ]; then
     swap_headroom=$((swap_max - swap_current))
     if [ "${swap_headroom}" -lt "${minimum_swap_headroom}" ]; then
-      echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 512 MiB swap headroom; no build was started." >&2
-      return 1
+      # Swap usage can remain high after the workload that populated it has
+      # stopped. When swap is unavailable, require enough host RAM for the
+      # expected build peak and low, fresh PSI before relying on RAM alone.
+      if [ -z "${available_kb}" ] || [ "${available_kb}" -lt "${minimum_host_available_without_swap_kb}" ] \
+        || [ -z "${psi_avg10}" ] \
+        || awk -v value="${psi_avg10}" 'BEGIN { exit !(value >= 10) }'; then
+        echo "[build-atomic] RESOURCE_BLOCKED: swap headroom is below 512 MiB and host RAM/PSI do not confirm enough pressure-free capacity; no build was started." >&2
+        return 1
+      fi
+      echo "[build-atomic] Resource preflight: swap headroom is below 512 MiB; proceeding with at least 8 GiB host RAM available, low memory PSI, and sufficient cgroup memory headroom." >&2
     fi
   fi
   return 0
