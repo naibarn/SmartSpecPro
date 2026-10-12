@@ -113,4 +113,21 @@ describe('Admin Ops Dashboard Endpoints', () => {
       expect(kieProc).toBeDefined();
     });
   });
+
+  describe('storageStats cache contract', () => {
+    it('accepts only cached values with the storage statistics response shape', async () => {
+      const { parseStorageStatsCache } = await import('../adminOps');
+      const cached = {
+        prefixes: [
+          { name: 'temp', objectCount: 3, sizeGb: 0.25, sizeBytes: 268435456 },
+        ],
+        totalObjects: 3,
+        totalSizeGb: 0.25,
+        cachedAt: '2026-10-12T00:00:00.000Z',
+      };
+
+      expect(parseStorageStatsCache(cached)).toEqual(cached);
+      expect(parseStorageStatsCache({ prefixes: {} })).toBeNull();
+    });
+  });
 });
