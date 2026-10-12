@@ -1288,8 +1288,6 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     }
   };
 
-  if (settingsRoute) return null;
-
   return (
     <Dialog
       open={open}
@@ -1312,7 +1310,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           variant="outline"
           aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
           className={showMascotLauncher
-            ? "z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
+            ? "pointer-events-none z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
             : "z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"}
           style={{
             position: "fixed",
@@ -1329,7 +1327,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         >
           {showMascotLauncher
             ? <>
-              <span className={`inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
+              <span className={`pointer-events-auto inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
                 <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-10 w-10 text-sky-500" />}>
                   <AssistantMascot
                     style={mascotPreferences.style}
@@ -1338,7 +1336,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   />
                 </AssistantMascotErrorBoundary>
               </span>
-              <span className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
+              <span className="pointer-events-auto inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
                 {settingsT("assistantAppearance.launcherLabel")}
               </span>
             </>

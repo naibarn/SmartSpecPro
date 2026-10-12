@@ -296,12 +296,11 @@ describe("FeedbackButton placement", () => {
     expect(button.style.top).toBe("");
   });
 
-  it("hides floating chat and mascot controls on settings so form controls remain clickable", () => {
+  it("keeps the floating chat launcher available on settings", () => {
     mockRoute.location = "/settings?tab=notifications";
     render(<FeedbackButton />);
 
-    expect(screen.queryByLabelText("Open AI Chat & Feedback")).toBeNull();
-    expect(screen.queryByLabelText("assistantAppearance.title")).toBeNull();
+    expect(screen.getByLabelText("Open AI Chat & Feedback")).toBeTruthy();
   });
 
   it("preserves the existing Chat draft when switching to Task Control and back", async () => {
