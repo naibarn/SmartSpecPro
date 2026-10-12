@@ -50,15 +50,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+    "expected_canonical_sha": "8258add1ed446bdeddd5f1cdf3af228eefe51607",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "After a fresh resource admission observation, build canonical Main and record artifact digest/source parity. Then perform authenticated browser acceptance through a registered tenant-aware non-production SmartAIHub route with authorized synthetic identity and verified feature flags. Keep user visibility pending until published artifact and tenant route are verified.",
-    "next_ready_workunit": "SPEC308_CANONICAL_BUILD_AND_TENANT_ACCEPTANCE",
+    "next_action": "Canonical build passed for exact Main source 757a5750f00e916ed84801c6024bebdc814e60f9 with artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f and build-time global allow=true. Tenant tenant-ZCSKEM9s opted in. Local preview could not authenticate; current port 3000 service is production-mode and still serves the old bundle. Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact and user-visible UI there.",
+    "next_ready_workunit": "SPEC308_AUTHENTICATED_NONPRODUCTION_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume canonical build when a fresh resource observation meets build-atomic headroom. Resume hosted acceptance when the application/runtime owner registers a tenant-aware non-production route and provisions an authorized synthetic identity. Configure Main protections for future PR integration.",
-    "resume_point": "PR #852 merged through ordinary exact-head PR workflow; merge SHA f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e is verified on origin/main. Exact-head mocked browser, scope, and progressive gates passed. Canonical build was resource-blocked before compilation; no artifact or published UI evidence exists. PR #399 is closed as superseded. PR #403 and #405 remain separately owned and are not prerequisites for the UI slice.",
-    "waiting_predicate": "Fresh build resource observation meets build-atomic admission; a tenant-aware non-production route and authorized identity are registered through existing SmartAIHub routing authority; artifact source/digest and feature-flag state are verified before claiming visibility."
+    "resume_point": "SPEC-308 canonical build WorkUnit completed: source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f; build-time VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true; tenant-ZCSKEM9s livingMascotDualSurface=true by explicit opt-in. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. No hosted UI acceptance: local preview had no authenticated backend; port 3000 is production-mode and was not modified. Continue with an authorized non-production tenant route and identity.",
+    "waiting_predicate": "Resume hosted acceptance when the application/runtime owner registers a tenant-aware non-production route and provisions an authorized synthetic identity; publish/use the verified artifact without modifying production-mode runtime."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -69,17 +69,18 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
-    "rationale": "The gated Dual Surface is integrated on canonical Main at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e and exact-head mocked browser plus scoped CI passed. This proves merged implementation and mocked behavior only. Canonical build admission was resource-blocked, tenant-aware hosted preview is unavailable, and Main protection/autonomous continuation are not configured.",
+    "next_action": "Canonical build is complete for source 757a5750f00e916ed84801c6024bebdc814e60f9 (BUILD_PASSED, artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f). Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact through authenticated desktop/mobile UI acceptance. Do not modify production-mode service.",
+    "rationale": "SPEC-308 canonical artifact is built and tenant-ZCSKEM9s explicitly opted in. Local preview rendered the shell but had no authenticated backend/session. The only inspected Debian web service runs NODE_ENV=production and still serves the old bundle, so no hosted visibility claim is made. Continue with authorized non-production route/identity and authenticated acceptance.",
     "residual_requirements": [
-      "All 66 requirement rows remain OPEN pending requirement-level evidence and tenant acceptance; do not equate merge or mocked simulation with completion.",
-      "No artifact digest, published deployment, authenticated tenant route, or enabled tenant feature-flag evidence exists.",
-      "Canonical build must resume after a fresh resource observation; previous RESOURCE_BLOCKED result is not a code failure.",
-      "GitHub has no Main branch protection/rulesets; required protection must be configured before claiming protected integration enforcement.",
+      "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; do not equate merge, build, or mocked simulation with completion.",
+      "Canonical build passed for source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Hosted deployment and authenticated acceptance remain pending.",
+      "No verified tenant-aware non-production SmartAIHub route or authorized synthetic identity is registered. Current port 3000 service is production-mode and must not be modified as a development target.",
+      "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; other shared defaults remain false.",
+      "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
       "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
       "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
     ],
-    "resume_point": "PR #852 merged at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e on origin/main. PR #399 is closed as superseded. Exact-head mocked browser/scope/progressive checks passed. Canonical build was RESOURCE_BLOCKED before compilation; no artifact/digest, published deployment, or tenant-visible acceptance exists. Continue at fresh resource observation, exact-SHA canonical build, then registered tenant-aware authenticated acceptance."
+    "resume_point": "Canonical build completed for source 757a5750f00e916ed84801c6024bebdc814e60f9, with artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. Tenant tenant-ZCSKEM9s opted in. Local preview was unauthenticated. The production-mode port 3000 service remains untouched and on its old frontend bundle. Next: authorized non-production route + identity, publish/use exact artifact, then authenticated desktop/mobile acceptance."
   },
   "dependencies": {
     "predicates": [],
@@ -88,12 +89,14 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": "canonical build selected; no artifact produced",
-    "evidence": [],
+    "artifact_digest": "sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f",
+    "environment": "canonical artifact built; no hosted deployment or tenant-visible acceptance",
+    "evidence": [
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-canonical-build-757a575-20261012.md"
+    ],
     "required": false,
-    "source_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
-    "status": "RESOURCE_BLOCKED"
+    "source_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
+    "status": "BUILD_PASSED"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -111,7 +114,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 77,
+  "generation": 79,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -213,7 +216,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+    "canonical_sha": "8258add1ed446bdeddd5f1cdf3af228eefe51607",
     "integrated": true,
     "integrated_at": "2026-10-12T02:25:08Z"
   },
@@ -302,17 +305,18 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
-      "rationale": "The gated Dual Surface is integrated on canonical Main at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e and exact-head mocked browser plus scoped CI passed. This proves merged implementation and mocked behavior only. Canonical build admission was resource-blocked, tenant-aware hosted preview is unavailable, and Main protection/autonomous continuation are not configured.",
+      "next_action": "Canonical build is complete for source 757a5750f00e916ed84801c6024bebdc814e60f9 (BUILD_PASSED, artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f). Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact through authenticated desktop/mobile UI acceptance. Do not modify production-mode service.",
+      "rationale": "SPEC-308 canonical artifact is built and tenant-ZCSKEM9s explicitly opted in. Local preview rendered the shell but had no authenticated backend/session. The only inspected Debian web service runs NODE_ENV=production and still serves the old bundle, so no hosted visibility claim is made. Continue with authorized non-production route/identity and authenticated acceptance.",
       "residual_requirements": [
-        "All 66 requirement rows remain OPEN pending requirement-level evidence and tenant acceptance; do not equate merge or mocked simulation with completion.",
-        "No artifact digest, published deployment, authenticated tenant route, or enabled tenant feature-flag evidence exists.",
-        "Canonical build must resume after a fresh resource observation; previous RESOURCE_BLOCKED result is not a code failure.",
-        "GitHub has no Main branch protection/rulesets; required protection must be configured before claiming protected integration enforcement.",
+        "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; do not equate merge, build, or mocked simulation with completion.",
+        "Canonical build passed for source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Hosted deployment and authenticated acceptance remain pending.",
+        "No verified tenant-aware non-production SmartAIHub route or authorized synthetic identity is registered. Current port 3000 service is production-mode and must not be modified as a development target.",
+        "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; other shared defaults remain false.",
+        "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
         "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
         "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
       ],
-      "resume_point": "PR #852 merged at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e on origin/main. PR #399 is closed as superseded. Exact-head mocked browser/scope/progressive checks passed. Canonical build was RESOURCE_BLOCKED before compilation; no artifact/digest, published deployment, or tenant-visible acceptance exists. Continue at fresh resource observation, exact-SHA canonical build, then registered tenant-aware authenticated acceptance."
+      "resume_point": "Canonical build completed for source 757a5750f00e916ed84801c6024bebdc814e60f9, with artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. Tenant tenant-ZCSKEM9s opted in. Local preview was unauthenticated. The production-mode port 3000 service remains untouched and on its old frontend bundle. Next: authorized non-production route + identity, publish/use exact artifact, then authenticated desktop/mobile acceptance."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2159,7 +2163,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T02:27:19.409028Z",
+  "updated_at": "2026-10-12T09:58:30.010782Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
