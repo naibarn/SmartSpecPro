@@ -142140,7 +142140,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
+      "canonical_sha": "6afb92dec9519445ecf37851c1e52d487a1b8297",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -142250,11 +142250,11 @@
       "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #892 head 5658f218a8fee4d15b5bc740ddaa167914899819 passed focused component regressions and the compact 320px sign-in route, but failed four reminder-balloon cases because static controls were collected on every route. Follow-up commit 8b065eb51d87192e39284ef585ce2dfb261633fe limits static-control collision to /login; updated-head browser simulation and progressive integration gate are pending.",
+      "evidence_freshness": "PR follow-up source 0fd5ed1efe967035057143c209006116e7cdecf5 narrows static login collision obstacles to the sign-in submit button and adds 390×844 hint recovery coverage. The live corrected build on Main 6afb92dec9519445ecf37851c1e52d487a1b8297 showed the hint remains hidden at 390×844 because the prior obstacle selector included legal links; required PR checks are pending.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "next_action": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",
