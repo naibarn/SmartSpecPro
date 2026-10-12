@@ -17,6 +17,30 @@ class TestAuthGeneratorAPI:
         return TestClient(app)
 
     @pytest.fixture
+    def authenticated_client(self, client):
+        from app.core.auth import get_current_user
+        from app.models.user import Role, User
+
+        test_user = User(
+            id=123,
+            email="auth-generator-test@example.com",
+            name="Auth Generator Test User",
+            role=Role.user,
+            credits=0,
+            isDisabled=False,
+        )
+        app = client.app
+        previous_override = app.dependency_overrides.get(get_current_user)
+        app.dependency_overrides[get_current_user] = lambda: test_user
+        try:
+            yield client
+        finally:
+            if previous_override is None:
+                app.dependency_overrides.pop(get_current_user, None)
+            else:
+                app.dependency_overrides[get_current_user] = previous_override
+
+    @pytest.fixture
     def sample_config(self):
         """Sample auth generator config"""
         return {
@@ -229,19 +253,19 @@ class TestAuthGeneratorAPI:
     # Generate Tests
     # ========================================================================
 
-    def test_generate_success(self, client, sample_config, tmp_path):
+    def test_generate_success(self, authenticated_client, sample_config, tmp_path):
         """Test successful generation"""
         sample_config["output_dir"] = str(tmp_path / "auth")
-        response = client.post("/api/v1/auth-generator/generate", json=sample_config)
+        response = authenticated_client.post("/api/v1/auth-generator/generate", json=sample_config)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert len(data["files"]) > 0
 
-    def test_generate_invalid_config(self, client, sample_config):
+    def test_generate_invalid_config(self, authenticated_client, sample_config):
         """Test generation with invalid config"""
         del sample_config["project_name"]
-        response = client.post("/api/v1/auth-generator/generate", json=sample_config)
+        response = authenticated_client.post("/api/v1/auth-generator/generate", json=sample_config)
         assert response.status_code in [400, 422]
 
     # ========================================================================
