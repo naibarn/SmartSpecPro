@@ -44,3 +44,6 @@ As soon as an integrated functional slice can run, build it on the authorized de
 Reviewers, section-by-section interviews, mandatory repeated clean review rounds, and exhaustive requirement matrices are **not prerequisite steps**. Use them only to resolve a concrete issue or if the user explicitly requests that depth. Record outstanding requirements without calling them complete.
 
 Stop only the affected operation for a genuine external authority/product decision, unauthorized destructive/production action, or an actual repository-required check that cannot yet pass. Continue independent work. Report code integrated, what visibly works, pending gaps and specific next steps.
+## Shared lifecycle contract
+
+Use the [shared development lifecycle](../../../development-lifecycle/SKILL.md) and its requirement ledger. Keep evidence freshness explicit when recording section completion and final acceptance.

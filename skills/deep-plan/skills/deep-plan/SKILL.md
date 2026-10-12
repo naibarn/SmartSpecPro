@@ -40,3 +40,6 @@ After an interruption, rerun setup against the same spec, inspect the artifacts 
 Report the plan path, section count and clear next action: `/deep-implement @{planning_dir}/sections/`. When an orchestration caller has authority to continue, proceed automatically instead of waiting for the user to repeat that command.
 
 Planning artifacts may be committed as coherent checkpoints through the existing protected repository flow. A plan is not a completed application, and unresolved downstream acceptance never prevents planning handoff.
+## Shared lifecycle contract
+
+Use the [shared development lifecycle](../../../development-lifecycle/SKILL.md) to map plan sections to the requirement ledger and keep evidence freshness explicit.

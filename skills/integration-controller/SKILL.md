@@ -25,3 +25,5 @@ A user-requested *repository recovery* may inventory old PRs, merged/squash-equi
 ## Completion report
 
 Provide only source branch/owned scope, canonical SHA before/after, required check status, integrated result (or actual merge blocker), and HandOff next action. For Spec-backed work update the existing canonical HandOff using `skills/development-lifecycle/spec-handoff-contract.md` when available. Integration does not certify UAT or production readiness.
+
+If development previews are part of the workflow, track time-to-first-preview as a delivery metric; a preview is not requirement acceptance.
