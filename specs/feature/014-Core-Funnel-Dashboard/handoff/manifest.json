@@ -19,14 +19,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "9bf489a70d966968ebf24260b70d35f9189ddfb2",
+    "expected_canonical_sha": "799440309834041570d1742c5d75256891d5ee27",
     "expected_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0"
   },
   "continuation": {
-    "next_action": "PR #877 is open with implementation source 71184ee251bc7a9057e8c12a04ada8e9e6f9d94c. Wait for actual required GitHub checks/reviews, reconcile latest Main, and merge through the normal path when eligible. The index migration is additive but has not been applied to any database; after integration, run only on an authorized non-production database and record query/plan acceptance before closing REQ-F5772188489C.",
+    "next_action": "SPEC-014_FUNNEL_QUERY_INDEXES is integrated at Main 799440309834041570d1742c5d75256891d5ee27 (PR #877); progressive integration gate and mocked SPEC-308 browser simulation passed. Migration remains unapplied. Next: apply only in an authorized non-production database and record query-plan acceptance; do not apply production migration.",
     "next_ready_workunit": "SPEC014_FUNNEL_QUERY_INDEXES",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-014's sole open requirement REQ-F5772188489C is addressed by six missing indexes in commit 71184ee251bc7a9057e8c12a04ada8e9e6f9d94c, PR #877, based on current Main 419d2ff8a7f93598378bcf1a787e535afb421923. Four focused files / 53 tests passed. No DB migration applied. Existing equivalents for registration_events(createdAt), credit_transactions(type,createdAt), and messages(conversationId,createdAt) remain unchanged. Next: merge after required checks, then authorized non-production DB migration/query-plan acceptance.",
+    "resume_point": "PR #877 integrated additive indexes for users createdAt/lastSignedIn/plan, registration_events outcome+createdAt, credit_transactions userId+createdAt, and conversations userId+createdAt. Main SHA 799440309834041570d1742c5d75256891d5ee27. Focused implementation tests 4 files / 53 tests passed before integration; CI progressive gate and mocked SPEC-308 browser simulation passed. No migration applied. Next: authorized non-production DB migration/query-plan acceptance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -261,7 +261,7 @@
     "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 21,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
     "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
@@ -302,9 +302,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9bf489a70d966968ebf24260b70d35f9189ddfb2",
+    "canonical_sha": "799440309834041570d1742c5d75256891d5ee27",
     "integrated": true,
-    "integrated_at": "2026-10-09T01:57:54Z"
+    "integrated_at": "2026-10-12T10:00:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1174,7 +1174,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:47:27.645726Z",
+  "updated_at": "2026-10-12T09:53:29.512828Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

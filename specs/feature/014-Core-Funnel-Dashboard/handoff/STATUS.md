@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 4 pass / 1 unresolved of 5
 - Next action: Integrate additive index migration #877, then verify the migration and target query plans in an authorized non-production database. Do not apply production migration.
-- Manifest generation: 21
+- Manifest generation: 22
 
 ## Source-declared status and relationship claims
 
