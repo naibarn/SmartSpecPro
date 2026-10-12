@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
 - Next action: Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.
-- Manifest generation: 88
+- Manifest generation: 89
 
 ## Source-declared status and relationship claims
 
