@@ -1,5 +1,5 @@
 {
-  "generation": 2,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -575,19 +575,20 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
+      "applicability_rationale": "Factory-generated portable apps have backend/resource requirements; Spec 288 says portable applications should use Resource Fabric unless provider-native functionality is justified. This is a conditional architecture gate, not a blanket claim about every app. G0 evidence: orchestra/programs/autonomous-mini-app-factory/evidence/g0-spec-reconciliation-20261012.md, source SHA d0b558f7b1e511bbb866b35bae7f3880b742277c.",
       "authority_refs": [
         "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md#L319"
       ],
       "authority_source": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md#L319",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "current_relevance": "RELEVANT",
       "evidence_freshness": "UNKNOWN",
       "evidence_sha": null,
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "next_action": "G3/G5 record resource bindings and justify any provider-native exception before package validation.",
       "requirement_digest": "b8a8721724e065bd5aef8830e146d33c2ccbef2ec9a45c2e0257d2fa7f9d7989",
       "requirement_id": "REQ-8332CFC4C91E",
       "requirement_text": "- New portable applications SHOULD use Resource Fabric contracts unless provider-native functionality is materially required.",

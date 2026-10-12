@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 7,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -1411,19 +1411,20 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
+      "applicability_rationale": "The Factory AI/capability stage can request capabilities from a Mini App. Spec 256 explicitly limits that scope to app grants intersected with current user, project, and asset rights; this is an admission dependency, not evidence that the stage is fully integrated. G0 evidence: orchestra/programs/autonomous-mini-app-factory/evidence/g0-spec-reconciliation-20261012.md, source SHA d0b558f7b1e511bbb866b35bae7f3880b742277c.",
       "authority_refs": [
         "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L759"
       ],
       "authority_source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L759",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "current_relevance": "RELEVANT",
       "evidence_freshness": "UNKNOWN",
       "evidence_sha": null,
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "next_action": "G4 must bind each capability request to the existing permission and rights authorities and prove denial for out-of-grant requests.",
       "requirement_digest": "65ef1d5d0741920517bd91241025828efa8776bc0edf9f25b01a1b139dae01a0",
       "requirement_id": "REQ-139229B5316B",
       "requirement_text": "Mini App scope SHALL be the **intersection** of explicit app-granted capability IDs, current user permissions, current project and per-asset rights. Universal Chat may request a wider scope only by an explicit user handoff and fresh authorization. Agent/tool output text, generated UI and untrusted captions cannot add a hidden search filter that broadens permissions. A permitted lookup cannot leak private reference names in an alternative suggestion or free-text error message.",
