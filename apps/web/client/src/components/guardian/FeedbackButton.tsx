@@ -1129,7 +1129,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         // Sign-in actions use normal document flow, so the fixed/sticky
         // ancestor walk below cannot see them as collision surfaces.
         if (window.location.pathname === "/login"
-          && control.matches("button, a[href], input, select, textarea, [role='button']")) {
+          && control.matches("button[type='submit'], [data-spec308-critical-control]")) {
           const style = window.getComputedStyle(control);
           if (style.display !== "none"
             && style.visibility !== "hidden"
