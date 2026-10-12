@@ -460,6 +460,9 @@ class TestZAIProviderBaseURL:
     
     def test_coding_endpoint_base_url(self, zai_config):
         """Test coding endpoint base URL."""
+        # Leave the URL unset so the endpoint selector is exercised instead
+        # of the standard URL stored on the default configuration.
+        zai_config.base_url = None
         provider = ZAIProvider(
             config=zai_config,
             client=mock_openai_client,
