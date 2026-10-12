@@ -629,6 +629,7 @@ export async function composePrompt(
         undefined,
         entityMemoryProjectId,
         profile.personaId ?? null,
+        input.tenantId,
       );
       if (entityMems.length > 0) {
         const entityContent = entityMems

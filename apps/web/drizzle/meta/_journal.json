@@ -2689,6 +2689,13 @@
       "when": 1791800000000,
       "tag": "0397_spec268_team_room_canonical_project_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 384,
+      "version": "7",
+      "when": 1791810000000,
+      "tag": "0398_spec268_team_room_entity_memory_sources",
+      "breakpoints": true
     }
   ]
 }

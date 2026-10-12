@@ -129,6 +129,7 @@ export async function buildChatContext(
           undefined,
           projectIdForEntityRead,
           personaId,
+          request.tenantId,
         );
         if (entityMemories.length > 0) {
           // Cap entity memory to budget (~10 chars per token estimate)

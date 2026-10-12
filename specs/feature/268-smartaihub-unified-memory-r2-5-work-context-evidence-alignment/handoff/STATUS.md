@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
-- Next action: Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.
-- Manifest generation: 23
+- Next action: Implement durable team-room memory source records and tenant-filtered authorized reads from current Main 2ea4e3905cedce99d7986021e13d6aea69db174a. Keep writes disabled until provenance and isolation acceptance pass; do not infer historical project attribution or run production migration.
+- Manifest generation: 24
 
 ## Source-declared status and relationship claims
 

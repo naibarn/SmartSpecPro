@@ -214,6 +214,8 @@ export const teamRoomRouter = router({
         userId: ctx.user!.id,
         roomId: room.id,
         teamId: room.teamId,
+        messageId: message.id,
+        runId: message.runId ?? null,
         content: input.content,
       }).catch(error => {
         console.warn("[teamRoomRouter] failed to capture user team memory", {

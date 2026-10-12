@@ -168,7 +168,7 @@ describe("buildChatContext", () => {
       "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
       undefined, { initiatedByUserId: 1, projectId: "project-a" },
     );
-    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, "project-a", "p1");
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, "project-a", "p1", "t1");
   });
 
   it("keeps Chat global-only when the current Project read check fails", async () => {
@@ -192,7 +192,7 @@ describe("buildChatContext", () => {
       "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
       undefined, { initiatedByUserId: 1, projectId: null },
     );
-    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1", "t1");
   });
 
   it("requests only global entity memories when chat has no verified project binding", async () => {
@@ -221,7 +221,7 @@ describe("buildChatContext", () => {
       null,
     );
 
-    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1", "t1");
     expect(messages.some((message) =>
       typeof message.content === "string" && message.content.includes("Use concise answers"),
     )).toBe(true);
@@ -264,7 +264,7 @@ describe("buildChatContext", () => {
       "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
       undefined, { initiatedByUserId: 1, projectId: null },
     );
-    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1", "t1");
     expect(messages.some((message) =>
       typeof message.content === "string" && message.content.includes("Keep answers concise"),
     )).toBe(true);
@@ -305,7 +305,7 @@ describe("buildChatContext", () => {
     expect(mockGetPersonaById).toHaveBeenCalledWith("p1");
     expect(mockBuildPersonaPromptSegments).toHaveBeenCalledWith(persona);
     expect(mockRetrieveForPrompt).toHaveBeenCalled();
-    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1", "t1");
 
     // Should have 3 messages: persona+memory system, skill system, user
     expect(messages).toHaveLength(3);

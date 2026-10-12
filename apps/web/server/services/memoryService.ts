@@ -18,6 +18,7 @@ import {
   inArray,
   isNull,
   ne,
+  exists,
 } from "drizzle-orm";
 import { getDb } from "../db";
 import {
@@ -28,6 +29,8 @@ import {
   messages,
   conversationSummaries,
   entityMemories,
+  teamRoomEntityMemorySources,
+  canonicalProjectMemberships,
   libraryChunks,
   libraryItems,
   libraryLinks,
@@ -850,6 +853,16 @@ export type EntityType =
   | "process" | "constraint" | "reference" | "note" | "checklist"
   | "artifact_note" | "handoff_note" | "episode";
 
+export interface TeamRoomEntityMemorySourceInput {
+  tenantId: string;
+  roomId: string;
+  teamId: string;
+  runId?: string | null;
+  sourceMessageId: string;
+  actorUserId: number;
+  canonicalProjectId: string;
+}
+
 // Default importance by type
 export const IMPORTANCE_BY_TYPE: Record<string, number> = {
   rule: 10,
@@ -1342,7 +1355,8 @@ export async function upsertEntityMemory(
   importance?: number,
   source?: string,
   projectId?: string | null,
-  personaId?: string | null
+  personaId?: string | null,
+  teamRoomSource?: TeamRoomEntityMemorySourceInput,
 ): Promise<EntityMemory> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1391,6 +1405,102 @@ export async function upsertEntityMemory(
     resolvedPersonaId = null;
   }
 
+  if (source === "team_room") {
+    if (
+      !teamRoomSource ||
+      !teamRoomSource.tenantId ||
+      !teamRoomSource.roomId ||
+      !teamRoomSource.teamId ||
+      !teamRoomSource.sourceMessageId ||
+      teamRoomSource.actorUserId !== userId ||
+      !teamRoomSource.canonicalProjectId ||
+      teamRoomSource.canonicalProjectId !== resolvedProjectId
+    ) {
+      throw new Error("Team-room entity memory requires canonical source provenance");
+    }
+
+    return db.transaction(async (tx) => {
+      const existingSourceIds = tx
+        .select({ entityMemoryId: teamRoomEntityMemorySources.entityMemoryId })
+        .from(teamRoomEntityMemorySources)
+        .where(and(
+          eq(teamRoomEntityMemorySources.tenantId, teamRoomSource.tenantId),
+          eq(teamRoomEntityMemorySources.canonicalProjectId, teamRoomSource.canonicalProjectId),
+          eq(teamRoomEntityMemorySources.entityMemoryOwnerUserId, userId),
+          eq(teamRoomEntityMemorySources.actorUserId, userId),
+        ));
+      const [existing] = await tx
+        .select()
+        .from(entityMemories)
+        .where(and(
+          eq(entityMemories.userId, userId),
+          eq(entityMemories.entityType, entityType),
+          eq(entityMemories.entityName, entityName),
+          eq(entityMemories.projectId, teamRoomSource.canonicalProjectId),
+          eq(entityMemories.source, "team_room"),
+          resolvedPersonaId === null
+            ? isNull(entityMemories.personaId)
+            : eq(entityMemories.personaId, resolvedPersonaId),
+          inArray(entityMemories.id, existingSourceIds),
+        ))
+        .limit(1);
+
+      let saved: EntityMemory;
+      if (existing) {
+        const factsWithSource = [...new Set([...(existing.facts ?? []), ...filteredFacts])];
+        const [updated] = await tx
+          .update(entityMemories)
+          .set({
+            facts: factsWithSource,
+            reinforcementCount: sql`${entityMemories.reinforcementCount} + 1`,
+            lastAccessedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(entityMemories.id, existing.id))
+          .returning();
+        saved = updated ?? { ...existing, facts: factsWithSource };
+      } else {
+        const [created] = await tx
+          .insert(entityMemories)
+          .values({
+            userId,
+            personaId: resolvedPersonaId,
+            entityType,
+            entityName,
+            facts: filteredFacts,
+            sourceConversationId: null,
+            projectId: teamRoomSource.canonicalProjectId,
+            importance: importance ?? IMPORTANCE_BY_TYPE[entityType] ?? 5,
+            source: "team_room",
+          })
+          .returning();
+        if (!created) throw new Error("Team-room entity memory could not be stored");
+        saved = created;
+      }
+
+      await tx
+        .insert(teamRoomEntityMemorySources)
+        .values({
+          entityMemoryId: saved.id,
+          entityMemoryOwnerUserId: userId,
+          tenantId: teamRoomSource.tenantId,
+          roomId: teamRoomSource.roomId,
+          teamId: teamRoomSource.teamId,
+          runId: teamRoomSource.runId ?? null,
+          sourceMessageId: teamRoomSource.sourceMessageId,
+          actorUserId: userId,
+          canonicalProjectId: teamRoomSource.canonicalProjectId,
+        })
+        .onConflictDoNothing();
+
+      return saved;
+    });
+  }
+
+  if (teamRoomSource) {
+    throw new Error("Team-room provenance is only valid for team-room entity memory");
+  }
+
   // Check if entity exists
   const [existing] = await db
     .select()
@@ -1400,6 +1510,7 @@ export async function upsertEntityMemory(
         eq(entityMemories.userId, userId),
         eq(entityMemories.entityType, entityType),
         eq(entityMemories.entityName, entityName),
+        or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!,
         resolvedPersonaId === null
           ? isNull(entityMemories.personaId)
           : eq(entityMemories.personaId, resolvedPersonaId)
@@ -1465,18 +1576,48 @@ export async function getEntityMemoriesForContext(
   userId: number,
   limit: number = MAX_ENTITIES_IN_CONTEXT,
   projectId?: string | null,
-  personaId?: string | null
+  personaId?: string | null,
+  tenantId?: string | null,
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
 
   const conditions = [eq(entityMemories.userId, userId)];
 
-  // Older team-room extraction rows lack message-level source provenance.
-  // Keep them out of prompt context until SPEC-268 isolation acceptance passes.
-  conditions.push(
-    or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!
-  );
+  const nonTeamRoomSource = or(
+    isNull(entityMemories.source),
+    ne(entityMemories.source, "team_room"),
+  )!;
+  if (!isTeamRoomMemoryEnabled() || !tenantId || !projectId) {
+    // Legacy team-room rows have no source ledger. Keep them quarantined.
+    conditions.push(nonTeamRoomSource);
+  } else {
+    const authorizedTeamRoomSource = exists(
+      db
+        .select({ id: teamRoomEntityMemorySources.id })
+        .from(teamRoomEntityMemorySources)
+        .innerJoin(
+          canonicalProjectMemberships,
+          and(
+            eq(canonicalProjectMemberships.tenantId, teamRoomEntityMemorySources.tenantId),
+            eq(canonicalProjectMemberships.projectId, teamRoomEntityMemorySources.canonicalProjectId),
+            eq(canonicalProjectMemberships.principalId, `user:${userId}`),
+            eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+          ),
+        )
+        .where(and(
+          eq(teamRoomEntityMemorySources.entityMemoryId, entityMemories.id),
+          eq(teamRoomEntityMemorySources.entityMemoryOwnerUserId, userId),
+          eq(teamRoomEntityMemorySources.actorUserId, userId),
+          eq(teamRoomEntityMemorySources.tenantId, tenantId),
+          eq(teamRoomEntityMemorySources.canonicalProjectId, projectId),
+        )),
+    );
+    conditions.push(or(
+      nonTeamRoomSource,
+      and(eq(entityMemories.source, "team_room"), authorizedTeamRoomSource),
+    )!);
+  }
 
   if (personaId !== undefined) {
     conditions.push(
@@ -2025,6 +2166,7 @@ export async function buildChatContext(
           useLightSearch ? 8 : 20,
           options?.projectId || null,
           activePersonaId,
+          tenantIdForMemory,
         );
 
         const merged = mergeAndDedup(
@@ -2104,6 +2246,7 @@ export async function buildChatContext(
           50,
           options?.projectId || null,
           activePersonaId,
+          tenantIdForMemory,
         );
 
         // Separate rules from other entities

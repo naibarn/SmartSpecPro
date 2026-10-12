@@ -157,7 +157,13 @@ export const memoryRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const memories = await getEntityMemoriesForContext(ctx.user.id, input.limit, input.projectId || null);
+      const memories = await getEntityMemoriesForContext(
+        ctx.user.id,
+        input.limit,
+        input.projectId || null,
+        undefined,
+        (ctx.user as any).tenantId || ctx.tenantId || null,
+      );
 
       // Filter by type if specified
       const filtered = input.entityType

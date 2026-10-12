@@ -42,52 +42,17 @@ describe("entity memory team-room provenance filter", () => {
     expect(query.params).toContain("team_room");
   });
 
-  it.each([
-    { existingSource: "auto", incomingSource: "team_room" },
-    { existingSource: "team_room", incomingSource: "auto" },
-  ])(
-    "retains team-room provenance when merging $incomingSource into $existingSource",
-    async ({ existingSource, incomingSource }) => {
-      const existing = {
-        id: 44,
-        userId: 7,
-        personaId: null,
-        entityType: "person",
-        entityName: "Ada",
-        facts: ["likes concise notes"],
-        source: existingSource,
-        sourceConversationId: 12,
-        projectId: "project-1",
-      };
-      const where = vi.fn().mockResolvedValue(undefined);
-      const set = vi.fn(() => ({ where }));
-      mockGetDb.mockResolvedValue({
-        select: vi.fn(() => ({
-          from: vi.fn(() => ({
-            where: vi.fn(() => ({
-              limit: vi.fn().mockResolvedValue([existing]),
-            })),
-          })),
-        })),
-        update: vi.fn(() => ({ set })),
-      });
-
-      const updated = await upsertEntityMemory(
-        7,
-        "person",
-        "Ada",
-        ["works with a team room"],
-        undefined,
-        5,
-        incomingSource,
-        "project-1",
-        null
-      );
-
-      expect(set).toHaveBeenCalledWith(
-        expect.objectContaining({ source: "team_room" })
-      );
-      expect(updated).toMatchObject({ source: "team_room" });
-    }
-  );
+  it("requires source-message provenance before writing team-room memory", async () => {
+    await expect(upsertEntityMemory(
+      7,
+      "person",
+      "Ada",
+      ["works with a team room"],
+      undefined,
+      5,
+      "team_room",
+      "project-1",
+      null,
+    )).rejects.toThrow("Team-room entity memory requires canonical source provenance");
+  });
 });

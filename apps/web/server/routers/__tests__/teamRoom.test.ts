@@ -302,6 +302,8 @@ describe("teamRoomRouter", () => {
       userId: 42,
       roomId: "room-1",
       teamId: "team-1",
+      messageId: "msg-1",
+      runId: null,
       content: "Please summarize the latest findings.",
     });
     expect(mockStartRun).toHaveBeenCalledWith(
