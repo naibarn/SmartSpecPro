@@ -3900,7 +3900,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "PR #894 is open from codex/spec308-login-hint-current-main-20261012. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate; repair any failing check and merge only when required checks pass. Then rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, and retest at https://smartaihub.app.",
+      "next_action": "Authenticated tenant acceptance remains open for tenant-ZCSKEM9s at https://smartaihub.app: verify Bell/unread state and reminder CTA, five appearance styles and persistence, authenticated Settings, and Chat/task controls. Public/guest responsive checks pass on deployed Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6; resume remaining non-authenticated gaps from the 66-row ledger independently while tenant access is pending.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4959,7 +4959,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "PR #894 is open from codex/spec308-login-hint-current-main-20261012. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate; repair any failing check and merge only when required checks pass. Then rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, and retest at https://smartaihub.app.",
+      "rationale": "Authenticated tenant acceptance remains open for tenant-ZCSKEM9s at https://smartaihub.app: verify Bell/unread state and reminder CTA, five appearance styles and persistence, authenticated Settings, and Chat/task controls. Public/guest responsive checks pass on deployed Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6; resume remaining non-authenticated gaps from the 66-row ledger independently while tenant access is pending.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
