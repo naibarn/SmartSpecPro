@@ -975,7 +975,7 @@ export default function AdminOverviewDashboard() {
                           {f.queue || "unknown"}
                         </span>
                         <span className="text-muted-foreground shrink-0">
-                          {timeAgo(f.createdAt)}
+                          {f.createdAt ? timeAgo(f.createdAt) : "Unknown time"}
                         </span>
                       </div>
                       <p className="text-muted-foreground truncate">
