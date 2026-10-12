@@ -51,7 +51,7 @@
     "next_action": "Wait for PR #873 applicable checks. After it merges, continue durable source-message provenance and tenant-filtered authorized memory reads. Keep team-room persistent memory disabled until those paths and direct non-production acceptance are complete; do not apply production migrations.",
     "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
     "reactivation_predicate": null,
-    "resume_point": "PR #871 merged canonical project binding at Main c9adedbe3d543e4872635cfa17af653871a9256d; Main advanced to bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899 through PR #872. Current source-provenance checkpoint c2709fdeba49371a4a47c6705b9238cb08e8ac5a is on PR #873, whose updated branch head after reconciling latest Main is 7a979437f6702af837d7426b423f8bf6ce7a4e34. It removes legacy numeric room project IDs from memory writes and requires a fresh canonical-member project binding, revalidated before each write. Focused check: five files / 73 tests passed. Persistent team-room memory remains disabled; durable message-level source records, tenant-filtered authorized reads, migrations, and direct acceptance remain open.",
+    "resume_point": "PR #871 merged canonical project binding at Main c9adedbe3d543e4872635cfa17af653871a9256d; Main advanced to bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899 through PR #872. Current source-provenance checkpoint c2709fdeba49371a4a47c6705b9238cb08e8ac5a plus revoked-membership regression f2094867b98528a11787db0c85874ffa787d2c56 is on PR #873. It removes legacy numeric room project IDs from memory writes and requires a fresh canonical-member project binding, revalidated before each write; a revoked-membership test confirms no write occurs. Five focused files / 74 tests passed. Persistent team-room memory remains disabled; durable message-level source records, tenant-filtered authorized reads, migrations, and direct acceptance remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 21,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -172,13 +172,14 @@
       "cd39cbd48007f1d436b20873d1e0bfa5e616a0b4",
       "343a885ec61b3e52ef785b644228c71115ec2262",
       "9262a6298a858d48d30da6ed9cb2782fd5e9ef12",
-      "c2709fdeba49371a4a47c6705b9238cb08e8ac5a"
+      "c2709fdeba49371a4a47c6705b9238cb08e8ac5a",
+      "f2094867b98528a11787db0c85874ffa787d2c56"
     ],
-    "last_focused_check": "PASS after checkpoint c2709fdeb: package scope, five focused Vitest files / 73 tests, one worker; git diff --check passed. No full typecheck/build or runtime migration run.",
-    "local_commit_sha": "c2709fdeba49371a4a47c6705b9238cb08e8ac5a",
+    "last_focused_check": "PASS after checkpoint f2094867b: package scope, five focused Vitest files / 74 tests, one worker; git diff --check passed. No full typecheck/build or runtime migration run.",
+    "local_commit_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
     "mapping": [],
     "owner": "Codex",
-    "pr_head_sha": "7a979437f6702af837d7426b423f8bf6ce7a4e34",
+    "pr_head_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/873",
     "source_paths": [
       "apps/web/drizzle/0397_spec268_team_room_canonical_project_binding.sql",
@@ -387,7 +388,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:08:36.484096Z",
+  "updated_at": "2026-10-12T09:11:36.815227Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
