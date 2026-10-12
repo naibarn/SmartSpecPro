@@ -118,7 +118,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 101,
+  "generation": 102,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -224,10 +224,10 @@
     "canonical_sha": "8a328777a43afebbba0ca07becaa5153613d9799",
     "integrated": true,
     "integrated_at": "2026-10-12T16:01:25Z",
-    "pending_action": "Main is now 8a328777a43afebbba0ca07becaa5153613d9799; deployed UI source remains e57a01616337b638529430662057bed62577c26b. Live public responsive and guest route evidence is recorded in handoff/evidence/spec308-live-public-audit-20261013.md. Authenticated tenant acceptance remains open.",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/897",
-    "source_branch": "codex/spec308-deploy-evidence-20261012",
-    "source_sha": "5787ecfe9074301299f1cb0d196d846d31026f22"
+    "pending_action": "PR #900 contains the exact-source live public UI audit and refreshed SPEC-308 handoff; wait for applicable exact-head required checks, then merge only through the normal PR path. Authenticated tenant acceptance remains OPEN and does not block this handoff checkpoint.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/900",
+    "source_branch": "codex/spec308-live-acceptance-20261013",
+    "source_sha": "fbab3336b79c42ca72579ae61b1d4c2ecf5439e7"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -2177,7 +2177,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T23:18:54.180809Z",
+  "updated_at": "2026-10-12T23:19:29.952176Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
