@@ -13,6 +13,25 @@
 import { z } from "zod";
 import { router, domainAdminProcedure } from "../_core/trpc";
 
+const storageStatsCacheSchema = z.object({
+  prefixes: z.array(
+    z.object({
+      name: z.string(),
+      objectCount: z.number(),
+      sizeGb: z.number(),
+      sizeBytes: z.number(),
+    })
+  ),
+  totalObjects: z.number(),
+  totalSizeGb: z.number(),
+  cachedAt: z.string(),
+});
+
+export function parseStorageStatsCache(value: unknown) {
+  const parsed = storageStatsCacheSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
@@ -394,8 +413,9 @@ export const adminOpsRouter = router({
     const CACHE_TTL = 300; // 5 minutes
     try {
       const { readEphemeralValue } = await import("../services/postgresEphemeralStore");
-      const cached = await readEphemeralValue<Record<string, unknown>>("admin-storage-stats", "r2-prefixes");
-      if (cached) return cached;
+      const cached = await readEphemeralValue<unknown>("admin-storage-stats", "r2-prefixes");
+      const cachedStats = parseStorageStatsCache(cached);
+      if (cachedStats) return cachedStats;
     } catch {
       // Cache miss or shared-store error; query R2 directly.
     }
