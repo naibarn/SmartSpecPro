@@ -422,6 +422,29 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-browser:30801")).then(value => JSON.parse(value ?? "null").style)).toBe("orbit");
 });
 
+test("SPEC-308 mascot settings shortcut is reachable on hover and stays hidden at rest", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page);
+  await page.goto("/chat");
+
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  const gear = page.getByRole("button", { name: "Assistant appearance" });
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+  await expect(gear).toBeHidden();
+  await launcher.locator("[data-mascot-style]").hover();
+  await expect(gear).toBeVisible();
+  await gear.click();
+  await expect(page).toHaveURL(/\/settings\?tab=notifications#assistant-appearance-title$/);
+  await expect(page.getByTestId("assistant-appearance-preferences")).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "Assistant appearance" })).toBeHidden();
+});
+
 test("SPEC-308 Bell always opens Notifications across every mascot style and motion setting", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.addInitScript(() => {

@@ -1084,7 +1084,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     mascotSettingsHideTimerRef.current = window.setTimeout(() => {
       mascotSettingsHideTimerRef.current = null;
       setMascotSettingsHoverVisible(false);
-    }, 250);
+    }, 800);
   };
 
   useLayoutEffect(() => {
@@ -1247,10 +1247,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
       };
   const mascotSettingsButtonStyle: CSSProperties = feedbackPlacement.mode === "custom"
-    ? { position: "fixed", left: `${feedbackPlacement.x + 135}px`, top: `${feedbackPlacement.y + 8}px` }
+    ? { position: "fixed", left: `${feedbackPlacement.x + 135}px`, top: `${feedbackPlacement.y - 44}px` }
     : shouldDockLeftOnMobile
-      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 135}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` }
-      : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` };
+      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 135}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 140px)` }
+      : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 140px)` };
   const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
   const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1327,7 +1327,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         >
           {showMascotLauncher
             ? <>
-              <span className={`pointer-events-auto inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
+              <span
+                className={`pointer-events-auto inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`}
+                aria-hidden="true"
+                onMouseEnter={revealMascotSettings}
+                onMouseLeave={scheduleMascotSettingsHide}
+              >
                 <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-10 w-10 text-sky-500" />}>
                   <AssistantMascot
                     style={mascotPreferences.style}
@@ -1336,7 +1341,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   />
                 </AssistantMascotErrorBoundary>
               </span>
-              <span className="pointer-events-auto inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
+              <span
+                className="pointer-events-auto inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900"
+                onMouseEnter={revealMascotSettings}
+                onMouseLeave={scheduleMascotSettingsHide}
+              >
                 {settingsT("assistantAppearance.launcherLabel")}
               </span>
             </>
