@@ -445,3 +445,4 @@ A section commit is not final SPEC acceptance. Record the commit/Main SHA, remai
 ## Canonical Spec handoff
 
 For Specs in repositories with a configured canonical handoff root, follow `skills/development-lifecycle/spec-handoff-contract.md`. Initialize the canonical manifest and requirement ledger after writing each normative split Spec and before planning. Map project WorkUnits to requirement IDs. Project manifests, interview notes, and section files are supporting evidence, not overall Spec status.
+Keep evidence freshness explicit in the requirement ledger; section completion and integration do not substitute for fresh evidence.

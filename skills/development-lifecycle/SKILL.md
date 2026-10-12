@@ -6,6 +6,8 @@ description: Minimal shared lifecycle for continuous development integration, du
 # Universal Development Lifecycle
 
 The existing WorkUnit/HandOff is the durable record; do not create another job system or requirement registry. `canonical_ref` is supplied by repository policy. Integrated development state does not imply final SPEC acceptance, deployment or production readiness.
+An integration merge never implies
+requirement acceptance or overall completion.
 
 ## Normal development
 
