@@ -54,10 +54,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
+    "next_action": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "Main 6afb92dec9519445ecf37851c1e52d487a1b8297 was published with the global allow flag. Live responsive checks found the launcher geometry/label are correct, but onboarding hint is hidden at 390×844 though it clears Sign In. Follow-up source 0fd5ed1efe967035057143c209006116e7cdecf5 narrows obstacles to the login submit action and tests hint recovery. Open PR, pass exact-head checks, merge, rebuild with flag, and retest. Authenticated tenant acceptance remains open.",
+    "resume_point": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. It narrows static-control collisions to the login form submit action and adds a 390×844 hint-recovery assertion. Wait for exact-head checks, merge normally, rebuild exact Main with global allow flag, and rerun live UI verification at https://smartaihub.app. Authenticated tenant acceptance remains open.",
     "waiting_predicate": "Authenticated tenant acceptance resumes when the existing logged-in dashboard for tenant tenant-ZCSKEM9s is available or the user supplies updated https://smartaihub.app evidence; continue exact-source build/publication and unauthenticated responsive route verification meanwhile."
   },
   "continuation_assessment": {
@@ -69,7 +69,7 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
+    "next_action": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
     "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
     "residual_requirements": [
       "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -117,7 +117,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 95,
+  "generation": 96,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -223,7 +223,7 @@
     "canonical_sha": "6afb92dec9519445ecf37851c1e52d487a1b8297",
     "integrated": true,
     "integrated_at": "2026-10-12T15:10:24Z",
-    "pending_action": "PR #892 merged normally at Main 6afb92dec9519445ecf37851c1e52d487a1b8297. Exact PR head 58768fc188ecd5c5f4a0c0ad4652b5f14f0d84df passed progressive_integration_gate (run 38267780635) and mocked SPEC-308 browser simulation (run 38267780765); build-preview was skipped. Build/publish this exact Main source to the authorized static runtime, verify source/assets, and retest https://smartaihub.app. Keep authenticated tenant acceptance open.",
+    "pending_action": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/892",
     "source_branch": "codex/spec308-hint-collision-20261012",
     "source_sha": "58768fc188ecd5c5f4a0c0ad4652b5f14f0d84df"
@@ -313,7 +313,7 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
+      "next_action": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
       "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
       "residual_requirements": [
         "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -2170,7 +2170,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T15:26:51.875637Z",
+  "updated_at": "2026-10-12T15:27:56.284509Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
@@ -2184,13 +2184,14 @@
       "https://github.com/naibarn/SmartSpecPro/pull/892",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38267780635",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38267780765",
+      "https://github.com/naibarn/SmartSpecPro/pull/893",
       "handoff/evidence/spec308-compact-signin-hint-collision-20261012.md"
     ],
-    "freshness": "PR follow-up source 0fd5ed1efe967035057143c209006116e7cdecf5 narrows static login collision obstacles to the sign-in submit button and adds 390×844 hint recovery coverage. The live corrected build on Main 6afb92dec9519445ecf37851c1e52d487a1b8297 showed the hint remains hidden at 390×844 because the prior obstacle selector included legal links; required PR checks are pending.",
+    "freshness": "PR #893 source a740ddb5471009d0d002ba9b1dd19537961efcfc narrows static login collision obstacles to the submit action and restores hint visibility at 390×844 when it clears Sign In, while retaining hiding at 320×740. Exact-head checks are pending. Main 6afb92dec9519445ecf37851c1e52d487a1b8297 was published with the SPEC-308 global allow flag; live 320/390/768/1024/1440 layout has no horizontal overflow, but 390 hint recovery needs this follow-up.",
     "required_profiles": [
       "quick"
     ],
-    "sha": "0fd5ed1efe967035057143c209006116e7cdecf5",
+    "sha": "a740ddb5471009d0d002ba9b1dd19537961efcfc",
     "status": "PARTIAL",
     "task_regressions": []
   }

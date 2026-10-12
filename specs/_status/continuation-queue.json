@@ -3900,7 +3900,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
+      "next_action": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4959,7 +4959,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Open and validate the normal PR from codex/spec308-login-hint-followup-20261012 at source 0fd5ed1efe967035057143c209006116e7cdecf5. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass. Then rebuild/publish with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true and required Main revision, verify source/assets, and retest at https://smartaihub.app.",
+      "rationale": "PR #893 is open from codex/spec308-login-hint-followup-20261012 at head a740ddb5471009d0d002ba9b1dd19537961efcfc. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate. After required checks pass, merge normally, rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, then retest at https://smartaihub.app.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
