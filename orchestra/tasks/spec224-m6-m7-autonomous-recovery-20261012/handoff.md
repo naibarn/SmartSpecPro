@@ -2,15 +2,21 @@
 
 ## State
 
-`PARTIAL — implementation checkpoint prepared; real M6/M7 acceptance remains blocked by missing external non-production authority.`
+`PARTIAL — Linux packaging fix integrated; real M6/M7 acceptance remains blocked by missing external non-production authority.`
 
-Canonical source observed: `origin/main` at `162846d83b76c56a2fb1f2931327aa4ea6f65d9d`.
+Canonical source: PR #836 merged normally into `origin/main` at `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc` on 2026-10-12 01:00:01 UTC; that SHA is reachable from the fetched canonical ref.
 
 M6 is not PASS. The Factory runtime, stage worker, Runner stage adapter, and worker_jobs/outbox path are present in current source. A real stage still creates a child DevelopmentRun in `PENDING_AUTHORIZATION`; no generated app code, real Runner receipt, package artifact, or browser evidence was created in this recovery.
 
-M7 has synthetic DevelopmentRun/outbox restart and retry evidence at historical integrated SHAs, but no real Runner execution was interrupted or reattached. SPEC-278's Linux session-host launch and recovery code is opt-in and authority-gated. The Linux release archive and installer previously omitted its helper binary, so the supporting checkpoint now packages and installs that helper while leaving the feature disabled.
+M7 has synthetic DevelopmentRun/outbox restart and retry evidence at historical integrated SHAs, but no real Runner execution was interrupted or reattached. SPEC-278's Linux session-host launch and recovery code is opt-in and authority-gated. The Linux release archive and installer previously omitted its helper binary; PR #836 now packages and installs that helper while leaving the feature disabled.
 
 M8 remains deferred.
+
+## Integration and post-integration evidence
+
+- PR #836: `https://github.com/naibarn/SmartSpecPro/pull/836`; source `606501f5f46f70404bacde9a959a75d2ad1c341a`, merge `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc`. The repository integration controller preflight was `READY`; `progressive_integration_gate` passed; merge used the normal protected path with no bypass. `build-preview` was skipped by workflow policy.
+- The required post-integration canonical build for exact SHA `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc` is `RESOURCE_BLOCKED`, exit 137. Resource preflight found user-slice swap headroom below 512 MiB, so the web build never started. Result: `/home/dev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc-3049295e-e03b-49c5-b69a-3a3dcb95f6b8.json`. Do not retry without a fresh resource observation or changed capacity; use CI/dedicated build capacity. This is not a code failure.
+- Workspace verify for integrated SHA `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc` returned `CONVERGENCE_PENDING`: registered `/home/dev/projects/SmartSpecPro` resolves to `/mnt/SmartSpecDev/projects/SmartSpecPro`, remains dirty at `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`, and was not modified or converged.
 
 ## Root cause and classifications
 
@@ -29,14 +35,14 @@ M8 remains deferred.
 - PyYAML parse of `.github/workflows/runner-release.yml` — PASS.
 - `bash -n apps/runner-app/install-linux-runner.sh` — PASS.
 - `git diff --check` — PASS.
-- Added Vitest regression coverage in `runnerReleaseWorkflow.test.ts`; Vitest could not run because `pnpm --filter @smartspec/web exec vitest` reports `Command "vitest" not found` in this clean worktree. No dependency install was attempted.
+- Added Vitest regression coverage in `runnerReleaseWorkflow.test.ts`; the regression could not run before merge because `pnpm --filter @smartspec/web exec vitest` reported `Command "vitest" not found` in the clean task worktree. No dependency install was attempted; track the focused test as pending post-integration verification.
 - `actionlint` and `shellcheck` are unavailable in this environment.
-- No full build/typecheck, Runner live probe, database action, deployment, M6, M7 or browser UAT was run.
+- The exact-SHA central build was attempted and is recorded above as `RESOURCE_BLOCKED`; no full build completed. No typecheck, Runner live probe, database action, deployment, M6, M7 or browser UAT was run.
 
 ## Handoff ownership
 
-This file and `capability-matrix.json` are supporting recovery evidence. The canonical SPEC-224 manifest remains the authority and was not rewritten because the registered SPEC-224 audit worktree/ownership is separate and its current manifest integration SHA (`5bc461753c6fbf968b9874257892631ad8c4b089`) is stale relative to current `origin/main`. After this checkpoint integrates, the SPEC-224 owner must reconcile the canonical manifest and requirement ledger through `tools.spec_handoff` using the new exact SHA. Do not edit another task worktree.
+This file and `capability-matrix.json` are supporting recovery evidence. The canonical SPEC-224 manifest remains the authority and was not rewritten because the registered SPEC-224 audit worktree/ownership is separate and its current manifest integration SHA (`5bc461753c6fbf968b9874257892631ad8c4b089`) is stale relative to current `origin/main`. After this recovery handoff update integrates, the SPEC-224 owner must reconcile the canonical manifest and requirement ledger through `tools.spec_handoff` using exact canonical SHA `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc`. Do not edit another task worktree.
 
 ## Next action
 
-Finish the bounded checks, open a small normal PR for the Linux helper package/installer fix, and wait for required branch-protection checks. After integration, the authorized SPEC-224 owner should update the canonical Handoff and pursue the exact resume predicate in `capability-matrix.json`: owner-authorized disposable Runner registration, fresh capability snapshot and source/workspace attestation, supported disposable PostgreSQL target, DevelopmentRun/job/attempt binding, and scoped approval. Then run M6 and M7 acceptance separately and preserve exact receipts, artifact digests and browser evidence. No production/staging resources or live tenant data are authorized by this checkpoint.
+The Linux helper packaging fix is integrated. Route the canonical build for `5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc` to CI/dedicated capacity or wait for a fresh admitted resource observation; do not repeat the shared-host build attempt unchanged. Preserve the dirty registered user workspace and let its owner resolve the unrelated changes before convergence. The authorized SPEC-224 owner should reconcile the canonical Handoff through the shared Spec writer, then pursue the exact external resume predicate in `capability-matrix.json`: owner-authorized disposable Runner registration, fresh capability snapshot and source/workspace attestation, supported disposable PostgreSQL target, DevelopmentRun/job/attempt binding, and scoped approval. Then run M6 and M7 acceptance separately and preserve exact receipts, artifact digests and browser evidence. No production/staging resources or live tenant data are authorized by this checkpoint.

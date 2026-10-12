@@ -2,7 +2,7 @@
   "schemaVersion": "spec224-mini-app-factory-capability-matrix.v1",
   "observedAt": "2026-10-12T00:50:44.714Z",
   "canonicalRef": "refs/heads/main",
-  "canonicalSha": "162846d83b76c56a2fb1f2931327aa4ea6f65d9d",
+  "canonicalSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
   "supportingEvidenceOnly": true,
   "m8": "DEFERRED",
   "milestones": {
@@ -212,20 +212,29 @@
     {
       "specId": "SPEC-278",
       "capability": "Durable Runner execution session, restart reattachment and receipt recovery",
-      "implementationState": "LINUX_OPT_IN_LAUNCH_AND_REATTACH_CODE_PRESENT; HELPER_NOT_SHIPPED_BEFORE_THIS_CHANGE",
-      "integrationState": "SOURCE_PRESENT; release packaging fix in this checkpoint is pending PR integration",
+      "implementationState": "LINUX_OPT_IN_LAUNCH_REATTACH_AND_PACKAGED_HELPER_INTEGRATED; FEATURE_REMAINS_DISABLED",
+      "integrationState": "INTEGRATED_BY_PR_836_AT_5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
       "tests": [
         {
-          "evidence": "Session-host integration suite exists; packaged Linux install lifecycle test extended in this checkpoint",
-          "sourceSha": "162846d83b76c56a2fb1f2931327aa4ea6f65d9d",
-          "state": "FOCUSED_TESTS_PENDING_CI"
+          "evidence": "Linux installer lifecycle: install helper, rollback both binaries on restart failure, uninstall while preserving data, and support legacy helper-less packages; PASS",
+          "sourceSha": "606501f5f46f70404bacde9a959a75d2ad1c341a",
+          "state": "PASS_FOCUSED"
+        },
+        {
+          "evidence": "Runner release packaging Node assertions and PyYAML parse: PASS; progressive_integration_gate: PASS; build-preview: SKIPPED",
+          "sourceSha": "606501f5f46f70404bacde9a959a75d2ad1c341a",
+          "state": "PASS_SCOPED"
+        },
+        {
+          "evidence": "Vitest runnerReleaseWorkflow.test.ts not run locally because Vitest executable was absent; no package install attempted",
+          "sourceSha": "606501f5f46f70404bacde9a959a75d2ad1c341a",
+          "state": "PENDING_POST_INTEGRATION"
         }
       ],
       "realRunnerAcceptance": "NOT_DEMONSTRATED; feature remains opt-in and authority-gated",
       "handoffOwnership": "SPEC-278 canonical handoff is DISCOVERING; no canonical handoff edit made",
-      "missingRequirement": "Merged release artifact containing helper, explicit approved Runner configuration/grant, and real interruption/reconnect evidence",
+      "missingRequirement": "Explicit approved Runner configuration/grant and real interruption/reconnect evidence",
       "blockerClassification": [
-        "CONFIGURATION_DEFECT",
         "REMOTE_TRUST_NOT_ESTABLISHED",
         "ADMISSION_POLICY_DENIED",
         "INSUFFICIENT_EVIDENCE"
@@ -253,9 +262,19 @@
       ],
       "evidenceFingerprint": {
         "algorithm": "sha256",
-        "value": "e9a272fa08d2ab79755ae6e723190a477814ff34c2b50ca02cb3834aa92acf3e",
-        "facts": "runner=local-runner:0.2.23:ready:0/11;codex=discovered/probe_required;browser=discovered/probe_required;local_codex_login=authenticated;no_nonprod_binding;canonical=162846d83b76c56a2fb1f2931327aa4ea6f65d9d"
+        "value": "a231797019a5021d441dead9af7c3ca81f0dc7d57c242763f2efd3e89d88f207",
+        "facts": "runner=local-runner:0.2.23:ready:0/11;codex=discovered/probe_required;browser=discovered/probe_required;local_codex_login=authenticated;no_nonprod_binding;canonical=e2c3bd57a43fa384c0a08fec05f4bf352a07be44",
+        "observedAt": "2026-10-12T00:50:44.714Z"
       }
+    },
+    {
+      "id": "POST_INTEGRATION_BUILD_RESOURCE_BLOCK",
+      "classification": "RESOURCE_BLOCKED",
+      "owner": "CI/dedicated build runner",
+      "sourceSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+      "reason": "Central canonical build preflight found less than 512 MiB swap headroom; web build did not start and the runner returned exit 137.",
+      "nextAction": "Run the configured build on CI/dedicated capacity or after a fresh resource observation proves adequate headroom.",
+      "prohibitedRetry": "Do not rerun unchanged on the shared host without a fresh resource observation or changed capacity."
     }
   ],
   "currentAcceptance": {
@@ -268,11 +287,58 @@
     "finalVerification": "NOT_RUN"
   },
   "nextExecutableWork": [
-    "Run PR checks and integrate the Linux Session Host package/installer checkpoint through normal branch protection.",
-    "After integration, reconcile the SPEC-224 handoff with the shared Spec writer against the new canonical SHA; do not mutate the other SPEC-224-owned task worktree.",
-    "On owner-authorized non-production infrastructure, bind a fresh Runner snapshot, exact source/workspace, DevelopmentRun and job attempt; satisfy admission and economic authorization before dispatch.",
+    "Queue the configured build for exact SHA 5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc on CI/dedicated capacity or after fresh resource admission; the shared-host attempt is RESOURCE_BLOCKED, not CODE_FAILED.",
+    "After the canonical user workspace owner resolves unrelated dirty changes, verify safe convergence to 5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc; do not overwrite this checkout.",
+    "After owner-authorized non-production Runner registration, bind a fresh capability snapshot, exact source/workspace, DevelopmentRun and job attempt; satisfy admission and economic authorization before dispatch.",
     "Execute M6 with new generated app code, preserve receipts/digests, then run separate isolated application runtime and browser UAT.",
     "Execute M7 with real worker restart, Runner interruption/reconnect, retry, cross-process receipt settlement and duplicate-side-effect assertions; do not substitute synthetic tests.",
     "Keep M8 deferred."
-  ]
+  ],
+  "integration": {
+    "pullRequest": 836,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/836",
+    "sourceSha": "606501f5f46f70404bacde9a959a75d2ad1c341a",
+    "mergeSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+    "mergedAt": "2026-10-12T01:00:01Z",
+    "requiredCheck": "progressive_integration_gate: PASS",
+    "buildPreview": "SKIPPED",
+    "normalProtectedPath": true,
+    "mergeBypass": false
+  },
+  "postIntegrationBuild": {
+    "profile": "package",
+    "sourceSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+    "command": "/home/dev/.codex/skills/canonical-checkout-sync/scripts/build-canonical-main.sh /mnt/SmartSpecDev/worktrees/SmartSpecPro-m6m7-recovery --required-integrated-revision 5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+    "status": "RESOURCE_BLOCKED",
+    "exitCode": 137,
+    "webBuildStarted": false,
+    "resourceObservation": {
+      "hostAvailableKiB": 15547668,
+      "memoryPsiSomeAvg10": 0.49,
+      "userSliceMemoryCurrentBytes": 18692292608,
+      "userSliceReclaimableBytes": 6173571160,
+      "userSliceMemoryEffectiveBytes": 12518721448,
+      "userSliceMemoryHighBytes": 19327352832,
+      "userSliceMemoryMaxBytes": 21474836480,
+      "swapCurrentBytes": 6442450944,
+      "swapMaxBytes": 6442450944,
+      "reason": "user slice has less than 512 MiB swap headroom"
+    },
+    "resultFile": "/home/dev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc-3049295e-e03b-49c5-b69a-3a3dcb95f6b8.json",
+    "retryPolicy": "Do not retry without a fresh resource observation or changed capacity; route to CI/dedicated runner."
+  },
+  "workspaceConvergence": {
+    "registeredPath": "/home/dev/projects/SmartSpecPro",
+    "resolvedPath": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+    "integratedSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+    "workspaceSha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "dirty": true,
+    "verifyStatus": "CONVERGENCE_PENDING",
+    "reasons": [
+      "USER_WORKSPACE_NOT_SYNCED",
+      "USER_WORKSPACE_DIRTY"
+    ],
+    "modified": false,
+    "nextAction": "Preserve this checkout; converge only after its owner resolves the unrelated dirty changes."
+  }
 }
