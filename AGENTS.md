@@ -61,6 +61,14 @@ Use these replacement boundaries for new work:
 
 ## Spec 224 Verification Resource Profiles
 
+- Create mutable task/session worktrees through
+  `scripts/development-lifecycle/workspace_authority.py create`; canonical
+  source worktrees use `canonical_source.py prepare`. Both use shared lifecycle
+  admission, preflight policy-approved roots, record filesystem evidence, retry
+  classified resource failures on authorized fallbacks, and return
+  `RESOURCE_BLOCKED` when none are admissible. Never prune or remove unknown
+  worktrees to recover.
+
 - Select a scoped verification profile: `quick` (small focused checks),
   `package` (one package), `integration` (a bounded cross-service slice), or
   `full` (repository-wide build/typecheck/test gates).

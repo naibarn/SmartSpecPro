@@ -8,11 +8,14 @@ root (or --policy). The developer checkout is never reset, cleaned, or switched.
 from __future__ import annotations
 
 import argparse
+import errno
 import fcntl
 import hashlib
 import json
 import os
+import re
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,7 +49,7 @@ def _inside(path: Path, parent: Path) -> bool:
         return False
 
 
-def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, str]:
+def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
     path = (policy_path or repo / ".development-repository.toml").resolve()
     try:
@@ -57,11 +60,15 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, str]:
             "remote": str(values["remote"]).strip(),
             "canonical_ref": str(values["canonical_ref"]).strip(),
             "source_root": str(values["source_root"]).strip(),
+            "lease_root": str(values.get("lease_root", values["source_root"])).strip(),
             "build_target": str(values.get("build_target", "web-build")).strip(),
+            "source_fallback_roots": [str(item).strip() for item in values.get("source_fallback_roots", [])],
         }
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
         raise LifecycleError(f"REPOSITORY_POLICY_INVALID: {path}: {exc}") from exc
-    if not all(policy.values()):
+    if not isinstance(values.get("source_fallback_roots", []), list):
+        raise LifecycleError("REPOSITORY_POLICY_INVALID: source_fallback_roots must be an array of absolute paths")
+    if not all(policy[key] for key in ("repository_id", "remote", "canonical_ref", "source_root", "lease_root", "build_target")):
         raise LifecycleError(f"REPOSITORY_POLICY_INVALID: empty value in {path}")
     if not policy["canonical_ref"].startswith("refs/heads/"):
         raise LifecycleError("REPOSITORY_POLICY_INVALID: canonical_ref must be a fully qualified branch ref")
@@ -72,7 +79,145 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, str]:
     if _inside(source_root, repo):
         raise LifecycleError("SOURCE_ROOT_INSIDE_DEVELOPER_CHECKOUT")
     policy["source_root"] = str(source_root)
+    lease_root = Path(policy["lease_root"]).expanduser()
+    if not lease_root.is_absolute():
+        raise LifecycleError("REPOSITORY_POLICY_INVALID: lease_root must be absolute")
+    lease_root = lease_root.resolve()
+    if _inside(lease_root, repo):
+        raise LifecycleError("SOURCE_ROOT_INSIDE_DEVELOPER_CHECKOUT")
+    policy["lease_root"] = str(lease_root)
+    fallback_roots = []
+    for configured in policy["source_fallback_roots"]:
+        candidate = Path(configured).expanduser()
+        if not candidate.is_absolute():
+            raise LifecycleError("REPOSITORY_POLICY_INVALID: source_fallback_roots must be absolute")
+        candidate = candidate.resolve()
+        if _inside(candidate, repo):
+            raise LifecycleError("SOURCE_ROOT_INSIDE_DEVELOPER_CHECKOUT")
+        if candidate != source_root and candidate not in fallback_roots:
+            fallback_roots.append(candidate)
+    policy["source_fallback_roots"] = fallback_roots
     return policy
+
+
+MIN_SOURCE_BYTES = 1024 * 1024 * 1024
+MIN_SOURCE_INODES = 10_000
+
+
+def _filesystem_evidence(path: Path) -> dict[str, Any]:
+    probe = path
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    try:
+        stats = os.statvfs(probe)
+        usage = shutil.disk_usage(probe)
+        device = probe.stat().st_dev
+        mount = probe
+        while mount.parent != mount and mount.parent.stat().st_dev == device:
+            mount = mount.parent
+        return {
+            "path": str(path), "mount_path": str(mount), "device": device,
+            "available_bytes": stats.f_bavail * stats.f_frsize,
+            "available_inodes": stats.f_favail,
+            "total_bytes": usage.total,
+            "writable": os.access(probe, os.W_OK | os.X_OK),
+        }
+    except OSError as exc:
+        return {"path": str(path), "error": f"{exc.__class__.__name__}: {exc}", "errno": exc.errno}
+
+
+def _resource_code(detail: str) -> str | None:
+    patterns = (
+        ("ENOSPC", r"\bENOSPC\b|no space left on device|disk full"),
+        ("EDQUOT", r"\bEDQUOT\b|disk quota exceeded|quota exceeded"),
+        ("EACCES", r"\bEACCES\b|permission denied|operation not permitted"),
+        ("EROFS", r"\bEROFS\b|read-only file system"),
+        ("EMFILE", r"\bEMFILE\b|too many open files"),
+    )
+    for code, pattern in patterns:
+        if re.search(pattern, detail, re.IGNORECASE):
+            return code
+    return None
+
+
+def _os_resource_failure(path: Path, exc: OSError) -> LifecycleError:
+    code = errno.errorcode.get(exc.errno, "UNKNOWN")
+    status = "RESOURCE_BLOCKED" if code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS", "EMFILE"} else "WORKSPACE_ADMISSION_FAILED"
+    return LifecycleError(
+        f"{status}: errno={exc.errno} code={code} path={path}; "
+        f"error={exc.__class__.__name__}: {exc}; evidence={json.dumps(_filesystem_evidence(path), sort_keys=True)}"
+    )
+
+
+def _open_lock(path: Path) -> Any:
+    try:
+        return path.open("a+")
+    except OSError as exc:
+        raise _os_resource_failure(path, exc) from exc
+
+
+def _registered_worktrees(repo: Path) -> set[Path]:
+    listing = git(repo, "worktree", "list", "--porcelain")
+    return {
+        Path(line.removeprefix("worktree ")).resolve()
+        for line in listing.splitlines()
+        if line.startswith("worktree ")
+    }
+
+
+def _workspace_roots(policy: dict[str, Any]) -> list[Path]:
+    return [Path(policy["source_root"]), *[Path(item) for item in policy["source_fallback_roots"]]]
+
+
+def _admit_roots(policy: dict[str, Any], repo: Path | None = None) -> tuple[list[tuple[Path, dict[str, Any]]], list[dict[str, Any]]]:
+    admitted: list[tuple[Path, dict[str, Any]]] = []
+    rejected: list[dict[str, Any]] = []
+    for root in _workspace_roots(policy):
+        evidence = _filesystem_evidence(root)
+        if evidence.get("error"):
+            rejected.append({**evidence, "reason": "FILESYSTEM_UNAVAILABLE"})
+        elif not evidence["writable"]:
+            rejected.append({**evidence, "reason": "EACCES"})
+        elif evidence["available_bytes"] < MIN_SOURCE_BYTES:
+            rejected.append({**evidence, "reason": "ENOSPC", "required_bytes": MIN_SOURCE_BYTES})
+        elif evidence["available_inodes"] < MIN_SOURCE_INODES:
+            rejected.append({**evidence, "reason": "INODE_EXHAUSTION", "required_inodes": MIN_SOURCE_INODES})
+        else:
+            admitted.append((root, evidence))
+    if repo is not None:
+        common_dir = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        metadata = _filesystem_evidence(common_dir)
+        if metadata.get("error") or not metadata.get("writable") or metadata.get("available_bytes", 0) < 16 * 1024 * 1024 or metadata.get("available_inodes", 0) < 128:
+            rejected.append({**metadata, "reason": "GIT_METADATA_CAPACITY", "required_bytes": 16 * 1024 * 1024, "required_inodes": 128})
+            admitted = []
+    return admitted, rejected
+
+
+def _rollback_attempt(repo: Path, workspace: Path, reservation: tuple[int, int] | None) -> str:
+    """Remove only the exact directory inode reserved by this attempt before Git ran."""
+    if reservation is None or not workspace.exists():
+        return "NOT_NEEDED"
+    current_stat = workspace.stat()
+    if (current_stat.st_dev, current_stat.st_ino) != reservation:
+        return "NOT_REMOVED_OWNERSHIP_CHANGED"
+    registered = False
+    listing = git(repo, "worktree", "list", "--porcelain")
+    current = None
+    for line in [*listing.splitlines(), ""]:
+        if line.startswith("worktree "):
+            current = Path(line.removeprefix("worktree ")).resolve()
+        elif not line and current is not None:
+            if current == workspace.resolve():
+                registered = True
+            current = None
+    if registered:
+        removed = subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", str(workspace)], text=True, capture_output=True)
+        if removed.returncode:
+            return f"OWNED_WORKTREE_REMOVE_FAILED: {(removed.stderr or removed.stdout).strip()}"
+        return "OWNED_WORKTREE_REMOVED"
+    # This exact path did not exist immediately before this attempt and is not registered.
+    shutil.rmtree(workspace)
+    return "OWNED_PARTIAL_DIRECTORY_REMOVED"
 
 
 def _hash(value: str) -> str:
@@ -212,29 +357,95 @@ def prepare_source(
             raise LifecycleError("REQUIRED_REVISION_NOT_INCLUDED")
         required_revision = required
 
-    root = Path(policy["source_root"]) / _hash(policy["repository_id"])[:20]
-    workspace = root / f"{revision}-{purpose}"
-    lease_dir = Path(policy["source_root"]) / ".development-leases" / _hash(policy["repository_id"])[:20]
-    lease_dir.mkdir(parents=True, exist_ok=True)
+    admitted, rejected = _admit_roots(policy, repo)
+    if not admitted:
+        reason = "RESOURCE_BLOCKED" if rejected and all(item.get("reason") in {"ENOSPC", "INODE_EXHAUSTION", "EACCES", "EROFS", "GIT_METADATA_CAPACITY"} for item in rejected) else "WORKSPACE_ADMISSION_FAILED"
+        raise LifecycleError(f"{reason}: no authorized source filesystem passed preflight; evidence={json.dumps(rejected, sort_keys=True)}")
+    lease_evidence = _filesystem_evidence(Path(policy["lease_root"]))
+    if lease_evidence.get("error") or not lease_evidence.get("writable") or lease_evidence.get("available_inodes", 0) < 1000:
+        raise LifecycleError(f"RESOURCE_BLOCKED: lease registry root is not writable/admissible; evidence={json.dumps(lease_evidence, sort_keys=True)}")
+    lease_dir = Path(policy["lease_root"]) / _hash(policy["repository_id"])[:20]
+    try:
+        lease_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        evidence = _filesystem_evidence(lease_dir)
+        code = "RESOURCE_BLOCKED" if exc.errno in {13, 28, 122} else "WORKSPACE_ADMISSION_FAILED"
+        raise LifecycleError(f"{code}: errno={exc.errno} {exc.__class__.__name__}: {exc}; evidence={json.dumps(evidence, sort_keys=True)}") from exc
     state_path = lease_dir / f"{revision}-{purpose}.json"
     active_path = lease_dir / f"{revision}-{purpose}.active"
-    root.mkdir(parents=True, exist_ok=True)
-
-    with state_path.with_suffix(".lock").open("a+") as state_lock:
+    with _open_lock(state_path.with_suffix(".lock")) as state_lock:
         fcntl.flock(state_lock, fcntl.LOCK_EX)
-        with active_path.open("a+") as active_lock:
+        with _open_lock(active_path) as active_lock:
             try:
                 fcntl.flock(active_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as exc:
                 raise LifecycleError("SOURCE_LEASE_ACTIVE") from exc
 
-            if workspace.exists():
-                head = git(workspace, "rev-parse", "HEAD")
-                dirty = git(workspace, "status", "--porcelain=v1", "--untracked-files=all")
+            workspace: Path | None = None
+            for candidate_root, _evidence in admitted:
+                candidate = candidate_root / _hash(policy["repository_id"])[:20] / f"{revision}-{purpose}"
+                if not candidate.exists():
+                    continue
+                if candidate.resolve() not in _registered_worktrees(repo):
+                    raise LifecycleError(f"WORKSPACE_REGISTRY_STALE: path={candidate}; path is not registered to this repository")
+                try:
+                    head = git(candidate, "rev-parse", "HEAD")
+                    dirty = git(candidate, "status", "--porcelain=v1", "--untracked-files=all")
+                except LifecycleError as exc:
+                    raise LifecycleError(f"WORKSPACE_REGISTRY_STALE: path={candidate}; detail={exc}") from exc
                 if head != revision or dirty:
-                    raise LifecycleError("ISOLATED_SOURCE_WORKSPACE_DIRTY_OR_MISMATCHED")
-            else:
-                git(repo, "worktree", "add", "--detach", str(workspace), revision)
+                    raise LifecycleError(f"ISOLATED_SOURCE_WORKSPACE_DIRTY_OR_MISMATCHED: path={candidate}")
+                workspace = candidate
+                break
+
+            attempts: list[dict[str, Any]] = []
+            if workspace is None:
+                last_code = None
+                for candidate_root, evidence in admitted:
+                    candidate = candidate_root / _hash(policy["repository_id"])[:20] / f"{revision}-{purpose}"
+                    try:
+                        candidate.parent.mkdir(parents=True, exist_ok=True)
+                    except OSError as exc:
+                        attempts.append({"path": str(candidate), "resource_code": errno.errorcode.get(exc.errno), "errno_number": exc.errno, "error": f"{exc.__class__.__name__}: {exc}", "rollback": "NOT_NEEDED", "filesystem": _filesystem_evidence(candidate)})
+                        last_code = errno.errorcode.get(exc.errno)
+                        if last_code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"}:
+                            continue
+                        raise _os_resource_failure(candidate.parent, exc) from exc
+                    if candidate.exists():
+                        continue
+                    try:
+                        candidate.mkdir()
+                    except FileExistsError:
+                        attempts.append({"path": str(candidate), "resource_code": "EEXIST", "error": "destination was claimed concurrently; preserved", "rollback": "NOT_OWNED", "filesystem": evidence})
+                        raise LifecycleError(f"WORKSPACE_DESTINATION_CLAIMED: {candidate}")
+                    except OSError as exc:
+                        attempts.append({"path": str(candidate), "resource_code": errno.errorcode.get(exc.errno), "errno_number": exc.errno, "error": f"{exc.__class__.__name__}: {exc}", "rollback": "NOT_NEEDED", "filesystem": _filesystem_evidence(candidate)})
+                        last_code = errno.errorcode.get(exc.errno)
+                        if last_code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"}:
+                            continue
+                        raise _os_resource_failure(candidate, exc) from exc
+                    reserved_stat = candidate.stat()
+                    reservation = (reserved_stat.st_dev, reserved_stat.st_ino)
+                    try:
+                        git(repo, "worktree", "add", "--detach", str(candidate), revision)
+                    except LifecycleError as exc:
+                        message = str(exc)
+                        code = _resource_code(message)
+                        rollback = _rollback_attempt(repo, candidate, reservation)
+                        errno_number = {"ENOSPC": 28, "EDQUOT": 122, "EACCES": 13, "EROFS": 30, "EMFILE": 24}.get(code)
+                        attempts.append({"path": str(candidate), "resource_code": code, "errno_number": errno_number, "error": message, "rollback": rollback, "filesystem": evidence})
+                        last_code = code
+                        if code not in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"}:
+                            raise LifecycleError(f"WORKTREE_CREATE_FAILED: attempts={json.dumps(attempts, sort_keys=True)}") from exc
+                        continue
+                    workspace = candidate
+                    break
+                if workspace is None:
+                    status = "RESOURCE_BLOCKED" if last_code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"} else "WORKTREE_CREATE_FAILED"
+                    raise LifecycleError(f"{status}: all admitted worktree destinations failed; attempts={json.dumps(attempts, sort_keys=True)}")
+
+            if git(workspace, "rev-parse", "HEAD") != revision or git(workspace, "status", "--porcelain=v1", "--untracked-files=all"):
+                raise LifecycleError(f"ISOLATED_SOURCE_WORKSPACE_DIRTY_OR_MISMATCHED: path={workspace}")
 
             previous: dict[str, Any] = {}
             if state_path.exists():
@@ -254,6 +465,8 @@ def prepare_source(
                 "required_integrated_revision": required_revision,
                 "purpose": purpose,
                 "isolated_workspace": str(workspace),
+                "workspace_filesystem": _filesystem_evidence(workspace),
+                "workspace_recovery_attempts": attempts,
                 "source_verified": True,
                 "created_at": time.time(),
                 "expires_at": time.time() + lease_seconds,
@@ -403,7 +616,11 @@ def build_canonical(
     if not build_target.strip() or len(build_target) > 128:
         raise LifecycleError("BUILD_TARGET_INVALID")
     repository_key = _hash(policy["repository_id"])[:20]
-    lease_dir = Path(policy["source_root"]) / ".development-leases" / repository_key
+    admitted_roots, rejected_roots = _admit_roots(policy, repo)
+    if not admitted_roots:
+        reason = "RESOURCE_BLOCKED" if rejected_roots else "WORKSPACE_ADMISSION_FAILED"
+        raise LifecycleError(f"{reason}: no authorized source filesystem passed preflight; evidence={json.dumps(rejected_roots, sort_keys=True)}")
+    lease_dir = Path(policy["lease_root"]) / repository_key
     lease_dir.mkdir(parents=True, exist_ok=True)
     global_lock_path = lease_dir / "canonical-build.lock"
 
@@ -505,7 +722,8 @@ def build_canonical(
             "isolated_workspace": lease["isolated_workspace"],
             "primary_workspace_sync": primary_workspace_sync,
         }
-        result_dir = Path(policy["source_root"]) / ".development-build-results" / repository_key
+        result_root = Path(str(lease["isolated_workspace"])).parents[1]
+        result_dir = result_root / ".development-build-results" / repository_key
         result_dir.mkdir(parents=True, exist_ok=True)
         result_path = result_dir / f"{lease['source_revision']}-{uuid.uuid4()}.json"
         result["result_file"] = str(result_path)
@@ -592,7 +810,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.action == "policy":
             repo = Path(git(args.repository, "rev-parse", "--show-toplevel")).resolve()
-            print(json.dumps({"repository_root": str(repo), **load_policy(repo, args.policy)}, sort_keys=True))
+            policy = load_policy(repo, args.policy)
+            policy["source_fallback_roots"] = [str(item) for item in policy["source_fallback_roots"]]
+            print(json.dumps({"repository_root": str(repo), **policy}, sort_keys=True))
             return 0
         if args.action == "preflight":
             result = inspect_workspace_baseline(

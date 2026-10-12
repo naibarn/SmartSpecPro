@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import shutil
 import subprocess
@@ -6,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("canonical_source.py")
@@ -27,6 +29,8 @@ class CanonicalSourceTests(unittest.TestCase):
         self.seed = self.root / "seed"
         self.shared = self.root / "shared"
         self.source_root = self.root / "isolated-sources"
+        self.fallback_root = self.root / "fallback-sources"
+        self.lease_root = self.root / "leases"
         command("git", "init", "--bare", "--initial-branch=trunk", str(self.remote))
         command("git", "clone", str(self.remote), str(self.seed))
         command("git", "-C", str(self.seed), "config", "user.email", "test@example.invalid")
@@ -55,12 +59,15 @@ class CanonicalSourceTests(unittest.TestCase):
         build_target: str | None = None,
     ) -> None:
         build_target_line = f'build_target = "{build_target}"\n' if build_target else ""
+        fallback_line = f'source_fallback_roots = ["{self.fallback_root}"]\n'
         self.policy.write_text(
             "[repository]\n"
             f'repository_id = "{repository_id}"\n'
             f'remote = "{remote}"\n'
             f'canonical_ref = "{canonical_ref}"\n'
             f'source_root = "{self.source_root}"\n'
+            f"{fallback_line}"
+            f'lease_root = "{self.lease_root}"\n'
             f"{build_target_line}",
             encoding="utf-8",
         )
@@ -483,6 +490,99 @@ class CanonicalSourceTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 20)
         self.assertIn("SOURCE_ROOT_INSIDE_DEVELOPER_CHECKOUT", result.stderr)
+
+    def test_worktree_resource_failures_retry_on_authorized_fallback_with_exact_errno(self) -> None:
+        import canonical_source
+
+        original_git = canonical_source.git
+        for message, code in (("No space left on device", "ENOSPC"), ("Disk quota exceeded", "EDQUOT"), ("Permission denied", "EACCES")):
+            with self.subTest(errno=code):
+                calls = {"failed": False}
+
+                def failing_first_destination(repo: Path, *args: str, check: bool = True) -> str:
+                    if args[:2] == ("worktree", "add") and any(str(self.source_root) in arg for arg in args) and not calls["failed"]:
+                        calls["failed"] = True
+                        raise canonical_source.LifecycleError(f"GIT_COMMAND_FAILED: git worktree add: {message}")
+                    return original_git(repo, *args, check=check)
+
+                with mock.patch.object(canonical_source, "git", side_effect=failing_first_destination):
+                    purpose = {"ENOSPC": "build", "EDQUOT": "test", "EACCES": "package"}[code]
+                    lease = canonical_source.prepare_source(self.shared, purpose=purpose, source_revision=self.revision, policy_path=self.policy)
+                self.assertEqual(Path(str(lease["isolated_workspace"])).parents[1], self.fallback_root)
+                self.assertEqual(lease["workspace_recovery_attempts"][0]["resource_code"], code)
+                self.assertEqual(lease["workspace_recovery_attempts"][0]["errno_number"], {"ENOSPC": 28, "EDQUOT": 122, "EACCES": 13}[code])
+                self.assertFalse(Path(lease["workspace_recovery_attempts"][0]["path"]).exists())
+
+    def test_partial_worktree_creation_is_rolled_back_before_fallback_retry(self) -> None:
+        import canonical_source
+
+        original_git = canonical_source.git
+        calls = {"failed": False}
+
+        def create_then_fail(repo: Path, *args: str, check: bool = True) -> str:
+            if args[:2] == ("worktree", "add") and any(str(self.source_root) in arg for arg in args) and not calls["failed"]:
+                calls["failed"] = True
+                original_git(repo, *args, check=check)
+                raise canonical_source.LifecycleError("GIT_COMMAND_FAILED: No space left on device")
+            return original_git(repo, *args, check=check)
+
+        with mock.patch.object(canonical_source, "git", side_effect=create_then_fail):
+            lease = canonical_source.prepare_source(self.shared, purpose="build", source_revision=self.revision, policy_path=self.policy)
+        failed_path = Path(lease["workspace_recovery_attempts"][0]["path"])
+        self.assertFalse(failed_path.exists())
+        self.assertEqual(command("git", "-C", str(self.shared), "worktree", "list", "--porcelain").count(str(failed_path)), 0)
+        self.assertEqual(command("git", "-C", str(lease["isolated_workspace"]), "rev-parse", "HEAD"), self.revision)
+        with tempfile.TemporaryFile(mode="w+") as output:
+            exit_code = canonical_source.run_with_lease(
+                Path(str(lease["lease_file"])),
+                str(lease["lease_id"]),
+                int(lease["fencing_generation"]),
+                [sys.executable, "-c", "import subprocess; print(subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip())"],
+                stdout=output,
+            )
+            output.seek(0)
+            resumed_sha = output.read().strip()
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(resumed_sha, self.revision)
+
+    def test_inode_exhaustion_preflight_selects_fallback_without_git_retry(self) -> None:
+        import canonical_source
+
+        original_evidence = canonical_source._filesystem_evidence
+
+        def evidence(path: Path) -> dict[str, object]:
+            result = original_evidence(path)
+            if path == self.source_root:
+                result["available_inodes"] = 0
+            return result
+
+        with mock.patch.object(canonical_source, "_filesystem_evidence", side_effect=evidence):
+            lease = canonical_source.prepare_source(self.shared, purpose="build", source_revision=self.revision, policy_path=self.policy)
+        self.assertTrue(str(lease["isolated_workspace"]).startswith(str(self.fallback_root)))
+        self.assertEqual(lease["workspace_recovery_attempts"], [])
+
+    def test_no_admissible_filesystem_returns_resource_blocked_evidence(self) -> None:
+        import canonical_source
+
+        def exhausted(path: Path) -> dict[str, object]:
+            return {"path": str(path), "mount_path": str(path), "available_bytes": 0, "available_inodes": 0, "writable": True}
+
+        with mock.patch.object(canonical_source, "_filesystem_evidence", side_effect=exhausted):
+            with self.assertRaisesRegex(canonical_source.LifecycleError, "RESOURCE_BLOCKED.*evidence="):
+                canonical_source.prepare_source(self.shared, purpose="verify", source_revision=self.revision, policy_path=self.policy)
+
+    def test_stale_unregistered_workspace_path_is_preserved(self) -> None:
+        import canonical_source
+
+        stale = self.source_root
+        namespace = hashlib.sha256(b"fixture-repository").hexdigest()[:20]
+        stale_path = stale / namespace / f"{self.revision}-build"
+        stale_path.mkdir(parents=True)
+        marker = stale_path / "unknown-owner.txt"
+        marker.write_text("preserve", encoding="utf-8")
+        with self.assertRaisesRegex(canonical_source.LifecycleError, "WORKSPACE_REGISTRY_STALE"):
+            canonical_source.prepare_source(self.shared, purpose="build", source_revision=self.revision, policy_path=self.policy)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "preserve")
 
 
 if __name__ == "__main__":

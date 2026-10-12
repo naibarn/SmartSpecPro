@@ -38,6 +38,32 @@ and a marker-checked explicit-path fallback on older runners. It rejects
 pre-staged or newly staged paths outside operation ownership. This index guard
 does not establish semantic correctness.
 
+Canonical source workspace admission and recovery use the existing
+`scripts/development-lifecycle/canonical_source.py` lease/worktree manager.
+Before creating a worktree it checks writable bytes and inodes on the configured
+`source_root` and each policy-authorized `source_fallback_roots` filesystem.
+The workspace admission floor is 1 GiB and 10,000 free inodes; the Git common
+metadata filesystem must have 16 MiB and 128 free inodes. A filesystem that
+does not pass is skipped; if none pass, preparation returns `RESOURCE_BLOCKED`
+with per-path capacity and permission evidence. Git create failures retain the
+exact stderr and are classified (`ENOSPC`, `EDQUOT`, `EACCES`, etc.). Only these
+resource failures retry the next admitted root. Recovery may remove only the
+exact destination that was absent before the locked attempt and only after
+checking whether that exact path is registered with Git. It never prunes the
+registry, deletes stale/unknown paths, or uses lease expiry as deletion proof.
+Fallback preserves the requested canonical SHA and the developer checkout.
+Configure fallback roots explicitly in `.development-repository.toml`; do not
+infer an alternate filesystem from free space alone. Configure a stable,
+policy-approved `lease_root` shared by every session so concurrent ownership
+fences do not split when available workspace roots change.
+
+Mutable task/session worktrees are created by the existing
+`workspace_authority.py create` action. It consumes the same canonical source
+admission and rollback helpers, verifies the base SHA against configured
+canonical history, retries on approved fallback roots, then registers role,
+task, and session ownership in the existing workspace registry. Session
+workflows must use this action instead of raw `git worktree add`.
+
 Canonical history and the directory open in an editor/SSH session are separate
 facts. `scripts/development-lifecycle/workspace_authority.py` is the shared
 resolver for project/repository identity, explicit workspace roles, owners,
