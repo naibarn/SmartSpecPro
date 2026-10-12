@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: PR #894 is open from codex/spec308-login-hint-current-main-20261012. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate; repair any failing check and merge only when required checks pass. Then rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, and retest at https://smartaihub.app.
-- Manifest generation: 95
+- Next action: Authenticated tenant acceptance remains open for tenant-ZCSKEM9s at https://smartaihub.app: verify Bell/unread state and reminder CTA, five appearance styles and persistence, authenticated Settings, and Chat/task controls. Public/guest responsive checks pass on deployed Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6; resume remaining non-authenticated gaps from the 66-row ledger independently while tenant access is pending.
+- Manifest generation: 96
 
 ## Source-declared status and relationship claims
 

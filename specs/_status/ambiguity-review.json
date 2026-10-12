@@ -116413,7 +116413,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "6afb92dec9519445ecf37851c1e52d487a1b8297",
+      "canonical_sha": "5895ac817ebb3f7b542f83d61255a49addbf9ef6",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -116523,11 +116523,11 @@
       "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #894 is open from current Main with code source 66a0c8e02963427de3b98489f9a4646c606f5fce. It limits login-page static obstacles to the submit action and adds both compact collision and 390×844 recovery assertions. Exact-head required checks are pending. Main 6afb92dec9519445ecf37851c1e52d487a1b8297 is deployed with global allow enabled; live width geometry is correct, while hint recovery at 390×844 awaits this fix.",
+      "evidence_freshness": "PR #894 exact head 560e57109338161bc5d52cc77dcaca4a30324eba passed progressive integration gate and mocked SPEC-308 browser simulation, then merged at Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6. Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6 is published to https://smartaihub.app with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true; build confirmed source revision, index hash, and local/live JS/CSS hashes. Live Playwright verified 320/390/768/1024/1440 layout, the 320px Sign In collision guard, 390×844 hint recovery, reminder demo, guest Chat sign-in gate, and Settings redirect. No page errors, failed requests, or horizontal overflow. Authenticated Bell/unread, notification CTA, appearance persistence, Settings, and signed-in Chat acceptance remain open.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "PR #894 is open from codex/spec308-login-hint-current-main-20261012. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate; repair any failing check and merge only when required checks pass. Then rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, and retest at https://smartaihub.app.",
+      "next_action": "Authenticated tenant acceptance remains open for tenant-ZCSKEM9s at https://smartaihub.app: verify Bell/unread state and reminder CTA, five appearance styles and persistence, authenticated Settings, and Chat/task controls. Public/guest responsive checks pass on deployed Main 5895ac817ebb3f7b542f83d61255a49addbf9ef6; resume remaining non-authenticated gaps from the 66-row ledger independently while tenant access is pending.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",
