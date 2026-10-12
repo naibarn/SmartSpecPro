@@ -500,6 +500,24 @@
         "fallback_authorized": false
       },
       "expected": "ROOT_CAUSE_AND_REPLAN"
+    },
+    {
+      "id": "AC-51",
+      "event": "resume_after_checkpoint",
+      "facts": {
+        "canonical_sha": "main-old",
+        "reconciled_canonical_sha": "main-new",
+        "evidence_fresh": false,
+        "workunits": [{"id": "WU-independent", "status": "READY", "prerequisites": []}],
+        "completed_workunits": [{"id": "WU-done", "status": "COMPLETE", "completion_evidence": ["done.log"], "evidence_fresh": true, "canonical_sha": "main-old"}]
+      },
+      "expected": "RESUME_NEXT_READY"
+    },
+    {
+      "id": "AC-52",
+      "event": "pr_checks_pending",
+      "facts": {"independent_work": true},
+      "expected": "TRACK_PR_AND_CONTINUE"
     }
   ]
 }
