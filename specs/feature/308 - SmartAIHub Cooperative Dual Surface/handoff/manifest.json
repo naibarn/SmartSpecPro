@@ -50,7 +50,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
+    "expected_canonical_sha": "591214514c8f8278a4876f723ece3114876f5dcc",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
@@ -88,15 +88,16 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:14b4a8246713136acaeafee177e9cdda1ef00c1302d5332471cf5ab26cd19997",
+    "artifact_digest": "sha256:aeef6e7593b9989d0df8f43a50e398b7fc4a8cb58a8f2da7ef05c2d9e13a3dfa",
     "environment": "https://smartaihub.app (user-authorized production-mode service; static assets only)",
     "evidence": [
       "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-canonical-build-757a575-20261012.md",
       "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-deployment-smartaihub-app-20261012.md",
-      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mascot-scale-deployment-20261012.md"
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mascot-scale-deployment-20261012.md",
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mascot-motion-deployment-20261012.md"
     ],
     "required": false,
-    "source_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
+    "source_sha": "591214514c8f8278a4876f723ece3114876f5dcc",
     "status": "DEPLOYED"
   },
   "disposition": {
@@ -115,7 +116,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 81,
+  "generation": 82,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -217,9 +218,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
+    "canonical_sha": "591214514c8f8278a4876f723ece3114876f5dcc",
     "integrated": true,
-    "integrated_at": "2026-10-12T12:21:48Z"
+    "integrated_at": "2026-10-12T12:46:59Z"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -2163,7 +2164,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T12:27:09.988291Z",
+  "updated_at": "2026-10-12T12:51:52.937757Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
