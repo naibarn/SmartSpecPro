@@ -163,6 +163,7 @@ export async function captureUserMemoryFromTeamMessage(input: {
   userId: number;
   roomId: string;
   teamId: string;
+  messageId: string;
   runId?: string | null;
   content: string;
 }): Promise<number> {
@@ -194,6 +195,15 @@ export async function captureUserMemoryFromTeamMessage(input: {
         "team_room",
         source.binding.projectId,
         null,
+        {
+          tenantId: input.tenantId,
+          roomId: input.roomId,
+          teamId: input.teamId,
+          runId: input.runId ?? null,
+          sourceMessageId: input.messageId,
+          actorUserId: input.userId,
+          canonicalProjectId: source.binding.projectId,
+        },
       );
       stored += 1;
     } catch (error) {

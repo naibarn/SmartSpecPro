@@ -3321,7 +3321,10 @@ export const entityMemories = pgTable(
       .defaultNow()
       .notNull(),
   },
-  t => [index("entity_memories_user_persona_idx").on(t.userId, t.personaId)]
+  t => [
+    index("entity_memories_user_persona_idx").on(t.userId, t.personaId),
+    uniqueIndex("entity_memories_id_user_project_unique").on(t.id, t.userId, t.projectId),
+  ]
 );
 
 export type EntityMemory = typeof entityMemories.$inferSelect;
@@ -20185,11 +20188,76 @@ export const teamRoomMessages = pgTable(
   t => [
     index("team_room_messages_room_created_idx").on(t.roomId, t.createdAt),
     index("team_room_messages_run_created_idx").on(t.runId, t.createdAt),
+    uniqueIndex("team_room_messages_id_room_unique").on(t.id, t.roomId),
   ]
 );
 
 export type TeamRoomMessage = typeof teamRoomMessages.$inferSelect;
 export type InsertTeamRoomMessage = typeof teamRoomMessages.$inferInsert;
+
+/** Durable source binding for user entity facts learned from an authorized team-room message. */
+export const teamRoomEntityMemorySources = pgTable(
+  "team_room_entity_memory_sources",
+  {
+    id: serial("id").primaryKey(),
+    entityMemoryId: integer("entityMemoryId").notNull(),
+    entityMemoryOwnerUserId: integer("entityMemoryOwnerUserId").notNull(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    roomId: varchar("roomId", { length: 36 })
+      .notNull()
+      .references(() => teamRooms.id, { onDelete: "cascade" }),
+    teamId: varchar("teamId", { length: 36 })
+      .notNull()
+      .references(() => assistantTeams.id, { onDelete: "cascade" }),
+    runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, {
+      onDelete: "set null",
+    }),
+    sourceMessageId: varchar("sourceMessageId", { length: 36 })
+      .notNull()
+      .references(() => teamRoomMessages.id, { onDelete: "cascade" }),
+    actorUserId: integer("actorUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    canonicalProjectId: varchar("canonicalProjectId", { length: 36 }).notNull(),
+    authorityVersion: varchar("authorityVersion", { length: 80 })
+      .notNull()
+      .default("team-room-provider-context.v1"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    foreignKey({
+      name: "team_room_entity_memory_sources_memory_fk",
+      columns: [t.entityMemoryId, t.entityMemoryOwnerUserId, t.canonicalProjectId],
+      foreignColumns: [entityMemories.id, entityMemories.userId, entityMemories.projectId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "team_room_entity_memory_sources_project_fk",
+      columns: [t.tenantId, t.canonicalProjectId],
+      foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "team_room_entity_memory_sources_message_room_fk",
+      columns: [t.sourceMessageId, t.roomId],
+      foreignColumns: [teamRoomMessages.id, teamRoomMessages.roomId],
+    }).onDelete("cascade"),
+    uniqueIndex("team_room_entity_memory_sources_message_unique").on(
+      t.entityMemoryId,
+      t.sourceMessageId,
+    ),
+    index("team_room_entity_memory_sources_tenant_project_idx").on(
+      t.tenantId,
+      t.canonicalProjectId,
+      t.actorUserId,
+    ),
+  ],
+);
+
+export type TeamRoomEntityMemorySource = typeof teamRoomEntityMemorySources.$inferSelect;
+export type InsertTeamRoomEntityMemorySource = typeof teamRoomEntityMemorySources.$inferInsert;
 
 /**
  * team_runs — one orchestrated work session inside a room.

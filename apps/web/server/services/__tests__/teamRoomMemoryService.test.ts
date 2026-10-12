@@ -87,6 +87,7 @@ describe("teamRoomMemoryService", () => {
         userId: 9,
         roomId: "room-1",
         teamId: "team-1",
+        messageId: "message-1",
         content: "Ada likes plans",
       })
     ).resolves.toBe(0);
@@ -118,6 +119,7 @@ describe("teamRoomMemoryService", () => {
       userId: 9,
       roomId: "room-1",
       teamId: "team-1",
+      messageId: "message-1",
       content: "Ada likes plans",
     })).resolves.toBe(1);
 
@@ -139,6 +141,15 @@ describe("teamRoomMemoryService", () => {
       "team_room",
       "canonical-project-1",
       null,
+      {
+        tenantId: "tenant-1",
+        roomId: "room-1",
+        teamId: "team-1",
+        runId: null,
+        sourceMessageId: "message-1",
+        actorUserId: 9,
+        canonicalProjectId: "canonical-project-1",
+      },
     );
   });
 
@@ -161,6 +172,7 @@ describe("teamRoomMemoryService", () => {
       userId: 9,
       roomId: "room-1",
       teamId: "team-1",
+      messageId: "message-1",
       content: "Ada likes plans",
     })).resolves.toBe(0);
 
@@ -191,6 +203,7 @@ describe("teamRoomMemoryService", () => {
       userId: 9,
       roomId: "room-1",
       teamId: "team-1",
+      messageId: "message-1",
       content: "Ada likes plans",
     })).resolves.toBe(0);
 

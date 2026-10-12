@@ -352,7 +352,8 @@ describe("composePrompt -- entity memory injection", () => {
       42,
       undefined,
       null,
-      "persona-1"
+      "persona-1",
+      "tenant-1"
     );
     const prompt = result.messages.map(message => message.content).join("\n");
     expect(prompt).toContain("global-memory-safe");
@@ -611,6 +612,7 @@ describe("composePrompt -- workspace memory parity", () => {
       undefined,
       "project-canonical",
       "persona-1",
+      "tenant-1",
     );
     expect(result.messages.map(message => message.content).join("\n")).toContain(
       "authorized-project-memory",
@@ -715,6 +717,7 @@ describe("composePrompt -- workspace memory parity", () => {
       undefined,
       null,
       "persona-1",
+      "tenant-1",
     );
   });
 
@@ -1113,6 +1116,7 @@ describe("composePrompt -- workspace memory parity", () => {
       undefined,
       null,
       "persona-1",
+      "tenant-1",
     );
     expect(prompt).not.toContain("legacy-project-memory-secret");
     expect(prompt).not.toContain("legacy-project-rule-secret");
