@@ -33,7 +33,7 @@ describe("AssistantMascot", () => {
     expect(new Set(signatures).size).toBe(5);
   });
 
-  it.each([24, 32, 40] as const)(
+  it.each([24, 32, 40, 64, 72, 80] as const)(
     "supports a %i CSS pixel presentation size",
     size => {
       const { container } = render(
