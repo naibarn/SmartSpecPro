@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.
-- Manifest generation: 75
+- Next action: Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.
+- Manifest generation: 77
 
 ## Source-declared status and relationship claims
 
