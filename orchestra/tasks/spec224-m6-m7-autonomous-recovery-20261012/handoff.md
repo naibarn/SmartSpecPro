@@ -1,5 +1,29 @@
 # SPEC-224 M6/M7 Recovery Checkpoint — 2026-10-12
 
+## Bootstrap continuation correction — 2026-10-12
+
+The earlier note below that the Linux Runner service was inactive queried the
+system systemd scope. The actual unit is a systemd **user** service and was
+running; its journal showed repeated `RUNNER_CONNECT_REQUEST_REJECTED_409`
+refresh failures against the expired production-bound connection. It is now
+stopped and disabled to prevent another production request. The installed
+Runner remains `0.2.23`; `smartaihub-session-host` is absent. The only discovered
+local control-plane container is configured `NODE_ENV=production` and shares
+the persistent `smartspec` database, so it was not used for Runner enrollment,
+grant lookup, or dispatch. Detailed current evidence and the one initial
+read-only localhost health probe are recorded in
+[`runner-bootstrap-evidence.md`](runner-bootstrap-evidence.md).
+
+PR #848 repaired the local status defect that reported `state=ready` with zero
+trusted-ready tools. It merged normally at
+`8eefd800eb8a13389dd75bc4bc61547a1262aef4`; `progressive_integration_gate`
+passed and post-integration CI was pending at the evidence observation time.
+This status fix does not create capability evidence or Runner admission.
+M6/M7 remain blocked until an authorized isolated non-production control plane,
+fresh Runner enrollment/session, exact source/workspace-bound DevelopmentRun,
+canonical `protected_dispatch` grant, and required approval/budget scope are
+available. Do not restart or re-enable the production-bound user service.
+
 ## State
 
 `PARTIAL — Linux packaging fix integrated; real M6/M7 acceptance remains blocked by missing external non-production authority.`
