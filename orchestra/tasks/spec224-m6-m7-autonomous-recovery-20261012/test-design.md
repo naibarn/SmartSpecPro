@@ -1,0 +1,17 @@
+# Test Design — SPEC-278 Linux Session Host Packaging
+
+| Requirement | Observable behavior | Test level / location | RED evidence | GREEN evidence | Residual boundary |
+|---|---|---|---|---|---|
+| Linux Runner release contains the separate session-host executable and identifies it in release metadata/checksums. | Linux archive and checksum set contain the helper; the Unix macOS path keeps its helper artifact field empty. | Contract test: `apps/web/server/services/__tests__/runnerReleaseWorkflow.test.ts`; command `pnpm --filter @smartspec/web exec vitest run server/services/__tests__/runnerReleaseWorkflow.test.ts`. | Baseline assertions against `git show origin/main` confirmed no `smartaihub-session-host` packaging path or `sessionHostArtifact` manifest field. | Direct Node assertions over the changed workflow passed; Vitest was unavailable because the clean worktree has no `vitest` executable. CI remains required. | Static assertion does not execute the release workflow or prove uploaded artifact contents/signature. CI artifact inspection remains pending. |
+| Linux install, upgrade rollback, uninstall, and old package behavior preserve Runner lifecycle safety while installing an optional helper. | Helper is installed next to Runner when present; failed service restart restores both prior binaries; uninstall removes installed binaries but preserves user data; old helper-less bundles still install. | Isolated installer integration script: `apps/runner-app/tests/test-linux-install.sh`. | On base source, Linux installer had no helper install/rollback path. | `TMPDIR=/mnt/SmartSpecDev/tmp bash apps/runner-app/tests/test-linux-install.sh` — PASS using fake `HOME`, `uname`, and `systemctl`. | Does not run a real systemd service or exercise OS package signing. |
+| Packaging does not activate execution continuity or bypass authority. | Installer does not set the opt-in flag or trust/grant/hash config; feature remains disabled unless operator configures the approved path. | Manual/static review of `install-linux-runner.sh`, `systemd/smartaihub-runner.service`, and `external_agent.rs`. | Baseline inspection confirmed the feature is separately gated in code; no service env was present. | Installer/source review confirms no flag, grant, trust key, or SHA is provisioned; release YAML passed PyYAML parsing. | Does not prove real Runner admission or signed grant validation in a live environment. |
+| Real M6/M7 acceptance remains a separate gate. | Real stage code, receipts, process restart/reconnect, idempotency, app runtime and browser evidence exist for the same run/source. | Manual runtime proof in an owner-authorized disposable Runner + PostgreSQL target. | Not run: no trusted non-production Runner/session/source/workspace binding or disposable database was available. | No GREEN claim. Runner status is read-only discovery with zero ready tools. | Genuine external authority remains the required reactivation predicate; synthetic handler tests cannot close it. |
+
+## Validation commands
+
+- `TMPDIR=/mnt/SmartSpecDev/tmp bash apps/runner-app/tests/test-linux-install.sh` — PASS.
+- `node -e '<focused runner-release workflow contract assertions>'` — PASS.
+- PyYAML `safe_load` of `.github/workflows/runner-release.yml` — PASS.
+- `bash -n apps/runner-app/install-linux-runner.sh` — PASS.
+- `git diff --check` — PASS.
+- Vitest command above — NOT RUN successfully; `pnpm` reported `Command "vitest" not found`. No dependencies were installed.

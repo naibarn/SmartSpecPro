@@ -97,16 +97,16 @@ bounded status/cancellation. Shared-container assignments create a fresh
 
 ## Spec 278 Session Host implementation status
 
-`smartaihub-session-host` is currently a Linux-only implementation target for
-the durable-session work. Build it separately with
-`cargo build --manifest-path apps/runner-app/Cargo.toml --bin
-smartaihub-session-host`. It owns a PTY child behind a permission-restricted
-Unix socket, can be reattached through a protected local descriptor, and writes
-a local terminal receipt before exiting. It is not yet launched or recovered by
-the canonical Runner Worker flow, is not included in the multi-platform release
-artifacts, and does not provide a supported product continuity claim. Windows
-ConPTY/Job Objects, macOS lifecycle support, server-side receipt reconciliation,
-and durable scrollback remain open.
+`smartaihub-session-host` is a Linux-only, opt-in execution path. The Linux
+release archive includes the helper and the installer places it beside the
+Runner; Windows and macOS release artifacts do not include it. The Runner's
+external-agent launch and interrupted-command recovery paths use the helper
+only when `SMARTAIHUB_SPEC278_SESSION_HOST=true`, and still require a valid
+execution session, signed authority grant, configured trust root, and a pinned
+helper SHA-256 (`SAH_RUNNER_SESSION_HOST_SHA256`). Installation does not set
+these values or enable the feature. Its presence in the archive does not prove
+Runner authorization, recovery acceptance, or product continuity. Windows
+ConPTY/Job Objects and macOS lifecycle support remain unavailable.
 
 The GitHub workflow at `.github/workflows/runner-release.yml` is deliberately
 manual (`workflow_dispatch` only). It produces native artifacts for Windows

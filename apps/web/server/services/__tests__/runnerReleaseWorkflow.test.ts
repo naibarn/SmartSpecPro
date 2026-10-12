@@ -20,4 +20,13 @@ describe("runner release workflow contract", () => {
     expect(workflow).toContain("ConvertTo-Json -Compress");
     expect(workflow).not.toContain('"{\\"artifact\\"');
   });
+
+  it("packages the opt-in Linux session host beside the Runner", () => {
+    const workflow = fs.readFileSync(workflowPath, "utf8");
+
+    expect(workflow).toContain('release/smartaihub-session-host" "$package_dir/smartaihub-session-host"');
+    expect(workflow).toContain('"smartaihub-runner smartaihub-session-host install-linux-runner.sh smartaihub-runner.service"');
+    expect(workflow).toContain('session_host_artifact=""');
+    expect(workflow).toContain('"sessionHostArtifact":"%s"');
+  });
 });

@@ -131,20 +131,26 @@ jobs:
         run: |
           mkdir -p dist
           cp "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}"
+          session_host_artifact=""
           if [ "${{ matrix.platform }}" = linux ]; then
             package_dir="dist/linux-package"
+            session_host_artifact="smartaihub-runner-session-host-${{ matrix.name }}-${RUNNER_VERSION}"
             mkdir -p "$package_dir"
             cp "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "$package_dir/smartaihub-runner"
+            cp "apps/runner-app/target/${{ matrix.target }}/release/smartaihub-session-host" "$package_dir/smartaihub-session-host"
+            cp "$package_dir/smartaihub-session-host" "dist/${session_host_artifact}"
             cp apps/runner-app/install-linux-runner.sh "$package_dir/install-linux-runner.sh"
             cp apps/runner-app/systemd/smartaihub-runner.service "$package_dir/smartaihub-runner.service"
-            chmod 755 "$package_dir/smartaihub-runner" "$package_dir/install-linux-runner.sh"
-            tar -C "$package_dir" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" smartaihub-runner install-linux-runner.sh smartaihub-runner.service
+            chmod 755 "$package_dir/smartaihub-runner" "$package_dir/smartaihub-session-host" "$package_dir/install-linux-runner.sh"
+            tar -C "$package_dir" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" smartaihub-runner smartaihub-session-host install-linux-runner.sh smartaihub-runner.service
             rm -rf "$package_dir"
           else
             tar -C "apps/runner-app/target/${{ matrix.target }}/release" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" "${{ matrix.binary }}"
           fi
-          printf '{"artifact":"smartaihub-runner-%s-%s","target":"%s","profile":"%s","sourceRef":"%s","sourceCommit":"%s","version":"%s","contractVersion":"sah-runner-v1"}\n' "${{ matrix.name }}" "$RUNNER_VERSION" "${{ matrix.target }}" "$RUNNER_PROFILE" "$RUNNER_REF" "${{ steps.source.outputs.commit }}" "$RUNNER_VERSION" > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json"
-          (cd dist && shasum -a 256 smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION} smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz) > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.SHA256SUMS"
+          printf '{"artifact":"smartaihub-runner-%s-%s","sessionHostArtifact":"%s","target":"%s","profile":"%s","sourceRef":"%s","sourceCommit":"%s","version":"%s","contractVersion":"sah-runner-v1"}\n' "${{ matrix.name }}" "$RUNNER_VERSION" "$session_host_artifact" "${{ matrix.target }}" "$RUNNER_PROFILE" "$RUNNER_REF" "${{ steps.source.outputs.commit }}" "$RUNNER_VERSION" > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json"
+          checksummed_artifacts=("smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}" "smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json" "smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz")
+          if [ -n "$session_host_artifact" ]; then checksummed_artifacts+=("$session_host_artifact"); fi
+          (cd dist && shasum -a 256 "${checksummed_artifacts[@]}") > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.SHA256SUMS"
 
       - name: Package Runner (Windows)
         if: runner.os == 'Windows'
