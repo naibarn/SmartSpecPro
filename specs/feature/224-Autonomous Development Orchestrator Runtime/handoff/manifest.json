@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
+    "expected_canonical_sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "PR #695 merged the bounded convergence outcome at 7d833297dd25566d1e9b99145bc24ec199258d5a with progressive_integration_gate PASS. The bounded selector found no SPEC-224 independently READY WorkUnit. Targeted read-only review found spec224RemoteSourceTrustVerifier.ts defines an authority interface but has no non-test production caller/authority adapter; remote trust remains deny-only pending owner-authorized verifier/issuer configuration or an authorized disposable Runner/PostgreSQL fixture. Do not create artificial work or dispatch. Preserve RUN_COMPLETED fail-closed and R10 PARTIAL.",
-    "next_ready_workunit": "NONE_CONFIRMED_FOR_R11; WAITING_AUTHORITY until an owner-approved remote verifier/issuer is identified or an authorized disposable Runner/PostgreSQL fixture is provided.",
-    "reactivation_predicate": "New bounded filesystem/owner evidence or changed capacity is available for a single convergence retry, and an owner-authorized disposable Runner plus supported disposable PostgreSQL app-schema target are available. Server-managed delivery without local convergence additionally requires durable SPEC-224 owner/security approval and immutable server-side target binding.",
-    "resume_point": "PR #691 receipt trust implementation integrated at 0683e8eec2324672355e3329f9d05a987462f6b7; PR #692 canonical checkpoint integrated at 98fd45a8aaf7491dbe6063b6be178ee3d40643e2; PR #694 bounded convergence integrated at 5bc461753c6fbf968b9874257892631ad8c4b089; PR #695 outcome handoff integrated at 7d833297dd25566d1e9b99145bc24ec199258d5a. Focused tests: TypeScript 6 files/40 tests; Workspace Authority 57 tests. CI progressive integration gates passed for #694 and #695. One bounded primary convergence attempt timed out as UNKNOWN before recovery capture; do not retry without changed filesystem/owner evidence. No SPEC-224 READY continuation found; remote-trust authority discovery remains WAITING_AUTHORITY. Preserve R10 run 69d8af56-b919-435b-ac03-7f877a4c92c7 as PARTIAL.",
-    "waiting_predicate": "Do not retry primary convergence without changed filesystem or owner-activity evidence; do not use unbounded status/fetch/copy operations. No live acceptance until authorized disposable Runner and supported disposable PostgreSQL target are available. Recheck trust, snapshot freshness, source/workspace binding, budget, evidence store and independent verifier scope at resume."
+    "next_action": "Do not re-enable the production-bound Linux user Runner. Obtain an owner-approved non-production control-plane target or authorization for an isolated disposable local target. Through the canonical enrollment/grant workflow, issue a current Runner session and protected_dispatch grant scoped to the approved tenant/project, Runner/session, DevelopmentRun/job/attempt, exact source commit+digest, workspace, workpackage/operation/path, node-control-plane runtime, isolated-non-production environment, and required approval/budget. Then probe Codex and browser through that Runner and execute real M6 before M7.",
+    "next_ready_workunit": "WAITING_AUTHORITY: no eligible real Runner work until an authorized isolated non-production control plane, current Runner session, canonical protected_dispatch grant, and bound DevelopmentRun/workspace/source are available.",
+    "reactivation_predicate": "A suitable non-production control-plane endpoint and isolated DB/storage are identified or explicitly authorized; a current enrolled Runner session and canonical protected_dispatch grant exist; and fresh Runner evidence binds Codex/browser readiness, tenant/project, exact source/workspace, DevelopmentRun/job attempt, operation/path/runtime/environment, approval and budget.",
+    "resume_point": "PR #848 status-readiness repair merged at 8eefd800eb8a13389dd75bc4bc61547a1262aef4; focused Rust test, Rust formatting check, and offline Linux installer lifecycle test passed; progressive integration gate passed. Bootstrap evidence at orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md records that systemd user service was active but repeatedly rejected with 409, has been stopped/disabled, the installed Session Host is absent, and the discovered local control plane is production-configured/shared. No M6/M7 dispatch or functional browser UAT occurred.",
+    "waiting_predicate": "Do not repeat local status, systemd, Docker, expired-credential, or 7070 health checks without changed evidence. Do not connect to or re-enable the production-bound Runner. Resume only when non-production control-plane/enrollment/grant authority changes or new owner evidence is provided."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1082,7 +1082,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 67,
+  "generation": 68,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1257,11 +1257,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
+    "canonical_sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
     "integrated": true,
-    "integrated_at": "2026-10-11T09:29:24Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/694",
-    "source_sha": "bb38f0df3b3b5669b4a66f08d62141c1660e960e"
+    "integrated_at": "2026-10-12T01:52:25Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/848",
+    "source_sha": "b0741ba95d47ddf9cb273e80fdb3aa19d4990352"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2420,7 +2420,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T01:30:08.088061Z",
+  "updated_at": "2026-10-12T01:56:59.943250Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2527,13 +2527,14 @@
         "scope": "Deadline, unknown-on-timeout, incomplete dirty-capture, and source preservation behavior. A bounded attempt on the registered dirty primary returned CONVERGENCE_TIMEOUT/UNKNOWN; no receipt/archive was emitted.",
         "source_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
         "status": "PARTIAL"
-      }
+      },
+      "orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
+    "sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
     "status": "PARTIAL",
     "task_regressions": []
   }
