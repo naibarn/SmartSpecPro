@@ -186,3 +186,48 @@ an empty PATH, and workflow wiring.
   `USER_WORKSPACE_DIRTY`, canonical SHA `a2546d0d3fad4ed45aeb0592e783e8c70d2cc7f7`,
   and primary workspace SHA `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`.
   The primary is 584 commits behind and has 10 dirty paths; it was not synced.
+
+## Final verification reconciliation — 2026-10-12
+
+- Exact post-merge run `38185524332` for `a94e824375f3c63050296e70df1f7084a1a1c907`
+  completed with `python`, `turbo_build`, and `smartspecweb` failures. Python
+  ended at 67 failed / 4660 passed / 40 skipped; its ordered failure-list
+  digest matches parent-base run `38185248946`. Turbo reports the same 498
+  TypeScript diagnostic sites as that parent-base run. The SmartSpecWeb job
+  also failed on the parent-base run. PR #824 changes no application Python or
+  TypeScript runtime source, so these remain baseline failures outside this
+  recovery slice.
+- Exact post-merge run `38185697789` for
+  `78c63822f8a2b9e227db6b5a0f82b3badcae942d` completed with `python`,
+  `turbo_build`, and `smartspecweb` failures. Python and Turbo have the same
+  baseline signatures described above. SmartSpecWeb's failure log contains
+  application test failures and import/mock errors; PR #825 is documentation
+  only, and parent-base SmartSpecWeb already failed. No task-scope runtime
+  regression was identified. These CI failures remain recorded, not hidden or
+  treated as a pass.
+- PR #828 became stale when canonical main advanced. Its branch was not
+  force-pushed; PR #830 was created from the updated main with a normal push.
+  Required slice checks passed on exact head `227527649497beb80a4b4cef641790e7965f700f`:
+  `git_lifecycle` run `38187626276` and `progressive_integration_gate` run
+  `38187626220`. During promotion another session merged PR #830 first. The
+  executor reconciled it as already merged at
+  `3eceb5ee61e4d51a3e87cb02dad7d85d29367bc6`; a fresh fetch confirmed that SHA
+  is `origin/main` and contains the merge. PR #828 was closed as superseded;
+  its branch was retained.
+- On merged main, the migration workflow accepted no-op dispatch run
+  `38187788908` at exact SHA `3eceb5ee61e4d51a3e87cb02dad7d85d29367bc6` and
+  completed `workflow_dispatch` / `skipped`; the `migrate` job itself was
+  skipped. The confirmation was deliberately invalid, so no migration or
+  staging database access occurred. The original runs `38185523545` and
+  `38185697126` remain failed `push` runs with zero jobs and zero check runs;
+  the pre-job GitHub validation error for the job-level `runner.temp` context
+  is the proven cause.
+- A post-merge authority verification against `3eceb5ee` completed without
+  timeout and returned `CONVERGENCE_PENDING` only for
+  `USER_WORKSPACE_NOT_SYNCED` and `USER_WORKSPACE_DIRTY`. The registered
+  primary remains at `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978` with dirty
+  content; it was deliberately left untouched. No expired lease was reclaimed
+  from TTL alone. `git_capabilities.py inspect` on the merged task source
+  reported Git 2.56.0, no in-progress operation, no unmerged paths, and no
+  staged/unstaged tracked paths. Runtime and Skills contracts agree; no
+  duplicate AGENTS.md rules were added.
