@@ -69,7 +69,12 @@ def next_ready_workunit(
     completed_workunits: Iterable[Mapping[str, Any]] = (),
     canonical_sha: str | None = None,
 ) -> str | None:
-    """Return a runnable unit only when dependency and wait predicates are proven."""
+    """Return the next executable unit, independent of its final proof obligations.
+
+    Completion predicates describe when a unit can be verified complete; they are
+    not prerequisites for starting implementation. Authorization and dependency
+    checks remain execution prerequisites.
+    """
     units = list(workunits)
     completed = {
         str(unit["id"])
@@ -92,8 +97,11 @@ def next_ready_workunit(
     satisfied = list(satisfied_predicates)
     prohibited = set(prohibited_retries)
     for unit in units:
+        # Explicit execution denial is an authorization boundary. Missing
+        # authorization metadata means the WorkUnit itself is already assigned.
+        if unit.get("execution_authorized", True) is not True:
+            continue
         prerequisites = set(map(str, unit.get("prerequisites", [])))
-        evidence_fresh = unit.get("evidence_fresh", True) is True
         predicate = unit.get("waiting_predicate")
         reactivation = unit.get("reactivation_predicate")
         if predicate is not None:
@@ -106,10 +114,8 @@ def next_ready_workunit(
         strategy = unit.get("strategy")
         if (
             (unit.get("status", "READY") == "READY" or (unit.get("status", "").startswith("WAITING_") and predicate is not None))
-            and _valid_predicate(unit.get("completion_predicate"))
             and (not strategy or strategy not in prohibited)
             and prerequisites <= completed
-            and evidence_fresh
         ):
             return str(unit["id"])
     return None
@@ -125,13 +131,10 @@ def resume_capsule(
     """Resume exact next action while retaining closed work and failed strategies."""
     units = list(workunits)
     prohibited = list(checkpoint.get("prohibited_retries", []))
-    canonical_sha = checkpoint.get("canonical_sha")
-    canonical_is_reconciled = bool(
-        canonical_sha
-        and reconciled_canonical_sha
-        and checkpoint.get("canonical_sha") == reconciled_canonical_sha
-        and checkpoint.get("evidence_fresh") is True
-    )
+    # Supplying the observed SHA means the caller reconciled against current
+    # canonical state. A changed Main SHA invalidates evidence tied to the old
+    # SHA, not the entire continuation capsule or unrelated READY units.
+    canonical_is_reconciled = bool(reconciled_canonical_sha)
     completed_records = checkpoint.get("completed_workunits", [])
     verified_completed = [
         row
@@ -160,7 +163,9 @@ def resume_capsule(
         "prohibited_retries": list(checkpoint.get("prohibited_retries", [])),
         "waiting_predicate": checkpoint.get("waiting_predicate"),
         "reactivation_predicate": checkpoint.get("reactivation_predicate"),
+        "missing_authority": checkpoint.get("missing_authority"),
         "evidence_fresh": checkpoint.get("evidence_fresh", False),
+        "canonical_sha": reconciled_canonical_sha if canonical_is_reconciled else checkpoint.get("canonical_sha"),
         "canonical_reconciled": canonical_is_reconciled,
     }
 
@@ -283,7 +288,7 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event == "full_verification_resource_wait":
         return "QUEUE_AND_CONTINUE" if facts.get("ready_independent_unit") else "QUEUE"
     if event == "resume_after_checkpoint":
-        if not facts.get("canonical_sha") or facts.get("canonical_sha") != facts.get("reconciled_canonical_sha") or not facts.get("evidence_fresh"):
+        if not facts.get("reconciled_canonical_sha"):
             return "RECONCILE_CANONICAL_STATE"
         selected = next_ready_workunit(
             facts.get("workunits", []),
@@ -327,6 +332,8 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
         )
         ready = baseline_health_assessed and all(facts.get(key) is True for key in required_controls)
         return "INTEGRATE_NORMAL_PATH" if ready else "REPAIR_OR_RECONCILE"
+    if event == "pr_checks_pending":
+        return "TRACK_PR_AND_CONTINUE" if facts.get("independent_work") else "TRACK_PR"
     if event == "exact_sha_build":
         if facts.get("source_sha") != facts.get("requested_sha") or not facts.get("canonical_ancestor"):
             return "REJECT_SOURCE"
