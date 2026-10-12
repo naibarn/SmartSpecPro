@@ -1126,9 +1126,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       collisionControls.forEach(control => {
         if (control.matches(".assistant-mascot-settings-control")) return;
         if (control === launcher || launcher?.contains(control) || control.contains(hint) || hint?.contains(control)) return;
-        // Static form controls still need to reserve space for the floating
-        // hint. The ancestor walk below only finds fixed/sticky surfaces.
-        if (control.matches("button, a[href], input, select, textarea, [role='button']")) {
+        // Sign-in actions use normal document flow, so the fixed/sticky
+        // ancestor walk below cannot see them as collision surfaces.
+        if (window.location.pathname === "/login"
+          && control.matches("button, a[href], input, select, textarea, [role='button']")) {
           const style = window.getComputedStyle(control);
           if (style.display !== "none"
             && style.visibility !== "hidden"
