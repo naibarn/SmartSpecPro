@@ -168,6 +168,35 @@ describe("teamRoomMemoryService", () => {
     expect(mockUpsertEntityMemory).not.toHaveBeenCalled();
   });
 
+  it("does not persist a fact if project membership changes before the write", async () => {
+    mockIsTeamRoomMemoryEnabled.mockReturnValue(true);
+    mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+      version: "team-room-provider-context.v1",
+      tenantId: "tenant-1",
+      roomId: "room-1",
+      teamId: "team-1",
+      userId: 9,
+      runId: null,
+      historyScope: "room",
+      projectId: "canonical-project-1",
+      projectAuthority: "canonical-member",
+    });
+    mockRevalidateTeamProjectProviderContextBinding.mockRejectedValue(new Error("membership revoked"));
+    mockExtractEntitiesFromMessage.mockReturnValue([
+      { type: "person", name: "Ada", fact: "likes plans", importance: 5 },
+    ]);
+
+    await expect(captureUserMemoryFromTeamMessage({
+      tenantId: "tenant-1",
+      userId: 9,
+      roomId: "room-1",
+      teamId: "team-1",
+      content: "Ada likes plans",
+    })).resolves.toBe(0);
+
+    expect(mockUpsertEntityMemory).not.toHaveBeenCalled();
+  });
+
   it("does not persist assistant outputs to run, room, or team scopes", async () => {
     await expect(
       recordAssistantTurnScopedMemories({
