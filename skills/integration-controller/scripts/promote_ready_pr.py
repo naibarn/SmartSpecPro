@@ -184,8 +184,19 @@ def continue_next_workunit(
     )
     if unit is None:
         return {"status": "NO_READY_WORKUNIT", "canonical_sha": canonical_sha}
-    # Never reset, clean, reuse, or modify a pre-existing checkout here.
-    runner(["git", "worktree", "add", "--detach", str(workspace), canonical_sha], cwd=repo)
+    # Use shared admission/recovery and register ownership before dispatching.
+    authority = repo / "scripts/development-lifecycle/workspace_authority.py"
+    created = runner(
+        [sys.executable, str(authority), "create", "--repository", str(repo),
+         "--workspace", str(workspace), "--base-sha", canonical_sha,
+         "--role", "TASK_WORKTREE", "--task-id", unit],
+        cwd=repo,
+    )
+    try:
+        workspace_result = json.loads(created.stdout)
+        workspace = Path(workspace_result["workspace"])
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise RuntimeError("CONTINUATION_WORKSPACE_ADMISSION_RESULT_INVALID") from error
     actual = runner(["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
     dirty = runner(["git", "status", "--porcelain"], cwd=workspace).stdout.strip()
     if actual != canonical_sha or dirty:

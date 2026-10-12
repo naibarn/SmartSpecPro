@@ -33,11 +33,24 @@ class ProgressiveExecutionTests(unittest.TestCase):
         policy = self.repo / "skills/development-lifecycle/lifecycle_policy.py"
         policy.parent.mkdir(parents=True)
         shutil.copy2(ROOT / "skills/development-lifecycle/lifecycle_policy.py", policy)
+        lifecycle_scripts = self.repo / "scripts/development-lifecycle"
+        lifecycle_scripts.mkdir(parents=True)
+        for name in ("canonical_source.py", "workspace_authority.py", "convergence_contract.py"):
+            shutil.copy2(ROOT / "scripts/development-lifecycle" / name, lifecycle_scripts / name)
         (self.repo / ".development-repository.toml").write_text(
-            '[repository]\nremote = "origin"\ncanonical_ref = "refs/heads/trunk"\n'
+            '[repository]\n'
+            'repository_id = "progressive-fixture"\n'
+            'remote = "origin"\n'
+            'canonical_ref = "refs/heads/trunk"\n'
+            f'source_root = "{self.root / "sources"}"\n'
+            f'source_fallback_roots = ["{self.root / "fallback-sources"}"]\n'
+            f'lease_root = "{self.root / "leases"}"\n'
         )
         (self.repo / "spec.json").write_text('{"status":"OPEN"}')
-        self.git(self.repo, "add", ".development-repository.toml", "spec.json", str(policy))
+        self.git(
+            self.repo, "add", ".development-repository.toml", "spec.json", str(policy),
+            *(str(lifecycle_scripts / name) for name in ("canonical_source.py", "workspace_authority.py", "convergence_contract.py")),
+        )
         self.git(self.repo, "commit", "-m", "baseline")
         self.git(self.repo, "push", "origin", "trunk")
         self.git(self.repo, "switch", "-c", "slice-one")
