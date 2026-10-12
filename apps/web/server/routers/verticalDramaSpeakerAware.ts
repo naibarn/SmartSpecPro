@@ -10,6 +10,23 @@ import { queueSpeakerAwareWorkerJob } from "../services/workerSchedulerService";
 
 const speakerAwareProcedure = protectedProcedure.use(requireFeatureFlag("verticalDramaSeries"));
 const id = z.string().trim().min(1).max(160);
+type SpeakerAwareStatusItem = Pick<
+  typeof workerJobs.$inferSelect,
+  | "id"
+  | "jobType"
+  | "status"
+  | "statusReason"
+  | "failureReason"
+  | "createdAt"
+  | "startedAt"
+  | "finishedAt"
+> & {
+  artifacts: Array<
+    Pick<typeof workerArtifacts.$inferSelect, "id" | "artifactType"> & {
+      verificationState: string | null;
+    }
+  >;
+};
 
 function requireTenant(tenantId: string | null | undefined): string {
   if (!tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
@@ -85,16 +102,15 @@ export const verticalDramaSpeakerAwareRouter = router({
       : [];
     const artifactsByJob = new Map<string, typeof artifacts>();
     for (const artifact of artifacts) artifactsByJob.set(artifact.workerJobId, [...(artifactsByJob.get(artifact.workerJobId) ?? []), artifact]);
-    return {
-      items: jobs.map((job) => ({
+    const items: SpeakerAwareStatusItem[] = jobs.map((job) => ({
         ...job,
         artifacts: (artifactsByJob.get(job.id) ?? []).map((artifact) => ({
           id: artifact.id,
           artifactType: artifact.artifactType,
           verificationState: typeof artifact.metadataJson?.verificationState === "string" ? artifact.metadataJson.verificationState : null,
         })),
-      })),
-    };
+      }));
+    return { items };
   }),
   getPolicyHash: speakerAwareProcedure.input(z.object({ adapterPolicy: speakerAwareJobPayloadSchema.shape.adapterPolicy })).query(({ input }) => ({ contractVersion: "feature-179-v1", adapterPolicyHash: hashAdapterPolicy(input.adapterPolicy) })),
 });
