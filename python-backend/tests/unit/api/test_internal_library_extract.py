@@ -1012,8 +1012,8 @@ async def test_enrich_library_media_endpoint_uploads_local_source_url_to_temp_r2
     class FakeR2StorageService:
         async def upload_bytes(
             self,
-            content: bytes,
             key: str,
+            content: bytes,
             content_type: str = "application/octet-stream",
             db_session=None,
             metadata=None,
