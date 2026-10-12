@@ -48,10 +48,10 @@
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Implement durable source-message provenance and tenant-filtered authorized reads for team-room-derived entity memory. Preserve the current canonical Project binding and per-write membership revalidation. Keep team-room persistent memory disabled until source records, cross-tenant isolation, and direct non-production acceptance are complete; do not apply production migrations.",
-    "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
+    "next_action": "PR #875 is open at source head 1b1fce1cf; wait for actual required GitHub checks/reviews, reconcile latest Main, and merge through the protected normal path when eligible. Persistent team-room memory remains disabled. Next SPEC-268 obligations: verify source-ledger tenant/project/member isolation with direct non-production acceptance, then continue remaining memory requirements. Do not apply production migration.",
+    "next_ready_workunit": "SPEC268_TEAM_ROOM_MEMORY_SOURCE_PROVENANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #871 canonical project binding and PR #873 fresh canonical-member memory write authorization are merged; latest confirmed Main is 2ea4e3905cedce99d7986021e13d6aea69db174a (PR #873 merged 2026-10-12T09:21:43Z). Current worktree /tmp/SmartSpecPro-spec268-source-provenance-20261012 starts from that SHA. Next slice: persist source room/message/tenant/project bindings for entity-memory rows and ensure retrieval filters by the current tenant and authorized Project. Persistent team-room memory remains disabled; no migration has been applied.",
+    "resume_point": "SPEC-268 source-provenance checkpoint is source commit 1b1fce1cf on PR #875 from codex/spec268-memory-source-provenance-20261012, based on Main 2ea4e3905cedce99d7986021e13d6aea69db174a. Six focused test files / 88 tests passed. The schema adds tenant/room/team/run/message/actor/project provenance with memory-owner, tenant-project, and message-room foreign keys. Reads require tenant, project, ledger provenance, and current active canonical membership. Persistent team-room memory remains disabled; no database migration was applied. After PR integration, resume non-production isolation acceptance and other remaining SPEC-268 requirements.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -64,8 +64,8 @@
         "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
-    "next_action": "Implement durable team-room memory source records and tenant-filtered authorized reads from current Main 2ea4e3905cedce99d7986021e13d6aea69db174a. Keep writes disabled until provenance and isolation acceptance pass; do not infer historical project attribution or run production migration.",
-    "rationale": "Canonical Project identity and current membership are now revalidated before memory writes, but the entity-memory schema still lacks durable tenant/room/message provenance and tenant-filtered read paths.",
+    "next_action": "Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.",
+    "rationale": "Durable source provenance and tenant/project/member-filtered retrieval are implemented in a focused checkpoint; protected PR integration and direct non-production acceptance remain open.",
     "residual_requirements": [
       "Authorized durable canonical project binding for team rooms",
       "Source-level tenant/project provenance for persistent team-room memory",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 24,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -164,7 +164,7 @@
     "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime"
   },
   "implementation": {
-    "active_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
+    "active_workunit": "SPEC268_TEAM_ROOM_MEMORY_SOURCE_PROVENANCE",
     "base_sha": "2ea4e3905cedce99d7986021e13d6aea69db174a",
     "checkpoint_shas": [
       "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
@@ -173,28 +173,31 @@
       "343a885ec61b3e52ef785b644228c71115ec2262",
       "9262a6298a858d48d30da6ed9cb2782fd5e9ef12",
       "c2709fdeba49371a4a47c6705b9238cb08e8ac5a",
-      "f2094867b98528a11787db0c85874ffa787d2c56"
+      "f2094867b98528a11787db0c85874ffa787d2c56",
+      "1b1fce1cf"
     ],
-    "last_focused_check": "PASS after checkpoint f2094867b: package scope, five focused Vitest files / 74 tests, one worker; git diff --check passed. No full typecheck/build or runtime migration run.",
-    "local_commit_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
+    "last_focused_check": "PASS on source commit 1b1fce1cf: focused Vitest, 6 files / 88 tests, one worker; git diff --check passed. No migration applied and no full typecheck/build run.",
+    "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
-    "pr_head_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
-    "pull_request": null,
+    "pr_head_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
     "source_paths": [
-      "apps/web/drizzle/0397_spec268_team_room_canonical_project_binding.sql",
+      "apps/web/drizzle/0398_spec268_team_room_entity_memory_sources.sql",
+      "apps/web/drizzle/meta/_journal.json",
       "apps/web/drizzle/schema.ts",
-      "apps/web/server/routers/teamRoom.ts",
-      "apps/web/server/services/roomService.ts",
-      "apps/web/server/services/teamProjectProviderAuthorization.ts",
-      "apps/web/server/services/__tests__/teamProjectProviderAuthorization.test.ts",
-      "apps/web/server/services/__tests__/teamRoomCanonicalProjectBinding.test.ts",
-      "apps/web/server/__tests__/teamRoomCanonicalProjectBinding.migration.test.ts",
-      "apps/web/server/services/teamRoomMemoryService.ts",
-      "apps/web/server/services/contextCompactionService.ts",
-      "apps/web/server/services/runEngine.ts",
+      "apps/web/server/__tests__/teamRoomEntityMemorySources.migration.test.ts",
       "apps/web/server/routers/__tests__/teamRoom.test.ts",
-      "apps/web/server/services/__tests__/teamRoomMemoryService.test.ts"
+      "apps/web/server/routers/memory.ts",
+      "apps/web/server/routers/teamRoom.ts",
+      "apps/web/server/services/__tests__/contextBuilder.test.ts",
+      "apps/web/server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "apps/web/server/services/__tests__/promptComposer.enhanced.test.ts",
+      "apps/web/server/services/__tests__/teamRoomMemoryService.test.ts",
+      "apps/web/server/services/executors/contextBuilder.ts",
+      "apps/web/server/services/memoryService.ts",
+      "apps/web/server/services/promptComposer.ts",
+      "apps/web/server/services/teamRoomMemoryService.ts"
     ],
     "started": true,
     "status": "IN_PROGRESS",
@@ -248,8 +251,8 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
         }
       ],
-      "next_action": "Implement durable team-room memory source records and tenant-filtered authorized reads from current Main 2ea4e3905cedce99d7986021e13d6aea69db174a. Keep writes disabled until provenance and isolation acceptance pass; do not infer historical project attribution or run production migration.",
-      "rationale": "Canonical Project identity and current membership are now revalidated before memory writes, but the entity-memory schema still lacks durable tenant/room/message provenance and tenant-filtered read paths.",
+      "next_action": "Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.",
+      "rationale": "Durable source provenance and tenant/project/member-filtered retrieval are implemented in a focused checkpoint; protected PR integration and direct non-production acceptance remain open.",
       "residual_requirements": [
         "Authorized durable canonical project binding for team rooms",
         "Source-level tenant/project provenance for persistent team-room memory",
@@ -388,7 +391,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:22:54.065070Z",
+  "updated_at": "2026-10-12T09:31:47.061131Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
