@@ -1105,6 +1105,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       const collisionControls = Array.from(document.querySelectorAll<HTMLElement>(ASSISTANT_COLLISION_CONTROL_SELECTOR));
       const obstacleElements = new Set<HTMLElement>();
       collisionControls.forEach(control => {
+        if (control.matches(".assistant-mascot-settings-control")) return;
         if (control === launcher || launcher?.contains(control) || control.contains(hint) || hint?.contains(control)) return;
         let candidate: HTMLElement | null = control;
         while (candidate && candidate !== launcher && !hint?.contains(candidate)) {
@@ -1327,7 +1328,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           size="icon"
           aria-label={settingsT("assistantAppearance.title")}
           title={settingsT("assistantAppearance.title")}
-          className="z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700"
+          className="assistant-mascot-settings-control z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700"
           style={mascotSettingsButtonStyle}
           onClick={() => setLocation("/settings?tab=notifications#assistant-appearance-title")}
         >
