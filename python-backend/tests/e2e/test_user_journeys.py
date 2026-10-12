@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
 
 from app.llm_proxy.models import LLMRequest, LLMResponse
-from app.llm_proxy.gateway_unified import LLMGateway
+from app.llm_proxy.gateway_unified import COST_PER_1K_TOKENS, LLMGateway
 from app.llm_proxy.proxy import LLMProviderError
 from app.services.credit_service import InsufficientCreditsError
 
@@ -354,29 +354,28 @@ class TestErrorRecoveryFlows:
 class TestCostEstimationAccuracy:
     """Test cost estimation accuracy."""
     
-    def test_estimate_matches_actual(self, mock_full_setup):
+    @pytest.mark.asyncio
+    async def test_estimate_matches_actual(self, mock_full_setup):
         """Test that estimated cost is close to actual cost."""
         setup = mock_full_setup
         unified_client = setup["unified_client"]
         db_session = setup["db_session"]
         credit_service = setup["credit_service"]
         
-        # Mock returns different values for estimation vs actual
-        unified_client.estimate_cost.side_effect = [
-            Decimal("0.010"),  # Estimated
-            Decimal("0.0095"),  # Actual
-        ]
-        
         with patch('app.llm_proxy.gateway_unified.CreditService', return_value=credit_service):
             with patch('app.llm_proxy.gateway_unified.get_unified_client', return_value=unified_client):
                 with patch('app.llm_proxy.gateway_unified.LLMProxy'):
                     gateway = LLMGateway(db_session)
                     gateway.unified_client = unified_client
+                    gateway.web_gateway.enabled = True
+                    gateway.web_gateway.estimate_cost = AsyncMock(return_value=Decimal("0.010"))
                     
-                    request = LLMRequest(prompt="Test", task_type="simple")
+                    request = LLMRequest(
+                        prompt="Test", task_type="simple", preferred_model="test"
+                    )
                     
                     # Get estimated cost
-                    estimated = gateway._estimate_cost(request, use_openrouter=True)
+                    estimated = await gateway._estimate_cost(request, use_openrouter=True)
                     
                     # Create mock response
                     response = LLMResponse(
@@ -386,13 +385,11 @@ class TestCostEstimationAccuracy:
                         tokens_used=100,
                         cost=Decimal("0.0095")
                     )
-                    response.usage = MagicMock()
-                    response.usage.prompt_tokens = 30
-                    response.usage.completion_tokens = 70
-                    response.usage.total_tokens = 100
-                    
                     # Get actual cost
                     actual = gateway._calculate_actual_cost(response, use_openrouter=True)
+                    gateway.web_gateway.estimate_cost.assert_awaited_once_with(
+                        request_type="llm", model="test"
+                    )
         
         # Both should be close (within reasonable margin)
         assert abs(estimated - actual) < Decimal("0.001")
@@ -401,7 +398,8 @@ class TestCostEstimationAccuracy:
 class TestBudgetPrioritySelection:
     """Test budget priority selection."""
     
-    def test_quality_priority_uses_best_model(self, mock_full_setup):
+    @pytest.mark.asyncio
+    async def test_quality_priority_uses_best_model(self, mock_full_setup):
         """Test that quality priority selects best model."""
         setup = mock_full_setup
         db_session = setup["db_session"]
@@ -422,25 +420,18 @@ class TestBudgetPrioritySelection:
                                 budget_priority=priority
                             )
                             
-                            cost = gateway._estimate_cost(request, use_openrouter=False)
+                            cost = await gateway._estimate_cost(request, use_openrouter=False)
                             
-                            # All costs should be positive
-                            assert cost > 0
+                            # Local free models can legitimately have zero cost.
+                            assert cost == COST_PER_1K_TOKENS[(task_type, priority)]
     
-    def test_cost_priority_uses_cheapest(self, mock_full_setup):
+    @pytest.mark.asyncio
+    async def test_cost_priority_uses_cheapest(self, mock_full_setup):
         """Test that cost priority selects cheapest option."""
         setup = mock_full_setup
         db_session = setup["db_session"]
         credit_service = setup["credit_service"]
         unified_client = setup["unified_client"]
-        
-        # Track which models are selected for cost priority
-        cost_priority_models = []
-        
-        def mock_estimate(model, prompt_tokens, completion_tokens):
-            return Decimal("0.0001")  # Cheapest
-        
-        unified_client.estimate_cost.side_effect = mock_estimate
         
         with patch('app.llm_proxy.gateway_unified.CreditService', return_value=credit_service):
             with patch('app.llm_proxy.gateway_unified.get_unified_client', return_value=unified_client):
@@ -453,10 +444,10 @@ class TestBudgetPrioritySelection:
                         budget_priority="cost"
                     )
                     
-                    cost = gateway._estimate_cost(request, use_openrouter=True)
+                    cost = await gateway._estimate_cost(request, use_openrouter=True)
                     
                     # Cost priority should use cheaper models
-                    assert cost > 0
+                    assert cost == COST_PER_1K_TOKENS[(request.task_type, request.budget_priority)]
 
 
 class TestMultipleConcurrentRequests:
