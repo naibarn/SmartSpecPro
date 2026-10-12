@@ -20,7 +20,7 @@ SCENARIOS = ROOT / "skills/orchestra/references/autonomous-completion-scenarios.
 class AutonomousCompletionPolicyTests(unittest.TestCase):
     def test_required_scenarios(self):
         cases = json.loads(SCENARIOS.read_text(encoding="utf-8"))["scenarios"]
-        self.assertEqual(50, len(cases))
+        self.assertEqual(52, len(cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"], decide_closure(case))
@@ -49,13 +49,51 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             {"id": "WU-ready", "status": "READY", "prerequisites": ["WU-done"], "completion_predicate": {"kind":"test_passes", "source":"tests/wu-ready.log"}},
             {"id": "WU-done", "status": "COMPLETE", "completion_evidence": ["evidence/wu-done.log"], "canonical_sha":"main-sha"},
         ]
-        self.assertEqual("WU-ready", next_ready_workunit(units, canonical_sha="main-sha"))
-        self.assertIsNone(next_ready_workunit(units[:3]))
-        unproven_complete = units[:3] + [
+        self.assertEqual("WU-stale", next_ready_workunit(units, canonical_sha="main-sha"))
+        self.assertEqual("WU-stale", next_ready_workunit(units[:3]))
+        unproven_complete = [units[1], units[3]] + [
             {"id":"WU-done", "status":"COMPLETE", "completion_evidence":[]},
-            units[3],
         ]
         self.assertIsNone(next_ready_workunit(unproven_complete, canonical_sha="main-sha"))
+
+    def test_ready_workunit_needs_no_completion_evidence_to_start(self):
+        ready = {"id": "WU-implementation", "status": "READY", "prerequisites": []}
+        self.assertEqual("WU-implementation", next_ready_workunit([ready]))
+        self.assertIsNone(next_ready_workunit([dict(ready, execution_authorized=False)]))
+
+    def test_external_authority_wait_does_not_hide_independent_work(self):
+        waiting = {
+            "id": "WU-sign", "status": "WAITING_EXTERNAL_AUTHORITY",
+            "waiting_predicate": {"kind": "evidence_exists", "source": "grant"},
+            "reactivation_predicate": {"kind": "evidence_exists", "source": "grant-proof"},
+        }
+        ready = {"id": "WU-ui", "status": "READY", "prerequisites": []}
+        checkpoint = {
+            "canonical_sha": "main-1", "evidence_fresh": False,
+            "missing_authority": {"operation": "issue protected_dispatch grant", "scope": "isolated tenant/project"},
+            "waiting_predicate": waiting["waiting_predicate"],
+            "reactivation_predicate": waiting["reactivation_predicate"],
+        }
+        resumed = resume_capsule(checkpoint, [waiting, ready], reconciled_canonical_sha="main-1")
+        self.assertEqual("WU-ui", resumed["next_workunit"])
+        self.assertEqual(waiting["waiting_predicate"], resumed["waiting_predicate"])
+        self.assertEqual(waiting["reactivation_predicate"], resumed["reactivation_predicate"])
+        self.assertEqual(checkpoint["missing_authority"], resumed["missing_authority"])
+        only_waiting = resume_capsule(checkpoint, [waiting], reconciled_canonical_sha="main-1")
+        self.assertIsNone(only_waiting["next_workunit"])
+        self.assertEqual(checkpoint["missing_authority"], only_waiting["missing_authority"])
+
+    def test_main_sha_change_preserves_history_and_resumes_independent_work(self):
+        completed = {"id": "WU-done", "status": "COMPLETE", "completion_evidence": ["done.log"],
+                     "evidence_fresh": True, "canonical_sha": "main-1"}
+        checkpoint = {"canonical_sha": "main-1", "evidence_fresh": False,
+                      "completed_workunits": [completed]}
+        ready = {"id": "WU-next", "status": "READY", "prerequisites": []}
+        resumed = resume_capsule(checkpoint, [ready], reconciled_canonical_sha="main-2")
+        self.assertEqual("WU-next", resumed["next_workunit"])
+        self.assertTrue(resumed["canonical_reconciled"])
+        self.assertEqual("main-2", resumed["canonical_sha"])
+        self.assertEqual([completed], resumed["completed_workunits"])
 
     def test_resume_preserves_exact_unresolved_and_prohibited_work(self):
         checkpoint = {
