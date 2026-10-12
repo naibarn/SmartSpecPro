@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Open a normal PR from codex/spec308-login-legal-collision-20261012 at code source 11e09808609539b47272ef2ab58dad0ff78e2561. Wait for exact-head SPEC-308 browser simulation and progressive integration gate; repair any failures and merge normally. Then rebuild/publish the exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify the revision/assets and retest 320px Sign In plus 390px legal links at https://smartaihub.app. Keep authenticated tenant acceptance open.
-- Manifest generation: 97
+- Next action: Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 SPEC-308 requirement rows unresolved until requirement-level evidence is recorded; continue any independent code gap from the ledger.
+- Manifest generation: 98
 
 ## Source-declared status and relationship claims
 
