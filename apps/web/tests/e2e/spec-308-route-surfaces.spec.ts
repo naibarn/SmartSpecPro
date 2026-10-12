@@ -100,6 +100,17 @@ test.describe("SPEC-308 route surface simulations", () => {
     await expect(page.getByText("AI Chat & Feedback", { exact: true })).toBeHidden();
     expect((await page.getByRole("button", { name: "Open AI Chat & Feedback" }).boundingBox())?.width).toBe(64);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const hint = page.locator(".assistant-chat-onboarding-hint");
+    await expect(hint).toBeVisible();
+    const [hintRect, signInRect] = await Promise.all([hint.boundingBox(), signIn.boundingBox()]);
+    expect(hintRect).not.toBeNull();
+    expect(signInRect).not.toBeNull();
+    expect(hintRect!.x < signInRect!.x + signInRect!.width
+      && hintRect!.x + hintRect!.width > signInRect!.x
+      && hintRect!.y < signInRect!.y + signInRect!.height
+      && hintRect!.y + hintRect!.height > signInRect!.y).toBe(false);
   });
 
   test("mobile Notifications route keeps the page, Bell, and launcher usable together", async ({ page }) => {
