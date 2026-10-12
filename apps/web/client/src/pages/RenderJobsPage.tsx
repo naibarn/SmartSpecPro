@@ -40,7 +40,10 @@ import { cn } from "@/lib/utils";
 import { mapEditorError } from "@/components/videoeditor/ui/editorUiState";
 import { projectExecutionStatus, type ExecutionJobLike } from "@/components/videoeditor/ui/executionStatusUi";
 
-type WorkerJobListInput = NonNullable<inferRouterInputs<AppRouter>["workerJobs"]["list"]>;
+type WorkerJobListInput = Extract<
+  inferRouterInputs<AppRouter>["workerJobs"]["list"],
+  { status?: unknown }
+>;
 type WorkerJobStatus = NonNullable<WorkerJobListInput["status"]>;
 
 const STATUS_OPTIONS = [
