@@ -64,7 +64,10 @@ def _git_process(repo: Path, *args: str, binary: bool = False) -> subprocess.Com
     remaining = deadline - time.monotonic() if deadline is not None else None
     if remaining is not None and remaining <= 0:
         raise subprocess.TimeoutExpired(["git", "-C", str(repo), *args], timeout=0)
-    timeout = min(3.0, remaining) if remaining is not None else None
+    # Remote fetches can legitimately take longer than a local Git query. Let
+    # every command consume the remaining bounded operation budget instead of
+    # timing out a healthy canonical-ref refresh after three seconds.
+    timeout = remaining if remaining is not None else None
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         text=not binary,

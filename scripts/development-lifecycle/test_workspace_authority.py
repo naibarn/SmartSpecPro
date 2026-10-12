@@ -140,8 +140,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         try:
             with patch.object(authority.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "ok", "")) as run:
                 authority._git(self.canonical, "status", "--short")
-            self.assertGreater(run.call_args.kwargs["timeout"], 0)
-            self.assertLessEqual(run.call_args.kwargs["timeout"], 3.0)
+            self.assertGreater(run.call_args.kwargs["timeout"], 3.0)
+            self.assertLessEqual(run.call_args.kwargs["timeout"], 4.0)
         finally:
             authority._RESOLVER_DEADLINE.reset(original_deadline)
 
@@ -171,6 +171,21 @@ class WorkspaceAuthorityTests(unittest.TestCase):
                 run.assert_not_called()
         finally:
             authority._RESOLVER_DEADLINE.reset(expired)
+
+    def test_git_commands_receive_remaining_bounded_operation_budget(self) -> None:
+        deadline = time.monotonic() + 10
+        token = authority._RESOLVER_DEADLINE.set(deadline)
+        try:
+            result = subprocess.CompletedProcess(
+                ["git", "fetch"], 0, stdout="", stderr=""
+            )
+            with patch.object(authority.subprocess, "run", return_value=result) as run:
+                authority._git_process(self.canonical, "fetch", "origin", "main")
+            timeout = run.call_args.kwargs["timeout"]
+            self.assertGreater(timeout, 3.0)
+            self.assertLessEqual(timeout, 10.0)
+        finally:
+            authority._RESOLVER_DEADLINE.reset(token)
 
     def test_verification_returns_pending_unknown_on_git_timeout(self) -> None:
         def timed_out(repo: Path, *args: str, **kwargs: object) -> subprocess.CompletedProcess[object]:
