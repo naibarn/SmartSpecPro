@@ -73,7 +73,6 @@ export async function refreshContextRollingSummaries(input: {
   assistantLabel?: string | null;
   objective: string;
   initiatedByUserId?: number;
-  projectId?: string | null;
   windowSize?: number;
 }): Promise<string[]> {
   return refreshRollingSummaryMemories(input);
