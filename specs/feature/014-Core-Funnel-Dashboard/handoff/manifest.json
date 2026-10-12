@@ -23,10 +23,10 @@
     "expected_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0"
   },
   "continuation": {
-    "next_action": "Reconcile latest origin/main, inspect live workspace/task ownership, then select one independently testable product slice outside Factory-owned paths.",
-    "next_ready_workunit": "LANE2_NEXT_COLLISION_FREE_PRODUCT_WORKUNIT",
+    "next_action": "Implement the remaining non-duplicate SPEC-014 funnel query indexes in Drizzle schema and one additive migration from current Main 419d2ff8a7f93598378bcf1a787e535afb421923. Existing registration-created, credit-type-created, and message-conversation-created indexes already cover their equivalent requirement pairs. Do not run production or shared database migration.",
+    "next_ready_workunit": "SPEC014_FUNNEL_QUERY_INDEXES",
     "reactivation_predicate": null,
-    "resume_point": "Start from origin/main after the Feature 014 export handoff PR is integrated; keep REQ-F5772188489C open.",
+    "resume_point": "Canonical Main is 419d2ff8a7f93598378bcf1a787e535afb421923. Only open requirement REQ-F5772188489C is SPEC.md §2.3 funnel performance indexes. Found existing equivalents for registration_events(createdAt), credit_transactions(type,createdAt), and messages(conversationId,createdAt). Implement the missing users createdAt/lastSignedIn/plan, registration outcome+createdAt, credit userId+createdAt, and conversation userId+createdAt indexes. No DB migration has been applied.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -261,7 +261,7 @@
     "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
     "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
@@ -278,10 +278,13 @@
     "title": "Feature 014: Core Funnel Dashboard"
   },
   "implementation": {
+    "active_workunit": "SPEC014_FUNNEL_QUERY_INDEXES",
+    "base_sha": "419d2ff8a7f93598378bcf1a787e535afb421923",
     "checkpoint_shas": [
       "9bf489a70d966968ebf24260b70d35f9189ddfb2"
     ],
     "mapping": [],
+    "owner": "Codex",
     "source_paths": [
       "apps/web/server/routers/funnelAnalytics.ts",
       "apps/web/server/routers/funnelAnalytics.test.ts",
@@ -291,7 +294,8 @@
       "specs/feature/014-Core-Funnel-Dashboard/spec.md"
     ],
     "started": true,
-    "status": "PARTIAL"
+    "status": "IN_PROGRESS",
+    "worktree": "/tmp/SmartSpecPro-spec268-source-provenance-20261012"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
@@ -1167,7 +1171,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T01:59:26.104708Z",
+  "updated_at": "2026-10-12T09:45:09.137088Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

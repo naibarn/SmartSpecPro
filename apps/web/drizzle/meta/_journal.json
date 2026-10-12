@@ -2696,6 +2696,13 @@
       "when": 1791810000000,
       "tag": "0398_spec268_team_room_entity_memory_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 385,
+      "version": "7",
+      "when": 1791798340609,
+      "tag": "0399_spec014_funnel_query_indexes",
+      "breakpoints": true
     }
   ]
 }

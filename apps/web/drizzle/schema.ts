@@ -692,6 +692,9 @@ export const users = pgTable(
     uniqueIndex("users_email_lower_trim_unique")
       .on(sql`lower(btrim(${t.email}))`)
       .where(sql`${t.email} IS NOT NULL`),
+    index("idx_users_created_at").on(t.createdAt),
+    index("idx_users_last_signed_in").on(t.lastSignedIn),
+    index("idx_users_plan").on(t.plan),
     index("users_free_credit_policy_idx").on(
       t.freeCreditGrantedAt,
       t.freeCreditPolicyCancelledAt,
@@ -843,6 +846,7 @@ export const creditTransactions = pgTable(
       .on(t.idempotencyKey)
       .where(sql`"idempotencyKey" IS NOT NULL`),
     index("credit_transactions_type_created_idx").on(t.type, t.createdAt),
+    index("idx_credit_transactions_user_created").on(t.userId, t.createdAt),
     index("credit_transactions_trace_id_idx").on(t.traceId),
     index("credit_transactions_conversation_id_idx").on(t.conversationId),
     index("credit_transactions_source_type_idx").on(t.sourceType),
@@ -2990,7 +2994,10 @@ export const conversations = pgTable(
       .defaultNow()
       .notNull(),
   },
-  t => [index("idx_conversations_tenant").on(t.tenantId)]
+  t => [
+    index("idx_conversations_tenant").on(t.tenantId),
+    index("idx_conversations_user_created").on(t.userId, t.createdAt),
+  ]
 );
 
 export type Conversation = typeof conversations.$inferSelect;
@@ -10048,7 +10055,10 @@ export const registrationEvents = pgTable(
       .defaultNow()
       .notNull(),
   },
-  t => [index("registration_events_created_user_idx").on(t.createdAt, t.userId)]
+  t => [
+    index("registration_events_created_user_idx").on(t.createdAt, t.userId),
+    index("idx_registration_events_outcome").on(t.outcome, t.createdAt),
+  ]
 );
 
 /** Links browser fingerprint hashes to users */

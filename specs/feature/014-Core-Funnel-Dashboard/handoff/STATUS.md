@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 4 pass / 1 unresolved of 5
 - Next action: Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.
-- Manifest generation: 19
+- Manifest generation: 20
 
 ## Source-declared status and relationship claims
 
