@@ -33,6 +33,7 @@ import {
   Network,
   Paperclip,
   RefreshCw,
+  Settings2,
   Siren,
   X,
 } from "lucide-react";
@@ -1225,6 +1226,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       right: `${FEEDBACK_MARGIN}px`,
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
       };
+  const mascotSettingsButtonStyle: CSSProperties = feedbackPlacement.mode === "custom"
+    ? { position: "fixed", left: `${feedbackPlacement.x + 122}px`, top: `${feedbackPlacement.y - 8}px` }
+    : shouldDockLeftOnMobile
+      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 110}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` }
+      : { position: "fixed", right: `${FEEDBACK_MARGIN + 56}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` };
   const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
   const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1314,6 +1320,20 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           {!showMascotLauncher && <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>}
         </Button>
       </DialogTrigger>
+      {showMascotLauncher && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={settingsT("assistantAppearance.title")}
+          title={settingsT("assistantAppearance.title")}
+          className="z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700"
+          style={mascotSettingsButtonStyle}
+          onClick={() => setLocation("/settings?tab=notifications#assistant-appearance-title")}
+        >
+          <Settings2 className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      )}
       {canShowDecorativeBalloon && (hasVisibleDemoBalloon || hasVisibleNotificationBalloon) && (
         <HStack as="aside" gap={2} align="start" className={`assistant-reminder-balloon flex-wrap${mascotPreferences.motion === "off" ? " assistant-motion-off" : ""}`} style={assistantHintPositionStyle} role="status" aria-live="polite" onFocus={() => { if (hasVisibleNotificationBalloon) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() }); }} onBlur={(event) => { if (hasVisibleNotificationBalloon && !event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
