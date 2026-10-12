@@ -313,6 +313,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     ? loadedMascotPreferences.preferences
     : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
   const [showMascotDemo, setShowMascotDemo] = useState(false);
+  const [mascotSettingsHoverVisible, setMascotSettingsHoverVisible] = useState(false);
+  const mascotSettingsHideTimerRef = useRef<number | null>(null);
   const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
   const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
   const [assistantHintStyle, setAssistantHintStyle] = useState<CSSProperties | null>(null);
@@ -1068,6 +1070,23 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const hasVisibleOnboardingHint = !settingsRoute && showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
   const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
 
+  const revealMascotSettings = () => {
+    if (mascotSettingsHideTimerRef.current !== null) {
+      window.clearTimeout(mascotSettingsHideTimerRef.current);
+      mascotSettingsHideTimerRef.current = null;
+    }
+    setMascotSettingsHoverVisible(true);
+  };
+
+  const scheduleMascotSettingsHide = () => {
+    if (typeof window.matchMedia !== "function" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (mascotSettingsHideTimerRef.current !== null) window.clearTimeout(mascotSettingsHideTimerRef.current);
+    mascotSettingsHideTimerRef.current = window.setTimeout(() => {
+      mascotSettingsHideTimerRef.current = null;
+      setMascotSettingsHoverVisible(false);
+    }, 250);
+  };
+
   useLayoutEffect(() => {
     if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
     let updateHintPosition: () => void = () => undefined;
@@ -1228,10 +1247,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
       };
   const mascotSettingsButtonStyle: CSSProperties = feedbackPlacement.mode === "custom"
-    ? { position: "fixed", left: `${feedbackPlacement.x + 122}px`, top: `${feedbackPlacement.y - 8}px` }
+    ? { position: "fixed", left: `${feedbackPlacement.x + 135}px`, top: `${feedbackPlacement.y + 8}px` }
     : shouldDockLeftOnMobile
-      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 110}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` }
-      : { position: "fixed", right: `${FEEDBACK_MARGIN + 56}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` };
+      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 135}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` }
+      : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` };
   const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
   const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1291,7 +1310,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           variant="outline"
           aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
           className={showMascotLauncher
-            ? "z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
+            ? "pointer-events-none z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
             : "z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"}
           style={{
             position: "fixed",
@@ -1301,10 +1320,14 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           }}
           onPointerDown={handleFeedbackPointerDown}
           onClick={handleFeedbackClick}
+          onMouseEnter={revealMascotSettings}
+          onMouseLeave={scheduleMascotSettingsHide}
+          onFocus={revealMascotSettings}
+          onBlur={scheduleMascotSettingsHide}
         >
           {showMascotLauncher
             ? <>
-              <span className={`inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
+              <span className={`pointer-events-auto inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
                 <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-10 w-10 text-sky-500" />}>
                   <AssistantMascot
                     style={mascotPreferences.style}
@@ -1313,7 +1336,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   />
                 </AssistantMascotErrorBoundary>
               </span>
-              <span className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
+              <span className="pointer-events-auto inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
                 {settingsT("assistantAppearance.launcherLabel")}
               </span>
             </>
@@ -1328,8 +1351,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           size="icon"
           aria-label={settingsT("assistantAppearance.title")}
           title={settingsT("assistantAppearance.title")}
-          className="assistant-mascot-settings-control z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700"
+          className={`assistant-mascot-settings-control z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700${mascotSettingsHoverVisible ? " assistant-mascot-controls-visible" : ""}`}
           style={mascotSettingsButtonStyle}
+          onMouseEnter={revealMascotSettings}
+          onMouseLeave={scheduleMascotSettingsHide}
+          onFocus={revealMascotSettings}
+          onBlur={scheduleMascotSettingsHide}
           onClick={() => setLocation("/settings?tab=notifications#assistant-appearance-title")}
         >
           <Settings2 className="h-4 w-4" aria-hidden="true" />

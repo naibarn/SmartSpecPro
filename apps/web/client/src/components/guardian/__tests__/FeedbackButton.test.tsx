@@ -296,6 +296,13 @@ describe("FeedbackButton placement", () => {
     expect(button.style.top).toBe("");
   });
 
+  it("keeps the floating chat launcher available on settings", () => {
+    mockRoute.location = "/settings?tab=notifications";
+    render(<FeedbackButton />);
+
+    expect(screen.getByLabelText("Open AI Chat & Feedback")).toBeTruthy();
+  });
+
   it("preserves the existing Chat draft when switching to Task Control and back", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);

@@ -703,6 +703,17 @@
   animation: none !important;
 }
 
+.assistant-mascot-settings-control {
+  transition: opacity 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .assistant-mascot-settings-control:not(.assistant-mascot-controls-visible):not(:focus-visible) {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 @media (min-width: 768px) {
   .assistant-chat-onboarding-hint {
     display: none;
@@ -718,6 +729,10 @@
   .assistant-mascot-idle-normal {
     animation: none !important;
     will-change: auto;
+  }
+
+  .assistant-mascot-settings-control {
+    transition: none;
   }
 }
 
