@@ -21,7 +21,7 @@ from pathlib import Path
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from scripts.lib.config import load_session_config, save_session_config, create_session_config
+from scripts.lib.config import load_session_config, save_session_config, create_session_config, refresh_handoff, HANDOFF_FILE
 from scripts.lib.sections import parse_manifest_block, parse_project_config_block, validate_section_file, get_checkpointed_sections
 from scripts.lib.shared_lifecycle_policy import load_shared_lifecycle_policy
 from scripts.lib.task_storage import TaskToWrite, write_tasks, build_dependency_graph, TaskStatus
@@ -29,7 +29,6 @@ from scripts.lib.task_reconciliation import TaskListContext
 from scripts.lib.impl_tasks import (
     SECTION_STEP_IDS,
     SECTION_STEP_DEFINITIONS,
-    COMPACTION_TASK,
     FINALIZATION_TASK,
     RESUME_STEP_COMPLETE_MAPPING,
     CONTEXT_ITEM_KEYS,
@@ -478,7 +477,7 @@ def infer_session_state(
 
     Returns:
         {
-            "mode": "new" | "resume" | "complete",
+            "mode": "new" | "resume" | "implementation_complete" | "complete",
             "completed_sections": list[str],
             "resume_from": str | None,
             "resume_section_state": dict | None  # Code review state for resume section
@@ -520,7 +519,7 @@ def infer_session_state(
 
     if len(checkpointed) >= len(all_sections) and all_sections:
         return {
-            "mode": "complete" if outcome_complete else "finalize",
+            "mode": "complete" if outcome_complete else "implementation_complete",
             "checkpointed_sections": checkpointed,
             "completed_sections": checkpointed,
             "outcome_complete": outcome_complete,
@@ -543,7 +542,7 @@ def infer_session_state(
         resume_section_state = detect_section_review_state(implementation_dir, resume_from)
 
     return {
-        "mode": "resume" if checkpointed else "new",
+        "mode": "resume",  # an existing config must never be re-created without checkpoints
         "checkpointed_sections": checkpointed,
         "completed_sections": checkpointed,
         "outcome_complete": False,
@@ -576,7 +575,7 @@ def generate_implementation_tasks(
     position = 1
 
     # Context tasks (at start, with values in subject for recovery)
-    # Status is PENDING so they stay in context window until finalization completes
+    # Context remains visible for interruption recovery; it is not a task gate
     for key in CONTEXT_ITEM_KEYS:
         if key in context_values:
             value = context_values[key]
@@ -621,24 +620,8 @@ def generate_implementation_tasks(
             ))
             position += 1
 
-        # Compaction prompt every 2nd section (after sections 2, 4, 6, etc.)
-        if (section_index + 1) % 2 == 0:
-            if is_completed:
-                status = TaskStatus.COMPLETED
-            else:
-                status = TaskStatus.PENDING
-
-            tasks.append(TaskToWrite(
-                position=position,
-                subject=COMPACTION_TASK.subject.format(section=section, display_name=display_name),
-                status=status,
-                description=COMPACTION_TASK.description.format(section=section, display_name=display_name),
-                active_form=COMPACTION_TASK.active_form.format(section=section, display_name=display_name),
-            ))
-            position += 1
-
     # Finalization task
-    all_complete = bool(sections) and all(s in completed_sections for s in sections) and outcome_complete
+    all_complete = bool(sections) and all(s in completed_sections for s in sections)
     tasks.append(TaskToWrite(
         position=position,
         subject=FINALIZATION_TASK.subject,
@@ -654,90 +637,36 @@ def build_impl_dependency_graph(
     tasks: list[TaskToWrite],
     sections: list[str],
 ) -> dict[int, tuple[list[str], list[str]]]:
-    """Build dependency graph for implementation tasks.
+    """Only actual implementation/checkpoint order is a task dependency.
 
-    Dependencies:
-    - Each section's steps are sequential (implement -> review -> interview -> docs -> commit)
-    - First step of each section blocked by commit of previous section
-    - Compaction tasks blocked by previous section's commit
-    - Finalization blocked by last section's commit
-
-    Args:
-        tasks: List of tasks with positions
-        sections: List of section names (for counting)
-
-    Returns:
-        Dict of position -> (blocks, blockedBy) as lists of position strings
+    Worktrees may operate independently; this task list represents the
+    ordered steps within one implementation session. It does not enforce
+    reviews, user compaction prompts, or final acceptance as prerequisites.
     """
     blocks: dict[int, list[str]] = {t.position: [] for t in tasks}
     blocked_by: dict[int, list[str]] = {t.position: [] for t in tasks}
+    if not tasks:
+        return {}
 
-    # Count context tasks (they have "=" in subject)
-    context_count = sum(1 for t in tasks if "=" in t.subject)
-
-    # Steps per section (without compaction)
     steps_per_section = len(SECTION_STEP_IDS)
+    context_count = len(tasks) - len(sections) * steps_per_section - 1
+    assert context_count >= 0
 
-    for section_index, section in enumerate(sections):
-        # Calculate section start position accounting for compaction tasks
-        # Each section has 6 steps, compaction added after every 2nd section
-        compaction_tasks_before = section_index // 2
-        section_start = context_count + 1 + (section_index * steps_per_section) + compaction_tasks_before
+    def link(a: int, b: int) -> None:
+        blocks[a].append(str(b))
+        blocked_by[b].append(str(a))
 
-        # Link steps within section (sequential)
-        for step_offset in range(steps_per_section - 1):
-            current_pos = section_start + step_offset
-            next_pos = section_start + step_offset + 1
-            blocks[current_pos].append(str(next_pos))
-            blocked_by[next_pos].append(str(current_pos))
+    for index in range(len(sections)):
+        start = context_count + 1 + index * steps_per_section
+        for offset in range(steps_per_section - 1):
+            link(start + offset, start + offset + 1)
+        if index:
+            link(start - 1, start)
 
-        # Link first step to previous section's commit (if not first section)
-        if section_index > 0:
-            # Previous section's commit position
-            prev_compaction_tasks = (section_index - 1) // 2
-            prev_section_start = context_count + 1 + ((section_index - 1) * steps_per_section) + prev_compaction_tasks
-            prev_commit_pos = prev_section_start + steps_per_section - 1
-
-            # Add compaction position if this section is at a 3-boundary (e.g., section 3, 6, 9)
-            # The compaction task comes AFTER the commit of section 3, 6, 9, etc.
-            if section_index % 2 == 0:
-                # There's a compaction task between the previous commit and this section's first step
-                compaction_pos = prev_commit_pos + 1
-                blocked_by[section_start].append(str(compaction_pos))
-                blocks[compaction_pos].append(str(section_start))
-                # The compaction itself is blocked by the previous commit
-                blocked_by[compaction_pos].append(str(prev_commit_pos))
-                blocks[prev_commit_pos].append(str(compaction_pos))
-            else:
-                # No compaction, link directly to previous commit
-                blocked_by[section_start].append(str(prev_commit_pos))
-                blocks[prev_commit_pos].append(str(section_start))
-
-    # Finalization task (last position)
-    if tasks and sections:
-        final_pos = tasks[-1].position
-        # Find last section's commit position
-        last_section_index = len(sections) - 1
-        last_compaction_tasks = last_section_index // 2
-        last_section_start = context_count + 1 + (last_section_index * steps_per_section) + last_compaction_tasks
-        last_commit_pos = last_section_start + steps_per_section - 1
-
-        # Check if last section has a compaction task after it
-        if (last_section_index + 1) % 2 == 0:
-            # Compaction after last commit, finalization blocked by compaction
-            last_compaction_pos = last_commit_pos + 1
-            blocked_by[final_pos].append(str(last_compaction_pos))
-            blocks[last_compaction_pos].append(str(final_pos))
-        else:
-            # No compaction, finalization blocked by last commit
-            blocked_by[final_pos].append(str(last_commit_pos))
-            blocks[last_commit_pos].append(str(final_pos))
-
-        # Context tasks blockedBy finalization (keeps them pending until workflow completes)
-        for context_pos in range(1, context_count + 1):
-            blocked_by[context_pos].append(str(final_pos))
-            blocks[final_pos].append(str(context_pos))
-
+    final_pos = tasks[-1].position
+    if sections:
+        link(final_pos - 1, final_pos)
+    # Context reminders remain visible but do not block any work.
     return {pos: (blocks[pos], blocked_by[pos]) for pos in blocks}
 
 
@@ -820,7 +749,7 @@ def main():
     state = infer_session_state(sections_dir, state_dir, git_root)
 
     # Create or update session config
-    if state["mode"] == "new":
+    if state["mode"] == "new" and load_session_config(state_dir) is None:
         config = create_session_config(
             plugin_root=plugin_root,
             sections_dir=sections_dir,
@@ -832,6 +761,10 @@ def main():
             pre_commit=pre_commit
         )
         save_session_config(state_dir, config)
+
+    # A prior crash may have saved canonical JSON before HANDOFF.md was replaced.
+    # Repair the view automatically on every resumed setup; this never resets work.
+    handoff_path = refresh_handoff(state_dir)
 
     # Get task list context
     # Priority: --session-id (from hook context) > env vars
@@ -904,6 +837,7 @@ def main():
         "target_dir": str(target_dir),
         "target_dir_source": target_dir_source,
         "state_dir": str(state_dir),
+        "handoff_path": str(handoff_path) if handoff_path else None,
         "git_root": str(git_root),
         "current_branch": branch_info["branch"],
         "is_protected_branch": branch_info["is_protected"],

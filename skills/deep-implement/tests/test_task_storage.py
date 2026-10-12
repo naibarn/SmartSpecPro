@@ -256,3 +256,40 @@ class TestGetTasksDir:
         result = get_tasks_dir("my-session-id")
 
         assert result == Path("/Users/test/.claude/tasks/my-session-id")
+
+
+def test_legacy_task_schema_is_backed_up_before_relayout(tmp_path, monkeypatch):
+    import base64
+    from scripts.lib import task_storage as module
+    monkeypatch.setattr(module, "get_tasks_dir", lambda _sid: tmp_path)
+    old = [
+        module.TaskToWrite(position=1, subject="Implement section-01", status=module.TaskStatus.COMPLETED),
+        module.TaskToWrite(position=2, subject="Run code review subagent for section-01", status=module.TaskStatus.PENDING),
+    ]
+    assert module.write_tasks("session", old).success
+    before = {p.name: p.read_bytes() for p in tmp_path.glob("[0-9]*.json")}
+    lean = [
+        module.TaskToWrite(position=1, subject="Implement section-01", status=module.TaskStatus.COMPLETED),
+        module.TaskToWrite(position=2, subject="Persist checkpoint for section-01", status=module.TaskStatus.PENDING),
+    ]
+    assert module.write_tasks("session", lean).success
+    snapshot = json.loads((tmp_path / ".previous-task-schema.json").read_text())
+    restored = {name: base64.b64decode(data) for name, data in snapshot["files_base64"].items()}
+    assert restored == before
+    assert json.loads((tmp_path / "2.json").read_text())["subject"] == lean[1].subject
+    assert module.write_tasks("session", lean).success
+    assert {name: base64.b64decode(data) for name, data in
+            json.loads((tmp_path / ".previous-task-schema.json").read_text())["files_base64"].items()} == before
+
+
+def test_schema_backup_failure_preserves_existing_task_files(tmp_path, monkeypatch):
+    from scripts.lib import task_storage as module
+    monkeypatch.setattr(module, "get_tasks_dir", lambda _sid: tmp_path)
+    old = [module.TaskToWrite(position=1, subject="legacy review", status=module.TaskStatus.PENDING)]
+    assert module.write_tasks("session", old).success
+    before = (tmp_path / "1.json").read_bytes()
+    monkeypatch.setattr(module.os, "replace", lambda *_: (_ for _ in ()).throw(OSError("interrupted")))
+    new = [module.TaskToWrite(position=1, subject="implement", status=module.TaskStatus.PENDING)]
+    result = module.write_tasks("session", new)
+    assert not result.success
+    assert (tmp_path / "1.json").read_bytes() == before

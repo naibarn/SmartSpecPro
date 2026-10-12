@@ -11,9 +11,13 @@ will need to be updated.
 from __future__ import annotations
 
 import json
+import base64
+import os
+import tempfile
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Self
 
 
@@ -29,6 +33,51 @@ class TaskWriteError(Exception):
     """Raised when task files cannot be written."""
 
     pass
+
+
+def _atomic_task_json(path: Path, data: dict) -> None:
+    """An interrupted write must never leave a truncated task JSON file."""
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=f".{path.name}.", delete=False,
+        ) as fp:
+            tmp = Path(fp.name)
+            json.dump(data, fp, ensure_ascii=False, indent=2)
+            fp.flush()
+            os.fsync(fp.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+@contextmanager
+def _task_list_lock(directory: Path):
+    """One writer per Claude task list. Distinct sessions remain parallel."""
+    directory.mkdir(parents=True, exist_ok=True)
+    fd = os.open(directory / ".task-list-writer.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        if os.name == "nt":
+            import msvcrt
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"0")
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def get_tasks_dir(task_list_id: str) -> Path:
@@ -94,6 +143,49 @@ class TaskWriteResult:
         )
 
 
+def _preserve_previous_task_schema(tasks_dir: Path, intended: list[TaskToWrite]) -> None:
+    """Save older task-list bytes before changing its layout; never block on review tasks.
+
+    Section checkpoint files remain authoritative. This snapshot only avoids
+    losing old Claude task progress when transitioning to fewer task steps.
+    """
+    old_files = sorted((p for p in tasks_dir.glob("*.json") if p.stem.isdigit()),
+                       key=lambda p: int(p.stem))
+    if not old_files:
+        return
+    wanted = {str(task.position): task.subject for task in intended}
+    existing = {p.stem: p.read_bytes() for p in old_files}
+    try:
+        same_layout = len(existing) == len(intended) and all(
+            json.loads(raw).get("subject") == wanted.get(stem)
+            for stem, raw in existing.items()
+        )
+    except (ValueError, TypeError, AttributeError):
+        same_layout = False
+    if same_layout:
+        return
+    snapshot = tasks_dir / ".previous-task-schema.json"
+    if snapshot.exists():
+        return  # immutable first-transition snapshot; never overwrite history
+    payload = {
+        "reason": "task schema transition; preserve prior session history",
+        "files_base64": {name + ".json": base64.b64encode(raw).decode("ascii")
+                         for name, raw in existing.items()},
+    }
+    temp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=tasks_dir,
+                                         prefix=".previous-task-schema.", delete=False) as fh:
+            temp = Path(fh.name)
+            json.dump(payload, fh)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp, snapshot)
+    finally:
+        if temp is not None:
+            temp.unlink(missing_ok=True)
+
+
 def write_tasks(
     task_list_id: str,
     tasks: list[TaskToWrite],
@@ -125,32 +217,36 @@ def write_tasks(
         # Create directory if needed
         tasks_dir.mkdir(parents=True, exist_ok=True)
 
-        # Track highest position we write to
-        max_written_position = 0
+        with _task_list_lock(tasks_dir):
+            # Preserve old tasks before the lean task schema reuses numeric IDs.
+            _preserve_previous_task_schema(tasks_dir, tasks)
 
-        # Write each task
-        for task in tasks:
-            task_data = task.to_file_dict()
+            # Track highest position we write to
+            max_written_position = 0
 
-            # Apply dependency graph if provided
-            if dependency_graph and task.position in dependency_graph:
-                blocks, blocked_by = dependency_graph[task.position]
-                task_data["blocks"] = blocks
-                task_data["blockedBy"] = blocked_by
+            # Write each task
+            for task in tasks:
+                task_data = task.to_file_dict()
 
-            task_file = tasks_dir / f"{task.position}.json"
-            task_file.write_text(json.dumps(task_data, indent=2))
-            max_written_position = max(max_written_position, task.position)
+                # Apply dependency graph if provided
+                if dependency_graph and task.position in dependency_graph:
+                    blocks, blocked_by = dependency_graph[task.position]
+                    task_data["blocks"] = blocks
+                    task_data["blockedBy"] = blocked_by
 
-        # Mark extra existing tasks as obsolete
-        if mark_extra_obsolete:
-            _mark_extra_obsolete(tasks_dir, max_written_position)
+                task_file = tasks_dir / f"{task.position}.json"
+                _atomic_task_json(task_file, task_data)
+                max_written_position = max(max_written_position, task.position)
 
-        return TaskWriteResult.ok(
-            task_list_id=task_list_id,
-            tasks_written=len(tasks),
-            tasks_dir=tasks_dir,
-        )
+            # Mark extra existing tasks as obsolete
+            if mark_extra_obsolete:
+                _mark_extra_obsolete(tasks_dir, max_written_position)
+
+            return TaskWriteResult.ok(
+                task_list_id=task_list_id,
+                tasks_written=len(tasks),
+                tasks_dir=tasks_dir,
+            )
 
     except PermissionError as e:
         return TaskWriteResult.err(task_list_id, f"Permission denied: {e}")
@@ -180,7 +276,7 @@ def _mark_extra_obsolete(tasks_dir: Path, max_written_position: int) -> None:
                 # Ensure required fields exist
                 data.setdefault("blocks", [])
                 data.setdefault("blockedBy", [])
-                task_file.write_text(json.dumps(data, indent=2))
+                _atomic_task_json(task_file, data)
         except (ValueError, json.JSONDecodeError):
             continue  # Skip non-numeric or invalid files
 

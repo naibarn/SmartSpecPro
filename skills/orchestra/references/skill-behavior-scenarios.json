@@ -11,12 +11,7 @@
         "frontend",
         "test-qa"
       ],
-      "expected_gates": [
-        "TypeScript Check",
-        "Unit Tests",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
         [
@@ -43,10 +38,7 @@
         "reviewer",
         "test-qa"
       ],
-      "expected_gates": [
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "expected_dispatch_mode": "sequential_exception",
       "sequential_reason": "repair loop must integrate each review result and update loop-policy counters before dispatching the next agent",
       "forbidden_execution": [
@@ -63,9 +55,7 @@
       "expected_agents": [
         "error-detective"
       ],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "direct-edit",
         "ui-only-root-cause"
@@ -81,10 +71,7 @@
         "error-detective",
         "debugger"
       ],
-      "expected_gates": [
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "expected_dispatch_mode": "sequential_exception",
       "sequential_reason": "debugger depends on the Evidence Ledger produced by error-detective",
       "why": "Bug reports with concrete run/log/table evidence should start with evidence-led error investigation, then dispatch debugger only after an Evidence Ledger exists."
@@ -98,9 +85,7 @@
         "reviewer"
       ],
       "expected_model_preference": "gpt-5.6-terra",
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "A bounded read-only review is non-planning work and should use GPT-5.6 Terra."
     },
     {
@@ -112,9 +97,7 @@
         "architect"
       ],
       "expected_model_preference": "explicit:gpt-5.4",
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Explicit user model requests must take precedence over the Terra default."
     },
     {
@@ -126,10 +109,7 @@
         "security"
       ],
       "expected_model_preference": "gpt-5.6-terra",
-      "expected_gates": [
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Security repair and retries remain non-planning work, so they stay on GPT-5.6 Terra."
     },
     {
@@ -141,9 +121,7 @@
         "architect"
       ],
       "expected_model_preference": "gpt-5.6-sol",
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Architecture and decomposition are planning deliverables, so the planning agent uses GPT-5.6 Sol."
     },
     {
@@ -152,9 +130,7 @@
       "expected_owner": "orchestra",
       "expected_route": "quick-plan-chain",
       "expected_agents": [],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Explicit planning plus execution delegation should activate orchestra and require verification before completion."
     },
     {
@@ -170,12 +146,7 @@
         "accessibility-reviewer",
         "responsive-reviewer"
       ],
-      "expected_gates": [
-        "Visual Polish Gate",
-        "Accessibility Gate",
-        "Responsive Gate",
-        "Component State Gate"
-      ],
+
       "why": "Premium/responsive/accessibility UI work should route through the visual UI workflow and UI quality gates.",
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
@@ -207,13 +178,7 @@
       "expected_agents": [
         "frontend"
       ],
-      "expected_gates": [
-        "TypeScript Check",
-        "Unit Tests",
-        "Component State Gate",
-        "UI Screenshot/E2E Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Behavior/data-flow frontend work should use frontend, not ui-builder, while still requiring async state and browser evidence gates."
     },
     {
@@ -227,11 +192,7 @@
         "ui-builder",
         "responsive-reviewer"
       ],
-      "expected_gates": [
-        "Responsive Gate",
-        "UI Screenshot/E2E Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Responsive visual polish with screenshot evidence should use ui-builder and browser verification gates.",
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
@@ -264,10 +225,7 @@
         "security-frontend",
         "security-review"
       ],
-      "expected_gates": [
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Auth and permission work is high risk and must route through security gates.",
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
@@ -293,9 +251,7 @@
       "expected_owner": "direct-edit",
       "expected_route": "direct-edit",
       "expected_agents": [],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Obvious tiny edits should not trigger heavyweight orchestration."
     },
     {
@@ -304,10 +260,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Skill Behavior Tests",
-        "Verification Before Completion"
-      ],
+
       "why": "Routing behavior changes should be test-backed and verified through skill behavior scenarios."
     },
     {
@@ -316,12 +269,7 @@
       "expected_owner": "orchestra",
       "expected_route": "deep-plan-chain",
       "expected_agents": [],
-      "expected_gates": [
-        "Test Design Gate",
-        "Unit Tests",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "implementation-before-test-design",
         "requirement-without-test-row",
@@ -335,11 +283,7 @@
       "expected_owner": "orchestra",
       "expected_route": "direct-inline-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Test Design Gate",
-        "Unit Tests",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "root-full-repo-typecheck",
         "parallel-typecheck-processes"
@@ -352,10 +296,7 @@
       "expected_owner": "orchestra",
       "expected_route": "direct-inline-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "TypeScript Check",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "blind-resource-retry",
         "parallel-typecheck-processes",
@@ -369,10 +310,7 @@
       "expected_owner": "gpt-image-2",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Image generation should route through gpt-image-2 first, then use Codex-native image execution when available."
     },
     {
@@ -381,10 +319,7 @@
       "expected_owner": "kb-retriever",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Local knowledge-base retrieval should use bounded local search with file citations."
     },
     {
@@ -393,10 +328,7 @@
       "expected_owner": "web-video-presentation",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Screen-recordable narrated web presentations should use the web-video-presentation skill with side-effect confirmations."
     },
     {
@@ -405,13 +337,7 @@
       "expected_owner": "orchestra",
       "expected_route": "code-aware-help-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Visual Polish Gate",
-        "Accessibility Gate",
-        "Responsive Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Code-aware product help should discover real behavior from code, generate help/script/outline, add gpt-image-2 visuals, and optionally build a web-video companion with UI quality gates."
     },
     {
@@ -420,10 +346,7 @@
       "expected_owner": "orchestra",
       "expected_route": "brainstorming-prelude",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Open-ended product direction should use brainstorming first, then continue to deep-project only after a direction is chosen."
     },
     {
@@ -432,9 +355,7 @@
       "expected_owner": "orchestra",
       "expected_route": "full-pipeline",
       "expected_agents": [],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "A concrete project-scale module should skip brainstorming and start with deep-project decomposition."
     },
     {
@@ -443,15 +364,7 @@
       "expected_owner": "ship",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Security Review (General)",
-        "Dependency/Supply-Chain Gate",
-        "Migration Checker",
-        "API Smoke Test",
-        "Health Check",
-        "Verification Before Completion"
-      ],
+
       "why": "Launch readiness should route to the ship skill and compose the launch gate family."
     },
     {
@@ -460,13 +373,7 @@
       "expected_owner": "deploy",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Migration Checker",
-        "Health Check",
-        "CI/Release Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Deployment is an installed deploy workflow with confirmation before external side effects."
     },
     {
@@ -478,11 +385,7 @@
         "docs-release",
         "ci-release"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "CI/Release Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Release workflow should use release handling plus docs and CI/release checks.",
       "expected_dispatch_mode": "parallel_batch",
       "expected_waves": [
@@ -504,12 +407,7 @@
       "expected_agents": [
         "security"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Security Review (General)",
-        "Dependency/Supply-Chain Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Broad hardening should route to security-audit and security gates."
     },
     {
@@ -518,10 +416,7 @@
       "expected_owner": "secret-scanner",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Secret scanning should use the dedicated secret-scanner skill and redact secrets."
     },
     {
@@ -533,11 +428,7 @@
         "security",
         "tenant-data-isolation-reviewer"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Authorized pentesting should use pentest and security specialists.",
       "expected_dispatch_mode": "parallel_batch",
       "expected_waves": [
@@ -559,10 +450,7 @@
       "expected_agents": [
         "database"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Migration state checks should route to migration-checker with database safety awareness."
     },
     {
@@ -571,12 +459,7 @@
       "expected_owner": "api-smoke-test",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "API Smoke Test",
-        "Health Check",
-        "Verification Before Completion"
-      ],
+
       "why": "API smoke and URL health checks should use installed operational skills."
     },
     {
@@ -587,11 +470,7 @@
       "expected_agents": [
         "performance"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Performance Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Bundle and backend profiling should use bundle-tracker/code-profiler with performance gate coverage."
     },
     {
@@ -600,10 +479,7 @@
       "expected_owner": "seo-audit",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "SEO/GEO/AEO bundle should route to seo-audit and related installed generators."
     },
     {
@@ -612,10 +488,7 @@
       "expected_owner": "ga4-client",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Analytics queries should use ga4-client and never invent metrics."
     },
     {
@@ -627,11 +500,7 @@
         "observability-audit-agent",
         "error-detective"
       ],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Health Check",
-        "Verification Before Completion"
-      ],
+
       "why": "Production incidents should route to rescue with observability/error investigation.",
       "expected_dispatch_mode": "parallel_batch",
       "expected_waves": [
@@ -651,10 +520,7 @@
       "expected_owner": "revise-claude-md",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "CLAUDE.md maintenance should use the dedicated revise-claude-md skill."
     },
     {
@@ -663,11 +529,7 @@
       "expected_owner": "orchestra",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": [
-        "Installed Skill Gate",
-        "Skill Behavior Tests",
-        "Verification Before Completion"
-      ],
+
       "why": "Skill-system maintenance should use orchestra plus installed sub-agents support pack checks."
     },
     {
@@ -678,10 +540,7 @@
       "expected_agents": [
         "api-contract-reviewer"
       ],
-      "expected_gates": [
-        "Skill Behavior Tests",
-        "Verification Before Completion"
-      ],
+
       "why": "API contract drift should dispatch the api-contract-reviewer."
     },
     {
@@ -693,10 +552,7 @@
         "tenant-data-isolation-reviewer",
         "security-review"
       ],
-      "expected_gates": [
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Tenant and ownership boundaries are security-sensitive and need the dedicated isolation reviewer.",
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
@@ -722,11 +578,7 @@
         "llm-runtime-cost-auditor",
         "performance"
       ],
-      "expected_gates": [
-        "Performance Gate",
-        "Security Review (General)",
-        "Verification Before Completion"
-      ],
+
       "why": "LLM runtime and cost controls need the dedicated cost auditor plus performance/security gates.",
       "expected_dispatch_mode": "parallel_batch",
       "expected_waves": [
@@ -749,10 +601,7 @@
         "browser-automation-sandbox-reviewer",
         "security-review"
       ],
-      "expected_gates": [
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Browser automation and webhook sandbox surfaces are security-sensitive.",
       "expected_dispatch_mode": "mixed_parallel_waves",
       "expected_waves": [
@@ -777,9 +626,7 @@
       "expected_agents": [
         "i18n-content-reviewer"
       ],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Copy/i18n review should dispatch the i18n-content-reviewer."
     },
     {
@@ -790,9 +637,7 @@
       "expected_agents": [
         "observability-audit-agent"
       ],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Observability readiness should dispatch the observability audit agent."
     },
     {
@@ -819,11 +664,7 @@
         "direct-edit",
         "inline-with-agent-tool"
       ],
-      "expected_gates": [
-        "TypeScript Check",
-        "Unit Tests",
-        "Verification Before Completion"
-      ],
+
       "why": "End-to-end frontend/backend work has independent writer scopes and should default to a parallel implementation wave, then tests."
     },
     {
@@ -852,10 +693,7 @@
         "direct-edit",
         "inline-with-agent-tool"
       ],
-      "expected_gates": [
-        "Pre-Merge Security Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Applicable security specialists are independent read-only reviewers and must batch before the aggregator."
     },
     {
@@ -884,13 +722,7 @@
         "direct-edit",
         "inline-with-agent-tool"
       ],
-      "expected_gates": [
-        "Visual Polish Gate",
-        "Accessibility Gate",
-        "Responsive Gate",
-        "UI Screenshot/E2E Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Read-only UI reviewers should run together after the UI builder wave."
     },
     {
@@ -913,11 +745,7 @@
         "direct-edit",
         "inline-with-agent-tool"
       ],
-      "expected_gates": [
-        "TypeScript Check",
-        "Unit Tests",
-        "Verification Before Completion"
-      ],
+
       "why": "When an agent tool is available, conductor inline implementation is forbidden for parallelizable non-trivial work."
     },
     {
@@ -942,11 +770,7 @@
       "forbidden_execution": [
         "direct-edit"
       ],
-      "expected_gates": [
-        "Migration Checker",
-        "CI/Release Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Sequential execution is allowed only for explicit hard constraints such as database and git/release state."
     },
     {
@@ -955,9 +779,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Verification Before Completion"
-      ],
+
       "why": "Parallel writer work should require explicit ownership, isolation, and conductor-owned merge protocol.",
       "expected_dispatch_mode": "parallel_with_worktree",
       "expected_waves": [
@@ -992,10 +814,7 @@
         "inline-with-agent-tool",
         "single-review-only"
       ],
-      "expected_gates": [
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Medium+ completed work should run convergence review rounds until clean criteria pass, not stop after a single review."
     },
     {
@@ -1027,12 +846,7 @@
         "inline-with-agent-tool",
         "skip-impact-closure"
       ],
-      "expected_gates": [
-        "TypeScript Check",
-        "Unit Tests",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Fixes to shared contracts must trigger second-order impact closure and stale gate reruns before completion."
     },
     {
@@ -1058,11 +872,7 @@
         "inline-with-agent-tool",
         "stale-gate-pass"
       ],
-      "expected_gates": [
-        "Unit Tests",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "A gate that passed before later fixes is stale and must be rerun before final summary."
     },
     {
@@ -1071,12 +881,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Test Design Gate",
-        "Lifecycle Convergence Gate",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "silent-stage-skip",
         "blocked-stage-as-complete",
@@ -1091,11 +896,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Test Design Gate",
-        "Lifecycle Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "verify-to-review-skip",
         "stale-gate-pass",
@@ -1109,11 +910,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "review-finding-as-next-step",
         "finalize-before-rerun"
@@ -1126,11 +923,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "debug-fix-stage-omitted",
         "final-verify-omitted"
@@ -1143,10 +936,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "blocked-as-complete",
         "drop-open-gap",
@@ -1178,10 +968,7 @@
         "final-summary-with-unclosed-must-do",
         "single-review-only"
       ],
-      "expected_gates": [
-        "Review Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "why": "Before final summary, Orchestra must triage discovered gaps, fix safe in-scope must-do-now items, and only offer optional or blocked work as next steps."
     },
     {
@@ -1190,10 +977,7 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": [
-        "Skill Behavior Tests",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "wait-for-task-completion",
         "require-heavy-verification-before-promotion",
@@ -1208,10 +992,7 @@
       "expected_owner": "orchestra",
       "expected_route": "canonical-workspace-sync",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "assume-fetch-updated-editor-folder",
         "reset-dirty-checkout",
@@ -1226,11 +1007,7 @@
       "expected_owner": "orchestra",
       "expected_route": "canonical-handoff-resume",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Unit Tests",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "reconstruct-from-chat-before-handoff",
         "sections-processed-means-complete",
@@ -1244,10 +1021,7 @@
       "expected_owner": "orchestra",
       "expected_route": "canonical-handoff-reconcile",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "overwrite-newer-generation",
         "retry-stale-payload-unchanged",
@@ -1261,11 +1035,7 @@
       "expected_owner": "orchestra",
       "expected_route": "canonical-handoff-policy",
       "expected_agents": [],
-      "expected_gates": [
-        "Lifecycle Convergence Gate",
-        "Unit Tests",
-        "Verification Before Completion"
-      ],
+
       "forbidden_execution": [
         "completion-file-means-complete",
         "all-sections-means-complete",

@@ -39,7 +39,7 @@ find . -name "CLAUDE.md" -o -name ".claude.md" -o -name ".claude.local.md" 2>/de
 
 ### Phase 2: Quality Assessment
 
-For each CLAUDE.md file, evaluate against quality criteria. See [references/quality-criteria.md](references/quality-criteria.md) for detailed rubrics.
+For each CLAUDE.md file, evaluate against quality criteria. Use the assessment checklist below; no external rubric file is bundled.
 
 **Quick Assessment Checklist:**
 
@@ -144,7 +144,7 @@ After user approval, apply changes using the Edit tool. Preserve existing conten
 
 ## Templates
 
-See [references/templates.md](references/templates.md) for CLAUDE.md templates by project type.
+Adapt existing project CLAUDE.md examples rather than depending on a missing template file.
 
 ## Common Issues to Flag
 

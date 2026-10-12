@@ -7,6 +7,8 @@ Two types of config:
 
 import json
 import os
+import tempfile
+import os
 from pathlib import Path
 
 
@@ -147,8 +149,19 @@ def save_session_config(planning_dir: Path, config: dict) -> Path:
 
     config_path = get_session_config_path(planning_dir)
 
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
+    # Preserve the previous on-disk state if a session ends mid-write.
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=config_path.parent,
+                                         prefix=f".{config_path.name}.", delete=False) as f:
+            temp_path = Path(f.name)
+            json.dump(config, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, config_path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
     return config_path
 

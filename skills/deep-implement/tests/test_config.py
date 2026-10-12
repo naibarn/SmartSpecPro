@@ -185,3 +185,19 @@ class TestUpdateSectionState:
         state = config["sections_state"]["section-01-foundation"]
         assert state["pre_commit"]["hooks_ran"] is True
         assert state["pre_commit"]["modification_retries"] == 1
+
+
+def test_checkpoint_config_write_is_atomic_on_replace_failure(tmp_path, monkeypatch):
+    from scripts.lib import config as module
+    original = {"sections_state": {"section-01": {"status": "checkpointed", "checkpoint_sha": "abc"}}}
+    module.save_session_config(tmp_path, original)
+    before = (tmp_path / module.CONFIG_FILE).read_bytes()
+
+    def fail_replace(*_args):
+        raise OSError("simulated crash before atomic replace")
+
+    monkeypatch.setattr(module.os, "replace", fail_replace)
+    with pytest.raises(OSError):
+        module.save_session_config(tmp_path, {"sections_state": {"section-02": {"status": "checkpointed"}}})
+    assert (tmp_path / module.CONFIG_FILE).read_bytes() == before
+    assert not list(tmp_path.glob(f".{module.CONFIG_FILE}.*"))

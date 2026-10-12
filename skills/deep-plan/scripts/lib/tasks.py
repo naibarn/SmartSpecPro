@@ -107,14 +107,14 @@ TASK_DEPENDENCIES: dict[str, list[str]] = {
     "execute-research": ["research-decision"],
     "detailed-interview": ["execute-research"],  # Depends on research (even if skipped)
     "save-interview": ["detailed-interview"],
-    "write-spec": ["save-interview"],
+    "write-spec": [],  # Existing spec input does not require an interview
     "generate-plan": ["write-spec"],
     "context-check-pre-review": ["generate-plan"],
     "self-review": ["context-check-pre-review"],
-    "plan-status-log": ["self-review"],
-    "apply-tdd": ["plan-status-log"],
+    "plan-status-log": ["generate-plan"],
+    "apply-tdd": ["generate-plan"],
     "context-check-pre-split": ["apply-tdd"],
-    "create-section-index": ["context-check-pre-split"],
+    "create-section-index": ["generate-plan"],
     "generate-section-tasks": ["create-section-index"],
     "write-sections": ["generate-section-tasks"],
     "final-verification": ["write-sections"],
