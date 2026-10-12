@@ -1,0 +1,278 @@
+{
+  "schemaVersion": "spec224-mini-app-factory-capability-matrix.v1",
+  "observedAt": "2026-10-12T00:50:44.714Z",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "162846d83b76c56a2fb1f2931327aa4ea6f65d9d",
+  "supportingEvidenceOnly": true,
+  "m8": "DEFERRED",
+  "milestones": {
+    "M6": "PARTIAL_NOT_PASS",
+    "M7": "SYNTHETIC_RECOVERY_PASS_REAL_RUNNER_ACCEPTANCE_PENDING",
+    "browserUat": "NOT_RUN",
+    "endToEndFunctionalCompletion": "NOT_VERIFIED"
+  },
+  "observations": {
+    "runner": {
+      "command": "smartaihub-runner status --json",
+      "observedAt": "2026-10-12T00:50:44.714Z",
+      "runnerId": "local-runner",
+      "version": "0.2.23",
+      "state": "ready",
+      "toolCount": 11,
+      "readyToolCount": 0,
+      "codex": {
+        "installState": "ready",
+        "authState": "unknown",
+        "availabilityState": "unknown",
+        "trustState": "discovered",
+        "reasonCodes": [
+          "probe_required"
+        ]
+      },
+      "browser": {
+        "installState": "ready",
+        "authState": "unknown",
+        "availabilityState": "unknown",
+        "trustState": "discovered",
+        "reasonCodes": [
+          "probe_required"
+        ]
+      }
+    },
+    "localCodexLogin": {
+      "command": "codex login status",
+      "result": "Logged in using ChatGPT",
+      "meaning": "Local CLI login is present; it does not establish a Runner-published capability snapshot, tenant trust, or execution grant."
+    },
+    "probeBoundary": {
+      "rescanRun": false,
+      "reason": "Runner rescan publishes capability state through the configured control plane; no authorized non-production control-plane target was identified and the default origin is production.",
+      "liveDispatchRun": false,
+      "productionOrStagingTouched": false
+    }
+  },
+  "dependencies": [
+    {
+      "specId": "SPEC-224",
+      "capability": "DevelopmentRun, Factory pipeline, Runner admission, durable stage scheduling and settlement",
+      "implementationState": "INTEGRATED_RUNTIME_AND_RUNNER_STAGE_ADAPTER_PRESENT",
+      "integrationState": "PRESENT_ON_CURRENT_ORIGIN_MAIN; handoff manifest integration SHA is stale",
+      "tests": [
+        {
+          "evidence": "Factory stage worker/outbox PostgreSQL runtime with synthetic callback; 13 focused tests",
+          "sourceSha": "5d99ab048a8ba719a145893a360c404aba585d92",
+          "state": "PASS_SYNTHETIC"
+        },
+        {
+          "evidence": "Cross-process DevelopmentRun/outbox recovery with synthetic callback; 13 focused tests",
+          "sourceSha": "059f3b86138546ae91c725778ac49f1a517b1b68",
+          "state": "PASS_SYNTHETIC"
+        },
+        {
+          "evidence": "Trusted Runner stage adapter and receipt-settlement focused suite; 7 files/93 tests",
+          "sourceSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+          "state": "PASS_CONTRACT_TESTS"
+        },
+        {
+          "evidence": "Create Mini App bridge; 6 focused Vitest files/36 tests",
+          "sourceSha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+          "state": "PASS_CONTRACT_TESTS"
+        }
+      ],
+      "realRunnerAcceptance": "NOT_DEMONSTRATED",
+      "handoffOwnership": "SPEC-224 canonical handoff; a separate SPEC-224 audit worktree exists, so this recovery does not rewrite the manifest",
+      "missingRequirement": "Fresh trusted non-production Runner capability/session, exact workspace/source binding, owner-authorized grant, and a real consumed stage receipt",
+      "blockerClassification": [
+        "REMOTE_TRUST_NOT_ESTABLISHED",
+        "ADMISSION_POLICY_DENIED",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "After authority is provisioned, execute a new app through Create → DevelopmentRun → Runner → receipt settlement in a disposable workspace."
+    },
+    {
+      "specId": "SPEC-205",
+      "capability": "Cross-platform Runner binary, local capability discovery and authenticated control-plane registration",
+      "implementationState": "RUNNER_0_2_23_PRESENT; CURRENT_LOCAL_STATUS_IS_DISCOVERY_ONLY",
+      "integrationState": "CURRENT_RUNNER_CODE_PRESENT; SPEC-205 handoff still has pending Windows hosted verification",
+      "tests": [
+        {
+          "evidence": "Codex login status probe implementation and focused adapter tests",
+          "sourceSha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+          "state": "PASS_LOCAL_PROBE_CONTRACT"
+        },
+        {
+          "evidence": "Current local status shows readyToolCount=0; no current Runner rescan/session receipt",
+          "sourceSha": "e2c3bd57a43fa384c0a08fec05f4bf352a07be44",
+          "state": "OBSERVED_READ_ONLY"
+        }
+      ],
+      "realRunnerAcceptance": "NOT_DEMONSTRATED_FOR_THIS_RUN",
+      "handoffOwnership": "SPEC-205 canonical handoff; Windows review and reconnect evidence remains separately owned",
+      "missingRequirement": "Non-production control-plane enrollment and fresh capability/session/workspace/source attestation",
+      "blockerClassification": [
+        "REMOTE_TRUST_NOT_ESTABLISHED",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Use an owner-authorized non-production registration path and record a fresh capability snapshot; do not infer readiness from state=ready."
+    },
+    {
+      "specId": "SPEC-226",
+      "capability": "Device-independent agent compatibility bridge",
+      "implementationState": "DORMANT_VALID",
+      "integrationState": "NO_ACTIVE_FACTORY_DEPENDENCY_CONFIRMED",
+      "tests": [],
+      "realRunnerAcceptance": "NOT_APPLICABLE_TO_BASELINE_FACTORY_REQUEST",
+      "handoffOwnership": "SPEC-226 canonical handoff; no change requested",
+      "missingRequirement": "Only applicable if the requested app requires a specific device-independent provider route",
+      "blockerClassification": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Keep outside the core path unless a concrete app requirement selects this compatibility route."
+    },
+    {
+      "specId": "SPEC-256",
+      "capability": "Skill/capability discovery, eligibility and execution selection",
+      "implementationState": "CONTRACT_AND_SELECTION_CODE_PRESENT; HANDOFF_VERIFICATION_UNKNOWN",
+      "integrationState": "CANONICAL HANDOFF HAS NO INTEGRATION SHA",
+      "tests": [],
+      "realRunnerAcceptance": "NOT_DEMONSTRATED",
+      "handoffOwnership": "SPEC-256 canonical handoff; no change requested",
+      "missingRequirement": "Fresh exact-SHA evidence connecting Factory selection to eligible Runner capabilities",
+      "blockerClassification": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Reconcile the SPEC-256 ledger against current source before claiming this dependency verified."
+    },
+    {
+      "specId": "SPEC-267",
+      "capability": "worker_jobs/outbox claim, lease, retry and durable continuation",
+      "implementationState": "INTEGRATED_WITH_FOCUSED_CONTROL_PLANE_EVIDENCE",
+      "integrationState": "INTEGRATED; handoff canonical SHA f706b573873484c90af08e265ac2dfd98d14325a",
+      "tests": [
+        {
+          "evidence": "Focused control-plane/claim regression; 9 files, 205 passed, 2 DB-dependent skipped",
+          "sourceSha": "f706b573873484c90af08e265ac2dfd98d14325a",
+          "state": "PASS_SCOPED"
+        }
+      ],
+      "realRunnerAcceptance": "NO_FACTORY_REAL_RUNNER_ACCEPTANCE",
+      "handoffOwnership": "SPEC-267 canonical handoff; no change requested",
+      "missingRequirement": "Real Runner receipt/idempotency and crash/reclaim evidence for the Factory execution",
+      "blockerClassification": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Reuse the existing outbox path and capture live receipt/reclaim evidence only after authority exists."
+    },
+    {
+      "specId": "SPEC-271",
+      "capability": "Independent functional acceptance and browser UAT receipts",
+      "implementationState": "ACCEPTANCE_CONTRACTS_PRESENT; CURRENT_FACTORY_UAT_OPEN",
+      "integrationState": "INTEGRATED; handoff canonical SHA 9bfe80208293b47153b4736e5c8a29ac98609e8b",
+      "tests": [
+        {
+          "evidence": "Focused independent acceptance contract suite; 21 files/261 tests",
+          "sourceSha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+          "state": "PASS_SYNTHETIC_CONTRACT"
+        },
+        {
+          "evidence": "Visual reference UAT impact review found no rendered app or browser comparison",
+          "sourceSha": "6663706dc01c94c4982c62f023ffafb723e38647",
+          "state": "UNVERIFIED"
+        }
+      ],
+      "realRunnerAcceptance": "NOT_DEMONSTRATED",
+      "handoffOwnership": "SPEC-271 canonical handoff; no change requested",
+      "missingRequirement": "New app runtime, authenticated journey, browser evidence and independent final verification",
+      "blockerClassification": [
+        "RUNTIME_UNAVAILABLE",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "After real creation/package and an authorized isolated runtime exist, run browser UAT and final verification separately."
+    },
+    {
+      "specId": "SPEC-275",
+      "capability": "Execution learning/reliability and failure evidence",
+      "implementationState": "PARTIAL; PRODUCTION_FAILURE_EVIDENCE_AUTHORITY_OPEN",
+      "integrationState": "INTEGRATED PARTIAL; handoff canonical SHA 612495a06a2472478d92a6aaa9cd8c81684815e1",
+      "tests": [
+        {
+          "evidence": "WP1 fixture-intake evidence",
+          "sourceSha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+          "state": "PASS_FIXTURE_ONLY"
+        }
+      ],
+      "realRunnerAcceptance": "NOT_APPLICABLE_TO_FIRST_APP_CREATION; learning remains disabled pending authority",
+      "handoffOwnership": "SPEC-275 canonical handoff; no change requested",
+      "missingRequirement": "Owner-approved production failure evidence source; not a prerequisite for M6 creation or M7 recovery demonstration",
+      "blockerClassification": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Keep learning/promotion disabled; do not block M6/M7 on optional learning ingestion."
+    },
+    {
+      "specId": "SPEC-278",
+      "capability": "Durable Runner execution session, restart reattachment and receipt recovery",
+      "implementationState": "LINUX_OPT_IN_LAUNCH_AND_REATTACH_CODE_PRESENT; HELPER_NOT_SHIPPED_BEFORE_THIS_CHANGE",
+      "integrationState": "SOURCE_PRESENT; release packaging fix in this checkpoint is pending PR integration",
+      "tests": [
+        {
+          "evidence": "Session-host integration suite exists; packaged Linux install lifecycle test extended in this checkpoint",
+          "sourceSha": "162846d83b76c56a2fb1f2931327aa4ea6f65d9d",
+          "state": "FOCUSED_TESTS_PENDING_CI"
+        }
+      ],
+      "realRunnerAcceptance": "NOT_DEMONSTRATED; feature remains opt-in and authority-gated",
+      "handoffOwnership": "SPEC-278 canonical handoff is DISCOVERING; no canonical handoff edit made",
+      "missingRequirement": "Merged release artifact containing helper, explicit approved Runner configuration/grant, and real interruption/reconnect evidence",
+      "blockerClassification": [
+        "CONFIGURATION_DEFECT",
+        "REMOTE_TRUST_NOT_ESTABLISHED",
+        "ADMISSION_POLICY_DENIED",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "nextAction": "Complete normal PR checks for Linux helper packaging; then, only in an authorized disposable environment, enable the opt-in path and run M7 restart/reconnect acceptance."
+    }
+  ],
+  "openBlockers": [
+    {
+      "id": "M6_M7_NONPRODUCTION_RUNNER_AUTHORITY",
+      "classification": "TRUE_EXTERNAL_AUTHORITY",
+      "owner": "SPEC-224/workspace-authority maintainer and authenticated tenant owner",
+      "reason": "No owner-authorized disposable Runner registration/session with a fresh capability snapshot bound to exact source, workspace and DevelopmentRun, plus no disposable PostgreSQL app-schema target was available in this environment.",
+      "nextAction": "Provide/issue the existing authorized non-production registration and scoped grant through the current owner route; separately authorize any budget/funding/ledger inputs required by the selected execution path.",
+      "resumePredicate": "Fresh tenant-bound Runner session + capability snapshot + workspace/source attestation + disposable database + exact DevelopmentRun/job/attempt grant are all present and current.",
+      "attemptedStrategies": [
+        "Read-only smartaihub-runner status",
+        "Read-only codex login status",
+        "Source review of Runner discovery, adapter probes, Factory runtime, job registry and session-host recovery"
+      ],
+      "prohibitedRetries": [
+        "Do not call smartaihub-runner rescan against the production default origin",
+        "Do not create credentials, grants, budgets, approvals, staging resources or live data",
+        "Do not treat status=ready, local login, unit tests or synthetic handlers as real acceptance"
+      ],
+      "evidenceFingerprint": {
+        "algorithm": "sha256",
+        "value": "e9a272fa08d2ab79755ae6e723190a477814ff34c2b50ca02cb3834aa92acf3e",
+        "facts": "runner=local-runner:0.2.23:ready:0/11;codex=discovered/probe_required;browser=discovered/probe_required;local_codex_login=authenticated;no_nonprod_binding;canonical=162846d83b76c56a2fb1f2931327aa4ea6f65d9d"
+      }
+    }
+  ],
+  "currentAcceptance": {
+    "m6RealFactoryRunnerExecution": "NOT_RUN",
+    "m7RealExecutionRecovery": "NOT_RUN",
+    "generatedAppCodeFromRealRun": "NONE",
+    "executionReceipts": "NONE",
+    "artifactDigest": "NONE_FOR_THIS_RUN",
+    "browserUat": "NOT_RUN",
+    "finalVerification": "NOT_RUN"
+  },
+  "nextExecutableWork": [
+    "Run PR checks and integrate the Linux Session Host package/installer checkpoint through normal branch protection.",
+    "After integration, reconcile the SPEC-224 handoff with the shared Spec writer against the new canonical SHA; do not mutate the other SPEC-224-owned task worktree.",
+    "On owner-authorized non-production infrastructure, bind a fresh Runner snapshot, exact source/workspace, DevelopmentRun and job attempt; satisfy admission and economic authorization before dispatch.",
+    "Execute M6 with new generated app code, preserve receipts/digests, then run separate isolated application runtime and browser UAT.",
+    "Execute M7 with real worker restart, Runner interruption/reconnect, retry, cross-process receipt settlement and duplicate-side-effect assertions; do not substitute synthetic tests.",
+    "Keep M8 deferred."
+  ]
+}
