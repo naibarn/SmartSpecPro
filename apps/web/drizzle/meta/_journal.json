@@ -2682,6 +2682,13 @@
       "when": 1791743719177,
       "tag": "0396_project_wiki_package_candidate",
       "breakpoints": true
+    },
+    {
+      "idx": 383,
+      "version": "7",
+      "when": 1791800000000,
+      "tag": "0397_spec268_team_room_canonical_project_binding",
+      "breakpoints": true
     }
   ]
 }

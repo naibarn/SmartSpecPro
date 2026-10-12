@@ -115,10 +115,15 @@ export const teamRoomRouter = router({
         roomType: z.enum(["direct", "team", "auto_team", "job_review"]),
         goalPrompt: z.string().min(1).max(5000),
         language: z.enum(["en", "th"]).default("en"),
+        canonicalProjectId: z.string().uuid().optional(),
         projectId: z.number().int().optional(),
         viewMode: z.string().max(30).optional(),
         autonomyLevel: z.string().max(30).optional(),
-      })
+      }).refine(
+        ({ canonicalProjectId, projectId }) =>
+          canonicalProjectId === undefined || projectId === undefined,
+        { message: "Canonical and legacy project bindings cannot be combined" },
+      )
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);

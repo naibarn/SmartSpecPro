@@ -20070,6 +20070,8 @@ export const teamRooms = pgTable(
     title: varchar("title", { length: 255 }),
     goalPrompt: text("goalPrompt"),
     language: text("language").notNull().default("en"),
+    /** Stable cross-domain Project identity; legacy projectId remains domain-local. */
+    canonicalProjectId: varchar("canonicalProjectId", { length: 36 }),
     projectId: integer("projectId"),
     viewMode: varchar("viewMode", { length: 30 }).default("transparent"),
     summaryMode: varchar("summaryMode", { length: 30 }),
@@ -20086,6 +20088,14 @@ export const teamRooms = pgTable(
   t => [
     index("team_rooms_tenant_team_idx").on(t.tenantId, t.teamId),
     index("team_rooms_orchestrator_idx").on(t.orchestratorUserId),
+    foreignKey({
+      name: "team_rooms_canonical_project_fk",
+      columns: [t.tenantId, t.canonicalProjectId],
+      foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId],
+    }).onDelete("restrict"),
+    index("team_rooms_canonical_project_idx")
+      .on(t.tenantId, t.canonicalProjectId)
+      .where(sql`${t.canonicalProjectId} IS NOT NULL`),
   ]
 );
 

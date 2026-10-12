@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const { mockGetDb } = vi.hoisted(() => ({ mockGetDb: vi.fn() }));
 
@@ -61,7 +62,7 @@ describe("team project provider authorization", () => {
   });
 
   it("captures a tenant, room, run, project and active-member binding", async () => {
-    mockDbRows(authorityRow());
+    const db = mockDbRows(authorityRow());
 
     await expect(
       captureTeamProjectProviderContextBinding(request)
@@ -76,6 +77,11 @@ describe("team project provider authorization", () => {
       projectId: "project-a",
       projectAuthority: "canonical-member",
     });
+
+    const projectJoin = new PgDialect().sqlToQuery(db.leftJoin.mock.calls[2][1]);
+    expect(projectJoin.sql).toContain('"team_rooms"."canonicalProjectId"');
+    expect(projectJoin.sql).toContain('"canonical_projects"."project_id"');
+    expect(projectJoin.sql).not.toContain('"team_rooms"."projectId"');
   });
 
   it("accepts active human team members whose room participant record is an observer", async () => {
@@ -91,7 +97,8 @@ describe("team project provider authorization", () => {
   it("keeps a legacy room project bound to the room without treating it as canonical authority", async () => {
     mockDbRows(
       authorityRow({
-        projectId: 77,
+        projectId: null,
+        legacyProjectId: 77,
         canonicalProjectId: null,
         canonicalTenantId: null,
         canonicalLifecycle: null,
@@ -102,7 +109,7 @@ describe("team project provider authorization", () => {
     await expect(
       captureTeamProjectProviderContextBinding(request)
     ).resolves.toMatchObject({
-      projectId: "77",
+      projectId: null,
       projectAuthority: "room-only",
       historyScope: "run",
     });
