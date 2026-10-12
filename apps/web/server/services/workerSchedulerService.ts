@@ -173,6 +173,8 @@ export interface WorkerSchedulerFeatureFlags {
   openClawExternalRuntime: boolean;
   desktopZeroClawWorker: boolean;
   hyperframesWorkerFinalComposite?: boolean;
+  verticalDramaSeries?: boolean;
+  verticalDramaSeriesVoiceChain?: boolean;
   nemoClawSecureWorkerPool: boolean;
   hiClawClusterRuntime: boolean;
   hermesAgentRuntime: boolean;
