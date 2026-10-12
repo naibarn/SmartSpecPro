@@ -10,7 +10,7 @@ import { queueSpeakerAwareWorkerJob } from "../services/workerSchedulerService";
 
 const speakerAwareProcedure = protectedProcedure.use(requireFeatureFlag("verticalDramaSeries"));
 const id = z.string().trim().min(1).max(160);
-type SpeakerAwareStatusItem = Pick<
+type SpeakerAwareStatusRow = Pick<
   typeof workerJobs.$inferSelect,
   | "id"
   | "jobType"
@@ -20,12 +20,15 @@ type SpeakerAwareStatusItem = Pick<
   | "createdAt"
   | "startedAt"
   | "finishedAt"
-> & {
-  artifacts: Array<
-    Pick<typeof workerArtifacts.$inferSelect, "id" | "artifactType"> & {
-      verificationState: string | null;
-    }
-  >;
+>;
+type SpeakerAwareStatusArtifact = Pick<
+  typeof workerArtifacts.$inferSelect,
+  "id" | "workerJobId" | "artifactType" | "metadataJson"
+>;
+type SpeakerAwareStatusItem = SpeakerAwareStatusRow & {
+  artifacts: Array<Pick<SpeakerAwareStatusArtifact, "id" | "artifactType"> & {
+    verificationState: string | null;
+  }>;
 };
 
 function requireTenant(tenantId: string | null | undefined): string {
@@ -75,7 +78,7 @@ export const verticalDramaSpeakerAwareRouter = router({
         .limit(1);
       if (!ownedSeries) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
     }
-    const jobs = await db.select({
+    const jobs: SpeakerAwareStatusRow[] = await db.select({
       id: workerJobs.id,
       jobType: workerJobs.jobType,
       status: workerJobs.status,
@@ -95,7 +98,7 @@ export const verticalDramaSpeakerAwareRouter = router({
       ))
       .orderBy(desc(workerJobs.createdAt))
       .limit(12);
-    const artifacts = jobs.length > 0
+    const artifacts: SpeakerAwareStatusArtifact[] = jobs.length > 0
       ? await db.select({ id: workerArtifacts.id, workerJobId: workerArtifacts.workerJobId, artifactType: workerArtifacts.artifactType, metadataJson: workerArtifacts.metadataJson })
         .from(workerArtifacts)
         .where(inArray(workerArtifacts.workerJobId, jobs.map((job) => job.id)))
