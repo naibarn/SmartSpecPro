@@ -13904,12 +13904,17 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "9bf489a70d966968ebf24260b70d35f9189ddfb2",
+      "canonical_sha": "799440309834041570d1742c5d75256891d5ee27",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
         "lifecycle has not reached implementation completion",
-        "requirement REQ-F5772188489C is OPEN"
+        "requirement REQ-F5772188489C is OPEN",
+        "requirement REQ-1E89C40A100C evidence is stale or not bound to canonical SHA",
+        "requirement REQ-01D17B8769D0 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-A80C5516DAF1 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-E38074317023 evidence is stale or not bound to canonical SHA",
+        "verification evidence is not bound to the canonical SHA"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -14047,7 +14052,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T01:51:56.025975Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
+      "next_action": "Integrate additive index migration #877, then verify the migration and target query plans in an authorized non-production database. Do not apply production migration.",
       "path": "specs/feature/014-Core-Funnel-Dashboard",
       "primary_blocker": null,
       "problem": null,
@@ -126543,7 +126548,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+      "canonical_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -127648,7 +127653,7 @@
         "requirement REQ-EA40FDE33EAD is OPEN",
         "requirement REQ-E8F70441ADF8 is OPEN",
         "requirement REQ-233CE93441E3 is OPEN",
-        "verification evidence is not bound to the canonical SHA"
+        "required verification evidence is missing"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -127686,11 +127691,11 @@
       "deployment": "UNKNOWN",
       "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "FRESH",
+      "evidence_freshness": "Exact PR source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52 merged as 757a5750f00e916ed84801c6024bebdc814e60f9. Focused Vitest 6 files / 88 tests passed locally; progressive_integration_gate and mocked SPEC-308 browser simulation passed on actual PR head; build-preview skipped. Canonical build on previous Main 2ea4e3905cedce99d7986021e13d6aea69db174a passed with global mascot gate OFF but became stale when Main advanced; no production migration or memory enablement.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T05:05:37.875870Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+      "next_action": "Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
@@ -127753,7 +127758,7 @@
       "successors": [],
       "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime",
       "true_blockers": 0,
-      "verification": "PASS"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
@@ -142135,7 +142140,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+      "canonical_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -142206,7 +142211,8 @@
         "requirement REQ-15DABEFB3703 is OPEN",
         "requirement REQ-7307875D109B is OPEN",
         "requirement REQ-23B5CA4BB00B is OPEN",
-        "required verification evidence is missing"
+        "required verification evidence is missing",
+        "required deployment evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -142241,14 +142247,14 @@
           "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
         }
       ],
-      "deployment": "RESOURCE_BLOCKED",
+      "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #852 merged at exact source head e9fe28d904451e696c0a2095221d583e512a3c01; merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e is verified as origin/main. Exact-head checks passed: Mocked SPEC-308 browser simulation (25 cases), scope, progressive_integration_gate. contract-and-security and live-contract-evidence skipped by current mascot-only scope classifier; build-preview skipped because preview workflow is disabled. Canonical build selected exact source SHA but was RESOURCE_BLOCKED before compilation: build-atomic reported less than 6 GiB headroom below MemoryHigh and exit 137. No artifact digest, deployment, or hosted tenant acceptance.",
+      "evidence_freshness": "PR #891 merged normally at Main 74e593891092b8a12f528db6d7e78a9370d75774. Canonical build and live static-asset verification match that source. Live retest found onboarding hint overlaps Sign In at 320×740 and 390×740. Fix source c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5 adds static interactive controls to collision detection and adds a 320px route regression; PR checks are pending.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
+      "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",

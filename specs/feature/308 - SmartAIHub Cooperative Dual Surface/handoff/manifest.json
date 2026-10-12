@@ -50,14 +50,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "9404cb8050c3185863ace015c75fa97a1b8223c1",
+    "expected_canonical_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Publish the exact integrated SPEC-308 source to the authorized SmartAIHub runtime with a fresh canonical build, verify the deployed source revision and live JS/CSS hashes, then retest mobile/tablet/desktop launcher label, hint overlap, Settings shortcut, and guest Chat path at https://smartaihub.app. Keep authenticated Bell/reminder acceptance open until a tenant-ZCSKEM9s session is available.",
+    "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "PR #890 merged at Main 9404cb8050c3185863ace015c75fa97a1b8223c1. Exact PR head 53b9da723222ea05c20c7b763171801104bb6527 passed focused SPEC-308 UI tests and mocked Playwright browser simulation. Live pre-fix mobile evidence is handoff/evidence/spec308-mobile-launcher-label-20261012.md. Next: exact-source build/publication and live retest; tenant-authenticated Bell/reminder/appearance acceptance remains open.",
+    "resume_point": "PR #891 is merged into Main at 74e593891092b8a12f528db6d7e78a9370d75774. It was built and live-tested at https://smartaihub.app; compact sign-in hint collision was observed at 320×740 and 390×740. Implementation and route regression are committed at c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. Open a normal PR and complete required checks, then merge, rebuild exact Main source, and retest live. Authenticated tenant UI acceptance remains open.",
     "waiting_predicate": "Authenticated tenant acceptance resumes when the existing logged-in dashboard for tenant tenant-ZCSKEM9s is available or the user supplies updated https://smartaihub.app evidence; continue exact-source build/publication and unauthenticated responsive route verification meanwhile."
   },
   "continuation_assessment": {
@@ -69,7 +69,7 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.",
+    "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
     "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
     "residual_requirements": [
       "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -94,10 +94,11 @@
       "handoff/evidence/spec308-gear-shortcut-deployment-20261012.md",
       "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-deployment-smartaihub-app-20261012.md",
       "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mascot-hit-target-deployment-20261012.md",
-      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mobile-launcher-label-20261012.md"
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mobile-launcher-label-20261012.md",
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-compact-signin-hint-collision-20261012.md"
     ],
     "required": true,
-    "source_sha": "9404cb8050c3185863ace015c75fa97a1b8223c1",
+    "source_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
     "status": "VALIDATION_PENDING"
   },
   "disposition": {
@@ -116,7 +117,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 89,
+  "generation": 91,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -219,13 +220,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9404cb8050c3185863ace015c75fa97a1b8223c1",
+    "canonical_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
     "integrated": true,
-    "integrated_at": "2026-10-12T14:46:51Z",
-    "pending_action": "PR #890 merged into Main at 9404cb8050c3185863ace015c75fa97a1b8223c1. Its exact PR head 53b9da723222ea05c20c7b763171801104bb6527 passed the SPEC-308 mocked browser simulation, focused component regressions, and progressive integration gate. Build/publish the integrated source to the authorized SmartAIHub runtime, then retest the live mobile launcher.",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/890",
-    "source_branch": "codex/spec308-mobile-label-20261012",
-    "source_sha": "53b9da723222ea05c20c7b763171801104bb6527"
+    "integrated_at": "2026-10-12T14:50:22Z",
+    "pending_action": "Open a normal PR for the compact sign-in hint collision fix; wait for the required SPEC-308 browser simulation and progressive integration gate, then merge only at the exact passing head. After integration, rebuild the authorized static runtime from the new Main SHA and retest at https://smartaihub.app.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/891",
+    "source_branch": "codex/spec308-hint-collision-20261012",
+    "source_sha": "c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -312,7 +313,7 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.",
+      "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
       "residual_requirements": [
         "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -2169,7 +2170,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T14:47:58.034233Z",
+  "updated_at": "2026-10-12T14:58:38.082013Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
@@ -2180,20 +2181,13 @@
       "Automatic integration continuity remains unproven: no always-running authorized worker connects WorkUnit/CI completion to worker_jobs plus outbox recovery; three-worker/interruption proof is not available."
     ],
     "evidence": [
-      "https://github.com/naibarn/SmartSpecPro/pull/888",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38258890357",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38258890510",
-      "handoff/evidence/spec308-gear-shortcut-deployment-20261012.md",
-      "https://github.com/naibarn/SmartSpecPro/pull/890",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38264781635",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38264781631",
-      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mobile-launcher-label-20261012.md"
+      "handoff/evidence/spec308-compact-signin-hint-collision-20261012.md"
     ],
-    "freshness": "Exact PR head 53b9da723222ea05c20c7b763171801104bb6527 passed focused SPEC-308 component regressions, mocked SPEC-308 browser simulation (run 38264781635), and progressive_integration_gate (run 38264781631). The mobile visibility/geometry assertions passed in the simulation. Build-preview was skipped. Authenticated live tenant acceptance and post-deployment live verification remain pending.",
+    "freshness": "PR #891 merged normally at Main 74e593891092b8a12f528db6d7e78a9370d75774. Canonical build and live static-asset verification match that source. Live retest found onboarding hint overlaps Sign In at 320×740 and 390×740. Fix source c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5 adds static interactive controls to collision detection and adds a 320px route regression; PR checks are pending.",
     "required_profiles": [
       "quick"
     ],
-    "sha": "53b9da723222ea05c20c7b763171801104bb6527",
+    "sha": "c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5",
     "status": "PARTIAL",
     "task_regressions": []
   }
