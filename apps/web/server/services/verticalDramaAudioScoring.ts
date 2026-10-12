@@ -55,6 +55,21 @@ export const VERTICAL_DRAMA_AUDIO_RIGHTS_STATUSES = [
 type AudioAnalysisStatus = (typeof VERTICAL_DRAMA_AUDIO_ANALYSIS_STATUSES)[number];
 type AudioPlanStatus = (typeof VERTICAL_DRAMA_AUDIO_PLAN_STATUSES)[number];
 type AudioRightsStatus = (typeof VERTICAL_DRAMA_AUDIO_RIGHTS_STATUSES)[number];
+type VerticalDramaMusicTake = {
+  artifactId: typeof workerArtifacts.$inferSelect.id;
+  publishedItemId: typeof workerArtifacts.$inferSelect.publishedItemId;
+  cueId: string | null;
+  storageRef: typeof workerArtifacts.$inferSelect.storageRef;
+  checksum: string;
+  modelName: string;
+  modelRevision: string;
+  sampleRate: unknown;
+  channels: unknown;
+  measuredLufs: unknown;
+  truePeakDb: unknown;
+  planHash: string;
+  rightsStatus: string;
+};
 
 function sha256(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -721,7 +736,7 @@ export async function listVerticalDramaMusicTakes(input: {
     eq(workerJobs.jobType, "minimax_music3_generate"),
   ));
 
-  const takes = rows.flatMap((row: {
+  const takes = rows.flatMap<VerticalDramaMusicTake>((row: {
     artifact: typeof workerArtifacts.$inferSelect;
     jobStatus: string;
     jobType: string;
