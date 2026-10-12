@@ -1103,7 +1103,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       const collisionControls = Array.from(document.querySelectorAll<HTMLElement>(ASSISTANT_COLLISION_CONTROL_SELECTOR));
       const obstacleElements = new Set<HTMLElement>();
       collisionControls.forEach(control => {
-        if (control === launcher || launcher.contains(control) || control.contains(hint) || hint?.contains(control)) return;
+        if (control === launcher || launcher?.contains(control) || control.contains(hint) || hint?.contains(control)) return;
         let candidate: HTMLElement | null = control;
         while (candidate && candidate !== launcher && !hint?.contains(candidate)) {
           const style = window.getComputedStyle(candidate);
