@@ -14,6 +14,15 @@ function getTenantId(ctx: { tenantId: string | null }): string {
   return ctx.tenantId ?? "default";
 }
 
+const structuredDataIssueSchema = z.object({
+  id: z.number(),
+  skill_slug: z.string(),
+  output_format: z.string(),
+  created_at: z.date(),
+  title: z.string().nullable(),
+  structured_data_errors: z.array(z.string()).catch([]),
+});
+
 export const contentQualityRouter = router({
   getOverview: adminProcedure.query(async ({ ctx }) => {
     const tenantId = getTenantId(ctx);
@@ -68,6 +77,7 @@ export const contentQualityRouter = router({
 
   getStructuredDataIssues: adminProcedure
     .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
+    .output(z.array(structuredDataIssueSchema))
     .query(async ({ ctx, input }) => {
       const tenantId = getTenantId(ctx);
       return db
