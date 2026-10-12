@@ -1,8 +1,10 @@
 {
   "acceptance": {
-    "evidence": [],
-    "required": false,
-    "status": "UNKNOWN"
+    "evidence": [
+      "handoff/evidence/spec308-user-live-ui-acceptance-20261013.md"
+    ],
+    "required": true,
+    "status": "PASS"
   },
   "authority": {
     "claims": [],
@@ -44,15 +46,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0180466b185873a45f67808ec2358505c7c7d2a1",
+    "expected_canonical_sha": "fdf3e2839bf93f8edc441f341a0679234f6a6f6e",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA routing, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 requirement rows OPEN until requirement-level evidence is recorded; continue independent code gaps from the ledger.",
-    "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
-    "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "Current Main after PR #901 is 0180466b185873a45f67808ec2358505c7c7d2a1; deployed UI source remains e57a01616337b638529430662057bed62577c26b. Live public responsive and guest Chat checks are recorded in handoff/evidence/spec308-live-public-audit-20261013.md. Authenticated tenant acceptance remains the next action.",
-    "waiting_predicate": "Authenticated tenant acceptance resumes when the existing logged-in dashboard for tenant tenant-ZCSKEM9s is available; until then continue exact-source route checks and independent code gaps without fabricating notification or tenant evidence."
+    "next_action": "The user reported the authenticated tenant UI checklist works fully. Reconcile that user acceptance with the 66 requirement rows and close only rows supported by exact-source implementation and requirement-level verification evidence. Keep privacy, event-authority, accessibility, performance, rollback, and integration criteria OPEN until their evidence exists.",
+    "next_ready_workunit": "SPEC308_REQUIREMENT_LEVEL_EVIDENCE_RECONCILIATION",
+    "reactivation_predicate": "User-reported live UI acceptance is recorded. Continue with exact-SHA requirement-level evidence reconciliation; if any row needs additional user evidence, request only that row’s specific result while progressing independent checks.",
+    "resume_point": "Current Main at audit start is fdf3e2839bf93f8edc441f341a0679234f6a6f6e; deployed UI source remains e57a01616337b638529430662057bed62577c26b. The user reported that the authenticated Bell/unread and real reminder CTA, five appearance styles and persistence, Settings, signed-in Chat/task controls, and responsive checklist work fully. The report is user acceptance without a saved browser trace. All 66 requirement rows remain OPEN pending row-level exact-source evidence.",
+    "waiting_predicate": "No authenticated-session wait remains. Continue requirement-level evidence reconciliation and independent code gaps; do not treat aggregate user acceptance as proof for privacy, authority, accessibility, performance, rollback, or integration requirements."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -71,19 +73,20 @@
       "https://github.com/naibarn/SmartSpecPro/pull/900",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38321649088",
       "https://github.com/naibarn/SmartSpecPro/pull/901",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38321963213"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38321963213",
+      "handoff/evidence/spec308-user-live-ui-acceptance-20261013.md"
     ],
-    "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.",
-    "rationale": "PR #900 records exact-source public responsive and guest Chat verification; PR #901 records the merge receipt. Both merged normally after their exact-head progressive integration gates passed. Current Main at this checkpoint is 0180466b185873a45f67808ec2358505c7c7d2a1, while the deployed UI source remains e57a01616337b638529430662057bed62577c26b. Bell/unread, real notification reminder, saved appearance styles, authenticated Settings, and signed-in Chat/task controls remain unverified without tenant authentication.",
+    "next_action": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
+    "rationale": "The user directly confirmed that the requested authenticated tenant UI checklist works fully. Record that checklist acceptance as PASS, scoped to the user-visible Bell/unread, real reminder CTA, five appearance choices and persistence, Settings, signed-in Chat/task controls, and responsive layouts. The confirmation has no saved browser trace and does not satisfy the broader exact-source privacy, event-authority, accessibility, performance, rollback, and integration evidence required by the 66-row ledger.",
     "residual_requirements": [
       "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
-      "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
+      "The user confirmed the live tenant UI checklist passes; this is user-reported acceptance without a saved browser trace. Keep each SPEC-308 ledger row OPEN until its implementation and verification evidence is bound to the exact source SHA.",
       "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
       "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
       "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
       "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
     ],
-    "resume_point": "Current Main 0180466b185873a45f67808ec2358505c7c7d2a1 includes the live audit merge receipt. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. Public responsive and guest Chat checks pass; tenant-authenticated acceptance remains open."
+    "resume_point": "Current Main at audit start fdf3e2839bf93f8edc441f341a0679234f6a6f6e records the user-reported authenticated UI acceptance. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. User-visible checklist is accepted; all 66 requirement rows remain open for exact-source evidence reconciliation."
   },
   "dependencies": {
     "predicates": [],
@@ -122,7 +125,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 107,
+  "generation": 109,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -225,13 +228,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0180466b185873a45f67808ec2358505c7c7d2a1",
+    "canonical_sha": "fdf3e2839bf93f8edc441f341a0679234f6a6f6e",
     "integrated": true,
-    "integrated_at": "2026-10-12T23:25:49Z",
-    "pending_action": "PR #901 merged normally at Main 0180466b185873a45f67808ec2358505c7c7d2a1 after progressive_integration_gate passed on exact head 266405817c796d17eec48163a0c7f8cfc8486cd7; build-preview was skipped by the disabled preview workflow. The UI source is unchanged and remains deployed from e57a01616337b638529430662057bed62577c26b. Authenticated tenant acceptance remains OPEN.",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/901",
-    "source_branch": "codex/spec308-handoff-merge-receipt-20261013",
-    "source_sha": "266405817c796d17eec48163a0c7f8cfc8486cd7"
+    "integrated_at": "2026-10-12T23:28:03Z",
+    "pending_action": "PR #903 records the user-reported authenticated UI checklist PASS and preserves 66 requirement rows as OPEN. Wait for exact-head required checks; merge through the normal PR path when they pass. Main at branch base is fdf3e2839bf93f8edc441f341a0679234f6a6f6e; no UI source change is included.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/903",
+    "source_branch": "codex/spec308-user-acceptance-20261013",
+    "source_sha": "ae98629976ff2d9f5b29d251d828e618df81c59d"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -326,19 +329,20 @@
         "https://github.com/naibarn/SmartSpecPro/pull/900",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38321649088",
         "https://github.com/naibarn/SmartSpecPro/pull/901",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38321963213"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38321963213",
+        "handoff/evidence/spec308-user-live-ui-acceptance-20261013.md"
       ],
-      "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.",
-      "rationale": "PR #900 records exact-source public responsive and guest Chat verification; PR #901 records the merge receipt. Both merged normally after their exact-head progressive integration gates passed. Current Main at this checkpoint is 0180466b185873a45f67808ec2358505c7c7d2a1, while the deployed UI source remains e57a01616337b638529430662057bed62577c26b. Bell/unread, real notification reminder, saved appearance styles, authenticated Settings, and signed-in Chat/task controls remain unverified without tenant authentication.",
+      "next_action": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
+      "rationale": "The user directly confirmed that the requested authenticated tenant UI checklist works fully. Record that checklist acceptance as PASS, scoped to the user-visible Bell/unread, real reminder CTA, five appearance choices and persistence, Settings, signed-in Chat/task controls, and responsive layouts. The confirmation has no saved browser trace and does not satisfy the broader exact-source privacy, event-authority, accessibility, performance, rollback, and integration evidence required by the 66-row ledger.",
       "residual_requirements": [
         "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
-        "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
+        "The user confirmed the live tenant UI checklist passes; this is user-reported acceptance without a saved browser trace. Keep each SPEC-308 ledger row OPEN until its implementation and verification evidence is bound to the exact source SHA.",
         "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
         "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
         "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
         "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
       ],
-      "resume_point": "Current Main 0180466b185873a45f67808ec2358505c7c7d2a1 includes the live audit merge receipt. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. Public responsive and guest Chat checks pass; tenant-authenticated acceptance remains open."
+      "resume_point": "Current Main at audit start fdf3e2839bf93f8edc441f341a0679234f6a6f6e records the user-reported authenticated UI acceptance. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. User-visible checklist is accepted; all 66 requirement rows remain open for exact-source evidence reconciliation."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2185,7 +2189,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T23:26:19.846981Z",
+  "updated_at": "2026-10-12T23:39:26.951709Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",

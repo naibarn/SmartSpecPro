@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.
-- Manifest generation: 107
+- Next action: Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.
+- Manifest generation: 109
 
 ## Source-declared status and relationship claims
 
