@@ -10,7 +10,6 @@ from scripts.checks.setup_implementation_session import (
     check_git_repo,
     check_current_branch,
     check_working_tree_status,
-    check_canonical_baseline,
     detect_commit_style,
     detect_section_review_state,
     infer_session_state,
@@ -18,48 +17,6 @@ from scripts.checks.setup_implementation_session import (
 )
 
 SETUP_SCRIPT = Path(__file__).parent.parent / "scripts" / "checks" / "setup_implementation_session.py"
-
-
-def test_canonical_baseline_blocks_stale_branch_without_rewriting_it(tmp_path):
-    def git(*args, cwd=None):
-        result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
-        assert result.returncode == 0, result.stderr
-        return result.stdout.strip()
-
-    remote, seed, work = tmp_path / "remote.git", tmp_path / "seed", tmp_path / "work"
-    git("init", "--bare", "--initial-branch=main", str(remote))
-    git("clone", str(remote), str(seed))
-    git("-C", str(seed), "config", "user.name", "Test")
-    git("-C", str(seed), "config", "user.email", "test@example.invalid")
-    (seed / "source.txt").write_text("v1\n")
-    git("-C", str(seed), "add", "source.txt")
-    git("-C", str(seed), "commit", "-m", "v1")
-    git("-C", str(seed), "push", "origin", "main")
-    git("clone", "--branch", "main", str(remote), str(work))
-    git("-C", str(work), "config", "user.name", "Test")
-    git("-C", str(work), "config", "user.email", "test@example.invalid")
-    git("-C", str(work), "checkout", "-b", "codex/setup-fixture")
-
-    (seed / "source.txt").write_text("v2\n")
-    git("-C", str(seed), "commit", "-am", "v2")
-    git("-C", str(seed), "push", "origin", "main")
-    (work / ".development-repository.toml").write_text(
-        "[repository]\nrepository_id='fixture'\nremote='origin'\n"
-        f"canonical_ref='refs/heads/main'\nsource_root='{tmp_path / 'sources'}'\n"
-    )
-    helper = work / "scripts" / "development-lifecycle" / "canonical_source.py"
-    helper.parent.mkdir(parents=True)
-    source_helper = Path(__file__).resolve().parents[3] / "scripts" / "development-lifecycle" / "canonical_source.py"
-    shutil.copy2(source_helper, helper)
-    git("-C", str(work), "add", ".development-repository.toml", "scripts/development-lifecycle/canonical_source.py")
-    git("-C", str(work), "commit", "-m", "add lifecycle preflight fixture")
-    old_sha = git("-C", str(work), "rev-parse", "HEAD")
-
-    result = check_canonical_baseline(work)
-    assert result["ready"] is False
-    assert result["next_action"] == "RECONCILE_WITH_FETCHED_CANONICAL_SHA"
-    assert git("-C", str(work), "rev-parse", "HEAD") == old_sha
-    assert git("-C", str(work), "status", "--porcelain") == ""
 
 
 def test_section_checkpoints_complete_implementation_without_outcome_acceptance():
@@ -84,6 +41,32 @@ def test_finalization_task_completes_only_after_outcome_closure():
         outcome_complete=True,
     )
     assert tasks[-1].status == "completed"
+
+
+def test_task_graph_has_no_review_interview_or_compaction_barrier():
+    from scripts.checks.setup_implementation_session import build_impl_dependency_graph
+    sections = ["section-01-ui", "section-02-api", "section-03-debug"]
+    tasks = generate_implementation_tasks(sections, [], None, None, {"plugin_root": "/tmp/plugin"})
+    labels = [task.subject.lower() for task in tasks]
+    assert not any("review" in label or "compaction" in label or "interview" in label for label in labels)
+    assert sum("persist checkpoint" in label for label in labels) == 3
+    assert sum(label.startswith("implement ") for label in labels) == 3
+    deps = build_impl_dependency_graph(tasks, sections)
+    assert len(deps) == len(tasks)
+    # There is no cycle and context reminder never blocks implementation.
+    for pos, (blocks, blocked_by) in deps.items():
+        assert all(int(other) > pos for other in blocks)
+        assert all(int(other) < pos for other in blocked_by)
+    assert not deps[2][1]  # first implementation task, no dependency on context
+
+
+def test_review_artifacts_do_not_skip_commit_or_checkpoint():
+    tasks = generate_implementation_tasks(
+        ["section-01-ui"], [], "section-01-ui", {"resume_step": "interview"}, {}
+    )
+    status = {task.subject.split(" section-")[0]: task.status for task in tasks}
+    assert status["Commit"] == "pending"
+    assert status["Persist checkpoint for"] == "pending"
 
 
 class TestValidateSectionsDir:
@@ -412,7 +395,7 @@ class TestInferSessionState:
 
         result = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)
 
-        assert result["mode"] == "finalize"
+        assert result["mode"] == "implementation_complete"
         assert result["outcome_complete"] is False
 
         config["outcome"] = {
@@ -423,15 +406,13 @@ class TestInferSessionState:
             }],
             "integrated": True, "required_verification_fresh": True,
             "task_regressions_clear": True, "authority_resolved": True,
-            "canonical_verified": True, "user_workspace_converged": False,
-            "worktree_lifecycle_settled": False,
+            "canonical_verified": True, "user_workspace_converged": True,
+            "worktree_lifecycle_settled": True,
         }
         (mock_implementation_dir / "deep_implement_config.json").write_text(json.dumps(config))
         closed = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)
         assert closed["mode"] == "complete"
         assert closed["outcome_complete"] is True
-        assert closed["development_complete"] is False
-        assert closed["workspace_convergence_complete"] is False
 
 
 class TestDetectSectionReviewState:

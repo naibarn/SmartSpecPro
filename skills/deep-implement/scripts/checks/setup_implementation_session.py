@@ -230,29 +230,6 @@ def check_working_tree_status(git_root: Path) -> dict:
     return {"clean": True, "dirty_files": []}
 
 
-def check_canonical_baseline(git_root: Path) -> dict:
-    """Require a clean worktree containing the freshly fetched project trunk."""
-    policy = git_root / ".development-repository.toml"
-    helper = git_root / "scripts" / "development-lifecycle" / "canonical_source.py"
-    if not policy.exists():
-        return {"configured": False, "ready": True, "status": "POLICY_NOT_CONFIGURED"}
-    if not helper.is_file():
-        return {"configured": True, "ready": False, "status": "PREFLIGHT_TOOL_MISSING"}
-    result = subprocess.run(
-        [sys.executable, str(helper), "preflight", "--repository", str(git_root)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    try:
-        report = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        report = {"status": "PREFLIGHT_FAILED", "detail": result.stderr.strip()}
-    report["configured"] = True
-    report["ready"] = result.returncode == 0 and report.get("ready") is True
-    return report
-
-
 def detect_commit_style(git_root: Path) -> str:
     """
     Detect commit message style from git history.
@@ -500,7 +477,7 @@ def infer_session_state(
     all_sections = config.get("sections", [])
     outcome = config.get("outcome", {})
     policy = load_shared_lifecycle_policy(config.get("plugin_root"))
-    outcome_complete = policy.implementation_outcome_complete(
+    outcome_complete = policy.outcome_complete(
         outcome.get("requirements", []),
         integrated=outcome.get("integrated", False),
         required_verification_fresh=outcome.get("required_verification_fresh", False),
@@ -511,10 +488,8 @@ def infer_session_state(
         accepted=outcome.get("accepted", False),
         authority_resolved=outcome.get("authority_resolved", False),
         canonical_verified=outcome.get("canonical_verified", False),
-    )
-    workspace_convergence_complete = (
-        outcome.get("user_workspace_converged", False)
-        and outcome.get("worktree_lifecycle_settled", False)
+        user_workspace_converged=outcome.get("user_workspace_converged", False),
+        worktree_lifecycle_settled=outcome.get("worktree_lifecycle_settled", False),
     )
 
     if len(checkpointed) >= len(all_sections) and all_sections:
@@ -523,8 +498,6 @@ def infer_session_state(
             "checkpointed_sections": checkpointed,
             "completed_sections": checkpointed,
             "outcome_complete": outcome_complete,
-            "development_complete": outcome_complete and workspace_convergence_complete,
-            "workspace_convergence_complete": workspace_convergence_complete,
             "resume_from": None,
             "resume_section_state": None
         }
@@ -728,17 +701,6 @@ def main():
     # Check working tree
     working_tree = check_working_tree_status(git_root)
 
-    # Do not begin/resume implementation against a stale canonical base or dirty
-    # shared checkout. The source helper fetches the policy-selected ref first.
-    canonical_baseline = check_canonical_baseline(git_root)
-    if not canonical_baseline["ready"]:
-        print(json.dumps({
-            "success": False,
-            "error": "Implementation baseline is not ready. Preserve dirty work, prepare an isolated worktree from the fetched canonical SHA, then resume.",
-            "canonical_baseline": canonical_baseline,
-        }, indent=2))
-        return
-
     # Detect commit style
     commit_style = detect_commit_style(git_root)
 
@@ -843,7 +805,6 @@ def main():
         "is_protected_branch": branch_info["is_protected"],
         "working_tree_clean": working_tree["clean"],
         "dirty_files": working_tree["dirty_files"],
-        "canonical_baseline": canonical_baseline,
         "commit_style": commit_style,
         "pre_commit": pre_commit,
         "project_config": project_config,

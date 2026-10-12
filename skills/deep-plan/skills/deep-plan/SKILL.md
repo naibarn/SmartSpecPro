@@ -42,4 +42,4 @@ Report the plan path, section count and clear next action: `/deep-implement @{pl
 Planning artifacts may be committed as coherent checkpoints through the existing protected repository flow. A plan is not a completed application, and unresolved downstream acceptance never prevents planning handoff.
 ## Shared lifecycle contract
 
-Use the [shared development lifecycle](../../../development-lifecycle/SKILL.md) to map plan sections to the requirement ledger and keep evidence freshness explicit.
+Use the shared `development-lifecycle` skill to map plan sections to the requirement ledger and keep evidence freshness explicit.

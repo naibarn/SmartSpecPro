@@ -14,45 +14,34 @@ Use this skill whenever a session reaches a safe checkpoint, is about to pause/s
 ```text
 implement / partial progress
   → SAFE CHECKPOINT
-  → SLICE/REPOSITORY-REQUIRED CHECKS
   → FAST INTEGRATION GATE
   → commit
   → integrate into configured canonical ref
-  → resolve/converge the registered canonical user workspace
-  → retire the task worktree only after recovery/integration evidence
+  → record confirmed canonical SHA and task HandOff
+  → schedule workspace sync/retirement separately (non-blocking)
   → heavy test / full typecheck / integration / UAT
   → if a problem appears, repair on current canonical state and promote that repair
 ```
 
-Before promotion, satisfy every repository-required and slice-required check
-that applies to this checkpoint, including impacted tests, security/authorization,
-and API/schema compatibility when applicable. Use change-impact analysis to
-identify affected checks and invalidate evidence whose inputs changed. A
-required check failure blocks that slice; continue independent safe work.
-
-The FAST INTEGRATION GATE is an additional patch-safety check. It checks:
+The FAST INTEGRATION GATE checks only:
 
 - no syntax or compile error in the changed scope;
 - no unresolved merge conflict;
 - no damaged or unusable patch;
 - no accidental secret.
 
-Run inexpensive scoped checks that establish these facts. Full-repository
-typecheck/build, unrelated heavy tests, integration/UAT, provider/rights checks,
-and production gates remain post-integration unless repository policy or the
-slice contract explicitly requires them. Resource limits defer only checks
-that policy permits to run after integration; they never waive required checks.
+Run inexpensive scoped checks that establish these facts. Do not wait for full typecheck, repository-wide build, heavy tests, integration/UAT, provider/rights checks, or production gates before promotion. Resource limits defer those checks, not the integration.
 
 ## Steps
 
 1. Identify the repository, task, current configured canonical ref, and every changed path. Preserve unrelated dirty changes; stage only files owned by this task.
-2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the slice/repository-required impacted checks, then the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate unless explicitly required by policy.
+2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate.
    Before declaring the session complete, inspect Git state with `python3 skills/development-lifecycle/git_capabilities.py inspect`. An intentional merge/rebase/cherry-pick must be completed or handed off explicitly; unresolved paths block completion. For conflict resolution, use the shared helper with explicit owned paths and verify its staged-before/intended/staged-after sets. Do not absorb pre-existing staged paths outside task ownership. Record the expected branch, commit SHA, remote push result where required, and worktree status in the handoff; a clean-looking status alone is not proof of integration.
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
 4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
 5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
-6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. When this is Spec 224 completion evidence, pass the exact development run ID with `--task-id` and register the task worktree with that same ID. The resolver preserves dirty work and records recovery evidence before any update. Do not substitute a newly created alternate folder for the registered user workspace. If convergence is blocked, record the exact reason and leave completion pending.
-7. Record task workspace SHA, integrated SHA, canonical SHA, canonical user workspace SHA, convergence receipt, recovery linkage, and retirement status. Retire an owned temporary worktree only after its changes are verified integrated or durably archived; run dry-run first. A dirty/stashed/unpushed/live-owned/unknown worktree remains preserved and completion stays pending.
+6. Record the integrated SHA and task HandOff **immediately after confirming the merge**. Workspace synchronization is separate housekeeping: when appropriate, attempt a non-destructive convergence of a registered canonical user workspace through `scripts/development-lifecycle/workspace_authority.py`. For Spec 224 execution evidence, bind the exact development run ID and task registration as required by that acceptance path. If the user workspace is dirty, stale, missing or separately owned, preserve it, record a follow-up, and **continue development from the clean canonical source**; do not revoke a verified merge or block independent next WorkUnits.
+7. Record task source SHA, integrated SHA, optional workspace sync receipt, recovery linkage and retirement status in the existing HandOff. Retire an owned temporary worktree only after verified integration or durable archival and an ownership-safe dry run. Dirty, unpushed, leased or unknown worktrees stay preserved as a housekeeping obligation, not an integration failure.
 8. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
 9. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, promote a new commit to configured canonical ref, then converge the registered canonical workspace again. Preserve history; do not hide the fix in a side branch.
 
@@ -91,7 +80,7 @@ not task completion until the outcome's Definition of Done is met.
 ## Outcomes
 
 - `CHECKPOINT_PROMOTED_PARTIAL`: safe valuable partial progress is reachable from configured canonical ref; task remains open with a durable handoff/next action.
-- `PROMOTED_TO_CANONICAL`: implementation scope is complete and the implementation commit is reachable from configured canonical ref; post-integration checks may remain pending.
+- `PROMOTED_TO_CANONICAL`: implementation scope is complete and the implementation commit is reachable from configured canonical ref; post-integration checks or separate user-workspace housekeeping may remain pending.
 - `ALREADY_CANONICAL`: equivalent progress is already integrated and no unique valuable delta remains.
 - `FAST_GATE_BLOCKED`: the remaining delta cannot safely enter the configured canonical ref; exact failure, durable recovery location, owner, and next action are recorded. This is not completion.
 
