@@ -116413,7 +116413,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": null,
+      "canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -116484,8 +116484,7 @@
         "requirement REQ-15DABEFB3703 is OPEN",
         "requirement REQ-7307875D109B is OPEN",
         "requirement REQ-23B5CA4BB00B is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -116520,20 +116519,20 @@
           "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
         }
       ],
-      "deployment": "UNKNOWN",
+      "deployment": "RESOURCE_BLOCKED",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "Exact refreshed PR heads tested: #399 browser pass but MCP prerequisite contract failure and live authority missing; #403 118 focused tests pass but mandatory dependency audit/live MCP fail; #405 audit and compatibility pass but required owner disposition pending. No canonical integration.",
+      "evidence_freshness": "PR #852 merged at exact source head e9fe28d904451e696c0a2095221d583e512a3c01; merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e is verified as origin/main. Exact-head checks passed: Mocked SPEC-308 browser simulation (25 cases), scope, progressive_integration_gate. contract-and-security and live-contract-evidence skipped by current mascot-only scope classifier; build-preview skipped because preview workflow is disabled. Canonical build selected exact source SHA but was RESOURCE_BLOCKED before compilation: build-atomic reported less than 6 GiB headroom below MemoryHigh and exit 137. No artifact digest, deployment, or hosted tenant acceptance.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.",
+      "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",
         "id": "SPEC308_PROTECTED_MAIN",
-        "next_action": "Repository administrator configures the approved Main protection/ruleset with required checks and review policy; refresh PR #852 against current Main and use the normal merge path. No bypass or admin merge.",
-        "root_cause": "GitHub reports no branch protection for main and zero repository rulesets. The normal PR merge executor can honor configured rules, but no protected rule currently requires scoped checks or review."
+        "next_action": "Repository administrator configures the approved Main protection/ruleset with required checks and review policy before future integration; no bypass or admin merge. PR #852 was integrated through the ordinary exact-head PR path, but GitHub currently reports no Main protection and zero rulesets.",
+        "root_cause": "GitHub has no branch protection/rulesets for main. This did not block the ordinary PR merge of #852 after all applicable exact-head checks passed, but means required protection is not enforced at repository level."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",

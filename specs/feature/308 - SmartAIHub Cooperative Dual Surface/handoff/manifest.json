@@ -27,8 +27,8 @@
     {
       "class": "INTEGRATION_AUTHORITY",
       "id": "SPEC308_PROTECTED_MAIN",
-      "next_action": "Repository administrator configures the approved Main protection/ruleset with required checks and review policy; refresh PR #852 against current Main and use the normal merge path. No bypass or admin merge.",
-      "root_cause": "GitHub reports no branch protection for main and zero repository rulesets. The normal PR merge executor can honor configured rules, but no protected rule currently requires scoped checks or review."
+      "next_action": "Repository administrator configures the approved Main protection/ruleset with required checks and review policy before future integration; no bypass or admin merge. PR #852 was integrated through the ordinary exact-head PR path, but GitHub currently reports no Main protection and zero rulesets.",
+      "root_cause": "GitHub has no branch protection/rulesets for main. This did not block the ordinary PR merge of #852 after all applicable exact-head checks passed, but means required protection is not enforced at repository level."
     },
     {
       "class": "EXECUTION_CONTINUITY_MISSING",
@@ -41,36 +41,45 @@
       "id": "SPEC308_NONPROD_APP_RUNTIME",
       "next_action": "Application/runtime owner registers an approved non-production environment and tenant-aware route through the existing SmartAIHub gateway and target registry, and provisions the synthetic test identity through approved secret management. Resolve URL and target from that registry before browser acceptance.",
       "root_cause": "No registered tenant-aware non-production SmartAIHub application route and persistent authorized synthetic tenant/user were available to this session. PR preview and staging workflows are disabled; localhost evidence is isolated and mocked."
+    },
+    {
+      "class": "RESOURCE_BLOCKED",
+      "id": "SPEC308_CANONICAL_BUILD",
+      "next_action": "Canonical build owner retries only after a fresh resource observation shows at least the build-atomic admission headroom, against current canonical Main, recording exact source SHA and artifact digest.",
+      "root_cause": "The canonical build selected f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e but build-atomic denied admission because user-slice headroom was below 6 GiB under MemoryHigh; exit 137 occurred before compilation."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Refresh PR #852 against latest Main. Integrate only through configured protected normal PR path after exact-head required checks and review pass. After integration, record exact Main SHA through this handoff writer, run canonical build, then perform authenticated browser acceptance through registered tenant-aware non-production routing. Keep user visibility pending until exact deployed artifact and tenant flags are verified.",
-    "next_ready_workunit": "SPEC308_DUAL_SURFACE_PROTECTED_INTEGRATION",
-    "reactivation_predicate": "Recheck when Main advances, exact-head checks complete successfully, and approved Main protection/ruleset exists. Resume authenticated acceptance when an approved tenant-aware non-production route and synthetic identity are registered.",
-    "resume_point": "SPEC-308 UI source/tests are in successor PR #852 from current Main. Local and CI browser cases are mocked, not tenant-visible acceptance. Current Main's MCP scope classifier passed and skipped MCP protocol/live jobs for the mascot-only shared flag change; #403 and #405 remain independent owner-held PRs, not UI prerequisites.",
-    "waiting_predicate": "Protected normal merge path is configured; PR #852 is based on current canonical Main; exact-head required checks and review pass; a separately registered tenant-aware non-production route exists before authenticated acceptance."
+    "next_action": "After a fresh resource admission observation, build canonical Main and record artifact digest/source parity. Then perform authenticated browser acceptance through a registered tenant-aware non-production SmartAIHub route with authorized synthetic identity and verified feature flags. Keep user visibility pending until published artifact and tenant route are verified.",
+    "next_ready_workunit": "SPEC308_CANONICAL_BUILD_AND_TENANT_ACCEPTANCE",
+    "reactivation_predicate": "Resume canonical build when a fresh resource observation meets build-atomic headroom. Resume hosted acceptance when the application/runtime owner registers a tenant-aware non-production route and provisions an authorized synthetic identity. Configure Main protections for future PR integration.",
+    "resume_point": "PR #852 merged through ordinary exact-head PR workflow; merge SHA f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e is verified on origin/main. Exact-head mocked browser, scope, and progressive gates passed. Canonical build was resource-blocked before compilation; no artifact or published UI evidence exists. PR #399 is closed as superseded. PR #403 and #405 remain separately owned and are not prerequisites for the UI slice.",
+    "waiting_predicate": "Fresh build resource observation meets build-atomic admission; a tenant-aware non-production route and authorized identity are registered through existing SmartAIHub routing authority; artifact source/digest and feature-flag state are verified before claiming visibility."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "https://github.com/naibarn/SmartSpecPro/pull/852",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38194085301",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38194085443"
+      "https://github.com/naibarn/SmartSpecPro/commit/f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.",
-    "rationale": "The Dual Surface source and mocked component/browser checks now pass on a clean current-Main successor. This proves implementation behavior only. Integration is held by absent GitHub Main protection; live tenant acceptance is held by absent registered non-production route/identity; autonomous continuation is not wired to an always-running authorized worker.",
+    "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
+    "rationale": "The gated Dual Surface is integrated on canonical Main at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e and exact-head mocked browser plus scoped CI passed. This proves merged implementation and mocked behavior only. Canonical build admission was resource-blocked, tenant-aware hosted preview is unavailable, and Main protection/autonomous continuation are not configured.",
     "residual_requirements": [
-      "All 66 requirement rows remain OPEN until reconciled against integrated Main; no hosted deployment or tenant acceptance is proven.",
-      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned. Current-Main MCP path classification confirms neither is required for the mascot-only UI slice.",
-      "Mocked UI evidence: 146 focused tests across 8 files and 25 Chromium simulations; no live authenticated tenant context, gateway URL, published artifact digest, or feature-flag activation evidence.",
-      "Main has no branch protection/rulesets; protected integration cannot be claimed until approved repository rules are configured."
+      "All 66 requirement rows remain OPEN pending requirement-level evidence and tenant acceptance; do not equate merge or mocked simulation with completion.",
+      "No artifact digest, published deployment, authenticated tenant route, or enabled tenant feature-flag evidence exists.",
+      "Canonical build must resume after a fresh resource observation; previous RESOURCE_BLOCKED result is not a code failure.",
+      "GitHub has no Main branch protection/rulesets; required protection must be configured before claiming protected integration enforcement.",
+      "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
+      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
     ],
-    "resume_point": "PR #852 is the single active successor for SPEC-308 UI. Its exact current head/base are available from GitHub; refresh before every integration attempt. PR #399 remains historical source/evidence and should close as superseded only after #852 integrates."
+    "resume_point": "PR #852 merged at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e on origin/main. PR #399 is closed as superseded. Exact-head mocked browser/scope/progressive checks passed. Canonical build was RESOURCE_BLOCKED before compilation; no artifact/digest, published deployment, or tenant-visible acceptance exists. Continue at fresh resource observation, exact-SHA canonical build, then registered tenant-aware authenticated acceptance."
   },
   "dependencies": {
     "predicates": [],
@@ -80,11 +89,11 @@
   },
   "deployment": {
     "artifact_digest": null,
-    "environment": null,
+    "environment": "canonical build selected; no artifact produced",
     "evidence": [],
     "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "source_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+    "status": "RESOURCE_BLOCKED"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -102,7 +111,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 75,
+  "generation": 77,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -203,10 +212,10 @@
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+    "integrated": true,
+    "integrated_at": "2026-10-12T02:25:08Z"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -289,18 +298,21 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "https://github.com/naibarn/SmartSpecPro/pull/852",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38194085301",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38194085443"
+        "https://github.com/naibarn/SmartSpecPro/commit/f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.",
-      "rationale": "The Dual Surface source and mocked component/browser checks now pass on a clean current-Main successor. This proves implementation behavior only. Integration is held by absent GitHub Main protection; live tenant acceptance is held by absent registered non-production route/identity; autonomous continuation is not wired to an always-running authorized worker.",
+      "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
+      "rationale": "The gated Dual Surface is integrated on canonical Main at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e and exact-head mocked browser plus scoped CI passed. This proves merged implementation and mocked behavior only. Canonical build admission was resource-blocked, tenant-aware hosted preview is unavailable, and Main protection/autonomous continuation are not configured.",
       "residual_requirements": [
-        "All 66 requirement rows remain OPEN until reconciled against integrated Main; no hosted deployment or tenant acceptance is proven.",
-        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned. Current-Main MCP path classification confirms neither is required for the mascot-only UI slice.",
-        "Mocked UI evidence: 146 focused tests across 8 files and 25 Chromium simulations; no live authenticated tenant context, gateway URL, published artifact digest, or feature-flag activation evidence.",
-        "Main has no branch protection/rulesets; protected integration cannot be claimed until approved repository rules are configured."
+        "All 66 requirement rows remain OPEN pending requirement-level evidence and tenant acceptance; do not equate merge or mocked simulation with completion.",
+        "No artifact digest, published deployment, authenticated tenant route, or enabled tenant feature-flag evidence exists.",
+        "Canonical build must resume after a fresh resource observation; previous RESOURCE_BLOCKED result is not a code failure.",
+        "GitHub has no Main branch protection/rulesets; required protection must be configured before claiming protected integration enforcement.",
+        "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
+        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
       ],
-      "resume_point": "PR #852 is the single active successor for SPEC-308 UI. Its exact current head/base are available from GitHub; refresh before every integration attempt. PR #399 remains historical source/evidence and should close as superseded only after #852 integrates."
+      "resume_point": "PR #852 merged at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e on origin/main. PR #399 is closed as superseded. Exact-head mocked browser/scope/progressive checks passed. Canonical build was RESOURCE_BLOCKED before compilation; no artifact/digest, published deployment, or tenant-visible acceptance exists. Continue at fresh resource observation, exact-SHA canonical build, then registered tenant-aware authenticated acceptance."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2147,29 +2159,28 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T02:05:43.618872Z",
+  "updated_at": "2026-10-12T02:27:19.409028Z",
   "verification": {
     "baseline_issues": [
-      "Current origin/main is e20e13db2f01f5eb19d7dc611d753328ed084de4. All three PRs were refreshed by normal GitHub merge commits onto this SHA. Exact PR heads: #399=15c9c4fa635d9421e0feecb1b66c6983dd09efc8, #403=2681346dd8dbace3f98b40634d3a6d7a93e1d777, #405=556e74fd40a761f334b0ce336fa1bbd99ccd6d40. `git merge-tree` reported no conflicts; GitHub mergeability was being recomputed following the final #399 documentation commit.",
-      "#399 run 38037949886 passed mocked Chromium 23/23 on exact head 15c9c4fa. Contract/security failed 44/120 MCP-focused tests because #399 does not yet contain the fixture repair from dependent PR #403, including tests calling retired agencyMcpService. Live acceptance fails closed because MCP_SMOKE_URL/TOKEN are absent. Prior UI focused evidence: 146 tests passed at source SHA 8bd3b687 (run 38036424904); not all 66 requirements are individually mapped to those cases.",
-      "#403 exact refreshed head 2681346dd run 38037833334: MCP focused 118/118, check:mcp146 and security:mcp146 passed; production audit failed on 85 findings (1 Critical, 38 High, 37 Moderate, 9 Low); live smoke fails closed because MCP_SMOKE_URL/TOKEN are absent. The existing fixture repair is present; no duplicate/retired implementation was added.",
-      "#405 exact refreshed head 556e74fd run 38037826210: production audit and compatibility regressions passed. HyperFrames and lockfile bytes match the Linux render evidence candidate. PR remains Draft pending Security + Media/Runtime disposition of optional CLI ONNX and signed WSL2 pack; package proposal is orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/decision-sprintf-js.md.",
-      "Only GitHub environment found is production; no authorized non-production MCP/SPEC-308 endpoint or synthetic test identity is available. Mocked tests are not live acceptance.",
-      "All 66 requirements remain OPEN (63 PARTIAL; REQ-EAAA066D4991, AC-308-029, AC-308-032 UNVERIFIED). See orchestra/tasks/spec-308-20261009/evidence/requirement-acceptance-reconciliation-20261010.md. No criteria changed, no PR merged, no integration SHA, no production readiness."
+      "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
+      "Exact PR-head CI: mocked SPEC-308 browser simulation passed; scope passed; progressive_integration_gate passed. Contract/security and live-contract checks skipped by current mascot-only scope classifier; preview build skipped because the preview workflow is disabled.",
+      "Canonical build at f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e was RESOURCE_BLOCKED before compilation due to less than 6 GiB headroom below MemoryHigh; exit 137. No retry without a new resource observation; no artifact digest exists.",
+      "No registered tenant-aware non-production SmartAIHub route or authorized synthetic tenant identity is available. Mocked browser simulation is not authenticated hosted acceptance; published UI visibility remains unverified.",
+      "GitHub reports main has no branch protection and zero rulesets. PR #852 used the ordinary exact-head PR merge path without admin/bypass, but required protection is not enforced at repository level.",
+      "Automatic integration continuity remains unproven: no always-running authorized worker connects WorkUnit/CI completion to worker_jobs plus outbox recovery; three-worker/interruption proof is not available."
     ],
     "evidence": [
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037949857",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037949886",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037833334",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037826210",
-      "orchestra/tasks/spec-308-20261009/evidence/requirement-acceptance-reconciliation-20261010.md",
-      "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/decision-sprintf-js.md"
+      "https://github.com/naibarn/SmartSpecPro/pull/852",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431514",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578",
+      "https://github.com/naibarn/SmartSpecPro/commit/f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e"
     ],
-    "freshness": "Exact refreshed PR heads tested: #399 browser pass but MCP prerequisite contract failure and live authority missing; #403 118 focused tests pass but mandatory dependency audit/live MCP fail; #405 audit and compatibility pass but required owner disposition pending. No canonical integration.",
+    "freshness": "PR #852 merged at exact source head e9fe28d904451e696c0a2095221d583e512a3c01; merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e is verified as origin/main. Exact-head checks passed: Mocked SPEC-308 browser simulation (25 cases), scope, progressive_integration_gate. contract-and-security and live-contract-evidence skipped by current mascot-only scope classifier; build-preview skipped because preview workflow is disabled. Canonical build selected exact source SHA but was RESOURCE_BLOCKED before compilation: build-atomic reported less than 6 GiB headroom below MemoryHigh and exit 137. No artifact digest, deployment, or hosted tenant acceptance.",
     "required_profiles": [
       "quick"
     ],
-    "sha": "15c9c4fa635d9421e0feecb1b66c6983dd09efc8",
+    "sha": "f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e",
     "status": "PARTIAL",
     "task_regressions": []
   }
