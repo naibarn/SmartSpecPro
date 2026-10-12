@@ -81,6 +81,17 @@ export function AssistantAppearancePreferences() {
     return () => mediaQuery.removeEventListener("change", syncReducedMotion);
   }, []);
 
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined" || window.location.hash !== "#assistant-appearance-title") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("assistant-appearance-title")?.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [enabled]);
+
   const update = (patch: Partial<AssistantMascotPreferences>) => {
     if (!enabled || !isValidPreferencePatch(patch)) return;
     // Do not let an event from a just-rendered identity overwrite that identity's
