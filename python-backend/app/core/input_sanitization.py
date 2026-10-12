@@ -238,23 +238,27 @@ class InputSanitizer:
         Raises:
             ValueError: If suspicious patterns detected
         """
-        # Sanitize
+        # Check the unescaped, untruncated input so sanitization cannot hide
+        # malicious content from the validators.
+        if check_injection and not allow_html:
+            candidate = value if isinstance(value, str) else str(value)
+            candidate = candidate.strip()
+
+            if cls.check_xss(candidate):
+                raise ValueError(f"{field_name}: XSS pattern detected")
+
+            if cls.check_command_injection(candidate):
+                raise ValueError(f"{field_name}: Command injection pattern detected")
+
+            if cls.check_sql_injection(candidate):
+                raise ValueError(f"{field_name}: SQL injection pattern detected")
+
+        # Sanitize only after validation to preserve the raw-input checks.
         value = cls.sanitize_string(
             value,
             max_length=max_length,
             allow_html=allow_html
         )
-        
-        # Check for injection attacks
-        if check_injection and not allow_html:
-            if cls.check_sql_injection(value):
-                raise ValueError(f"{field_name}: SQL injection pattern detected")
-            
-            if cls.check_command_injection(value):
-                raise ValueError(f"{field_name}: Command injection pattern detected")
-            
-            if cls.check_xss(value):
-                raise ValueError(f"{field_name}: XSS pattern detected")
         
         return value
 
