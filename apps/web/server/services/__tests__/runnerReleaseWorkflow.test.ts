@@ -25,7 +25,7 @@ describe("runner release workflow contract", () => {
     const workflow = fs.readFileSync(workflowPath, "utf8");
 
     expect(workflow).toContain('release/smartaihub-session-host" "$package_dir/smartaihub-session-host"');
-    expect(workflow).toContain('"smartaihub-runner smartaihub-session-host install-linux-runner.sh smartaihub-runner.service"');
+    expect(workflow).toContain('tar -C "$package_dir" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" smartaihub-runner smartaihub-session-host install-linux-runner.sh smartaihub-runner.service');
     expect(workflow).toContain('session_host_artifact=""');
     expect(workflow).toContain('"sessionHostArtifact":"%s"');
   });

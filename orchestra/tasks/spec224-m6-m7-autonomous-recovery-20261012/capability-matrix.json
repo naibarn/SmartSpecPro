@@ -1,8 +1,8 @@
 {
   "schemaVersion": "spec224-mini-app-factory-capability-matrix.v1",
-  "observedAt": "2026-10-12T00:50:44.714Z",
+  "observedAt": "2026-10-12T01:29:09Z",
   "canonicalRef": "refs/heads/main",
-  "canonicalSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
+  "canonicalSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
   "supportingEvidenceOnly": true,
   "m8": "DEFERRED",
   "milestones": {
@@ -14,7 +14,7 @@
   "observations": {
     "runner": {
       "command": "smartaihub-runner status --json",
-      "observedAt": "2026-10-12T00:50:44.714Z",
+      "observedAt": "2026-10-12T01:16:53.712Z",
       "runnerId": "local-runner",
       "version": "0.2.23",
       "state": "ready",
@@ -37,7 +37,22 @@
         "reasonCodes": [
           "probe_required"
         ]
-      }
+      },
+      "statusSemantics": "status, doctor and capabilities call redacted_status, which only scans PATH and reports state=ready unconditionally; these commands do not run adapter probes.",
+      "rescanSemantics": "rescan runs bounded adapter probes and publishes a tenant-scoped capability snapshot to the configured control plane.",
+      "runnerServiceActive": false,
+      "runnerProcessEnvironmentKeys": [],
+      "homeConnectionRecord": {
+        "present": true,
+        "serverOrigin": "https://smartaihub.app",
+        "tenantBound": true,
+        "sessionBound": true,
+        "controlTokenExpired": true,
+        "controlTokenExpiry": "2026-10-09T08:15:53Z",
+        "eligibleForThisTask": false,
+        "reason": "Production-bound expired credential; no network call or rescan was attempted."
+      },
+      "localProbeRun": false
     },
     "localCodexLogin": {
       "command": "codex login status",
@@ -46,9 +61,10 @@
     },
     "probeBoundary": {
       "rescanRun": false,
-      "reason": "Runner rescan publishes capability state through the configured control plane; no authorized non-production control-plane target was identified and the default origin is production.",
+      "reason": "No authorized non-production control-plane origin or current non-production device/session credential exists. The only stored connection is production-bound and expired; rescan would publish to the production origin.",
       "liveDispatchRun": false,
-      "productionOrStagingTouched": false
+      "productionOrStagingTouched": false,
+      "localBoundedProbeRun": false
     }
   },
   "dependencies": [
@@ -81,13 +97,13 @@
       ],
       "realRunnerAcceptance": "NOT_DEMONSTRATED",
       "handoffOwnership": "SPEC-224 canonical handoff; a separate SPEC-224 audit worktree exists, so this recovery does not rewrite the manifest",
-      "missingRequirement": "Fresh trusted non-production Runner capability/session, exact workspace/source binding, owner-authorized grant, and a real consumed stage receipt",
+      "missingRequirement": "Owner-authorized non-production Runner enrollment and control URL; fresh tenant-scoped capability/session snapshot; exact source/workspace and DevelopmentRun/job/attempt binding; canonical protected_dispatch grant; provider approval and budget authorization; isolated non-production application database.",
       "blockerClassification": [
-        "REMOTE_TRUST_NOT_ESTABLISHED",
-        "ADMISSION_POLICY_DENIED",
-        "INSUFFICIENT_EVIDENCE"
+        "MISSING_NONPRODUCTION_CONFIGURATION",
+        "MISSING_FRESH_EVIDENCE",
+        "TRUE_EXTERNAL_AUTHORITY"
       ],
-      "nextAction": "After authority is provisioned, execute a new app through Create → DevelopmentRun → Runner → receipt settlement in a disposable workspace."
+      "nextAction": "After owner supplies the minimum scoped non-production authority and isolated DB, perform Runner probes, create the real DevelopmentRun, then admit and dispatch only through canonical protected-start validation."
     },
     {
       "specId": "SPEC-205",
@@ -247,9 +263,9 @@
       "id": "M6_M7_NONPRODUCTION_RUNNER_AUTHORITY",
       "classification": "TRUE_EXTERNAL_AUTHORITY",
       "owner": "SPEC-224/workspace-authority maintainer and authenticated tenant owner",
-      "reason": "No owner-authorized disposable Runner registration/session with a fresh capability snapshot bound to exact source, workspace and DevelopmentRun, plus no disposable PostgreSQL app-schema target was available in this environment.",
-      "nextAction": "Provide/issue the existing authorized non-production registration and scoped grant through the current owner route; separately authorize any budget/funding/ledger inputs required by the selected execution path.",
-      "resumePredicate": "Fresh tenant-bound Runner session + capability snapshot + workspace/source attestation + disposable database + exact DevelopmentRun/job/attempt grant are all present and current.",
+      "reason": "No owner-authorized non-production Runner control URL/session or current device credential exists. The only stored connection is production-bound with an expired token. The local status command is discovery-only; no capability probe or rescan was performed. Protected admission also requires a canonical exact-scope grant, current run/source/workspace binding and approval/budget evidence.",
+      "nextAction": "Authenticated tenant/workspace owner must provision or identify an existing non-production Runner enrollment, isolated database and exact scoped canonical grant/approval through existing owner routes; then resume the real run.",
+      "resumePredicate": "Current non-production device/session credential + fresh capability snapshot with Codex/browser probes + source/workspace/DevelopmentRun/job/attempt binding + canonical grant VALID for exact protected_dispatch/tenant/source/workpackage/path/runtime/environment + required approval/budget + isolated app-schema database.",
       "attemptedStrategies": [
         "Read-only smartaihub-runner status",
         "Read-only codex login status",
@@ -262,9 +278,35 @@
       ],
       "evidenceFingerprint": {
         "algorithm": "sha256",
-        "value": "a231797019a5021d441dead9af7c3ca81f0dc7d57c242763f2efd3e89d88f207",
-        "facts": "runner=local-runner:0.2.23:ready:0/11;codex=discovered/probe_required;browser=discovered/probe_required;local_codex_login=authenticated;no_nonprod_binding;canonical=e2c3bd57a43fa384c0a08fec05f4bf352a07be44",
-        "observedAt": "2026-10-12T00:50:44.714Z"
+        "value": "119c7e585fb60eeb00eb9d561c9356b2ee707d2cb17ffbccd763402bea81c301",
+        "facts": "runner=local-runner:0.2.23:ready:0/11;status=discovery-only;service=inactive;stored-origin=production;stored-token=expired:2026-10-09T08:15:53Z;nonprod-enrollment=none;grant=none-verified;canonical=d0b558f7b1e511bbb866b35bae7f3880b742277c",
+        "observedAt": "2026-10-12T01:29:09Z"
+      },
+      "rootCause": "Configuration/evidence and external authority are absent. The existing production credential is stale and unsafe to reuse. The remote trust verifier has no production caller; the local integrity-only path is allowed only in development/test after canonical grant validation.",
+      "probed": false,
+      "repairAttempts": [
+        {
+          "action": "Read-only Runner status and source inspection",
+          "result": "Confirmed status scans PATH without probing; 0/11 ready."
+        },
+        {
+          "action": "Inspect service/process configuration without reading secrets",
+          "result": "Runner service inactive; no SAH_RUNNER_* process configuration."
+        },
+        {
+          "action": "Inspect stored connection metadata with token redacted",
+          "result": "Production origin; tenant/session bound record exists but token expired 2026-10-09T08:15:53Z."
+        },
+        {
+          "action": "Inspect protected admission and source-trust verifier callers",
+          "result": "No production remote trust adapter/caller; fail-closed behavior is intentional."
+        }
+      ],
+      "existingAuthority": {
+        "productionRunnerConnection": "present_but_expired_and_ineligible",
+        "nonProductionRunnerEnrollment": "none_found",
+        "canonicalGrant": "none_verified",
+        "nonProductionDatabase": "none_on_approved_port"
       }
     },
     {
@@ -274,7 +316,8 @@
       "sourceSha": "5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc",
       "reason": "Central canonical build preflight found less than 512 MiB swap headroom; web build did not start and the runner returned exit 137.",
       "nextAction": "Run the configured build on CI/dedicated capacity or after a fresh resource observation proves adequate headroom.",
-      "prohibitedRetry": "Do not rerun unchanged on the shared host without a fresh resource observation or changed capacity."
+      "prohibitedRetry": "Do not rerun unchanged on the shared host without a fresh resource observation or changed capacity.",
+      "followUp": "CI run 38191201225 on latest SHA 94eedf0a684289fe12d4517a0c2471cac5c74d0b is the changed-capacity exact-SHA verification attempt; turbo_build failed with unrelated TypeScript errors. Do not retry the previous shared-host build unchanged."
     }
   ],
   "currentAcceptance": {
@@ -287,11 +330,9 @@
     "finalVerification": "NOT_RUN"
   },
   "nextExecutableWork": [
-    "Queue the configured build for exact SHA 5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc on CI/dedicated capacity or after fresh resource admission; the shared-host attempt is RESOURCE_BLOCKED, not CODE_FAILED.",
-    "After the canonical user workspace owner resolves unrelated dirty changes, verify safe convergence to 5f5154a161ef6cf73c2d0f1ea260ab0d43a495cc; do not overwrite this checkout.",
-    "After owner-authorized non-production Runner registration, bind a fresh capability snapshot, exact source/workspace, DevelopmentRun and job attempt; satisfy admission and economic authorization before dispatch.",
-    "Execute M6 with new generated app code, preserve receipts/digests, then run separate isolated application runtime and browser UAT.",
-    "Execute M7 with real worker restart, Runner interruption/reconnect, retry, cross-process receipt settlement and duplicate-side-effect assertions; do not substitute synthetic tests.",
+    "Observe current exact-main CI run 38191643238 for d0b558f7b1e511bbb866b35bae7f3880b742277c; do not retry the previous shared-host build or bypass unrelated failing tests.",
+    "Promote the focused release workflow assertion correction with this evidence update, using the normal protected PR path.",
+    "Resume real M6/M7 only when the external unblock predicate in M6_M7_NONPRODUCTION_RUNNER_AUTHORITY is freshly satisfied.",
     "Keep M8 deferred."
   ],
   "integration": {
@@ -340,5 +381,46 @@
     ],
     "modified": false,
     "nextAction": "Preserve this checkout; converge only after its owner resolves the unrelated dirty changes."
+  },
+  "latestSourceVerification": {
+    "sourceSha": "6d5db0533ea55ad81457cd88c8a177a14ac238af",
+    "focusedVitest": {
+      "state": "PASS",
+      "files": 8,
+      "tests": 48,
+      "scope": "Runner release workflow, SPEC-224 admission/source/workspace contracts, Mini App Factory/DevelopmentRun contracts"
+    },
+    "runnerReleaseCi": {
+      "runId": 38191565929,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191565929",
+      "sourceSha": "94eedf0a684289fe12d4517a0c2471cac5c74d0b",
+      "state": "FAILED_BEFORE_BUILD",
+      "tests": "188 passed / 1 failed",
+      "failure": "moli_isolation::tests::linux_spawn_uses_user_network_namespaces_private_profile_and_group_cleanup",
+      "published": false
+    },
+    "localDisposablePostgres": {
+      "approvedPort55493": "not_running",
+      "sharedPort5432": "not_used"
+    },
+    "noLiveRunnerDispatch": true,
+    "baseSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
+    "priorMainCi": {
+      "runId": 38191201225,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191201225",
+      "state": "IN_PROGRESS_AT_HANDOFF",
+      "turboBuild": "FAILED_UNRELATED_TYPESCRIPT_ERRORS",
+      "python": "IN_PROGRESS",
+      "smartSpecWeb": "IN_PROGRESS"
+    },
+    "currentMainCi": {
+      "runId": 38191643238,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191643238",
+      "sourceSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
+      "state": "IN_PROGRESS",
+      "turboBuild": "FAILED_UNRELATED_TYPESCRIPT_ERRORS",
+      "python": "IN_PROGRESS",
+      "smartSpecWeb": "IN_PROGRESS"
+    }
   }
 }
