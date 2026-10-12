@@ -307,11 +307,14 @@ loop_progress_template_path = orchestra_ref_dir / "loop-progress-template.md"
 if loop_progress_template_path.exists():
     loop_progress_template_text = loop_progress_template_path.read_text(encoding="utf-8")
     for required_template_marker in [
-        "Loop policy:",
-        "Sub-agent lifecycle:",
-        "replacement_allowed: false until timeout/blocker is recorded",
-        "Evidence ledger:",
-        "Loop policy final:",
+        "Task / WorkUnit:",
+        "Workspace owner/path:",
+        "Source base SHA:",
+        "Current step:",
+        "Integrated Main SHA:",
+        "Verification:",
+        "Resume from:",
+        "Next action:",
     ]:
         if required_template_marker not in loop_progress_template_text:
             errors.append(f"{loop_progress_template_path}: missing loop progress template marker: {required_template_marker}")

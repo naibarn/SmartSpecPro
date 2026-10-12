@@ -438,7 +438,7 @@ For work that does not change a Git repository, this lifecycle does not add a co
 
 ## Shared autonomous completion contract
 
-Use [the shared development lifecycle](../../../development-lifecycle/SKILL.md) for durable section checkpoints, HandOff and integration. Commit and integrate independently useful sections as soon as their actual required repository checks pass; defer broader SPEC verification and acceptance to subsequent review/debug loops.
+Use the shared `development-lifecycle` skill for durable section checkpoints, HandOff and integration. Commit and integrate independently useful sections as soon as their actual required repository checks pass; defer broader SPEC verification and acceptance to subsequent review/debug loops.
 
 A section commit is not final SPEC acceptance. Record the commit/Main SHA, remaining gaps and next action in the existing state and HandOff so execution can resume without redoing completed work.
 

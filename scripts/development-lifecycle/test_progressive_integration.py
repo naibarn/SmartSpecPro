@@ -199,9 +199,9 @@ class ProgressiveIntegrationTests(unittest.TestCase):
     def test_merge_does_not_count_as_preview_or_requirement_acceptance(self) -> None:
         lifecycle = (ROOT / "skills/development-lifecycle/SKILL.md").read_text(encoding="utf-8")
         controller = (ROOT / "skills/integration-controller/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("never implies\nrequirement acceptance or overall completion", lifecycle)
-        self.assertIn("time-to-first-preview", controller)
-        self.assertIn("feature", lifecycle.lower())
+        self.assertIn("integrated development state does not imply final spec acceptance", lifecycle.lower())
+        self.assertIn("integration does not certify uat or production readiness", controller.lower())
+        self.assertIn("development integration", lifecycle.lower())
 
     def test_handoff_only_no_delta_loop_stops_blind_retry(self) -> None:
         self.assertEqual(

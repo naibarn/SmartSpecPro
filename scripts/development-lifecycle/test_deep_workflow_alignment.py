@@ -42,7 +42,10 @@ class CrossSkillContractTests(unittest.TestCase):
         self.assertTrue(contract.is_file())
         for name, skill in DEEP_SKILLS.items():
             text = skill.read_text(encoding="utf-8").lower()
-            self.assertIn("development-lifecycle/skill.md", text, f"{name} does not reference the shared lifecycle contract")
+            self.assertTrue(
+                "development-lifecycle/skill.md" in text or "`development-lifecycle` skill" in text,
+                f"{name} does not reference the shared lifecycle contract",
+            )
             self.assertIn("requirement ledger", text, f"{name} omits the shared requirement ledger")
             self.assertIn("evidence freshness", text, f"{name} omits evidence-gated completion")
 
@@ -78,12 +81,13 @@ class CrossSkillContractTests(unittest.TestCase):
         self.assertTrue(shared.is_file())
         self.assertTrue(hasattr(lifecycle_policy, "remaining_requirements"))
 
-    def test_session_finish_requires_slice_checks_before_fast_gate_promotion(self):
+    def test_session_finish_keeps_only_the_fast_gate_before_promotion(self):
         skill = (ROOT / "skills/session-finish/SKILL.md").read_text(encoding="utf-8")
         policy = (ROOT / "skills/session-finish/references/verification-policy.md").read_text(encoding="utf-8")
-        self.assertIn("SLICE/REPOSITORY-REQUIRED CHECKS", skill)
-        self.assertIn("required check failure blocks that slice", skill)
-        self.assertIn("targeted change-impact analysis", policy)
+        self.assertIn("FAST INTEGRATION GATE checks only", skill)
+        self.assertIn("Do not wait for full typecheck", skill)
+        self.assertIn("Confirm only that the changed scope has no syntax/compile error", policy)
+        self.assertNotIn("slice-required checks", policy.lower())
 
     def test_requirement_closure_requires_evidence_predicate_and_clear_regressions(self):
         requirement = {
