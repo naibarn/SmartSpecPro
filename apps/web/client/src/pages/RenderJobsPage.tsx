@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { inferRouterInputs } from "@trpc/server";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import type { AppRouter } from "@server/routers";
 import { cn } from "@/lib/utils";
 import { mapEditorError } from "@/components/videoeditor/ui/editorUiState";
 import { projectExecutionStatus, type ExecutionJobLike } from "@/components/videoeditor/ui/executionStatusUi";
+
+type WorkerJobListInput = NonNullable<inferRouterInputs<AppRouter>["workerJobs"]["list"]>;
+type WorkerJobStatus = NonNullable<WorkerJobListInput["status"]>;
 
 const STATUS_OPTIONS = [
   "all",
@@ -47,12 +52,9 @@ const STATUS_OPTIONS = [
   "preparing",
   "waiting_external",
   "running",
-  "rendering",
   "uploading",
   "publishing",
   "indexing",
-  "qc",
-  "degraded",
   "retry_scheduled",
   "completed",
   "succeeded",
@@ -60,7 +62,7 @@ const STATUS_OPTIONS = [
   "expired",
   "cancelled",
   "canceled",
-] as const;
+] as const satisfies readonly ("all" | WorkerJobStatus)[];
 
 /**
  * Feature 133 (Video Intelligence Platform) additive Thai label for the
