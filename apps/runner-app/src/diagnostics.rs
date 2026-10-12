@@ -186,13 +186,32 @@ pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
         "minRunnerVersion": MIN_COMPATIBLE_RUNNER_VERSION,
         "supportedRunnerContractVersions": [RUNNER_CONTROL_CONTRACT_VERSION],
         "supportedConnectSchemaRevisions": [RUNNER_CONNECT_SCHEMA_REVISION],
-        "state": "ready",
+        "state": runner_status_state(ready_tools),
         "toolCount": tools.len(),
         "readyToolCount": ready_tools,
         "tools": tools,
         "credentials": "redacted"
     })
     .to_string()
+}
+
+#[cfg(test)]
+mod redacted_status_tests {
+    use super::runner_status_state;
+
+    #[test]
+    fn status_does_not_claim_ready_without_any_ready_capabilities() {
+        assert_eq!(runner_status_state(0), "degraded");
+        assert_eq!(runner_status_state(1), "ready");
+    }
+}
+
+fn runner_status_state(ready_tools: usize) -> &'static str {
+    if ready_tools > 0 {
+        "ready"
+    } else {
+        "degraded"
+    }
 }
 
 /// Inspects local tools for desktop/status surfaces without exposing executable
