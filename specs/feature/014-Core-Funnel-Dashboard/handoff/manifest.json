@@ -23,10 +23,10 @@
     "expected_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0"
   },
   "continuation": {
-    "next_action": "Implement the remaining non-duplicate SPEC-014 funnel query indexes in Drizzle schema and one additive migration from current Main 419d2ff8a7f93598378bcf1a787e535afb421923. Existing registration-created, credit-type-created, and message-conversation-created indexes already cover their equivalent requirement pairs. Do not run production or shared database migration.",
+    "next_action": "PR #877 is open with implementation source 71184ee251bc7a9057e8c12a04ada8e9e6f9d94c. Wait for actual required GitHub checks/reviews, reconcile latest Main, and merge through the normal path when eligible. The index migration is additive but has not been applied to any database; after integration, run only on an authorized non-production database and record query/plan acceptance before closing REQ-F5772188489C.",
     "next_ready_workunit": "SPEC014_FUNNEL_QUERY_INDEXES",
     "reactivation_predicate": null,
-    "resume_point": "Canonical Main is 419d2ff8a7f93598378bcf1a787e535afb421923. Only open requirement REQ-F5772188489C is SPEC.md §2.3 funnel performance indexes. Found existing equivalents for registration_events(createdAt), credit_transactions(type,createdAt), and messages(conversationId,createdAt). Implement the missing users createdAt/lastSignedIn/plan, registration outcome+createdAt, credit userId+createdAt, and conversation userId+createdAt indexes. No DB migration has been applied.",
+    "resume_point": "SPEC-014's sole open requirement REQ-F5772188489C is addressed by six missing indexes in commit 71184ee251bc7a9057e8c12a04ada8e9e6f9d94c, PR #877, based on current Main 419d2ff8a7f93598378bcf1a787e535afb421923. Four focused files / 53 tests passed. No DB migration applied. Existing equivalents for registration_events(createdAt), credit_transactions(type,createdAt), and messages(conversationId,createdAt) remain unchanged. Next: merge after required checks, then authorized non-production DB migration/query-plan acceptance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -134,8 +134,8 @@
         "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
       }
     ],
-    "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
-    "rationale": "An authenticated browser download now completes the existing funnel export flow. The Spec remains partial because its required query-performance indexes are still open and unverified.",
+    "next_action": "Integrate additive index migration #877, then verify the migration and target query plans in an authorized non-production database. Do not apply production migration.",
+    "rationale": "The open index requirement was assessed against current Drizzle schema and migration history. Six missing non-duplicate indexes are implemented; integration and non-production query-plan verification remain open.",
     "residual_requirements": [
       "REQ-F5772188489C"
     ]
@@ -261,7 +261,7 @@
     "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 20,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
     "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
@@ -281,17 +281,20 @@
     "active_workunit": "SPEC014_FUNNEL_QUERY_INDEXES",
     "base_sha": "419d2ff8a7f93598378bcf1a787e535afb421923",
     "checkpoint_shas": [
-      "9bf489a70d966968ebf24260b70d35f9189ddfb2"
+      "9bf489a70d966968ebf24260b70d35f9189ddfb2",
+      "71184ee251bc7a9057e8c12a04ada8e9e6f9d94c"
     ],
+    "last_focused_check": "PASS on source 71184ee251bc7a9057e8c12a04ada8e9e6f9d94c: focused Vitest 4 files / 53 tests (index migration contract, funnel router, RBAC, dashboard component); git diff --check passed. No database migration or full typecheck/build run.",
+    "local_commit_sha": "71184ee251bc7a9057e8c12a04ada8e9e6f9d94c",
     "mapping": [],
     "owner": "Codex",
+    "pr_head_sha": "71184ee251bc7a9057e8c12a04ada8e9e6f9d94c",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/877",
     "source_paths": [
-      "apps/web/server/routers/funnelAnalytics.ts",
-      "apps/web/server/routers/funnelAnalytics.test.ts",
-      "apps/web/server/routers/funnelAnalytics.rbac.test.ts",
-      "apps/web/client/src/pages/AdminFunnelDashboard.tsx",
-      "apps/web/client/src/pages/__tests__/AdminFunnelDashboard.test.tsx",
-      "specs/feature/014-Core-Funnel-Dashboard/spec.md"
+      "apps/web/drizzle/0399_spec014_funnel_query_indexes.sql",
+      "apps/web/drizzle/meta/_journal.json",
+      "apps/web/drizzle/schema.ts",
+      "apps/web/server/__tests__/feature014FunnelIndexes.migration.test.ts"
     ],
     "started": true,
     "status": "IN_PROGRESS",
@@ -430,8 +433,8 @@
           "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
         }
       ],
-      "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
-      "rationale": "An authenticated browser download now completes the existing funnel export flow. The Spec remains partial because its required query-performance indexes are still open and unverified.",
+      "next_action": "Integrate additive index migration #877, then verify the migration and target query plans in an authorized non-production database. Do not apply production migration.",
+      "rationale": "The open index requirement was assessed against current Drizzle schema and migration history. Six missing non-duplicate indexes are implemented; integration and non-production query-plan verification remain open.",
       "residual_requirements": [
         "REQ-F5772188489C"
       ]
@@ -1171,7 +1174,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:45:09.137088Z",
+  "updated_at": "2026-10-12T09:47:27.645726Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

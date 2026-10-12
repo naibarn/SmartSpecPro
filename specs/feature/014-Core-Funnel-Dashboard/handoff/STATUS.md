@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 4 pass / 1 unresolved of 5
-- Next action: Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.
-- Manifest generation: 20
+- Next action: Integrate additive index migration #877, then verify the migration and target query plans in an authorized non-production database. Do not apply production migration.
+- Manifest generation: 21
 
 ## Source-declared status and relationship claims
 
