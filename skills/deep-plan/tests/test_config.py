@@ -71,3 +71,20 @@ class TestLoadConfig:
         assert "external_review" in sample_config
         assert "models" in sample_config
         assert "llm_client" in sample_config
+
+
+def test_planning_config_write_keeps_previous_json_if_interrupted(tmp_path, monkeypatch):
+    from scripts.lib import config as module
+    required = {key: "test" for key in module.SESSION_REQUIRED_KEYS}
+    module.save_session_config(tmp_path, required)
+    path = module.get_session_config_path(tmp_path)
+    before = path.read_bytes()
+
+    def fail_replace(*_args):
+        raise OSError("simulated interrupted checkpoint")
+
+    monkeypatch.setattr(module.os, "replace", fail_replace)
+    with pytest.raises(OSError):
+        module.save_session_config(tmp_path, {**required, "resume_from": "section-03"})
+    assert path.read_bytes() == before
+    assert not list(tmp_path.glob(f".{path.name}.*"))

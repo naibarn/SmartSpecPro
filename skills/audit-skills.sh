@@ -217,21 +217,6 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
         if required_domain not in task_packet_text:
             errors.append(f"skills/orchestra/references/task-packet-format.md: missing domain {required_domain}")
 
-    for required_gate in [
-        "E2E Browser Tests",
-        "Performance Gate",
-        "CI/Release Gate",
-        "Dependency/Supply-Chain Gate",
-        "Visual Polish Gate",
-        "Accessibility Gate",
-        "Responsive Gate",
-        "Component State Gate",
-        "Test Design Gate",
-        "Lifecycle Convergence Gate",
-        "Review Convergence Gate",
-    ]:
-        if required_gate not in quality_gates_text:
-            errors.append(f"skills/orchestra/references/quality-gates.md: missing gate {required_gate}")
 
 required_orchestra_refs = [
     "meta-activation.md",
@@ -312,87 +297,11 @@ quality_gates_path = orchestra_ref_dir / "quality-gates.md"
 
 if route_decision_path.exists():
     route_decision_text = route_decision_path.read_text(encoding="utf-8")
-    for required_help_marker in [
-        "code-aware-help-flow",
-        "script.md",
-        "outline.md",
-        "Codex-native",
-    ]:
-        if required_help_marker not in route_decision_text:
-            errors.append(f"{route_decision_path}: missing code-aware help routing marker: {required_help_marker}")
-    for required_planning_marker in [
-        "brainstorming-prelude",
-        "Use this route before any deep-* planning chain",
-        "`full-pipeline`",
-        "`security-gate`",
-        "If the project goal is clear, do not add a brainstorming step",
-    ]:
-        if required_planning_marker not in route_decision_text:
-            errors.append(f"{route_decision_path}: missing brainstorming/deep-project order marker: {required_planning_marker}")
-    for required_parallel_marker in [
-        "parallelization preflight",
-        "multi-agent-waves",
-        "Dispatch `visual-ui-requirement-analyzer`",
-        "dispatch `visual-ux-reviewer`, `accessibility-reviewer`, and",
-    ]:
-        if required_parallel_marker not in route_decision_text:
-            errors.append(f"{route_decision_path}: missing parallel-default routing marker: {required_parallel_marker}")
 
 orchestra_skill_path = root / "orchestra" / "SKILL.md"
 if orchestra_skill_path.exists():
     orchestra_skill_text = orchestra_skill_path.read_text(encoding="utf-8")
-    for required_parallel_marker in [
-        "Conductor-First Sub-Agent Gate",
-        "Scout and parallel opportunity scan",
-        "parallel_default",
-        "Agent-tool availability check",
-        "dispatch them in one",
-    ]:
-        if required_parallel_marker not in orchestra_skill_text:
-            errors.append(f"{orchestra_skill_path}: missing conductor-first sub-agent marker: {required_parallel_marker}")
-    for required_policy_ref in [
-        "references/agent-loop-policy.md",
-        "references/data-first-debug.md",
-        "references/loop-progress-template.md",
-        "references/loop-learning-log.md",
-        "references/gap-closure-before-final.md",
-        "references/test-design-contract.md",
-        "references/typecheck-resource-policy.md",
-        "references/completion-loop.md",
-    ]:
-        if required_policy_ref not in orchestra_skill_text:
-            errors.append(f"{orchestra_skill_path}: missing orchestra policy reference: {required_policy_ref}")
 
-agent_loop_policy_path = orchestra_ref_dir / "agent-loop-policy.md"
-if agent_loop_policy_path.exists():
-    agent_loop_policy_text = agent_loop_policy_path.read_text(encoding="utf-8")
-    for required_loop_marker in [
-        "fable_style_coding_orchestra",
-        '"max_iterations": 12',
-        '"max_tool_calls": 30',
-        '"max_cost_usd": 0.5',
-        '"max_subagent_wait_minutes": 10',
-        '"max_background_analysis_wait_minutes": 15',
-        '"max_context_capsule_words": 1500',
-        "subagent_timeout_or_missing_result",
-        "loop_policy_subagent_limit",
-        "Loop policy final",
-    ]:
-        if required_loop_marker not in agent_loop_policy_text:
-            errors.append(f"{agent_loop_policy_path}: missing loop policy marker: {required_loop_marker}")
-
-data_first_debug_path = orchestra_ref_dir / "data-first-debug.md"
-if data_first_debug_path.exists():
-    data_first_debug_text = data_first_debug_path.read_text(encoding="utf-8")
-    for required_debug_marker in [
-        "Evidence ledger",
-        "UI behavior alone is not enough",
-        "database table row",
-        "Dispatch `error-detective` first",
-        "Dispatch `debugger` only after an Evidence Ledger exists",
-    ]:
-        if required_debug_marker not in data_first_debug_text:
-            errors.append(f"{data_first_debug_path}: missing data-first debug marker: {required_debug_marker}")
 
 loop_progress_template_path = orchestra_ref_dir / "loop-progress-template.md"
 if loop_progress_template_path.exists():
@@ -420,18 +329,6 @@ if loop_learning_log_path.exists():
         if required_learning_marker not in loop_learning_log_text:
             errors.append(f"{loop_learning_log_path}: missing loop learning log marker: {required_learning_marker}")
 
-gap_closure_path = orchestra_ref_dir / "gap-closure-before-final.md"
-if gap_closure_path.exists():
-    gap_closure_text = gap_closure_path.read_text(encoding="utf-8")
-    for required_gap_marker in [
-        "Gap closure:",
-        "must_do_now",
-        "should_offer_next",
-        "safely_deferred",
-        "No-Unclosed-Must-Do Gap",
-    ]:
-        if required_gap_marker not in gap_closure_text:
-            errors.append(f"{gap_closure_path}: missing gap closure marker: {required_gap_marker}")
 
 wave_planning_path = orchestra_ref_dir / "wave-planning.md"
 if wave_planning_path.exists():
@@ -477,63 +374,26 @@ if task_analysis_path.exists():
         if required_planning_marker not in task_analysis_text:
             errors.append(f"{task_analysis_path}: missing brainstorming/deep-project trigger marker: {required_planning_marker}")
 
-if quality_gates_path.exists():
-    quality_gates_text_for_help = quality_gates_path.read_text(encoding="utf-8")
-    for required_help_marker in [
-        "Source-grounding",
-        "Image routing",
-        "Video readiness",
-        "Side-effect safety",
-        "Product polish",
-        "ui-browser-verification.md",
-        "async/data-fetching UI",
-    ]:
-        if required_help_marker not in quality_gates_text_for_help:
-            errors.append(f"{quality_gates_path}: missing code-aware help quality marker: {required_help_marker}")
 
-    for required_ui_marker in [
-        "Copy Contract",
-        "390x844",
-        "768x1024",
-        "1440x900",
-        "skipped browser evidence",
-    ]:
-        combined_ui_refs = "\n".join(
-            (orchestra_ref_dir / name).read_text(encoding="utf-8")
-            for name in [
-                "ui-ux-planning-contract.md",
-                "ui-browser-verification.md",
-                "visual-regression-policy.md",
-            ]
-            if (orchestra_ref_dir / name).exists()
-        )
-        if required_ui_marker not in combined_ui_refs:
-            errors.append(f"{orchestra_ref_dir}: missing UI contract marker: {required_ui_marker}")
 
-review_convergence_path = orchestra_ref_dir / "review-convergence.md"
-if review_convergence_path.exists():
-    review_convergence_text = review_convergence_path.read_text(encoding="utf-8")
-    for required_convergence_marker in [
-        "Minimum clean rounds",
-        "Maximum rounds",
-        "Review Round Algorithm",
-        "Stop Rules",
-        "stale gates",
-        "second-order impact closure",
-    ]:
-        if required_convergence_marker not in review_convergence_text:
-            errors.append(f"{review_convergence_path}: missing review convergence marker: {required_convergence_marker}")
-
-if quality_gates_path.exists():
-    quality_gates_text_for_convergence = quality_gates_path.read_text(encoding="utf-8")
-    for required_convergence_marker in [
-        "Review Convergence Gate",
-        "Stale Gate Protocol",
-        "A passing gate becomes stale",
-        "review-convergence.md",
-    ]:
-        if required_convergence_marker not in quality_gates_text_for_convergence:
-            errors.append(f"{quality_gates_path}: missing review convergence gate marker: {required_convergence_marker}")
+# Core development behavior: audit actual workflow outcomes rather than asserting
+# the existence of every historical quality gate, reviewer round or policy marker.
+core_behavior = {
+    root / "orchestra" / "SKILL.md": ["working software", "integrate", "protected", "HandOff"],
+    root / "development-lifecycle" / "SKILL.md": ["coherent checkpoint", "dirty", "production"],
+    root / "integration-controller" / "SKILL.md": ["required repository checks", "canonical SHA", "HandOff"],
+    root / "deep-plan" / "skills" / "deep-plan" / "SKILL.md": ["SECTION_MANIFEST", "claude-plan.md"],
+    root / "deep-implement" / "skills" / "deep-implement" / "SKILL.md": ["focused", "integrate", "HandOff"],
+    root / "orchestra" / "references" / "quality-gates.md": ["repository-required check", "NOT_RUN", "Production"],
+}
+for source, signals in core_behavior.items():
+    if not source.exists():
+        errors.append(f"{source}: missing development source")
+        continue
+    content = source.read_text(encoding="utf-8")
+    for signal in signals:
+        if signal not in content:
+            errors.append(f"{source}: missing core development behavior marker {signal}")
 
 gpt_image_skill = root / "gpt-image-2"
 if gpt_image_skill.exists():
@@ -653,7 +513,6 @@ if scenario_path.exists():
         if required_scenario_id not in scenario_ids:
             errors.append(f"{scenario_path}: missing expanded behavior scenario {required_scenario_id}")
     known_agents = {path.stem for path in sub_agents_dir.glob("*.md")} if sub_agents_dir.exists() else set()
-    known_gates = (root / "orchestra" / "references" / "quality-gates.md").read_text(encoding="utf-8") if (root / "orchestra" / "references" / "quality-gates.md").exists() else ""
     for scenario in scenarios:
         for field in ["id", "user_message", "expected_owner", "expected_route", "why"]:
             if not scenario.get(field):
@@ -661,15 +520,6 @@ if scenario_path.exists():
         for agent in scenario.get("expected_agents", []):
             if agent not in known_agents:
                 errors.append(f"{scenario_path}: scenario {scenario.get('id')} references unknown agent {agent}")
-        for gate in scenario.get("expected_gates", []):
-            if gate not in known_gates and gate not in {
-                "Verification Before Completion",
-                "Skill Behavior Tests",
-                "Migration Checker",
-                "API Smoke Test",
-                "Health Check",
-            }:
-                errors.append(f"{scenario_path}: scenario {scenario.get('id')} references unknown gate {gate}")
         expected_agents = scenario.get("expected_agents", [])
         if len(expected_agents) > 1:
             dispatch_mode = scenario.get("expected_dispatch_mode")
@@ -699,16 +549,6 @@ if scenario_path.exists():
                 )
                 for agent in unknown_wave_agents:
                     errors.append(f"{scenario_path}: scenario {scenario.get('id')} expected_waves references unknown agent {agent}")
-        if scenario.get("id") in {"REVIEW-CONVERGENCE-001", "IMPACT-RIPPLE-001", "STALE-GATE-001"}:
-            if "Review Convergence Gate" not in scenario.get("expected_gates", []):
-                errors.append(f"{scenario_path}: scenario {scenario.get('id')} missing Review Convergence Gate")
-            forbidden_execution = set(scenario.get("forbidden_execution", []))
-            if scenario.get("id") == "REVIEW-CONVERGENCE-001" and "single-review-only" not in forbidden_execution:
-                errors.append(f"{scenario_path}: REVIEW-CONVERGENCE-001 must forbid single-review-only completion")
-            if scenario.get("id") == "IMPACT-RIPPLE-001" and "skip-impact-closure" not in forbidden_execution:
-                errors.append(f"{scenario_path}: IMPACT-RIPPLE-001 must forbid skipping impact closure")
-            if scenario.get("id") == "STALE-GATE-001" and "stale-gate-pass" not in forbidden_execution:
-                errors.append(f"{scenario_path}: STALE-GATE-001 must forbid stale-gate-pass")
         if scenario.get("id") == "GAP-CLOSURE-001":
             forbidden_execution = set(scenario.get("forbidden_execution", []))
             for required_forbidden in [

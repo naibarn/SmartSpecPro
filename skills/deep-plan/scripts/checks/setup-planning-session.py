@@ -120,7 +120,7 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
     Returns (None, "complete") if workflow is complete.
     Returns (6, "none") if fresh start.
 
-    Step mapping (from SKILL.md):
+    Legacy resume step mapping (from task storage; no requirement to replay optional review/interview):
     - 7: Execute research -> claude-research.md
     - 9: Save interview -> claude-interview.md
     - 10: Write spec -> claude-spec.md
@@ -139,12 +139,6 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
     """
     # Check sections state - this is the final stage
     if files["sections_index"]:
-        # PREREQUISITE CHECK: sections require claude-plan-tdd.md (from step 16)
-        if not files["plan_tdd"]:
-            # TDD plan missing but index exists - Claude skipped step 16
-            # Resume at step 16 to create the TDD plan, then overwrite sections/
-            return 16, "MISSING PREREQUISITE: claude-plan-tdd.md - OVERWRITE sections/ after creating TDD plan"
-
         section_state = section_progress["state"]
 
         if section_state == "complete":
@@ -159,9 +153,6 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
 
     # Check in reverse order (highest step first) for pre-section stages
     if files["sections"]:
-        # PREREQUISITE CHECK: section files require claude-plan-tdd.md
-        if not files["plan_tdd"]:
-            return 16, "MISSING PREREQUISITE: claude-plan-tdd.md - OVERWRITE sections/ after creating TDD plan"
         # Has section files but no index - resume at 18 to create index
         return 18, "section files exist but no index"
 
@@ -170,24 +161,20 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
         return 17, "TDD plan complete"
 
     if files["reviews"]:
-        # PREREQUISITE CHECK: reviews require plan
         if not files["plan"]:
-            return 11, "MISSING PREREQUISITE: claude-plan.md - OVERWRITE reviews/ after creating plan"
+            return 11, "MISSING OUTPUT: claude-plan.md - preserve earlier reviews and create only the missing plan"
         # Self-review done (Step 13 writes fixes directly into claude-plan.md;
         # Step 14 is reserved/skipped) - resume at 15 (plan status log, auto-continue)
         return 15, "self-review complete"
 
     if files["plan"]:
-        # PREREQUISITE CHECK: plan requires spec
         if not files["spec"]:
-            return 10, "MISSING PREREQUISITE: claude-spec.md - OVERWRITE claude-plan.md after creating spec"
+            return 10, "MISSING OUTPUT: claude-spec.md - retain existing plan, generate missing spec only"
         # Plan done - resume at 12 (context check before review)
         return 12, "implementation plan complete"
 
     if files["spec"]:
-        # PREREQUISITE CHECK: spec requires interview
-        if not files["interview"]:
-            return 9, "MISSING PREREQUISITE: claude-interview.md - OVERWRITE claude-spec.md after creating interview"
+        # An existing spec does not require a retrospective interview.
         # Spec done - resume at 11 (generate plan)
         return 11, "spec complete"
 

@@ -11,6 +11,9 @@ will need to be updated.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Self
@@ -26,6 +29,51 @@ class TaskWriteError(Exception):
     """Raised when task files cannot be written."""
 
     pass
+
+
+def _atomic_task_json(path: Path, data: dict) -> None:
+    """An interrupted write must never leave a truncated task JSON file."""
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=f".{path.name}.", delete=False,
+        ) as fp:
+            tmp = Path(fp.name)
+            json.dump(data, fp, ensure_ascii=False, indent=2)
+            fp.flush()
+            os.fsync(fp.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+@contextmanager
+def _task_list_lock(directory: Path):
+    """One writer per Claude task list. Distinct sessions remain parallel."""
+    directory.mkdir(parents=True, exist_ok=True)
+    fd = os.open(directory / ".task-list-writer.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        if os.name == "nt":
+            import msvcrt
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"0")
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def get_tasks_dir(task_list_id: str) -> Path:
@@ -428,31 +476,32 @@ def write_tasks(
         tasks_dir.mkdir(parents=True, exist_ok=True)
 
         # Track highest position we write to
-        max_written_position = 0
+        with _task_list_lock(tasks_dir):
+            max_written_position = 0
 
-        # Write each task
-        for task in tasks:
-            task_data = task.to_file_dict()
+            # Write each task
+            for task in tasks:
+                task_data = task.to_file_dict()
 
-            # Apply dependency graph if provided
-            if dependency_graph and task.position in dependency_graph:
-                blocks, blocked_by = dependency_graph[task.position]
-                task_data["blocks"] = blocks
-                task_data["blockedBy"] = blocked_by
+                # Apply dependency graph if provided
+                if dependency_graph and task.position in dependency_graph:
+                    blocks, blocked_by = dependency_graph[task.position]
+                    task_data["blocks"] = blocks
+                    task_data["blockedBy"] = blocked_by
 
-            task_file = tasks_dir / f"{task.position}.json"
-            task_file.write_text(json.dumps(task_data, indent=2))
-            max_written_position = max(max_written_position, task.position)
+                task_file = tasks_dir / f"{task.position}.json"
+                _atomic_task_json(task_file, task_data)
+                max_written_position = max(max_written_position, task.position)
 
-        # Mark extra existing tasks as obsolete
-        if mark_extra_obsolete:
-            _mark_extra_obsolete(tasks_dir, max_written_position)
+            # Mark extra existing tasks as obsolete
+            if mark_extra_obsolete:
+                _mark_extra_obsolete(tasks_dir, max_written_position)
 
-        return TaskWriteResult.ok(
-            task_list_id=task_list_id,
-            tasks_written=len(tasks),
-            tasks_dir=tasks_dir,
-        )
+            return TaskWriteResult.ok(
+                task_list_id=task_list_id,
+                tasks_written=len(tasks),
+                tasks_dir=tasks_dir,
+            )
 
     except PermissionError as e:
         return TaskWriteResult.err(task_list_id, f"Permission denied: {e}")
@@ -482,7 +531,7 @@ def _mark_extra_obsolete(tasks_dir: Path, max_written_position: int) -> None:
                 # Ensure required fields exist
                 data.setdefault("blocks", [])
                 data.setdefault("blockedBy", [])
-                task_file.write_text(json.dumps(data, indent=2))
+                _atomic_task_json(task_file, data)
         except (ValueError, json.JSONDecodeError):
             continue  # Skip non-numeric or invalid files
 

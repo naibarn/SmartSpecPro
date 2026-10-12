@@ -465,11 +465,9 @@ END_MANIFEST -->
 
         # Should resume at step 16 to create the missing TDD plan
         assert output["mode"] == "resume"
-        assert output["resume_from_step"] == 16
-        assert "MISSING PREREQUISITE" in output["message"]
-        assert "claude-plan-tdd.md" in output["message"]
-        assert "OVERWRITE" in output["message"]
-        assert "sections/" in output["message"]
+        assert output["resume_from_step"] == 19
+        assert "OVERWRITE" not in output["message"]
+        assert (sections_dir / "index.md").read_text() == index_content
 
     def test_missing_tdd_plan_when_section_files_exist(self, run_script, tmp_path):
         """Should detect missing claude-plan-tdd.md when section files exist but no index."""
@@ -488,9 +486,9 @@ END_MANIFEST -->
 
         # Should resume at step 16 to create the missing TDD plan
         assert output["mode"] == "resume"
-        assert output["resume_from_step"] == 16
-        assert "MISSING PREREQUISITE" in output["message"]
-        assert "OVERWRITE" in output["message"]
+        assert output["resume_from_step"] == 18
+        assert "OVERWRITE" not in output["message"]
+        assert (sections_dir / "section-01-setup.md").read_text() == "# Section 1"
 
     def test_missing_plan_when_reviews_exist(self, run_script, tmp_path):
         """Should detect missing claude-plan.md when reviews exist."""
@@ -509,10 +507,10 @@ END_MANIFEST -->
         # Should resume at step 11 to create the missing plan
         assert output["mode"] == "resume"
         assert output["resume_from_step"] == 11
-        assert "MISSING PREREQUISITE" in output["message"]
+        assert "MISSING OUTPUT" in output["message"]
         assert "claude-plan.md" in output["message"]
-        assert "OVERWRITE" in output["message"]
-        assert "reviews/" in output["message"]
+        assert "OVERWRITE" not in output["message"]
+        assert (reviews_dir / "iteration-1-gemini.md").read_text() == "# Review"
 
     def test_missing_spec_when_plan_exists(self, run_script, tmp_path):
         """Should detect missing claude-spec.md when plan exists."""
@@ -529,10 +527,10 @@ END_MANIFEST -->
         # Should resume at step 10 to create the missing spec
         assert output["mode"] == "resume"
         assert output["resume_from_step"] == 10
-        assert "MISSING PREREQUISITE" in output["message"]
+        assert "MISSING OUTPUT" in output["message"]
         assert "claude-spec.md" in output["message"]
-        assert "OVERWRITE" in output["message"]
-        assert "claude-plan.md" in output["message"]
+        assert "OVERWRITE" not in output["message"]
+        assert (tmp_path / "claude-plan.md").read_text() == "# Plan"
 
     def test_missing_interview_when_spec_exists(self, run_script, tmp_path):
         """Should detect missing claude-interview.md when spec exists."""
@@ -548,11 +546,9 @@ END_MANIFEST -->
 
         # Should resume at step 9 to create the missing interview
         assert output["mode"] == "resume"
-        assert output["resume_from_step"] == 9
-        assert "MISSING PREREQUISITE" in output["message"]
-        assert "claude-interview.md" in output["message"]
-        assert "OVERWRITE" in output["message"]
-        assert "claude-spec.md" in output["message"]
+        assert output["resume_from_step"] == 11
+        assert "OVERWRITE" not in output["message"]
+        assert (tmp_path / "claude-spec.md").read_text() == "# Spec"
 
     def test_all_prerequisites_present(self, run_script, tmp_path):
         """Should resume normally when all prerequisites are present."""

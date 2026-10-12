@@ -1,98 +1,20 @@
-# Loop Progress Template
+# Loop Progress Template — Durable, Not a Gate
 
-Use this template in `orchestra/progress.md` whenever `agent-loop-policy.md` is
-active. Keep it compact and update it after each wave, dispatch batch, repair
-round, and verification command.
-
-## Initial Ledger
+For an ongoing multi-wave Orchestra session, keep `orchestra/progress.md` concise and current. Write after each meaningful implementation/merge checkpoint and before a known context/session interruption; store log paths, not raw transcripts.
 
 ```text
-Loop policy:
-  orchestra_id: fable_style_coding_orchestra
-  purpose: coding webapp with an agent loop
-  current_stage: PLANNING
-  resume_from: PLANNING
-  iteration: 0/12
-  tool_call_batches: 0/30
-  estimated_cost_usd: unknown <= 0.50
-  dispatch_waves: 0/6
-  active_subagents: 0/4
-  parallel_writers: 0/2
-  required_subagent_wait: 0/10 minutes
-  background_subagent_wait: 0/15 minutes
-  repair_rounds: 0/5
-  stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
-  stop_reason: active
+Task / WorkUnit: <goal/id>
+Workspace owner/path: <owner/absolute path>
+Source base SHA: <sha>
+Current step: <phase / section / operation>
+Completed: <sections or waves with artifacts and commit SHAs>
+Integrated Main SHA: <sha or NOT_MERGED>
+In progress: <owned changed paths, branch/PR, command if still running>
+Pending: <remaining sections, gaps, dependencies>
+Verification: <focused checks and actual PASS/FAIL/NOT_RUN>
+Resume from: <earliest actually incomplete step>
+Next action: <one executable step>
+Last persisted: <timestamp>
 ```
 
-## Sub-Agent Lifecycle Ledger
-
-Add one entry per dispatch batch:
-
-```text
-Sub-agent lifecycle:
-  batch: wave-<n>
-  dispatched_at: <YYYY-MM-DDTHH:MM:SSZ>
-  required_agents: [<name>, ...]
-  background_agents: [<name>, ...]
-  active_subagents: <n>/4
-  parallel_writers: <n>/2
-  waiting:
-    - agent: <name>
-      required: true
-      waiting_since: <YYYY-MM-DDTHH:MM:SSZ>
-      timeout_minutes: 10
-      status: waiting | returned | timed_out | blocked
-  replacement_allowed: false until timeout/blocker is recorded
-```
-
-Do not launch a replacement for a missing agent while `status: waiting`.
-Record `timed_out` or `blocked` first, then decide whether inline recovery is
-safe or whether the loop must stop.
-
-## Evidence Ledger For Debug Work
-
-When the loop is fixing a bug, include the compact ledger from
-`data-first-debug.md` before the first implementation wave and refresh it before
-repair rounds:
-
-```text
-Evidence ledger:
-  source: traceId | runId | audit-log | db-row | test-output | server-log | ui-only
-  identifier: <id/path/command>
-  observed failure: <exact short excerpt>
-  data state: <status/error/metadata row summary, or "not checked">
-  confidence: high | medium | low
-  next evidence needed: <only if confidence is not high>
-```
-
-## Update Checklist
-
-- Increment `iteration` after each conductor decision cycle that changes state.
-- Increment `tool_call_batches` before each notable tool or command group when
-  exact host telemetry is unavailable.
-- Increment `dispatch_waves` when a new wave is launched.
-- Update `active_subagents`, `parallel_writers`, and each waiting entry when
-  agents return or time out.
-- Increment `repair_rounds` only for review/gate-driven repair loops.
-- Keep raw logs, diffs, and long transcripts out of `progress.md`; store paths
-  and short excerpts only.
-- Reconcile `orchestra/lifecycle.md` before each update. If an open gap has an
-  earlier affected stage, set `current_stage` and `resume_from` to that recovery
-  point before starting more work.
-
-## Final Ledger
-
-```text
-Loop policy final:
-  current_stage: FINAL_VERIFY | BLOCKED
-  resume_from: <stage or none>
-  iterations_used: <n>/12
-  tool_call_batches_used: <n or unknown>/30
-  estimated_cost_usd: <value or unknown>/0.50
-  dispatch_waves_used: <n>/6
-  timed_out_subagents: <none | names>
-  repair_rounds_used: <n>/5
-  stop_conditions_met: [lifecycle_converged, tests_passed, no_open_blockers]
-  stop_reason: <success | blocked reason>
-```
+Update `orchestra/backlog.md` for pending items. For an existing orchestration session, preserve `orchestra/lifecycle.md` if in use but do not require the old seven-stage ledger or arbitrary iteration/tool-call/review quotas before merging. On resume, reconcile the file record with actual Git/artifacts before repeating any operation.

@@ -269,7 +269,7 @@ class TestResumeFlow:
             pytest.fail(f"Invalid JSON: {result.stdout}")
 
         assert output["success"] is True
-        assert output["mode"] == "finalize"
+        assert output["mode"] == "implementation_complete"
         assert output["outcome_complete"] is False
 
 

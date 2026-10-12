@@ -62,7 +62,7 @@ def test_canonical_baseline_blocks_stale_branch_without_rewriting_it(tmp_path):
     assert git("-C", str(work), "status", "--porcelain") == ""
 
 
-def test_section_checkpoints_do_not_complete_finalization_task():
+def test_section_checkpoints_complete_implementation_without_outcome_acceptance():
     tasks = generate_implementation_tasks(
         sections=["section-01-foundation"],
         completed_sections=["section-01-foundation"],
@@ -71,7 +71,7 @@ def test_section_checkpoints_do_not_complete_finalization_task():
         context_values={},
         outcome_complete=False,
     )
-    assert tasks[-1].status == "pending"
+    assert tasks[-1].status == "completed"
 
 
 def test_finalization_task_completes_only_after_outcome_closure():

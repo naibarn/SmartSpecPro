@@ -1,172 +1,27 @@
 ---
 name: integration-controller
-description: Recover completed, partial, or stranded work and promote every safe valuable fast-gate-passing checkpoint into configured canonical ref; perform heavy verification after integration and repair against current canonical state.
+description: Promote independently useful development checkpoints promptly through the existing protected Git path; leave full acceptance to later phases.
 ---
 
-# Integration Controller — Converge Work into Canonical State
+# Integration Controller
 
-Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md). A checkpoint may be partial; dependency waits need durable predicates and wake/recheck paths, and continuation remains attached to the WorkUnit rather than its prior session.
+The configured canonical ref is the shared **development** baseline, not a fully accepted production release. Integrate useful work while a larger SPEC still has open tasks. Follow repository branch protection and [development lifecycle](../development-lifecycle/SKILL.md).
 
-configured canonical ref is the first durable central landing point for safe development progress, including partial progress. Do not let readiness markers, heavy-check queues, branch discovery gaps, session shutdown, quota exhaustion, or another developer/session hide valuable work from central history.
+## Normal integration of the current WorkUnit
 
-Trunk-based progressive integration is the default for every work type. A
-verified slice is eligible independently of the parent SPEC's state. Before
-merge, satisfy the slice's planned and repository-required change-impact
-checks, including security/authorization and compatibility checks when
-applicable; the fast gate does not waive these. Require the configured merge
-queue when the repository has one. It serializes only merge-critical work; do
-not serialize implementation. If no remote queue exists, the controller is a
-single writer for the merge section and must refresh/reconcile immediately
-before each merge.
+1. Read the owned change and current canonical SHA. Do not start with a global scan of historical branches/worktrees for each normal development merge.
+2. Check the smallest affected syntax/compile/focused test boundary, absence of unresolved Git conflicts, no accidentally committed secrets, and **actual required repository checks**. Repair a confirmed failure. Do not require full build, browser UAT, final SPEC verification, production resources, or unrelated workspace convergence unless they really are mandatory repository checks for that PR.
+3. Preserve unrelated staged, unstaged and untracked files. Stage/commit only owned paths; use the existing version-aware `git_capabilities.py` for conflict resolution when relevant. Never force-push, bypass protection or conceal a failed check.
+4. Persist the source branch, WorkUnit, owned commit SHA, intended PR and pending action in the **existing HandOff before promotion**. Push through the established non-force PR/merge-queue flow. Wait for the required GitHub merge conditions, repair failures that belong to the slice, then merge through the authorized path. A PR is not complete until the resulting canonical SHA is confirmed.
+5. Record the confirmed merged SHA, PR, WorkUnit/section, remaining gaps, checks pending and next action in the same HandOff. If interrupted between merge and record-write, first query GitHub/current Main to reconcile **whether it already merged**; do not create duplicate PRs or repeat a commit. Refresh next-slice work from the verified SHA without resetting other active worktrees.
+6. Queue additional verification and development preview **after integration**; if it finds a defect, repair and promote a new checkpoint.
 
-Read `references/integration-verification.md` before running promotion or post-integration checks.
+If a delta is not integration-ready, split out a smaller independently useful checkpoint and preserve the rest. If an actual required GitHub check cannot pass, keep the PR open with the precise failing check and actionable repair; proceed on independent work. Never mark a skipped, resource-blocked or absent check PASS.
 
-For conflict handling, use `skills/development-lifecycle/git_capabilities.py` as
-the shared version/state policy. Record source branch/SHA, target branch/SHA,
-merge base, integration operation, expected changed paths, and the pre-integration
-staged set. Resolve only owned conflict paths through the helper; Git 2.56+
-uses `git add --resolved -- <paths>` and older versions use its explicit-path,
-marker-checked fallback. Verify remaining unmerged paths, unexpected staged
-paths, and `git diff --cached --check` before commit. Pre-existing staged paths
-outside the operation's ownership block automatic commit. Record resolved
-paths, verification outcome, and final integration SHA in the handoff.
+## Resume and repository recovery
 
-## Required rule
+A user-requested *repository recovery* may inventory old PRs, merged/squash-equivalent branches, dirty worktrees and unique unpushed work. That expensive inventory is **not** part of every normal feature merge. Never delete, clean, prune, reset or retire another session's work without ownership and preservation proof. A dirty canonical user checkout is preserved; it does not prevent integration from a clean registered task checkout.
 
-```text
-SAFE CHECKPOINT → FAST INTEGRATION GATE → commit → integrate into configured canonical ref → continue/handoff and heavy verification/UAT → repair against current canonical state
-```
+## Completion report
 
-Before promotion, require all repository-required and slice-required checks:
-
-- changed-scope syntax/compile/type checks and impacted tests;
-- applicable security/authorization and API/schema compatibility checks;
-- a usable backward-compatible or feature-off fallback for incomplete behavior;
-- the FAST INTEGRATION GATE: no unresolved conflict, damaged patch, or secret.
-
-Full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, and production gates run after the integrated SHA is recorded in configured canonical ref. A resource block is never a reason to silently leave an implementation outside the central history.
-
-## Canonicalization rule for partial work
-
-Task completion is not a prerequisite for central integration. A checkpoint is eligible when it represents coherent valuable progress that can coexist safely with current configured canonical ref. Examples include a backend slice before UI completion, schema/repository layer before business logic, provider adapter disabled behind a feature flag, or a subset of a larger refactor that leaves the repository startable.
-
-When a session is stopping because of quota/context/provider/time boundaries, treat that stop as an urgent reconciliation event: promote the largest safe subset now and hand off the remainder.
-
-## Workflow
-
-1. Refresh configured canonical ref and inventory completed, partial, stranded, marked, **unmarked**, and dirty task refs/worktrees. Readiness markers are legacy evidence only and MUST NOT be required for discovery. Snapshot the worktree list once, inspect each worktree once, and associate its state with refs; an unavailable path is never classified as clean. Record each candidate's committed tip, dirty state, relation to the configured canonical ref, likely owner/scope, and recoverable delta.
-2. Preserve unrelated dirty changes. For a dirty task worktree, identify and durably commit/preserve the task-owned delta without staging other work. If ownership cannot be separated safely, report `FAST_GATE_BLOCKED` with the path, owner/session if known, durable location, and next action; never discard it.
-3. Reconcile each candidate with current configured canonical ref, inspect its diff, and identify the largest coherent safe checkpoint. Run its required impacted checks and FAST INTEGRATION GATE. If the whole delta is unsafe, split and promote independent safe subsets before preserving the remainder.
-4. Commit and promote every verified safe checkpoint promptly through the normal non-force PR/merge-queue path, whether the parent task is complete or partial. Serialize only promotion. Do not wait for unrelated sessions, task completion, or unrelated/heavy checks.
-5. Verify that each promoted SHA is reachable from the new configured canonical ref. Record task/work ID, SHA, source ref/worktree, `PARTIAL|IMPLEMENTATION_COMPLETE`, completed scope, remaining scope, and next action in the integration report/handoff. Open/merge the next slice only after refreshing against this SHA and ensuring previous required mainline checks have not reported a regression.
-6. Resolve and converge the registered `CANONICAL_USER_WORKSPACE` after each promotion through `scripts/development-lifecycle/workspace_authority.py` (run it on the SSH host that owns that checkout when applicable): `resolve`, then `converge --integrated-sha <sha> [--task-id <development-run-id>]`, then `verify --integrated-sha <sha>`. When producing Spec 224 completion evidence, pass the exact run ID and register its task worktree with the same ID so both receipts bind to that run. Do not create a permanent alternate canonical folder. The resolver must prove repository identity, explicit role, exact SHA parity, and clean state. Dirty work is preserved and linked to recovery evidence; blocked convergence remains open and actionable.
-7. After promotion, queue heavy checks against the integrated SHA with a durable owner, status, and next action. A canceled, unavailable, or resource-blocked check is `NOT_RUN`/`PENDING`, never a pass.
-8. If post-integration checks fail, create a repair task against latest configured canonical ref; pass the fast gate, promote the repair, and refresh the canonical working workspace again. Keep the original and repair commits visible in history.
-9. Classify worktrees for retirement through the shared resolver. Use dry-run first; retire only after proving no active owner, dirty/untracked/ignored/stashed content, or unique unpushed commit remains, and integration or explicit archival disposition is evidenced. Retain a recovery manifest/archive rather than a live Git worktree when recovery is needed. Never perform blind mass deletion.
-
-## Executable PR promotion and continuation
-
-For an existing GitHub PR that represents one ready slice, run
-`python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number>`
-after verifying the slice's own required tests, security/authorization decisions,
-and acceptance obligations. The default is read-only preflight. It reports a
-blocker list for drafts, stale heads, non-clean GitHub merge state, unmet review
-requirements, or failed/pending checks. Do not change acceptance criteria to
-make this preflight pass.
-
-Only when the slice gates and authority are satisfied, execute
-`python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number> --expected-head <sha> --execute`.
-The executor re-fetches the configured canonical ref, requires the PR's base
-revision to match it, rechecks the exact PR head and CI immediately before
-merging, and uses GitHub's normal merge path
-with an expected-head guard. It never requests administrator bypass, force
-updates, or branch deletion. GitHub remains authoritative for repository
-reviews, rulesets, and merge queues. Treat `MERGE_QUEUED_OR_PENDING` as pending,
-not integrated. Record integration only after the returned merge SHA is proven
-reachable from the configured canonical ref.
-
-When execution refreshes PR state, reconcile a PR already merged by another
-session as `ALREADY_MERGED` only after proving its merge SHA is reachable from
-the configured canonical ref. Report externally closed PRs and changed open
-heads as authority/conflict outcomes; do not issue a duplicate merge. The
-executor retries recognized Git/GitHub transport failures at most three times
-with bounded exponential backoff, recording attempt number, failure class, and
-a diagnostic digest in the receipt. Application, conflict, and authority
-failures are not retried. Failed or pending CI checks remain merge blockers;
-transport retries do not rerun or bypass CI.
-
-The executor holds a nonblocking repository-common Git lock only for the final
-refresh/check/merge/reachability section. All worktrees on the same Linux host
-share it. A busy lock is a retry predicate, not a request for human approval.
-Across hosts, use the configured GitHub merge queue and existing coordination
-authority; a local lock does not provide cross-host fencing.
-
-For a registered external worker, supply `--workunits <ledger-export.json>`,
-`--worker-command '["<authorized-worker>", "<args>"]'`,
-`--next-worktree <new-absolute-path>`, and `--receipt <new-receipt.json>` with
-`--execute`. The ledger export uses existing `workunits`,
-`completed_workunits`, `satisfied_predicates`, and `prohibited_retries` fields;
-it is data and cannot supply executable commands. Only explicit trusted CLI
-argv authorizes the worker. The controller uses the shared lifecycle selector,
-writes the integration receipt before dispatch, releases the merge lock,
-creates a clean detached workspace at the verified canonical SHA, and invokes
-the worker there with `--workunit-id <id> --canonical-sha <sha>`.
-The worker owns implementation, required verification and subsequent normal
-promotion; its successful process exit alone does not close requirements.
-Long-running skill, agent and external-worker execution must still enter the
-repository's existing worker-job/outbox control plane through its registered
-adapter. This continuation hook grants no runtime, production or deployment
-authority and does not replace that control plane. Short local verification
-and runtime-publication WorkUnits may execute synchronously when authorized.
-Persist the receipt through the existing canonical handoff writer. A worker
-failure preserves `MERGED` plus a separate failed continuation outcome, so
-recovery resumes the WorkUnit without repeating an already successful merge.
-
-After each verified merge, the active Orchestra conductor reconciles to that
-exact canonical SHA and selects the next ready independent WorkUnit in the
-same execution. A waiting WorkUnit does not end the run while another is ready.
-Inline conductor execution remains the default when no external worker is
-registered: immediately perform the selected WorkUnit rather than ending the
-turn with a handoff. No additional approval is needed for previously authorized
-implementation, scoped tests or protected normal promotion.
-This skill is loaded by the Codex conductor; this repository has no separate
-background scheduler that wakes a completed Codex turn. Do not claim automatic
-background dispatch or event-driven resume without evidence from a registered
-runtime trigger.
-
-## Branch and worktree discipline
-
-- Do not create or retain per-session branches as the durable progress destination. If required by concurrent isolation or repository protection, use a temporary branch/PR, but canonicalize safe checkpoints to the configured canonical ref throughout the work lifecycle rather than waiting for final completion.
-- Never force-push or bypass repository protection. If protection prevents immediate direct push, complete the required PR path promptly and keep the task visible as promotion-pending until the merge SHA is verified. Explicitly reject `git push --force`, `git push -f`, `git push --force-with-lease`, and equivalent force refspec options in normal integration. Fetch and reconcile or use the normal non-force GitHub PR path. Only a dedicated emergency/recovery authority path may authorize a force update, with recorded approver, exact before/after refs and SHAs, preserved recovery refs, and rollback plan.
-- Never use destructive reset/clean/prune/remove operations against another session's worktree. A worktree count is not proof that its contents are disposable.
-- A dirty or stale registered user checkout remains the authority. Preserve it and report convergence pending until the shared resolver safely advances that same location; an internal exact-SHA build checkout is not a user-facing substitute.
-- configured canonical ref promotion is not deployment. Report deployment/runtime evidence separately.
-
-## Required report
-
-Report:
-
-- initial and final configured canonical ref SHA;
-- each task found and its source SHA/ref;
-- each promoted SHA and proof it is reachable from configured canonical ref;
-- fast-gate result;
-- post-integration checks passed, failed, canceled, or pending, tied to the integrated SHA;
-- canonical working workspace absolute path, verified SHA/clean status, and which existing dirty/stale checkouts were preserved;
-- preserved/blocked task work with owner and next action;
-- worktrees/temporary refs safe to clean and any that must remain.
-- progressive integration metrics per merge: branch age at integration (hours
-  from first slice commit), merge latency (minutes from WorkUnit start),
-  integration delta (commits/files/insertions/deletions), conflict attempts and
-  attempts total (conflict rate), main build health for the exact integrated
-  SHA, and time-to-first-preview (minutes plus preview URL, or `N/A` with the
-  reason). Use Git/PR timestamps and exact-SHA evidence; mark unavailable
-  values `UNKNOWN`, never estimate them.
-
-Controller completion requires that every discovered valuable delta is either integrated (partial or complete), already present in the configured canonical ref, or explicitly preserved as `FAST_GATE_BLOCKED` with a durable recovery location and named next action. A parent task may remain open after partial canonicalization. Never require a readiness marker for visibility, never report pending validation as completion, and never allow an uncanonicalized valuable delta to disappear from inventory.
-
-After canonicalizing partial progress, return to the open requirement ledger and
-the next ready WorkUnit. Integration is not task closure.
-
-## Canonical Spec integration evidence
-
-For Spec-backed work, after promotion update the canonical Handoff with configured canonical ref, exact integrated SHA/time, affected requirements, and evidence freshness using the shared writer contract in `skills/development-lifecycle/spec-handoff-contract.md`. Integration is distinct from verification, deployment, acceptance, and completion. On stale generation/SHA, reload and reconcile before retry.
+Provide only source branch/owned scope, canonical SHA before/after, required check status, integrated result (or actual merge blocker), and HandOff next action. For Spec-backed work update the existing canonical HandOff using `skills/development-lifecycle/spec-handoff-contract.md` when available. Integration does not certify UAT or production readiness.
