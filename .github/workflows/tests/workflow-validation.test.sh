@@ -14,4 +14,5 @@ fi
 actionlint .github/workflows/deploy-staging.yml
 actionlint .github/workflows/deploy-production.yml
 actionlint .github/workflows/pr-preview.yml
+actionlint .github/workflows/apply-vertical-drama-assurance-migration.yml
 echo "All workflow files are valid"

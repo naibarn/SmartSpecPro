@@ -129,8 +129,54 @@ an empty PATH, and workflow wiring.
   `WORKSPACE_AUTHORITY_DEADLINE_EXCEEDED` and `WORKSPACE_STATE_UNKNOWN`. Preserve
   the dirty primary checkout; next action is a bounded authority/runtime audit
   from a current canonical checkout before any convergence or retirement.
-- Discovery fallback: the required `skills/development-lifecycle/git_capabilities.py`
-  inspect helper is absent in this checkout. Git state was inspected with
-  targeted `git status`, `git diff --check`, commit ancestry, and GitHub PR/run
-  evidence instead. No branch force-push, destructive cleanup, or primary
+- At the initial task snapshot, the stale primary checkout lacked
+  `skills/development-lifecycle/git_capabilities.py`; the current canonical
+  source has it. Final verification invoked `inspect` from the canonical-based
+  repair worktree. No branch force-push, destructive cleanup, or primary
   workspace sync occurred.
+
+## Final verification follow-up — current repair PR
+
+- PR #824 merge SHA `a94e8243` CI run `38185524332` and PR #825 merge SHA
+  `78c63822` CI run `38185697789` both completed `python` and `turbo_build`
+  with failures; the `smartspecweb` job was still running when this was
+  recorded. Python reported 67 failures / 4660 passes / 40 skips on both SHAs.
+  The ordered failing-test list digest was identical on both runs and on the
+  parent-base CI run `38185248946` at `a6ba7ddd`. Turbo reported the same 498
+  TypeScript diagnostic sites on parent-base run `38185248946` and `a94e8243`.
+  PR #824 changes no application TypeScript or Python runtime files; these are
+  pre-existing baseline failures and are not repaired in this task. The exact
+  run and job logs remain the evidence source; no local full typecheck ran.
+- The migration workflow runs `38185523545` and `38185697126` both have event
+  `push`, zero jobs, zero check runs, and no downloadable logs. A no-op manual
+  dispatch probe (wrong confirmation, no staging connection) was rejected by
+  GitHub validation with `Line: 32, Col: 31: Unrecognized named-value: 'runner'`.
+  At line 32, `runner.temp` was used in a job-level `env`, where the runner
+  context is unavailable. This is the proven pre-job parse failure behind the
+  empty failed runs; no migration job started and no staging database was
+  touched. The fix moves that value to the two steps that use it and explicitly
+  requires both `workflow_dispatch` and the exact confirmation token.
+- The current canonical Skill contract contains
+  `skills/development-lifecycle/git_capabilities.py`; invoking its `inspect`
+  command on the repair worktree reported Git 2.56.0, no merge/rebase/cherry
+  pick, no unmerged/staged paths. The root session-finish Skill invokes the
+  same command. `actionlint` is not installed on this host; the existing
+  workflow-validation script previously omitted this manual migration
+  workflow, so the current repair adds it and adds a static manual-trigger
+  contract test to the progressive gate.
+- Initial authority probing was bounded: read-only SQLite inspection found 474
+  workspace records, 429 `UNKNOWN_WORKSPACE`, 24 recorded dirty, and 12 expired
+  owner leases. For expired leases with a PID, `/proc` showed no live matching
+  process; entries without a PID remain unverified and none were reclaimed.
+  Both task worktrees are owned by the live recorded PID with a matching
+  process-start token. No other worktree was changed or removed.
+- The authority timeout was isolated to `git fetch --no-tags origin
+  +refs/heads/main:refs/remotes/origin/main`: its 3-second per-command timeout
+  fired while the same fetch completed successfully in 3.07 seconds. Other
+  canonical workspace status probing completed in 0.068 seconds. The fix lets
+  Git commands use the remaining 15-second operation budget and has a focused
+  regression test. A subsequent verify completed and returned the authoritative
+  state `CONVERGENCE_PENDING` with `USER_WORKSPACE_NOT_SYNCED` and
+  `USER_WORKSPACE_DIRTY`, canonical SHA `a2546d0d3fad4ed45aeb0592e783e8c70d2cc7f7`,
+  and primary workspace SHA `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`.
+  The primary is 584 commits behind and has 10 dirty paths; it was not synced.

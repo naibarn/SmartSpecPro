@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   migrate:
-    if: ${{ inputs.confirm == 'apply-vertical-drama-0245-staging' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm == 'apply-vertical-drama-0245-staging' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -29,7 +29,6 @@ jobs:
       DEPLOY_ENVIRONMENT: staging
       DATABASE_TARGET_ID: neon:staging
       MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:0245_vertical_drama_assurance_attempts_reconciliation
-      MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/vertical-drama-0245-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
       SOURCE_SHA: ${{ github.sha }}
 
     steps:
@@ -130,6 +129,8 @@ jobs:
       - name: Record migration execution start
         id: record_migration_start
         if: steps.preflight.outcome == 'success' && env.MIGRATION_ALREADY_APPLIED != 'true'
+        env:
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/vertical-drama-0245-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -229,6 +230,7 @@ jobs:
         shell: bash
         env:
           APPLY_OUTCOME: ${{ steps.apply_migration.outcome }}
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/vertical-drama-0245-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         run: |
           set -Eeuo pipefail
           source "$RUNNER_TEMP/vd-assurance-0245/migration.env"

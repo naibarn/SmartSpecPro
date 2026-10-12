@@ -42,7 +42,9 @@ jobs:
             scripts.development-lifecycle.test_progressive_integration \
             scripts.development-lifecycle.test_deep_workflow_alignment \
             scripts.development-lifecycle.test_progressive_gate_scope \
-            scripts.development-lifecycle.test_migration_attempt_serialization
+            scripts.development-lifecycle.test_migration_attempt_serialization \
+            scripts.development-lifecycle.test_migration_workflow_contract
+          python -m unittest scripts.development-lifecycle.test_workspace_authority
           python -m unittest discover \
             -s skills/integration-controller/tests \
             -p 'test_*.py'
