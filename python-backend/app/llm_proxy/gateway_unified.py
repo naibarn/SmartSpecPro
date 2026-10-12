@@ -2955,15 +2955,19 @@ class LLMGateway:
         if isinstance(request, LLMRequest):
             request_type = "llm"
             local_cost = COST_PER_1K_TOKENS.get((request.task_type, request.budget_priority), Decimal("0.001"))
+            model_id = request.preferred_model
         elif isinstance(request, ImageGenerationRequest):
             request_type = "image"
             local_cost = Decimal("0.01")
+            model_id = request.model
         elif isinstance(request, VideoGenerationRequest):
             request_type = "video"
             local_cost = Decimal("0.05")
+            model_id = request.model
         elif isinstance(request, AudioGenerationRequest):
             request_type = "audio"
             local_cost = Decimal("0.005")
+            model_id = request.model
         else:
             raise ValueError("Unknown request type for cost estimation")
 
@@ -3235,15 +3239,16 @@ class LLMGateway:
             except Exception as e:
                 logger.debug(f"Could not apply WaveSpeed static fallback cost: {e}")
 
-        try:
-            gateway_cost = await self.web_gateway.estimate_cost(
-                request_type=request_type,
-                model=request.model
-            )
-            if gateway_cost is not None:
-                return Decimal(str(gateway_cost))
-        except Exception as e:
-            logger.warning(f"Failed to get cost from gateway: {e}, using local estimate")
+        if model_id:
+            try:
+                gateway_cost = await self.web_gateway.estimate_cost(
+                    request_type=request_type,
+                    model=model_id
+                )
+                if gateway_cost is not None:
+                    return Decimal(str(gateway_cost))
+            except Exception as e:
+                logger.warning(f"Failed to get cost from gateway: {e}, using local estimate")
 
         return local_cost
 
