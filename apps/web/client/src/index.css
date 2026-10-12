@@ -648,6 +648,16 @@
     transform-origin: 50% 75%;
   }
 
+  .assistant-mascot-idle-subtle {
+    animation: assistant-mascot-idle-subtle 3.2s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .assistant-mascot-idle-normal {
+    animation: assistant-mascot-idle-normal 2.6s ease-in-out infinite;
+    will-change: transform;
+  }
+
   .assistant-reminder-balloon,
   .assistant-chat-onboarding-hint {
     animation: assistant-hint-enter 220ms ease-out 1;
@@ -703,8 +713,11 @@
   .assistant-bell-ring-subtle,
   .assistant-bell-ring-normal,
   .assistant-mascot-greeting-subtle,
-  .assistant-mascot-greeting-normal {
+  .assistant-mascot-greeting-normal,
+  .assistant-mascot-idle-subtle,
+  .assistant-mascot-idle-normal {
     animation: none !important;
+    will-change: auto;
   }
 }
 
@@ -733,6 +746,16 @@
   0%, 100% { transform: rotate(0deg); }
   45% { transform: rotate(-4deg); }
   80% { transform: rotate(3deg); }
+}
+
+@keyframes assistant-mascot-idle-subtle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(calc(var(--spacing-1) * -0.5)) rotate(-1deg); }
+}
+
+@keyframes assistant-mascot-idle-normal {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(calc(var(--spacing-1) * -0.75)) rotate(-1.5deg); }
 }
 
 @keyframes assistant-bell-ring-subtle {

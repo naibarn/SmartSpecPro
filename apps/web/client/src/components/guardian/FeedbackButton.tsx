@@ -1297,7 +1297,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         >
           {showMascotLauncher
             ? <>
-              <span className="inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20" aria-hidden="true">
+              <span className={`inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20${mascotPreferences.motion === "off" ? "" : ` assistant-mascot-idle-${mascotPreferences.motion}`}`} aria-hidden="true">
                 <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-10 w-10 text-sky-500" />}>
                   <AssistantMascot
                     style={mascotPreferences.style}
