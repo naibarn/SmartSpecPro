@@ -1043,5 +1043,65 @@
       ],
       "why": "Overall completion remains ineligible until every applicable requirement and required exact-SHA deployment and acceptance predicate has fresh evidence."
     }
+,
+    {
+      "id": "SPEC-ID-304-RESOLVE-001",
+      "user_message": "/orchestra ดำเนินการพัฒนา SPEC-304 ต่อจากสถานะล่าสุดบน origin/main; ข้อความคัดลอกระบุ SPEC-308",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_canonical_spec": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+      "expected_scope": "Application Identity and Universal Routing",
+      "forbidden_execution": [
+        "switch-to-spec-308-from-copied-prose",
+        "infer-spec-from-directory-name",
+        "repeat-integrated-work",
+        "merge-receipt-as-functional-output"
+      ],
+      "why": "Resolve the ID through the canonical registry first; SPEC-304 controls scope regardless of conflicting copied text, then current artifacts select the existing plan/implementation/resume/debug route."
+    },
+    {
+      "id": "SPEC-ID-308-RESOLVE-001",
+      "user_message": "/orchestra ทำ SPEC-308 ต่อจากสถานะล่าสุด",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_canonical_spec": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+      "expected_scope": "SmartAIHub Cooperative Dual Surface",
+      "forbidden_execution": [
+        "route-to-spec-304-from-nearby-artifacts",
+        "infer-identity-from-copied-description",
+        "merge-receipt-as-functional-output"
+      ],
+      "why": "The canonical SPEC-308 registry entry resolves to Dual Surface; route from that spec's own plan, handoff, implementation and Git state."
+    },
+    {
+      "id": "SPEC-ID-RESUME-NO-REPEAT-001",
+      "user_message": "ทำ SPEC-304 ต่อจาก handoff ล่าสุด",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "forbidden_execution": [
+        "repeat-integrated-commit",
+        "repeat-completed-requirement",
+        "restart-completed-plan",
+        "treat-stale-handoff-as-newer-than-git"
+      ],
+      "why": "Resume reconciles canonical HandOff and implementation artifacts against current canonical Git/PR reality, then continues the earliest actually incomplete step."
+    },
+    {
+      "id": "SPEC-ID-NO-RECEIPT-LOOP-001",
+      "user_message": "ปิด SPEC ให้ครบ มีแต่ merge receipt กับ STATUS refresh แล้ว",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "forbidden_execution": [
+        "receipt-only-merge-counts-as-functional-output",
+        "status-refresh-counts-as-requirement-evidence",
+        "repeat-documentation-only-merge-receipts",
+        "claim-complete-without-direct-requirement-evidence"
+      ],
+      "why": "A receipt or generated STATUS refresh cannot satisfy functional requirements. For a real documentation requirement, verify the document itself and record direct evidence in the existing canonical HandOff."
+    }
   ]
 }

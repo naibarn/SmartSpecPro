@@ -6,6 +6,11 @@ the right routing and gate decisions.
 ## Required Scenario Coverage
 
 Maintain scenario coverage for:
+- SPEC-ID-only requests resolve through the current canonical registry for every ID, and conflicting copied prose cannot redirect canonical scope
+- SPEC-ID routing reads the canonical spec, existing HandOff, planning/implementation artifacts, and Git state before selecting Deep Plan, Deep Implement, resume, or debug
+- SPEC-304 resolves to Application Identity / Universal Routing and SPEC-308 resolves to SmartAIHub Cooperative Dual Surface when those entries are canonical
+- resume reconciles Git and HandOff so integrated requirements/commits are not repeated
+- merge receipts, generated STATUS refreshes, and receipt-only documentation commits never count as functional output or close unrelated requirements
 
 - meta activation chooses the right skill family
 - visual UI requests route to the visual UI workflow
