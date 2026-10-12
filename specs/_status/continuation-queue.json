@@ -3900,7 +3900,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.",
+      "next_action": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4959,7 +4959,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Refresh and normally integrate SPEC-308 UI PR #852 only after protected Main rules and exact-head checks/review pass; then record exact Main SHA and continue canonical build plus registered-tenant acceptance.",
+      "rationale": "Resume after build resource admission is available, build exact canonical Main, verify artifact/source parity, and perform tenant-authenticated browser acceptance through the registered SmartAIHub route. Configure repository Main protections before claiming protected integration enforcement.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
