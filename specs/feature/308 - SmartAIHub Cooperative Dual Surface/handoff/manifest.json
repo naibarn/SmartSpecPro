@@ -50,15 +50,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "8258add1ed446bdeddd5f1cdf3af228eefe51607",
+    "expected_canonical_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Canonical build passed for exact Main source 757a5750f00e916ed84801c6024bebdc814e60f9 with artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f and build-time global allow=true. Tenant tenant-ZCSKEM9s opted in. Local preview could not authenticate; current port 3000 service is production-mode and still serves the old bundle. Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact and user-visible UI there.",
-    "next_ready_workunit": "SPEC308_AUTHENTICATED_NONPRODUCTION_UI_ACCEPTANCE",
-    "reactivation_predicate": "Resume canonical build when a fresh resource observation meets build-atomic headroom. Resume hosted acceptance when the application/runtime owner registers a tenant-aware non-production route and provisions an authorized synthetic identity. Configure Main protections for future PR integration.",
-    "resume_point": "SPEC-308 canonical build WorkUnit completed: source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f; build-time VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true; tenant-ZCSKEM9s livingMascotDualSurface=true by explicit opt-in. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. No hosted UI acceptance: local preview had no authenticated backend; port 3000 is production-mode and was not modified. Continue with an authorized non-production tenant route and identity.",
-    "waiting_predicate": "Resume hosted acceptance when the application/runtime owner registers a tenant-aware non-production route and provisions an authorized synthetic identity; publish/use the verified artifact without modifying production-mode runtime."
+    "next_action": "Deployment to https://smartaihub.app completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Ask the user to refresh the existing authenticated dashboard for tenant tenant-ZCSKEM9s, then capture and record authenticated desktop/mobile acceptance for launcher visibility, five styles, chat handoff, and reminder routing. Fresh Playwright profiles only reached /login; do not claim dashboard acceptance or close the 66 open requirements.",
+    "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
+    "reactivation_predicate": "Resume authenticated acceptance when the user refreshes or supplies evidence from the existing logged-in dashboard session for tenant tenant-ZCSKEM9s; use the domain https://smartaihub.app only.",
+    "resume_point": "Static frontend deployment completed on https://smartaihub.app from Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Evidence: handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New JS/CSS return 200. Playwright guest browser reaches /login and cannot inspect authenticated dashboard. Next: user refreshes existing authenticated tenant session; record remaining visible behavior acceptance.",
+    "waiting_predicate": "Authenticated dashboard acceptance awaits a refreshed existing user session or a user-provided screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -69,18 +69,18 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Canonical build is complete for source 757a5750f00e916ed84801c6024bebdc814e60f9 (BUILD_PASSED, artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f). Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact through authenticated desktop/mobile UI acceptance. Do not modify production-mode service.",
-    "rationale": "SPEC-308 canonical artifact is built and tenant-ZCSKEM9s explicitly opted in. Local preview rendered the shell but had no authenticated backend/session. The only inspected Debian web service runs NODE_ENV=production and still serves the old bundle, so no hosted visibility claim is made. Continue with authorized non-production route/identity and authenticated acceptance.",
+    "next_action": "Static deployment is complete on https://smartaihub.app from canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Fresh Playwright desktop/mobile profiles reached /login; authenticated dashboard behavior remains unverified. Next: refresh the existing authenticated tenant session and verify launcher, five styles, chat handoff, reminder routing, and mobile layout.",
+    "rationale": "User explicitly authorized deployment to smartaihub.app despite production-mode service. Only static frontend assets were published; no restart or DB migration. Domain serves the new content-addressed bundle and CSS. Playwright guest checks passed for asset loading and login page only; no authenticated session was available to verify tenant-specific UI behavior.",
     "residual_requirements": [
-      "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; do not equate merge, build, or mocked simulation with completion.",
-      "Canonical build passed for source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Hosted deployment and authenticated acceptance remain pending.",
-      "No verified tenant-aware non-production SmartAIHub route or authorized synthetic identity is registered. Current port 3000 service is production-mode and must not be modified as a development target.",
-      "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; other shared defaults remain false.",
+      "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; deployment and smoke checks do not establish completion.",
+      "Static frontend was deployed from canonical source 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f.",
+      "Authenticated dashboard acceptance remains unverified because fresh Playwright profiles reached /login; verify launcher visibility, five styles, chat handoff, reminder routing, and mobile dashboard layout using the existing authenticated tenant session.",
+      "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
       "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
       "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
-      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
+      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; mascot UI deployment does not establish these as complete."
     ],
-    "resume_point": "Canonical build completed for source 757a5750f00e916ed84801c6024bebdc814e60f9, with artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. Tenant tenant-ZCSKEM9s opted in. Local preview was unauthenticated. The production-mode port 3000 service remains untouched and on its old frontend bundle. Next: authorized non-production route + identity, publish/use exact artifact, then authenticated desktop/mobile acceptance."
+    "resume_point": "Deployment completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app. See handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New content-addressed frontend assets are live; guest Playwright reaches /login. Next: refresh existing authenticated tenant dashboard and record UI acceptance. Do not close the 66 open requirements."
   },
   "dependencies": {
     "predicates": [],
@@ -90,13 +90,14 @@
   },
   "deployment": {
     "artifact_digest": "sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f",
-    "environment": "canonical artifact built; no hosted deployment or tenant-visible acceptance",
+    "environment": "https://smartaihub.app (user-authorized production-mode service; static assets only)",
     "evidence": [
-      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-canonical-build-757a575-20261012.md"
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-canonical-build-757a575-20261012.md",
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-deployment-smartaihub-app-20261012.md"
     ],
     "required": false,
-    "source_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
-    "status": "BUILD_PASSED"
+    "source_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
+    "status": "DEPLOYED"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -114,7 +115,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 79,
+  "generation": 80,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -216,9 +217,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8258add1ed446bdeddd5f1cdf3af228eefe51607",
+    "canonical_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
     "integrated": true,
-    "integrated_at": "2026-10-12T02:25:08Z"
+    "integrated_at": "2026-10-12T10:00:33Z"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -305,18 +306,18 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Canonical build is complete for source 757a5750f00e916ed84801c6024bebdc814e60f9 (BUILD_PASSED, artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f). Next: register a tenant-aware non-production route and authorized identity, then verify the exact artifact through authenticated desktop/mobile UI acceptance. Do not modify production-mode service.",
-      "rationale": "SPEC-308 canonical artifact is built and tenant-ZCSKEM9s explicitly opted in. Local preview rendered the shell but had no authenticated backend/session. The only inspected Debian web service runs NODE_ENV=production and still serves the old bundle, so no hosted visibility claim is made. Continue with authorized non-production route/identity and authenticated acceptance.",
+      "next_action": "Static deployment is complete on https://smartaihub.app from canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Fresh Playwright desktop/mobile profiles reached /login; authenticated dashboard behavior remains unverified. Next: refresh the existing authenticated tenant session and verify launcher, five styles, chat handoff, reminder routing, and mobile layout.",
+      "rationale": "User explicitly authorized deployment to smartaihub.app despite production-mode service. Only static frontend assets were published; no restart or DB migration. Domain serves the new content-addressed bundle and CSS. Playwright guest checks passed for asset loading and login page only; no authenticated session was available to verify tenant-specific UI behavior.",
       "residual_requirements": [
-        "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; do not equate merge, build, or mocked simulation with completion.",
-        "Canonical build passed for source 757a5750f00e916ed84801c6024bebdc814e60f9; artifact sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Hosted deployment and authenticated acceptance remain pending.",
-        "No verified tenant-aware non-production SmartAIHub route or authorized synthetic identity is registered. Current port 3000 service is production-mode and must not be modified as a development target.",
-        "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; other shared defaults remain false.",
+        "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; deployment and smoke checks do not establish completion.",
+        "Static frontend was deployed from canonical source 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f.",
+        "Authenticated dashboard acceptance remains unverified because fresh Playwright profiles reached /login; verify launcher visibility, five styles, chat handoff, reminder routing, and mobile dashboard layout using the existing authenticated tenant session.",
+        "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
         "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
         "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
-        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; current mascot-only scope checks prove they are not prerequisites for this UI slice."
+        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; mascot UI deployment does not establish these as complete."
       ],
-      "resume_point": "Canonical build completed for source 757a5750f00e916ed84801c6024bebdc814e60f9, with artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f. Evidence: handoff/evidence/spec308-canonical-build-757a575-20261012.md. Tenant tenant-ZCSKEM9s opted in. Local preview was unauthenticated. The production-mode port 3000 service remains untouched and on its old frontend bundle. Next: authorized non-production route + identity, publish/use exact artifact, then authenticated desktop/mobile acceptance."
+      "resume_point": "Deployment completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app. See handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New content-addressed frontend assets are live; guest Playwright reaches /login. Next: refresh existing authenticated tenant dashboard and record UI acceptance. Do not close the 66 open requirements."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2163,7 +2164,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:58:30.010782Z",
+  "updated_at": "2026-10-12T12:04:25.433078Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
