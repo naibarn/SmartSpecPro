@@ -1799,6 +1799,7 @@ export async function resumeStoryboardSkillRun(input: {
       runId: transition.run.id,
     });
     if (!resumedRun) throw new Error("Storyboard run not found after resume");
+    const resumedShots: StoryboardSkillRunShotDetail[] = resumedRun.shots;
     const staleChildJobs = await db
       .select({ id: workerJobs.id })
       .from(workerJobs)
@@ -1836,8 +1837,8 @@ export async function resumeStoryboardSkillRun(input: {
         )
       );
     }
-    const anchor = resumedRun.shots.find(shot => shot.shotNumber === 1);
-    const queueableShots = resumedRun.shots.filter(
+    const anchor = resumedShots.find(shot => shot.shotNumber === 1);
+    const queueableShots = resumedShots.filter(
       shot =>
         !isReusableStoryboardImage(shot) &&
         (shot.status === "pending" ||
@@ -1857,7 +1858,7 @@ export async function resumeStoryboardSkillRun(input: {
         userId: input.userId,
         shotNumbers: shotsToQueue.map(shot => shot.shotNumber),
         attemptByShot: new Map(
-          resumedRun.shots.map(shot => [shot.shotNumber, shot.attempt + 1])
+          resumedShots.map(shot => [shot.shotNumber, shot.attempt + 1])
         ),
       });
     }
@@ -2109,10 +2110,11 @@ export async function retryStoryboardSkillShots(input: {
   if (run.status === "cancel_requested") {
     throw new Error("Cancelled storyboard runs cannot be retried");
   }
-  const allowed = new Set(
-    input.shotNumbers ?? run.shots.map(shot => shot.shotNumber)
+  const runShots: StoryboardSkillRunShotDetail[] = run.shots;
+  const allowed = new Set<number>(
+    input.shotNumbers ?? runShots.map(shot => shot.shotNumber)
   );
-  const retryableShots = run.shots.filter(
+  const retryableShots = runShots.filter(
     shot =>
       allowed.has(shot.shotNumber) &&
       isRepairableStoryboardShot(shot.status, shot.error)
@@ -2323,7 +2325,7 @@ export async function retryStoryboardSkillShots(input: {
       userId: input.userId,
       shotNumbers: repairShotNumbers,
       attemptByShot: new Map(
-        run.shots.map(shot => [shot.shotNumber, shot.attempt + 1])
+        runShots.map(shot => [shot.shotNumber, shot.attempt + 1])
       ),
     });
   }
@@ -2521,11 +2523,12 @@ export async function rebuildStoryboardSkillReviewProjection(input: {
   if (!project) throw new Error("Storyboard project not found");
   const global = normalizeStoryboardGlobalInput(run.normalizedSnapshot);
   const planned = planStoryboardShots(global);
+  const runShots: StoryboardSkillRunShotDetail[] = run.shots;
   const responseByShot = new Map<
     number,
     ReturnType<typeof storyboardCanonicalSkillResponseSchema.parse>
   >(
-    run.shots
+    runShots
       .filter(shot => shot.generationRequest && shot.generationPrompt)
       .map(shot => [
         shot.shotNumber,
@@ -2554,7 +2557,7 @@ export async function rebuildStoryboardSkillReviewProjection(input: {
     projectName: project.title,
     global,
     shots: planned.map(shot => {
-      const stored = run.shots.find(row => row.shotNumber === shot.shotNumber);
+      const stored = runShots.find(row => row.shotNumber === shot.shotNumber);
       const response = responseByShot.get(shot.shotNumber)!;
       return {
         shot,
