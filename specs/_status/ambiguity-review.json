@@ -116523,11 +116523,11 @@
       "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #892 opened from codex/spec308-hint-collision-20261012 at head df9a230f138c7b72209e346758c1d8c8295885e3. Required mocked browser simulation and progressive integration gate are pending. Live deployed Main 74e593891092b8a12f528db6d7e78a9370d75774 showed hint overlap with Sign In at 320×740 and 390×740; fix is in the PR.",
+      "evidence_freshness": "PR #892 head 5658f218a8fee4d15b5bc740ddaa167914899819 passed focused component regressions and the compact 320px sign-in route, but failed four reminder-balloon cases because static controls were collected on every route. Follow-up commit 8b065eb51d87192e39284ef585ce2dfb261633fe limits static-control collision to /login; updated-head browser simulation and progressive integration gate are pending.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "next_action": "Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",

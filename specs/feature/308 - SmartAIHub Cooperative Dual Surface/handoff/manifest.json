@@ -54,10 +54,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+    "next_action": "Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "PR #892 is open from codex/spec308-hint-collision-20261012 at head df9a230f138c7b72209e346758c1d8c8295885e3. Live deployed Main 74e593891092b8a12f528db6d7e78a9370d75774 was retested at https://smartaihub.app and the onboarding hint overlaps Sign In at 320×740 and 390×740. Wait for exact-head required checks, merge normally, build the new Main source and retest the live surface. Authenticated tenant UI acceptance remains open.",
+    "resume_point": "PR #892 is open from codex/spec308-hint-collision-20261012. Initial browser run 38266992109 passed compact sign-in and route geometry but failed four reminder balloon cases due to overbroad static-control collision. Follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe scopes that behavior to /login. Push and verify updated head, then merge normally, rebuild exact Main, and retest https://smartaihub.app. Authenticated tenant acceptance remains open.",
     "waiting_predicate": "Authenticated tenant acceptance resumes when the existing logged-in dashboard for tenant tenant-ZCSKEM9s is available or the user supplies updated https://smartaihub.app evidence; continue exact-source build/publication and unauthenticated responsive route verification meanwhile."
   },
   "continuation_assessment": {
@@ -69,7 +69,7 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+    "next_action": "Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
     "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
     "residual_requirements": [
       "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -117,7 +117,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 92,
+  "generation": 93,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -223,7 +223,7 @@
     "canonical_sha": "74e593891092b8a12f528db6d7e78a9370d75774",
     "integrated": true,
     "integrated_at": "2026-10-12T14:50:22Z",
-    "pending_action": "PR #892 opened for the compact sign-in hint collision fix from codex/spec308-hint-collision-20261012; initial PR head df9a230f138c7b72209e346758c1d8c8295885e3. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate, then merge only with passing required checks. Rebuild exact merged Main source and retest https://smartaihub.app.",
+    "pending_action": "PR #892 initial head failed four reminder-balloon simulations because static controls were counted as obstacles on unrelated routes. Follow-up commit 8b065eb51d87192e39284ef585ce2dfb261633fe scopes static collision detection to /login. Push this follow-up and wait for the exact updated-head SPEC-308 browser simulation and progressive integration gate; merge only when required checks pass, then rebuild exact Main source and retest https://smartaihub.app.",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/891",
     "source_branch": "codex/spec308-hint-collision-20261012",
     "source_sha": "c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5"
@@ -313,7 +313,7 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "next_action": "Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
       "residual_requirements": [
         "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
@@ -2170,7 +2170,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T14:59:31.085272Z",
+  "updated_at": "2026-10-12T15:05:48.455597Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
@@ -2183,11 +2183,11 @@
     "evidence": [
       "handoff/evidence/spec308-compact-signin-hint-collision-20261012.md"
     ],
-    "freshness": "PR #892 opened from codex/spec308-hint-collision-20261012 at head df9a230f138c7b72209e346758c1d8c8295885e3. Required mocked browser simulation and progressive integration gate are pending. Live deployed Main 74e593891092b8a12f528db6d7e78a9370d75774 showed hint overlap with Sign In at 320×740 and 390×740; fix is in the PR.",
+    "freshness": "PR #892 head 5658f218a8fee4d15b5bc740ddaa167914899819 passed focused component regressions and the compact 320px sign-in route, but failed four reminder-balloon cases because static controls were collected on every route. Follow-up commit 8b065eb51d87192e39284ef585ce2dfb261633fe limits static-control collision to /login; updated-head browser simulation and progressive integration gate are pending.",
     "required_profiles": [
       "quick"
     ],
-    "sha": "df9a230f138c7b72209e346758c1d8c8295885e3",
+    "sha": "8b065eb51d87192e39284ef585ce2dfb261633fe",
     "status": "PARTIAL",
     "task_regressions": []
   }
