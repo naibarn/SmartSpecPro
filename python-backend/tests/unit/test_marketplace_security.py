@@ -1,5 +1,7 @@
 """Security regression tests for the current marketplace request models."""
 
+import inspect
+
 import pytest
 from pydantic import ValidationError
 
@@ -102,10 +104,13 @@ def test_marketplace_demo_video_rejects_unknown_platform():
 
 def test_marketplace_search_limit_is_declared_on_endpoint():
     search_parameter = next(
-        parameter for parameter in list_marketplace_templates.__signature__.parameters.values()
+        parameter for parameter in inspect.signature(list_marketplace_templates).parameters.values()
         if parameter.name == "search"
     )
-    assert search_parameter.default.max_length == 100
+    assert any(
+        getattr(constraint, "max_length", None) == 100
+        for constraint in search_parameter.default.metadata
+    )
 
 
 def test_marketplace_revenue_share_matches_service_policy():
