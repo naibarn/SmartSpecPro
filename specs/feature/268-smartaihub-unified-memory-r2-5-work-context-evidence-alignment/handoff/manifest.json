@@ -44,15 +44,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "2ea4e3905cedce99d7986021e13d6aea69db174a",
+    "expected_canonical_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "PR #875 is open at source head 1b1fce1cf; wait for actual required GitHub checks/reviews, reconcile latest Main, and merge through the protected normal path when eligible. Persistent team-room memory remains disabled. Next SPEC-268 obligations: verify source-ledger tenant/project/member isolation with direct non-production acceptance, then continue remaining memory requirements. Do not apply production migration.",
-    "next_ready_workunit": "SPEC268_TEAM_ROOM_MEMORY_SOURCE_PROVENANCE",
-    "reactivation_predicate": null,
-    "resume_point": "SPEC-268 source-provenance checkpoint is source commit 1b1fce1cf on PR #875 from codex/spec268-memory-source-provenance-20261012, based on Main 2ea4e3905cedce99d7986021e13d6aea69db174a. Six focused test files / 88 tests passed. The schema adds tenant/room/team/run/message/actor/project provenance with memory-owner, tenant-project, and message-room foreign keys. Reads require tenant, project, ledger provenance, and current active canonical membership. Persistent team-room memory remains disabled; no database migration was applied. After PR integration, resume non-production isolation acceptance and other remaining SPEC-268 requirements.",
-    "waiting_predicate": null
+    "next_action": "Source provenance implementation is integrated in PR #875 / Main 757a5750f00e916ed84801c6024bebdc814e60f9. Keep persistent team-room memory disabled. Next SPEC-268 proof: direct non-production source-ledger tenant/project/active-membership isolation acceptance and runtime migration rehearsal under authorized environment; do not migrate production. The independent SPEC-308 canonical build and tenant-route acceptance remains the next priority development outcome.",
+    "next_ready_workunit": "SPEC268_TEAM_ROOM_MEMORY_SOURCE_ISOLATION_ACCEPTANCE",
+    "reactivation_predicate": "Resume source-ledger acceptance when an approved disposable non-production DB/Runner is available; continue independent authorized development without waiting. Do not use production or expired grants.",
+    "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
+    "waiting_predicate": "Only SPEC-268 direct isolated acceptance requiring an approved disposable non-production DB/Runner is waiting; ordinary implementation, focused tests, and other Specs remain executable."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 26,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -176,11 +176,11 @@
       "f2094867b98528a11787db0c85874ffa787d2c56",
       "1b1fce1cf"
     ],
-    "last_focused_check": "PASS on source commit 1b1fce1cf: focused Vitest, 6 files / 88 tests, one worker; git diff --check passed. No migration applied and no full typecheck/build run.",
+    "last_focused_check": "PR #875 merged as 757a5750f00e916ed84801c6024bebdc814e60f9 on 2026-10-12T09:36:11Z; source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Focused Vitest 6 files / 88 tests passed, progressive_integration_gate SUCCESS, mocked SPEC-308 simulation SUCCESS; build-preview SKIPPED by resource gate. Persistent memory remains disabled; no DB migration applied.",
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
-    "pr_head_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
+    "pr_head_sha": "c834ddcee771fd5c2c9d230b9689fd2c51e61d52",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
     "source_paths": [
       "apps/web/drizzle/0398_spec268_team_room_entity_memory_sources.sql",
@@ -205,9 +205,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2ea4e3905cedce99d7986021e13d6aea69db174a",
+    "canonical_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
     "integrated": true,
-    "integrated_at": "2026-10-12T09:21:43Z"
+    "integrated_at": "2026-10-12T09:36:11Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -391,18 +391,26 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:31:47.061131Z",
+  "updated_at": "2026-10-12T09:37:41.425276Z",
   "verification": {
-    "baseline_issues": [],
-    "evidence": [
-      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/evidence/provider-boundary-context-343a885.json"
+    "baseline_issues": [
+      "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
+      "Focused tests: 6 files / 88 tests on source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Progressive integration gate and mocked SPEC-308 simulation passed; build-preview skipped.",
+      "Canonical web build passed on prior source 2ea4e3905cedce99d7986021e13d6aea69db174a with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW unset. It is not current after Main advanced to 757a5750f00e916ed84801c6024bebdc814e60f9; a current build is running separately for SPEC-308.",
+      "No database migration applied; team-room persistent memory remains disabled. Direct non-production isolation acceptance and production migration/cutover remain open."
     ],
-    "freshness": "FRESH",
+    "evidence": [
+      "https://github.com/naibarn/SmartSpecPro/pull/875",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38230513926",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38230513958",
+      "https://github.com/naibarn/SmartSpecPro/commit/757a5750f00e916ed84801c6024bebdc814e60f9"
+    ],
+    "freshness": "Exact PR source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52 merged as 757a5750f00e916ed84801c6024bebdc814e60f9. Focused Vitest 6 files / 88 tests passed locally; progressive_integration_gate and mocked SPEC-308 browser simulation passed on actual PR head; build-preview skipped. Canonical build on previous Main 2ea4e3905cedce99d7986021e13d6aea69db174a passed with global mascot gate OFF but became stale when Main advanced; no production migration or memory enablement.",
     "required_profiles": [
       "quick"
     ],
-    "sha": "343a885ec61b3e52ef785b644228c71115ec2262",
-    "status": "PASS",
+    "sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

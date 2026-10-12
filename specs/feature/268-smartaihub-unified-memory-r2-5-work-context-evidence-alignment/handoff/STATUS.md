@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
 - Next action: Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.
-- Manifest generation: 26
+- Manifest generation: 27
 
 ## Source-declared status and relationship claims
 
