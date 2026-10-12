@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Static deployment is complete on https://smartaihub.app from canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Fresh Playwright desktop/mobile profiles reached /login; authenticated dashboard behavior remains unverified. Next: refresh the existing authenticated tenant session and verify launcher, five styles, chat handoff, reminder routing, and mobile layout.
-- Manifest generation: 80
+- Next action: Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.
+- Manifest generation: 81
 
 ## Source-declared status and relationship claims
 

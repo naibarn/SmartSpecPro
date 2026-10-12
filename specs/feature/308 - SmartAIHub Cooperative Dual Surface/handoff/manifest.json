@@ -50,15 +50,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
+    "expected_canonical_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Deployment to https://smartaihub.app completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Ask the user to refresh the existing authenticated dashboard for tenant tenant-ZCSKEM9s, then capture and record authenticated desktop/mobile acceptance for launcher visibility, five styles, chat handoff, and reminder routing. Fresh Playwright profiles only reached /login; do not claim dashboard acceptance or close the 66 open requirements.",
+    "next_action": "Large mascot launcher is deployed from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76 to https://smartaihub.app. Ask user to refresh the authenticated dashboard for tenant tenant-ZCSKEM9s and verify mascot prominence, bell preservation, five style selection, chat handoff, notification reminder routing, and mobile layout. Fresh browser profiles only verify the login page; do not claim authenticated acceptance or close the 66 open requirements.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
-    "reactivation_predicate": "Resume authenticated acceptance when the user refreshes or supplies evidence from the existing logged-in dashboard session for tenant tenant-ZCSKEM9s; use the domain https://smartaihub.app only.",
-    "resume_point": "Static frontend deployment completed on https://smartaihub.app from Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Evidence: handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New JS/CSS return 200. Playwright guest browser reaches /login and cannot inspect authenticated dashboard. Next: user refreshes existing authenticated tenant session; record remaining visible behavior acceptance.",
-    "waiting_predicate": "Authenticated dashboard acceptance awaits a refreshed existing user session or a user-provided screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s."
+    "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
+    "resume_point": "Large mascot UI is deployed to https://smartaihub.app from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76. Evidence: handoff/evidence/spec308-mascot-scale-deployment-20261012.md. Focused tests and mocked CI browser checks passed. Fresh domain Playwright sessions reach /login. Next: inspect the refreshed existing authenticated tenant dashboard and record remaining user-visible acceptance.",
+    "waiting_predicate": "Authenticated dashboard acceptance is waiting only for a refreshed existing tenant-ZCSKEM9s session or user-provided UI evidence from https://smartaihub.app."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -69,18 +69,17 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
     ],
-    "next_action": "Static deployment is complete on https://smartaihub.app from canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Fresh Playwright desktop/mobile profiles reached /login; authenticated dashboard behavior remains unverified. Next: refresh the existing authenticated tenant session and verify launcher, five styles, chat handoff, reminder routing, and mobile layout.",
-    "rationale": "User explicitly authorized deployment to smartaihub.app despite production-mode service. Only static frontend assets were published; no restart or DB migration. Domain serves the new content-addressed bundle and CSS. Playwright guest checks passed for asset loading and login page only; no authenticated session was available to verify tenant-specific UI behavior.",
+    "next_action": "Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.",
+    "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
     "residual_requirements": [
-      "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; deployment and smoke checks do not establish completion.",
-      "Static frontend was deployed from canonical source 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f.",
-      "Authenticated dashboard acceptance remains unverified because fresh Playwright profiles reached /login; verify launcher visibility, five styles, chat handoff, reminder routing, and mobile dashboard layout using the existing authenticated tenant session.",
+      "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
+      "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
       "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
       "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
       "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
-      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; mascot UI deployment does not establish these as complete."
+      "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
     ],
-    "resume_point": "Deployment completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app. See handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New content-addressed frontend assets are live; guest Playwright reaches /login. Next: refresh existing authenticated tenant dashboard and record UI acceptance. Do not close the 66 open requirements."
+    "resume_point": "Static deployment of the large mascot launcher is complete from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76. Evidence: handoff/evidence/spec308-mascot-scale-deployment-20261012.md. Desktop/mobile fresh browser sessions only verify login. Resume at authenticated tenant-ZCSKEM9s dashboard acceptance after refreshing https://smartaihub.app."
   },
   "dependencies": {
     "predicates": [],
@@ -89,14 +88,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f",
+    "artifact_digest": "sha256:14b4a8246713136acaeafee177e9cdda1ef00c1302d5332471cf5ab26cd19997",
     "environment": "https://smartaihub.app (user-authorized production-mode service; static assets only)",
     "evidence": [
       "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-canonical-build-757a575-20261012.md",
-      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-deployment-smartaihub-app-20261012.md"
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-deployment-smartaihub-app-20261012.md",
+      "specs/feature/308 - SmartAIHub Cooperative Dual Surface/handoff/evidence/spec308-mascot-scale-deployment-20261012.md"
     ],
     "required": false,
-    "source_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
+    "source_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
     "status": "DEPLOYED"
   },
   "disposition": {
@@ -115,7 +115,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 80,
+  "generation": 81,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -217,9 +217,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d",
+    "canonical_sha": "1298fc924a57fb0e3a386ee547ae5e4300200a76",
     "integrated": true,
-    "integrated_at": "2026-10-12T10:00:33Z"
+    "integrated_at": "2026-10-12T12:21:48Z"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -306,18 +306,17 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431524",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38195431578"
       ],
-      "next_action": "Static deployment is complete on https://smartaihub.app from canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d. Fresh Playwright desktop/mobile profiles reached /login; authenticated dashboard behavior remains unverified. Next: refresh the existing authenticated tenant session and verify launcher, five styles, chat handoff, reminder routing, and mobile layout.",
-      "rationale": "User explicitly authorized deployment to smartaihub.app despite production-mode service. Only static frontend assets were published; no restart or DB migration. Domain serves the new content-addressed bundle and CSS. Playwright guest checks passed for asset loading and login page only; no authenticated session was available to verify tenant-specific UI behavior.",
+      "next_action": "Refresh the existing authenticated dashboard on https://smartaihub.app for tenant tenant-ZCSKEM9s and verify the large mascot, retained bell, five styles, existing chat dialog, notification reminder CTA, and mobile dashboard layout.",
+      "rationale": "The large mascot UI was built and statically deployed from Main SHA 1298fc924a57fb0e3a386ee547ae5e4300200a76 to the user-authorized domain. Focused unit tests, two local Playwright cases, and the mocked CI browser suite passed. Fresh domain sessions redirect to login, so authenticated tenant-visible acceptance remains unverified.",
       "residual_requirements": [
-        "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance; deployment and smoke checks do not establish completion.",
-        "Static frontend was deployed from canonical source 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app; artifact digest sha256:8ed6ea0e8c0cf492ad0218cb5997ce1fcdcfdf5749f57a5cdc618803e152cb8f.",
-        "Authenticated dashboard acceptance remains unverified because fresh Playwright profiles reached /login; verify launcher visibility, five styles, chat handoff, reminder routing, and mobile dashboard layout using the existing authenticated tenant session.",
+        "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
+        "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
         "Tenant tenant-ZCSKEM9s has explicit livingMascotDualSurface opt-in; shared tenant defaults remain false.",
         "GitHub has no Main branch protection/rulesets; do not claim protected integration enforcement.",
         "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
-        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned; mascot UI deployment does not establish these as complete."
+        "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
       ],
-      "resume_point": "Deployment completed for canonical Main 3b6b5b356f7e2b71c2e845f175d3aa5fa88eb50d to https://smartaihub.app. See handoff/evidence/spec308-deployment-smartaihub-app-20261012.md. New content-addressed frontend assets are live; guest Playwright reaches /login. Next: refresh existing authenticated tenant dashboard and record UI acceptance. Do not close the 66 open requirements."
+      "resume_point": "Static deployment of the large mascot launcher is complete from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76. Evidence: handoff/evidence/spec308-mascot-scale-deployment-20261012.md. Desktop/mobile fresh browser sessions only verify login. Resume at authenticated tenant-ZCSKEM9s dashboard acceptance after refreshing https://smartaihub.app."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2164,7 +2163,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T12:04:25.433078Z",
+  "updated_at": "2026-10-12T12:27:09.988291Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
