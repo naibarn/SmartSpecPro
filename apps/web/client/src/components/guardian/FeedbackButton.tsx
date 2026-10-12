@@ -1061,6 +1061,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   );
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
+  const useCompactMascotLauncher = mascotEnabled && mascotPreferences.enabled && viewportWidth < 768;
   const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
   const settingsRoute = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") === "/settings";
   const attentionScopeCurrent = attention.scopeGeneration === attentionScopeGenerationRef.current;
@@ -1245,10 +1246,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       right: `${FEEDBACK_MARGIN}px`,
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
       };
+  const mascotSettingsOffset = useCompactMascotLauncher ? 12 : 135;
   const mascotSettingsButtonStyle: CSSProperties = feedbackPlacement.mode === "custom"
-    ? { position: "fixed", left: `${feedbackPlacement.x + 135}px`, top: `${feedbackPlacement.y - 44}px` }
+    ? { position: "fixed", left: `${feedbackPlacement.x + mascotSettingsOffset}px`, top: `${feedbackPlacement.y - (useCompactMascotLauncher ? 48 : 44)}px` }
+    : useCompactMascotLauncher
+      ? shouldDockLeftOnMobile
+        ? { position: "fixed", left: `${FEEDBACK_MARGIN + mascotSettingsOffset}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 72px)` }
+        : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 72px)` }
     : shouldDockLeftOnMobile
-      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 135}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 140px)` }
+      ? { position: "fixed", left: `${FEEDBACK_MARGIN + mascotSettingsOffset}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 140px)` }
       : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 140px)` };
   const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
@@ -1309,7 +1315,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           variant="outline"
           aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
           className={showMascotLauncher
-            ? "pointer-events-none z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
+            ? "pointer-events-none z-50 flex h-16 w-16 min-h-0 min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent md:h-auto md:w-[180px]"
             : "z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"}
           style={{
             position: "fixed",
@@ -1343,7 +1349,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                 </AssistantMascotErrorBoundary>
               </span>
               <span
-                className="pointer-events-auto inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900"
+                className="pointer-events-auto hidden min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900 md:inline-flex"
                 onMouseEnter={revealMascotSettings}
                 onMouseLeave={scheduleMascotSettingsHide}
               >

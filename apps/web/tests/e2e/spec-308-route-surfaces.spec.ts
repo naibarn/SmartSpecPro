@@ -97,6 +97,8 @@ test.describe("SPEC-308 route surface simulations", () => {
     await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await expect(page.getByText("Mock route notification")).toBeVisible();
     await expectSurfacesDoNotOverlap(page);
+    await expect(page.getByText("AI Chat & Feedback", { exact: true })).toBeHidden();
+    expect((await page.getByRole("button", { name: "Open AI Chat & Feedback" }).boundingBox())?.width).toBe(64);
 
     const bell = page.getByTestId("global-notification-bell").getByRole("button");
     await bell.click();
@@ -121,8 +123,12 @@ test.describe("SPEC-308 route surface simulations", () => {
     await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
     await expectSurfacesDoNotOverlap(page, 720);
 
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(page.getByText("AI Chat & Feedback", { exact: true })).toBeVisible();
+
     await page.setViewportSize({ width: 450, height: 720 });
     await expectSurfacesDoNotOverlap(page, 450);
+    await expect(page.getByText("AI Chat & Feedback", { exact: true })).toBeHidden();
     await page.getByRole("button", { name: "Open AI Chat & Feedback" }).click();
     await expect(page.getByRole("dialog").getByRole("heading", { name: "AI Chat & Feedback" })).toBeVisible();
   });
