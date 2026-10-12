@@ -944,6 +944,11 @@ export interface VerticalDramaStoryboardPanelData {
   seasonTieInPlacement?: VerticalDramaSeasonTieInPlacementView | null;
   /** Starts a tenant-scoped repair for the selected shot's audio take. */
   onTriggerSurgicalAudioRepair?: (shotNumber: number) => void;
+  onRollbackAudioTake?: (shotNumber: number, takeNumber: number) => void;
+  onUpdateShotAudioMixDeltas?: (
+    shotNumber: number,
+    deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }
+  ) => void;
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
@@ -2795,6 +2800,15 @@ export function VerticalDramaEpisodeWorkspace({
                         }
                         seasonTieInPlacement={
                           storyboardPanel?.seasonTieInPlacement
+                        }
+                        onTriggerSurgicalAudioRepair={
+                          storyboardPanel?.onTriggerSurgicalAudioRepair
+                        }
+                        onRollbackAudioTake={
+                          storyboardPanel?.onRollbackAudioTake
+                        }
+                        onUpdateShotAudioMixDeltas={
+                          storyboardPanel?.onUpdateShotAudioMixDeltas
                         }
                       />
                     ) : (

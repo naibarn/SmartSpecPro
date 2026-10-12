@@ -1307,7 +1307,7 @@ export default function EmergencyRoutePage() {
               const taskDetails = item.details && typeof item.details === "object" ? item.details as Record<string, unknown> : {};
               const taskProtocolVersion = typeof taskDetails.protocolVersion === "string" ? taskDetails.protocolVersion : "";
               const taskProtocolActions = Array.isArray(taskDetails.protocolActions) ? taskDetails.protocolActions.filter((action): action is string => typeof action === "string") : [];
-              const currentReviewConfirmed = protocolReviewConfirmation?.taskId === item.id && protocolReviewConfirmation.responderId === selectedResponder && protocolReviewConfirmation.version === taskProtocolVersion;
+              const currentReviewConfirmed = protocolReviewConfirmation !== null && protocolReviewConfirmation.taskId === item.id && protocolReviewConfirmation.responderId === selectedResponder && protocolReviewConfirmation.version === taskProtocolVersion;
               return <Card key={String(item.id ?? ref ?? index)}>
                 <VStack gap={2}>
                   <Heading level={2}>{titleText ?? ref ?? t("navigation.item", { index: index + 1 })}</Heading>
@@ -1316,7 +1316,7 @@ export default function EmergencyRoutePage() {
                     <Text>{t("supportPool.financialSummary", { settled: item.settledMinorUnits, earmarked: String(item.earmarkedMinorUnits ?? "0"), restricted: String(item.restrictedBalanceMinorUnits ?? "0") })}</Text>
                   )}
                   {(pageId === "public.supportPool" || pageId === "public.supportFunding") && typeof item.financeNotice === "string" && <Text>{t("supportPool.financeNotice")}</Text>}
-                  {pageId === "dashboard.respond" && item.disclosure && typeof item.disclosure === "object" && (() => {
+                  {pageId === "dashboard.respond" && Boolean(item.disclosure) && typeof item.disclosure === "object" && (() => {
                     const disclosure = item.disclosure as Record<string, unknown>;
                     const point = disclosure.approximateLocation && typeof disclosure.approximateLocation === "object"
                       ? disclosure.approximateLocation as Record<string, unknown> : null;
@@ -1445,7 +1445,7 @@ export default function EmergencyRoutePage() {
                   <input type="checkbox" checked={publishToPublic} onChange={event => setPublishToPublic(event.target.checked)} />
                   {t("command.publishToPublic")}
                 </label>
-                <TextArea label={t("command.reviewReason")} minLength={8} maxLength={500} isRequired value={triageReason} onChange={setTriageReason} />
+                <TextArea label={t("command.reviewReason")} maxLength={500} isRequired value={triageReason} onChange={setTriageReason} />
                 <Button type="submit" isDisabled={triageState === "submitting" || !hazardCode.trim() || triageReason.trim().length < 8}
                   label={triageState === "submitting" ? t("command.saving") : t("command.saveTriage")} />
                 {triageState === "saved" && <Text>{t("command.saved")}</Text>}
