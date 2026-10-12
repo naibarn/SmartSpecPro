@@ -156,6 +156,12 @@ an empty PATH, and workflow wiring.
   empty failed runs; no migration job started and no staging database was
   touched. The fix moves that value to the two steps that use it and explicitly
   requires both `workflow_dispatch` and the exact confirmation token.
+- After the fix, GitHub accepted a manual dispatch against PR head
+  `aabf90f68ebcb6ba1b3fdba8605c9d61f1148f7e` with the deliberately wrong
+  confirmation `diagnostic-no-op`. Run `38187256943` completed as
+  `workflow_dispatch` / `skipped`; no migration job ran and staging was not
+  contacted. This validates GitHub parsing and the confirmation guard without
+  exercising the migration.
 - The current canonical Skill contract contains
   `skills/development-lifecycle/git_capabilities.py`; invoking its `inspect`
   command on the repair worktree reported Git 2.56.0, no merge/rebase/cherry
