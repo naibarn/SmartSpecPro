@@ -29,7 +29,19 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
 
-from canonical_source import _filesystem_evidence, _resource_code, _rollback_attempt, load_policy as load_source_policy
+
+_CANONICAL_SOURCE_SPEC = importlib.util.spec_from_file_location(
+    "workspace_authority_canonical_source", Path(__file__).with_name("canonical_source.py")
+)
+if _CANONICAL_SOURCE_SPEC is None or _CANONICAL_SOURCE_SPEC.loader is None:
+    raise ImportError("canonical source admission module is unavailable")
+_CANONICAL_SOURCE = importlib.util.module_from_spec(_CANONICAL_SOURCE_SPEC)
+sys.modules[_CANONICAL_SOURCE_SPEC.name] = _CANONICAL_SOURCE
+_CANONICAL_SOURCE_SPEC.loader.exec_module(_CANONICAL_SOURCE)
+_filesystem_evidence = _CANONICAL_SOURCE._filesystem_evidence
+_resource_code = _CANONICAL_SOURCE._resource_code
+_rollback_attempt = _CANONICAL_SOURCE._rollback_attempt
+load_source_policy = _CANONICAL_SOURCE.load_policy
 
 
 ROLES = {
