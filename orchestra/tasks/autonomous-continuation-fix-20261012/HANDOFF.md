@@ -15,6 +15,7 @@ Repair existing WorkUnit selection and resume policy so execution readiness is n
 
 ## Last completed checkpoint
 
+- Policy fix commit `cc468980fc41c29ba7ee107e25af56e34e2a231b` merged through PR #872 at canonical SHA `bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899`; fetched `origin/main` equals that SHA and the merge is an ancestor. `progressive_integration_gate` passed; PR Preview `build-preview` was `SKIPPED`.
 - Confirmed PR #852 is merged at `f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e`; canonical Main has since advanced to `c9adedbe3d543e4872635cfa17af653871a9256d`.
 - Confirmed policy previously required a valid `completion_predicate` and fresh per-unit evidence before a READY unit could start. Resume additionally required the entire capsule SHA and global evidence freshness to match.
 - Focused regression suite passes for READY-without-final-proof, waiting external authority with independent READY work, Main SHA change, retained completed history, and pending PR checks.
@@ -23,11 +24,11 @@ Repair existing WorkUnit selection and resume policy so execution readiness is n
 
 ## Next executable action
 
-Run the fast gate on the owned diff, commit and open a normal non-force PR. Track exact-head checks and merge outcome; continue any independent ready WorkUnit while checks run. After merge, record the actual canonical SHA. Retry SPEC-308 canonical build only after a fresh resource observation meets admission; meanwhile resume an independently ready implementation WorkUnit not requiring the protected Runner and update its existing owner HandOff.
+Reconcile current Main and the SPEC-308 / SPEC-224 canonical handoffs against the verified `bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899`. Retry the SPEC-308 canonical build only after a fresh resource observation meets admission; meanwhile resume the next independent P1 implementation WorkUnit and update its existing owner HandOff. Keep PR #872 as merged; do not replay it.
 
 ## Remaining scope
 
-- Merge this policy fix through the normal PR path and verify the merge SHA on `origin/main`.
+- Policy regression fix is complete and integrated at `bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899`.
 - Reconcile SPEC-308's existing manifest against the merged Main SHA, then build after resource admission and continue only through an authorized development tenant/runtime path.
 - Continue SPEC-224 work that does not require the protected Runner; leave M6/M7 waiting for real external authority.
 - Preserve completed WorkUnit evidence and do not replay merged work.
