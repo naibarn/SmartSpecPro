@@ -143,4 +143,23 @@ describe("contentQuality.getStructuredDataIssues", () => {
     await expect(userCaller.getStructuredDataIssues()).rejects.toThrow("required permission");
     expect(mockSelect).toHaveBeenCalledOnce();
   });
+
+  it("normalizes malformed structured-data error JSON to an empty list", async () => {
+    const issueRows = [{
+      id: 42,
+      title: "Review: Example Product",
+      skill_slug: "product-reviewer",
+      output_format: "cms_review",
+      created_at: new Date("2026-10-08T10:00:00Z"),
+      structured_data_errors: ["Missing author", 7],
+    }];
+    mockSelect.mockReturnValueOnce(structuredDataIssueQuery(issueRows));
+
+    const caller = contentQualityRouter.createCaller(createContext("admin"));
+
+    await expect(caller.getStructuredDataIssues()).resolves.toEqual([{
+      ...issueRows[0],
+      structured_data_errors: [],
+    }]);
+  });
 });
