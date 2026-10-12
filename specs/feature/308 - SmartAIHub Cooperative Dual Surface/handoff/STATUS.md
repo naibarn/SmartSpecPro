@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Push PR #892 follow-up 8b065eb51d87192e39284ef585ce2dfb261633fe. Wait for exact-head mocked SPEC-308 browser simulation and progressive integration gate; repair any failure. Once required checks pass, merge normally, rebuild/publish the exact Main source, and retest compact login hint plus reminder and responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.
-- Manifest generation: 93
+- Next action: PR #894 is open from codex/spec308-login-hint-current-main-20261012. Wait for the exact-head SPEC-308 browser simulation and progressive integration gate; repair any failing check and merge only when required checks pass. Then rebuild/publish exact Main with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true, verify source/assets, and retest at https://smartaihub.app.
+- Manifest generation: 95
 
 ## Source-declared status and relationship claims
 
