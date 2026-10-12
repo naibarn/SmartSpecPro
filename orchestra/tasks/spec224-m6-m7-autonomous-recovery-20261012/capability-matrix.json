@@ -1,8 +1,8 @@
 {
   "schemaVersion": "spec224-mini-app-factory-capability-matrix.v1",
-  "observedAt": "2026-10-12T01:34:01Z",
+  "observedAt": "2026-10-12T01:36:00Z",
   "canonicalRef": "refs/heads/main",
-  "canonicalSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+  "canonicalSha": "c4abd4688b0dfc210dd58ea64210893cf222cf4f",
   "supportingEvidenceOnly": true,
   "m8": "DEFERRED",
   "milestones": {
@@ -278,9 +278,9 @@
       ],
       "evidenceFingerprint": {
         "algorithm": "sha256",
-        "value": "a71f71eaf5e0839e22cd6bd883a81e92565cac75d4b9886da46c864e420bedfd",
-        "facts": "runner=local-runner:0.2.23:ready:0/11;status=discovery-only;service=inactive;stored-origin=production;stored-token=expired:2026-10-09T08:15:53Z;nonprod-enrollment=none;grant=none-verified;canonical=48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
-        "observedAt": "2026-10-12T01:34:01Z"
+        "value": "600f2725898ccb4b87010a7d35734f811d9f2875bc3e0d0610fb677663ed11fb",
+        "facts": "runner=local-runner:0.2.23:ready:0/11;status=discovery-only;service=inactive;stored-origin=production;stored-token=expired:2026-10-09T08:15:53Z;nonprod-enrollment=none;grant=none-verified;canonical=c4abd4688b0dfc210dd58ea64210893cf222cf4f",
+        "observedAt": "2026-10-12T01:36:00Z"
       },
       "rootCause": "Configuration/evidence and external authority are absent. The existing production credential is stale and unsafe to reuse. The remote trust verifier has no production caller; the local integrity-only path is allowed only in development/test after canonical grant validation.",
       "probed": false,
@@ -330,7 +330,7 @@
     "finalVerification": "NOT_RUN"
   },
   "nextExecutableWork": [
-    "Observe exact-main CI run 38192269235 for 48e56e7fb3a34ebf91a69790011eaf9d46a995ba and PR #844 checks after the non-force base reconciliation; do not retry the shared-host build or bypass unrelated failures.",
+    "Observe exact-main CI run 38192421833 for c4abd4688b0dfc210dd58ea64210893cf222cf4f and PR #844 checks after non-force base reconciliation; do not retry the shared-host build or bypass unrelated failures.",
     "Promote the focused release workflow assertion correction with this evidence update, using the normal protected PR path.",
     "Resume real M6/M7 only when the external unblock predicate in M6_M7_NONPRODUCTION_RUNNER_AUTHORITY is freshly satisfied.",
     "Keep M8 deferred."
@@ -404,7 +404,7 @@
       "sharedPort5432": "not_used"
     },
     "noLiveRunnerDispatch": true,
-    "baseSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+    "baseSha": "c4abd4688b0dfc210dd58ea64210893cf222cf4f",
     "priorMainCi": {
       "runId": 38191201225,
       "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191201225",
@@ -414,20 +414,20 @@
       "smartSpecWeb": "IN_PROGRESS"
     },
     "currentMainCi": {
-      "runId": 38192269235,
-      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38192269235",
-      "sourceSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+      "runId": 38192421833,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38192421833",
+      "sourceSha": "c4abd4688b0dfc210dd58ea64210893cf222cf4f",
       "state": "IN_PROGRESS",
-      "turboBuild": "PENDING_OBSERVATION",
+      "turboBuild": "IN_PROGRESS",
       "python": "IN_PROGRESS",
       "smartSpecWeb": "IN_PROGRESS"
     },
     "pr844": {
       "url": "https://github.com/naibarn/SmartSpecPro/pull/844",
       "testedTaskSourceSha": "428d853c6585095fc85296aabde6f456e8853ec6",
-      "latestBaseSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+      "latestBaseSha": "c4abd4688b0dfc210dd58ea64210893cf222cf4f",
       "progressiveIntegrationGateBeforeBaseAdvanced": "PASS",
-      "state": "UPDATED_HEAD_CI_PENDING"
+      "state": "BASE_RECONCILED; UPDATED_HEAD_CI_PENDING"
     }
   }
 }
