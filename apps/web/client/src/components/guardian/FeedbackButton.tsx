@@ -1126,10 +1126,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       collisionControls.forEach(control => {
         if (control.matches(".assistant-mascot-settings-control")) return;
         if (control === launcher || launcher?.contains(control) || control.contains(hint) || hint?.contains(control)) return;
-        // Sign-in actions use normal document flow, so the fixed/sticky
-        // ancestor walk below cannot see them as collision surfaces.
+        // Login controls and legal links use normal document flow, so the
+        // fixed/sticky ancestor walk below cannot see them as collisions.
         if (window.location.pathname === "/login"
-          && control.matches("button[type='submit'], [data-spec308-critical-control]")) {
+          && control.matches("button, a[href], input, select, textarea, [role='button']")) {
           const style = window.getComputedStyle(control);
           if (style.display !== "none"
             && style.visibility !== "hidden"
