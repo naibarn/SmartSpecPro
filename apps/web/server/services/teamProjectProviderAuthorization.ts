@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   assistantTeams,
   assistantProfiles,
@@ -70,7 +70,7 @@ async function readCurrentTeamProjectAuthority(
         teamId: teamRooms.teamId,
         roomStatus: teamRooms.status,
         orchestratorUserId: teamRooms.orchestratorUserId,
-        projectId: teamRooms.projectId,
+        projectId: teamRooms.canonicalProjectId,
         participantUserId: teamRoomParticipants.participantUserId,
         activeTeamHumanUserId: assistantProfiles.humanUserId,
         teamRunId: teamRuns.id,
@@ -116,7 +116,10 @@ async function readCurrentTeamProjectAuthority(
       )
       .leftJoin(
         canonicalProjects,
-        sql`${teamRooms.projectId}::text = ${canonicalProjects.projectId}`
+        and(
+          eq(teamRooms.canonicalProjectId, canonicalProjects.projectId),
+          eq(teamRooms.tenantId, canonicalProjects.tenantId),
+        ),
       )
       .leftJoin(
         canonicalProjectMemberships,
@@ -154,6 +157,7 @@ async function readCurrentTeamProjectAuthority(
     }
 
     const projectId = row.projectId == null ? null : String(row.projectId);
+    const hasCanonicalBinding = projectId !== null;
     const hasCanonicalProject = row.canonicalProjectId != null;
     const canonicalMember =
       hasCanonicalProject &&
@@ -163,7 +167,7 @@ async function readCurrentTeamProjectAuthority(
       row.activeMembershipPrincipalId === `user:${input.userId}`;
 
     // A canonical identity without a current active membership is a hard deny.
-    if (hasCanonicalProject && !canonicalMember) {
+    if (hasCanonicalBinding && !canonicalMember) {
       throw new TeamProjectProviderAuthorizationError();
     }
 

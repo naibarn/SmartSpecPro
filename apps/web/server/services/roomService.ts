@@ -11,6 +11,8 @@ import {
   teamRuns,
   assistantTeams,
   assistantProfiles,
+  canonicalProjectMemberships,
+  canonicalProjects,
   type TeamRoom,
   type TeamRoomMessage,
 } from "../../drizzle/schema";
@@ -61,6 +63,7 @@ export interface CreateRoomInput {
   roomType: "direct" | "team" | "auto_team" | "job_review";
   goalPrompt: string;
   language?: RoomLanguage;
+  canonicalProjectId?: string;
   projectId?: number;
   viewMode?: string;
   autonomyLevel?: string;
@@ -365,6 +368,10 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  if (input.canonicalProjectId && input.projectId !== undefined) {
+    throw new Error("Canonical and legacy project bindings cannot be combined");
+  }
+
   // Validate team exists and is active
   const [team] = await db
     .select()
@@ -379,6 +386,33 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
 
   if (!team || team.status === "archived") {
     throw new Error(`Team ${input.teamId} not found or archived`);
+  }
+
+  if (input.canonicalProjectId) {
+    const [project] = await db
+      .select({ projectId: canonicalProjects.projectId })
+      .from(canonicalProjects)
+      .innerJoin(
+        canonicalProjectMemberships,
+        and(
+          eq(canonicalProjectMemberships.tenantId, canonicalProjects.tenantId),
+          eq(canonicalProjectMemberships.projectId, canonicalProjects.projectId),
+          eq(canonicalProjectMemberships.principalId, `user:${input.orchestratorUserId}`),
+          eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+        ),
+      )
+      .where(
+        and(
+          eq(canonicalProjects.tenantId, input.tenantId),
+          eq(canonicalProjects.projectId, input.canonicalProjectId),
+          eq(canonicalProjects.lifecycle, "ACTIVE"),
+        ),
+      )
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Canonical project not found or inaccessible");
+    }
   }
 
   const roomId = crypto.randomUUID();
@@ -409,6 +443,7 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
         title: input.goalPrompt.substring(0, 255),
         goalPrompt: input.goalPrompt,
         language: normalizeRoomLanguage(input.language),
+        canonicalProjectId: input.canonicalProjectId ?? null,
         projectId: input.projectId ?? null,
         viewMode: input.viewMode ?? team.defaultViewMode ?? "transparent",
         autonomyLevel:

@@ -48,10 +48,10 @@
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+    "next_action": "Wait for PR #871 applicable checks, repair any slice-owned failure, then merge through the normal protected path and record the confirmed origin/main SHA. After integration, continue source-level team-room memory provenance without enabling persistent memory.",
     "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
     "reactivation_predicate": null,
-    "resume_point": "PR #434 and #436 are integrated at origin/main SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0. The former SPEC-269 worktree remains unchanged at 08426194c743381a20ee45b46c6741a9d2eb9af0; the R2 ownership record found no active owner/session/lease/process, and its delta was not reused because it removes PR #426 protections. Current prompt composition uses scoped entity memory only for canonical active membership and revalidates before insertion. Conversation project reassignment is now rejected; historical message-level project provenance remains unknown. Do not enable team-room persistent memory.",
+    "resume_point": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING is implemented in PR #871 (head 64a40ece0aca29f017cba2d4b5900d1f56d064fc), from source branch codex/spec268-team-room-project-binding-20261012 based on canonical f533607cdec3902d7f48abb478f5b7c24455b642. Five focused files / 66 tests passed at code commit 9262a6298a858d48d30da6ed9cb2782fd5e9ef12. PR checks are pending. Keep persistent team-room memory disabled; no development or production migration applied yet.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 14,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -164,25 +164,34 @@
     "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime"
   },
   "implementation": {
+    "active_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
+    "base_sha": "f533607cdec3902d7f48abb478f5b7c24455b642",
     "checkpoint_shas": [
       "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
       "3c1671e2cba1984ebe649f1d975e283949f72185",
       "cd39cbd48007f1d436b20873d1e0bfa5e616a0b4",
-      "343a885ec61b3e52ef785b644228c71115ec2262"
+      "343a885ec61b3e52ef785b644228c71115ec2262",
+      "9262a6298a858d48d30da6ed9cb2782fd5e9ef12"
     ],
+    "last_focused_check": "PASS at code commit 9262a6298a858d48d30da6ed9cb2782fd5e9ef12: package profile, five focused Vitest files / 66 tests, one worker. No full typecheck/build run.",
+    "local_commit_sha": "9262a6298a858d48d30da6ed9cb2782fd5e9ef12",
     "mapping": [],
+    "owner": "Codex",
+    "pr_head_sha": "64a40ece0aca29f017cba2d4b5900d1f56d064fc",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/871",
     "source_paths": [
+      "apps/web/drizzle/0397_spec268_team_room_canonical_project_binding.sql",
+      "apps/web/drizzle/schema.ts",
+      "apps/web/server/routers/teamRoom.ts",
+      "apps/web/server/services/roomService.ts",
       "apps/web/server/services/teamProjectProviderAuthorization.ts",
-      "apps/web/server/services/executors/contextBuilder.ts",
-      "apps/web/server/services/contextEngineAdapter.ts",
-      "apps/web/server/services/unifiedOrchestrator.ts",
       "apps/web/server/services/__tests__/teamProjectProviderAuthorization.test.ts",
-      "apps/web/server/services/__tests__/contextBuilder.test.ts",
-      "apps/web/server/services/__tests__/contextEngineAdapter.test.ts",
-      "apps/web/server/services/__tests__/unifiedOrchestrator.test.ts"
+      "apps/web/server/services/__tests__/teamRoomCanonicalProjectBinding.test.ts",
+      "apps/web/server/__tests__/teamRoomCanonicalProjectBinding.migration.test.ts"
     ],
     "started": true,
-    "status": "PARTIAL_INTEGRATED"
+    "status": "PARTIAL_INTEGRATED",
+    "worktree": "/tmp/SmartSpecPro-spec268-team-room-binding-20261012"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
@@ -372,7 +381,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T00:34:05.993361Z",
+  "updated_at": "2026-10-12T08:44:43.376306Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
