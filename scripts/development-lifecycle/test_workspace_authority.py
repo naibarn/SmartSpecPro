@@ -76,6 +76,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             'remote = "origin"\n'
             'canonical_ref = "refs/heads/main"\n'
             f'source_root = "{self.root / "source"}"\n'
+            f'source_fallback_roots = ["{self.root / "fallback-source"}"]\n'
             f'canonical_user_workspace = "{self.canonical}"\n'
             f'recovery_root = "{self.recovery}"\n',
             encoding="utf-8",
@@ -206,6 +207,39 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         result = authority.resolve_project_authority(self.canonical, self.policy)
         self.assertEqual(result["status"], "AUTHORITY_UNAVAILABLE")
         self.assertEqual(registry.read_bytes(), before)
+
+    def test_create_worktree_recovers_partial_enospc_and_registers_same_sha(self) -> None:
+        destination = self.root / "task-workspaces" / "task-recovery"
+        original_git = authority._git
+        failed = {"once": False}
+
+        def create_then_fail(repo: Path, *args: str, **kwargs: object) -> str | bytes:
+            if args[:2] == ("worktree", "add") and str(destination) in args and not failed["once"]:
+                failed["once"] = True
+                original_git(repo, *args, **kwargs)
+                raise authority.WorkspaceAuthorityError("GIT_COMMAND_FAILED: No space left on device")
+            return original_git(repo, *args, **kwargs)
+
+        with patch.object(authority, "_git", side_effect=create_then_fail):
+            result = authority.create_registered_worktree(
+                self.canonical, self.policy, destination, base_sha=git(self.canonical, "rev-parse", "HEAD"),
+                role="TASK_WORKTREE", task_id="task-recovery", session_id="session-recovery",
+            )
+        self.assertTrue(str(result["workspace"]).startswith(str(self.root / "fallback-source")))
+        self.assertEqual(result["base_sha"], git(self.canonical, "rev-parse", "HEAD"))
+        self.assertEqual(result["recovery_attempts"][0]["resource_code"], "ENOSPC")
+        failed_path = Path(str(result["recovery_attempts"][0]["path"]))
+        self.assertFalse(failed_path.exists())
+        registered = authority.observe_workspace(self.canonical, self.policy, Path(str(result["workspace"])))
+        self.assertEqual(registered["role"], "TASK_WORKTREE")
+        self.assertEqual(registered["task_id"], "task-recovery")
+        self.assertEqual(registered["owner_session_id"], "session-recovery")
+        self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), "")
+        recovered_workspace = Path(str(result["workspace"]))
+        self.assertEqual(git(recovered_workspace, "rev-parse", "HEAD"), result["base_sha"])
+        git(recovered_workspace, "switch", "-c", "task/recovered-after-enospc")
+        (recovered_workspace / "continued.txt").write_text("task resumed\n", encoding="utf-8")
+        self.assertIn("continued.txt", git(recovered_workspace, "status", "--short"))
 
     def test_unknown_workspace_does_not_gain_authority_from_branch_or_path(self) -> None:
         other = self.root / "main-canonical"

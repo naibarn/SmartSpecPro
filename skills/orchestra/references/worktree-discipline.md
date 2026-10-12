@@ -33,8 +33,24 @@ Worktrees are optional for:
 1. Check `git status --short`.
 2. Identify unrelated dirty files and record them in `orchestra/progress.md`.
 3. If the next edit overlaps unrelated dirty files, stop and ask for direction.
-4. If worktree isolation is appropriate, create a branch using the current repo
-   naming convention and perform edits there.
+4. If worktree isolation is appropriate, create the task worktree through the
+   shared workspace authority command. It performs filesystem admission,
+   retries a resource failure only on an authorized policy fallback, preserves
+   the requested base SHA, and registers task/session ownership:
+
+   ```bash
+   python3 scripts/development-lifecycle/workspace_authority.py create \
+     --repository <repository-root> \
+     --workspace <absolute-destination> \
+     --base-sha <canonical-base-sha> \
+     --role TASK_WORKTREE \
+     --task-id <task-id> \
+     --session-id <session-id>
+   ```
+
+   Continue from the returned `workspace` and `base_sha`; if fallback was
+   selected, report that exact path. Do not replace this with raw
+   `git worktree add` in a session workflow.
 5. Never run destructive git commands to make a worktree clean.
 
 ## Repository Default
