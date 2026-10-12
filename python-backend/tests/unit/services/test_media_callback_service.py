@@ -89,8 +89,15 @@ class TestMediaCallbackService:
         }
         await callback_db.commit()
         settled = AsyncMock()
+        dispatch_pending_images = AsyncMock()
 
-        with patch("app.tasks.media_tasks._settle_feature_186_external", new=settled):
+        with (
+            patch("app.tasks.media_tasks._settle_feature_186_external", new=settled),
+            patch(
+                "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
+                new=dispatch_pending_images,
+            ),
+        ):
             result = await process_kie_callback_payload(
                 callback_db,
                 {
@@ -104,6 +111,7 @@ class TestMediaCallbackService:
         assert result["status"] == "completed"
         assert refreshed.result_data["feature_186_external"]["canonicalJobId"] == "job-callback-1"
         settled.assert_awaited_once()
+        dispatch_pending_images.assert_awaited_once_with(user.id)
 
     @pytest.mark.asyncio
     async def test_duplicate_callback_is_idempotent(self, callback_db):
