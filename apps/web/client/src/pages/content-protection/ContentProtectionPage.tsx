@@ -984,7 +984,12 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                         variant="outline"
                         onClick={() => {
                           const evidencePackage = createEvidencePackage.data?.package;
-                          if (evidencePackage?.publicCaseId !== item.publicCaseId) return;
+                          if (
+                            !evidencePackage ||
+                            evidencePackage.publicCaseId !== item.publicCaseId
+                          ) {
+                            return;
+                          }
 
                           createReviewerLink.mutate({
                             packageId: evidencePackage.id,
