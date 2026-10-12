@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
 - Next action: Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.
-- Manifest generation: 108
+- Manifest generation: 109
 
 ## Source-declared status and relationship claims
 

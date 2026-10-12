@@ -125,7 +125,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 108,
+  "generation": 109,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -231,10 +231,10 @@
     "canonical_sha": "fdf3e2839bf93f8edc441f341a0679234f6a6f6e",
     "integrated": true,
     "integrated_at": "2026-10-12T23:28:03Z",
-    "pending_action": "PR #902 merged normally at Main fdf3e2839bf93f8edc441f341a0679234f6a6f6e after progressive_integration_gate passed on exact head 5d4491e77fde52bebc3c06a10830dec2033f0cc4; build-preview was skipped by the disabled preview workflow. The live UI source remains e57a01616337b638529430662057bed62577c26b. The user has now reported that the authenticated UI checklist works fully; individual requirement-ledger rows remain OPEN pending exact-source evidence.",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/902",
-    "source_branch": "codex/spec308-handoff-final-merge-20261013",
-    "source_sha": "5d4491e77fde52bebc3c06a10830dec2033f0cc4"
+    "pending_action": "PR #903 records the user-reported authenticated UI checklist PASS and preserves 66 requirement rows as OPEN. Wait for exact-head required checks; merge through the normal PR path when they pass. Main at branch base is fdf3e2839bf93f8edc441f341a0679234f6a6f6e; no UI source change is included.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/903",
+    "source_branch": "codex/spec308-user-acceptance-20261013",
+    "source_sha": "ae98629976ff2d9f5b29d251d828e618df81c59d"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -2189,7 +2189,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T23:38:50.106615Z",
+  "updated_at": "2026-10-12T23:39:26.951709Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
