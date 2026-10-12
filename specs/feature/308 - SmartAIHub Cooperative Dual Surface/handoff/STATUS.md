@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
 - Next action: Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.
-- Manifest generation: 105
+- Manifest generation: 106
 
 ## Source-declared status and relationship claims
 

@@ -120,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 105,
+  "generation": 106,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -229,7 +229,7 @@
     "pending_action": "PR #901 records the normal merge of PR #900 at Main 4566715ba23034c6fb2c077c5cf58aebc154a70e. Wait for applicable exact-head required checks on PR #901, then merge through the normal PR path. The UI source is unchanged and remains deployed from e57a01616337b638529430662057bed62577c26b; authenticated tenant acceptance remains OPEN.",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/901",
     "source_branch": "codex/spec308-handoff-merge-receipt-20261013",
-    "source_sha": "d5784e4e6a7a80bca2febd8edeea1bf1b9ea66ae"
+    "source_sha": "d5784e4e69b2ad86afc4bdf85ae847072f7e5172"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -2181,7 +2181,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T23:23:44.062273Z",
+  "updated_at": "2026-10-12T23:24:07.887510Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
