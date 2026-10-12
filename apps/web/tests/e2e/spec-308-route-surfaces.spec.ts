@@ -17,7 +17,7 @@ function procedureName(url: string) {
   return new URL(url).pathname.replace(/^\/trpc\//, "").split(",")[0] ?? "";
 }
 
-async function installRouteFixtures(page: Page, width = 390, height = 844) {
+async function installRouteFixtures(page: Page, width = 390, height = 844, authenticated = true) {
   await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     localStorage.setItem("smartspec_locale", "en");
@@ -49,7 +49,7 @@ async function installRouteFixtures(page: Page, width = 390, height = 844) {
   await page.route("**/trpc/**", route => {
     const procedure = procedureName(route.request().url());
     let data: unknown = null;
-    if (procedure === "auth.me") data = MOCK_IDENTITY;
+    if (procedure === "auth.me") data = authenticated ? MOCK_IDENTITY : null;
     else if (procedure === "tenant.current") {
       data = { tenant: { id: MOCK_IDENTITY.currentTenantId, featureFlags: { livingMascotDualSurface: true } } };
     } else if (procedure === "tenantFeatureFlags.getFeatureFlags") data = { livingMascotDualSurface: true };
@@ -90,6 +90,18 @@ async function expectSurfacesDoNotOverlap(page: Page, viewportWidth = 390) {
 }
 
 test.describe("SPEC-308 route surface simulations", () => {
+  test("compact sign-in keeps its primary action clear of the onboarding hint", async ({ page }) => {
+    await installRouteFixtures(page, 320, 740, false);
+    await page.goto("/login");
+
+    const signIn = page.getByRole("button", { name: "Sign In" });
+    await expect(signIn).toBeVisible();
+    await expect(page.locator(".assistant-chat-onboarding-hint")).toBeHidden();
+    await expect(page.getByText("AI Chat & Feedback", { exact: true })).toBeHidden();
+    expect((await page.getByRole("button", { name: "Open AI Chat & Feedback" }).boundingBox())?.width).toBe(64);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  });
+
   test("mobile Notifications route keeps the page, Bell, and launcher usable together", async ({ page }) => {
     await installRouteFixtures(page);
     await page.goto("/notifications");

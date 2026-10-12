@@ -1126,6 +1126,17 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       collisionControls.forEach(control => {
         if (control.matches(".assistant-mascot-settings-control")) return;
         if (control === launcher || launcher?.contains(control) || control.contains(hint) || hint?.contains(control)) return;
+        // Static form controls still need to reserve space for the floating
+        // hint. The ancestor walk below only finds fixed/sticky surfaces.
+        if (control.matches("button, a[href], input, select, textarea, [role='button']")) {
+          const style = window.getComputedStyle(control);
+          if (style.display !== "none"
+            && style.visibility !== "hidden"
+            && style.pointerEvents !== "none"
+            && Number(style.opacity) !== 0) {
+            obstacleElements.add(control);
+          }
+        }
         let candidate: HTMLElement | null = control;
         while (candidate && candidate !== launcher && !hint?.contains(candidate)) {
           const style = window.getComputedStyle(candidate);
