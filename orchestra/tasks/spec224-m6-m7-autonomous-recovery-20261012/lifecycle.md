@@ -18,13 +18,13 @@ Stop reason: latest-source audits and focused tests are complete; real M6/M7 acc
 | Review | COMPLETE | Focused source review and integration-controller preflight passed; PR #836 merged normally with no bypass. |
 | Final Verify | IN_PROGRESS | Focused tests pass on latest task commit; normal PR gate and current main CI remain pending/failed as recorded. Mission-level M6/M7 acceptance remains externally gated. |
 
-## Latest-source continuation evidence — base `d0b558f7b1e511bbb866b35bae7f3880b742277c`; task commit `6d5db0533ea55ad81457cd88c8a177a14ac238af`
+## Latest-source continuation evidence — base `48e56e7fb3a34ebf91a69790011eaf9d46a995ba`; tested task source `428d853c6585095fc85296aabde6f456e8853ec6`
 
 - Runner status re-observed 2026-10-12T01:16:53.712Z: 0/11 ready. `status`/`doctor`/`capabilities` perform discovery only and report `state: ready` regardless of tool readiness. `rescan` performs bounded probes and publishes to control plane.
 - Runner service inactive; process had no `SAH_RUNNER_*` settings. Stored home connection points to production and its token expired 2026-10-09T08:15:53Z. No network action was taken. No authorized non-production enrollment or valid grant was found.
 - Admission implementation deliberately requires canonical grant validation plus bound local non-production source evidence, or a production remote trust verifier. The verifier contract has no production caller. This is an authority gap, not permission to weaken fail-closed checks.
 - Focused tests on the task commit: 8 files / 48 tests passed after correcting one stale assertion in `runnerReleaseWorkflow.test.ts`; dependencies were installed only in the isolated task worktree.
-- Current main CI run 38191643238 on `d0b558f7…`: `turbo_build` failed on TypeScript errors in unchanged, unrelated files; Python and SmartSpecWeb jobs remained in progress at this checkpoint. Earlier run 38191201225 on `94eedf0a…` also failed `turbo_build` and Python while SmartSpecWeb continued. Runner release run 38191565929: crate tests reported 188 pass / 1 fail in Linux `moli_isolation` namespace setup; build did not start, publish skipped. Keep this independent issue open without bypassing the test.
+- Current main CI run 38192269235 on `48e56e7f…` is in progress. Earlier runs 38191643238 on `d0b558f7…` and 38191201225 on `94eedf0a…` failed `turbo_build` and Python with unrelated errors while SmartSpecWeb continued. Runner release run 38191565929: crate tests reported 188 pass / 1 fail in Linux `moli_isolation` namespace setup; build did not start, publish skipped. Keep this independent issue open without bypassing the test.
 - No disposable Postgres exists on the approved SPEC-224 port 55493. Shared persistent local Postgres on 5432 was not used. No live Factory run, grant, approval, app runtime, or browser UAT was attempted.
 
 ## Gap ledger

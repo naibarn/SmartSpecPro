@@ -1,8 +1,8 @@
 {
   "schemaVersion": "spec224-mini-app-factory-capability-matrix.v1",
-  "observedAt": "2026-10-12T01:29:09Z",
+  "observedAt": "2026-10-12T01:34:01Z",
   "canonicalRef": "refs/heads/main",
-  "canonicalSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
+  "canonicalSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
   "supportingEvidenceOnly": true,
   "m8": "DEFERRED",
   "milestones": {
@@ -72,7 +72,7 @@
       "specId": "SPEC-224",
       "capability": "DevelopmentRun, Factory pipeline, Runner admission, durable stage scheduling and settlement",
       "implementationState": "INTEGRATED_RUNTIME_AND_RUNNER_STAGE_ADAPTER_PRESENT",
-      "integrationState": "PRESENT_ON_CURRENT_ORIGIN_MAIN; handoff manifest integration SHA is stale",
+      "integrationState": "CANONICAL_HANDOFF_RECONCILED_BY_PR_843_AT_48e56e7; acceptance obligations remain unresolved",
       "tests": [
         {
           "evidence": "Factory stage worker/outbox PostgreSQL runtime with synthetic callback; 13 focused tests",
@@ -96,7 +96,7 @@
         }
       ],
       "realRunnerAcceptance": "NOT_DEMONSTRATED",
-      "handoffOwnership": "SPEC-224 canonical handoff; a separate SPEC-224 audit worktree exists, so this recovery does not rewrite the manifest",
+      "handoffOwnership": "SPEC-224 canonical writer updated the manifest in PR #843; this recovery maintains supporting evidence only",
       "missingRequirement": "Owner-authorized non-production Runner enrollment and control URL; fresh tenant-scoped capability/session snapshot; exact source/workspace and DevelopmentRun/job/attempt binding; canonical protected_dispatch grant; provider approval and budget authorization; isolated non-production application database.",
       "blockerClassification": [
         "MISSING_NONPRODUCTION_CONFIGURATION",
@@ -278,9 +278,9 @@
       ],
       "evidenceFingerprint": {
         "algorithm": "sha256",
-        "value": "119c7e585fb60eeb00eb9d561c9356b2ee707d2cb17ffbccd763402bea81c301",
-        "facts": "runner=local-runner:0.2.23:ready:0/11;status=discovery-only;service=inactive;stored-origin=production;stored-token=expired:2026-10-09T08:15:53Z;nonprod-enrollment=none;grant=none-verified;canonical=d0b558f7b1e511bbb866b35bae7f3880b742277c",
-        "observedAt": "2026-10-12T01:29:09Z"
+        "value": "a71f71eaf5e0839e22cd6bd883a81e92565cac75d4b9886da46c864e420bedfd",
+        "facts": "runner=local-runner:0.2.23:ready:0/11;status=discovery-only;service=inactive;stored-origin=production;stored-token=expired:2026-10-09T08:15:53Z;nonprod-enrollment=none;grant=none-verified;canonical=48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+        "observedAt": "2026-10-12T01:34:01Z"
       },
       "rootCause": "Configuration/evidence and external authority are absent. The existing production credential is stale and unsafe to reuse. The remote trust verifier has no production caller; the local integrity-only path is allowed only in development/test after canonical grant validation.",
       "probed": false,
@@ -330,7 +330,7 @@
     "finalVerification": "NOT_RUN"
   },
   "nextExecutableWork": [
-    "Observe current exact-main CI run 38191643238 for d0b558f7b1e511bbb866b35bae7f3880b742277c; do not retry the previous shared-host build or bypass unrelated failing tests.",
+    "Observe exact-main CI run 38192269235 for 48e56e7fb3a34ebf91a69790011eaf9d46a995ba and PR #844 checks after the non-force base reconciliation; do not retry the shared-host build or bypass unrelated failures.",
     "Promote the focused release workflow assertion correction with this evidence update, using the normal protected PR path.",
     "Resume real M6/M7 only when the external unblock predicate in M6_M7_NONPRODUCTION_RUNNER_AUTHORITY is freshly satisfied.",
     "Keep M8 deferred."
@@ -383,7 +383,7 @@
     "nextAction": "Preserve this checkout; converge only after its owner resolves the unrelated dirty changes."
   },
   "latestSourceVerification": {
-    "sourceSha": "6d5db0533ea55ad81457cd88c8a177a14ac238af",
+    "sourceSha": "428d853c6585095fc85296aabde6f456e8853ec6",
     "focusedVitest": {
       "state": "PASS",
       "files": 8,
@@ -404,7 +404,7 @@
       "sharedPort5432": "not_used"
     },
     "noLiveRunnerDispatch": true,
-    "baseSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
+    "baseSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
     "priorMainCi": {
       "runId": 38191201225,
       "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191201225",
@@ -414,13 +414,20 @@
       "smartSpecWeb": "IN_PROGRESS"
     },
     "currentMainCi": {
-      "runId": 38191643238,
-      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38191643238",
-      "sourceSha": "d0b558f7b1e511bbb866b35bae7f3880b742277c",
+      "runId": 38192269235,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38192269235",
+      "sourceSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
       "state": "IN_PROGRESS",
-      "turboBuild": "FAILED_UNRELATED_TYPESCRIPT_ERRORS",
+      "turboBuild": "PENDING_OBSERVATION",
       "python": "IN_PROGRESS",
       "smartSpecWeb": "IN_PROGRESS"
+    },
+    "pr844": {
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/844",
+      "testedTaskSourceSha": "428d853c6585095fc85296aabde6f456e8853ec6",
+      "latestBaseSha": "48e56e7fb3a34ebf91a69790011eaf9d46a995ba",
+      "progressiveIntegrationGateBeforeBaseAdvanced": "PASS",
+      "state": "UPDATED_HEAD_CI_PENDING"
     }
   }
 }
