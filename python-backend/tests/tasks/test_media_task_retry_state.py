@@ -321,6 +321,8 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_generate_image_async_persists_provider_task_id_without_final_url():
+    from app.services.job_execution_context import bind_job_execution, reset_job_execution
+
     task = MagicMock()
     task.id = "task-image-submitted"
     task.status = TaskStatus.PENDING
@@ -347,18 +349,30 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
         },
     ))
 
+    context_token = bind_job_execution(
+        job_id="canonical-media-job",
+        task_ids={"task-image-submitted"},
+        user_id=1,
+        tenant_id="tenant-media-1",
+        client=MagicMock(),
+        lease=SimpleNamespace(attempt_id="attempt-1"),
+    )
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
          patch("app.tasks.media_tasks.write_media_debug_event", return_value="/tmp/image-debug.json"), \
-         patch("app.tasks.media_tasks.LLMGateway", return_value=gateway):
-        result = await _generate_image_async(
-            "task-image-submitted",
-            "user-1",
-            {
-                "model": "nano-banana-2",
-                "prompt": "hello world",
-                "extra_params": {"__prompt_safety": _image_safety_marker()},
-            },
-        )
+         patch("app.tasks.media_tasks.LLMGateway", return_value=gateway), \
+         patch("app.tasks.media_tasks.dispatch_python_task") as dispatch:
+        try:
+            result = await _generate_image_async(
+                "task-image-submitted",
+                "user-1",
+                {
+                    "model": "nano-banana-2",
+                    "prompt": "hello world",
+                    "extra_params": {"__prompt_safety": _image_safety_marker()},
+                },
+            )
+        finally:
+            reset_job_execution(context_token)
 
     assert result["status"] == "submitted"
     assert result["external_task_id"] == "provider-image-123"
@@ -366,6 +380,11 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
     assert task.task_id == "provider-image-123"
     assert task.result_url is None
     assert task.completed_at is None
+    from app.tasks.media_tasks import poll_kie_image_task
+
+    assert dispatch.call_args.args[0] == poll_kie_image_task.name
+    assert dispatch.call_args.kwargs["tenant_id"] == "tenant-media-1"
+    assert dispatch.call_args.kwargs["admission_mode"] == "durable_queue"
 
 
 @pytest.mark.unit
