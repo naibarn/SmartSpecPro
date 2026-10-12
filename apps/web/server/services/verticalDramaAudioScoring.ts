@@ -736,7 +736,7 @@ export async function listVerticalDramaMusicTakes(input: {
     eq(workerJobs.jobType, "minimax_music3_generate"),
   ));
 
-  const takes = rows.flatMap<VerticalDramaMusicTake>((row: {
+  const takes: VerticalDramaMusicTake[] = rows.flatMap((row: {
     artifact: typeof workerArtifacts.$inferSelect;
     jobStatus: string;
     jobType: string;
