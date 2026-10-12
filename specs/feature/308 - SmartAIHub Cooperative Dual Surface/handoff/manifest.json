@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "8a328777a43afebbba0ca07becaa5153613d9799",
+    "expected_canonical_sha": "4566715ba23034c6fb2c077c5cf58aebc154a70e",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
     "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA routing, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 requirement rows OPEN until requirement-level evidence is recorded; continue independent code gaps from the ledger.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "Current Main at audit start was 8a328777a43afebbba0ca07becaa5153613d9799; deployed UI source remains e57a01616337b638529430662057bed62577c26b. Live unauthenticated checks at 320, 390, 768, 1024, and 1440px passed: responsive launcher, guest Chat dialog contained within viewport, and protected Settings redirect. No overflow, page errors, or failed requests. Authenticated tenant acceptance remains open; see handoff/evidence/spec308-live-public-audit-20261013.md.",
+    "resume_point": "Current Main after PR #900 is 4566715ba23034c6fb2c077c5cf58aebc154a70e; deployed UI source remains e57a01616337b638529430662057bed62577c26b. Live public responsive and guest Chat checks are recorded in handoff/evidence/spec308-live-public-audit-20261013.md. Authenticated tenant acceptance remains the next action.",
     "waiting_predicate": "Authenticated tenant acceptance resumes when the existing logged-in dashboard for tenant tenant-ZCSKEM9s is available; until then continue exact-source route checks and independent code gaps without fabricating notification or tenant evidence."
   },
   "continuation_assessment": {
@@ -67,10 +67,12 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38272876040",
       "handoff/evidence/spec308-compact-signin-hint-collision-20261012.md",
       "https://github.com/naibarn/SmartSpecPro/pull/897",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38274304104"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38274304104",
+      "https://github.com/naibarn/SmartSpecPro/pull/900",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38321649088"
     ],
     "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.",
-    "rationale": "The deployed public login UI and guest Chat dialog were rechecked at five widths. Launcher sizing and label, dialog containment, guest sign-in gate, and protected Settings redirect pass with no overflow or page errors. Bell/unread state, real notification reminders, persisted appearance controls, and signed-in Chat/task behavior remain unverified without an authenticated tenant session.",
+    "rationale": "PR #900 records exact-source public responsive and guest Chat verification and merged normally at Main 4566715ba23034c6fb2c077c5cf58aebc154a70e after the required progressive integration gate passed. The deployed UI source is e57a01616337b638529430662057bed62577c26b. Bell/unread, real notification reminder, saved appearance styles, authenticated Settings, and signed-in Chat/task controls remain unverified without tenant authentication.",
     "residual_requirements": [
       "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
       "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
@@ -79,7 +81,7 @@
       "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
       "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
     ],
-    "resume_point": "Current Main at audit start 8a328777a43afebbba0ca07becaa5153613d9799 records deployed UI source e57a01616337b638529430662057bed62577c26b. Live public responsive/guest route and Chat dialog checks pass; authenticated tenant acceptance remains the next action."
+    "resume_point": "Current Main 4566715ba23034c6fb2c077c5cf58aebc154a70e includes the live public audit handoff. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. Public responsive and guest Chat checks pass; tenant-authenticated acceptance remains open."
   },
   "dependencies": {
     "predicates": [],
@@ -118,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 103,
+  "generation": 104,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -221,13 +223,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8a328777a43afebbba0ca07becaa5153613d9799",
+    "canonical_sha": "4566715ba23034c6fb2c077c5cf58aebc154a70e",
     "integrated": true,
-    "integrated_at": "2026-10-12T16:01:25Z",
-    "pending_action": "PR #900 now includes the follow-up responsive Chat dialog checks in handoff/evidence/spec308-live-public-audit-20261013.md; wait for applicable exact-head required checks on the refreshed branch head, then merge only through the normal PR path. Authenticated tenant acceptance remains OPEN and does not block this handoff checkpoint.",
+    "integrated_at": "2026-10-12T23:22:19Z",
+    "pending_action": "PR #900 merged normally at Main 4566715ba23034c6fb2c077c5cf58aebc154a70e after progressive_integration_gate passed on exact head d82edaa3fff2af5e7e8c072be6ca8fa04d2ac3eb; build-preview was skipped by the disabled preview workflow. The live UI remains deployed from e57a01616337b638529430662057bed62577c26b. Authenticated tenant acceptance remains OPEN.",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/900",
     "source_branch": "codex/spec308-live-acceptance-20261013",
-    "source_sha": "fbab3336b79c42ca72579ae61b1d4c2ecf5439e7"
+    "source_sha": "d82edaa3fff2af5e7e8c072be6ca8fa04d2ac3eb"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -318,10 +320,12 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38272876040",
         "handoff/evidence/spec308-compact-signin-hint-collision-20261012.md",
         "https://github.com/naibarn/SmartSpecPro/pull/897",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38274304104"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38274304104",
+        "https://github.com/naibarn/SmartSpecPro/pull/900",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38321649088"
       ],
       "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s. Verify Bell/unread state, real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls; keep requirement rows OPEN until evidence is bound to the canonical UI source.",
-      "rationale": "The deployed public login UI and guest Chat dialog were rechecked at five widths. Launcher sizing and label, dialog containment, guest sign-in gate, and protected Settings redirect pass with no overflow or page errors. Bell/unread state, real notification reminders, persisted appearance controls, and signed-in Chat/task behavior remain unverified without an authenticated tenant session.",
+      "rationale": "PR #900 records exact-source public responsive and guest Chat verification and merged normally at Main 4566715ba23034c6fb2c077c5cf58aebc154a70e after the required progressive integration gate passed. The deployed UI source is e57a01616337b638529430662057bed62577c26b. Bell/unread, real notification reminder, saved appearance styles, authenticated Settings, and signed-in Chat/task controls remain unverified without tenant authentication.",
       "residual_requirements": [
         "All 66 requirement rows remain OPEN pending requirement-level evidence and authenticated tenant acceptance.",
         "Verify the user-authenticated dashboard displays the larger mascot for tenant tenant-ZCSKEM9s and confirm all SPEC-308 visible interactions and mobile layout.",
@@ -330,7 +334,7 @@
         "EXECUTION_CONTINUITY_MISSING: three-worker and interruption/resume proof has not been demonstrated.",
         "PR #403 MCP fixture repair and PR #405 dependency remediation remain separately owned."
       ],
-      "resume_point": "Current Main at audit start 8a328777a43afebbba0ca07becaa5153613d9799 records deployed UI source e57a01616337b638529430662057bed62577c26b. Live public responsive/guest route and Chat dialog checks pass; authenticated tenant acceptance remains the next action."
+      "resume_point": "Current Main 4566715ba23034c6fb2c077c5cf58aebc154a70e includes the live public audit handoff. Deployed UI source remains e57a01616337b638529430662057bed62577c26b. Public responsive and guest Chat checks pass; tenant-authenticated acceptance remains open."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2177,7 +2181,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T23:20:32.286695Z",
+  "updated_at": "2026-10-12T23:23:01.481436Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
