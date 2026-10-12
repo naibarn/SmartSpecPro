@@ -61,32 +61,10 @@ Use these replacement boundaries for new work:
 
 ## Spec 224 Verification Resource Profiles
 
-- Create mutable task/session worktrees through
-  `scripts/development-lifecycle/workspace_authority.py create`; canonical
-  source worktrees use `canonical_source.py prepare`. Both use shared lifecycle
-  admission, preflight policy-approved roots, record filesystem evidence, retry
-  classified resource failures on authorized fallbacks, and return
-  `RESOURCE_BLOCKED` when none are admissible. Never prune or remove unknown
-  worktrees to recover.
-
-- Select a scoped verification profile: `quick` (small focused checks),
-  `package` (one package), `integration` (a bounded cross-service slice), or
-  `full` (repository-wide build/typecheck/test gates).
-- Resource admission is separate from code correctness. OOM, exit 137,
-  `SIGKILL`, stale/missing resource samples for memory-heavy profiles, or a
-  recent cgroup OOM kill are `RESOURCE_BLOCKED` / `QUEUED_RESOURCE`, never
-  `CODE_FAILED` and never a repair attempt. Baseline failures remain distinct.
-- A repository may have at most one live `full` verification lease. Leases
-  expire and are reclaimed with a higher fencing version; stale owners cannot
-  heartbeat or release a reclaimed lease. Scoped checks do not wait on the
-  full-check lease, but must meet their own resource admission requirements.
-- Record the profile, revision, command/scope, timestamps, exit/signal,
-  resource observation, and outcome as evidence. Redact secrets from commands
-  and never persist raw lease owner tokens. Do not blindly retry a resource
-  block without a fresh resource observation or changed capacity.
-- Full verification remains serialized even when focused checks continue. Keep
-  the explicit repository typecheck/RAM restriction below; these profiles do
-  not authorize running a forbidden full check.
+- Choose a scoped profile (`quick`, `package`, `integration`, or `full`) for the work. Keep full-check leases serialized; scoped work does not wait for a full-check lease.
+- Classify OOM, exit 137, SIGKILL, or missing/stale resource evidence as `RESOURCE_BLOCKED` / `QUEUED_RESOURCE`, not code failure. Retry only after fresh resource evidence or changed capacity; keep baseline failures distinct.
+- Record profile, revision, command/scope, time, resource evidence and outcome. Redact secrets and never store lease tokens. Do not run `npm run typecheck` in a local/shared implementation session.
+- Create task worktrees through `workspace_authority.py` and canonical source worktrees through `canonical_source.py`; preserve unknown worktrees.
 
 ## Codebase Discovery
 
@@ -103,44 +81,11 @@ the policy's explicit-path fallback.
 
 ## Outcome Completion
 
-For requests to implement, finish, or close an outcome, derive completion from
-the authoritative requirements and evidence. Apply
-`skills/orchestra/references/autonomous-completion-contract.md`: blockers trigger
-root-cause and safe-alternative analysis, resource or dependency waits continue
-independent work, and project-local workflow policy may be repaired when it adds
-no real security or data-safety boundary. Preserve system/platform controls,
-secrets, external irreversible-operation boundaries, and critical security
-stops. A partial canonical checkpoint never means the task is complete.
-
-## Outcome-first recovery and fresh builds
-
-Apply the executable recovery obligation in
-`skills/orchestra/references/autonomous-completion-contract.md`. A missing
-optional Runner, browser, or preview gate must not prevent a safe functional
-deliverable. A blocker report or handoff never substitutes for executing an
-authorized fallback or an independent ready WorkUnit. Require explicit evidence
-before declaring an external authority blocker. Only genuine safety/authority
-gates can stop the affected path; never bypass them.
-
-When the user requests Build, build from the latest policy-selected canonical
-ref, not the primary checkout. The canonical build CLI retries bounded stale
-revisions, never converts RESOURCE_BLOCKED or CODE_FAILED into PASS, and keeps
-Build, Preview, Release and Production Deploy as distinct outcomes. Prove
-published artifact/source parity before claiming that the user sees new code.
+Use `skills/orchestra/references/autonomous-completion-contract.md` for recovery and closure. Debug and retry fixable technical failures automatically; continue independent work and keep non-blocking gaps in the existing WorkUnit/Spec HandOff. Stop only the affected path for a real external authority/product decision, critical security or data-safety issue, unauthorized irreversible action, or a required repository check that has not passed. Claim completion only from the required evidence.
 
 ## Orchestra
 
-Prefer the `orchestra` skill when the user's request is not merely a factual
-question and the work requires inspecting, understanding, changing, or validating
-code in the repository. This includes feature work, bug fixes, code reviews,
-impact analysis, multi-file changes, architecture/routing decisions, or any
-"check the system/code and then decide or implement" request.
-
-Do not use Orchestra for simple factual answers, one-off shell utility requests,
-or obvious single-file edits where orchestration adds no value.
-
-When using the `orchestra` skill, apply the same targeted-discovery rule during
-task analysis, routing, impact assessment, and sub-agent planning.
+Use Orchestra to route repository work to the existing skills. Follow Deep Plan and Deep Implement when planning and section tracking are needed; handle a clear, bounded coding or debugging task directly with a focused check. Skill files own detailed procedures; they do not add approval gates.
 
 ## Sub-Agent Model Routing
 
@@ -213,179 +158,19 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 
 ## Parallel Codex Development Workflow
 
-Use the project-neutral lifecycle contract in `skills/development-lifecycle/SKILL.md` for WorkUnit ownership, dependency predicates, valid `WAITING_*` states, independent work, automatic reactivation, and machine-readable handoffs. The repository policy below configures this repository's canonical ref; reusable skills and lifecycle code must read project policy instead of assuming `main`.
+Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$session-finish` for detailed ownership, promotion, checkpoint and handoff procedures. `origin/main` is the integrated development baseline, not a release-readiness signal.
 
-Implementation may run in parallel, but `origin/main` is the central source of truth for the current integrated development state. Promote safe, valuable progress at each coherent checkpoint; task completion is not a prerequisite. `main` is not a release-ready, production-ready, or fully validated marker. Release and deployment remain separate gated lifecycles.
+### Development loop
 
-### Core invariant
+`Deep Plan → Deep Implement → Focused Check → Commit → Protected Merge Main → Build Debian → Debug → Gap Closure`
 
-Trunk-Based Development and Continuous Progressive Integration apply to every
-SPEC and development task, without a SPEC-number allowlist. At every start or
-resume, fetch and verify the configured canonical ref before discovery; use an
-isolated workspace when the primary checkout is dirty or stale. Plan small,
-independently mergeable WorkUnits and submit each verified slice immediately.
-All repository-required checks, security gates, reviews, and merge authority
-remain mandatory; the fast gate never overrides them.
+Use the existing task WorkUnit/Spec HandOff and Deep Implement section state. Record the owner/workspace, current base and commit, completed and in-progress sections, exact Main SHA after merge, checks actually run, open gaps and next action. Persist an in-flight step before lengthy work; resume from verified state without replaying completed work. Keep state writes atomic through the existing tools. Do not create a competing progress ledger.
 
-After merge, record the exact reachable canonical SHA and continue the next
-ready WorkUnit on that baseline in the same execution. An OPEN SPEC, a partial
-checkpoint, local review/tool counters, or pending unrelated workspace cleanup
-does not require human approval or end the implementation run. Continue until
-the requested outcome is verified or only evidenced external authority/safety
-blockers remain; collect non-blocking review items for the final report. Keep
-platform/user budgets and real security/data-safety boundaries intact.
+Direct coding and debugging on Debian may run without `worker_jobs`. Use `worker_jobs` plus outbox for hosted background jobs and the long-running skill, LLM, media, agent and external-worker work identified by project policy.
 
-Pause further promotion on a task-caused main regression and use the existing
-repair/revert path. Preserve disjoint baseline failures as separate evidence.
-Serialize only the merge-critical section; use affected checks, incremental
-builds and cache only while their exact inputs/dependencies remain valid.
-Record branch age, merge latency, integration delta, conflict rate, exact-SHA
-main health and time-to-first-preview through the Integration Controller.
+Run focused checks for the changed slice and all actual GitHub required checks before merge. UI/UX slices do not wait for full SPEC acceptance, full UAT or production verification when the slice is ready and required checks pass. After protected merge, record the exact reachable Main SHA, build Debian from that SHA through the configured build workflow, debug any build/runtime defect, and continue gap closure. A build or test failure is evidence to diagnose and repair, not a reason to ask whether to continue. Track non-blocking acceptance and production gaps in HandOff for later closure.
 
-Use this development sequence throughout the task:
-
-`implement → safe checkpoint → slice/repository-required checks → FAST INTEGRATION GATE → commit → integrate into origin/main → record SHA/handoff → continue next ready WorkUnit`
-
-Repeat this sequence as work advances. Run heavy verification/UAT continuously or after integration against the recorded SHA; release and deployment require their own gates.
-
-Do not use per-session branches as the durable destination for valuable work. If concurrent isolation or repository branch protection requires a temporary branch/PR, promote safe checkpoints throughout the work lifecycle, using the required normal non-force path. Retain a temporary ref only while needed for isolation or protection; verify each integrated SHA before cleanup.
-
-Serialize only the short promotion step so sessions cannot race `origin/main`; do not serialize implementation or wait for unrelated sessions. Any authorized task session may promote work using a normal non-force GitHub path. Never bypass required repository protection.
-
-### Safe checkpoints and session stop
-
-Use `$session-finish` whenever a coherent safe checkpoint is reached and before pausing, stopping, handing off, or ending a session. Triggers include user stop/pause, quota or context limits, provider timeout/rate limit, agent/developer handoff, end of work window, and implementation completion. Do not wait for the task or spec to finish, and do not leave valuable progress only in a branch, worktree, sandbox, or chat.
-
-Partial work may enter `main` when it is coherent, valuable, and safe to coexist with current `main`. Isolate unfinished behavior when needed with a disabled feature flag, internal-only route, unregistered adapter, or another existing containment boundary. Examples include a backend slice before UI, schema/repository before business logic, or an untested provider adapter kept disabled. Do not execute production migrations or enable production behavior as a side effect of checkpointing.
-
-Before stopping, normalize the task-owned delta, reconcile latest `origin/main`, split out any unsafe remainder, pass the FAST INTEGRATION GATE on the exact candidate, commit and promote the largest safe checkpoint, then record the handoff. If the whole delta cannot pass, promote an independent safe subset where possible and preserve the remainder with its owner and next action.
-
-FAST INTEGRATION GATE:
-
-- no syntax/compile error in the changed scope;
-- no unresolved merge conflict;
-- no damaged or unusable patch;
-- no accidental secret.
-
-Commit and promote each safe checkpoint after this gate passes. Record the integrated commit SHA and confirm it is reachable from the updated `origin/main`. For partial work, record completed scope, remaining scope, pending validation, known failures, next action, and a durable handoff/recovery reference.
-
-Do not add full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, or production verification as ad hoc pre-promotion gates. Repository-required checks remain mandatory before merge and run through suitable CI runners. Other heavy checks run after integration against its exact SHA.
-
-Checkpoint outcomes:
-
-- `CHECKPOINT_PROMOTED_PARTIAL` — safe valuable progress is in `origin/main`; the task remains open with a durable handoff.
-- `PROMOTED_TO_MAIN` — implementation scope is complete and its commit is in `origin/main`; validation may still be pending.
-- `ALREADY_IN_MAIN`
-- `FAST_GATE_BLOCKED` — an explicit fast-gate failure prevents this delta from promotion; preserve the exact patch/commit durably and identify owner and next action. Promote any separable safe subset first. This is not completion.
-
-### Resource-safety rule
-
-This is a shared development host and multiple long-running sessions may be active simultaneously.
-
-Implementation sessions MUST NOT run high-resource repository-wide verification merely to finish a scoped task.
-
-By default, do NOT run from ordinary implementation sessions:
-
-- full-repository typecheck;
-- full monorepo build;
-- full E2E/browser suite;
-- full integration suite;
-- broad dependency rebuild/install;
-- other known high-RAM/high-CPU verification.
-
-Use the fast gate before each checkpoint promotion. Run change-aware scoped and heavy verification after integration, without making resource admission a reason to leave safe valuable progress outside `origin/main`.
-
-Examples:
-
-- UI/presentation-only change → targeted checks / relevant component tests / lightweight compile checks;
-- localized backend change → affected unit/integration tests;
-- high-risk schema/auth/security/dependency/platform change → promote after the fast gate, then queue required heavy verification against the integrated SHA.
-
-A pre-existing failure on `origin/main` MUST NOT automatically block an unrelated session.
-
-Distinguish:
-
-- regression introduced by the session;
-- pre-existing baseline failure;
-- environment/tooling limitation.
-
-Do not consume enough shared RAM/CPU to interrupt other active sessions.
-
-### Post-integration verification
-
-Heavy verification, full typecheck, integration/UAT, provider/rights checks, and production gates run after the checkpoint is recorded in `origin/main` and are tied to its SHA. A later checkpoint creates a new SHA and may stale earlier evidence. Passing integration does not establish release or deployment readiness.
-
-Track each pending check against its integrated commit SHA with a durable owner/status/next action. A pending check must not erase, strand, or move the implementation back to a session branch. On failure, create a repair task against current `main`, then commit and promote the repair to `main` as soon as its FAST INTEGRATION GATE passes.
-
-Heavy checks should preferably run:
-
-1. on CI or a dedicated runner; or
-2. in a controlled quiet resource window.
-
-Do not wait for unrelated sessions or an available shared-host resource slot before promoting a fast-gate-passing change.
-
-### Integration
-
-Use the repo Skill for promotion mechanics:
-
-`$integration-controller`
-
-from any authorized task session when a safe checkpoint is ready. It must not defer safe partial work solely because the task or a heavy check is pending.
-
-The promotion flow must:
-
-- refresh and reconcile with latest `origin/main` immediately before promotion;
-- integrate each safe fast-gate-passing checkpoint promptly, including partial work;
-- preserve unrelated dirty work and never stage it accidentally;
-- pass slice/repository-required checks and the FAST INTEGRATION GATE before promotion;
-- record heavy checks as post-integration obligations against the main SHA;
-- use normal non-force GitHub promotion and honor required repository protection;
-- never remove another session's worktree or discard uncommitted changes as part of promotion.
-
-### Worktree safety
-
-Never automatically run destructive commands against another session's worktree, including:
-
-- `git reset --hard`
-- `git clean -fd`
-- `git clean -fdx`
-- `git worktree remove`
-- `git worktree prune`
-- `git stash drop`
-- `git stash clear`
-- force push
-- destructive branch deletion
-
-A dirty worktree may contain valuable uncommitted implementation.
-
-Do not assume `DIRTY` means "merge it" or "discard it".
-
-### Canonical source state
-
-`origin/main` is the latest integrated development state and the first durable landing point for safe valuable progress. It does not certify release readiness, production readiness, or full validation. Release/tag and production deployment follow separate gates.
-
-A local checkout or worktree may legitimately be behind `origin/main`.
-
-Do not assume that pushing a branch updates `/home/dev/projects/SmartSpecPro`.
-
-Deployment/build synchronization is a separate lifecycle.
-
-### Central canonical builds
-
-After the relevant parallel-session changes are integrated, build from the latest configured canonical ref, not from a session branch or worktree. Use `pnpm run build:canonical` in a checkout containing the current tool, or `$canonical-checkout-sync`'s installed `build-canonical-main.sh` entry point when the checkout may be stale. The builder loads its controller from canonical history, pins the fetched canonical SHA, serializes repository builds on the same host, records the exact source SHA and result, and marks the result stale if the canonical ref advances during the build. Cross-host scheduling uses the existing `worker_jobs` plus outbox control plane. A source lease proves source selection only; `BUILD_PASSED` requires the configured build command to exit successfully.
-
-After a passing build, fast-forward the invoking primary checkout only when it is clean and already on the configured canonical branch. Never overwrite or mix changes into a dirty/wrong-branch primary checkout. Report the blocked sync reason and preserve the checkout for explicit reconciliation; the build result remains tied to its isolated exact-SHA workspace.
-
-### Skills are authoritative for workflow details
-
-Do not duplicate or reinvent the detailed finish/integration procedures in chat.
-
-When the lifecycle action is requested:
-
-- safe checkpoint or session pause/stop/handoff → read and execute `$session-finish`
-- checkpoint reconciliation/promotion → read and execute `$integration-controller`
-
-The Skill instructions and bundled scripts define the detailed procedure.
+Integrate coherent, safe checkpoints promptly; task completion and unrelated workspace cleanup are not merge prerequisites. Use the normal non-force protected PR path, honor required reviews/checks, and never bypass branch protection. Preserve dirty work owned by others; do not stage it, overwrite it, reset it, or remove its worktree. Do not force-push. Production actions still require their existing authorization and gates.
 
 <!-- ASTRYX:START -->
 Astryx v0.6.3 · 164 components
