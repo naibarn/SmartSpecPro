@@ -140,13 +140,17 @@ export function fuseActiveSpeakerVisualEvidence(input: {
     const winner = ranked[0];
     const nearTie = ranked[1] && winner.confidence > 0 && winner.confidence - ranked[1].confidence < 0.1;
     const visualConfidence = winner.confidence;
+    const basis = new Set<ActiveSpeakerEvidence["basis"][number]>([
+      ...evidence.basis,
+      winner.track.kind === "face" ? "face" : "person",
+    ]);
     return {
       ...evidence,
       activeFaceTrackId: winner.track.kind === "face" ? winner.track.trackId : null,
       activePersonTrackId: winner.track.kind !== "face" ? winner.track.trackId : null,
       visualConfidence,
       fusedConfidence: Math.min(1, evidence.speechConfidence * 0.45 + visualConfidence * 0.55),
-      basis: [...new Set([...evidence.basis, winner.track.kind === "face" ? "face" : "person"])],
+      basis: [...basis],
       conflict: nearTie ? "multiple_candidates" : evidence.conflict,
     };
   });
