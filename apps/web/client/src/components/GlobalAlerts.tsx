@@ -20,12 +20,28 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
 import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
+import { assistantMascotStorageKey } from "@/lib/assistantMascotPreferences";
+import {
+  ASSISTANT_NOTIFICATION_BASELINE_EVENT,
+  ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT,
+  OPEN_GLOBAL_NOTIFICATION_BELL_EVENT,
+  type AssistantNotificationProjection,
+} from "@/lib/assistantMascotEvents";
 
 const BELL_STORAGE_KEY = "global-notification-bell-position";
 const BELL_MARGIN = 12;
 const BELL_DEFAULT_WIDTH = 60;
 const BELL_DEFAULT_HEIGHT = 44;
 const BELL_DRAG_THRESHOLD = 4;
+const BELL_POPOVER_WIDTH = 360;
+const BELL_POPOVER_MAX_HEIGHT = 480;
+
+type BellPopoverPosition = {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+};
 
 type BellPosition = {
   x: number;
@@ -51,6 +67,34 @@ type UrgentSurface = "message" | "reminder";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getBellPopoverPosition(
+  anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  viewport: { left: number; top: number; width: number; height: number },
+): BellPopoverPosition {
+  const margin = BELL_MARGIN;
+  const gap = 8;
+  const width = Math.max(1, Math.min(BELL_POPOVER_WIDTH, viewport.width - margin * 2));
+  const availableHeight = Math.max(1, viewport.height - margin * 2);
+  const maxHeight = Math.min(BELL_POPOVER_MAX_HEIGHT, availableHeight);
+  const belowTop = anchor.bottom + gap;
+  const belowHeight = viewport.top + viewport.height - margin - belowTop;
+  const aboveHeight = anchor.top - gap - (viewport.top + margin);
+  const opensBelow = belowHeight >= Math.min(220, maxHeight) || aboveHeight < Math.min(220, maxHeight);
+  const top = opensBelow
+    ? clamp(belowTop, viewport.top + margin, viewport.top + viewport.height - margin - 1)
+    : Math.max(viewport.top + margin, anchor.top - gap - maxHeight);
+  const verticalSpace = opensBelow
+    ? viewport.top + viewport.height - margin - top
+    : anchor.top - gap - top;
+  const left = clamp(
+    anchor.right - width,
+    viewport.left + margin,
+    viewport.left + viewport.width - width - margin,
+  );
+
+  return { left, top, width, maxHeight: Math.max(1, Math.min(maxHeight, verticalSpace)) };
 }
 
 function getDockedBellPosition(
@@ -352,7 +396,7 @@ export function GlobalAlerts() {
         claimUrgentSurface={claimUrgentSurface}
         releaseUrgentSurface={releaseUrgentSurface}
       />
-      <GlobalNotificationBell />
+      <GlobalNotificationBellGate />
     </>
   );
 }
@@ -1133,6 +1177,7 @@ function GlobalUrgentReminders({
 }
 
 function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { notification: any; onBack: () => void; onOpenInNewTab: (url: string) => void }) {
+  const { t } = useScopedTranslation("admin");
   const meta = n.metadata as any;
   const actionUrl = resolveNotificationActionUrl(n);
   const hasLegacyActions = !actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
@@ -1144,7 +1189,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
           onClick={onBack}
           style={{ background: "none", border: "none", color: "#0078d4", cursor: "pointer", padding: "2px 4px", fontSize: "12px" }}
         >
-          &larr; Back
+          &larr; {t("admin.notificationBell.back")}
         </button>
       </div>
 
@@ -1200,9 +1245,9 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       {/* Error Details */}
       {meta?.errorDetails?.errorMessage && (
         <div style={{ margin: "8px 0", padding: "8px", background: "rgba(211,47,47,0.08)", borderRadius: "6px", borderLeft: "3px solid #d32f2f" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#d32f2f", marginBottom: "4px" }}>Error Details</div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#d32f2f", marginBottom: "4px" }}>{t("admin.notificationBell.errorDetails")}</div>
           {meta.errorDetails.errorCode && (
-            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>Code: {meta.errorDetails.errorCode}</div>
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>{t("admin.notificationBell.code")}: {meta.errorDetails.errorCode}</div>
           )}
           <div style={{ fontSize: "12px", color: "var(--foreground, #ccc)", whiteSpace: "pre-wrap" }}>
             {meta.errorDetails.errorMessage.length > 500 ? meta.errorDetails.errorMessage.slice(0, 500) + "..." : meta.errorDetails.errorMessage}
@@ -1215,12 +1260,12 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
         <div style={{ margin: "8px 0", display: "flex", gap: "12px", flexWrap: "wrap" }}>
           {meta.metrics.durationMs != null && (
             <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
-              Duration: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.durationMs > 1000 ? `${(meta.metrics.durationMs / 1000).toFixed(1)}s` : `${meta.metrics.durationMs}ms`}</strong>
+              {t("admin.notificationBell.duration")}: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.durationMs > 1000 ? `${(meta.metrics.durationMs / 1000).toFixed(1)}s` : `${meta.metrics.durationMs}ms`}</strong>
             </div>
           )}
           {meta.metrics.costUsd != null && (
             <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
-              Cost: <strong style={{ color: "var(--foreground, #ccc)" }}>${meta.metrics.costUsd.toFixed(4)}</strong>
+              {t("admin.notificationBell.cost")}: <strong style={{ color: "var(--foreground, #ccc)" }}>${meta.metrics.costUsd.toFixed(4)}</strong>
             </div>
           )}
           {meta.metrics.itemCount != null && (
@@ -1234,15 +1279,15 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       {/* Retry Info */}
       {meta?.retryInfo && (
         <div style={{ margin: "8px 0", padding: "6px 8px", background: "rgba(245,124,0,0.08)", borderRadius: "6px", fontSize: "12px" }}>
-          Retry {meta.retryInfo.retryCount ?? 0}/{meta.retryInfo.maxRetries ?? "?"}
-          {meta.retryInfo.nextRetryAt && ` — next: ${new Date(meta.retryInfo.nextRetryAt).toLocaleString()}`}
+          {t("admin.notificationBell.retry")} {meta.retryInfo.retryCount ?? 0}/{meta.retryInfo.maxRetries ?? "?"}
+          {meta.retryInfo.nextRetryAt && ` — ${t("admin.notificationBell.nextRetry")}: ${new Date(meta.retryInfo.nextRetryAt).toLocaleString()}`}
         </div>
       )}
 
       {/* Source */}
       {meta?.source && (
         <div style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", marginTop: "8px" }}>
-          Source: <span style={{ fontFamily: "monospace" }}>{meta.source}</span>
+          {t("admin.notificationBell.source")}: <span style={{ fontFamily: "monospace" }}>{meta.source}</span>
         </div>
       )}
 
@@ -1263,7 +1308,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              {n.actionLabel || "View Details"} &rarr;
+              {n.actionLabel || t("admin.notificationBell.viewDetailsButton")} &rarr;
             </button>
           )}
           {n.conversationId && !actionUrl && (
@@ -1280,7 +1325,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              Open Chat &rarr;
+              {t("admin.notificationBell.openChatButton")} &rarr;
             </button>
           )}
           {n.scheduledMessageId && !actionUrl && (
@@ -1297,7 +1342,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              View Schedule &rarr;
+              {t("admin.notificationBell.viewScheduleButton")} &rarr;
             </button>
           )}
           {hasLegacyActions && (
@@ -1316,7 +1361,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  Open Media Studio &rarr;
+                  {t("admin.notificationBell.openMediaStudio")} &rarr;
                 </button>
               )}
               {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
@@ -1333,7 +1378,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  Admin Settings &rarr;
+                  {t("admin.notificationBell.adminSettings")} &rarr;
                 </button>
               )}
               {(n.title?.includes("latency") || n.title?.includes("API error")) && (
@@ -1350,7 +1395,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  System Guardian &rarr;
+                  {t("admin.notificationBell.systemGuardian")} &rarr;
                 </button>
               )}
               {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
@@ -1372,7 +1417,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  View Feedback &rarr;
+                  {t("admin.notificationBell.viewFeedback")} &rarr;
                 </button>
               )}
             </>
@@ -1383,8 +1428,13 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
   );
 }
 
+function GlobalNotificationBellGate() {
+  return <GlobalNotificationBell />;
+}
+
 function GlobalNotificationBell() {
   const { user } = useAuth();
+  const { t } = useScopedTranslation("admin");
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -1392,12 +1442,31 @@ function GlobalNotificationBell() {
   const [detailNotification, setDetailNotification] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const bellRootRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<BellPopoverPosition | null>(null);
   const dragStateRef = useRef<BellDragState | null>(null);
   const suppressNextClickRef = useRef(false);
   const shownJobCompletionToastKeysRef = useRef<Set<string>>(new Set());
   const pollingBaselineReadyRef = useRef(false);
+  const assistantAttentionBaselineRef = useRef(false);
+  const assistantAttentionScope = user?.id && user.currentTenantId
+    ? assistantMascotStorageKey(user.id, user.currentTenantId)
+    : null;
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
+
+  const updateDropdownPosition = useCallback(() => {
+    const anchor = bellButtonRef.current?.getBoundingClientRect();
+    if (!anchor || typeof window === "undefined") return;
+    const visualViewport = window.visualViewport;
+    setDropdownPosition(getBellPopoverPosition(anchor, {
+      left: visualViewport?.offsetLeft ?? 0,
+      top: visualViewport?.offsetTop ?? 0,
+      width: visualViewport?.width ?? window.innerWidth,
+      height: visualViewport?.height ?? window.innerHeight,
+    }));
+  }, []);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -1462,7 +1531,7 @@ function GlobalNotificationBell() {
 
   useEffect(() => {
     const handleResize = () => {
-      const rect = bellRootRef.current?.getBoundingClientRect();
+      const rect = bellButtonRef.current?.getBoundingClientRect();
       setBellPlacement((current) => {
         if (current.mode !== "custom") {
           return current;
@@ -1508,6 +1577,25 @@ function GlobalNotificationBell() {
     },
   );
 
+  useEffect(() => {
+    assistantAttentionBaselineRef.current = false;
+  }, [assistantAttentionScope]);
+
+  useEffect(() => {
+    if (!assistantAttentionScope || !recentNotifications) return;
+    const publishBaseline = () => {
+      // The existing query is authenticated but user-wide; it does not prove
+      // that rows belong to the active tenant. Keep the coordinator baselined
+      // and quiet until the notification owner provides tenant/revision proof.
+      assistantAttentionBaselineRef.current = true;
+      const detail: AssistantNotificationProjection = { scopeKey: assistantAttentionScope, signals: [] };
+      window.dispatchEvent(new CustomEvent(ASSISTANT_NOTIFICATION_BASELINE_EVENT, { detail }));
+    };
+    if (!assistantAttentionBaselineRef.current) publishBaseline();
+    window.addEventListener(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, publishBaseline);
+    return () => window.removeEventListener(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, publishBaseline);
+  }, [assistantAttentionScope, recentNotifications]);
+
   const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
     onSuccess: () => {
       utils.scheduledMessages.getNotificationCount.invalidate();
@@ -1525,13 +1613,15 @@ function GlobalNotificationBell() {
   const count = data?.count || 0;
   const hasUnread = count > 0;
   const shouldShowWithoutUnread = /^\/(?:admin\/)?dashboard(?:$|[/?])/.test(location);
-  const recentCount = notifications?.length ?? 0;
+  // The bounded polling query is already available before the dropdown opens.
+  // Use it for the Recent summary while the on-demand list query is disabled.
+  const recentCount = recentNotifications?.length ?? 0;
   const hasRecentHistory = recentCount > 0;
   const statusSummary = hasUnread
-    ? `${count} unread notification${count !== 1 ? "s" : ""}`
+    ? t("admin.notificationBell.unread", { count })
     : hasRecentHistory
-      ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
-      : "No notifications yet";
+      ? t("admin.notificationBell.recentHistory", { count: recentCount })
+      : t("admin.notificationBell.none");
 
   const showJobCompletionToast = useCallback((notification: JobCompletionNotification) => {
     if (!isJobCompletionNotification(notification)) return;
@@ -1566,7 +1656,12 @@ function GlobalNotificationBell() {
     if (showDropdown) {
       utils.scheduledMessages.getNotifications.invalidate();
     }
-    showJobCompletionToast(parseNotificationSSEEvent(event) ?? {});
+    const notification = parseNotificationSSEEvent(event);
+    showJobCompletionToast(notification ?? {});
+    // SSE remains an invalidation/toast transport only. Parsing JSON does not
+    // prove tenant ownership or grouped-occurrence revision, so cosmetic
+    // attention stays static until the existing notification owner supplies
+    // that authorization contract.
   }, [showDropdown, showJobCompletionToast, utils]);
 
   useSSEReconnect({
@@ -1604,6 +1699,49 @@ function GlobalNotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
 
+  useEffect(() => {
+    if (!showDropdown) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const reposition = () => updateDropdownPosition();
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("scroll", reposition);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("scroll", reposition);
+    };
+  }, [bellPlacement, showDropdown, updateDropdownPosition]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    dropdownPanelRef.current?.focus({ preventScroll: true });
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setShowDropdown(false);
+      bellButtonRef.current?.focus({ preventScroll: true });
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showDropdown]);
+
+  useEffect(() => {
+    const openBell = () => {
+      if (!hasUnread && !shouldShowWithoutUnread) {
+        setLocation("/notifications");
+        return;
+      }
+      setShowDropdown(true);
+    };
+    window.addEventListener(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, openBell);
+    return () => window.removeEventListener(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, openBell);
+  }, [hasUnread, shouldShowWithoutUnread, setLocation]);
+
   const formatTimeAgo = (date: string | Date) => {
     const now = Date.now();
     const then = new Date(date).getTime();
@@ -1634,7 +1772,7 @@ function GlobalNotificationBell() {
 
     suppressNextClickRef.current = false;
     setIsBellDragging(true);
-    const rect = bellRootRef.current?.getBoundingClientRect();
+    const rect = bellButtonRef.current?.getBoundingClientRect();
     const fallbackPosition = bellPlacement.mode === "custom"
       ? { x: bellPlacement.x, y: bellPlacement.y }
       : getDockedBellPosition(window.innerWidth, window.innerHeight, {
@@ -1693,10 +1831,14 @@ function GlobalNotificationBell() {
     ? {
       left: `${bellPlacement.x}px`,
       top: `${bellPlacement.y}px`,
+      paddingRight: 0,
+      paddingTop: 0,
     }
     : {
       right: `${BELL_MARGIN}px`,
       top: `${BELL_MARGIN}px`,
+      paddingRight: `max(0px, calc(env(safe-area-inset-right, 0px) - ${BELL_MARGIN}px))`,
+      paddingTop: `max(0px, calc(env(safe-area-inset-top, 0px) - ${BELL_MARGIN}px))`,
     };
 
   return (
@@ -1713,23 +1855,21 @@ function GlobalNotificationBell() {
       }}
     >
       <button
+        ref={bellButtonRef}
         onClick={handleBellClick}
         onPointerDown={handleBellPointerDown}
-        title={
-          hasUnread
-            ? statusSummary
-            : "No unread notifications, recent history available. Drag to move."
-        }
-        aria-label={
-          hasUnread
-            ? statusSummary
-            : "0 unread notifications, recent history available"
-        }
+        title={statusSummary}
+        aria-label={statusSummary}
+        aria-expanded={showDropdown}
+        aria-controls="global-notification-popover"
+        aria-haspopup="dialog"
         style={{
           background: "var(--background, #1e1e1e)",
           border: "1px solid var(--border, #333)",
           borderRadius: "8px",
           padding: "8px 10px",
+          minWidth: "44px",
+          minHeight: "44px",
           cursor: isBellDragging ? "grabbing" : "grab",
           display: "flex",
           alignItems: "center",
@@ -1762,7 +1902,7 @@ function GlobalNotificationBell() {
           >
             {count > 9 ? "9+" : count}
           </span>
-        ) : (
+        ) : hasRecentHistory ? (
           <span
             style={{
               display: "inline-flex",
@@ -1779,19 +1919,26 @@ function GlobalNotificationBell() {
             }}
           >
             <Clock3 style={{ width: 10, height: 10 }} />
-            Recent
+            {t("admin.notificationBell.recent")}
           </span>
-        )}
+        ) : null}
       </button>
 
       {showDropdown && (
         <div
+          id="global-notification-popover"
+          ref={dropdownPanelRef}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="global-notification-heading"
+          tabIndex={-1}
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            width: "360px",
-            maxHeight: "480px",
+            position: "fixed",
+            top: dropdownPosition?.top ?? BELL_MARGIN,
+            left: dropdownPosition?.left ?? BELL_MARGIN,
+            width: dropdownPosition?.width ?? `min(${BELL_POPOVER_WIDTH}px, calc(100vw - ${BELL_MARGIN * 2}px))`,
+            maxWidth: `calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - ${BELL_MARGIN * 2}px)`,
+            maxHeight: dropdownPosition?.maxHeight ?? `calc(100vh - ${BELL_MARGIN * 2}px)`,
             background: "var(--background, #1e1e1e)",
             border: "1px solid var(--border, #333)",
             borderRadius: "10px",
@@ -1811,14 +1958,16 @@ function GlobalNotificationBell() {
               justifyContent: "space-between",
             }}
           >
-            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)" }}>
-              Notifications {count > 0 && `(${count})`}
+            <span id="global-notification-heading" tabIndex={-1} style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)" }}>
+              {hasUnread
+                ? t("admin.notificationBell.titleCount", { count })
+                : t("admin.notificationBell.title")}
             </span>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               {count > 0 && (
                 <button
                   onClick={() => markAllRead.mutate()}
-                  title="Mark all as read"
+                  title={t("admin.notificationBell.markAllRead")}
                   style={{
                     background: "none",
                     border: "none",
@@ -1829,11 +1978,16 @@ function GlobalNotificationBell() {
                     borderRadius: "4px",
                   }}
                 >
-                  Mark all read
+                  {t("admin.notificationBell.markAllRead")}
                 </button>
               )}
               <button
-                onClick={() => setShowDropdown(false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  bellButtonRef.current?.focus({ preventScroll: true });
+                }}
+                aria-label={t("admin.notificationBell.close")}
+                title={t("admin.notificationBell.close")}
                 style={{
                   background: "none",
                   border: "none",
@@ -1970,6 +2124,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(resolveNotificationActionUrl(n, user?.role)!);
                             }}
+                            aria-label={t("admin.notificationBell.viewDetails")}
                             style={{
                               background: "none",
                               border: "none",
@@ -1979,7 +2134,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            {(n as any).actionLabel || "View Details"} &rarr;
+                            {(n as any).actionLabel || t("admin.notificationBell.viewDetailsButton")} &rarr;
                           </button>
                         )}
                         {/* Conversation link */}
@@ -1989,6 +2144,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(`/chat?conversationId=${n.conversationId}`);
                             }}
+                            aria-label={t("admin.notificationBell.openChat")}
                             style={{
                               background: "none",
                               border: "none",
@@ -1998,7 +2154,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            Open Chat &rarr;
+                            {t("admin.notificationBell.openChatButton")} &rarr;
                           </button>
                         )}
                         {/* Schedule link */}
@@ -2008,6 +2164,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`);
                             }}
+                            aria-label={t("admin.notificationBell.viewSchedule")}
                             style={{
                               background: "none",
                               border: "none",
@@ -2017,7 +2174,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            View Schedule &rarr;
+                            {t("admin.notificationBell.viewScheduleButton")} &rarr;
                           </button>
                         )}
                         {/* Metadata details badge */}
@@ -2039,7 +2196,8 @@ function GlobalNotificationBell() {
                           e.stopPropagation();
                           setExpandedId(expandedId === n.id ? null : n.id);
                         }}
-                        title={expandedId === n.id ? "Collapse quick actions" : "Expand quick actions"}
+                        title={expandedId === n.id ? t("admin.notificationBell.collapseActions") : t("admin.notificationBell.expandActions")}
+                        aria-label={expandedId === n.id ? t("admin.notificationBell.collapseActions") : t("admin.notificationBell.expandActions")}
                         style={{
                           color: "var(--muted-foreground, #666)",
                           padding: "4px",
@@ -2060,7 +2218,8 @@ function GlobalNotificationBell() {
                           e.stopPropagation();
                           markRead.mutate({ id: n.id });
                         }}
-                        title="Mark as read"
+                        title={t("admin.notificationBell.markRead")}
+                        aria-label={t("admin.notificationBell.markRead")}
                         style={{
                           background: "none",
                           border: "none",
@@ -2087,7 +2246,7 @@ function GlobalNotificationBell() {
                   fontSize: "13px",
                 }}
               >
-                No notifications
+                {t("admin.notificationBell.emptyList")}
               </div>
             )}
           </div>
@@ -2115,7 +2274,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              {hasUnread ? "View All Notifications" : "ดูย้อนหลัง"}
+              {hasUnread ? t("admin.notificationBell.viewAll") : t("admin.notificationBell.history")}
             </button>
             <button
               onClick={() => {
@@ -2129,7 +2288,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              Scheduled Alerts
+              {t("admin.notificationBell.scheduledAlerts")}
             </button>
             <button
               onClick={() => {

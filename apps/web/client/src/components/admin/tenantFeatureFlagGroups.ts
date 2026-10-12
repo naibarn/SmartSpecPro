@@ -260,6 +260,7 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "notificationEscalationEnabled", label: "Escalation", description: "Escalate unacknowledged" },
       { key: "notificationEmailDelivery", label: "Email Delivery", description: "Notifications via email" },
       { key: "notificationWebhookDelivery", label: "Webhook Delivery", description: "Notifications via webhook" },
+      { key: "livingMascotDualSurface", label: "AI Chat & Feedback Mascot", description: "Opt-in dual-surface presentation; existing notification and chat behavior remains authoritative" },
     ],
   },
   {

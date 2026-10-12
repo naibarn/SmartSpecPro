@@ -626,3 +626,122 @@
   border: 1px solid #cbd5e1;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-bell-ring-subtle {
+    animation: assistant-bell-ring-subtle 480ms ease-in-out 1;
+    transform-origin: 50% 15%;
+  }
+
+  .assistant-bell-ring-normal {
+    animation: assistant-bell-ring 850ms ease-in-out 1;
+    transform-origin: 50% 15%;
+  }
+
+  .assistant-mascot-greeting-subtle {
+    animation: assistant-mascot-greeting-subtle 480ms ease-in-out 1;
+    transform-origin: 50% 75%;
+  }
+
+  .assistant-mascot-greeting-normal {
+    animation: assistant-mascot-greeting 800ms ease-in-out 1;
+    transform-origin: 50% 75%;
+  }
+
+  .assistant-reminder-balloon,
+  .assistant-chat-onboarding-hint {
+    animation: assistant-hint-enter 220ms ease-out 1;
+  }
+}
+
+.assistant-reminder-balloon {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  max-width: min(calc(var(--spacing-12) * 4.5), calc(100vw - var(--spacing-8)));
+  max-height: calc(100vh - var(--spacing-8));
+  overflow-y: auto;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  padding: var(--spacing-3);
+  box-shadow: var(--shadow-high);
+}
+
+.assistant-chat-onboarding-hint {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  max-width: min(calc(var(--spacing-12) * 4.5), calc(100vw - var(--spacing-8)));
+  max-height: calc(100vh - var(--spacing-8));
+  overflow-y: auto;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  padding: var(--spacing-3);
+  box-shadow: var(--shadow-high);
+}
+
+.assistant-motion-off.assistant-reminder-balloon,
+.assistant-motion-off.assistant-chat-onboarding-hint {
+  animation: none !important;
+}
+
+@media (min-width: 768px) {
+  .assistant-chat-onboarding-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-bell-ring-subtle,
+  .assistant-bell-ring-normal,
+  .assistant-mascot-greeting-subtle,
+  .assistant-mascot-greeting-normal {
+    animation: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .assistant-reminder-balloon,
+  .assistant-chat-onboarding-hint {
+    max-width: min(calc(var(--spacing-12) * 7.5), calc(100vw - var(--spacing-8)));
+  }
+}
+
+@keyframes assistant-bell-ring {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-5deg); }
+}
+
+@keyframes assistant-mascot-greeting {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(-10deg); }
+  70% { transform: rotate(7deg); }
+}
+
+@keyframes assistant-mascot-greeting-subtle {
+  0%, 100% { transform: rotate(0deg); }
+  45% { transform: rotate(-4deg); }
+  80% { transform: rotate(3deg); }
+}
+
+@keyframes assistant-bell-ring-subtle {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(6deg); }
+  70% { transform: rotate(-4deg); }
+}
+
+@keyframes assistant-hint-enter {
+  from { opacity: 0; transform: translateY(var(--spacing-1)); }
+  to { opacity: 1; transform: translateY(0); }
+}
