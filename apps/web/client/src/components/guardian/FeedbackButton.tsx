@@ -1059,11 +1059,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
   const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
+  const settingsRoute = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") === "/settings";
   const attentionScopeCurrent = attention.scopeGeneration === attentionScopeGenerationRef.current;
   const hasVisibleNotificationBalloon = attentionScopeCurrent && attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
   const notificationAttentionPending = attentionScopeCurrent && (attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE");
   const hasVisibleDemoBalloon = showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
-  const hasVisibleOnboardingHint = showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
+  const hasVisibleOnboardingHint = !settingsRoute && showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
   const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
 
   useLayoutEffect(() => {
