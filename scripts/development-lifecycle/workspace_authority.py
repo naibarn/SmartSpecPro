@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import contextvars
+import errno
 import hashlib
 import importlib.util
 import json
@@ -27,6 +28,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
+
+from canonical_source import _filesystem_evidence, _resource_code, _rollback_attempt, load_policy as load_source_policy
 
 
 ROLES = {
@@ -1003,6 +1006,104 @@ def register_workspace(
     )
 
 
+def create_registered_worktree(
+    repo: Path,
+    policy_path: Path | None,
+    destination: Path,
+    *,
+    base_sha: str,
+    role: str,
+    task_id: str | None = None,
+    session_id: str | None = None,
+    owner_pid: int | None = None,
+) -> dict[str, Any]:
+    """Create and register a task/session worktree with shared admission and recovery."""
+    repo = _repo_root(repo)
+    if role not in {"TASK_WORKTREE", "SESSION_WORKTREE", "INTEGRATION_WORKTREE"}:
+        raise WorkspaceAuthorityError("WORKTREE_ROLE_INVALID")
+    if not destination.is_absolute():
+        raise WorkspaceAuthorityError("WORKTREE_DESTINATION_MUST_BE_ABSOLUTE")
+    destination = destination.resolve()
+    if destination == repo or repo in destination.parents:
+        raise WorkspaceAuthorityError("WORKTREE_DESTINATION_INSIDE_REPOSITORY")
+    source_policy = load_source_policy(repo, policy_path)
+    policy = load_workspace_policy(repo, policy_path)
+    metadata_evidence = _filesystem_evidence(_common_dir(repo))
+    if metadata_evidence.get("error") or not metadata_evidence.get("writable") or metadata_evidence.get("available_bytes", 0) < 16 * 1024 * 1024 or metadata_evidence.get("available_inodes", 0) < 128:
+        raise WorkspaceAuthorityError(f"RESOURCE_BLOCKED: Git metadata filesystem is not admissible; evidence={json.dumps(metadata_evidence, sort_keys=True)}")
+    revision = str(_git(repo, "rev-parse", f"{base_sha}^{{commit}}")).strip()
+    _git(repo, "fetch", "--no-tags", policy["remote"], policy["canonical_ref"])
+    canonical_tip = str(_git(repo, "rev-parse", "FETCH_HEAD^{commit}")).strip()
+    if not _is_ancestor(repo, revision, canonical_tip):
+        raise WorkspaceAuthorityError("WORKTREE_BASE_OUTSIDE_CANONICAL_HISTORY")
+
+    candidate_roots = [(destination.parent, destination)]
+    candidate_roots.extend(
+        (Path(root), Path(root) / "task-worktrees" / hashlib.sha256(policy["repository_id"].encode()).hexdigest()[:16] / destination.name)
+        for root in source_policy["source_fallback_roots"]
+        if Path(root) != destination.parent
+    )
+    attempts: list[dict[str, Any]] = []
+    selected: Path | None = None
+    for root, candidate in candidate_roots:
+        evidence = _filesystem_evidence(root)
+        if evidence.get("error") or not evidence.get("writable"):
+            attempts.append({"path": str(candidate), "resource_code": "EACCES", "filesystem": evidence})
+            continue
+        if evidence.get("available_bytes", 0) < 1024 * 1024 * 1024 or evidence.get("available_inodes", 0) < 10_000:
+            attempts.append({"path": str(candidate), "resource_code": "ENOSPC" if evidence.get("available_bytes", 0) < 1024 * 1024 * 1024 else "INODE_EXHAUSTION", "filesystem": evidence})
+            continue
+        if candidate.exists():
+            raise WorkspaceAuthorityError(f"WORKTREE_DESTINATION_EXISTS: {candidate}; preserved")
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.mkdir()
+        except OSError as exc:
+            code = errno.errorcode.get(exc.errno, "UNKNOWN")
+            attempts.append({"path": str(candidate), "resource_code": code, "errno_number": exc.errno, "error": f"{exc.__class__.__name__}: {exc}", "filesystem": _filesystem_evidence(root)})
+            if code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"}:
+                continue
+            raise WorkspaceAuthorityError(f"WORKTREE_CREATE_FAILED: {json.dumps(attempts, sort_keys=True)}") from exc
+        stat = candidate.stat()
+        reservation = (stat.st_dev, stat.st_ino)
+        try:
+            _git(repo, "worktree", "add", "--detach", str(candidate), revision)
+        except WorkspaceAuthorityError as exc:
+            message = str(exc)
+            code = _resource_code(message)
+            rollback = _rollback_attempt(repo, candidate, reservation)
+            attempts.append({"path": str(candidate), "resource_code": code, "errno_number": {"ENOSPC": 28, "EDQUOT": 122, "EACCES": 13, "EROFS": 30}.get(code), "error": message, "rollback": rollback, "filesystem": evidence})
+            if code in {"ENOSPC", "EDQUOT", "EACCES", "EROFS"}:
+                continue
+            raise WorkspaceAuthorityError(f"WORKTREE_CREATE_FAILED: {json.dumps(attempts, sort_keys=True)}") from exc
+        selected = candidate
+        break
+    if selected is None:
+        raise WorkspaceAuthorityError(f"RESOURCE_BLOCKED: no authorized worktree destination succeeded; attempts={json.dumps(attempts, sort_keys=True)}")
+
+    try:
+        registered = register_workspace(
+            repo, policy_path, selected, role=role, task_id=task_id,
+            owner_session_id=session_id, owner_pid=owner_pid,
+        )
+    except (OSError, WorkspaceAuthorityError) as exc:
+        raise WorkspaceAuthorityError(
+            f"WORKTREE_CREATED_REGISTRATION_FAILED: workspace={selected}; preserve it and retry registration after fixing registry access; "
+            f"detail={exc}; filesystem={json.dumps(_filesystem_evidence(selected), sort_keys=True)}"
+        ) from exc
+    return {
+        "status": "WORKTREE_CREATED_AND_REGISTERED",
+        "workspace": str(selected),
+        "workspace_id": registered["workspace_id"],
+        "base_sha": revision,
+        "canonical_tip": canonical_tip,
+        "role": role,
+        "task_id": task_id,
+        "workspace_filesystem": _filesystem_evidence(selected),
+        "recovery_attempts": attempts,
+    }
+
+
 def observe_workspace(repo: Path, policy_path: Path | None, workspace: Path) -> dict[str, Any]:
     repo = _repo_root(repo)
     policy = load_workspace_policy(repo, policy_path)
@@ -1845,10 +1946,11 @@ def collect_worktrees(
 
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("resolve", "inspect", "register", "converge", "verify", "preserve", "retire", "collect", "mission-control"))
+    parser.add_argument("action", choices=("resolve", "inspect", "register", "create", "converge", "verify", "preserve", "retire", "collect", "mission-control"))
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--workspace", type=Path)
+    parser.add_argument("--base-sha")
     parser.add_argument("--role", choices=sorted(ROLES))
     parser.add_argument("--task-id")
     parser.add_argument("--session-id")
@@ -1870,6 +1972,14 @@ def _cli() -> int:
                 raise WorkspaceAuthorityError("REGISTER_WORKSPACE_AND_ROLE_REQUIRED")
             result = register_workspace(repo, args.policy, args.workspace, role=args.role, task_id=args.task_id, owner_session_id=args.session_id, owner_pid=args.owner_pid, owner_lease_seconds=args.owner_lease_seconds if args.session_id or args.owner_pid else None)
             result["status"] = "WORKSPACE_REGISTERED"
+        elif args.action == "create":
+            if not args.workspace or not args.base_sha or not args.role:
+                raise WorkspaceAuthorityError("CREATE_WORKSPACE_BASE_SHA_AND_ROLE_REQUIRED")
+            result = create_registered_worktree(
+                repo, args.policy, args.workspace, base_sha=args.base_sha,
+                role=args.role, task_id=args.task_id, session_id=args.session_id,
+                owner_pid=args.owner_pid,
+            )
         elif args.action == "converge":
             result = converge_canonical_workspace(repo, args.policy, integrated_sha=args.integrated_sha, task_id=args.task_id)
         elif args.action == "verify":
@@ -1908,7 +2018,7 @@ def _cli() -> int:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")
             result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply)
         print(json.dumps(result, sort_keys=True))
-        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY"} else 20
+        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY"} else 20
     except WorkspaceAuthorityError as exc:
         print(str(exc), file=sys.stderr)
         return 20

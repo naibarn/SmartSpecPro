@@ -4,4 +4,6 @@ remote = "origin"
 canonical_ref = "refs/heads/main"
 canonical_user_workspace = "/home/dev/projects/SmartSpecPro"
 source_root = "~/.cache/codex/canonical-sources"
+source_fallback_roots = ["/mnt/SmartSpecDev/.cache/codex/canonical-sources"]
+lease_root = "/mnt/SmartSpecDev/.cache/codex/canonical-leases"
 build_target = "smartspec-web"
