@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+    "expected_canonical_sha": "d5e2c583a3735a62c2d592d1db792837be016efb",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Wait for PR #871 applicable checks, repair any slice-owned failure, then merge through the normal protected path and record the confirmed origin/main SHA. After integration, continue source-level team-room memory provenance without enabling persistent memory.",
+    "next_action": "Wait for PR #873 checks to pass on the reconciled d5e2c583 base, then merge through the normal integration path. After it merges, continue durable source-message provenance and tenant-filtered authorized memory reads. Keep team-room persistent memory disabled until those paths and direct non-production acceptance are complete; do not apply production migrations.",
     "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
     "reactivation_predicate": null,
-    "resume_point": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING is implemented in PR #871 (head 64a40ece0aca29f017cba2d4b5900d1f56d064fc), from source branch codex/spec268-team-room-project-binding-20261012 based on canonical f533607cdec3902d7f48abb478f5b7c24455b642. Five focused files / 66 tests passed at code commit 9262a6298a858d48d30da6ed9cb2782fd5e9ef12. PR checks are pending. Keep persistent team-room memory disabled; no development or production migration applied yet.",
+    "resume_point": "PR #871 merged canonical project binding at Main c9adedbe3d543e4872635cfa17af653871a9256d. Main then advanced through PR #872 to bf4e30cfd6868c47ab7d9f8a3edacc0ab28f1899 and PR #874 to d5e2c583a3735a62c2d592d1db792837be016efb. Current source-provenance checkpoint c2709fdeba49371a4a47c6705b9238cb08e8ac5a plus revoked-membership regression f2094867b98528a11787db0c85874ffa787d2c56 remains on PR #873 after reconciling both latest-main commits without conflict. It uses a fresh canonical-member Project binding and revalidates before writes. Five focused files / 74 tests passed. Persistent team-room memory remains disabled; durable message-level source records, tenant-filtered authorized reads, migrations, and direct acceptance remain open. Re-run checks on the new PR head before merge.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 18,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -165,20 +165,22 @@
   },
   "implementation": {
     "active_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
-    "base_sha": "f533607cdec3902d7f48abb478f5b7c24455b642",
+    "base_sha": "d5e2c583a3735a62c2d592d1db792837be016efb",
     "checkpoint_shas": [
       "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
       "3c1671e2cba1984ebe649f1d975e283949f72185",
       "cd39cbd48007f1d436b20873d1e0bfa5e616a0b4",
       "343a885ec61b3e52ef785b644228c71115ec2262",
-      "9262a6298a858d48d30da6ed9cb2782fd5e9ef12"
+      "9262a6298a858d48d30da6ed9cb2782fd5e9ef12",
+      "c2709fdeba49371a4a47c6705b9238cb08e8ac5a",
+      "f2094867b98528a11787db0c85874ffa787d2c56"
     ],
-    "last_focused_check": "PASS at code commit 9262a6298a858d48d30da6ed9cb2782fd5e9ef12: package profile, five focused Vitest files / 66 tests, one worker. No full typecheck/build run.",
-    "local_commit_sha": "9262a6298a858d48d30da6ed9cb2782fd5e9ef12",
+    "last_focused_check": "PASS after checkpoint f2094867b: package scope, five focused Vitest files / 74 tests, one worker; git diff --check passed. No full typecheck/build or runtime migration run.",
+    "local_commit_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
     "mapping": [],
     "owner": "Codex",
-    "pr_head_sha": "64a40ece0aca29f017cba2d4b5900d1f56d064fc",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/871",
+    "pr_head_sha": "f2094867b98528a11787db0c85874ffa787d2c56",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/873",
     "source_paths": [
       "apps/web/drizzle/0397_spec268_team_room_canonical_project_binding.sql",
       "apps/web/drizzle/schema.ts",
@@ -187,17 +189,22 @@
       "apps/web/server/services/teamProjectProviderAuthorization.ts",
       "apps/web/server/services/__tests__/teamProjectProviderAuthorization.test.ts",
       "apps/web/server/services/__tests__/teamRoomCanonicalProjectBinding.test.ts",
-      "apps/web/server/__tests__/teamRoomCanonicalProjectBinding.migration.test.ts"
+      "apps/web/server/__tests__/teamRoomCanonicalProjectBinding.migration.test.ts",
+      "apps/web/server/services/teamRoomMemoryService.ts",
+      "apps/web/server/services/contextCompactionService.ts",
+      "apps/web/server/services/runEngine.ts",
+      "apps/web/server/routers/__tests__/teamRoom.test.ts",
+      "apps/web/server/services/__tests__/teamRoomMemoryService.test.ts"
     ],
     "started": true,
-    "status": "PARTIAL_INTEGRATED",
-    "worktree": "/tmp/SmartSpecPro-spec268-team-room-binding-20261012"
+    "status": "IN_PROGRESS",
+    "worktree": "/tmp/SmartSpecPro-spec268-handoff-20261012"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+    "canonical_sha": "d5e2c583a3735a62c2d592d1db792837be016efb",
     "integrated": true,
-    "integrated_at": "2026-10-10T00:33:03Z"
+    "integrated_at": "2026-10-12T09:11:15Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -381,7 +388,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T08:44:43.376306Z",
+  "updated_at": "2026-10-12T09:17:25.919647Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

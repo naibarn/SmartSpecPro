@@ -212,11 +212,9 @@ export const teamRoomRouter = router({
       await captureUserMemoryFromTeamMessage({
         tenantId,
         userId: ctx.user!.id,
+        roomId: room.id,
+        teamId: room.teamId,
         content: input.content,
-        projectId:
-          room.projectId !== null && room.projectId !== undefined
-            ? String(room.projectId)
-            : null,
       }).catch(error => {
         console.warn("[teamRoomRouter] failed to capture user team memory", {
           roomId: input.roomId,

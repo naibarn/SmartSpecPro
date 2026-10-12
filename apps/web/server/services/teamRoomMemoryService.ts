@@ -3,6 +3,31 @@ import { extractEntitiesFromMessage, upsertEntityMemory } from "./memoryService"
 import { getMessages } from "./roomService";
 import { buildSmartSummary } from "./smartSummarizer";
 import { isTeamRoomMemoryEnabled } from "./teamRoomMemoryPolicy";
+import {
+  captureTeamProjectProviderContextBinding,
+  revalidateTeamProjectProviderContextBinding,
+} from "./teamProjectProviderAuthorization";
+
+async function captureCanonicalMemoryBinding(input: {
+  tenantId: string;
+  roomId: string;
+  teamId: string;
+  userId: number;
+  runId?: string | null;
+}) {
+  const authorityInput = {
+    tenantId: input.tenantId,
+    roomId: input.roomId,
+    teamId: input.teamId,
+    userId: input.userId,
+    runId: input.runId ?? null,
+  };
+  const binding = await captureTeamProjectProviderContextBinding(authorityInput);
+  if (binding.projectAuthority !== "canonical-member" || !binding.projectId) {
+    return null;
+  }
+  return { authorityInput, binding };
+}
 
 function normalizeMemoryText(content: string, maxLength = 1600): string {
   const normalized = content.replace(/\s+/g, " ").trim();
@@ -43,6 +68,7 @@ async function upsertRollingSummaryMemory(input: {
   runId?: string | null;
   initiatedByUserId?: number;
   messageCount: number;
+  revalidateAuthority: () => Promise<void>;
 }): Promise<string | null> {
   const title = buildRollingSummaryTitle(input.ownerId);
   const summaryContent = input.summary.trim();
@@ -66,6 +92,7 @@ async function upsertRollingSummaryMemory(input: {
     .filter((memory) => !existing || memory.id !== existing.id)
     .map((memory) => memory.id);
 
+  await input.revalidateAuthority();
   await Promise.all(
     duplicateIds.map((id) => deleteMemory(id, input.tenantId).catch(() => false)),
   );
@@ -93,6 +120,7 @@ async function upsertRollingSummaryMemory(input: {
   ].join("\n\n");
 
   if (existing) {
+    await input.revalidateAuthority();
     const updated = await updateMemory(existing.id, input.tenantId, {
       title,
       content,
@@ -106,6 +134,7 @@ async function upsertRollingSummaryMemory(input: {
     return updated?.id ?? existing.id;
   }
 
+  await input.revalidateAuthority();
   const created = await createMemory({
     tenantId: input.tenantId,
     ownerType: input.ownerType,
@@ -132,10 +161,15 @@ async function upsertRollingSummaryMemory(input: {
 export async function captureUserMemoryFromTeamMessage(input: {
   tenantId: string;
   userId: number;
+  roomId: string;
+  teamId: string;
+  runId?: string | null;
   content: string;
-  projectId?: string | null;
 }): Promise<number> {
   if (!isTeamRoomMemoryEnabled()) return 0;
+
+  const source = await captureCanonicalMemoryBinding(input).catch(() => null);
+  if (!source) return 0;
 
   const extracted = extractEntitiesFromMessage(input.content);
   if (extracted.length === 0) return 0;
@@ -149,6 +183,7 @@ export async function captureUserMemoryFromTeamMessage(input: {
     seen.add(key);
 
     try {
+      await revalidateTeamProjectProviderContextBinding(source.binding, source.authorityInput);
       await upsertEntityMemory(
         input.userId,
         entity.type,
@@ -157,7 +192,7 @@ export async function captureUserMemoryFromTeamMessage(input: {
         undefined,
         entity.importance,
         "team_room",
-        input.projectId ?? null,
+        source.binding.projectId,
         null,
       );
       stored += 1;
@@ -185,10 +220,19 @@ export async function recordAssistantTurnScopedMemories(input: {
   objective: string;
   content: string;
   initiatedByUserId?: number;
-  projectId?: string | null;
   messageId?: string | null;
 }): Promise<string[]> {
   if (!isTeamRoomMemoryEnabled()) return [];
+  if (!input.initiatedByUserId) return [];
+
+  const source = await captureCanonicalMemoryBinding({
+    tenantId: input.tenantId,
+    roomId: input.roomId,
+    teamId: input.teamId,
+    userId: input.initiatedByUserId,
+    runId: input.runId,
+  }).catch(() => null);
+  if (!source) return [];
 
   const normalizedObjective = normalizeMemoryText(input.objective, 220);
   const normalizedContent = normalizeMemoryText(input.content, 1600);
@@ -201,7 +245,7 @@ export async function recordAssistantTurnScopedMemories(input: {
     sourceUserId: input.initiatedByUserId ?? null,
     sourceAssistantId: input.assistantId,
     sourceRoomId: input.roomId,
-    projectId: input.projectId ?? null,
+    projectId: source.binding.projectId,
     title: buildScopedMemoryTitle({
       assistantLabel: input.assistantLabel,
       objective: normalizedObjective,
@@ -231,6 +275,7 @@ export async function recordAssistantTurnScopedMemories(input: {
   const storedIds: string[] = [];
   for (const scope of scopes) {
     try {
+      await revalidateTeamProjectProviderContextBinding(source.binding, source.authorityInput);
       const memory = await createMemory({
         ...memoryPayload,
         ownerType: scope.ownerType,
@@ -260,10 +305,19 @@ export async function refreshRollingSummaryMemories(input: {
   assistantLabel?: string | null;
   objective: string;
   initiatedByUserId?: number;
-  projectId?: string | null;
   windowSize?: number;
 }): Promise<string[]> {
   if (!isTeamRoomMemoryEnabled()) return [];
+  if (!input.initiatedByUserId) return [];
+
+  const source = await captureCanonicalMemoryBinding({
+    tenantId: input.tenantId,
+    roomId: input.roomId,
+    teamId: input.teamId,
+    userId: input.initiatedByUserId,
+    runId: input.runId,
+  }).catch(() => null);
+  if (!source) return [];
 
   const windowSize = Math.max(6, Math.min(input.windowSize ?? 12, 24));
   const messages = await getMessages(input.roomId, input.tenantId, {
@@ -306,6 +360,8 @@ export async function refreshRollingSummaryMemories(input: {
   }
 
   const storedIds: string[] = [];
+  const revalidateAuthority = () =>
+    revalidateTeamProjectProviderContextBinding(source.binding, source.authorityInput);
   const roomSummaryId = await upsertRollingSummaryMemory({
     tenantId: input.tenantId,
     ownerType: "room",
@@ -314,11 +370,12 @@ export async function refreshRollingSummaryMemories(input: {
     assistantLabel: input.assistantLabel ?? null,
     objective: input.objective,
     summary,
-    projectId: input.projectId ?? null,
+    projectId: source.binding.projectId,
     sourceRoomId: input.roomId,
     runId: input.runId ?? null,
     initiatedByUserId: input.initiatedByUserId,
     messageCount: summaryMessages.length,
+    revalidateAuthority,
   }).catch((error) => {
     console.warn("[teamRoomMemoryService] failed to upsert room summary", {
       roomId: input.roomId,
@@ -337,11 +394,12 @@ export async function refreshRollingSummaryMemories(input: {
     assistantLabel: input.assistantLabel ?? null,
     objective: input.objective,
     summary,
-    projectId: input.projectId ?? null,
+    projectId: source.binding.projectId,
     sourceRoomId: input.roomId,
     runId: input.runId ?? null,
     initiatedByUserId: input.initiatedByUserId,
     messageCount: summaryMessages.length,
+    revalidateAuthority,
   }).catch((error) => {
     console.warn("[teamRoomMemoryService] failed to upsert team summary", {
       roomId: input.roomId,

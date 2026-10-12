@@ -271,8 +271,10 @@ describe("teamRoomRouter", () => {
   it("sendMessage stores the message and auto-starts a guided run when requested", async () => {
     mockGetRoom.mockResolvedValue({
       id: "room-1",
+      teamId: "team-1",
       roomType: "team",
       projectId: 12,
+      canonicalProjectId: "canonical-project-1",
     });
     mockSendMessage.mockResolvedValue({ id: "msg-1", roomId: "room-1" });
 
@@ -298,8 +300,9 @@ describe("teamRoomRouter", () => {
     expect(mockCaptureUserMemoryFromTeamMessage).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       userId: 42,
+      roomId: "room-1",
+      teamId: "team-1",
       content: "Please summarize the latest findings.",
-      projectId: "12",
     });
     expect(mockStartRun).toHaveBeenCalledWith(
       expect.objectContaining({

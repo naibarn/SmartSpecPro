@@ -10357,10 +10357,6 @@ export async function runNextTurn(
       objective,
       content,
       initiatedByUserId: run.initiatedByUserId,
-      projectId:
-        room.projectId !== null && room.projectId !== undefined
-          ? String(room.projectId)
-          : null,
       messageId: message.id,
     }).catch(error => {
       console.warn("[runEngine] failed to persist assistant turn memory", {
@@ -10380,10 +10376,6 @@ export async function runNextTurn(
       assistantLabel: assistantContext.profile.displayName ?? null,
       objective,
       initiatedByUserId: run.initiatedByUserId,
-      projectId:
-        room.projectId !== null && room.projectId !== undefined
-          ? String(room.projectId)
-          : null,
       windowSize: 12,
     }).catch(error => {
       console.warn("[runEngine] failed to refresh rolling summary memory", {
