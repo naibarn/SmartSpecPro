@@ -59,8 +59,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "pdf", "md"]);
 const FEEDBACK_STORAGE_KEY = "feedback-button-position";
 const FEEDBACK_MARGIN = 16;
-const FEEDBACK_DEFAULT_WIDTH = 170;
-const FEEDBACK_DEFAULT_HEIGHT = 40;
+const FEEDBACK_DEFAULT_WIDTH = 180;
+const FEEDBACK_DEFAULT_HEIGHT = 128;
 const FEEDBACK_DRAG_THRESHOLD = 4;
 
 type FeedbackPosition = {
@@ -1223,7 +1223,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     : {
       right: `${FEEDBACK_MARGIN}px`,
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
-    };
+      };
+  const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
   const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) {
@@ -1281,7 +1282,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           size="sm"
           variant="outline"
           aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
-          className="z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"
+          className={showMascotLauncher
+            ? "z-50 flex h-auto min-h-0 w-[180px] min-w-0 flex-col gap-1 rounded-none border-0 bg-transparent p-0 text-slate-900 shadow-none hover:bg-transparent focus-visible:ring-2 dark:bg-transparent dark:text-slate-900 dark:hover:bg-transparent"
+            : "z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"}
           style={{
             position: "fixed",
             touchAction: "none",
@@ -1291,16 +1294,23 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           onPointerDown={handleFeedbackPointerDown}
           onClick={handleFeedbackClick}
         >
-          {mascotEnabled && mascotPreferences.enabled
-            ? <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-4 w-4" />}>
-              <AssistantMascot
-                style={mascotPreferences.style}
-                size={24}
-                className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? `assistant-mascot-greeting-${mascotPreferences.motion}` : undefined}
-              />
-            </AssistantMascotErrorBoundary>
+          {showMascotLauncher
+            ? <>
+              <span className="inline-flex h-16 w-16 items-center justify-center md:h-20 md:w-20" aria-hidden="true">
+                <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-10 w-10 text-sky-500" />}>
+                  <AssistantMascot
+                    style={mascotPreferences.style}
+                    size={80}
+                    className={`h-16 w-16 drop-shadow-lg md:h-20 md:w-20${attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? ` assistant-mascot-greeting-${mascotPreferences.motion}` : ""}`}
+                  />
+                </AssistantMascotErrorBoundary>
+              </span>
+              <span className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-lg dark:border-slate-200 dark:bg-white dark:text-slate-900">
+                {settingsT("assistantAppearance.launcherLabel")}
+              </span>
+            </>
             : <MessageSquarePlus className="h-4 w-4" />}
-          <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>
+          {!showMascotLauncher && <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>}
         </Button>
       </DialogTrigger>
       {canShowDecorativeBalloon && (hasVisibleDemoBalloon || hasVisibleNotificationBalloon) && (

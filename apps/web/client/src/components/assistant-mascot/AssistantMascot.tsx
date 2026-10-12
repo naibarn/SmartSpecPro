@@ -19,8 +19,8 @@ export type AssistantMascotExpression =
   | "happy"
   | "thinking"
   | "concerned";
-/** Supported CSS-pixel dimensions: 24, 32, and 40. */
-export type AssistantMascotSize = 24 | 32 | 40;
+/** Supported CSS-pixel dimensions for compact icons and the floating launcher. */
+export type AssistantMascotSize = 24 | 32 | 40 | 64 | 72 | 80;
 
 type AssistantMascotProps = {
   style: AssistantMascotStyle;
@@ -193,7 +193,7 @@ export function AssistantMascot({
   const resolvedStyle = ASSISTANT_MASCOT_STYLES.includes(style)
     ? style
     : "chat";
-  const resolvedSize = ([24, 32, 40] as const).includes(size) ? size : 32;
+  const resolvedSize = ([24, 32, 40, 64, 72, 80] as const).includes(size) ? size : 32;
   const resolvedExpression = (
     Object.keys(eyeY) as AssistantMascotExpression[]
   ).includes(expression)
