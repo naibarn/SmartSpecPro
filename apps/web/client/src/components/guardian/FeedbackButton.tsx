@@ -313,6 +313,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     ? loadedMascotPreferences.preferences
     : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
   const [showMascotDemo, setShowMascotDemo] = useState(false);
+  const [mascotSettingsHoverVisible, setMascotSettingsHoverVisible] = useState(false);
+  const mascotSettingsHideTimerRef = useRef<number | null>(null);
   const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
   const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
   const [assistantHintStyle, setAssistantHintStyle] = useState<CSSProperties | null>(null);
@@ -1068,6 +1070,23 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const hasVisibleOnboardingHint = !settingsRoute && showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
   const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
 
+  const revealMascotSettings = () => {
+    if (mascotSettingsHideTimerRef.current !== null) {
+      window.clearTimeout(mascotSettingsHideTimerRef.current);
+      mascotSettingsHideTimerRef.current = null;
+    }
+    setMascotSettingsHoverVisible(true);
+  };
+
+  const scheduleMascotSettingsHide = () => {
+    if (typeof window.matchMedia !== "function" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (mascotSettingsHideTimerRef.current !== null) window.clearTimeout(mascotSettingsHideTimerRef.current);
+    mascotSettingsHideTimerRef.current = window.setTimeout(() => {
+      mascotSettingsHideTimerRef.current = null;
+      setMascotSettingsHoverVisible(false);
+    }, 250);
+  };
+
   useLayoutEffect(() => {
     if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
     let updateHintPosition: () => void = () => undefined;
@@ -1228,10 +1247,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
       };
   const mascotSettingsButtonStyle: CSSProperties = feedbackPlacement.mode === "custom"
-    ? { position: "fixed", left: `${feedbackPlacement.x + 122}px`, top: `${feedbackPlacement.y - 8}px` }
+    ? { position: "fixed", left: `${feedbackPlacement.x + 135}px`, top: `${feedbackPlacement.y + 8}px` }
     : shouldDockLeftOnMobile
-      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 110}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` }
-      : { position: "fixed", right: `${FEEDBACK_MARGIN + 56}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 84px)` };
+      ? { position: "fixed", left: `${FEEDBACK_MARGIN + 135}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` }
+      : { position: "fixed", right: `${FEEDBACK_MARGIN + 5}px`, bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom) + 80px)` };
   const showMascotLauncher = mascotEnabled && mascotPreferences.enabled;
 
   const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1269,6 +1288,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     }
   };
 
+  if (settingsRoute) return null;
+
   return (
     <Dialog
       open={open}
@@ -1301,6 +1322,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           }}
           onPointerDown={handleFeedbackPointerDown}
           onClick={handleFeedbackClick}
+          onMouseEnter={revealMascotSettings}
+          onMouseLeave={scheduleMascotSettingsHide}
+          onFocus={revealMascotSettings}
+          onBlur={scheduleMascotSettingsHide}
         >
           {showMascotLauncher
             ? <>
@@ -1328,8 +1353,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           size="icon"
           aria-label={settingsT("assistantAppearance.title")}
           title={settingsT("assistantAppearance.title")}
-          className="assistant-mascot-settings-control z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700"
+          className={`assistant-mascot-settings-control z-50 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg hover:bg-slate-50 focus-visible:ring-2 dark:bg-white dark:text-slate-700${mascotSettingsHoverVisible ? " assistant-mascot-controls-visible" : ""}`}
           style={mascotSettingsButtonStyle}
+          onMouseEnter={revealMascotSettings}
+          onMouseLeave={scheduleMascotSettingsHide}
+          onFocus={revealMascotSettings}
+          onBlur={scheduleMascotSettingsHide}
           onClick={() => setLocation("/settings?tab=notifications#assistant-appearance-title")}
         >
           <Settings2 className="h-4 w-4" aria-hidden="true" />
