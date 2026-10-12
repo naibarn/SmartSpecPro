@@ -22535,8 +22535,8 @@ export default function MediaStudio() {
         } as any);
         const resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
         const startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
-        const backendTaskId = taskResult.id || taskResult.backendTaskId || undefined;
-        const providerTaskId = taskResult.taskId || taskResult.providerTaskId || undefined;
+        const backendTaskId = taskResult.id || undefined;
+        const providerTaskId = taskResult.taskId || undefined;
         if (resultUrl) {
           deleteDeferredTaskIds(staleDeferredTaskIds);
           updateTask({
