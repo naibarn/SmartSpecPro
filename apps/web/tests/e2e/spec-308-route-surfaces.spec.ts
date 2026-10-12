@@ -90,7 +90,7 @@ async function expectSurfacesDoNotOverlap(page: Page, viewportWidth = 390) {
 }
 
 test.describe("SPEC-308 route surface simulations", () => {
-  test("compact sign-in keeps its primary action clear of the onboarding hint", async ({ page }) => {
+  test("sign-in yields its action and legal links to the onboarding hint", async ({ page }) => {
     await installRouteFixtures(page, 320, 740, false);
     await page.goto("/login");
 
@@ -103,14 +103,10 @@ test.describe("SPEC-308 route surface simulations", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     const hint = page.locator(".assistant-chat-onboarding-hint");
-    await expect(hint).toBeVisible();
-    const [hintRect, signInRect] = await Promise.all([hint.boundingBox(), signIn.boundingBox()]);
-    expect(hintRect).not.toBeNull();
-    expect(signInRect).not.toBeNull();
-    expect(hintRect!.x < signInRect!.x + signInRect!.width
-      && hintRect!.x + hintRect!.width > signInRect!.x
-      && hintRect!.y < signInRect!.y + signInRect!.height
-      && hintRect!.y + hintRect!.height > signInRect!.y).toBe(false);
+    await expect(hint).toBeHidden();
+    await expect(page.getByRole("link", { name: "Terms of Service" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
   test("mobile Notifications route keeps the page, Bell, and launcher usable together", async ({ page }) => {
