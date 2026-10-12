@@ -109,6 +109,7 @@ describe("Feature 179 speaker-aware contracts", () => {
     const bodyTrack = { trackId: "person-1", kind: "body_only" as const, startMs: 0, endMs: 1000, boxes: [{ timeMs: 500, x: 0.1, y: 0.2, width: 0.2, height: 0.5, confidence: 0.9 }], posture: "standing" as const, detector: { adapterId: "PersonBody" as const, adapterVersion: "1", modelChecksum: null } };
     const fused = fuseActiveSpeakerVisualEvidence({ activeSpeakers: [base], tracks: [bodyTrack] });
     expect(fused[0]).toMatchObject({ activePersonTrackId: "person-1", visualConfidence: 0.9 });
+    expect(fused[0].basis).toEqual(["vad", "person"]);
     const actions = compileStableCameraActions({ activeSpeakers: fused, tracks: [bodyTrack], confirmationWindows: 1 });
     expect(actions[0]).toMatchObject({ action: "hold", targetTrackId: "person-1", toX: 0.2, toY: 0.45 });
   });
