@@ -50,15 +50,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ee5c9f217537695b5ade1829b1238c867ecb7eaf",
+    "expected_canonical_sha": "171c9ee29db5de30ca45f5410f5235e5bc3d5c6d",
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Large mascot launcher is deployed from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76 to https://smartaihub.app. Ask user to refresh the authenticated dashboard for tenant tenant-ZCSKEM9s and verify mascot prominence, bell preservation, five style selection, chat handoff, notification reminder routing, and mobile layout. Fresh browser profiles only verify the login page; do not claim authenticated acceptance or close the 66 open requirements.",
+    "next_action": "PR #888 fixes the mascot settings gear hit target, removes overlap with the mascot, reveals it on hover/focus, and clears it after interaction on mobile. Focused local Playwright passed 1/1 and progressive_integration_gate passed; mocked SPEC-308 browser CI is pending. Merge after all checks pass, then build current Main and deploy the static UI under existing user authorization. Refresh tenant-ZCSKEM9s dashboard to verify the production-visible interaction; keep the remaining SPEC-308 acceptance requirements open.",
     "next_ready_workunit": "SPEC308_AUTHENTICATED_TENANT_UI_ACCEPTANCE",
     "reactivation_predicate": "Resume authenticated tenant acceptance when the existing logged-in dashboard is refreshed or the user provides a screenshot/evidence from https://smartaihub.app for tenant tenant-ZCSKEM9s.",
-    "resume_point": "Large mascot UI is deployed to https://smartaihub.app from Main 1298fc924a57fb0e3a386ee547ae5e4300200a76. Evidence: handoff/evidence/spec308-mascot-scale-deployment-20261012.md. Focused tests and mocked CI browser checks passed. Fresh domain Playwright sessions reach /login. Next: inspect the refreshed existing authenticated tenant dashboard and record remaining user-visible acceptance.",
-    "waiting_predicate": "Authenticated dashboard acceptance is waiting only for a refreshed existing tenant-ZCSKEM9s session or user-provided UI evidence from https://smartaihub.app."
+    "resume_point": "PR #888 head cf347cc663bd0aeae4c68bf027de3660672892ec. Local UI-only Vite Playwright regression passed 1/1 for hover reveal, gear click navigation, and hidden state on narrow layout. Progressive integration gate passed. Wait for the current mocked SPEC-308 browser CI result before normal PR integration. Then update this handoff with merged Main SHA, build and static deployment evidence; authenticated dashboard acceptance is still pending.",
+    "waiting_predicate": "Resume integration when the mocked SPEC-308 browser simulation check for PR #888 head cf347cc663bd0aeae4c68bf027de3660672892ec is terminal and passing; then build/deploy the merged canonical SHA and request refreshed tenant-ZCSKEM9s dashboard evidence."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -117,7 +117,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 83,
+  "generation": 84,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -219,9 +219,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ee5c9f217537695b5ade1829b1238c867ecb7eaf",
+    "canonical_sha": "171c9ee29db5de30ca45f5410f5235e5bc3d5c6d",
     "integrated": true,
-    "integrated_at": "2026-10-12T13:18:12Z"
+    "integrated_at": "2026-10-12T13:25:12Z",
+    "pending_action": "PR #888 includes the gear hit-target fix and its focused browser regression. Local Playwright passed; wait for the mocked SPEC-308 browser simulation check, then integrate normally. After merge, build the exact canonical Main SHA and deploy static assets under existing user authorization.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/888",
+    "source_branch": "codex/spec308-gear-click-fix",
+    "source_sha": "cf347cc663bd0aeae4c68bf027de3660672892ec"
   },
   "lifecycle": {
     "current_state": "VALIDATING",
@@ -2165,7 +2169,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T13:22:31.136857Z",
+  "updated_at": "2026-10-12T13:52:53.639287Z",
   "verification": {
     "baseline_issues": [
       "PR #852 is integrated: exact UI source head e9fe28d904451e696c0a2095221d583e512a3c01, merge commit f78fdf70a2153338c00b08faeb81ac4ce3d9eb3e, verified reachable from origin/main.",
