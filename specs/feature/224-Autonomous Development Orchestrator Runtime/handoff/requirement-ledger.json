@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -2668,19 +2668,20 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
+      "applicability_rationale": "Factory durable stage dispatch is directly governed by Spec 224 canonical job/outbox requirements and Feature 195 authority. Existing program evidence proves partial synthetic worker/outbox execution only; live Runner and receipt authority remain open. G0 evidence: orchestra/programs/autonomous-mini-app-factory/evidence/g0-spec-reconciliation-20261012.md, source SHA d0b558f7b1e511bbb866b35bae7f3880b742277c.",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2461"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2461",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "current_relevance": "RELEVANT",
       "evidence_freshness": "UNKNOWN",
       "evidence_sha": null,
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "next_action": "G3 must retain worker_jobs/outbox as the sole long-running execution path; verify trusted live Runner dispatch and receipt/accounting separately before closure.",
       "requirement_digest": "e3756b41fe468b9129544f19a656cc10e88dde86773c2293f856f46563d5129f",
       "requirement_id": "REQ-40DB4E03A676",
       "requirement_text": "Dispatch to Runner/provider SHALL occur through the canonical reliable job/outbox path.",

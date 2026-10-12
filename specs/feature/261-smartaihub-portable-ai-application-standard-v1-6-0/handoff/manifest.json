@@ -344,7 +344,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
     "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
@@ -378,6 +378,33 @@
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:18.510047Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-666171B73BDD": {
+        "applicability": "APPLICABLE",
+        "applicability_rationale": "The Factory objective and package stage produce a portable, versioned, deployable application artifact, which is directly governed by SPAAS. Current package evidence is partial and does not establish full SPAAS conformance. G0 evidence: orchestra/programs/autonomous-mini-app-factory/evidence/g0-spec-reconciliation-20261012.md, source SHA d0b558f7b1e511bbb866b35bae7f3880b742277c.",
+        "authority_refs": [
+          "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L149"
+        ],
+        "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L149",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "G1/G5 map the package manifest and generated artifact to the current SPAAS contract and retain exact source/artifact digests.",
+        "requirement_digest": "5890fb687cfd64d22f3803051bfd19eafcac12d2bd571084c92be98ec5e41cf0",
+        "requirement_id": "REQ-666171B73BDD",
+        "requirement_text": "SmartAIHub MUST define a first-class, portable, versioned, deployable AI application artifact that can be created by the Development Orchestrator, Visual Builder, external coding agents, Git import, marketplace cloning/forking, AFS/MUXI import, and future authoring channels, while preserving one consistent application contract.",
+        "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -804,7 +831,7 @@
     "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -813,7 +840,7 @@
     "unresolved": 1000
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.510047Z",
+  "updated_at": "2026-10-12T01:30:08.219713Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
