@@ -3900,7 +3900,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4959,7 +4959,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "rationale": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

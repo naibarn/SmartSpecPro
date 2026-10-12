@@ -142250,11 +142250,11 @@
       "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #891 merged normally at Main 74e593891092b8a12f528db6d7e78a9370d75774. Canonical build and live static-asset verification match that source. Live retest found onboarding hint overlaps Sign In at 320×740 and 390×740. Fix source c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5 adds static interactive controls to collision detection and adds a 320px route regression; PR checks are pending.",
+      "evidence_freshness": "PR #892 opened from codex/spec308-hint-collision-20261012 at head df9a230f138c7b72209e346758c1d8c8295885e3. Required mocked browser simulation and progressive integration gate are pending. Live deployed Main 74e593891092b8a12f528db6d7e78a9370d75774 showed hint overlap with Sign In at 320×740 and 390×740; fix is in the PR.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Open and validate the normal PR for c629b1d36e4cd7a93b9ebf7a814a57ef8dc449d5. After required checks pass, merge to Main, rebuild/publish the exact merged source, and retest the compact sign-in hint plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
+      "next_action": "PR #892: wait for the required mocked SPEC-308 browser simulation and progressive integration gate on the current exact head; repair any failing check. After checks pass, merge normally, rebuild/publish exact Main source, and retest compact hint collision plus responsive surfaces at https://smartaihub.app. Keep authenticated Bell/reminder/appearance acceptance open until tenant-ZCSKEM9s is available.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",
