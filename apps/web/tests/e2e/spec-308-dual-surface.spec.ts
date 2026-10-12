@@ -434,15 +434,19 @@ test("SPEC-308 mascot settings shortcut is reachable on hover and stays hidden a
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   const gear = page.getByRole("button", { name: "Assistant appearance" });
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
-  await expect(gear).toBeHidden();
+  await expect(gear).toHaveCSS("opacity", "0");
+  await expect(gear).toHaveCSS("pointer-events", "none");
   await launcher.locator("[data-mascot-style]").hover();
-  await expect(gear).toBeVisible();
+  await expect(gear).toHaveCSS("opacity", "1");
+  await expect(gear).toHaveCSS("pointer-events", "auto");
   await gear.click();
   await expect(page).toHaveURL(/\/settings\?tab=notifications#assistant-appearance-title$/);
   await expect(page.getByTestId("assistant-appearance-preferences")).toBeVisible();
+  await expect(gear).toHaveCSS("opacity", "0");
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole("button", { name: "Assistant appearance" })).toBeHidden();
+  await expect(gear).toHaveCSS("opacity", "0");
+  await expect(gear).toHaveCSS("pointer-events", "none");
 });
 
 test("SPEC-308 Bell always opens Notifications across every mascot style and motion setting", async ({ page }) => {

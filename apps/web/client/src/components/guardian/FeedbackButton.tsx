@@ -1079,7 +1079,6 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   };
 
   const scheduleMascotSettingsHide = () => {
-    if (typeof window.matchMedia !== "function" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (mascotSettingsHideTimerRef.current !== null) window.clearTimeout(mascotSettingsHideTimerRef.current);
     mascotSettingsHideTimerRef.current = window.setTimeout(() => {
       mascotSettingsHideTimerRef.current = null;
@@ -1322,7 +1321,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           onClick={handleFeedbackClick}
           onMouseEnter={revealMascotSettings}
           onMouseLeave={scheduleMascotSettingsHide}
-          onFocus={revealMascotSettings}
+          onFocus={event => {
+            if (event.currentTarget.matches(":focus-visible")) revealMascotSettings();
+          }}
           onBlur={scheduleMascotSettingsHide}
         >
           {showMascotLauncher
@@ -1364,9 +1365,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           style={mascotSettingsButtonStyle}
           onMouseEnter={revealMascotSettings}
           onMouseLeave={scheduleMascotSettingsHide}
-          onFocus={revealMascotSettings}
+          onFocus={event => {
+            if (event.currentTarget.matches(":focus-visible")) revealMascotSettings();
+          }}
           onBlur={scheduleMascotSettingsHide}
-          onClick={() => setLocation("/settings?tab=notifications#assistant-appearance-title")}
+          onClick={event => {
+            event.currentTarget.blur();
+            setMascotSettingsHoverVisible(false);
+            setLocation("/settings?tab=notifications#assistant-appearance-title");
+          }}
         >
           <Settings2 className="h-4 w-4" aria-hidden="true" />
         </Button>
