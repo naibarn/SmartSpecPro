@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/tmp/agents-sdk-codex-bridge-venv/bin/python",
+    "/home/dev/worktrees/agents-sdk-durable-recovery-20261013/experiments/agents-sdk-codex-subscription/run_experiment.py",
+    "--workspace",
+    "/tmp/agents-sdk-durable-acceptance-r12-20261013",
+    "--max-attempts",
+    "3",
+    "--implementation-max-turns",
+    "24",
+    "--resume",
+    "--run-id",
+    "8a66d6bd-5d05-4156-861e-74e5c36cf684"
+  ],
+  "returnCode": -9,
+  "stdout": "",
+  "stderr": ""
+}

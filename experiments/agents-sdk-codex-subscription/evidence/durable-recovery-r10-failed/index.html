@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f1">
+  <title>SplitFair — Split a bill fairly</title>
+  <style>
+    :root { color-scheme: light; --ink: #18251f; --muted: #64736b; --line: #dce4dc; --green: #176b4a; --green-dark: #10563b; --paper: #fff; --canvas: #f4f6f1; --mint: #e7f2e9; --error: #a32d31; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--ink); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .shell { width: min(100% - 32px, 960px); margin: 0 auto; padding: 26px 0 56px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 58px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; letter-spacing: -.04em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: var(--green); color: white; font-size: 17px; }
+    .offline { color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .82fr); gap: clamp(30px, 7vw, 82px); align-items: start; }
+    .intro { max-width: 480px; padding-top: 8px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 99px; background: var(--mint); color: var(--green-dark); font-size: 12px; font-weight: 700; }
+    .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #51a76e; }
+    h1 { margin: 22px 0 14px; max-width: 430px; font-size: clamp(42px, 6vw, 66px); line-height: .99; letter-spacing: -.065em; }
+    .lede { color: var(--muted); font-size: 17px; line-height: 1.65; max-width: 410px; margin: 0; }
+    .note { display: flex; align-items: flex-start; gap: 11px; margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .note-icon { flex: 0 0 24px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: white; color: var(--green); font-weight: 800; }
+    .card { background: var(--paper); border: 1px solid #e7ece6; border-radius: 20px; box-shadow: 0 18px 45px rgb(23 51 36 / 7%); overflow: hidden; }
+    .card-head { padding: 25px 27px 18px; border-bottom: 1px solid #edf0ec; }
+    .card-head h2 { font-size: 18px; margin: 0 0 5px; letter-spacing: -.025em; }
+    .card-head p { margin: 0; color: var(--muted); font-size: 13px; }
+    form { padding: 23px 27px 27px; }
+    .field { margin-bottom: 19px; }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .input-wrap { position: relative; }
+    .prefix { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #76847b; font-size: 16px; pointer-events: none; }
+    input { width: 100%; height: 52px; padding: 0 15px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
+    input.money { padding-left: 32px; }
+    input:focus { border-color: #4c9a70; box-shadow: 0 0 0 3px rgb(76 154 112 / 16%); }
+    input[aria-invalid="true"] { border-color: var(--error); }
+    .hint { margin: 7px 0 0; color: #849087; font-size: 11px; }
+    .actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 25px; }
+    button { min-height: 48px; border: 0; border-radius: 10px; padding: 0 18px; font: inherit; font-weight: 700; cursor: pointer; transition: background .15s, transform .15s; }
+    button:active { transform: translateY(1px); }
+    .submit { background: var(--green); color: white; }
+    .submit:hover { background: var(--green-dark); }
+    .reset { background: #f0f3ef; color: #415148; }
+    .reset:hover { background: #e5ebe4; }
+    .message { min-height: 0; margin: 0; color: var(--error); font-size: 12px; line-height: 1.45; }
+    .message:not(:empty) { margin-top: 13px; }
+    .results { display: none; padding: 0 27px 25px; }
+    .results.visible { display: block; }
+    .results-title { display: flex; align-items: baseline; justify-content: space-between; padding: 17px 0 12px; border-top: 1px solid #edf0ec; }
+    .results-title h3 { margin: 0; font-size: 14px; }
+    .results-title span { color: var(--muted); font-size: 12px; }
+    .share-list { display: grid; gap: 7px; max-height: 280px; overflow: auto; padding-right: 2px; }
+    .share-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 9px; background: #f6f8f5; font-size: 13px; }
+    .share-row strong { font-variant-numeric: tabular-nums; }
+    .total-row { display: flex; justify-content: space-between; padding: 13px 2px 0; font-size: 13px; font-weight: 750; }
+    .total-row strong { font-variant-numeric: tabular-nums; color: var(--green-dark); }
+    footer { margin-top: 62px; color: #839087; text-align: center; font-size: 11px; }
+    @media (max-width: 720px) { .shell { padding-top: 18px; } header { margin-bottom: 35px; } main { grid-template-columns: 1fr; gap: 30px; } .intro { max-width: 560px; } h1 { font-size: clamp(43px, 12vw, 60px); } .lede { font-size: 15px; } .note { margin-top: 21px; padding-top: 16px; } footer { margin-top: 38px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header><div class="brand"><span class="brand-mark" aria-hidden="true">↗</span><span>SplitFair</span></div><span class="offline">Private · works offline</span></header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <span class="eyebrow">No awkward math</span>
+        <h1 id="page-title">Good times.<br>Fair shares.</h1>
+        <p class="lede">Split any bill evenly, down to the last cent. Everyone gets a clear share, and the numbers always add up.</p>
+        <div class="note"><span class="note-icon" aria-hidden="true">✓</span><span>When a cent cannot be divided evenly, a few people will pay one cent more. The total still matches your bill exactly.</span></div>
+      </section>
+      <section class="card" aria-labelledby="calculator-title">
+        <div class="card-head"><h2 id="calculator-title">Split your bill</h2><p>Enter the total and how many people are sharing.</p></div>
+        <form id="split-form" novalidate>
+          <div class="field"><label for="bill-total">Bill total</label><div class="input-wrap"><span class="prefix" aria-hidden="true">$</span><input class="money" id="bill-total" name="billTotal" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" aria-label="Bill total in dollars" aria-describedby="amount-hint" required></div><p class="hint" id="amount-hint">Enter an amount greater than $0.</p></div>
+          <div class="field"><label for="people-count">Number of people</label><input id="people-count" name="people" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="2" aria-describedby="people-hint" required><p class="hint" id="people-hint">Choose a whole number from 1 to 1,000.</p></div>
+          <div class="actions"><button class="submit" type="submit">Calculate split</button><button class="reset" type="reset">Reset</button></div>
+          <p class="message" id="form-message" role="alert" aria-live="polite"></p>
+        </form>
+        <section class="results" id="results" aria-labelledby="results-heading" aria-live="polite"><div class="results-title"><h3 id="results-heading">Each person pays</h3><span id="result-count"></span></div><div class="share-list" id="share-list"></div><div class="total-row"><span>Total</span><strong id="result-total"></strong></div></section>
+      </section>
+    </main>
+    <footer>SplitFair · Simple, exact, and always on your side.</footer>
+  </div>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

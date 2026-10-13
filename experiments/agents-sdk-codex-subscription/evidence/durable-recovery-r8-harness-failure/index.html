@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4ee">
+  <title>SplitFair — a fair way to split</title>
+  <style>
+    :root { color-scheme: light; --ink:#193a35; --muted:#697873; --line:#dce5df; --green:#126b53; --mint:#e7f3ed; --paper:#fff; --canvas:#f6f4ee; --orange:#e5a05e; }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; background:var(--canvas); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .shell { min-height:100vh; display:grid; grid-template-columns:minmax(260px, .88fr) minmax(360px, 1.12fr); max-width:1180px; margin:auto; padding:34px; gap:clamp(32px,7vw,100px); align-items:center; }
+    .intro { padding:32px 4px; }
+    .brand { display:flex; gap:11px; align-items:center; font-size:14px; font-weight:750; letter-spacing:.01em; }
+    .brand-mark { display:grid; place-items:center; width:36px; height:36px; border-radius:12px; color:#fff; background:var(--green); }
+    .eyebrow { margin:74px 0 14px; color:var(--green); text-transform:uppercase; font-size:11px; font-weight:800; letter-spacing:.16em; }
+    h1 { margin:0; max-width:490px; font-family:Georgia,serif; font-size:clamp(46px,6.6vw,78px); line-height:.98; letter-spacing:-.055em; font-weight:500; }
+    h1 em { color:var(--green); font-weight:500; }
+    .lede { max-width:370px; margin:23px 0 0; color:var(--muted); line-height:1.7; font-size:15px; }
+    .note { margin-top:48px; padding-top:18px; border-top:1px solid var(--line); display:flex; gap:12px; align-items:center; color:var(--muted); font-size:12px; }
+    .note-icon { display:grid; place-items:center; flex:0 0 31px; height:31px; border-radius:50%; background:#f2e9d9; color:#896239; font-weight:800; }
+    .panel { width:100%; max-width:520px; justify-self:center; padding:clamp(25px,4.2vw,44px); border:1px solid #e8e8de; border-radius:25px; background:var(--paper); box-shadow:0 20px 60px #28473c0d; }
+    .panel-top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+    h2 { margin:0; font-family:Georgia,serif; font-size:26px; font-weight:500; letter-spacing:-.03em; }
+    .panel-top p { color:var(--muted); font-size:13px; margin:7px 0 0; }
+    .spark { color:#cc8e4c; font-size:23px; }
+    form { margin-top:30px; }
+    .field { margin-top:20px; }
+    label { display:block; margin-bottom:9px; font-size:12px; font-weight:750; }
+    .input-wrap { display:flex; align-items:center; height:55px; border:1px solid var(--line); border-radius:12px; transition:border-color .15s,box-shadow .15s; }
+    .input-wrap:focus-within { border-color:var(--green); box-shadow:0 0 0 3px #126b5318; }
+    .prefix { padding-left:16px; color:var(--muted); font-size:17px; }
+    input { width:100%; min-width:0; height:100%; padding:0 15px; border:0; outline:0; border-radius:12px; color:var(--ink); background:transparent; font:inherit; font-size:16px; }
+    input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button { appearance:none; margin:0; }
+    .suffix { padding-right:16px; color:var(--muted); font-size:12px; white-space:nowrap; }
+    .hint { margin:8px 0 0; color:#87918c; font-size:11px; }
+    .actions { display:flex; gap:10px; margin-top:27px; }
+    button { height:49px; border:0; border-radius:11px; font:inherit; font-size:13px; font-weight:750; cursor:pointer; transition:transform .12s,background .12s; }
+    button:active { transform:scale(.985); }
+    .submit { flex:1; display:flex; justify-content:center; gap:10px; align-items:center; color:white; background:var(--green); }
+    .submit:hover { background:#0c5944; }
+    .reset { padding:0 19px; color:var(--ink); background:#f2f4f0; }
+    .reset:hover { background:#e8ede7; }
+    .error { margin:15px 0 0; padding:11px 13px; border-radius:9px; color:#9a3d34; background:#fff0ed; font-size:12px; line-height:1.5; }
+    [hidden] { display:none !important; }
+    .results { margin-top:26px; padding-top:24px; border-top:1px solid var(--line); }
+    .result-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; }
+    .result-head h3 { margin:0; font-size:14px; }
+    .result-head span { color:var(--muted); font-size:11px; }
+    .share-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:280px; overflow:auto; padding-right:2px; }
+    .share { display:flex; justify-content:space-between; gap:8px; padding:11px 12px; border:1px solid #e9eee9; border-radius:10px; background:#fbfcfa; font-size:12px; }
+    .share span { color:var(--muted); } .share strong { color:var(--green); font-variant-numeric:tabular-nums; }
+    .result-foot { margin:14px 0 0; color:var(--muted); font-size:11px; text-align:right; }
+    @media (max-width:760px) { .shell { grid-template-columns:1fr; gap:20px; padding:24px 18px 40px; align-items:start; max-width:560px; } .intro { padding:10px 5px 0; } .eyebrow { margin-top:42px; } h1 { font-size:55px; } .lede { margin-top:15px; } .note { display:none; } .panel { margin-top:9px; } }
+    @media (max-width:390px) { .shell { padding-inline:14px; } .share-list { grid-template-columns:1fr; } .actions { flex-direction:column; } .reset { width:100%; } }
+  </style>
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <main class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">S</span><span>SplitFair</span></div>
+      <p class="eyebrow">Good company, easy math</p>
+      <h1 id="page-title">The bill,<br>beautifully <em>balanced.</em></h1>
+      <p class="lede">A little math makes a lot of togetherness. Split the total fairly, down to the very last cent.</p>
+      <div class="note"><span class="note-icon" aria-hidden="true">¢</span><span>Every cent is accounted for. Some shares may differ by one cent.</span></div>
+    </section>
+    <section class="panel" aria-labelledby="split-heading">
+      <div class="panel-top"><div><h2 id="split-heading">Let’s split it</h2><p>Enter the total and your group size.</p></div><span class="spark" aria-hidden="true">✳</span></div>
+      <form id="split-form" novalidate>
+        <div class="field"><label for="bill-total">Bill total</label><div class="input-wrap"><span class="prefix" aria-hidden="true">$</span><input id="bill-total" name="billTotal" type="text" inputmode="decimal" autocomplete="off" aria-label="Bill total in dollars" aria-describedby="bill-hint" placeholder="0.00"></div><p class="hint" id="bill-hint">Enter a dollar amount greater than $0.</p></div>
+        <div class="field"><label for="people-count">Number of people</label><div class="input-wrap"><input id="people-count" name="people" type="number" inputmode="numeric" min="1" max="1000" step="1" value="2" aria-describedby="people-hint"><span class="suffix">people</span></div><p class="hint" id="people-hint">Split between 1 and 1,000 people.</p></div>
+        <div class="actions"><button class="submit" type="submit">Calculate shares <span aria-hidden="true">→</span></button><button class="reset" type="reset">Reset</button></div>
+        <p class="error" id="error-message" role="alert" hidden></p>
+      </form>
+      <section class="results" id="results" aria-live="polite" aria-labelledby="results-heading" hidden>
+        <div class="result-head"><h3 id="results-heading">Each person pays</h3><span id="result-summary"></span></div>
+        <div class="share-list" id="share-list"></div>
+        <p class="result-foot" id="result-foot"></p>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

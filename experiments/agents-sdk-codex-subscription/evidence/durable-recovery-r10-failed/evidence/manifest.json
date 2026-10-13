@@ -1,0 +1,158 @@
+{
+  "schema": "agents-sdk-failed-run-evidence.v1",
+  "runId": "5cd344c6-000d-4479-af93-d9bf6ce73fb1",
+  "status": "retry_exhausted",
+  "failureClass": "Harness selector mismatch: browser harness queried .share while the application rendered .share-row. Captured browser screenshot shows the expected 334/334/333-cent output. Five intended crash boundaries were configured; four were consumed before bounded retries exhausted.",
+  "artifacts": [
+    {
+      "path": "app.mjs",
+      "bytes": 3032,
+      "sha256": "12a3ba13134b7e0a8cfdb35db0817682a40d75f15851cc0f4176a1f2e00aad3e"
+    },
+    {
+      "path": "evidence/agents-sessions.sqlite3",
+      "bytes": 192512,
+      "sha256": "a572324f70326d3cf903b11d31bbaf1fae1eef3efdc1dd618959ee92579236a8"
+    },
+    {
+      "path": "evidence/browser-uat-0599849b77d0dea3-failure.png",
+      "bytes": 79796,
+      "sha256": "2976a116312c4ce137db0c34c20f9b3ee71537ec65d5321a4932e0ec7146cbf8"
+    },
+    {
+      "path": "evidence/browser-uat-0599849b77d0dea3-trace.zip",
+      "bytes": 276190,
+      "sha256": "fc7f7c1b698e41c1bee16cf68767e04c866dd5b2c3f6bba262746f3967457907"
+    },
+    {
+      "path": "evidence/browser-uat-0599849b77d0dea3.json",
+      "bytes": 639,
+      "sha256": "aa501c9814de0d5ffba626b171ede36402fc297e2b6e74a1d5a733ee326535f5"
+    },
+    {
+      "path": "evidence/browser-uat-127dd1d0692a4f02-failure.png",
+      "bytes": 79768,
+      "sha256": "0bc462c4be860ec0c0f46eaa7be726bd87ab3f25feb1cae7593caff1ddd91e55"
+    },
+    {
+      "path": "evidence/browser-uat-127dd1d0692a4f02-trace.zip",
+      "bytes": 247276,
+      "sha256": "7e463963f850f037ba98acd20570dbcee529e6231ef47ced975fa359ca90fd04"
+    },
+    {
+      "path": "evidence/browser-uat-127dd1d0692a4f02.json",
+      "bytes": 639,
+      "sha256": "fff9b0eec2935dc55ea28a33246bc0a0a06f5e6957f42a7c14532baadffeef5b"
+    },
+    {
+      "path": "evidence/browser-uat-61633d4cdf07bca1-failure.png",
+      "bytes": 79768,
+      "sha256": "0bc462c4be860ec0c0f46eaa7be726bd87ab3f25feb1cae7593caff1ddd91e55"
+    },
+    {
+      "path": "evidence/browser-uat-61633d4cdf07bca1-trace.zip",
+      "bytes": 247291,
+      "sha256": "9fe2c104253de96ac0d93dc600b5173ac9e3a433c6160205c58dc71b46d84625"
+    },
+    {
+      "path": "evidence/browser-uat-61633d4cdf07bca1.json",
+      "bytes": 639,
+      "sha256": "5cb03e89bdfdd6b641eebb454da124e0425581af9ea2937db6526fecb6eb84e9"
+    },
+    {
+      "path": "evidence/browser-uat-93de5933ddb129cb-failure.png",
+      "bytes": 79796,
+      "sha256": "2976a116312c4ce137db0c34c20f9b3ee71537ec65d5321a4932e0ec7146cbf8"
+    },
+    {
+      "path": "evidence/browser-uat-93de5933ddb129cb-trace.zip",
+      "bytes": 246860,
+      "sha256": "cda88f7226b91c06eb7fb13c4e00ced8c20dc9a1ff14b70a26c34c2dec7f1725"
+    },
+    {
+      "path": "evidence/browser-uat-93de5933ddb129cb.json",
+      "bytes": 639,
+      "sha256": "5a3bbabdfe1f693cf8984d5900fb8d802f0caf35f947a1cbe9c3cc086b11ad4d"
+    },
+    {
+      "path": "evidence/browser-uat-ff3fa03d474273ae-failure-recovered-a9c7bff7.png",
+      "bytes": 79768,
+      "sha256": "0bc462c4be860ec0c0f46eaa7be726bd87ab3f25feb1cae7593caff1ddd91e55"
+    },
+    {
+      "path": "evidence/browser-uat-ff3fa03d474273ae-failure.png",
+      "bytes": 79768,
+      "sha256": "0bc462c4be860ec0c0f46eaa7be726bd87ab3f25feb1cae7593caff1ddd91e55"
+    },
+    {
+      "path": "evidence/browser-uat-ff3fa03d474273ae-recovered-a9c7bff7.json",
+      "bytes": 639,
+      "sha256": "ffd8571b2a7fc9b9184bdc04aca5bc3f4071c7d3d9fb47217a5df520568cd857"
+    },
+    {
+      "path": "evidence/browser-uat-ff3fa03d474273ae-trace.zip",
+      "bytes": 301228,
+      "sha256": "b183006a4ae2d17c75b4adcd58507e2e8985ab51e53a9e266ddd4e04e91c922e"
+    },
+    {
+      "path": "evidence/browser-uat-ff3fa03d474273ae.json",
+      "bytes": 639,
+      "sha256": "fe59c7255bf63d60ce075cff8dd4190d15c2bac16bd013d23ebb47cdaf057974"
+    },
+    {
+      "path": "evidence/events.jsonl",
+      "bytes": 225832,
+      "sha256": "5794c8ffa557c45a38a644272e8b1989a27f20aa4fd0adbf7450bf90c303da28"
+    },
+    {
+      "path": "evidence/process-logs/process-01.json",
+      "bytes": 399,
+      "sha256": "e40ecef5408e8bf16847389967139eaf1f9cc20e87db07c3f5cd6780fc11338d"
+    },
+    {
+      "path": "evidence/process-logs/process-02.json",
+      "bytes": 475,
+      "sha256": "07accdced18f276b6333695bbabfbdc12bd35567752a524f0ad525de08fb446e"
+    },
+    {
+      "path": "evidence/process-logs/process-03.json",
+      "bytes": 475,
+      "sha256": "07accdced18f276b6333695bbabfbdc12bd35567752a524f0ad525de08fb446e"
+    },
+    {
+      "path": "evidence/process-logs/process-04.json",
+      "bytes": 475,
+      "sha256": "07accdced18f276b6333695bbabfbdc12bd35567752a524f0ad525de08fb446e"
+    },
+    {
+      "path": "evidence/process-logs/process-05.json",
+      "bytes": 33773,
+      "sha256": "58e9c214cf5d21f4adf8669d1b0d24924a8f3b554eb57bd3839820cfe93f2106"
+    },
+    {
+      "path": "evidence/run-state.json",
+      "bytes": 418101,
+      "sha256": "1698bc7ea5c8c12b2b574d987d9570528fde6fe38046e490a24463e1e1001f6d"
+    },
+    {
+      "path": "evidence/runtime.sqlite3",
+      "bytes": 2469888,
+      "sha256": "4cbe04580d46ff064b843f835906e2e0ce1e3fca1c1de4d3a155be1a27406442"
+    },
+    {
+      "path": "index.html",
+      "bytes": 8172,
+      "sha256": "1818c9b9b5af18215c9c087d7cef5458a97addb2bd4d78fb13334d3aa7571387"
+    },
+    {
+      "path": "split.mjs",
+      "bytes": 508,
+      "sha256": "f79ffbb16a2354e08b1ca274c5bfa36ed0f21ff4f9b8f5b612b6096aa5b1a98e"
+    },
+    {
+      "path": "split.test.mjs",
+      "bytes": 728,
+      "sha256": "8e5f05c4103343375dd23f294c2f87f6286d621301735eebec3420a0ed3acd86"
+    }
+  ]
+}

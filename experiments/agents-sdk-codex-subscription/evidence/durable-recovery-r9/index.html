@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f3ee">
+  <title>SplitFair — split a bill fairly</title>
+  <style>
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #20332b; background: #f4f3ee; font-synthesis: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px 18px; background: radial-gradient(ellipse at 15% 10%, #e2ebdc 0, transparent 34%), #f4f3ee; }
+    main { width: min(100%, 500px); }
+    .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 24px 2px; font-size: 14px; font-weight: 750; letter-spacing: .02em; }
+    .mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; color: white; background: #236d4c; font-size: 18px; }
+    .card { padding: clamp(24px, 6vw, 38px); border: 1px solid #e3e4dc; border-radius: 24px; background: #fffefa; box-shadow: 0 22px 60px #334b3512, 0 2px 8px #334b350b; }
+    h1 { margin: 0; font-size: clamp(28px, 6vw, 36px); line-height: 1.12; letter-spacing: -.045em; }
+    .intro { margin: 11px 0 28px; color: #727970; font-size: 15px; line-height: 1.55; }
+    .field { margin: 0 0 19px; }
+    label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+    .input-wrap { display: flex; align-items: center; height: 52px; padding: 0 15px; border: 1px solid #dfe2d9; border-radius: 12px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .input-wrap:focus-within { border-color: #39845d; box-shadow: 0 0 0 3px #39845d20; }
+    .prefix { margin-right: 9px; color: #7c847b; font-size: 16px; }
+    input { width: 100%; min-width: 0; border: 0; outline: 0; color: #20332b; background: transparent; font: inherit; font-size: 16px; }
+    input::placeholder { color: #b1b6ad; }
+    .hint { margin: 7px 0 0; color: #858a82; font-size: 12px; }
+    .error { display: none; margin: 8px 0 0; color: #a63737; font-size: 13px; }
+    .error.visible { display: block; }
+    .actions { display: flex; gap: 10px; margin-top: 25px; }
+    button { min-height: 49px; border: 0; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 750; cursor: pointer; transition: transform .12s, background .12s; }
+    button:active { transform: translateY(1px); }
+    button:focus-visible { outline: 3px solid #39845d66; outline-offset: 2px; }
+    .primary { flex: 1; color: #fff; background: #236d4c; }
+    .primary:hover { background: #18583b; }
+    .reset { padding: 0 20px; color: #48564e; background: #eef0e9; }
+    .reset:hover { background: #e4e8de; }
+    .results { display: none; margin-top: 26px; padding-top: 24px; border-top: 1px solid #e8e9e2; }
+    .results.visible { display: block; }
+    .results-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+    .summary { color: #747d73; font-size: 12px; }
+    .share-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 255px; overflow: auto; }
+    .share { display: flex; justify-content: space-between; gap: 8px; padding: 11px 12px; border: 1px solid #e8eae3; border-radius: 10px; color: #657067; font-size: 13px; }
+    .share strong { color: #20332b; font-variant-numeric: tabular-nums; }
+    .total-line { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #dfe2d9; color: #556258; font-size: 13px; }
+    .total-line strong { color: #236d4c; font-variant-numeric: tabular-nums; }
+    .foot { margin: 16px 4px 0; color: #82877e; font-size: 12px; text-align: center; }
+    @media (max-width: 380px) { .share-list { grid-template-columns: 1fr; } .card { border-radius: 19px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand"><span class="mark" aria-hidden="true">÷</span><span>SplitFair</span></div>
+    <section class="card" aria-labelledby="title">
+      <h1 id="title">Good company.<br>Fair split.</h1>
+      <p class="intro">Divide the bill evenly, down to the last cent.</p>
+      <form id="split-form" novalidate>
+        <div class="field">
+          <label for="amount">Bill total</label>
+          <div class="input-wrap"><span class="prefix" aria-hidden="true">$</span><input id="amount" name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" aria-label="Bill total in dollars" aria-describedby="amount-hint amount-error" required></div>
+          <p id="amount-hint" class="hint">Enter the total in dollars</p>
+          <p id="amount-error" class="error" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="people">Number of people</label>
+          <div class="input-wrap"><input id="people" name="people" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="2" aria-describedby="people-hint people-error" required></div>
+          <p id="people-hint" class="hint">Split between 1 and 1,000 people</p>
+          <p id="people-error" class="error" role="alert"></p>
+        </div>
+        <div class="actions"><button class="primary" type="submit">Split the bill <span aria-hidden="true">→</span></button><button class="reset" type="reset">Reset</button></div>
+      </form>
+      <section id="results" class="results" aria-live="polite" aria-labelledby="results-title">
+        <div class="results-head"><h2 id="results-title">Here’s your split</h2><span id="summary" class="summary"></span></div>
+        <div id="share-list" class="share-list"></div>
+        <div class="total-line"><span>Total accounted for</span><strong id="total"></strong></div>
+      </section>
+    </section>
+    <p class="foot">Every cent accounted for. Made for sharing.</p>
+  </main>
+  <script type="module">
+    import { allocateShares } from './split.mjs';
+    const form = document.querySelector('#split-form');
+    const amount = document.querySelector('#amount');
+    const people = document.querySelector('#people');
+    const results = document.querySelector('#results');
+    const shareList = document.querySelector('#share-list');
+    const money = cents => '$' + (cents / 100).toFixed(2);
+    function clearErrors() { for (const id of ['amount-error', 'people-error']) { const el = document.getElementById(id); el.textContent = ''; el.classList.remove('visible'); } }
+    function setError(id, message) { const el = document.getElementById(id); el.textContent = message; el.classList.add('visible'); }
+    form.addEventListener('submit', event => {
+      event.preventDefault(); clearErrors();
+      const dollars = Number(amount.value);
+      const count = Number(people.value);
+      let valid = true;
+      if (!amount.value.trim() || !Number.isFinite(dollars) || dollars <= 0) { setError('amount-error', 'Enter a bill total greater than $0.'); valid = false; }
+      const exactCents = dollars * 100;
+      if (valid && (!Number.isSafeInteger(Math.round(exactCents)) || Math.abs(exactCents - Math.round(exactCents)) > 1e-7)) { setError('amount-error', 'Enter an amount with no more than two decimal places.'); valid = false; }
+      if (!people.value.trim() || !Number.isInteger(count) || count < 1 || count > 1000) { setError('people-error', 'Enter a whole number from 1 to 1,000.'); valid = false; }
+      if (!valid) { results.classList.remove('visible'); return; }
+      const cents = Math.round(exactCents);
+      const shares = allocateShares(cents, count);
+      shareList.replaceChildren(...shares.map((share, index) => { const row = document.createElement('div'); row.className = 'share'; const label = document.createElement('span'); label.textContent = `Person ${index + 1}`; const value = document.createElement('strong'); value.textContent = money(share); row.append(label, value); return row; }));
+      document.querySelector('#summary').textContent = `${count} ${count === 1 ? 'person' : 'people'}`;
+      document.querySelector('#total').textContent = money(shares.reduce((sum, share) => sum + share, 0));
+      results.classList.add('visible');
+    });
+    form.addEventListener('reset', () => { clearErrors(); results.classList.remove('visible'); shareList.replaceChildren(); document.querySelector('#summary').textContent = ''; document.querySelector('#total').textContent = ''; });
+  </script>
+</body>
+</html>

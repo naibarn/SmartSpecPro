@@ -6,8 +6,8 @@ from pathlib import Path
 from agents import function_tool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from codex_model import CodexSubscriptionModel, DISPATCH_SCHEMA
-from run_experiment import ensure_inside
+from codex_model import CodexSubscriptionModel, DISPATCH_SCHEMA, _select_thread_turn
+from run_experiment import attempt_is_terminal, ensure_inside, find_incomplete_attempt, has_verified_success
 
 
 class WorkspacePathTests(unittest.TestCase):
@@ -35,6 +35,17 @@ class WorkspacePathTests(unittest.TestCase):
 
 
 class ModelDispatchTests(unittest.TestCase):
+    def test_turn_reconciliation_preserves_existing_binding_and_recovers_only_latest_unbound_turn(self):
+        from types import SimpleNamespace
+
+        first = SimpleNamespace(id="turn-1")
+        latest = SimpleNamespace(id="turn-2")
+        turns = [first, latest]
+        self.assertIs(_select_thread_turn(turns, "turn-1"), first)
+        self.assertIsNone(_select_thread_turn(turns, "missing"))
+        self.assertIsNone(_select_thread_turn(turns, None))
+        self.assertIs(_select_thread_turn(turns, None, recover_latest=True), latest)
+
     def test_dispatch_schema_uses_codex_supported_strict_json_shape(self):
         self.assertIn("properties", DISPATCH_SCHEMA)
         self.assertEqual(DISPATCH_SCHEMA["properties"]["arguments_json"]["type"], "string")
@@ -50,11 +61,18 @@ class ModelDispatchTests(unittest.TestCase):
             '{"action":"call_tool","name":"add","arguments_json":"{\\"a\\":17,\\"b\\":25}","text":null}',
             [tool],
             [],
+            identity="stable-call-1",
         )
         self.assertEqual(item.type, "function_call")
         self.assertEqual(item.name, "add")
         self.assertEqual(item.arguments, '{"a": 17, "b": 25}')
         self.assertTrue(item.call_id)
+        duplicate = CodexSubscriptionModel._parse_dispatch(
+            '{"action":"call_tool","name":"add","arguments_json":"{\\"a\\":17,\\"b\\":25}","text":null}',
+            [tool], [], identity="stable-call-1",
+        )
+        self.assertEqual(item.call_id, duplicate.call_id)
+        self.assertEqual(item.id, duplicate.id)
 
     def test_dispatch_rejects_unregistered_tools(self):
         with self.assertRaisesRegex(ValueError, "unregistered"):
@@ -63,6 +81,50 @@ class ModelDispatchTests(unittest.TestCase):
                 [],
                 [],
             )
+
+    def test_dispatch_recovers_bare_quotes_in_write_file_source_only(self):
+        raw = r'{"relative_path":"index.html","content":"<style>body{font-family:system-ui,"Segoe UI",sans-serif}</style>\n<script>const digits=/\d+/</script>"}'
+        recovered = CodexSubscriptionModel._recover_write_file_arguments("write_file", raw)
+        self.assertEqual(recovered["relative_path"], "index.html")
+        self.assertIn('"Segoe UI"', recovered["content"])
+        self.assertIn(r"/\d+/", recovered["content"])
+        with self.assertRaisesRegex(ValueError, "not valid JSON"):
+            CodexSubscriptionModel._recover_write_file_arguments("run_browser_uat", '{"x":"bare " quote"}')
+
+
+class RecoveryProjectionTests(unittest.TestCase):
+    def test_accepted_review_without_verification_is_resumed(self):
+        attempt = {"attempt": 2, "status": "implemented", "review": {"complete": True, "findings": []}}
+        self.assertFalse(attempt_is_terminal(attempt))
+        self.assertFalse(has_verified_success({"attempts": [attempt]}))
+
+    def test_completed_verification_restores_success_without_new_attempt(self):
+        attempt = {
+            "attempt": 2, "status": "implemented",
+            "review": {"complete": True, "findings": []},
+            "verification": {"complete": True, "findings": [], "evidence": ["verified"]},
+        }
+        state = {"attempts": [attempt]}
+        self.assertTrue(attempt_is_terminal(attempt))
+        self.assertTrue(has_verified_success(state))
+
+    def test_successful_review_attempt_is_reused_until_verifier_settles(self):
+        attempt = {"attempt": 1, "status": "implemented", "review": {"complete": True, "findings": []}}
+        self.assertIs(find_incomplete_attempt([attempt], 1), attempt)
+        attempt["verification"] = {"complete": True, "findings": []}
+        self.assertIsNone(find_incomplete_attempt([attempt], 1))
+
+
+class BrowserHarnessContractTests(unittest.TestCase):
+    def test_browser_assertions_target_accessible_result_contract(self):
+        source = (Path(__file__).resolve().parents[1] / "harness" / "browser_uat.cjs").read_text()
+        self.assertIn('[id*="share"] li strong', source)
+        self.assertIn('[data-share]', source)
+        self.assertIn('[data-testid="share"]', source)
+        self.assertIn('li .share-amount', source)
+        self.assertIn('[role="alert"]:visible', source)
+        self.assertNotIn("#results li strong", source)
+        self.assertNotIn("#message", source)
 
 
 if __name__ == "__main__":
