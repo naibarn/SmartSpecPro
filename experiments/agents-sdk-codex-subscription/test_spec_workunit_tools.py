@@ -70,6 +70,27 @@ class ScopedPatchTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(self.target.read_text(), "alpha\nbeta\ndelta\n")
 
+    def test_allows_relative_imports_inside_scoped_patch_content(self) -> None:
+        self.target.write_text("import { helper } from './helper';\n", encoding="utf-8")
+        patch = (
+            "*** Begin Patch\n"
+            f"*** Update File: {self.relative}\n"
+            "@@\n-import { helper } from './helper';\n"
+            "+import { helper } from '../costTracker';\n"
+            "*** End Patch"
+        )
+
+        result = self.tools.patch_file(self.relative, patch)
+
+        self.assertIn("Applied scoped patch", result)
+        self.assertEqual(self.target.read_text(), "import { helper } from '../costTracker';\n")
+        self.assertEqual(next(iter(self.store.receipts.values()))["status"], "completed")
+
+    def test_rejects_traversal_target_before_creating_a_tool_receipt(self) -> None:
+        with self.assertRaises(PermissionError):
+            self.tools.patch_file("../outside.ts", self.patch)
+        self.assertEqual(self.store.receipts, {})
+
     def test_rejects_ambiguous_context_without_writing(self) -> None:
         self.target.write_text("same\nsame\n", encoding="utf-8")
         patch = f"*** Begin Patch\n*** Update File: {self.relative}\n@@\n-same\n+changed\n*** End Patch"
