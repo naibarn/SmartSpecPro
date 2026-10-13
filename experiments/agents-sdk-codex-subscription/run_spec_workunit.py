@@ -327,6 +327,10 @@ class ScopedRepoTools:
             env["RUN_DB_INTEGRATION_TESTS"] = "true"
         else:
             env["RUN_DB_INTEGRATION_TESTS"] = "false"
+        if self.contract.raw["tests"]["runner"] == "pytest" and any(path.startswith("python-backend/") for path in self.contract.test_paths):
+            python_backend = str(self.root / "python-backend")
+            existing_pythonpath = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = python_backend + (os.pathsep + existing_pythonpath if existing_pythonpath else "")
         result = subprocess.run(command, cwd=self.root, env=env, text=True, capture_output=True, timeout=240, check=False)
         maybe_crash(self.store, "tool.run_focused_tests.after_effect", operation_id)
         database_url = env.get("DATABASE_URL", "")
