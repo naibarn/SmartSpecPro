@@ -1,0 +1,52 @@
+{
+  "schema": "spec-workunit-focused-test-receipt.v1",
+  "specId": "SPEC-038",
+  "workUnit": "SPEC038_CONTENT_COST_BY_SKILL",
+  "requirementId": "REQ-028588461FFC",
+  "gitHead": "6ea7c43e512c486c33b0ea957dcb1d29d06d63de",
+  "workspace": "/home/dev/worktrees/spec-rollout-agents-sdk-20261013",
+  "database": {
+    "mode": "isolated_local",
+    "host": "127.0.0.1",
+    "port": 55400,
+    "database": "spec038_a316d4176722_test",
+    "credentialsIncluded": false
+  },
+  "command": [
+    "pnpm",
+    "--dir",
+    "apps/web",
+    "exec",
+    "vitest",
+    "run",
+    "server/routers/contentQuality.router.test.ts",
+    "server/routers/contentQuality.test.ts",
+    "server/services/costTracker.test.ts",
+    "server/services/llmRouter.test.ts",
+    "server/services/__tests__/contentArtifactCostCorrelation.integration.test.ts",
+    "client/src/pages/__tests__/ContentQualityDashboard.test.tsx"
+  ],
+  "exitCode": 0,
+  "testFiles": 6,
+  "testsPassed": 82,
+  "durationMs": 1860,
+  "browserUat": "UNVERIFIED",
+  "sourceHashes": {
+    "apps/web/drizzle/schema.ts": "4a1cd86310533630b806e506fb7726c4ae0fa42396ebb661f65a14df1179e208",
+    "apps/web/drizzle/0401_spec038_artifact_cost_correlation.sql": "dd594cf7cb7f0a33386c65afe128fd9485edbf7dce565224e030aab6c0c125f8",
+    "apps/web/drizzle/meta/_journal.json": "ac918f8713dd4c78f9c620eb876f0337942e9360ad480571534fc2f476b33662",
+    "apps/web/server/routers/skills.ts": "eeafbb1ba0cd12d6be71246981af81f47d32bee023108216f79bd23bd8069fed",
+    "apps/web/server/routers/contentQuality.ts": "e58ca487fd6986bc891526657d5bf0861d956451957a60719a791658b8aee70b",
+    "apps/web/server/routers/contentQuality.router.test.ts": "b74d4b25ed256fd8cebd62bedddef6198a3bc1371874a4c78fb22606ddae2285",
+    "apps/web/server/services/agentRuntime/skillRuntimeOrchestrator.ts": "c65a9f5bcd6ed1c88ad8ee4fdfe2771360645625df6e6c939ed7131670c8958e",
+    "apps/web/server/services/contentArtifactStore.ts": "08b0b0d126916699c466f80784323f2faeb35b1e1d4fc5d7b1c9ee26dbf10bd4",
+    "apps/web/server/services/costTracker.ts": "bdc0d188b30c8899004a89635e7073b671dadf127dea450164fbd5dbd2a246a3",
+    "apps/web/server/services/costTracker.test.ts": "4e935483b35c71c787c8dd16af435d6dc687aeea89171a9bc94b6eabb497340f",
+    "apps/web/server/services/llmRouter.ts": "e46dd2241eea4691a4465f8f72f58b4d288a59e6fc193a644dfe7095d1e5505c",
+    "apps/web/server/services/llmRouter.test.ts": "07e9a5d1f1d1eaa475f2f769ec4e4a1f0a606dc02bd5c03f354e9664c4325d8c",
+    "apps/web/server/services/__tests__/contentArtifactCostCorrelation.integration.test.ts": "12433f9783dbfd00a2a8ae4afde1d5e648edfdb5a6dffb4b7672e8f119c91ad1",
+    "apps/web/client/src/pages/ContentQualityDashboard.tsx": "f38477e5199adecd340385f0a4de8fcb09fba4c918530cfdb1b161505fabdd59",
+    "apps/web/client/src/pages/__tests__/ContentQualityDashboard.test.tsx": "ce905a99d09a60c6a4ad9c832dd6a0f9fb1660bf22602f439183b112c1c080f5"
+  },
+  "verifiedAt": "2026-10-13T14:51:45.673482+00:00"
+}

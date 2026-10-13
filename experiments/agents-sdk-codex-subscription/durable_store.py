@@ -275,10 +275,13 @@ class DurableRunStore:
             raise
         self.export()
 
-    def finish_run(self, accepted: bool) -> None:
-        self.state["status"] = "completed" if accepted else "retry_exhausted"
+    def finish_run(self, accepted: bool, *, terminal_status: str | None = None) -> None:
+        if terminal_status not in {None, "awaiting_browser_uat"}:
+            raise ValueError("Unsupported terminal status")
+        self.state["status"] = terminal_status or ("completed" if accepted else "retry_exhausted")
         self.state["finishedAt"] = timestamp()
-        self.event("run.completed" if accepted else "run.retry_exhausted", {"accepted": accepted}, stable_key=f"run:result:{accepted}")
+        kind = "run.awaiting_browser_uat" if terminal_status == "awaiting_browser_uat" else ("run.completed" if accepted else "run.retry_exhausted")
+        self.event(kind, {"accepted": accepted, "status": self.state["status"]}, stable_key=f"run:result:{self.state['status']}")
 
     def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any]) -> dict[str, Any]:
         request_json = canonical_json(request)

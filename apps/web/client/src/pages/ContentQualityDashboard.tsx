@@ -297,9 +297,9 @@ export default function ContentQualityDashboard() {
             <DollarSign className="h-5 w-5" />
             Skill Execution Costs (30 days)
           </h3>
-          {costBreakdown.data && costBreakdown.data.length > 0 ? (
+          {costBreakdown.data && (Array.isArray(costBreakdown.data) ? costBreakdown.data.length > 0 : (costBreakdown.data.by_skill?.length > 0 || costBreakdown.data.by_artifact?.length > 0 || (costBreakdown.data.unattributed?.request_count ?? 0) > 0)) ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {costBreakdown.data.map((item: any) => (
+              {(Array.isArray(costBreakdown.data) ? costBreakdown.data : (costBreakdown.data.by_skill ?? [])).map((item: any) => (
                 <div key={item.skill_slug} className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">{item.skill_slug}</p>
                   <p className="text-lg font-bold">${item.total_cost_usd.toFixed(4)}</p>
@@ -311,6 +311,20 @@ export default function ContentQualityDashboard() {
                   </p>
                 </div>
               ))}
+              {(Array.isArray(costBreakdown.data) ? [] : (costBreakdown.data.by_artifact ?? [])).map((item: any) => (
+                <div key={`artifact-${item.artifact_id}`} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{item.skill_slug} · Artifact #{item.artifact_id}</p>
+                  <p className="text-lg font-bold">${item.total_cost_usd.toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">{item.request_count} requests &middot; {(item.total_tokens / 1000).toFixed(1)}k tokens</p>
+                </div>
+              ))}
+              {!Array.isArray(costBreakdown.data) && (costBreakdown.data.unattributed?.request_count ?? 0) > 0 && (
+                <div className="rounded-lg border border-dashed p-3">
+                  <p className="text-xs text-muted-foreground">Unattributed usage</p>
+                  <p className="text-lg font-bold">${(costBreakdown.data.unattributed?.total_cost_usd ?? 0).toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">{costBreakdown.data.unattributed?.request_count ?? 0} requests &middot; {((costBreakdown.data.unattributed?.total_tokens ?? 0) / 1000).toFixed(1)}k tokens</p>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-muted-foreground text-sm py-4 text-center">

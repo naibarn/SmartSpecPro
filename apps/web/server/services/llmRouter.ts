@@ -865,6 +865,8 @@ export async function executeWithFallback(params: {
   messages: Message[];
   /** Skill attribution for provider usage rows initiated by a skill. */
   skillSlug?: string;
+  /** Content generation correlation assigned before provider dispatch. */
+  contentGenerationId?: string;
   /** Server-owned authority check immediately before each provider request. */
   beforeProviderRequest?: () => Promise<void>;
   stream: boolean;
@@ -1427,6 +1429,7 @@ export async function executeWithFallback(params: {
             traceId: getTraceId(),
             requestType: params.skillSlug ? "skill" : undefined,
             skillSlug: params.skillSlug,
+            contentGenerationId: params.contentGenerationId,
           }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
           auditLogger.log({
             eventType: "llm_response",
@@ -1519,6 +1522,7 @@ export async function executeWithFallback(params: {
           traceId: getTraceId(),
           requestType: params.skillSlug ? "skill" : undefined,
           skillSlug: params.skillSlug,
+          contentGenerationId: params.contentGenerationId,
         }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
         // Log LLM response to JSONL audit trail (with full payload for transparency)
@@ -1624,6 +1628,7 @@ export async function executeWithFallback(params: {
         traceId: getTraceId(),
         requestType: params.skillSlug ? "skill" : undefined,
         skillSlug: params.skillSlug,
+        contentGenerationId: params.contentGenerationId,
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Log LLM error to JSONL audit trail
@@ -1723,6 +1728,7 @@ export async function executeWithFallback(params: {
         traceId: getTraceId(),
         requestType: params.skillSlug ? "skill" : undefined,
         skillSlug: params.skillSlug,
+        contentGenerationId: params.contentGenerationId,
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       auditLogger.log({

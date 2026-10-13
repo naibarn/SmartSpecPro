@@ -1535,6 +1535,8 @@ export const providerUsageLog = pgTable(
     requestType: varchar("requestType", { length: 32 }),
     /** Skill that initiated this provider usage, when applicable. */
     skillSlug: varchar("skillSlug", { length: 100 }),
+    /** Stable content-generation correlation, assigned before provider dispatch. */
+    contentGenerationId: uuid("contentGenerationId"),
 
     wasFallback: boolean("wasFallback").default(false).notNull(),
     fallbackFromProviderId: integer("fallbackFromProviderId").references(
@@ -1552,6 +1554,7 @@ export const providerUsageLog = pgTable(
     index("provider_usage_log_user_created").on(t.userId, t.createdAt),
     index("provider_usage_log_provider_created").on(t.providerId, t.createdAt),
     index("provider_usage_log_trace_id").on(t.traceId),
+    index("provider_usage_log_content_generation_id").on(t.contentGenerationId),
   ]
 );
 
@@ -14733,6 +14736,8 @@ export const contentArtifacts = pgTable(
     tenantId: text("tenantId").notNull(),
     userId: integer("userId").notNull(),
     skillSlug: text("skillSlug").notNull(),
+    /** Correlates the artifact only to provider usage from its own generation. */
+    contentGenerationId: uuid("contentGenerationId"),
     outputFormat: text("outputFormat").notNull(),
     contentJson: jsonb("contentJson"),
     qualityScore: jsonb("qualityScore"),

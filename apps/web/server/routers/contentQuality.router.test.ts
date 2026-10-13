@@ -167,7 +167,7 @@ describe("contentQuality.getStructuredDataIssues", () => {
 describe("contentQuality.getCostBreakdown", () => {
   beforeEach(() => mockSelect.mockReset());
 
-  it("groups tenant skill usage by skill slug and keeps legacy rows unattributed", async () => {
+  it("returns legacy skill totals alongside artifact and unattributed aggregates", async () => {
     const tenantUsers = {
       from: vi.fn(() => tenantUsers),
       where: vi.fn(() => tenantUsers),
@@ -183,17 +183,35 @@ describe("contentQuality.getCostBreakdown", () => {
       groupBy: vi.fn(() => usageQuery),
       orderBy: vi.fn().mockResolvedValue(rows),
     };
-    mockSelect.mockReturnValueOnce(tenantUsers).mockReturnValueOnce(usageQuery);
+    const artifactRows = [{ artifact_id: 12, content_generation_id: "generation-1", skill_slug: "article-writer", total_cost_usd: "0.1", total_tokens: 900, request_count: 2 }];
+    const artifactQuery = {
+      from: vi.fn(() => artifactQuery),
+      innerJoin: vi.fn(() => artifactQuery),
+      where: vi.fn(() => artifactQuery),
+      groupBy: vi.fn().mockResolvedValue(artifactRows),
+    };
+    const unattributedQuery = {
+      from: vi.fn(() => unattributedQuery),
+      where: vi.fn().mockResolvedValue([{ total_cost_usd: "0.01", total_tokens: 100, request_count: 1 }]),
+    };
+    mockSelect.mockReturnValueOnce(tenantUsers).mockReturnValueOnce(usageQuery).mockReturnValueOnce(artifactQuery).mockReturnValueOnce(unattributedQuery);
 
     const result = await contentQualityRouter.createCaller(createContext("admin"))
       .getCostBreakdown({ days: 30 });
 
     expect(usageQuery.groupBy).toHaveBeenCalledOnce();
-    expect(result).toEqual([
-      { skill_slug: "article-writer", total_cost_usd: 0.125, total_tokens: 1200, request_count: 2, avg_cost_per_request: 0.0625 },
-      { skill_slug: "product-reviewer", total_cost_usd: 0.05, total_tokens: 450, request_count: 1, avg_cost_per_request: 0.05 },
-      { skill_slug: "unknown", total_cost_usd: 0.01, total_tokens: 100, request_count: 1, avg_cost_per_request: 0.01 },
-    ]);
+    expect(artifactQuery.innerJoin).toHaveBeenCalledOnce();
+    expect(artifactQuery.groupBy).toHaveBeenCalledOnce();
+    expect(unattributedQuery.where).toHaveBeenCalledOnce();
+    expect(result).toEqual({
+      by_skill: [
+        { skill_slug: "article-writer", total_cost_usd: 0.125, total_tokens: 1200, request_count: 2, avg_cost_per_request: 0.0625 },
+        { skill_slug: "product-reviewer", total_cost_usd: 0.05, total_tokens: 450, request_count: 1, avg_cost_per_request: 0.05 },
+        { skill_slug: "unknown", total_cost_usd: 0.01, total_tokens: 100, request_count: 1, avg_cost_per_request: 0.01 },
+      ],
+      by_artifact: [{ artifact_id: 12, skill_slug: "article-writer", total_cost_usd: 0.1, total_tokens: 900, request_count: 2 }],
+      unattributed: { total_cost_usd: 0.01, total_tokens: 100, request_count: 1 },
+    });
   });
 
   it("keeps cost details admin-only", async () => {

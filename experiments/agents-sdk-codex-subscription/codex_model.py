@@ -230,7 +230,10 @@ class CodexSubscriptionModel(Model):
             try:
                 arguments = json.loads(arguments_text)
             except json.JSONDecodeError:
-                arguments = CodexSubscriptionModel._recover_write_file_arguments(name, arguments_text)
+                if name == "patch_file":
+                    arguments = CodexSubscriptionModel._recover_patch_file_arguments(arguments_text)
+                else:
+                    arguments = CodexSubscriptionModel._recover_write_file_arguments(name, arguments_text)
             if not isinstance(arguments, dict):
                 raise ValueError("Codex tool arguments must be a JSON object")
             stable = hashlib.sha256((identity or raw_text).encode()).hexdigest()[:32]
@@ -296,6 +299,25 @@ class CodexSubscriptionModel(Model):
         )
         if set(repaired) != {"relative_path", "content"} or not all(isinstance(v, str) for v in repaired.values()):
             raise ValueError("Recovered write_file arguments failed schema validation")
+        return repaired
+
+    @staticmethod
+    def _recover_patch_file_arguments(raw: str) -> dict[str, Any]:
+        """Close a completed patch_file argument object missing only its final brace.
+
+        The inner patch text has already ended at its closing JSON quote. This
+        narrow repair does not change the path or patch bytes; normal Agents SDK
+        schema validation and the scoped patch tool still enforce both.
+        """
+        candidate = raw.rstrip()
+        if not candidate.endswith('"'):
+            raise ValueError("Malformed patch_file arguments are not a complete string field")
+        try:
+            repaired = json.loads(candidate + "}")
+        except json.JSONDecodeError as exc:
+            raise ValueError("Malformed patch_file arguments are not repairable") from exc
+        if set(repaired) != {"path", "patch"} or not all(isinstance(value, str) for value in repaired.values()):
+            raise ValueError("Recovered patch_file arguments failed schema validation")
         return repaired
 
     def _run_codex_turn(
