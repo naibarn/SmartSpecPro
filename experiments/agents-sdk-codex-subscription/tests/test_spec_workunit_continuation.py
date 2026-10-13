@@ -44,6 +44,17 @@ class RepeatedPatchRejectionTests(unittest.TestCase):
         ]
         self.assertIsNone(repeated_patch_rejection_reason(receipts))
 
+    def test_numbered_context_rejections_are_grouped_across_line_shifts(self) -> None:
+        receipts = [
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 6; refresh source and retry"}'},
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 671; refresh source and retry"}'},
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 1187; refresh source and retry"}'},
+        ]
+        self.assertEqual(
+            repeated_patch_rejection_reason(receipts),
+            ("Numbered patch context did not match at line 6; refresh source and retry", 3),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

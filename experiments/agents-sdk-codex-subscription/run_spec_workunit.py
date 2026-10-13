@@ -40,6 +40,7 @@ class UnproductiveImplementationPhase(RuntimeError):
 
 def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int = 3) -> tuple[str, int] | None:
     reasons: Counter[str] = Counter()
+    examples: dict[str, str] = {}
     for row in receipts:
         if row.get("status") != "superseded" or row.get("tool") != "patch_file":
             continue
@@ -48,9 +49,12 @@ def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int
         except json.JSONDecodeError:
             continue
         if error:
-            reasons[str(error)] += 1
+            error = re.sub(r" at line \d+", " at line <line>", str(error))
+            error = re.sub(r"\(matched \d+\)", "(matched <count>)", error)
+            reasons[error] += 1
+            examples.setdefault(error, str(json.loads(str(row.get("result_json") or "{}")).get("error", error)))
     reason, count = reasons.most_common(1)[0] if reasons else ("", 0)
-    return (reason, count) if count >= minimum else None
+    return (examples.get(reason, reason), count) if count >= minimum else None
 
 
 def repeated_patch_rejection_for_phase(store: DurableRunStore, phase: str, attempt: int) -> tuple[str, int] | None:
