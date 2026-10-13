@@ -58,5 +58,10 @@
     "active Python AgentRuntime usage-to-artifact correlation is not proven",
     "authenticated isolated dashboard browser UAT unavailable",
     "R7 exhausted attempts and final verifier did not run"
-  ]
+  ],
+  "postMergeAdapterTests": {
+    "verifiedAgainstSha": "fe1da0762d715fddc3ec8236c3ac302e0df58834",
+    "testsPassed": 31,
+    "exitCode": 0
+  }
 }
