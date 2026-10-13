@@ -54,6 +54,9 @@ class CreditTransaction(Base):
     # Balance after this transaction - camelCase to match SmartSpecWeb
     balance_after = Column("balanceAfter", Integer, nullable=False)
 
+    # Capture the authenticated tenant scope for non-legacy usage records.
+    tenant_id = Column("tenantId", String(36), ForeignKey("tenants.id"), nullable=True)
+
     # Reference ID for external systems (e.g., Stripe payment ID)
     reference_id = Column("referenceId", String(128))
 

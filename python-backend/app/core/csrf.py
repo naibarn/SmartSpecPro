@@ -240,6 +240,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     # Path prefixes exempt from CSRF (Bearer token auth, server-to-server)
     EXEMPT_PREFIXES = (
+        "/v1/",            # OpenAI-compatible routes require a signed Bearer token
         "/api/v1/",        # All v1 API endpoints use Bearer token auth
         "/api/oauth/",     # OAuth endpoints called server-to-server with Bearer token
         "/api/webhooks/",

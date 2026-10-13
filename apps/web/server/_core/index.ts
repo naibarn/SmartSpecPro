@@ -11,6 +11,7 @@ import { stat } from "fs/promises";
 import { fileURLToPath } from "url";
 import path from "path";
 import { createServer, request as httpRequest } from "http";
+import { request as httpsRequest } from "https";
 import cookieParser from "cookie-parser";
 
 import { createContext } from "./context";
@@ -49,6 +50,7 @@ import { registerInternalSocialActionsRoute } from "../routes/internalSocialActi
 import { registerInternalMetricsRoute } from "../routes/internalMetrics";
 import { renderAgentRegistryMetrics } from "../services/agentRegistryMetrics";
 import { evaluateApplicationReadiness } from "../services/applicationReadiness";
+import { toPythonBackendPath } from "../services/pythonBackendProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -2130,6 +2132,8 @@ app.all("/api/v1/*", async (req, res) => {
       const token = signBearerToken(
         {
           sub: String(user.id),
+          user_id: user.id,
+          tenantId: user.currentTenantId ?? undefined,
           type: "access",
           scopes: ["media:generate"],
         },
@@ -2141,11 +2145,26 @@ app.all("/api/v1/*", async (req, res) => {
     }
   }
 
-  const proxyReq = httpRequest(
+  const backendRequest = target.protocol === "https:" ? httpsRequest : httpRequest;
+  if (target.protocol !== "http:" && target.protocol !== "https:") {
+    res.status(502).json({ error: "Unsupported backend protocol" });
+    return;
+  }
+
+  // The browser-facing path includes /api while the Python OpenAI-compatible
+  // router is mounted at /v1. Translate only this known prefix.
+  let backendPath: string;
+  try {
+    backendPath = toPythonBackendPath(req.originalUrl);
+  } catch {
+    res.status(404).json({ error: "Unsupported backend API path" });
+    return;
+  }
+  const proxyReq = backendRequest(
     {
       hostname: target.hostname,
       port: target.port,
-      path: req.originalUrl,
+      path: backendPath,
       method: req.method,
       headers,
     },

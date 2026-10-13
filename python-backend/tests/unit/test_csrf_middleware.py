@@ -39,6 +39,8 @@ async def _next(_request: Request) -> PlainTextResponse:
         "/api/admin/vectordb/backfill/campaign",
         "/api/admin/vectordb/backfill/campaign/batch",
         "/api/admin/vectordb/reindex",
+        "/v1/models",
+        "/v1/chat/completions",
     ],
 )
 def test_vector_db_admin_bridge_paths_bypass_browser_csrf(path: str):

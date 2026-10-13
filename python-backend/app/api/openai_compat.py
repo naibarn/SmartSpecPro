@@ -71,9 +71,6 @@ def _require_proxy_token(req: Request):
     if not settings.DEBUG and not settings.SMARTSPEC_PROXY_TOKEN:
         raise HTTPException(status_code=500, detail="SMARTSPEC_PROXY_TOKEN is required in production")
 
-    if not settings.SMARTSPEC_PROXY_TOKEN:
-        return
-
     # Get token from headers
     h = (req.headers.get("authorization") or "").strip()
     if h.lower().startswith("bearer "):
@@ -82,7 +79,7 @@ def _require_proxy_token(req: Request):
         token = req.headers.get("x-proxy-token", "").strip()
 
     # Check 1: Is it a valid proxy token?
-    if secrets.compare_digest(token, settings.SMARTSPEC_PROXY_TOKEN):
+    if settings.SMARTSPEC_PROXY_TOKEN and secrets.compare_digest(token, settings.SMARTSPEC_PROXY_TOKEN):
         return
 
     # Check 2: Is it a valid auth token (JWT)?
@@ -131,8 +128,12 @@ async def _get_user_from_token(req: Request, db: AsyncSession) -> Optional[User]
         return None
 
     try:
+        raw_user_id = payload["user_id"]
+        if isinstance(raw_user_id, bool) or not str(raw_user_id).isdigit():
+            return None
+        user_id = int(raw_user_id)
         result = await db.execute(
-            select(User).where(User.id == payload["user_id"])
+            select(User).where(User.id == user_id)
         )
         return result.scalar_one_or_none()
     except Exception as e:
@@ -438,6 +439,7 @@ async def chat_completions(req: Request, db: AsyncSession = Depends(get_db)):
                         user_id=str(user.id),
                         llm_cost_usd=Decimal(str(response.cost)),
                         description=f"LLM usage: {model}",
+                        tenant_id=user.currentTenantId,
                         metadata={
                             "model": model,
                             "provider": response.provider,
