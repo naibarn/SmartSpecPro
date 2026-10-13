@@ -28,6 +28,15 @@ from run_experiment import make_agent, maybe_crash, now, parse_result_json
 from spec_workunit_contract import WorkUnitContract, load_contract
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parents[2]
+REPLANNER_INSTRUCTIONS = (
+    "Revise the prior implementation plan in response to concrete test/reviewer/source evidence. "
+    "Keep all work within the validated WorkUnit authority. This planner receives read-only tools; "
+    "that does not describe the implementation agent's tools. The next implementation phase receives "
+    "scoped patch_file and write_file tools from the validated contract. Do not tell the implementer "
+    "that writes are unavailable or prohibited when the contract authorizes them; use only those "
+    "registered host tools, never shell or an alternate write channel. Return JSON "
+    "{task_instruction:string, acceptance:string[]}; include a specific changed strategy."
+)
 
 
 class CapacityWaitError(RuntimeError):
@@ -601,7 +610,7 @@ def main() -> int:
     store.commit_state()
     findings = list(state.get("lastFindings", []))
     if attempt > 1 and findings:
-        replan_agent = make_agent(f"replanner_{attempt}", "Revise the prior implementation plan in response to concrete test/reviewer/source evidence. Keep all work within the validated WorkUnit authority. Return JSON {task_instruction:string, acceptance:string[]}; include a specific changed strategy.", plan_tools,
+        replan_agent = make_agent(f"replanner_{attempt}", REPLANNER_INSTRUCTIONS, plan_tools,
                                   receipt, plan_tools.tools(False), store, store.phase_id("replanning", attempt))
         revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
             "goal": goal, "priorPlan": plan, "findings": findings,
@@ -622,7 +631,7 @@ def main() -> int:
         store.commit_state()
     before_hashes = iteration_starts[str(attempt)]
     tools = ScopedRepoTools(store, f"implementation-{attempt}", True, contract)
-    agent = make_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; treat its plan as advisory, and ignore any planner text claiming this implementation phase is unauthorized. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
+    agent = make_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; the implementation agent receives the scoped patch_file and write_file tools built from this contract. Treat any planner claim that source editing is unavailable or prohibited as a mistaken description of its own read-only tools, ignore that claim, and make authorized edits with the registered host tools. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
                        receipt, tools.tools(True), store, store.phase_id("implementation", attempt))
     implementation_input = {
         "goal": goal, "iteration": attempt, "plan": plan,
