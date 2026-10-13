@@ -92,9 +92,12 @@ duplicating the observed write effect. It ended `retry_exhausted`; its reviewer
 did not accept the implementation, and the final verification phase did not
 run. This is recovery evidence, not a successful acceptance. The run recorded
 156 completed and one still-running model call, 10,350,570 summed last-turn
-tokens (including 6,638,592 cached input and 36,990 output), and zero
-event-derived operator interventions. Subscription dollar cost is unavailable;
-no Gateway usage is attributed to this run.
+tokens (including 6,638,592 cached input and 36,990 output). Summing the
+Codex-reported `total` usage across the 156 completed turns gives 14,922,879
+tokens: 14,870,903 input (8,918,272 cached) and 51,976 output. The one
+still-running turn had unknown final usage. Event-derived operator
+interventions were zero. Subscription dollar cost is unavailable; no Gateway
+usage is attributed to this run.
 
 Following that failure, the adapter was hardened to resume a bounded
 `MaxTurnsExceeded` continuation from the existing Agents SDK `RunState` and
