@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from run_spec_workunit import (
+    REPLANNER_INSTRUCTIONS,
     repeated_patch_rejection_for_phase,
     repeated_patch_rejection_reason,
     unexecuted_patch_dispatch_streak,
@@ -14,6 +15,11 @@ from run_spec_workunit import (
 
 
 class RepeatedPatchRejectionTests(unittest.TestCase):
+    def test_replanner_distinguishes_its_read_only_tools_from_implementer_tools(self) -> None:
+        self.assertIn("This planner receives read-only tools", REPLANNER_INSTRUCTIONS)
+        self.assertIn("implementation phase receives scoped patch_file and write_file tools", REPLANNER_INSTRUCTIONS)
+        self.assertIn("never shell or an alternate write channel", REPLANNER_INSTRUCTIONS)
+
     def test_unexecuted_patch_dispatches_are_counted_separately_from_tool_receipts(self) -> None:
         calls = [
             {"updated_at": "1", "response_text": '{"action":"call_tool","name":"patch_file"}'},

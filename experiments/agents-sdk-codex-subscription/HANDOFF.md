@@ -53,7 +53,7 @@
 - Post-integration: `build-preview` was skipped by its workflow. Full repository build/typecheck remains a post-integration obligation for CI or an admitted resource window; do not run the repository-wide typecheck in this shared session.
 - Next action: continue from Main SHA `bee035d98d97c013115e22e9acbb258af26e554d`, inspect current ownership/handoff evidence, and select the next eligible WorkUnits. Keep SPEC-038 `REQ-028588461FFC` PARTIAL until active AgentRuntime artifact correlation and isolated dashboard UAT have real evidence.
 
-## Scoped patch relative import guard follow-up (PR pending)
+## Scoped patch relative import guard follow-up (PR #931)
 
 - Worktree: `/home/dev/worktrees/agents-sdk-continuity-20261013`
 - Source branch: `codex/allow-relative-import-scoped-patches-20261014`
@@ -61,5 +61,15 @@
 - Finding: `ScopedRepoTools.patch_file` rejected any patch body containing `../`, which blocked ordinary relative imports before creating an idempotent tool intent/receipt. Agents SDK surfaced only a generic tool error; the live SPEC-038 run then repeated the same patch dispatch. Target path still requires exact allowlist and now rejects absolute/traversal paths directly.
 - Change: scope traversal protection to the target path; add regressions for a legitimate `../costTracker` import and a traversal target.
 - Verification: `PYTHONPATH=experiments/agents-sdk-codex-subscription /tmp/agents-sdk-codex-subscription-venv/bin/python -m unittest test_spec_workunit_tools.ScopedPatchTests -v` — 9/9 passed; `py_compile` and `git diff --check` passed.
-- Integration state: intended normal protected PR; `progressive_integration_gate` pending. The active SPEC-038 run has not yet restarted with this fix and its previous run iterations retain their original failed patch-dispatch evidence.
-- Next action: open PR, wait for required checks, then promote via the protected executor; confirm the next live WorkUnit continuation records an executed relative-import patch receipt.
+- Integration: PR [#931](https://github.com/naibarn/SmartSpecPro/pull/931), head `81cf3a42a9182dc0542c223cab3f033f99b3a0d1`, required `progressive_integration_gate` SUCCESS; merged Main SHA `f41088cca7fb54e8b8447b1be77c8fa01440f38d` confirmed at `origin/main`. `build-preview` was skipped.
+- Follow-up: the live SPEC-038 run continues from the same durable run and phase identities. Iteration 7 used a child that loaded the prior guard. Iteration 8 started a new child after the merge; its replanner still carried forward a mistaken read-only tool-surface claim. Earlier failed patch dispatches remain in the run evidence.
+- Next action: verify the next implementation continuation uses scoped `patch_file` and records a completed receipt; keep all other test/database authority unchanged.
+
+## Replanner tool-surface correction (PR pending)
+
+- Source branch: `codex/replanner-tool-surface-clarity-20261014`
+- Canonical baseline: `f41088cca7fb54e8b8447b1be77c8fa01440f38d`
+- Finding: the replanner runs with read-only tools and incorrectly instructed a later implementation phase that no registered write mechanism existed. The implementation phase has scoped `patch_file`/`write_file` tools under the same validated WorkUnit contract.
+- Change: make the replanner prompt state its tools do not describe implementation tools; strengthen implementation instructions to follow its own registered tool surface; add a regression for that distinction.
+- Verification: continuation regression suite 8/8 passed; scoped patch tool suite 9/9 passed; Python `py_compile` and `git diff --check` passed. First test invocation used an incorrect unittest module path and failed to import; rerun with `unittest discover -s experiments/agents-sdk-codex-subscription/tests` passed. Protected PR checks pending.
+- Next action: run the continuation regression suite, open a normal protected PR, then confirm iteration 9 uses the authorized patch host.
