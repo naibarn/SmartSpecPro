@@ -34,7 +34,15 @@
     ],
     "browserUat": "UNVERIFIED",
     "finalIndependentVerification": "NOT_RUN",
-    "rawEvidencePath": "experiments/agents-sdk-codex-subscription/evidence/spec-workunit-r7-failed"
+    "rawEvidencePath": "experiments/agents-sdk-codex-subscription/evidence/spec-workunit-r7-failed",
+    "completedTurnUsageTotals": {
+      "basis": "sum of Codex SDK usage.total for each of 156 completed turns; one still-running turn usage unknown",
+      "inputTokens": 14870903,
+      "cachedInputTokens": 8918272,
+      "outputTokens": 51976,
+      "reasoningOutputTokens": 25901,
+      "totalTokens": 14922879
+    }
   },
   "focusedAppTests": {
     "testFiles": 6,
