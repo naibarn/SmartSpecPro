@@ -131,23 +131,37 @@ recommended next step.
 ## SPEC WorkUnit pilot adapter
 
 `run_spec_workunit.py` reuses the same `openai-codex` custom Agents SDK Model,
-`Runner`, official `RunState`, `SQLiteSession`, and `DurableRunStore` for one
-fixed SPEC-038 cost-attribution WorkUnit. The adapter exposes only its
-allowlisted source files, exact-context write tools, and a fixed five-file
-Vitest command. It does not expose shell, database access, migrations, Gateway,
+`Runner`, official `RunState`, `SQLiteSession`, and `DurableRunStore` for a
+conductor-validated canonical WorkUnit. The adapter exposes only its
+allowlisted source files, exact-context write tools, and the contract's
+registered Vitest or pytest command. It does not expose shell, database access, migrations, Gateway,
 or direct provider APIs.
+
+The supervisor distinguishes crash recovery from development continuation.
+Crashes resume the same run, phase and Codex thread/turn; a settled partial
+iteration starts a new durable Plan/Implement/Test/Review cycle and passes
+reviewer findings, test failures, changed files and remaining requirement gaps
+to the implementer. `MaxTurnsExceeded` extends the same persisted Agents SDK
+`RunState`; quota/rate limits enter `WAITING_CAPACITY` and wake automatically.
+Ordinary unfinished work remains `PARTIAL_CONTINUABLE`; the legacy
+`budget.maxAttempts` and supervisor `--max-restarts` options do not terminate
+the development mission. Runtime delivery statuses do not modify canonical
+SPEC requirement states.
 
 From the repository root, with the existing Codex login and web dependencies
 available:
 
 ```sh
 /tmp/agents-sdk-codex-subscription-venv/bin/python \
-  experiments/agents-sdk-codex-subscription/run_spec_workunit.py
+  experiments/agents-sdk-codex-subscription/supervise_run.py \
+  --workspace <registered-owned-worktree> \
+  --spec-contract <validated-workunit-contract.json> \
+  --evidence-dir <durable-run-evidence-directory>
 ```
 
 The generated run ID names its evidence directory. To resume a run after an
-interruption, pass `--run-id <run-id> --resume`; only one process can own a run
-at a time. The adapter is an experimental fixed WorkUnit, not a registered
-SPEC-224 Runner caller. Its current pilot did not complete autonomous
+interruption, invoke the same supervisor command with that run ID; only one
+worker process can own a run at a time. The adapter is not a registered
+SPEC-224 Runner caller. The previous pilot did not complete autonomous
 acceptance; see `SPEC038_PILOT.md` and the corresponding receipt for exact
 limitations and evidence.
