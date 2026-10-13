@@ -53,6 +53,17 @@ def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int
     return (reason, count) if count >= minimum else None
 
 
+def repeated_patch_rejection_for_phase(store: DurableRunStore, phase: str, attempt: int) -> tuple[str, int] | None:
+    # Scoped tools use stable human-readable phase keys (for example,
+    # implementation-2); Agents SDK RunState rows use UUID phase IDs.
+    tool_phase_id = f"{phase}-{attempt}"
+    rows = store.connection.execute(
+        "SELECT tool,status,result_json FROM tool_receipts WHERE phase_id=? AND tool='patch_file' AND status='superseded'",
+        (tool_phase_id,),
+    ).fetchall()
+    return repeated_patch_rejection_reason([dict(row) for row in rows])
+
+
 def is_capacity_error(error: BaseException) -> bool:
     """Recognize temporary subscription capacity errors without treating code errors as waits."""
     if isinstance(error, CapacityWaitError):
@@ -420,11 +431,7 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                     "previousLimit": previous_limit, "continuedLimit": turn_limit,
                 }, stable_key=f"phase:{phase_row['phase_id']}:turn-limit-continuation:{turn_limit}")
                 if phase == "implementation":
-                    rejected = store.connection.execute(
-                        "SELECT tool,status,result_json FROM tool_receipts WHERE phase_id=? AND tool='patch_file' AND status='superseded'",
-                        (phase_row["phase_id"],),
-                    ).fetchall()
-                    repeated = repeated_patch_rejection_reason([dict(row) for row in rejected])
+                    repeated = repeated_patch_rejection_for_phase(store, phase, attempt)
                     if repeated:
                         reason, count = repeated
                         raise UnproductiveImplementationPhase(
