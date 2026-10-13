@@ -89,7 +89,20 @@ class WorkUnitContractTests(unittest.TestCase):
         (self.root / "tests/test_example.py").write_text("# fixture\\n", encoding="utf-8")
         self.write_contract()
         parsed = load_contract(self.contract_path, self.root)
-        self.assertEqual(parsed.test_command, [sys.executable, "-m", "pytest", "-q", "tests/test_example.py"])
+        self.assertEqual(parsed.test_command, [sys.executable, "-m", "pytest", "--no-cov", "-q", "tests/test_example.py"])
+
+    def test_pytest_command_prefers_the_worktree_python_backend_environment(self) -> None:
+        test_path = "python-backend/tests/test_example.py"
+        self.contract["tests"] = {"runner": "pytest", "cwd": ".", "paths": [test_path]}
+        self.contract["allowedFiles"] = ["apps/web/server/test.test.ts", test_path]
+        (self.root / "python-backend/tests").mkdir(parents=True)
+        (self.root / test_path).write_text("# fixture\\n", encoding="utf-8")
+        interpreter = self.root / "python-backend/.venv/bin/python"
+        interpreter.parent.mkdir(parents=True)
+        interpreter.write_text("test interpreter marker\\n", encoding="utf-8")
+        self.write_contract()
+        parsed = load_contract(self.contract_path, self.root)
+        self.assertEqual(parsed.test_command, [str(interpreter), "-m", "pytest", "--no-cov", "-q", test_path])
 
     def test_rejects_requirement_text_or_digest_not_matching_canonical_ledger(self) -> None:
         self.contract["requirementText"] = "Different requirement"

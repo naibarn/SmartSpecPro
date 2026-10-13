@@ -91,7 +91,9 @@ class WorkUnitContract:
     @property
     def test_command(self) -> list[str]:
         if self.raw["tests"]["runner"] == "pytest":
-            return [sys.executable, "-m", "pytest", "-q", *self.test_paths]
+            project_python = self.root / "python-backend/.venv/bin/python"
+            interpreter = str(project_python) if project_python.is_file() else sys.executable
+            return [interpreter, "-m", "pytest", "--no-cov", "-q", *self.test_paths]
         package_root = self.raw["tests"]["cwd"]
         package_paths = [Path(path).relative_to(package_root).as_posix() for path in self.test_paths]
         return ["pnpm", "--dir", package_root, "exec", "vitest", "run", *package_paths]
