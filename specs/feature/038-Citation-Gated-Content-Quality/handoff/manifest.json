@@ -73,10 +73,10 @@
     "expected_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383"
   },
   "continuation": {
-    "next_action": "SPEC-038 remains PARTIAL_INTEGRATED. The integrated per-skill cost slice is verified by focused tests and required PR checks, but overall package verification is stale/pending on SHA 19574e81c1e7247cab1126dd422a2db1617881b4. REQ-028588461FFC remains PARTIAL until cost correlates to an individual content artifact.",
+    "next_action": "Review and run required checks for PR #919. If merged, record its canonical SHA via this writer. Continue REQ-028588461FFC only for the unproven active AgentRuntime usage correlation and isolated authenticated dashboard UAT; do not mark PASS without both.",
     "next_ready_workunit": "SPEC038_CONTENT_COST_BY_SKILL",
     "reactivation_predicate": "Re-evaluate the affected requirement slice only when its blocker is cleared by durable evidence: CMS-owned claim-audit/correction records with period and outcomes; authoritative publish-start and completion timestamps; authoritative refresh-completion history; or a representative Google Rich Results Test result tied to CMS output. Refresh origin/main, verify evidence provenance, update the canonical handoff, and dispatch only the newly eligible slice.",
-    "resume_point": "PR #917 is integrated at 19574e81c1e7247cab1126dd422a2db1617881b4. Per-skill cost attribution is implemented and focused regressions passed; individual content artifact correlation, dashboard browser UAT, and migration execution remain pending. Resume from the existing section-10-quality-dashboard Deep Implement plan and add only the artifact correlation needed for REQ-028588461FFC.",
+    "resume_point": "PR #919 at source commit 3700706ca adds legacy CMS artifact correlation, seeded tenant-isolation coverage, and durable Agents SDK WorkUnit recovery fixes. Focused app tests passed 82/82 and adapter tests passed 31/31. R7 itself failed after four automatic restarts and did not reach final verification; Browser UAT remains UNVERIFIED.",
     "waiting_predicate": "No CMS KPI implementation is eligible while CMS-owned manual claim-audit/correction records, publish-start plus publish-completion timestamps, refresh-completion history, and representative Google Rich Results evidence are absent for their respective requirements. Current state must be rechecked against canonical sources before any dispatch."
   },
   "continuation_assessment": {
@@ -141,7 +141,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -185,10 +185,10 @@
     "canonical_sha": "19574e81c1e7247cab1126dd422a2db1617881b4",
     "integrated": true,
     "integrated_at": "2026-10-13T12:05:25Z",
-    "pending_action": "PR #917 merged at canonical SHA 19574e81c1e7247cab1126dd422a2db1617881b4 using the protected promotion executor. The skill-attribution slice is integrated; the SPEC-224 Runner and per-artifact cost requirement are not accepted.",
-    "pending_pr": 917,
-    "pending_source_branch": "codex/spec-pilot-agents-sdk-20261013",
-    "pending_source_sha": "a0a42996d86ecb907fd493f703633972b01020de",
+    "pending_action": "PR #919 is open with required checks pending. R7 recovery and current focused tests are recorded in the experiment evidence. Keep REQ-028588461FFC PARTIAL; resolve active AgentRuntime usage correlation and isolated dashboard browser UAT before acceptance.",
+    "pending_pr": 919,
+    "pending_source_branch": "codex/spec-workunit-rollout-20261013",
+    "pending_source_sha": "3700706ca",
     "pending_workunit": "SPEC038_CONTENT_COST_BY_SKILL"
   },
   "lifecycle": {
@@ -1620,7 +1620,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-13T12:07:28.789038Z",
+  "updated_at": "2026-10-13T14:54:41.159040Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
