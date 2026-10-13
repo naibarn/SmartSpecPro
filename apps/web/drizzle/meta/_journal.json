@@ -941,7 +941,7 @@
       "breakpoints": true
     },
     {
-      "idx": 134,
+      "idx": 135,
       "version": "7",
       "when": 1776000000000,
       "tag": "0138_private_personal_finance_foundation",
@@ -2709,6 +2709,13 @@
       "version": "7",
       "when": 1791892149000,
       "tag": "0400_spec038_skill_cost_attribution",
+      "breakpoints": true
+    },
+    {
+      "idx": 387,
+      "version": "7",
+      "when": 1791892800000,
+      "tag": "0401_spec038_artifact_cost_correlation",
       "breakpoints": true
     }
   ]

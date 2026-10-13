@@ -1,0 +1,62 @@
+{
+  "schema": "spec038-acceptance-hardening.v1",
+  "recordedAt": "2026-10-13T14:51:17.240226+00:00",
+  "workUnit": "SPEC038_CONTENT_COST_BY_SKILL",
+  "requirementId": "REQ-028588461FFC",
+  "baselineSha": "6ea7c43e512c486c33b0ea957dcb1d29d06d63de",
+  "agentsSdkRun": {
+    "runId": "647180f1-fc95-45c8-b693-2992d7903b0f",
+    "result": "retry_exhausted",
+    "supervisorResult": "FAILED",
+    "restartCount": 4,
+    "processCount": 5,
+    "durationMs": 1871320,
+    "completedModelCalls": 156,
+    "incompleteModelCalls": 1,
+    "callsByRole": {
+      "planner": 1,
+      "implementer": 154,
+      "independent_reviewer_3": 2
+    },
+    "lastTurnTokenTotals": {
+      "cacheWriteInputTokens": 0,
+      "cachedInputTokens": 6638592,
+      "inputTokens": 10313580,
+      "outputTokens": 36990,
+      "reasoningOutputTokens": 15542,
+      "totalTokens": 10350570
+    },
+    "eventDerivedHumanInterventions": 0,
+    "faultsInjectedAndConsumed": [
+      "model.after_turn_created_before_receipt",
+      "model.after_receipt",
+      "tool.write_file.after_effect"
+    ],
+    "browserUat": "UNVERIFIED",
+    "finalIndependentVerification": "NOT_RUN",
+    "rawEvidencePath": "experiments/agents-sdk-codex-subscription/evidence/spec-workunit-r7-failed"
+  },
+  "focusedAppTests": {
+    "testFiles": 6,
+    "testsPassed": 82,
+    "exitCode": 0,
+    "databaseMode": "isolated_local",
+    "receiptPath": "experiments/agents-sdk-codex-subscription/evidence/spec038-final-focused-tests.json"
+  },
+  "adapterTests": {
+    "testsPassed": 31,
+    "exitCode": 0,
+    "command": "/tmp/agents-sdk-codex-subscription-venv/bin/python -m unittest discover -s experiments/agents-sdk-codex-subscription/tests -v"
+  },
+  "modelRoute": "OpenAI Agents SDK Runner -> custom CodexSubscriptionModel -> official openai-codex Python SDK -> existing ChatGPT/Codex login",
+  "gatewayUsage": "NONE",
+  "directProviderApi": "NONE",
+  "subscriptionDollarCost": "UNAVAILABLE",
+  "requirementStatus": "PARTIAL",
+  "runnerAcceptance": "UNVERIFIED",
+  "knownAcceptanceGaps": [
+    "active Python AgentRuntime usage-to-artifact correlation is not proven",
+    "authenticated isolated dashboard browser UAT unavailable",
+    "R7 exhausted attempts and final verifier did not run"
+  ]
+}

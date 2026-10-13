@@ -224,4 +224,19 @@ describe("ContentQualityDashboard structured data KPIs", () => {
     expect(screen.getByText("$0.1250")).toBeInTheDocument();
     expect(screen.getByText("$0.0100")).toBeInTheDocument();
   });
+
+  it("renders per-artifact and unattributed costs from the correlated response", () => {
+    useCostBreakdown.mockReturnValue({ data: {
+      by_skill: [{ skill_slug: "article-writer", total_cost_usd: 0.51, total_tokens: 612, request_count: 5, avg_cost_per_request: 0.102 }],
+      by_artifact: [{ artifact_id: 101, skill_slug: "article-writer", total_cost_usd: 0.3, total_tokens: 360, request_count: 2 }],
+      unattributed: { total_cost_usd: 0.21, total_tokens: 252, request_count: 3 },
+    } });
+
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByText(/Artifact #101/)).toBeInTheDocument();
+    expect(screen.getByText("Unattributed usage")).toBeInTheDocument();
+    expect(screen.getByText("$0.3000")).toBeInTheDocument();
+    expect(screen.getByText("$0.2100")).toBeInTheDocument();
+  });
 });

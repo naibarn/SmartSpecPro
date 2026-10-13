@@ -1632,7 +1632,7 @@ export async function callLLMWithVision(
   imageUrls: string[] = [],
   model?: string,
   maxTokens: number = 2000,
-  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null; tenantId?: string | null },
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null; tenantId?: string | null; contentGenerationId?: string },
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
@@ -1671,6 +1671,8 @@ export async function callLLMWithVision(
       messages,
       stream: false,
       userId,
+      tenantId: options?.tenantId ?? undefined,
+      contentGenerationId: options?.contentGenerationId,
       ...(preferredProvider != null
         ? { preferredProvider, strictProviderPin: true }
         : {}),
@@ -1687,6 +1689,8 @@ export async function callLLMWithVision(
         messages,
         stream: false,
         userId,
+        tenantId: options?.tenantId ?? undefined,
+        contentGenerationId: options?.contentGenerationId,
         preferredProvider: result.to.providerId,
         strictProviderPin: true,
         maxTokens,
@@ -4511,9 +4515,13 @@ export const skillsRouter = router({
           }
         }
 
+        const contentGenerationId = mergedUserInputs.response_mode === "cms_json"
+          ? crypto.randomUUID()
+          : undefined;
         const execution = await executeSharedSkillTextRuntime({
           tenantId: ctx.tenantId ?? "default",
           userId,
+          contentGenerationId,
           objective: `Execute custom skill '${input.skillId}' for Media Studio and preserve the caller's prompt contract.`,
           originSurface: input.originSurface ?? "media_studio",
           entryPoint: "execute_custom_skill",
@@ -4554,6 +4562,7 @@ export const skillsRouter = router({
               {
                 ...webSearchOptions,
                 tenantId: ctx.tenantId,
+                contentGenerationId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -4658,6 +4667,7 @@ export const skillsRouter = router({
                     outputFormat,
                     contentJson: processed.content,
                     qualityScore: processed.quality,
+                    contentGenerationId,
                     refreshCadenceDays: contentQuality?.refresh_cadence_days as number | undefined,
                   });
                 } catch (artifactError) {

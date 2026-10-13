@@ -8,7 +8,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { db } from "../db";
 import { contentArtifacts, providerUsageLog, users } from "../../drizzle/schema";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, isNotNull } from "drizzle-orm";
 
 function getTenantId(ctx: { tenantId: string | null }): string {
   return ctx.tenantId ?? "default";
@@ -210,7 +210,43 @@ export const contentQualityRouter = router({
         .groupBy(providerUsageLog.skillSlug)
         .orderBy(desc(sql`SUM(${providerUsageLog.costUsd})`));
 
-      return rows.map((r) => ({
+      const artifactRows: { artifact_id: number; content_generation_id: string; skill_slug: string; total_cost_usd: string; total_tokens: number; request_count: number }[] = await db
+        .select({
+          artifact_id: contentArtifacts.id,
+          content_generation_id: contentArtifacts.contentGenerationId,
+          skill_slug: contentArtifacts.skillSlug,
+          total_cost_usd: sql<string>`COALESCE(SUM(${providerUsageLog.costUsd}), 0)::text`,
+          total_tokens: sql<number>`COALESCE(SUM(${providerUsageLog.inputTokens} + ${providerUsageLog.outputTokens}), 0)::int`,
+          request_count: sql<number>`count(*)::int`,
+        })
+        .from(contentArtifacts)
+        .innerJoin(providerUsageLog, eq(contentArtifacts.contentGenerationId, providerUsageLog.contentGenerationId))
+        .where(and(
+          eq(contentArtifacts.tenantId, tenantId),
+          isNotNull(contentArtifacts.contentGenerationId),
+          inArray(providerUsageLog.userId, tenantUserIds),
+          sql`${providerUsageLog.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`,
+        ))
+        .groupBy(contentArtifacts.id, contentArtifacts.contentGenerationId, contentArtifacts.skillSlug);
+
+      // Keep usage without a matching artifact in this tenant's view, including
+      // generations whose artifact belongs to another tenant.
+      const [unattributedRow] = await db
+        .select({
+          total_cost_usd: sql<string>`COALESCE(SUM(${providerUsageLog.costUsd}), 0)::text`,
+          total_tokens: sql<number>`COALESCE(SUM(${providerUsageLog.inputTokens} + ${providerUsageLog.outputTokens}), 0)::int`,
+          request_count: sql<number>`count(*)::int`,
+        })
+        .from(providerUsageLog)
+        .where(and(
+          eq(providerUsageLog.requestType, "skill"),
+          sql`${providerUsageLog.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`,
+          inArray(providerUsageLog.userId, tenantUserIds),
+          sql`(${providerUsageLog.contentGenerationId} IS NULL OR NOT EXISTS (SELECT 1 FROM content_artifacts ca WHERE ca."contentGenerationId" = ${providerUsageLog.contentGenerationId} AND ca."tenantId"::text = ${tenantId}))`,
+        ));
+
+      return {
+        by_skill: rows.map((r) => ({
         skill_slug: r.skillSlug ?? "unknown",
         total_cost_usd: parseFloat(r.total_cost_usd),
         total_tokens: r.total_tokens,
@@ -218,6 +254,19 @@ export const contentQualityRouter = router({
         avg_cost_per_request: r.request_count > 0
           ? Math.round((parseFloat(r.total_cost_usd) / r.request_count) * 10000) / 10000
           : 0,
-      }));
+        })),
+        by_artifact: artifactRows.map((r) => ({
+          artifact_id: r.artifact_id,
+          skill_slug: r.skill_slug,
+          total_cost_usd: parseFloat(r.total_cost_usd),
+          total_tokens: r.total_tokens,
+          request_count: r.request_count,
+        })),
+        unattributed: {
+          total_cost_usd: parseFloat(unattributedRow?.total_cost_usd ?? "0"),
+          total_tokens: unattributedRow?.total_tokens ?? 0,
+          request_count: unattributedRow?.request_count ?? 0,
+        },
+      };
     }),
 });

@@ -98,6 +98,31 @@ class ModelDispatchTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not valid JSON"):
             CodexSubscriptionModel._recover_write_file_arguments("run_browser_uat", '{"x":"bare " quote"}')
 
+    def test_dispatch_recovers_only_missing_final_brace_for_scoped_patch_file(self):
+        import json
+
+        def patch_file(path: str, patch: str) -> str:
+            """Apply a declared patch."""
+            return path
+
+        tool = function_tool(patch_file)
+        patch = "*** Begin Patch\n*** Update File: src/example.ts\n@@\n-old\n+new\n*** End Patch"
+        raw_arguments = json.dumps({"path": "src/example.ts", "patch": patch})[:-1]
+        dispatch = json.dumps({
+            "action": "call_tool",
+            "name": "patch_file",
+            "arguments_json": raw_arguments,
+            "text": None,
+        })
+
+        item = CodexSubscriptionModel._parse_dispatch(dispatch, [tool], [], identity="patch-json-recovery")
+
+        self.assertEqual(json.loads(item.arguments), {"path": "src/example.ts", "patch": patch})
+
+    def test_patch_file_json_recovery_rejects_truncation_inside_patch_content(self):
+        with self.assertRaisesRegex(ValueError, "not a complete string field"):
+            CodexSubscriptionModel._recover_patch_file_arguments('{"path":"x.ts","patch":"partial')
+
 
 class RecoveryProjectionTests(unittest.TestCase):
     def test_accepted_review_without_verification_is_resumed(self):

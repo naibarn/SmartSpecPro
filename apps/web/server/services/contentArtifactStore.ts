@@ -17,6 +17,7 @@ export interface SaveArtifactInput {
   outputFormat: string;
   contentJson: unknown;
   qualityScore: QualityReport;
+  contentGenerationId?: string;
   refreshCadenceDays?: number;
 }
 
@@ -31,6 +32,7 @@ export async function saveArtifact(input: SaveArtifactInput) {
       tenantId: input.tenantId,
       userId: input.userId,
       skillSlug: input.skillSlug,
+      contentGenerationId: input.contentGenerationId ?? null,
       outputFormat: input.outputFormat,
       contentJson: input.contentJson,
       qualityScore: input.qualityScore,

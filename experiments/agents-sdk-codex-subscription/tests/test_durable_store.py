@@ -51,6 +51,12 @@ class DurableRunStoreTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "reused"):
                 store.event("human.intervention.note", {"reason": "different"}, actor="human", stable_key="human:1")
 
+    def test_browser_pending_is_not_projected_as_completed(self):
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
+            store.finish_run(False, terminal_status="awaiting_browser_uat")
+            self.assertEqual(store.state["status"], "awaiting_browser_uat")
+            self.assertIn("run.awaiting_browser_uat", [event["kind"] for event in store.state["lifecycleEvents"]])
+
     def test_concurrent_resume_is_denied(self):
         ctx = multiprocessing.get_context("fork")
         ready, release = ctx.Event(), ctx.Event()

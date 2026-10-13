@@ -25,6 +25,8 @@ beforeEach(() => {
 
 describe("logRequest", () => {
   it("inserts row into provider_usage_log", async () => {
+    const valuesFn = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: valuesFn });
     await logRequest({
       userId: 1,
       providerId: 2,
@@ -36,8 +38,12 @@ describe("logRequest", () => {
       responseTimeMs: 500,
       statusCode: 200,
       wasFallback: false,
+      contentGenerationId: "a4de58c4-80ac-4ea2-9d6e-23df297f1461",
     });
     expect(mockInsert).toHaveBeenCalled();
+    expect(valuesFn).toHaveBeenCalledWith(expect.objectContaining({
+      contentGenerationId: "a4de58c4-80ac-4ea2-9d6e-23df297f1461",
+    }));
   });
 
   it("logs failed requests with errorType and statusCode", async () => {
@@ -158,11 +164,13 @@ describe("logRequest", () => {
       wasFallback: false,
       requestType: "skill",
       skillSlug: "article-writer",
+      contentGenerationId: "3f9df612-8916-44d4-8b3a-6bc350491e04",
     });
 
     expect(valuesFn).toHaveBeenCalledWith(expect.objectContaining({
       requestType: "skill",
       skillSlug: "article-writer",
+      contentGenerationId: "3f9df612-8916-44d4-8b3a-6bc350491e04",
     }));
   });
 });

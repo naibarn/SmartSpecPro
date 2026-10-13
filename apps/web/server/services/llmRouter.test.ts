@@ -7,6 +7,7 @@ const {
   mockHealthRecordSuccess,
   mockHealthRecordFailure,
   mockFetch,
+  mockLogRequest,
   mockResolveEnabledLlmModelId,
 } = vi.hoisted(() => ({
   mockDbSelect: vi.fn(),
@@ -14,6 +15,7 @@ const {
   mockHealthRecordSuccess: vi.fn(),
   mockHealthRecordFailure: vi.fn(),
   mockFetch: vi.fn(),
+  mockLogRequest: vi.fn().mockResolvedValue(undefined),
   mockResolveEnabledLlmModelId: vi.fn(async (preferredModelIds?: Array<string | null | undefined>) => {
     const candidate = preferredModelIds?.find((value): value is string => typeof value === "string" && value.trim().length > 0);
     return candidate ?? "gpt-4o";
@@ -37,7 +39,7 @@ vi.mock("./enabledLlmModels", () => ({
 }));
 
 vi.mock("./costTracker", () => ({
-  logRequest: vi.fn().mockResolvedValue(undefined),
+  logRequest: mockLogRequest,
   calculateCost: vi.fn().mockResolvedValue({ cost: 0.001, method: "model_lookup" }),
 }));
 
@@ -50,6 +52,7 @@ vi.mock("./crypto", () => ({
 }));
 
 import { resolveProviders, executeWithFallback, makeWorkerLlmIdempotencyKey } from "./llmRouter";
+import { logRequest } from "./costTracker";
 import { auditLogger } from "./auditLogger";
 import {
   resolveVerticalDramaLlmExtraBodyParams,
@@ -933,6 +936,34 @@ describe("executeWithFallback", () => {
     }
     expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, expect.any(String));
     expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+  });
+
+  it("preserves artifact correlation on every provider attempt and fallback usage row", async () => {
+    const provider1 = makeCandidate({ providerId: 1, isFree: true, pricingInput: "0", pricingOutput: "0" });
+    const provider2 = makeCandidate({ providerId: 2, isFree: true, pricingInput: "0", pricingOutput: "0" });
+    setupProviderResolution([provider1, provider2]);
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 429, text: async () => "Rate limited" })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: "OK" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }),
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 938001,
+      tenantId: "tenant-cost-test",
+      skillSlug: "writer-a",
+      contentGenerationId: "a4de58c4-80ac-4ea2-9d6e-23df297f1461",
+    });
+
+    expect(result.type).toBe("success");
+    const calls = vi.mocked(logRequest).mock.calls;
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls.every(([row]) => row.contentGenerationId === "a4de58c4-80ac-4ea2-9d6e-23df297f1461")).toBe(true);
   });
 
   it("5xx from primary triggers fallback", async () => {
