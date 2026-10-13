@@ -3,6 +3,7 @@
 - Worktree: `/home/dev/worktrees/agents-sdk-durable-recovery-20261013`
 - Branch: `codex/agents-sdk-durable-recovery-20261013`
 - Base: `94eabdff1b357fd73edf8f02ec3500ddbeb86b9d`
+- Implementation checkpoint: `630a5cd44521ef12f2e0368385bdd998624c4b7a`
 - Outcome: local Agents SDK + Codex subscription durable recovery prototype and
   r13 acceptance complete; no SPEC-224 Runner or Gateway acceptance claimed.
 - Latest acceptance: `evidence/durable-recovery-r13/`, run
@@ -18,7 +19,7 @@
 - Remaining UNVERIFIED: Gateway/provider accounting, Moli UAT on this local app,
   SPEC-224 Runner lifecycle/acceptance, worker fencing/failover, deployment
   receipt reconciliation, and production runtime behavior.
-- Next action: commit this owned checkpoint, open/refresh its normal protected
-  PR, satisfy actual required repository checks, and promote only through the
+- Next action: open/refresh a normal protected PR from this branch, satisfy
+  actual required repository checks, and promote only through the
   authorized repository path. After integration, track heavier verification
   against the integrated SHA. Do not change canonical SPEC status.
