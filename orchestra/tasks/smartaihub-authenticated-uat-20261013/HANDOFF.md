@@ -12,7 +12,8 @@ Implement and verify an authenticated development-only Browser UAT path for Code
 - Branch: `codex/smarthub-authenticated-uat`
 - Source Main SHA at start: `90203a06038e6df6dd33496ef54f0aa9839d149a`
 - Current source commit: `c5a20328b1f2c389e6411e05aae80d54482ded39`
-- Promotion PR: [#905](https://github.com/naibarn/SmartSpecPro/pull/905), head `c5a20328b1f2c389e6411e05aae80d54482ded39`, base `main`; open, checks currently not reported by GitHub.
+- Promotion PR: [#905](https://github.com/naibarn/SmartSpecPro/pull/905), head `9a960371342ea1b5b0be994dbf9d4d6c69303e77`, merged at `2026-10-13T03:21:13Z`.
+- Integrated canonical SHA: `e853f698863df217193d04a6dde7e6f3fc6a7008`; fetched `origin/main` and verified the merge commit is reachable.
 
 ## Last completed checkpoint
 
@@ -29,6 +30,6 @@ Implement and verify an authenticated development-only Browser UAT path for Code
 
 ## Remaining scope
 
-- Promote this owned source checkpoint through the normal protected GitHub path, then bind post-integration evidence to the merged SHA.
+- Queue post-integration full checks/build only through an admitted CI or safe resource window; do not run repository-wide typecheck/build in this shared implementation session. The existing development UAT evidence is bound to source before integration and should be rerun against the canonical SHA when the Debian dev services sync to it.
 - The existing SPEC-224 and SPEC-271 canonical HandOffs remain unchanged. Their open Runner/control-plane authority and durable receipt requirements are separate from this direct-Codex dev UAT slice; this handoff does not claim those SPECs complete.
 - Reconcile any post-integration check failures against the new canonical SHA. Do not run full repository typecheck/build in this shared implementation session.
