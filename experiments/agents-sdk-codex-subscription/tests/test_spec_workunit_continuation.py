@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from run_spec_workunit import (
     REPLANNER_INSTRUCTIONS,
+    iteration_evidence_summary,
     repeated_patch_rejection_for_phase,
     repeated_patch_rejection_reason,
     unexecuted_patch_dispatch_streak,
@@ -15,6 +16,31 @@ from run_spec_workunit import (
 
 
 class RepeatedPatchRejectionTests(unittest.TestCase):
+    def test_review_evidence_includes_prior_iteration_source_and_test_receipts(self) -> None:
+        evidence = iteration_evidence_summary([
+            {
+                "iteration": 3,
+                "changedPaths": ["python-backend/app/services/openai_agents_adapter.py"],
+                "testReceipt": {
+                    "exitCode": 0,
+                    "revision": "revision-3",
+                    "sourceRevision": "base-sha",
+                    "stdout": "large logs are intentionally omitted",
+                },
+            },
+            {"iteration": 4, "changedPaths": ["apps/web/server/routers/skills.ts"]},
+        ])
+
+        self.assertEqual(evidence[0]["iteration"], 3)
+        self.assertEqual(evidence[0]["changedPaths"], ["python-backend/app/services/openai_agents_adapter.py"])
+        self.assertEqual(evidence[0]["test"], {
+            "exitCode": 0,
+            "revision": "revision-3",
+            "sourceRevision": "base-sha",
+            "changedPaths": [],
+        })
+        self.assertEqual(evidence[1]["test"]["exitCode"], None)
+
     def test_replanner_distinguishes_its_read_only_tools_from_implementer_tools(self) -> None:
         self.assertIn("This planner receives read-only tools", REPLANNER_INSTRUCTIONS)
         self.assertIn("implementation phase receives scoped patch_file and write_file tools", REPLANNER_INSTRUCTIONS)

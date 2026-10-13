@@ -65,11 +65,22 @@
 - Follow-up: the live SPEC-038 run continues from the same durable run and phase identities. Iteration 7 used a child that loaded the prior guard. Iteration 8 started a new child after the merge; its replanner still carried forward a mistaken read-only tool-surface claim. Earlier failed patch dispatches remain in the run evidence.
 - Next action: verify the next implementation continuation uses scoped `patch_file` and records a completed receipt; keep all other test/database authority unchanged.
 
-## Replanner tool-surface correction (PR pending)
+## Replanner tool-surface correction (PR #932)
 
 - Source branch: `codex/replanner-tool-surface-clarity-20261014`
 - Canonical baseline: `f41088cca7fb54e8b8447b1be77c8fa01440f38d`
 - Finding: the replanner runs with read-only tools and incorrectly instructed a later implementation phase that no registered write mechanism existed. The implementation phase has scoped `patch_file`/`write_file` tools under the same validated WorkUnit contract.
 - Change: make the replanner prompt state its tools do not describe implementation tools; strengthen implementation instructions to follow its own registered tool surface; add a regression for that distinction.
-- Verification: continuation regression suite 8/8 passed; scoped patch tool suite 9/9 passed; Python `py_compile` and `git diff --check` passed. First test invocation used an incorrect unittest module path and failed to import; rerun with `unittest discover -s experiments/agents-sdk-codex-subscription/tests` passed. Protected PR checks pending.
-- Next action: run the continuation regression suite, open a normal protected PR, then confirm iteration 9 uses the authorized patch host.
+- Verification: continuation regression suite 8/8 passed; scoped patch tool suite 9/9 passed; Python `py_compile` and `git diff --check` passed. First test invocation used an incorrect unittest module path and failed to import; rerun with `unittest discover -s experiments/agents-sdk-codex-subscription/tests` passed.
+- Integration: PR [#932](https://github.com/naibarn/SmartSpecPro/pull/932), head `d6ed9f220cc431e14a9ef71cb91c7283b50f5371`, required `progressive_integration_gate` SUCCESS; merged Main SHA `e43ef9c222cbb3debaec38e70697df4640405f39` confirmed at `origin/main`. `build-preview` was skipped.
+- Follow-up: the live run continues with the existing phase/thread bindings; its iteration 8 implementation phase started before PR #932 merged. The next child will load the clearer prompts.
+- Next action: verify implementation continuation and review against cumulative source and test evidence.
+
+## Cumulative review evidence correction (PR pending)
+
+- Source branch: `codex/cumulative-review-evidence-20261014`
+- Canonical baseline: `e43ef9c222cbb3debaec38e70697df4640405f39`
+- Finding: reviewers received only the current iteration's `sourceDelta`, which led iteration 8 to overlook source changes made in earlier durable iterations.
+- Change: include concise source-path and test-receipt history from all prior/current iterations in independent review and final verification inputs; omit large test logs.
+- Verification: pending focused continuation tests and protected PR checks.
+- Next action: integrate the review context fix, then confirm the next independent review recognizes cumulative source deltas while preserving all uncovered test/UAT findings.

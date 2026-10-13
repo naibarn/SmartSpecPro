@@ -138,6 +138,27 @@ def changed_source_paths(before: dict[str, str], after: dict[str, str]) -> list[
     return sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
 
 
+def iteration_evidence_summary(iterations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Give reviewers the durable cumulative source/test history without replaying logs."""
+    summary = []
+    for item in iterations:
+        if not isinstance(item, dict):
+            continue
+        receipt = item.get("testReceipt")
+        receipt = receipt if isinstance(receipt, dict) else {}
+        summary.append({
+            "iteration": item.get("iteration"),
+            "changedPaths": item.get("changedPaths", []),
+            "test": {
+                "exitCode": receipt.get("exitCode"),
+                "revision": receipt.get("revision"),
+                "sourceRevision": receipt.get("sourceRevision"),
+                "changedPaths": receipt.get("changedPaths", []),
+            },
+        })
+    return summary
+
+
 def is_ready_for_user_test(test_receipt: dict[str, Any], review: dict[str, Any] | None,
                            verification: dict[str, Any] | None, pending_receipts: list[Any]) -> bool:
     """Require independent confirmation of a usable slice without closing the SPEC requirement."""
@@ -705,7 +726,7 @@ def main() -> int:
                             receipt, review_tools.tools(False), store, store.phase_id("review", attempt))
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
         try:
-            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":changed_paths,"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
+            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
         except Exception as exc:
             if is_capacity_error(exc):
                 raise
@@ -722,7 +743,7 @@ def main() -> int:
             verifier = make_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
                                   receipt, review_tools.tools(False), store, store.phase_id("verification", attempt))
             try:
-                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,**contract.binding}),contract.review_max_turns).final_output)
+                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns).final_output)
             except Exception as exc:
                 if is_capacity_error(exc):
                     raise
