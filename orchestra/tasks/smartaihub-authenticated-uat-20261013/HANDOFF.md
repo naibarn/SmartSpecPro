@@ -11,7 +11,8 @@ Implement and verify an authenticated development-only Browser UAT path for Code
 - Workspace: `/home/dev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/authenticated-uat`
 - Branch: `codex/smarthub-authenticated-uat`
 - Source Main SHA at start: `90203a06038e6df6dd33496ef54f0aa9839d149a`
-- Current source commit: pending checkpoint commit
+- Current source commit: `37463accd` (full SHA recorded after commit)
+- Intended promotion: normal protected PR from `codex/smarthub-authenticated-uat` to `main`; PR number pending.
 
 ## Last completed checkpoint
 
@@ -21,7 +22,7 @@ Implement and verify an authenticated development-only Browser UAT path for Code
 - Routed only OpenAI-compatible API paths to Python `/v1`; other Python API paths retain `/api/v1`. The Python backend then calls the SmartAIHub Gateway, which routes to the configured provider.
 - Fixed integer user-ID lookup, fail-closed proxy-token auth, bearer-only CSRF exemption for the OpenAI-compatible router, and tenant-scoped credit settlement.
 - Rotated the local Debian development JWT secret in the web and Python env files without logging values; restarted dependent local services. Earlier local sessions were invalidated. No production secret or deployment exists.
-- Latest parallel Playwright UAT: `apps/web/test-results/smarthub-uat/45d0c1a4-f0dd-466f-8522-2ce46610d8dd` — 6/6 passed (owner dashboard, admin dashboard, member/restricted tenant scope, forged-header rejection, real Gateway/provider call). All five session records show revoked; browser direct-provider attempts are empty; all five trace archives passed the unredacted-token scan.
+- Latest full Playwright UAT: `apps/web/test-results/smarthub-uat/45d0c1a4-f0dd-466f-8522-2ce46610d8dd` — 6/6 passed; includes screenshots, sanitized traces, browser network evidence, HTTPS route evidence, and Gateway integration receipt. No Worker Production is deployed; Debian `NODE_ENV=production` simulation remains distinct from a production deployment. (owner dashboard, admin dashboard, member/restricted tenant scope, forged-header rejection, real Gateway/provider call). All five session records show revoked; browser direct-provider attempts are empty; all five trace archives passed the unredacted-token scan.
 - Two independent Codex UAT runs executed simultaneously with distinct run IDs and tenant/identity scopes: both navigation suites passed 5/5 (`codexparallelA`, `codexparallelB`). An initial prefix-derived run key collided; switching to a SHA-256 run suffix removed the collision and the concurrent retest passed.
 - Gateway receipt confirms browser `/api/v1/chat/completions` → SmartAIHub Gateway → OpenRouter (`openai/gpt-4.1-mini`), 20 provider tokens, `$0.0000128` provider cost, and tenant `tenant-codex-uat` accounting.
 - Focused Vitest: 8 passed. Focused Python tests (`test_credit_service.py`, `test_openai_compat.py`, `test_csrf_middleware.py`): 43 passed. Nginx config test and reload passed. `git diff --check` passed.
