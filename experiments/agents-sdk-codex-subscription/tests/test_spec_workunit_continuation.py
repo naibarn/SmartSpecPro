@@ -2,20 +2,59 @@ from __future__ import annotations
 
 import sys
 import sqlite3
+import json
+import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from run_spec_workunit import (
     REPLANNER_INSTRUCTIONS,
+    contract_scope_snapshot,
     iteration_evidence_summary,
+    prior_contract_scope_from_model_calls,
     repeated_patch_rejection_for_phase,
     repeated_patch_rejection_reason,
     unexecuted_patch_dispatch_streak,
 )
+from durable_store import DurableRunStore
 
 
 class RepeatedPatchRejectionTests(unittest.TestCase):
+    def test_contract_scope_snapshot_allows_guidance_refresh_but_binds_authority(self) -> None:
+        original = {
+            "specId": "SPEC-038", "workUnit": "COST_BY_SKILL", "requirementId": "REQ-0123456789AB",
+            "allowedFiles": ["apps/web/a.ts"], "writableFiles": ["apps/web/a.ts"],
+            "acceptanceCriteria": ["Persist tenant-safe usage"],
+            "implementationGuidance": "Initial trusted guidance", "budget": {"implementationMaxTurns": 4},
+        }
+        refreshed = {**original, "implementationGuidance": "Additional recovery note", "budget": {"implementationMaxTurns": 8}}
+        self.assertEqual(contract_scope_snapshot(original), contract_scope_snapshot(refreshed))
+        widened = {**refreshed, "writableFiles": ["apps/web/a.ts", "apps/web/b.ts"]}
+        self.assertNotEqual(contract_scope_snapshot(original), contract_scope_snapshot(widened))
+        changed_acceptance = {**refreshed, "acceptanceCriteria": ["Skip tenant checks"]}
+        self.assertNotEqual(contract_scope_snapshot(original), contract_scope_snapshot(changed_acceptance))
+
+    def test_legacy_contract_scope_is_recovered_from_durable_planner_request(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = Path(temp)
+            run_id = str(uuid.uuid4())
+            scope = {
+                "specId": "SPEC-038", "workUnit": "COST_BY_SKILL", "requirementId": "REQ-0123456789AB",
+                "allowedFiles": ["apps/web/a.ts"], "writableFiles": ["apps/web/a.ts"],
+                "authority": {"gateway": False}, "tests": {"runner": "vitest"},
+            }
+            payload = {"workunit_scope": scope, "canonical_requirement": "Exact requirement", "acceptanceCriteria": ["Persist usage"]}
+            instruction = "planner preamble\nRequest JSON:\n" + json.dumps({"input": [{"content": json.dumps(payload)}]})
+            with DurableRunStore(evidence, run_id=run_id, initial_state={"runId": run_id, "status": "running"}) as store:
+                store.reserve_model_call("call-1", "phase-1", "planner_1", {"instruction": instruction})
+                restored = prior_contract_scope_from_model_calls(store)
+            expected = contract_scope_snapshot({
+                **scope, "requirementText": "Exact requirement", "acceptanceCriteria": ["Persist usage"],
+            })
+            self.assertEqual(restored, expected)
+
     def test_review_evidence_includes_prior_iteration_source_and_test_receipts(self) -> None:
         evidence = iteration_evidence_summary([
             {

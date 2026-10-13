@@ -76,11 +76,20 @@
 - Follow-up: the live run continues with the existing phase/thread bindings; its iteration 8 implementation phase started before PR #932 merged. The next child will load the clearer prompts.
 - Next action: verify implementation continuation and review against cumulative source and test evidence.
 
-## Cumulative review evidence correction (PR pending)
+## Cumulative review evidence correction (PR #933)
 
 - Source branch: `codex/cumulative-review-evidence-20261014`
 - Canonical baseline: `e43ef9c222cbb3debaec38e70697df4640405f39`
 - Finding: reviewers received only the current iteration's `sourceDelta`, which led iteration 8 to overlook source changes made in earlier durable iterations.
 - Change: include concise source-path and test-receipt history from all prior/current iterations in independent review and final verification inputs; omit large test logs.
-- Verification: pending focused continuation tests and protected PR checks.
-- Next action: integrate the review context fix, then confirm the next independent review recognizes cumulative source deltas while preserving all uncovered test/UAT findings.
+- Verification: continuation regression suite passed; PR `progressive_integration_gate` SUCCESS, `build-preview` SKIPPED.
+- Integration: merged through protected executor; Main SHA `0d6bc2d97106cdb450c84a801e19816c4f3b06d3`.
+- Follow-up: iteration 8's independent reviewer still found the seeded Postgres and browser UAT evidence missing; those findings remain open and are now included as repair input.
+
+## Supervisor continuation and contract-reconciliation repair (in progress)
+
+- Root cause: supervisor treated the projected `PARTIAL_CONTINUABLE` status as sufficient to launch another child, even when the child exited `1` before loading the run. A WorkUnit contract guidance refresh changed its raw digest, so each child failed the same binding check and the supervisor relaunched it every ~1.6s. These were sequential launches from one supervisor, not concurrent workers.
+- Safety fix: only explicit worker continuation exit code `75` schedules the next development iteration. Binding drift now records `BLOCKED_EXTERNAL` and stops. Run continuation compares a durable authority/acceptance snapshot (allowlists, owner/workspace/revision, tests, authority, requirement, acceptance); legacy snapshots are recovered from the first persisted planner request. Only trusted explanatory guidance/budget may change without widening capability, and the refresh is durably recorded.
+- Run evidence: run `422d25c8-c45e-4ad6-bf98-05bc03806a14` initially reached a safe stop after repeated binding rejection, then resumed with the same run identity and advanced from iteration 8 to 9 after proving exact authority-scope equality. One explicit conductor stop was recorded as one event-derived intervention; do not report this as zero.
+- Verification: supervisor/continuation regression tests passed 23/23 before this follow-up patch; rerun is pending. The current live iteration 9 is running with Codex subscription authentication. No user or production DB is used.
+- Next action: finish iteration 9, confirm executed repair tool receipts and tests/review, then open a protected PR for the harness repair. Continue only while the registered contract remains valid; preserve exact seeded-Postgres/browser-UAT gaps as UNVERIFIED until run with authorized tools.
