@@ -73,10 +73,10 @@
     "expected_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383"
   },
   "continuation": {
-    "next_action": "Lane 2 CMS KPI workunit is closed for this checkpoint. Do not dispatch implementation while its recorded data-authority and external-evidence predicates remain unsatisfied. Re-evaluate only after durable qualifying evidence is present; do not add speculative migrations, fabricate records/timestamps, use workflow-cache metadata, or claim KPI completion.",
-    "next_ready_workunit": "NONE_CURRENT_CMS_KPI_DATA_AUTHORITY_BLOCKED",
+    "next_action": "PR #917 contains the partial skill-cost attribution and SPEC adapter. Wait for protected checks and merge. Keep REQ-028588461FFC OPEN/UNVERIFIED until cost can be correlated to an individual content_artifacts row; do not record zero human interventions for the interrupted pilot. After integration, record exact canonical SHA and next artifact-correlation WorkUnit through the shared writer.",
+    "next_ready_workunit": "SPEC038_CONTENT_COST_BY_SKILL_PR_917_PENDING",
     "reactivation_predicate": "Re-evaluate the affected requirement slice only when its blocker is cleared by durable evidence: CMS-owned claim-audit/correction records with period and outcomes; authoritative publish-start and completion timestamps; authoritative refresh-completion history; or a representative Google Rich Results Test result tied to CMS output. Refresh origin/main, verify evidence provenance, update the canonical handoff, and dispatch only the newly eligible slice.",
-    "resume_point": "Canonical SPEC-038 remains PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Product slices are integrated through the CMS structured-data dashboard and verified-age distribution; remaining eligibility is gated by the per-requirement blockers above. Cache hit-rate remains outside this lane because its workflow-cache authority is reserved/shared.",
+    "resume_point": "SPEC038_CONTENT_COST_BY_SKILL implementation partial is committed as a0a42996d86ecb907fd493f703633972b01020de and PR #917 is open. Focused tests pass. Await branch protection; after merge, preserve OPEN requirement status and prepare artifact-level correlation as a separate scoped WorkUnit.",
     "waiting_predicate": "No CMS KPI implementation is eligible while CMS-owned manual claim-audit/correction records, publish-start plus publish-completion timestamps, refresh-completion history, and representative Google Rich Results evidence are absent for their respective requirements. Current state must be rechecked against canonical sources before any dispatch."
   },
   "continuation_assessment": {
@@ -141,7 +141,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 31,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -184,7 +184,12 @@
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741",
     "integrated": true,
-    "integrated_at": "2026-10-08T16:16:49Z"
+    "integrated_at": "2026-10-08T16:16:49Z",
+    "pending_action": "Wait for PR #917 required checks and protected merge; after merge, reconcile the canonical SHA through the Spec handoff writer. Keep REQ-028588461FFC OPEN because artifact-level cost correlation is not implemented.",
+    "pending_pr": 917,
+    "pending_source_branch": "codex/spec-pilot-agents-sdk-20261013",
+    "pending_source_sha": "a0a42996d86ecb907fd493f703633972b01020de",
+    "pending_workunit": "SPEC038_CONTENT_COST_BY_SKILL"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1582,7 +1587,7 @@
     "unresolved": 98
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T16:36:10.877577Z",
+  "updated_at": "2026-10-13T12:00:05.610069Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
