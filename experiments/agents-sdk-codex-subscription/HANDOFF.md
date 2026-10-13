@@ -96,7 +96,7 @@
 - Current state: iteration 10 is active with Codex subscription authentication. Iteration 9's tests passed (50 Python adapter/contract tests); reviewer correctly left the slice continuable because TS/database/browser evidence and one usage-source defect remain. No Gateway or production/shared DB use is claimed.
 - Next action: let iteration 10 repair the review finding and continue cycles. Keep seeded-Postgres and browser UAT UNVERIFIED until the validated contract/authorized runtime permits those checks. Keep SPEC-038 requirement PARTIAL until actual full acceptance evidence exists.
 
-## Cumulative source diff for multi-iteration WorkUnits (pending PR)
+## Cumulative source diff for multi-iteration WorkUnits (PR #938)
 
 - Source branch: `codex/cumulative-source-evidence-20261014`
 - Canonical baseline: `213f392cf7f59553032a52095068772ce31b21e5`
@@ -104,6 +104,6 @@
 - Finding: reviewer inputs clipped large files to their first 20,000 characters and used only the current iteration's `changedPaths`. Reviewers consequently reported that prior-cycle changes, including the pre-dispatch generation-ID propagation, were absent even though those changes remained in the current WorkUnit source. This caused repeated false findings and unproductive implementation cycles.
 - Change: WorkUnit implementer, reviewer, and verifier inputs now include the allowlisted cumulative diff from the validated WorkUnit source revision, cumulative changed paths, and the current-iteration delta as a separate field. Test receipts identify both iteration-local paths and paths changed across the WorkUnit. The reviewer is instructed not to treat an iteration-local receipt as the complete task diff.
 - Verification: `test_development_continuation.py` 7/7 passed; `py_compile` and `git diff --check` passed after conflict resolution with main.
-- Integration: pending protected PR from `codex/cumulative-source-evidence-20261014`.
+- Integration: PR [#938](https://github.com/naibarn/SmartSpecPro/pull/938) merged through the protected executor after `progressive_integration_gate` SUCCESS; `build-preview` SKIPPED. Merged Main SHA: `8450ab2b6809fd2aa718bdf1afd7f059066e10ce` (confirmed at `origin/main`).
 - Active-run effect: run `422d25c8-c45e-4ad6-bf98-05bc03806a14` is not restarted or rebound. Its next supervisor child will load the updated harness and provide cumulative source evidence. The run remains independent of this harness PR's acceptance state.
-- Next action: open the normal protected PR; after merge, confirm the next WorkUnit review sees the existing route delta. Keep REQ-028588461FFC PARTIAL; TypeScript/PostgreSQL persistence evidence and browser UAT are still UNVERIFIED.
+- Next action: confirm the next WorkUnit review sees the existing route delta and does not repeat the false missing-path finding. Keep REQ-028588461FFC PARTIAL; TypeScript/PostgreSQL persistence evidence and browser UAT are still UNVERIFIED.
