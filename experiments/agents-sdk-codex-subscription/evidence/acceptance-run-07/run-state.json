@@ -1,0 +1,1262 @@
+{
+  "schema": "agents-sdk-codex-subscription.v1",
+  "runId": "fbbf2d04-31e0-413e-9a56-7a341946ab3e",
+  "mode": "AGENTS_SDK_CODEX_SUBSCRIPTION_EXPERIMENT",
+  "goal": "Build a self-contained, offline SplitFair Mini App for splitting a bill. Use only local assets; do not request fonts, scripts, APIs, or other resources from external hosts. Enter a dollar amount and number of people, calculate whole-cent shares that reconcile exactly to the total, show each person's share, validate invalid input, and make Reset clear the results. Keep allocateShares in split.mjs and add visible tests. Browser interaction uses labeled amount/people fields, a submit button, and a reset button; the results section exposes the rendered per-person amounts.",
+  "workspace": "/tmp/agents-sdk-split-fair-20261013-run7",
+  "status": "completed",
+  "createdAt": "2026-10-13T05:01:32.135918+00:00",
+  "runtimeVersions": {
+    "python": "3.13.5",
+    "agentsSdk": "0.23.1",
+    "codexSdk": "0.162.1"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "implemented",
+      "durationMs": 125614,
+      "finalOutput": "Implemented the SplitFair app in the supplied workspace. The earlier focused test run passed all 6 tests, including the acceptance tests and app-owned share allocation tests. Browser UAT has not been run; that tool is not available in my current tool list.",
+      "newItems": [
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "message_output_item"
+      ],
+      "postImplementChecks": {
+        "command": [
+          "node",
+          "--test",
+          "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+        ],
+        "exitCode": 0,
+        "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 0.948208\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.181518\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.178346\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.892267\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.235779\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.194518\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 48.745133\n",
+        "stderr": "",
+        "durationMs": 83
+      },
+      "postImplementBrowserUat": {
+        "schema": "agents-sdk-miniapp-browser-uat.v1",
+        "result": "FAIL",
+        "url": "http://127.0.0.1:32797/",
+        "interactions": [],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "blockedExternalRequests": [],
+        "screenshot": null,
+        "failure": "locator.fill: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Bill total in dollars')\u001b[22m\n\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:46:52)",
+        "failureScreenshot": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-failure.png",
+        "unexpectedConsoleErrors": [],
+        "runner": {
+          "command": [
+            "node",
+            "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+          ],
+          "exitCode": 1,
+          "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"FAIL\",\"url\":\"http://127.0.0.1:32797/\",\"interactions\":[],\"pageErrors\":[],\"consoleErrors\":[],\"blockedExternalRequests\":[],\"screenshot\":null,\"failure\":\"locator.fill: Timeout 5000ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for getByLabel('Bill total in dollars')\\u001b[22m\\n\\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:46:52)\",\"failureScreenshot\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-failure.png\",\"unexpectedConsoleErrors\":[]}\n",
+          "stderr": "",
+          "durationMs": 6272
+        }
+      },
+      "sourceSnapshot": {
+        "app.mjs": "import { allocateShares } from './split.mjs';\n\nconst form = document.querySelector('#split-form');\nconst amountInput = document.querySelector('#amount');\nconst peopleInput = document.querySelector('#people');\nconst message = document.querySelector('#message');\nconst results = document.querySelector('#results');\nconst shareList = document.querySelector('#share-list');\nconst totalLabel = document.querySelector('#total-label');\nconst money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });\n\nfunction parseCents(value) {\n  const match = /^(?:\\d+)(?:\\.(\\d{1,2}))?$/.exec(value.trim());\n  if (!match) return null;\n  const [whole, fraction = ''] = value.trim().split('.');\n  const cents = Number(whole) * 100 + Number((fraction + '00').slice(0, 2));\n  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;\n}\n\nform.addEventListener('submit', (event) => {\n  event.preventDefault();\n  message.textContent = '';\n  results.hidden = true;\n  const cents = parseCents(amountInput.value);\n  const people = Number(peopleInput.value);\n  if (cents === null) {\n    message.textContent = 'Enter a valid bill amount greater than $0.00, with up to two decimal places.';\n    amountInput.focus();\n    return;\n  }\n  if (!Number.isSafeInteger(people) || people < 1 || people > 10000) {\n    message.textContent = 'Enter a whole number of people between 1 and 10,000.';\n    peopleInput.focus();\n    return;\n  }\n\n  const shares = allocateShares(cents, people);\n  shareList.replaceChildren(...shares.map((share, index) => {\n    const row = document.createElement('li');\n    const person = document.createElement('span');\n    const amount = document.createElement('strong');\n    person.textContent = `Person ${index + 1}`;\n    amount.textContent = money.format(share / 100);\n    row.append(person, amount);\n    return row;\n  }));\n  totalLabel.textContent = `${people} people · ${money.format(cents / 100)} total`;\n  results.hidden = false;\n});\n\nform.addEventListener('reset', () => {\n  message.textContent = '';\n  results.hidden = true;\n  shareList.replaceChildren();\n  totalLabel.textContent = '';\n});\n",
+        "index.html": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>SplitFair — Split a bill, fairly</title><style>\n:root{color-scheme:light;--ink:#202b27;--muted:#65716b;--green:#24644e;--line:#d9ddd4;--paper:#fffefa;--bg:#f5f2eb}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.shell{width:min(100% - 32px,1050px);margin:auto}header{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #deded5}.brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.04em;font-size:20px}.mark{display:grid;place-items:center;width:34px;height:34px;color:white;background:var(--green);border-radius:11px}.offline{color:var(--muted);font-size:12px}main{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:clamp(34px,8vw,100px);min-height:calc(100vh - 79px);padding:58px 0 76px}.intro{max-width:440px}.eyebrow{text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-size:11px;font-weight:800}h1{font-family:Georgia,serif;font-size:clamp(44px,6vw,68px);line-height:.99;letter-spacing:-.055em;font-weight:500;margin:18px 0 20px}h1 em{color:var(--green)}.intro p{color:var(--muted);max-width:360px;line-height:1.7;font-size:15px}.note{margin-top:38px;color:#7e867f;font-size:12px}.card{background:var(--paper);border:1px solid #e6e4dc;border-radius:20px;padding:clamp(24px,4vw,38px);box-shadow:0 18px 50px #27392c0b}.card h2{font-family:Georgia,serif;font-weight:500;font-size:27px;margin:0 0 7px}.sub{margin:0 0 27px;color:var(--muted);font-size:13px}label{display:block;font-weight:700;font-size:13px;margin:0 0 9px}.field{position:relative;margin-bottom:21px}.currency{position:absolute;left:15px;top:13px;color:#7a827c}.money{padding-left:34px!important}input{width:100%;border:1px solid var(--line);background:white;border-radius:10px;height:48px;padding:0 14px;font:inherit;color:var(--ink);outline:none}input:focus{border-color:#50806b;box-shadow:0 0 0 3px #24644e18}.hint{color:#818982;font-size:11px;margin:7px 0 0}.actions{display:flex;gap:10px;margin-top:5px}button{border:0;border-radius:10px;height:48px;padding:0 20px;font:inherit;font-weight:700;cursor:pointer}.primary{flex:1;color:white;background:var(--green)}.reset{color:#4d5952;background:#eff0e9}.message{min-height:19px;margin:13px 0 0;color:#a3422e;font-size:13px}.results{margin-top:20px;padding-top:22px;border-top:1px solid #e8e7df}.results[hidden]{display:none}.result-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.result-head h3{margin:0;font-size:14px}.result-head span{color:var(--muted);font-size:12px}.share-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:220px;overflow:auto}.share-list li{display:flex;justify-content:space-between;background:#f7f7f1;border-radius:8px;padding:10px 12px;font-size:13px}.share-list strong{font-variant-numeric:tabular-nums}@media(max-width:720px){main{grid-template-columns:1fr;gap:30px;align-content:start;padding:48px 0}.intro{max-width:520px}.note{margin-top:18px}}@media(max-width:420px){.shell{width:calc(100% - 24px)}main{padding-top:36px}.card{border-radius:16px}}\n</style></head><body><div class=\"shell\"><header><div class=\"brand\"><span class=\"mark\" aria-hidden=\"true\">÷</span>SplitFair</div><div class=\"offline\">Works offline · No sign-up</div></header><main><section class=\"intro\"><div class=\"eyebrow\">Good company, simple math</div><h1>Settle up.<br><em>Stay friends.</em></h1><p>Split the bill evenly and let us take care of the extra cents. Everyone gets a fair share, down to the last penny.</p><div class=\"note\">✳ The first people in line cover any extra cents.</div></section><section class=\"card\"><h2>Split a bill</h2><p class=\"sub\">Enter the total and how many people are sharing.</p><form id=\"split-form\" novalidate><div class=\"field\"><label for=\"amount\">Total bill amount</label><span class=\"currency\" aria-hidden=\"true\">$</span><input class=\"money\" id=\"amount\" name=\"amount\" type=\"number\" inputmode=\"decimal\" min=\"0.01\" step=\"0.01\" placeholder=\"0.00\" required aria-describedby=\"amount-hint\"><p class=\"hint\" id=\"amount-hint\">Enter an amount in dollars</p></div><div class=\"field\"><label for=\"people\">Number of people</label><input id=\"people\" name=\"people\" type=\"number\" inputmode=\"numeric\" min=\"1\" step=\"1\" placeholder=\"e.g. 4\" required aria-describedby=\"people-hint\"><p class=\"hint\" id=\"people-hint\">How many people are splitting?</p></div><div class=\"actions\"><button class=\"primary\" type=\"submit\">Calculate split →</button><button class=\"reset\" type=\"reset\">Reset</button></div><p class=\"message\" id=\"message\" role=\"alert\" aria-live=\"polite\"></p></form><section class=\"results\" id=\"results\" aria-labelledby=\"results-title\" aria-live=\"polite\" hidden><div class=\"result-head\"><h3 id=\"results-title\">Everyone's share</h3><span id=\"total-label\"></span></div><ol class=\"share-list\" id=\"share-list\"></ol></section></section></main></div><script type=\"module\" src=\"./app.mjs\"></script></body></html>\n",
+        "split.mjs": "export function allocateShares(totalCents, people) {\n  if (!Number.isInteger(totalCents) || totalCents < 0) throw new Error('invalid total');\n  if (!Number.isInteger(people) || people < 1) throw new Error('invalid people');\n\n  const each = Math.floor(totalCents / people);\n  const remainder = totalCents % people;\n  return Array.from({ length: people }, (_, index) => each + (index < remainder ? 1 : 0));\n}\n",
+        "split.test.mjs": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { allocateShares } from './split.mjs';\n\ntest('distributes remainder cents to the first people', () => {\n  assert.deepEqual(allocateShares(1001, 3), [334, 334, 333]);\n});\n\ntest('shares always sum to the bill total', () => {\n  for (const [total, people] of [[1, 4], [9999, 7], [0, 3], [101, 1]]) {\n    const shares = allocateShares(total, people);\n    assert.equal(shares.length, people);\n    assert.equal(shares.reduce((sum, share) => sum + share, 0), total);\n    assert.ok(shares.every(Number.isInteger));\n  }\n});\n\ntest('rejects invalid totals and party sizes', () => {\n  assert.throws(() => allocateShares(-1, 2));\n  assert.throws(() => allocateShares(1.5, 2));\n  assert.throws(() => allocateShares(10, 0));\n  assert.throws(() => allocateShares(10, 2.5));\n});\n"
+      },
+      "reviewFinalOutput": "{\"complete\":false,\"findings\":[\"Focused tests passed (6/6), but browser UAT failed before any interactions: the harness could not find the field labeled 'Bill total in dollars'. The supplied page labels it 'Total bill amount', so the required browser interaction did not pass.\"],\"evidence\":[\"Test receipt: exitCode 0; 6 tests passed, 0 failed.\",\"Browser receipt: result FAIL; fill timed out waiting for getByLabel('Bill total in dollars'); interactions=[], pageErrors=[], consoleErrors=[], blockedExternalRequests=[].\"]}",
+      "review": {
+        "complete": false,
+        "findings": [
+          "Focused tests passed (6/6), but browser UAT failed before any interactions: the harness could not find the field labeled 'Bill total in dollars'. The supplied page labels it 'Total bill amount', so the required browser interaction did not pass."
+        ],
+        "evidence": [
+          "Test receipt: exitCode 0; 6 tests passed, 0 failed.",
+          "Browser receipt: result FAIL; fill timed out waiting for getByLabel('Bill total in dollars'); interactions=[], pageErrors=[], consoleErrors=[], blockedExternalRequests=[]."
+        ]
+      },
+      "reviewItems": [
+        "message_output_item"
+      ]
+    },
+    {
+      "attempt": 2,
+      "status": "implemented",
+      "durationMs": 59488,
+      "finalOutput": "Implemented the SplitFair app. Changed the amount field label to **“Bill total in dollars”**, which resolves the browser UAT label mismatch. Focused tests passed (6/6), and browser UAT passed: calculating a $10.01 split among 3 produced $3.34, $3.34, and $3.33; Reset hid the results; invalid amounts showed an error. No external requests or browser errors were reported.",
+      "newItems": [
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "tool_call_item",
+        "tool_call_output_item",
+        "message_output_item"
+      ],
+      "postImplementChecks": {
+        "command": [
+          "node",
+          "--test",
+          "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+        ],
+        "exitCode": 0,
+        "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 1.03628\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.193256\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.195429\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.914244\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.236478\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.209204\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 53.029335\n",
+        "stderr": "",
+        "durationMs": 90
+      },
+      "postImplementBrowserUat": {
+        "schema": "agents-sdk-miniapp-browser-uat.v1",
+        "result": "PASS",
+        "url": "http://127.0.0.1:42101/",
+        "interactions": [
+          {
+            "action": "calculate",
+            "shares": [
+              334,
+              334,
+              333
+            ],
+            "reconciledTotalCents": 1001
+          },
+          {
+            "action": "reset",
+            "resultsHidden": true
+          },
+          {
+            "action": "invalid_amount",
+            "errorVisible": true
+          }
+        ],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "blockedExternalRequests": [],
+        "screenshot": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png",
+        "screenshotBytes": 66832,
+        "sourceSha256": "ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59",
+        "sourceFiles": [
+          "app.mjs",
+          "index.html",
+          "split.mjs",
+          "split.test.mjs"
+        ],
+        "trace": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip",
+        "unexpectedConsoleErrors": [],
+        "runner": {
+          "command": [
+            "node",
+            "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+          ],
+          "exitCode": 0,
+          "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"PASS\",\"url\":\"http://127.0.0.1:42101/\",\"interactions\":[{\"action\":\"calculate\",\"shares\":[334,334,333],\"reconciledTotalCents\":1001},{\"action\":\"reset\",\"resultsHidden\":true},{\"action\":\"invalid_amount\",\"errorVisible\":true}],\"pageErrors\":[],\"consoleErrors\":[],\"blockedExternalRequests\":[],\"screenshot\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png\",\"screenshotBytes\":66832,\"sourceSha256\":\"ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59\",\"sourceFiles\":[\"app.mjs\",\"index.html\",\"split.mjs\",\"split.test.mjs\"],\"trace\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip\",\"unexpectedConsoleErrors\":[]}\n",
+          "stderr": "",
+          "durationMs": 1284
+        }
+      },
+      "sourceSnapshot": {
+        "app.mjs": "import { allocateShares } from './split.mjs';\n\nconst form = document.querySelector('#split-form');\nconst amountInput = document.querySelector('#amount');\nconst peopleInput = document.querySelector('#people');\nconst message = document.querySelector('#message');\nconst results = document.querySelector('#results');\nconst shareList = document.querySelector('#share-list');\nconst totalLabel = document.querySelector('#total-label');\nconst money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });\n\nfunction parseCents(value) {\n  const match = /^(?:\\d+)(?:\\.(\\d{1,2}))?$/.exec(value.trim());\n  if (!match) return null;\n  const [whole, fraction = ''] = value.trim().split('.');\n  const cents = Number(whole) * 100 + Number((fraction + '00').slice(0, 2));\n  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;\n}\n\nform.addEventListener('submit', (event) => {\n  event.preventDefault();\n  message.textContent = '';\n  results.hidden = true;\n  const cents = parseCents(amountInput.value);\n  const people = Number(peopleInput.value);\n  if (cents === null) {\n    message.textContent = 'Enter a valid bill amount greater than $0.00, with up to two decimal places.';\n    amountInput.focus();\n    return;\n  }\n  if (!Number.isSafeInteger(people) || people < 1 || people > 10000) {\n    message.textContent = 'Enter a whole number of people between 1 and 10,000.';\n    peopleInput.focus();\n    return;\n  }\n\n  const shares = allocateShares(cents, people);\n  shareList.replaceChildren(...shares.map((share, index) => {\n    const row = document.createElement('li');\n    const person = document.createElement('span');\n    const amount = document.createElement('strong');\n    person.textContent = `Person ${index + 1}`;\n    amount.textContent = money.format(share / 100);\n    row.append(person, amount);\n    return row;\n  }));\n  totalLabel.textContent = `${people} people · ${money.format(cents / 100)} total`;\n  results.hidden = false;\n});\n\nform.addEventListener('reset', () => {\n  message.textContent = '';\n  results.hidden = true;\n  shareList.replaceChildren();\n  totalLabel.textContent = '';\n});\n",
+        "index.html": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>SplitFair — Split a bill, fairly</title><style>\n:root{color-scheme:light;--ink:#202b27;--muted:#65716b;--green:#24644e;--line:#d9ddd4;--paper:#fffefa;--bg:#f5f2eb}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.shell{width:min(100% - 32px,1050px);margin:auto}header{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #deded5}.brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.04em;font-size:20px}.mark{display:grid;place-items:center;width:34px;height:34px;color:white;background:var(--green);border-radius:11px}.offline{color:var(--muted);font-size:12px}main{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:clamp(34px,8vw,100px);min-height:calc(100vh - 79px);padding:58px 0 76px}.intro{max-width:440px}.eyebrow{text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-size:11px;font-weight:800}h1{font-family:Georgia,serif;font-size:clamp(44px,6vw,68px);line-height:.99;letter-spacing:-.055em;font-weight:500;margin:18px 0 20px}h1 em{color:var(--green)}.intro p{color:var(--muted);max-width:360px;line-height:1.7;font-size:15px}.note{margin-top:38px;color:#7e867f;font-size:12px}.card{background:var(--paper);border:1px solid #e6e4dc;border-radius:20px;padding:clamp(24px,4vw,38px);box-shadow:0 18px 50px #27392c0b}.card h2{font-family:Georgia,serif;font-weight:500;font-size:27px;margin:0 0 7px}.sub{margin:0 0 27px;color:var(--muted);font-size:13px}label{display:block;font-weight:700;font-size:13px;margin:0 0 9px}.field{position:relative;margin-bottom:21px}.currency{position:absolute;left:15px;top:13px;color:#7a827c}.money{padding-left:34px!important}input{width:100%;border:1px solid var(--line);background:white;border-radius:10px;height:48px;padding:0 14px;font:inherit;color:var(--ink);outline:none}input:focus{border-color:#50806b;box-shadow:0 0 0 3px #24644e18}.hint{color:#818982;font-size:11px;margin:7px 0 0}.actions{display:flex;gap:10px;margin-top:5px}button{border:0;border-radius:10px;height:48px;padding:0 20px;font:inherit;font-weight:700;cursor:pointer}.primary{flex:1;color:white;background:var(--green)}.reset{color:#4d5952;background:#eff0e9}.message{min-height:19px;margin:13px 0 0;color:#a3422e;font-size:13px}.results{margin-top:20px;padding-top:22px;border-top:1px solid #e8e7df}.results[hidden]{display:none}.result-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.result-head h3{margin:0;font-size:14px}.result-head span{color:var(--muted);font-size:12px}.share-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:220px;overflow:auto}.share-list li{display:flex;justify-content:space-between;background:#f7f7f1;border-radius:8px;padding:10px 12px;font-size:13px}.share-list strong{font-variant-numeric:tabular-nums}@media(max-width:720px){main{grid-template-columns:1fr;gap:30px;align-content:start;padding:48px 0}.intro{max-width:520px}.note{margin-top:18px}}@media(max-width:420px){.shell{width:calc(100% - 24px)}main{padding-top:36px}.card{border-radius:16px}}\n</style></head><body><div class=\"shell\"><header><div class=\"brand\"><span class=\"mark\" aria-hidden=\"true\">÷</span>SplitFair</div><div class=\"offline\">Works offline · No sign-up</div></header><main><section class=\"intro\"><div class=\"eyebrow\">Good company, simple math</div><h1>Settle up.<br><em>Stay friends.</em></h1><p>Split the bill evenly and let us take care of the extra cents. Everyone gets a fair share, down to the last penny.</p><div class=\"note\">✳ The first people in line cover any extra cents.</div></section><section class=\"card\"><h2>Split a bill</h2><p class=\"sub\">Enter the total and how many people are sharing.</p><form id=\"split-form\" novalidate><div class=\"field\"><label for=\"amount\">Bill total in dollars</label><span class=\"currency\" aria-hidden=\"true\">$</span><input class=\"money\" id=\"amount\" name=\"amount\" type=\"number\" inputmode=\"decimal\" min=\"0.01\" step=\"0.01\" placeholder=\"0.00\" required aria-describedby=\"amount-hint\"><p class=\"hint\" id=\"amount-hint\">Enter an amount in dollars</p></div><div class=\"field\"><label for=\"people\">Number of people</label><input id=\"people\" name=\"people\" type=\"number\" inputmode=\"numeric\" min=\"1\" step=\"1\" placeholder=\"e.g. 4\" required aria-describedby=\"people-hint\"><p class=\"hint\" id=\"people-hint\">How many people are splitting?</p></div><div class=\"actions\"><button class=\"primary\" type=\"submit\">Calculate split →</button><button class=\"reset\" type=\"reset\">Reset</button></div><p class=\"message\" id=\"message\" role=\"alert\" aria-live=\"polite\"></p></form><section class=\"results\" id=\"results\" aria-labelledby=\"results-title\" aria-live=\"polite\" hidden><div class=\"result-head\"><h3 id=\"results-title\">Everyone's share</h3><span id=\"total-label\"></span></div><ol class=\"share-list\" id=\"share-list\"></ol></section></section></main></div><script type=\"module\" src=\"./app.mjs\"></script></body></html>",
+        "split.mjs": "export function allocateShares(totalCents, people) {\n  if (!Number.isInteger(totalCents) || totalCents < 0) throw new Error('invalid total');\n  if (!Number.isInteger(people) || people < 1) throw new Error('invalid people');\n\n  const each = Math.floor(totalCents / people);\n  const remainder = totalCents % people;\n  return Array.from({ length: people }, (_, index) => each + (index < remainder ? 1 : 0));\n}\n",
+        "split.test.mjs": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { allocateShares } from './split.mjs';\n\ntest('distributes remainder cents to the first people', () => {\n  assert.deepEqual(allocateShares(1001, 3), [334, 334, 333]);\n});\n\ntest('shares always sum to the bill total', () => {\n  for (const [total, people] of [[1, 4], [9999, 7], [0, 3], [101, 1]]) {\n    const shares = allocateShares(total, people);\n    assert.equal(shares.length, people);\n    assert.equal(shares.reduce((sum, share) => sum + share, 0), total);\n    assert.ok(shares.every(Number.isInteger));\n  }\n});\n\ntest('rejects invalid totals and party sizes', () => {\n  assert.throws(() => allocateShares(-1, 2));\n  assert.throws(() => allocateShares(1.5, 2));\n  assert.throws(() => allocateShares(10, 0));\n  assert.throws(() => allocateShares(10, 2.5));\n});\n"
+      },
+      "reviewFinalOutput": "{\"complete\":true,\"findings\":[],\"evidence\":[\"All 6 focused Node tests passed (exit code 0), including hidden allocation/validation checks and visible-test presence.\",\"Browser UAT passed: 1001 cents split across 3 people as 334/334/333, total reconciled; Reset hid results; invalid amount showed an error.\",\"Browser receipt reports no page errors, console errors, blocked external requests, or unexpected console errors.\",\"Snapshot uses only local module assets and system fonts; allocateShares is defined in split.mjs, and split.test.mjs covers remainder distribution, reconciliation, integer shares, and invalid arguments.\"]}",
+      "review": {
+        "complete": true,
+        "findings": [],
+        "evidence": [
+          "All 6 focused Node tests passed (exit code 0), including hidden allocation/validation checks and visible-test presence.",
+          "Browser UAT passed: 1001 cents split across 3 people as 334/334/333, total reconciled; Reset hid results; invalid amount showed an error.",
+          "Browser receipt reports no page errors, console errors, blocked external requests, or unexpected console errors.",
+          "Snapshot uses only local module assets and system fonts; allocateShares is defined in split.mjs, and split.test.mjs covers remainder distribution, reconciliation, integer shares, and invalid arguments."
+        ]
+      },
+      "reviewItems": [
+        "message_output_item"
+      ],
+      "verificationFinalOutput": "{\"complete\":true,\"findings\":[],\"evidence\":[\"All 6 focused Node tests passed (exit code 0), including allocation, validation, and visible-test checks.\",\"Browser UAT passed: a $10.01 bill split across 3 people rendered shares of $3.34, $3.34, and $3.33, reconciling to 1001 cents; Reset hid results; invalid amount showed visible feedback.\",\"The browser receipt reports no page errors, console errors, blocked external requests, or unexpected console errors.\",\"The supplied snapshot loads a local module, uses system fonts, defines allocateShares in split.mjs, and includes split.test.mjs covering remainder distribution, reconciliation, integer shares, and invalid arguments.\"]}",
+      "verification": {
+        "complete": true,
+        "findings": [],
+        "evidence": [
+          "All 6 focused Node tests passed (exit code 0), including allocation, validation, and visible-test checks.",
+          "Browser UAT passed: a $10.01 bill split across 3 people rendered shares of $3.34, $3.34, and $3.33, reconciling to 1001 cents; Reset hid results; invalid amount showed visible feedback.",
+          "The browser receipt reports no page errors, console errors, blocked external requests, or unexpected console errors.",
+          "The supplied snapshot loads a local module, uses system fonts, defines allocateShares in split.mjs, and includes split.test.mjs covering remainder distribution, reconciliation, integer shares, and invalid arguments."
+        ]
+      },
+      "verificationItems": [
+        "message_output_item"
+      ]
+    }
+  ],
+  "modelReceipts": [
+    {
+      "role": "planner",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-26eb-7a02-8e16-fb1f089d63ed",
+      "turnId": "01a133a3-275a-71b0-ac42-047a58b00197",
+      "status": "completed",
+      "durationMs": 4635,
+      "itemCount": 2,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 16973,
+          "outputTokens": 214,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 17187
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 16973,
+          "outputTokens": 214,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 17187
+        }
+      },
+      "agentAction": "final"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-3a7c-7060-b2b9-8d014db1e796",
+      "turnId": "01a133a3-3ae7-72c3-b0d7-5b8700114282",
+      "status": "completed",
+      "durationMs": 7871,
+      "itemCount": 5,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 17756,
+          "outputTokens": 50,
+          "reasoningOutputTokens": 18,
+          "totalTokens": 17806
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 49408,
+          "inputTokens": 52818,
+          "outputTokens": 258,
+          "reasoningOutputTokens": 129,
+          "totalTokens": 53076
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "list_files"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-5a9b-7d43-acd1-b05b7cd99331",
+      "turnId": "01a133a3-5af6-70b3-b921-bdadb80d72fd",
+      "status": "completed",
+      "durationMs": 3704,
+      "itemCount": 3,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17574,
+          "outputTokens": 59,
+          "reasoningOutputTokens": 19,
+          "totalTokens": 17633
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17574,
+          "outputTokens": 59,
+          "reasoningOutputTokens": 19,
+          "totalTokens": 17633
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "read_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-6a6f-7382-8fde-a993d9850909",
+      "turnId": "01a133a3-6acd-7c11-8a17-9b5cab9bd8c5",
+      "status": "completed",
+      "durationMs": 6086,
+      "itemCount": 5,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 17876,
+          "outputTokens": 118,
+          "reasoningOutputTokens": 84,
+          "totalTokens": 17994
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 35656,
+          "outputTokens": 191,
+          "reasoningOutputTokens": 84,
+          "totalTokens": 35847
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "run_focused_tests"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-83d7-7e13-8c90-eecbd88b6f16",
+      "turnId": "01a133a3-8443-7450-a745-2a47a84bcb90",
+      "status": "completed",
+      "durationMs": 5911,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 18176,
+          "inputTokens": 18930,
+          "outputTokens": 55,
+          "reasoningOutputTokens": 23,
+          "totalTokens": 18985
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 33280,
+          "inputTokens": 37752,
+          "outputTokens": 131,
+          "reasoningOutputTokens": 67,
+          "totalTokens": 37883
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "list_files"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-9c61-72e0-bf2c-275c65c30915",
+      "turnId": "01a133a3-9cca-7ae1-8031-4122307b6651",
+      "status": "completed",
+      "durationMs": 6895,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 18176,
+          "inputTokens": 19178,
+          "outputTokens": 214,
+          "reasoningOutputTokens": 49,
+          "totalTokens": 19392
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 34304,
+          "inputTokens": 38102,
+          "outputTokens": 436,
+          "reasoningOutputTokens": 106,
+          "totalTokens": 38538
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "write_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-b8ba-7491-b1b7-c24c56db761c",
+      "turnId": "01a133a3-b929-7753-99a0-417194c8b62d",
+      "status": "completed",
+      "durationMs": 9034,
+      "itemCount": 6,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 19200,
+          "inputTokens": 19427,
+          "outputTokens": 71,
+          "reasoningOutputTokens": 39,
+          "totalTokens": 19498
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 52480,
+          "inputTokens": 57910,
+          "outputTokens": 259,
+          "reasoningOutputTokens": 123,
+          "totalTokens": 58169
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "list_files"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a3-dd74-7613-ad6d-dca78e28025f",
+      "turnId": "01a133a3-dfbf-7eb0-a81c-fff0b15e339b",
+      "status": "completed",
+      "durationMs": 33783,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 19200,
+          "inputTokens": 22404,
+          "outputTokens": 1960,
+          "reasoningOutputTokens": 111,
+          "totalTokens": 24364
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 30208,
+          "inputTokens": 42145,
+          "outputTokens": 4591,
+          "reasoningOutputTokens": 168,
+          "totalTokens": 46736
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "write_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a4-64c7-7f83-9e57-4d0df86df039",
+      "turnId": "01a133a4-652a-7610-9e2e-c1a6635abe37",
+      "status": "completed",
+      "durationMs": 9796,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 20224,
+          "inputTokens": 21299,
+          "outputTokens": 746,
+          "reasoningOutputTokens": 72,
+          "totalTokens": 22045
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 35328,
+          "inputTokens": 42505,
+          "outputTokens": 815,
+          "reasoningOutputTokens": 120,
+          "totalTokens": 43320
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "write_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a4-8c5a-7790-8670-27f64e00bcec",
+      "turnId": "01a133a4-8cb8-7841-b93a-7f46945374c2",
+      "status": "completed",
+      "durationMs": 16901,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 21248,
+          "inputTokens": 22350,
+          "outputTokens": 350,
+          "reasoningOutputTokens": 18,
+          "totalTokens": 22700
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 36352,
+          "inputTokens": 44312,
+          "outputTokens": 706,
+          "reasoningOutputTokens": 42,
+          "totalTokens": 45018
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "write_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a4-cfc6-7f83-a796-c229a5385c8e",
+      "turnId": "01a133a4-d033-7b52-bbd6-184b48c0648d",
+      "status": "completed",
+      "durationMs": 9203,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 21248,
+          "inputTokens": 22489,
+          "outputTokens": 148,
+          "reasoningOutputTokens": 114,
+          "totalTokens": 22637
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 39424,
+          "inputTokens": 44868,
+          "outputTokens": 234,
+          "reasoningOutputTokens": 152,
+          "totalTokens": 45102
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "run_focused_tests"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a4-f577-78f3-9fc3-f400f2f8a4d9",
+      "turnId": "01a133a4-f5e3-71d1-9b70-e260a9badd48",
+      "status": "completed",
+      "durationMs": 11848,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 22272,
+          "inputTokens": 23092,
+          "outputTokens": 177,
+          "reasoningOutputTokens": 99,
+          "totalTokens": 23269
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 38400,
+          "inputTokens": 46050,
+          "outputTokens": 287,
+          "reasoningOutputTokens": 151,
+          "totalTokens": 46337
+        }
+      },
+      "agentAction": "final"
+    },
+    {
+      "role": "independent_reviewer_1",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-3e7c-7230-b57a-df02be84f024",
+      "turnId": "01a133a5-3eea-7051-824a-b3430f097515",
+      "status": "completed",
+      "durationMs": 5792,
+      "itemCount": 2,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 20938,
+          "outputTokens": 146,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21084
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 20938,
+          "outputTokens": 146,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21084
+        }
+      },
+      "agentAction": "final"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-5692-7593-a4ab-f293280cf093",
+      "turnId": "01a133a5-56fb-79f1-8892-6f8f8e7a52ee",
+      "status": "completed",
+      "durationMs": 7386,
+      "itemCount": 5,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 17648,
+          "outputTokens": 72,
+          "reasoningOutputTokens": 40,
+          "totalTokens": 17720
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 32256,
+          "inputTokens": 35177,
+          "outputTokens": 167,
+          "reasoningOutputTokens": 57,
+          "totalTokens": 35344
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "list_files"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-74bf-7861-bcc9-e7b2e5653376",
+      "turnId": "01a133a5-7529-7cd2-bd33-0f15a2b34a2c",
+      "status": "completed",
+      "durationMs": 4184,
+      "itemCount": 3,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17649,
+          "outputTokens": 60,
+          "reasoningOutputTokens": 26,
+          "totalTokens": 17709
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17649,
+          "outputTokens": 60,
+          "reasoningOutputTokens": 26,
+          "totalTokens": 17709
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "run_focused_tests"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-86d5-7f71-94fc-25a04ddb0c7a",
+      "turnId": "01a133a5-8729-7fb3-947b-baf0e931cdd6",
+      "status": "completed",
+      "durationMs": 7484,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 18353,
+          "outputTokens": 81,
+          "reasoningOutputTokens": 42,
+          "totalTokens": 18434
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 32256,
+          "inputTokens": 36577,
+          "outputTokens": 186,
+          "reasoningOutputTokens": 98,
+          "totalTokens": 36763
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "read_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-a565-7172-8a8e-cf0bbe821c82",
+      "turnId": "01a133a5-a5c6-7cc3-a91c-45bdef1e93da",
+      "status": "completed",
+      "durationMs": 5561,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 19200,
+          "inputTokens": 20080,
+          "outputTokens": 77,
+          "reasoningOutputTokens": 37,
+          "totalTokens": 20157
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 34304,
+          "inputTokens": 40028,
+          "outputTokens": 162,
+          "reasoningOutputTokens": 91,
+          "totalTokens": 40190
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "read_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-bc8b-7953-b8df-30141e520e5e",
+      "turnId": "01a133a5-bcee-73f1-b3e9-cdcccda50d29",
+      "status": "completed",
+      "durationMs": 16330,
+      "itemCount": 3,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 20650,
+          "outputTokens": 2001,
+          "reasoningOutputTokens": 153,
+          "totalTokens": 22651
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 20650,
+          "outputTokens": 2001,
+          "reasoningOutputTokens": 153,
+          "totalTokens": 22651
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "write_file"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a5-fd98-7842-b68c-59e70c2af755",
+      "turnId": "01a133a5-fdf7-7010-a64a-64478651979d",
+      "status": "completed",
+      "durationMs": 3692,
+      "itemCount": 3,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 0,
+          "inputTokens": 22569,
+          "outputTokens": 95,
+          "reasoningOutputTokens": 61,
+          "totalTokens": 22664
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 0,
+          "inputTokens": 22569,
+          "outputTokens": 95,
+          "reasoningOutputTokens": 61,
+          "totalTokens": 22664
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "run_browser_uat"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a6-12ca-77d3-8cca-dc7ddc89fa98",
+      "turnId": "01a133a6-1324-7622-ad12-bd8ba3954b7e",
+      "status": "completed",
+      "durationMs": 6432,
+      "itemCount": 4,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 22272,
+          "inputTokens": 23419,
+          "outputTokens": 79,
+          "reasoningOutputTokens": 45,
+          "totalTokens": 23498
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 37376,
+          "inputTokens": 46737,
+          "outputTokens": 156,
+          "reasoningOutputTokens": 89,
+          "totalTokens": 46893
+        }
+      },
+      "agentAction": "tool_call",
+      "toolName": "run_focused_tests"
+    },
+    {
+      "role": "implementer",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a6-2d93-7ba3-ad83-b1dfada7c1cd",
+      "turnId": "01a133a6-2dfe-7be3-a459-eda07c5bae12",
+      "status": "completed",
+      "durationMs": 4079,
+      "itemCount": 2,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 23893,
+          "outputTokens": 116,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 24009
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 23893,
+          "outputTokens": 116,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 24009
+        }
+      },
+      "agentAction": "final"
+    },
+    {
+      "role": "independent_reviewer_2",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a6-44bc-77d1-a56c-db5a190413f5",
+      "turnId": "01a133a6-4530-7e21-a907-d8cc2ace565c",
+      "status": "completed",
+      "durationMs": 5074,
+      "itemCount": 2,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 21089,
+          "outputTokens": 164,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21253
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 21089,
+          "outputTokens": 164,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21253
+        }
+      },
+      "agentAction": "final"
+    },
+    {
+      "role": "independent_final_verifier_2",
+      "provider": "openai-codex-sdk",
+      "authRoute": "existing ChatGPT/Codex login through Codex app-server",
+      "threadId": "01a133a6-59eb-7c61-93b8-8c11606e19d1",
+      "turnId": "01a133a6-5a52-7131-ae6c-55595e25d57e",
+      "status": "completed",
+      "durationMs": 4010,
+      "itemCount": 2,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 21217,
+          "outputTokens": 184,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21401
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 21217,
+          "outputTokens": 184,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 21401
+        }
+      },
+      "agentAction": "final"
+    }
+  ],
+  "toolInvocations": [
+    {
+      "tool": "list_files",
+      "at": "2026-10-13T05:01:45.807657+00:00"
+    },
+    {
+      "tool": "read_file",
+      "path": "split.mjs",
+      "at": "2026-10-13T05:01:49.846637+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:01:56.369859+00:00"
+    },
+    {
+      "tool": "list_files",
+      "at": "2026-10-13T05:02:02.625484+00:00"
+    },
+    {
+      "tool": "write_file",
+      "path": "split.mjs",
+      "at": "2026-10-13T05:02:09.888057+00:00"
+    },
+    {
+      "tool": "list_files",
+      "at": "2026-10-13T05:02:19.291723+00:00"
+    },
+    {
+      "tool": "write_file",
+      "path": "index.html",
+      "at": "2026-10-13T05:02:53.922241+00:00"
+    },
+    {
+      "tool": "write_file",
+      "path": "app.mjs",
+      "at": "2026-10-13T05:03:04.088604+00:00"
+    },
+    {
+      "tool": "write_file",
+      "path": "split.test.mjs",
+      "at": "2026-10-13T05:03:21.319309+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:03:30.987587+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:03:43.271695+00:00"
+    },
+    {
+      "tool": "run_browser_uat",
+      "at": "2026-10-13T05:03:43.272288+00:00"
+    },
+    {
+      "tool": "list_files",
+      "at": "2026-10-13T05:04:03.579799+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:04:08.196787+00:00"
+    },
+    {
+      "tool": "read_file",
+      "path": "index.html",
+      "at": "2026-10-13T05:04:16.013030+00:00"
+    },
+    {
+      "tool": "read_file",
+      "path": "app.mjs",
+      "at": "2026-10-13T05:04:21.928376+00:00"
+    },
+    {
+      "tool": "write_file",
+      "path": "index.html",
+      "at": "2026-10-13T05:04:38.605053+00:00"
+    },
+    {
+      "tool": "run_browser_uat",
+      "at": "2026-10-13T05:04:42.635489+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:04:50.880745+00:00"
+    },
+    {
+      "tool": "run_focused_tests",
+      "at": "2026-10-13T05:04:55.409443+00:00"
+    },
+    {
+      "tool": "run_browser_uat",
+      "at": "2026-10-13T05:04:55.410790+00:00"
+    }
+  ],
+  "checkReceipts": [
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 1,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nnot ok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 1.611835\n  type: 'test'\n  location: '/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs:11:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n      [\n    -   334,\n    -   334,\n        333,\n    +   333,\n    +   333\n      ]\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n    0: 334\n    1: 334\n    2: 333\n  actual:\n    0: 333\n    1: 333\n    2: 333\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs:12:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.start (node:internal/test_runner/test:944:17)\n    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.207371\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nnot ok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.997748\n  type: 'test'\n  location: '/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs:21:1'\n  failureType: 'testCodeFailure'\n  error: 'add at least one app-owned *.test.mjs file'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n  stack: |-\n    TestContext.<anonymous> (file:///home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs:23:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 1\n# fail 2\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 56.474463\n",
+      "stderr": "",
+      "durationMs": 88,
+      "at": "2026-10-13T05:01:56.370130+00:00"
+    },
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 1.025971\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.199946\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.198518\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.934185\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.235321\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.196144\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 52.108777\n",
+      "stderr": "",
+      "durationMs": 91,
+      "at": "2026-10-13T05:03:30.987998+00:00"
+    },
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 0.948208\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.181518\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.178346\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.892267\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.235779\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.194518\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 48.745133\n",
+      "stderr": "",
+      "durationMs": 83,
+      "at": "2026-10-13T05:03:43.272061+00:00"
+    },
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 0.963299\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.1861\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.202775\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.892443\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.235511\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.197565\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 53.764702\n",
+      "stderr": "",
+      "durationMs": 92,
+      "at": "2026-10-13T05:04:08.197402+00:00"
+    },
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 0.990929\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.184061\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.189191\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.900485\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.250159\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.198485\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 49.746532\n",
+      "stderr": "",
+      "durationMs": 85,
+      "at": "2026-10-13T05:04:50.881452+00:00"
+    },
+    {
+      "kind": "node_tests",
+      "command": [
+        "node",
+        "--test",
+        "/tmp/agents-sdk-split-fair-20261013-run7/split.test.mjs",
+        "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/hidden_acceptance.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: split allocates every cent exactly once and distributes remainder fairly\nok 1 - split allocates every cent exactly once and distributes remainder fairly\n  ---\n  duration_ms: 1.03628\n  type: 'test'\n  ...\n# Subtest: split rejects invalid totals and party counts\nok 2 - split rejects invalid totals and party counts\n  ---\n  duration_ms: 0.193256\n  type: 'test'\n  ...\n# Subtest: the Mini App includes its own visible tests\nok 3 - the Mini App includes its own visible tests\n  ---\n  duration_ms: 0.195429\n  type: 'test'\n  ...\n# Subtest: distributes remainder cents to the first people\nok 4 - distributes remainder cents to the first people\n  ---\n  duration_ms: 0.914244\n  type: 'test'\n  ...\n# Subtest: shares always sum to the bill total\nok 5 - shares always sum to the bill total\n  ---\n  duration_ms: 0.236478\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and party sizes\nok 6 - rejects invalid totals and party sizes\n  ---\n  duration_ms: 0.209204\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 53.029335\n",
+      "stderr": "",
+      "durationMs": 90,
+      "at": "2026-10-13T05:04:55.410196+00:00"
+    }
+  ],
+  "browserReceipts": [
+    {
+      "schema": "agents-sdk-miniapp-browser-uat.v1",
+      "result": "FAIL",
+      "url": "http://127.0.0.1:32797/",
+      "interactions": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "blockedExternalRequests": [],
+      "screenshot": null,
+      "failure": "locator.fill: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Bill total in dollars')\u001b[22m\n\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:46:52)",
+      "failureScreenshot": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-failure.png",
+      "unexpectedConsoleErrors": [],
+      "runner": {
+        "command": [
+          "node",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+        ],
+        "exitCode": 1,
+        "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"FAIL\",\"url\":\"http://127.0.0.1:32797/\",\"interactions\":[],\"pageErrors\":[],\"consoleErrors\":[],\"blockedExternalRequests\":[],\"screenshot\":null,\"failure\":\"locator.fill: Timeout 5000ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for getByLabel('Bill total in dollars')\\u001b[22m\\n\\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:46:52)\",\"failureScreenshot\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-failure.png\",\"unexpectedConsoleErrors\":[]}\n",
+        "stderr": "",
+        "durationMs": 6272
+      }
+    },
+    {
+      "schema": "agents-sdk-miniapp-browser-uat.v1",
+      "result": "PASS",
+      "url": "http://127.0.0.1:34833/",
+      "interactions": [
+        {
+          "action": "calculate",
+          "shares": [
+            334,
+            334,
+            333
+          ],
+          "reconciledTotalCents": 1001
+        },
+        {
+          "action": "reset",
+          "resultsHidden": true
+        },
+        {
+          "action": "invalid_amount",
+          "errorVisible": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "blockedExternalRequests": [],
+      "screenshot": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png",
+      "screenshotBytes": 66832,
+      "sourceSha256": "ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59",
+      "sourceFiles": [
+        "app.mjs",
+        "index.html",
+        "split.mjs",
+        "split.test.mjs"
+      ],
+      "trace": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip",
+      "unexpectedConsoleErrors": [],
+      "runner": {
+        "command": [
+          "node",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+        ],
+        "exitCode": 0,
+        "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"PASS\",\"url\":\"http://127.0.0.1:34833/\",\"interactions\":[{\"action\":\"calculate\",\"shares\":[334,334,333],\"reconciledTotalCents\":1001},{\"action\":\"reset\",\"resultsHidden\":true},{\"action\":\"invalid_amount\",\"errorVisible\":true}],\"pageErrors\":[],\"consoleErrors\":[],\"blockedExternalRequests\":[],\"screenshot\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png\",\"screenshotBytes\":66832,\"sourceSha256\":\"ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59\",\"sourceFiles\":[\"app.mjs\",\"index.html\",\"split.mjs\",\"split.test.mjs\"],\"trace\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip\",\"unexpectedConsoleErrors\":[]}\n",
+        "stderr": "",
+        "durationMs": 1301
+      }
+    },
+    {
+      "schema": "agents-sdk-miniapp-browser-uat.v1",
+      "result": "PASS",
+      "url": "http://127.0.0.1:42101/",
+      "interactions": [
+        {
+          "action": "calculate",
+          "shares": [
+            334,
+            334,
+            333
+          ],
+          "reconciledTotalCents": 1001
+        },
+        {
+          "action": "reset",
+          "resultsHidden": true
+        },
+        {
+          "action": "invalid_amount",
+          "errorVisible": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "blockedExternalRequests": [],
+      "screenshot": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png",
+      "screenshotBytes": 66832,
+      "sourceSha256": "ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59",
+      "sourceFiles": [
+        "app.mjs",
+        "index.html",
+        "split.mjs",
+        "split.test.mjs"
+      ],
+      "trace": "/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip",
+      "unexpectedConsoleErrors": [],
+      "runner": {
+        "command": [
+          "node",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+        ],
+        "exitCode": 0,
+        "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"PASS\",\"url\":\"http://127.0.0.1:42101/\",\"interactions\":[{\"action\":\"calculate\",\"shares\":[334,334,333],\"reconciledTotalCents\":1001},{\"action\":\"reset\",\"resultsHidden\":true},{\"action\":\"invalid_amount\",\"errorVisible\":true}],\"pageErrors\":[],\"consoleErrors\":[],\"blockedExternalRequests\":[],\"screenshot\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat.png\",\"screenshotBytes\":66832,\"sourceSha256\":\"ccecc9be68828d6d2951066c5105cc0fd327b5393d8fc4a8864a41bec8227a59\",\"sourceFiles\":[\"app.mjs\",\"index.html\",\"split.mjs\",\"split.test.mjs\"],\"trace\":\"/tmp/agents-sdk-split-fair-20261013-run7/evidence/browser-uat-trace.zip\",\"unexpectedConsoleErrors\":[]}\n",
+        "stderr": "",
+        "durationMs": 1284
+      }
+    }
+  ],
+  "plan": {
+    "task_instruction": "Build a self-contained, offline SplitFair Mini App for splitting a bill. Use only local assets and make no requests to external hosts. Keep allocateShares in split.mjs. Provide labeled dollar-amount and people-count inputs, a submit button that calculates whole-cent per-person shares reconciling exactly to the total, visible validation for invalid input, a reset button that clears results, and a results section showing each person's amount. Add visible tests.",
+    "acceptance": [
+      "The app works without network access or external fonts, scripts, APIs, or other resources.",
+      "allocateShares is defined in split.mjs and returns whole-cent shares whose sum equals the entered total.",
+      "Users can submit valid amount and people inputs and see each person's share in the results section.",
+      "Invalid input produces visible validation feedback.",
+      "Reset clears the displayed results.",
+      "Visible tests cover the share allocation behavior."
+    ]
+  },
+  "plannerItems": [
+    "message_output_item"
+  ],
+  "humanInterventions": 0,
+  "finishedAt": "2026-10-13T05:05:06.595041+00:00",
+  "durationMs": 214459,
+  "subscriptionTokenUsage": {
+    "inputTokens": 466853,
+    "outputTokens": 7237,
+    "totalTokens": 474090,
+    "cachedInputTokens": 390656
+  },
+  "codexTurnCount": 23,
+  "toolInvocationCount": 21,
+  "files": [
+    "app.mjs",
+    "evidence/browser-uat-failure.png",
+    "evidence/browser-uat-trace.zip",
+    "evidence/browser-uat.json",
+    "evidence/browser-uat.png",
+    "evidence/run-state.json",
+    "index.html",
+    "split.mjs",
+    "split.test.mjs"
+  ]
+}
