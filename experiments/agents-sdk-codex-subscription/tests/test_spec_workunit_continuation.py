@@ -6,10 +6,32 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from run_spec_workunit import repeated_patch_rejection_for_phase, repeated_patch_rejection_reason
+from run_spec_workunit import (
+    repeated_patch_rejection_for_phase,
+    repeated_patch_rejection_reason,
+    unexecuted_patch_dispatch_streak,
+)
 
 
 class RepeatedPatchRejectionTests(unittest.TestCase):
+    def test_unexecuted_patch_dispatches_are_counted_separately_from_tool_receipts(self) -> None:
+        calls = [
+            {"updated_at": "1", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+            {"updated_at": "2", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+            {"updated_at": "3", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+        ]
+        self.assertEqual(unexecuted_patch_dispatch_streak(calls, []), 3)
+
+    def test_executed_patch_receipt_and_different_action_reset_dispatch_streak(self) -> None:
+        calls = [
+            {"updated_at": "1", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+            {"updated_at": "2", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+            {"updated_at": "3", "response_text": '{"action":"call_tool","name":"patch_file"}'},
+            {"updated_at": "4", "response_text": '{"action":"call_tool","name":"read_file"}'},
+        ]
+        receipts = [{"updated_at": "2.5"}]
+        self.assertEqual(unexecuted_patch_dispatch_streak(calls, receipts), 0)
+
     def test_rejection_scan_uses_tool_phase_identity_not_agents_runstate_uuid(self) -> None:
         connection = sqlite3.connect(":memory:")
         connection.row_factory = sqlite3.Row

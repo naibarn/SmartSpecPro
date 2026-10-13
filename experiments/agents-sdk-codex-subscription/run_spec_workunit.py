@@ -77,6 +77,30 @@ def repeated_patch_rejection_for_phase(store: DurableRunStore, phase: str, attem
     return repeated_patch_rejection_reason([dict(row) for row in rows])
 
 
+def unexecuted_patch_dispatch_streak(model_calls: list[dict[str, Any]], receipts: list[dict[str, Any]]) -> int:
+    """Count trailing patch dispatches that the Agents SDK did not execute as host tools."""
+    ordered_calls = sorted(model_calls, key=lambda row: str(row.get("updated_at", "")))
+    ordered_receipts = sorted(receipts, key=lambda row: str(row.get("updated_at", "")))
+    streak = 0
+    for index, call in enumerate(ordered_calls):
+        try:
+            dispatch = json.loads(str(call.get("response_text") or "{}"))
+        except json.JSONDecodeError:
+            streak = 0
+            continue
+        if dispatch.get("action") != "call_tool" or dispatch.get("name") != "patch_file":
+            streak = 0
+            continue
+        call_time = str(call.get("updated_at", ""))
+        next_call_time = str(ordered_calls[index + 1].get("updated_at", "")) if index + 1 < len(ordered_calls) else "\uffff"
+        was_executed = any(
+            call_time <= str(row.get("updated_at", "")) <= next_call_time
+            for row in ordered_receipts
+        )
+        streak = 0 if was_executed else streak + 1
+    return streak
+
+
 def is_capacity_error(error: BaseException) -> bool:
     """Recognize temporary subscription capacity errors without treating code errors as waits."""
     if isinstance(error, CapacityWaitError):
@@ -450,6 +474,26 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                         raise UnproductiveImplementationPhase(
                             f"Implementation checkpoint preserved after {count} repeated patch rejections: {reason}. "
                             "The next durable development iteration must diagnose the rejection pattern and choose a different patch strategy."
+                        )
+                    model_calls = store.connection.execute(
+                        "SELECT updated_at,response_text FROM model_calls WHERE phase_id=? AND role='implementer' ORDER BY updated_at",
+                        (phase_row["phase_id"],),
+                    ).fetchall()
+                    patch_receipts = store.connection.execute(
+                        "SELECT updated_at FROM tool_receipts WHERE phase_id=? AND tool='patch_file' ORDER BY updated_at,rowid",
+                        (f"{phase}-{attempt}",),
+                    ).fetchall()
+                    unexecuted_streak = unexecuted_patch_dispatch_streak(
+                        [dict(row) for row in model_calls], [dict(row) for row in patch_receipts]
+                    )
+                    if unexecuted_streak >= 3:
+                        store.event("implementation.patch_dispatch_unexecuted", {
+                            "phaseId": phase_row["phase_id"], "attempt": attempt,
+                            "consecutiveDispatches": unexecuted_streak,
+                        }, stable_key=f"phase:{phase_row['phase_id']}:unexecuted-patch-dispatch:{unexecuted_streak}")
+                        raise UnproductiveImplementationPhase(
+                            f"Implementation checkpoint preserved after {unexecuted_streak} consecutive patch_file dispatches were not executed by the Agents SDK host. "
+                            "The next durable development iteration must inspect the tool dispatch/schema path and choose a safe alternate implementation approach."
                         )
                 continue
             break
