@@ -1,0 +1,29 @@
+{
+  "schema": "agents-sdk-crash-recovery.v1",
+  "runId": "d703ab11-ca75-4275-8914-99cc09dd59c5",
+  "status": "retry_exhausted",
+  "supervisorResult": "FAILED",
+  "reason": "terminal nonrecoverable run failure (exit 1)",
+  "returnCode": 1,
+  "restartCount": 4,
+  "processCount": 5,
+  "durationMs": 1410818,
+  "faultBoundaries": [
+    "model.after_receipt",
+    "model.after_turn_created_before_receipt",
+    "tool.write_file.after_effect",
+    "browser.after_receipt",
+    "verification.after_phase_complete"
+  ],
+  "faultsConsumed": [
+    "model.after_turn_created_before_receipt",
+    "model.after_receipt",
+    "browser.after_receipt",
+    "tool.write_file.after_effect"
+  ],
+  "eventCount": 893,
+  "humanInterventions": 0,
+  "statePath": "/tmp/agents-sdk-durable-acceptance-r16-20261013/evidence/run-state.json",
+  "eventsPath": "/tmp/agents-sdk-durable-acceptance-r16-20261013/evidence/events.jsonl",
+  "processLogs": "/tmp/agents-sdk-durable-acceptance-r16-20261013/evidence/process-logs"
+}

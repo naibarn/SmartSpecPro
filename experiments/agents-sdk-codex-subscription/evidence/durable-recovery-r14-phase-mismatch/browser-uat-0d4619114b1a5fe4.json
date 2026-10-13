@@ -1,0 +1,26 @@
+{
+  "schema": "agents-sdk-miniapp-browser-uat.v1",
+  "result": "FAIL",
+  "url": "http://127.0.0.1:54887/",
+  "interactions": [
+    {
+      "action": "calculate",
+      "shares": [
+        334,
+        334,
+        333
+      ],
+      "reconciledTotalCents": 1001
+    }
+  ],
+  "pageErrors": [
+    "TypeError: form.reset is not a function"
+  ],
+  "consoleErrors": [],
+  "blockedExternalRequests": [],
+  "screenshot": null,
+  "operationId": "0d4619114b1a5fe4",
+  "failure": "Error: Reset left results visible\n    at main (/home/dev/worktrees/agents-sdk-durable-recovery-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:58:59)",
+  "failureScreenshot": "/tmp/agents-sdk-durable-acceptance-r14-20261013/evidence/browser-uat-0d4619114b1a5fe4-failure.png",
+  "unexpectedConsoleErrors": []
+}

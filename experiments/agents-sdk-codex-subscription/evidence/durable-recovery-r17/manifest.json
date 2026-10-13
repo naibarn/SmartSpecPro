@@ -1,0 +1,145 @@
+{
+  "schema": "agents-sdk-durable-recovery-evidence.v1",
+  "runId": "70168176-8161-4e75-ae4e-8c072927d6c8",
+  "classification": "clean_local_acceptance",
+  "authRoute": "existing ChatGPT/Codex login through Codex app-server; openai-codex Python SDK; no credential extraction or API key conversion",
+  "orchestration": "OpenAI Agents SDK RunState + SQLiteSession with experimental Codex SDK Model adapter",
+  "status": "completed",
+  "restartCount": 5,
+  "processCount": 6,
+  "faultsConsumed": [
+    "model.after_turn_created_before_receipt",
+    "model.after_receipt",
+    "tool.write_file.after_effect",
+    "browser.after_receipt",
+    "verification.after_phase_complete"
+  ],
+  "humanInterventions": 0,
+  "durationMs": 123273,
+  "codexTurnCount": 15,
+  "subscriptionTokens": {
+    "input": 303282,
+    "output": 4081,
+    "total": 307363,
+    "cachedInput": 241920,
+    "dollarCost": "UNAVAILABLE"
+  },
+  "roles": {
+    "planner": 1,
+    "implementer": 12,
+    "independent_reviewer": 1,
+    "independent_final_verifier": 1
+  },
+  "toolInvocations": 13,
+  "uniqueToolOperations": 10,
+  "unsettledModelCalls": 0,
+  "unsettledToolReceipts": 0,
+  "lifecycleEvents": 172,
+  "checks": {
+    "nodeFocused": {
+      "passed": 5,
+      "failed": 0
+    },
+    "earlierHiddenTestFailure": {
+      "failed": 2,
+      "repairedByModel": true
+    },
+    "browser": "PASS"
+  },
+  "browserInteractions": [
+    {
+      "calculateCents": 1001,
+      "shares": [
+        334,
+        334,
+        333
+      ]
+    },
+    {
+      "resetResultsHidden": true
+    },
+    {
+      "subcentRejectedWithVisibleApplicationError": true
+    }
+  ],
+  "browserErrors": {
+    "page": 0,
+    "console": 0,
+    "blockedExternalRequests": 0
+  },
+  "gatewayCalls": 0,
+  "gatewayCost": "NONE",
+  "moli": "UNVERIFIED",
+  "spec224Runner": "UNVERIFIED",
+  "production": "NOT_TOUCHED",
+  "files": {
+    "agents-sessions.sqlite3": {
+      "sha256": "65c135daee24e8214aa6690d03cf4a046d3af5a568c493739f25417e6f0c2228",
+      "bytes": 81920
+    },
+    "browser-uat-680ec2cf76972d40-screenshot.png": {
+      "sha256": "0344414c0a58046e5093485a9b3d2a6575b57e61b4a2a87d7991fe719c38bb7f",
+      "bytes": 40998
+    },
+    "browser-uat-680ec2cf76972d40-trace.zip": {
+      "sha256": "4c9e0444cd983419a00e8f772f9ecfd4d297120853b154b0e9446158d3ae41da",
+      "bytes": 176564
+    },
+    "browser-uat-680ec2cf76972d40.json": {
+      "sha256": "1cc865c478f6a1e56874b1013eba42b1e646b94494fa543ca2c8d31509ba0f06",
+      "bytes": 1027
+    },
+    "events.jsonl": {
+      "sha256": "512c82c11d7ba675598e8635a3c891a6c199879d90cb915cf47857973a9f725b",
+      "bytes": 87987
+    },
+    "index.html": {
+      "sha256": "9f1f9d6aeba54d29e294bde9e1d7bec03b91a24b567f119e56b1c44a783cf29c",
+      "bytes": 5641
+    },
+    "process-logs/process-01.json": {
+      "sha256": "26c83c13fa5a1c15b79400f443f599c777987a3dd878f866fc0a659fe9df1a97",
+      "bytes": 399
+    },
+    "process-logs/process-02.json": {
+      "sha256": "3d69d9c762f1dbfeedda15a80d2b59c46ba56b3a0994b15c2a42b1db0333cc85",
+      "bytes": 475
+    },
+    "process-logs/process-03.json": {
+      "sha256": "3d69d9c762f1dbfeedda15a80d2b59c46ba56b3a0994b15c2a42b1db0333cc85",
+      "bytes": 475
+    },
+    "process-logs/process-04.json": {
+      "sha256": "3d69d9c762f1dbfeedda15a80d2b59c46ba56b3a0994b15c2a42b1db0333cc85",
+      "bytes": 475
+    },
+    "process-logs/process-05.json": {
+      "sha256": "3d69d9c762f1dbfeedda15a80d2b59c46ba56b3a0994b15c2a42b1db0333cc85",
+      "bytes": 475
+    },
+    "process-logs/process-06.json": {
+      "sha256": "b1e7bde4349e2c092bd562c8caa41ebb0807370efb3b4a03a3c1f681a36f2384",
+      "bytes": 34061
+    },
+    "recovery-receipt.json": {
+      "sha256": "c02a9ddb794276da7da26bd7cc89bc639263710fdd550e6a48c3b712338ee629",
+      "bytes": 994
+    },
+    "run-state.json": {
+      "sha256": "f6635b524a0f9ce001423831d59d98d4b39ad864c01a3055774a4e94cc0ec14a",
+      "bytes": 156550
+    },
+    "runtime.sqlite3": {
+      "sha256": "47900111075cbe0a2faf79837af7fbf7331fd9b07a4712dd304e3bce4c4b15fc",
+      "bytes": 839680
+    },
+    "split.mjs": {
+      "sha256": "b8b2190fdfcb54bf40de141d4d1373afe354004c438901fe1dcd0331edf83b3e",
+      "bytes": 448
+    },
+    "split.test.mjs": {
+      "sha256": "e2ccacca2d78d693fd72c1f20b77d5aeef9f878be9306dd38956da680e8280ea",
+      "bytes": 798
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "agents-sdk-miniapp-browser-uat.v1",
+  "result": "PASS",
+  "url": "http://127.0.0.1:35213/",
+  "interactions": [
+    {
+      "action": "calculate",
+      "shares": [
+        334,
+        334,
+        333
+      ],
+      "reconciledTotalCents": 1001
+    },
+    {
+      "action": "reset",
+      "resultsHidden": true
+    },
+    {
+      "action": "invalid_subcent_amount",
+      "validation": "application",
+      "errorVisible": true
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "blockedExternalRequests": [],
+  "screenshot": "/tmp/agents-sdk-durable-acceptance-r17-20261013/evidence/browser-uat-680ec2cf76972d40-screenshot.png",
+  "operationId": "680ec2cf76972d40",
+  "screenshotBytes": 40998,
+  "sourceSha256": "3a5b280f94724bfa4c9afeda62ab021c0becfa642b5f6c6875f0ebda004d6c83",
+  "sourceFiles": [
+    "index.html",
+    "split.mjs",
+    "split.test.mjs"
+  ],
+  "trace": "/tmp/agents-sdk-durable-acceptance-r17-20261013/evidence/browser-uat-680ec2cf76972d40-trace.zip",
+  "unexpectedConsoleErrors": []
+}
