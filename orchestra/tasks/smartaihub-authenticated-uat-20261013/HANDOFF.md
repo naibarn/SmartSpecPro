@@ -11,8 +11,8 @@ Implement and verify an authenticated development-only Browser UAT path for Code
 - Workspace: `/home/dev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/authenticated-uat`
 - Branch: `codex/smarthub-authenticated-uat`
 - Source Main SHA at start: `90203a06038e6df6dd33496ef54f0aa9839d149a`
-- Current source commit: `37463accd` (full SHA recorded after commit)
-- Intended promotion: normal protected PR from `codex/smarthub-authenticated-uat` to `main`; PR number pending.
+- Current source commit: `c5a20328b1f2c389e6411e05aae80d54482ded39`
+- Promotion PR: [#905](https://github.com/naibarn/SmartSpecPro/pull/905), head `c5a20328b1f2c389e6411e05aae80d54482ded39`, base `main`; open, checks currently not reported by GitHub.
 
 ## Last completed checkpoint
 
