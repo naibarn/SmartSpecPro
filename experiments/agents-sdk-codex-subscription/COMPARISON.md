@@ -69,48 +69,72 @@ and r9 passed those interactions. r9 itself completed in one implementation
 attempt; no application defect was seeded or recovered in that run. The four
 tested failures were process terminations at the listed durability boundaries.
 
-## Durable recovery acceptance r13
+## Durable recovery acceptance r17
 
-Run `dc1ec2ae-6cad-4aa2-a2a6-bf826c1fe8ad` is the latest fresh acceptance after
-fixing the browser harness selectors. The planner did not know about the seeded
-remainder-cent defect. The initial focused test exposed that `$10.01 / 3`
-returned `333, 333, 333`; Codex repaired the allocator and added visible tests.
-The independent reviewer caught a separate harness mismatch after the first
-implementation. That false negative was traced to selectors that assumed one
-specific result markup; the harness now reads result rows across the local app
-markup variants. The corrected Chromium run passed, followed by an independent
-review and final verification.
+Run `70168176-8161-4e75-ae4e-8c072927d6c8` is the first clean acceptance after
+the r13-r16 recovery/debugging series. The harness and experiment code remained
+unchanged while it ran. The planner did not know about the seeded defect: the
+first hidden test caught remainder cents being dropped (`$10.01 / 3` produced
+333/333/333), and the real Codex implementer repaired it. Independent review
+and final verification ran on separate Codex threads. Evidence is packaged in
+`evidence/durable-recovery-r17/`; `manifest.json` hashes each artifact.
 
-| Measure | r13 evidence |
+| Measure | r17 evidence |
 |---|---|
-| Completion | Plan → implement → tests → independent review → repair → Chromium UAT → final verification completed. |
-| Process recovery | Five forced deaths across unbound model turn, persisted model receipt, post-write side effect, browser receipt, and verification completion. Supervisor restarted six processes automatically. |
-| Human interventions | 0, from event-derived telemetry. |
-| Duration | 331.951 seconds end-to-end, including five restarts. |
-| Model/tool activity | 25 completed Codex SDK calls/turns; 18 tool intents and 17 tool completions plus receipt reconciliation/reuse. No duplicated file-write effect was observed. |
-| Subscription tokens | 531,675 reported total tokens (525,150 input; 6,525 output; 438,272 cached input). No dollar estimate is available. |
-| Tests | Seeded defect failed hidden acceptance first; repair passed all 6/6 focused/hidden Node tests. |
-| Browser UAT | Chromium passed 1001 cents → 334/334/333, reset, and invalid-input validation. No page/console errors or external requests. Screenshot and trace are recorded. |
-| Provider/accounting | Existing ChatGPT/Codex login through Codex app-server; usage is subscription usage. Gateway calls and Gateway spend: 0. |
-| SPEC-224 boundary | No Runner dispatch or shared control-plane use. Runner acceptance remains UNVERIFIED. |
+| Completion | Plan → implement → hidden/focused tests → browser UAT → independent review → independent final verification completed. |
+| Process recovery | Five forced deaths at model turn creation, persisted model receipt, post-write effect, browser receipt, and completed verification. Supervisor restarted six processes; every boundary was consumed. |
+| Human interventions | 0, derived from persisted lifecycle events. |
+| Duration | 123.273 seconds end-to-end, including five restarts. |
+| Model/tool activity | 15 completed Codex turns: planner 1, implementer 12, independent reviewer 1, final verifier 1. 13 tool invocations reused/reconciled into 10 unique durable operations; 172 unique lifecycle events. |
+| Receipt settlement | 0 unsettled model calls, 0 unsettled tool receipts, 0 pending and 0 superseded receipts. Browser retry reused its receipt. Verification completion was reconciled from the persisted phase output after restart, without another attempt. |
+| Subscription tokens | 307,363 total (303,282 input; 4,081 output; 241,920 cached input). Codex SDK usage; no dollar amount is available. |
+| Tests | The seeded defect caused hidden-test failures first; repaired app then passed 5/5 focused Node tests. Failure and success output are both retained in run state. |
+| Browser UAT | Chromium passed 1,001 cents → 334/334/333, reset hides results, and sub-cent input shows an application error with no shares. Zero page errors, console errors, or blocked external requests; screenshot and trace recorded. |
+| Provider/accounting | Existing ChatGPT/Codex login via Codex app-server and `openai-codex` SDK. Gateway calls: 0; Gateway cost: none. Subscription dollar cost unavailable. |
+| SPEC-224 boundary | No Runner dispatch, worker job, shared control-plane use, or SPEC status change. Runner acceptance remains UNVERIFIED. |
 
-The preceding r12 acceptance (`evidence/durable-recovery-r12-failed/`) is
-preserved. It exhausted three attempts because the harness queried the wrong
-result selector even though the screenshot showed the app working. A direct
-Chromium run with the corrected selector passed. r13 retains its initial failed
-browser receipts beside the passing receipt, so the harness defect and repair
-remain auditable.
+### Earlier recovery/debug runs
 
-### Recovery design gap mapping from the supplied proposal
+- r12 exhausted its attempts because the harness queried the wrong result
+  selector; screenshot evidence showed the app itself worked.
+- r13 reached completion but was contaminated: harness code changed while the
+  live run was still executing. Do not use it as zero-intervention acceptance.
+- r14 completed the injected crashes but review resume changed phase input
+  because it regenerated volatile test/browser evidence. Preserved as
+  `durable-recovery-r14-phase-mismatch/`.
+- r15 exhausted attempts on real app defects around sub-cent validation and
+  reset. Preserved as `durable-recovery-r15-retry-exhausted/`.
+- r16 exhausted attempts due another harness selector false negative: it looked
+  for nested share nodes while the app rendered direct row text. A separate
+  Chromium diagnostic afterward passed, but r16 is not acceptance evidence.
+- r17 fixes the root causes: it reuses persisted, source-bound receipts during
+  phase resume, settles a completed verifier phase from its exact persisted
+  input, and reads whole result rows with dollar/cents parsing. Regression
+  tests cover changed evidence fail-closed and completed verification recovery.
 
-The prototype proves durable checkpoints, stable lifecycle IDs, event-based
-intervention counts, Codex turn reconciliation, receipt-bound idempotent local
-tools, process restart, failure evidence, independent review, and evidence-gated
-completion. It does not prove live Runner disconnect/failover, cross-worker
-lease fencing, workspace conflict resolution, deployment receipt reconciliation,
-Moli UAT, or SPEC-224 acceptance. Transient retries/backoff and progress-aware
-adaptive replanning remain limited to the existing bounded Agents SDK phase
-loop; this prototype does not add another recovery service or orchestrator.
+### Recovery proposal coverage
+
+The supplied recovery matrix is a design reference. This local experiment
+validates some failure classes and leaves Runner/control-plane cases for
+SPEC-224 owners; it does not authorize changes to those systems.
+
+| Recovery class | Current evidence | Remaining gap |
+|---|---|---|
+| Transient provider/tool failure | UNVERIFIED as a live 429/network recovery scenario. Codex active-turn reconciliation avoids issuing duplicate turns. | Add bounded retry/backoff against transient SDK errors, preserving subscription auth and actual usage. |
+| Agent/tool/schema failure | Dispatch contract and unsupported-tool tests fail closed; model turn IDs and receipts persist. | No dedicated live malformed-schema fault injection in r17. |
+| Code/test failure | Proven: hidden remainder-cent defect caused real test failure; Codex repaired it; 5/5 focused tests passed. | Broader build/typecheck profiles remain pending under resource admission. |
+| Strategy/repeated failure | Bounded attempts are preserved in prior failures; r15/r16 exhaustion is recorded. | Adaptive replan based on error fingerprint/test delta is not implemented as a distinct policy. |
+| Runner/process recovery | Proven for local supervisor process death at five model/tool/browser/verification boundaries; durable RunState, SQLiteSession, journal, and receipts recovered. | Runner disconnect, remote failover, heartbeat, and cross-worker fencing are UNVERIFIED. |
+| Workspace conflict | Source snapshots bind test/browser/review/verify evidence; changed evidence fails reconciliation closed. | Concurrent worktree conflict detection/resolution across workers is UNVERIFIED. |
+| State/lease recovery | Local process lock denies concurrent resume; persisted operation receipts reconcile tool effects. | `worker_jobs` claim/lease/fencing and shared job reconciliation were not exercised. |
+| Deployment receipt loss | Not exercised; no deployment performed. | Query authoritative deployment state before retry in the existing deployment lifecycle. |
+| Authorization/remote trust | No authority boundary was changed or bypassed; no external authorization was required for this local run. | SPEC-224 `WAITING_AUTHORITY` lifecycle was not dispatched or tested. |
+
+The demonstrated recovery loop collects failure evidence, uses bounded
+Agents-SDK phases for diagnosis/repair, reconciles effects and receipts, then
+requires real tests, browser UAT, independent review, and independent final
+verification. It remains a local prototype and adds no recovery service,
+database, scheduler, or orchestrator.
 
 ### Restate license / fit
 

@@ -104,15 +104,22 @@ Runner acceptance.
 
 ## Latest durable recovery acceptance
 
-`evidence/durable-recovery-r13/` contains the latest successful fresh run,
-including its five-crash recovery receipt, state/events, SQLite journal, real
-Codex turn receipts, app sources, Chromium screenshot, trace, and a hash
-manifest. It completed with five automatic process restarts, zero
-event-derived human interventions, 6/6 focused/hidden tests, functional browser
-UAT, independent review, and final verification. A hidden remainder-cent defect
-was discovered by tests and repaired by Codex. The failed r12 run and failed
-browser receipts are retained in `evidence/durable-recovery-r12-failed/` and
-inside r13 so the harness-selector defect and repair remain visible.
+`evidence/durable-recovery-r17/` is the latest clean fresh acceptance. It
+contains the completed disposable SplitFair app, 172 lifecycle events, portable
+SQLite journals, six process logs, Codex turn receipts, Chromium screenshot and
+trace, recovery receipt, and a SHA-256 manifest. No harness or application code
+changed during the run. Five injected process deaths were recovered by the
+supervisor (six processes total); event-derived human interventions were 0.
+The planner did not know about the seeded remainder-cent defect. Hidden tests
+first failed, the implementer repaired the allocation logic, then 5/5 focused
+tests, Chromium UAT, independent review, and independent final verification
+passed. The verifier result was reconciled after its phase-completion crash
+without starting another attempt.
+
+The exact metrics and earlier run history are in `COMPARISON.md`. r13 must not
+be treated as a clean acceptance: the harness changed while its run was live.
+The failed or contaminated r12-r16 evidence remains preserved in the matching
+`evidence/durable-recovery-r*` directories.
 
 Restate has not been added. The server's BSL 1.1 license and the fit of its
 model-provider wrapper with Codex subscription authentication need review before

@@ -1,0 +1,30 @@
+{
+  "schema": "agents-sdk-crash-recovery.v1",
+  "runId": "e583e124-f4dd-4bf7-b063-5721ccbb385f",
+  "status": "completed",
+  "supervisorResult": "COMPLETED",
+  "reason": null,
+  "returnCode": null,
+  "restartCount": 5,
+  "processCount": 6,
+  "durationMs": 356804,
+  "faultBoundaries": [
+    "model.after_receipt",
+    "model.after_turn_created_before_receipt",
+    "tool.write_file.after_effect",
+    "browser.after_receipt",
+    "verification.after_phase_complete"
+  ],
+  "faultsConsumed": [
+    "model.after_turn_created_before_receipt",
+    "model.after_receipt",
+    "tool.write_file.after_effect",
+    "browser.after_receipt",
+    "verification.after_phase_complete"
+  ],
+  "eventCount": 369,
+  "humanInterventions": 0,
+  "statePath": "/tmp/agents-sdk-durable-acceptance-r14-20261013/evidence/run-state.json",
+  "eventsPath": "/tmp/agents-sdk-durable-acceptance-r14-20261013/evidence/events.jsonl",
+  "processLogs": "/tmp/agents-sdk-durable-acceptance-r14-20261013/evidence/process-logs"
+}

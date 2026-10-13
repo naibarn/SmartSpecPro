@@ -7,7 +7,14 @@ from agents import function_tool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from codex_model import CodexSubscriptionModel, DISPATCH_SCHEMA, _select_thread_turn
-from run_experiment import attempt_is_terminal, ensure_inside, find_incomplete_attempt, has_verified_success
+from durable_store import DurableRunStore, canonical_json
+from run_experiment import (
+    attempt_is_terminal,
+    ensure_inside,
+    find_incomplete_attempt,
+    has_verified_success,
+    reconcile_completed_verifications,
+)
 
 
 class WorkspacePathTests(unittest.TestCase):
@@ -114,14 +121,85 @@ class RecoveryProjectionTests(unittest.TestCase):
         attempt["verification"] = {"complete": True, "findings": []}
         self.assertIsNone(find_incomplete_attempt([attempt], 1))
 
+    def test_completed_verification_phase_is_reconciled_without_new_attempt(self):
+        run_id = "12345678-1234-5678-1234-567812345678"
+        goal = "Verify this app"
+        acceptance = ["works"]
+        attempt = {
+            "attempt": 1,
+            "status": "implemented",
+            "sourceSnapshot": {"app.mjs": "source"},
+            "postImplementChecks": {"exitCode": 0, "sourceSha256": "source-hash"},
+            "postImplementBrowserUat": {"result": "PASS", "sourceSha256": "source-hash"},
+            "review": {"complete": True, "findings": [], "evidence": ["receipts match"]},
+        }
+        state = {"runId": run_id, "status": "recovering", "attempts": [attempt]}
+        payload = {
+            "goal": goal,
+            "acceptance": acceptance,
+            "source_snapshot": attempt["sourceSnapshot"],
+            "test_receipt": attempt["postImplementChecks"],
+            "browser_receipt": attempt["postImplementBrowserUat"],
+            "independent_review": attempt["review"],
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            store = DurableRunStore(Path(temp) / "evidence", run_id=run_id, initial_state=state)
+            phase = store.start_phase(
+                "verification", 1,
+                {"input": canonical_json(payload), "maxTurns": 3}, 3,
+            )
+            store.complete_phase(phase["phase_id"], {
+                "finalOutput": canonical_json({"complete": True, "findings": [], "evidence": ["verified"]}),
+            })
+            self.assertEqual(reconcile_completed_verifications(state, goal, acceptance, store), 1)
+            self.assertTrue(has_verified_success(state))
+            self.assertEqual(attempt["verification"]["evidence"], ["verified"])
+            self.assertEqual(store.state["status"], "recovering")
+            store.close()
+
+    def test_completed_verification_is_not_reconciled_against_changed_evidence(self):
+        run_id = "12345678-1234-5678-1234-567812345678"
+        goal = "Verify this app"
+        acceptance = ["works"]
+        attempt = {
+            "attempt": 1,
+            "status": "implemented",
+            "sourceSnapshot": {"app.mjs": "changed"},
+            "postImplementChecks": {"exitCode": 0},
+            "postImplementBrowserUat": {"result": "PASS"},
+            "review": {"complete": True, "findings": []},
+        }
+        stored_payload = {
+            "goal": goal,
+            "acceptance": acceptance,
+            "source_snapshot": {"app.mjs": "old"},
+            "test_receipt": attempt["postImplementChecks"],
+            "browser_receipt": attempt["postImplementBrowserUat"],
+            "independent_review": attempt["review"],
+        }
+        state = {"runId": run_id, "status": "recovering", "attempts": [attempt]}
+        with tempfile.TemporaryDirectory() as temp:
+            store = DurableRunStore(Path(temp) / "evidence", run_id=run_id, initial_state=state)
+            phase = store.start_phase(
+                "verification", 1,
+                {"input": canonical_json(stored_payload), "maxTurns": 3}, 3,
+            )
+            store.complete_phase(phase["phase_id"], {
+                "finalOutput": canonical_json({"complete": True, "findings": [], "evidence": []}),
+            })
+            self.assertEqual(reconcile_completed_verifications(state, goal, acceptance, store), 0)
+            self.assertNotIn("verification", attempt)
+            store.close()
+
 
 class BrowserHarnessContractTests(unittest.TestCase):
     def test_browser_assertions_target_accessible_result_contract(self):
         source = (Path(__file__).resolve().parents[1] / "harness" / "browser_uat.cjs").read_text()
-        self.assertIn('[id*="share"] li strong', source)
-        self.assertIn('[data-share]', source)
-        self.assertIn('[data-testid="share"]', source)
-        self.assertIn('li .share-amount', source)
+        self.assertIn('#results li', source)
+        self.assertIn('[id*="share"] li', source)
+        self.assertIn('shareTextToCents', source)
+        self.assertIn("fill('0.001')", source)
+        self.assertIn('invalid_subcent_amount', source)
         self.assertIn('[role="alert"]:visible', source)
         self.assertNotIn("#results li strong", source)
         self.assertNotIn("#message", source)

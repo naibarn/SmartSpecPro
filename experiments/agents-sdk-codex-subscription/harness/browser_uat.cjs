@@ -1,6 +1,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const SHARE_SELECTOR = '#results li, [id*="share"] li, [aria-label*="result"] li, [aria-label*="share"] li';
+
+function shareTextToCents(value) {
+  const dollars = value.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
+  if (dollars) return Math.round(Number(dollars[1].replace(/,/g, '')) * 100);
+  const cents = value.match(/\b(\d+)\s*(?:¢|cents?)\b/i);
+  if (cents) return Number(cents[1]);
+  const amount = value.match(/(-?\d+(?:\.\d{1,2})?)\s*$/);
+  return amount ? Math.round(Number(amount[1]) * 100) : NaN;
+}
 
 async function main() {
   const receiptPath = process.env.BROWSER_UAT_RECEIPT;
@@ -48,8 +58,8 @@ async function main() {
     await page.getByLabel('Bill total in dollars').fill('10.01');
     await page.getByLabel('Number of people').fill('3');
     await page.locator('#split-form button[type="submit"]').click();
-    const shareLabels = await page.locator('[id*="share"] li strong, [data-share], [data-testid="share"], li .share-amount').allTextContents();
-    const shares = shareLabels.map(value => Math.round(Number(value.replace(/[$,\s]/g, '')) * 100));
+    const shareLabels = await page.locator(SHARE_SELECTOR).allTextContents();
+    const shares = shareLabels.map(shareTextToCents);
     if (shares.length !== 3 || shares.reduce((sum, cents) => sum + cents, 0) !== 1001) {
       throw new Error(`Expected three shares totaling 1001 cents, got ${JSON.stringify(shares)}`);
     }
@@ -57,23 +67,20 @@ async function main() {
     await page.getByRole('button', { name: 'Reset' }).click();
     if (await page.locator('#results').isVisible()) throw new Error('Reset left results visible');
     receipt.interactions.push({ action: 'reset', resultsHidden: true });
-    await page.getByLabel('Bill total in dollars').fill('0');
+    await page.getByLabel('Bill total in dollars').fill('0.001');
     await page.getByLabel('Number of people').fill('3');
     await page.locator('#split-form button[type="submit"]').click();
-    const nativeValidation = await page.getByLabel('Bill total in dollars').evaluate(element => ({
-      valid: element.checkValidity(),
-      message: element.validationMessage,
-    }));
     const customValidation = page.locator('[role="alert"]:visible').first();
     const customValidationVisible = await customValidation.isVisible().catch(() => false);
     const customMessage = customValidationVisible ? await customValidation.innerText() : '';
-    if (!nativeValidation.message && !customMessage) {
-      throw new Error('Invalid amount was not blocked with a validation message');
+    const invalidAmountShares = await page.locator(SHARE_SELECTOR).count();
+    if (!customValidationVisible || invalidAmountShares !== 0) {
+      throw new Error(`Sub-cent amount was not rejected with an accessible error (alert=${customValidationVisible}, shares=${invalidAmountShares})`);
     }
     receipt.interactions.push({
-      action: 'invalid_amount',
-      validation: nativeValidation.message ? 'browser_native' : 'custom',
-      errorVisible: Boolean(nativeValidation.message || customMessage),
+      action: 'invalid_subcent_amount',
+      validation: 'application',
+      errorVisible: Boolean(customMessage),
     });
     const screenshotPath = path.join(path.dirname(receiptPath), `browser-uat-${runId}-screenshot.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });

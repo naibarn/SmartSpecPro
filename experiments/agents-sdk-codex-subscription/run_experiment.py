@@ -427,6 +427,56 @@ def find_incomplete_attempt(attempts: list[dict[str, Any]], attempt_number: int)
     ), None)
 
 
+def reconcile_completed_verifications(
+    state: dict[str, Any], goal: str, acceptance: list[str], store: DurableRunStore,
+) -> int:
+    """Settle a verifier result persisted before a crash but not yet copied to the attempt row."""
+    recovered = 0
+    for attempt in state.get("attempts", []):
+        review = attempt.get("review")
+        if (
+            isinstance(attempt.get("verification"), dict)
+            or not isinstance(review, dict)
+            or review.get("complete") is not True
+            or review.get("findings")
+        ):
+            continue
+        attempt_number = int(attempt["attempt"])
+        phase_id = store.phase_id("verification", attempt_number)
+        phase = store.get_phase(phase_id)
+        if not phase or phase.get("status") != "completed" or not phase.get("output_json"):
+            continue
+        expected_input = {
+            "goal": goal,
+            "acceptance": acceptance,
+            "source_snapshot": attempt.get("sourceSnapshot"),
+            "test_receipt": attempt.get("postImplementChecks"),
+            "browser_receipt": attempt.get("postImplementBrowserUat"),
+            "independent_review": review,
+        }
+        try:
+            stored_wrapper = json.loads(phase["input_json"])
+            stored_input = json.loads(stored_wrapper["input"])
+            if canonical_json(stored_input) != canonical_json(expected_input):
+                continue
+            saved = json.loads(phase["output_json"])
+            verification = parse_result_json(saved["finalOutput"])
+        except (KeyError, TypeError, json.JSONDecodeError, ValueError):
+            continue
+        attempt["verificationFinalOutput"] = str(saved["finalOutput"])
+        attempt["verification"] = verification
+        attempt["verificationItems"] = []
+        store.event(
+            "verification.result.reconciled",
+            {"attempt": attempt_number, "phaseId": phase_id},
+            stable_key=f"verification:{phase_id}:reconciled",
+        )
+        recovered += 1
+    if recovered:
+        store.commit_state()
+    return recovered
+
+
 def make_agent(
     role: str, instructions: str, toolbox: ToolBox,
     on_receipt: Any, tools: list[Any], store: DurableRunStore, phase_id: str,
@@ -469,8 +519,9 @@ def main() -> int:
         "Build a self-contained, offline SplitFair Mini App for splitting a bill. Use only local assets; "
         "do not request fonts, scripts, APIs, or other resources from external hosts. Enter a dollar amount and "
         "number of people, calculate whole-cent shares that reconcile exactly to the total, show each "
-        "person's share, require a bill amount strictly greater than $0 and a whole people count from 1 to 1,000, "
-        "validate invalid input, and make Reset clear the results. Keep allocateShares "
+        "person's share, require a bill amount of at least $0.01 with no more than two decimal places, and a whole "
+        "people count from 1 to 1,000. Reject sub-cent amounts instead of silently rounding them, validate invalid "
+        "input, and make Reset clear the results. Keep allocateShares "
         "in split.mjs and add visible tests. Label the amount field exactly 'Bill total' (accessible name "
         "'Bill total in dollars') and the people field 'Number of people'. Browser interaction uses these "
         "labeled amount/people fields, a submit "
@@ -548,6 +599,7 @@ def main() -> int:
     state["status"] = "implementing"
     store.commit_state()
 
+    reconcile_completed_verifications(state, args.goal, plan["acceptance"], store)
     accepted = has_verified_success(state)
     prior_attempts = state.get("attempts", [])
     latest_prior = prior_attempts[-1] if prior_attempts else {}
@@ -601,12 +653,22 @@ def main() -> int:
                 "newItems": [str(getattr(item, "type", type(item).__name__)) for item in result.new_items],
             }
             state["attempts"].append(attempt)
-        # Harness-owned acceptance runs ensure evidence exists even if the
-        # model implementation chooses to finish without invoking these tools.
+        # Reuse the receipt-bound evidence and source snapshot persisted before
+        # review. Re-running here can add timestamps/ports and change the input
+        # hash of a review phase restored from Agents SDK RunState.
         post_tools = ToolBox(workspace, state, writable=False, save_state=store.commit_state, store=store, phase_id=implementation_phase_id)
-        attempt["postImplementChecks"] = json.loads(post_tools.run_focused_tests())
-        attempt["postImplementBrowserUat"] = json.loads(post_tools.run_browser_uat())
-        attempt["sourceSnapshot"] = source_snapshot()
+        current_snapshot = source_snapshot()
+        if attempt.get("sourceSnapshot") and attempt["sourceSnapshot"] != current_snapshot:
+            attempt["status"] = "implementation_failed"
+            last_findings = ["Workspace source changed after its persisted evidence snapshot; start a new bounded attempt."]
+            state["lastFindings"] = last_findings
+            store.commit_state()
+            continue
+        if not attempt.get("postImplementChecks"):
+            attempt["postImplementChecks"] = json.loads(post_tools.run_focused_tests())
+        if not attempt.get("postImplementBrowserUat"):
+            attempt["postImplementBrowserUat"] = json.loads(post_tools.run_browser_uat())
+        attempt["sourceSnapshot"] = current_snapshot
         state["status"] = "reviewing"
         store.commit_state()
 

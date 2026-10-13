@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2ea">
+  <title>SplitFair — split a bill simply</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar"><a class="brand" href="#" aria-label="SplitFair home"><span class="brand-mark" aria-hidden="true">÷</span> splitfair</a><span class="local-badge"><span></span> PRIVATE &amp; OFFLINE</span></header>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">GOOD TIMES, FAIR TOTALS</p>
+      <h1 id="page-title">The bill, <em>beautifully</em> split.</h1>
+      <p class="lede">No awkward math. Just a fair share for everyone at the table.</p>
+    </section>
+    <section class="calculator card" aria-label="Bill splitter">
+      <form id="split-form" novalidate>
+        <label for="bill-total">Bill total</label>
+        <div class="amount-wrap"><span aria-hidden="true">$</span><input id="bill-total" name="total" type="number" min="0" step="any" placeholder="0.00" aria-label="Bill total in dollars" inputmode="decimal" required></div>
+        <p class="field-error" id="bill-error" aria-live="polite"></p>
+        <label for="people">Number of people</label>
+        <div class="people-wrap"><input id="people" name="people" type="number" min="1" max="1000" step="1" placeholder="e.g. 4" inputmode="numeric" required><span class="people-suffix">people</span></div>
+        <p class="field-error" id="people-error" aria-live="polite"></p>
+        <button class="primary-button" type="submit">Calculate shares <span aria-hidden="true">↗</span></button>
+        <button class="reset-button" type="reset">Reset</button>
+      </form>
+    </section>
+    <section class="results card" id="results" aria-labelledby="results-title" aria-live="polite" hidden>
+      <div class="results-heading"><div><p class="eyebrow">EVERY CENT, ACCOUNTED FOR</p><h2 id="results-title">Your split</h2></div><span class="result-icon" aria-hidden="true">✓</span></div>
+      <p class="result-summary" id="result-summary"></p>
+      <ul id="share-list" class="share-list"></ul>
+      <p class="reconcile" id="reconcile"></p>
+    </section>
+    <footer><span>Made for the moments worth sharing.</span><span>✳</span></footer>
+  </main>
+</body>
+</html>
