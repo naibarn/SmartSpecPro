@@ -24,7 +24,14 @@ SUCCESS_STATUSES = {"completed", "VERIFIED_COMPLETE", "awaiting_browser_uat", "I
 
 def continuation_result(exit_code: int, status: str | None) -> bool:
     """Separate productive iteration/capacity continuation from process crash recovery."""
-    return status in CONTINUABLE_STATUSES
+    # The status can be stale after a worker fails before it opens the durable
+    # store (for example, a contract-binding rejection). Only the worker's
+    # explicit continuation exit code authorizes another development segment.
+    return exit_code == 75 and status in CONTINUABLE_STATUSES
+
+
+def contract_binding_rejection(output: str) -> bool:
+    return "Resumed run contract/workspace binding differs" in output
 
 
 def write_recovery_receipt(evidence: Path, logs: Path, *, run_id: str | None, restarts: int,
@@ -148,6 +155,29 @@ def main(argv: list[str] | None = None) -> int:
             return 128 + signum
         current_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         current_status = current_state.get("status")
+        if args.spec_contract and current_status in CONTINUABLE_STATUSES and not continuation_result(result.returncode, current_status):
+            failure_text = f"{result.stdout[-3000:]}\n{result.stderr[-3000:]}"
+            if contract_binding_rejection(failure_text):
+                reason = "WorkUnit contract/workspace binding changed; continuation requires authorized contract reconciliation"
+                with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
+                    store.finish_run(False, terminal_status="BLOCKED_EXTERNAL")
+                    store.event("workunit.contract_reconciliation_required", {
+                        "iteration": current_state.get("developmentIteration"),
+                        "reason": reason,
+                    }, stable_key=f"workunit:contract-reconciliation:{run_id}:{current_state.get('developmentIteration')}")
+                receipt = write_recovery_receipt(
+                    evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                    crash_at=args.crash_at, supervisor_result="BLOCKED_EXTERNAL",
+                    reason=reason, return_code=result.returncode, process_count=process_count,
+                    continuation_processes=continuation_processes,
+                )
+                print(json.dumps(receipt, ensure_ascii=False, indent=2))
+                return result.returncode or 1
+            with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
+                store.event("supervisor.continuation_rejected", {
+                    "iteration": current_state.get("developmentIteration"),
+                    "status": current_status, "returnCode": result.returncode,
+                }, stable_key=f"supervisor:continuation-rejected:{process_count}")
         if result.returncode == 0 and current_status in {"completed", "VERIFIED_COMPLETE", "awaiting_browser_uat", "IMPLEMENTED_READY_FOR_USER_TEST"}:
             break
         if args.spec_contract and continuation_result(result.returncode, current_status):

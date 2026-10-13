@@ -19,9 +19,47 @@ from supervise_run import continuation_result, record_operator_signal
 class SupervisorTelemetryTests(unittest.TestCase):
     def test_partial_iterations_and_quota_waits_are_continuations_not_terminal_failures(self) -> None:
         self.assertTrue(continuation_result(75, "PARTIAL_CONTINUABLE"))
-        self.assertTrue(continuation_result(1, "WAITING_CAPACITY"))
+        self.assertTrue(continuation_result(75, "WAITING_CAPACITY"))
+        self.assertFalse(continuation_result(1, "PARTIAL_CONTINUABLE"))
+        self.assertFalse(continuation_result(1, "WAITING_CAPACITY"))
         self.assertFalse(continuation_result(1, "VERIFIED_COMPLETE"))
         self.assertFalse(continuation_result(1, "BLOCKED_EXTERNAL"))
+
+    def test_supervisor_does_not_spin_when_contract_binding_rejects_continuation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "workspace"
+            workspace.mkdir()
+            evidence = Path(temp) / "evidence"
+            contract = Path(temp) / "workunit-contract.json"
+            contract.write_text("{}", encoding="utf-8")
+            calls: list[list[str]] = []
+
+            def fake_run(command, **_kwargs):
+                calls.append(command)
+                run_id = command[command.index("--run-id") + 1]
+                with DurableRunStore(evidence, run_id=run_id, initial_state={
+                    "runId": run_id, "status": "PARTIAL_CONTINUABLE", "developmentIteration": 8,
+                    "iterationInProgress": False,
+                }):
+                    pass
+                return subprocess.CompletedProcess(
+                    command, 1, "", "RuntimeError: Resumed run contract/workspace binding differs from its original state",
+                )
+
+            with patch.object(supervise_run.subprocess, "run", side_effect=fake_run), patch.object(supervise_run.time, "sleep"):
+                self.assertEqual(supervise_run.main([
+                    "--workspace", str(workspace), "--spec-contract", str(contract),
+                    "--evidence-dir", str(evidence),
+                ]), 1)
+
+            self.assertEqual(len(calls), 1)
+            state = json.loads((evidence / "run-state.json").read_text())
+            self.assertEqual(state["status"], "BLOCKED_EXTERNAL")
+            self.assertEqual(state["developmentIteration"], 8)
+            self.assertTrue(any(event["kind"] == "workunit.contract_reconciliation_required" for event in state["lifecycleEvents"]))
+            receipt = json.loads((evidence / "recovery-receipt.json").read_text())
+            self.assertEqual(receipt["supervisorResult"], "BLOCKED_EXTERNAL")
+            self.assertEqual(receipt["continuationProcessCount"], 0)
 
     def test_supervisor_resumes_crashed_process_with_same_run_identity(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

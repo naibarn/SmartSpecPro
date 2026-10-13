@@ -159,6 +159,46 @@ def iteration_evidence_summary(iterations: list[dict[str, Any]]) -> list[dict[st
     return summary
 
 
+CONTRACT_SCOPE_FIELDS = (
+    "specId", "workUnit", "requirementId", "requirementDigest", "requirementText",
+    "sourceSpecDigest", "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
+    "workspace", "allowedFiles", "writableFiles", "patchableFiles", "tests", "authority",
+    "browserUat", "acceptanceCriteria",
+)
+
+
+def contract_scope_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
+    """Capture the authority and acceptance surface, excluding editable guidance/budget."""
+    return {field: raw.get(field) for field in CONTRACT_SCOPE_FIELDS}
+
+
+def prior_contract_scope_from_model_calls(store: DurableRunStore) -> dict[str, Any] | None:
+    """Recover the original scope for runs created before it was projected in RunState."""
+    rows = store.connection.execute(
+        "SELECT request_json FROM model_calls WHERE role LIKE 'planner_%' ORDER BY rowid"
+    ).fetchall()
+    for row in rows:
+        try:
+            envelope = json.loads(row["request_json"])
+            match = re.search(r"Request JSON:\n(.*)", str(envelope.get("instruction", "")), re.S)
+            if not match:
+                continue
+            request = json.loads(match.group(1))
+            messages = request.get("input", [])
+            content = messages[0].get("content") if messages and isinstance(messages[0], dict) else None
+            payload = json.loads(content) if isinstance(content, str) else None
+            scope = payload.get("workunit_scope") if isinstance(payload, dict) else None
+            if not isinstance(scope, dict):
+                continue
+            restored = dict(scope)
+            restored["requirementText"] = payload.get("canonical_requirement")
+            restored["acceptanceCriteria"] = payload.get("acceptanceCriteria")
+            return contract_scope_snapshot(restored)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+    return None
+
+
 def is_ready_for_user_test(test_receipt: dict[str, Any], review: dict[str, Any] | None,
                            verification: dict[str, Any] | None, pending_receipts: list[Any]) -> bool:
     """Require independent confirmation of a usable slice without closing the SPEC requirement."""
@@ -565,14 +605,33 @@ def main() -> int:
     state = {"schema": "agents-sdk-spec-workunit.v1", "runId": args.run_id,
              "mode": "AGENTS_SDK_CODEX_SUBSCRIPTION_EXPERIMENT", "specId": "SPEC-038",
              **contract.binding, "contractDigest": contract.digest,
+             "contractScopeSnapshot": contract_scope_snapshot(contract.raw),
              "createdAt": now(), "status": "running", "modelReceipts": [], "operatorEvents": []}
     state["specId"] = contract.spec_id
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
-    if state.get("contractDigest") != contract.digest or state.get("workspaceId") != contract.workspace_id:
+    if state.get("workspaceId") != contract.workspace_id:
         store.close()
         raise RuntimeError("Resumed run contract/workspace binding differs from its original state")
+    current_scope = contract_scope_snapshot(contract.raw)
+    previous_scope = state.get("contractScopeSnapshot") or prior_contract_scope_from_model_calls(store)
+    if state.get("contractDigest") != contract.digest:
+        if previous_scope is None or previous_scope != current_scope:
+            store.close()
+            raise RuntimeError("Resumed run contract/workspace binding differs from its original state")
+        previous_digest = state.get("contractDigest")
+        state["contractDigest"] = contract.digest
+        state["contractScopeSnapshot"] = current_scope
+        store.event("workunit.contract_guidance_refreshed", {
+            "previousContractDigest": previous_digest,
+            "currentContractDigest": contract.digest,
+            "scopeDigest": hashlib.sha256(json.dumps(current_scope, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        }, stable_key=f"workunit:contract-guidance:{previous_digest}:{contract.digest}")
+        store.commit_state()
+    elif not state.get("contractScopeSnapshot"):
+        state["contractScopeSnapshot"] = current_scope
+        store.commit_state()
     state["status"] = "running"
     state.pop("retryAfter", None)
     state.pop("capacityWaitDetail", None)
