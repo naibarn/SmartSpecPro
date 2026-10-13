@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from durable_store import DurableRunStore
-from run_spec_workunit import capacity_retry_after, changed_source_paths, is_capacity_error, is_ready_for_user_test, next_turn_limit
+from run_spec_workunit import capacity_retry_after, changed_source_paths, cumulative_source_paths, is_capacity_error, is_ready_for_user_test, next_turn_limit
 
 
 class DevelopmentContinuationTests(unittest.TestCase):
@@ -37,6 +37,20 @@ class DevelopmentContinuationTests(unittest.TestCase):
         with DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=True) as store:
             saved_before = store.state["iterationStartHashes"]["1"]
             self.assertEqual(changed_source_paths(saved_before, after), ["api.py"])
+
+    def test_reviewer_source_paths_include_prior_iteration_changes(self) -> None:
+        iterations = [
+            {"iteration": 1, "changedPaths": ["apps/web/server/routers/skills.ts"]},
+            {"iteration": 2, "changedPaths": ["python-backend/app/services/openai_agents_adapter.py"]},
+        ]
+        self.assertEqual(
+            cumulative_source_paths(iterations, ["apps/web/server/services/runtime.ts"]),
+            [
+                "apps/web/server/routers/skills.ts",
+                "apps/web/server/services/runtime.ts",
+                "python-backend/app/services/openai_agents_adapter.py",
+            ],
+        )
 
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
