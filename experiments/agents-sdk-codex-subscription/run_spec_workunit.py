@@ -240,11 +240,14 @@ class ScopedRepoTools:
         """Apply exact-context Update File hunks; numbered hunk headers disambiguate repeated source text. Authorized host-executed write, bounded to this file; never use shell writes."""
         if not self.writable:
             raise PermissionError("Review tools are read-only")
+        target_path = Path(path)
+        if target_path.is_absolute() or ".." in target_path.parts:
+            raise PermissionError("Patch target must be a repository-relative path without traversal")
         if path not in set(self.contract.raw.get("patchableFiles", [])) or len(patch.encode()) > 30000:
             raise PermissionError("Patch target is not authorized or patch exceeds 30 KB")
         if path not in self.contract.writable_files:
             raise PermissionError("Path is not writable under this WorkUnit contract")
-        if f"*** Update File: {path}" not in patch or "../" in patch or "*** Add File:" in patch or "*** Delete File:" in patch:
+        if f"*** Update File: {path}" not in patch or "*** Add File:" in patch or "*** Delete File:" in patch:
             raise ValueError("Patch must use scoped Update File hunks for exactly the authorized path")
         value = {"path": path, "patch": patch, **self.contract.binding}
         op = str(uuid.uuid5(uuid.UUID(self.store.run_id), f"tool:{self.phase_id}:patch_file:{hashlib.sha256(json.dumps(value,sort_keys=True).encode()).hexdigest()}"))
