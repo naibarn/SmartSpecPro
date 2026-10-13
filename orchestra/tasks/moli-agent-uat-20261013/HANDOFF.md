@@ -71,8 +71,23 @@ The implementation, full Moli UAT, Chromium smoke, and focused runtime tests are
 complete. The FAST INTEGRATION GATE passed locally: focused tests passed,
 `git diff --check` is clean, no conflict state or staged unrelated paths exist,
 and the source contains no credentials. The task-owned source paths are ready
-The source commit is pushed and PR #908 is open. Record the confirmed integrated
-SHA after the protected merge.
+## Integration receipt
+
+- Outcome: `PROMOTED_TO_MAIN`
+- PR #908: merged via the protected GitHub path at `2026-10-13T04:02:35Z`.
+- PR head: `12c4f9f45acc8e73f956b868b8f0b29b8ed96470`.
+- Confirmed integrated commit on `origin/main`:
+  `d62b39c3c0cac22affc337f92eef725f9963fd15`.
+- `progressive_integration_gate`: PASS.
+- `Mocked SPEC-308 browser simulation`: PASS.
+- `build-preview`: SKIPPED by workflow.
+- Repository-wide TypeScript check/build: not run in this shared session due
+  the repository RAM restriction; remains a post-integration CI obligation.
+- Moli functional UAT and Chromium screenshot evidence remain under the exact
+  run directories listed above. No production deployment occurred.
+
+This receipt is being added from the confirmed canonical SHA as a documentation
+follow-up. It does not change the integrated implementation.
 
 Keep `apps/web/test-results/smarthub-uat/` untracked as local evidence; do not
 stage it.
