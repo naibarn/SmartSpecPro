@@ -54,7 +54,11 @@ class CreditService:
         Returns:
             Credit balance in credits (integer)
         """
-        result = await self.db.execute(select(User).where(User.id == user_id))
+        try:
+            user_id_int = int(user_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"User not found: {user_id}")
+        result = await self.db.execute(select(User).where(User.id == user_id_int))
         user = result.scalar_one_or_none()
         
         if not user:
@@ -142,7 +146,8 @@ class CreditService:
         user_id: str,
         llm_cost_usd: Decimal,
         description: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        tenant_id: Optional[str] = None,
     ) -> CreditTransaction:
         """
         Deduct credits from user account for LLM usage
@@ -209,7 +214,8 @@ class CreditService:
                 amount=-credits_to_deduct,  # Negative for deductions
                 description=description,
                 balance_after=balance_after,
-                meta=metadata
+                meta=metadata,
+                tenant_id=tenant_id,
             )
             
             self.db.add(transaction)

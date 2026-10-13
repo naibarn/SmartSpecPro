@@ -1,28 +1,53 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import dotenv from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
 
+const isAuthenticatedUat = process.env.SMARTSPEC_BROWSER_UAT === "1";
+const uatRunId = process.env.SMARTSPEC_UAT_RUN_ID || randomUUID();
+if (isAuthenticatedUat) {
+  const envFile = process.env.SMARTSPEC_UAT_ENV_FILE ||
+    (process.env.DATABASE_URL ? undefined : "/home/dev/projects/SmartSpecPro/apps/web/.env");
+  if (envFile) dotenv.config({ path: envFile, override: false });
+  process.env.SMARTSPEC_UAT_RUN_ID = uatRunId;
+  process.env.SMARTSPEC_UAT_SESSION_BROKER = "true";
+  // The Playwright broker is a local development process, even when the
+  // Debian-hosted app is intentionally running in production-like mode.
+  process.env.NODE_ENV = "development";
+}
+
 const skipWebServer =
+  isAuthenticatedUat ||
   process.env.PLAYWRIGHT_SKIP_WEB_SERVER === "1" ||
   process.env.PLAYWRIGHT_USE_EXISTING_SERVER === "1";
 const e2ePort =
   process.env.PLAYWRIGHT_E2E_PORT || process.env.PLAYWRIGHT_PORT || "3017";
 const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${e2ePort}`;
+  isAuthenticatedUat
+    ? "https://smartaihub.app"
+    : process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${e2ePort}`;
+const outputDir = isAuthenticatedUat
+  ? path.join("test-results", "smarthub-uat", uatRunId)
+  : path.join("test-results", "production-director");
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  ...(isAuthenticatedUat ? {
+    testMatch: "**/uat/**/*.spec.ts",
+    globalSetup: "./tests/e2e/uat/globalSetup.ts",
+  } : {}),
   timeout: 120_000,
-  fullyParallel: false,
-  workers: 1,
-  outputDir: "./test-results/production-director",
+  fullyParallel: isAuthenticatedUat,
+  workers: isAuthenticatedUat ? 4 : 1,
+  retries: isAuthenticatedUat ? 1 : 0,
+  outputDir,
   reporter: [
     ["list"],
     [
       "json",
       {
         outputFile: path.join(
-          "test-results",
-          "production-director",
+          outputDir,
           "playwright-evidence.json"
         ),
       },
@@ -31,8 +56,8 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "off",
-    video: "off",
-    screenshot: "off",
+    video: isAuthenticatedUat ? "retain-on-failure" : "off",
+    screenshot: isAuthenticatedUat ? "only-on-failure" : "off",
   },
   webServer: skipWebServer
     ? undefined

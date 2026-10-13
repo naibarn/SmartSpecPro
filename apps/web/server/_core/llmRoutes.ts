@@ -2915,6 +2915,7 @@ async function proxyChatWithCredits(
     const { deductCreditsForModel } = await import("../services/creditService");
     await deductCreditsForModel({
       userId,
+      tenantId: (req as any).tenantId,
       model: requestedModelId,  // Use generic model ID for pricing lookup
       provider: provider.providerName,
       inputTokens,
@@ -3229,6 +3230,7 @@ async function proxyChatWithCredits(
     const creditsDeductionStartedAt = Date.now();
     await deductCreditsForModel({
       userId,
+      tenantId: (req as any).tenantId,
       model: requestedModelId,  // Use generic model ID for pricing lookup
       provider: provider.providerName,
       inputTokens,
@@ -3539,6 +3541,11 @@ export function registerLLMRoutes(app: Express) {
       unauthorized(res);
       return { ok: false };
     }
+
+    // Keep the verified bearer tenant attached through provider settlement.
+    // Credit scope comes from signed auth claims, never a request header.
+    (req as any).auth = auth;
+    (req as any).tenantId = auth.tenantId;
 
     // Check credits
     return checkCredits(auth, res);

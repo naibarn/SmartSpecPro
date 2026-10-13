@@ -19,6 +19,8 @@ const JWT_SECRET: string = jwtSecretEnv;
  */
 export interface TokenClaims {
   sub: string;
+  /** Python Gateway compatibility claim for resolving the same DB user. */
+  user_id?: number;
   tenantId?: string;
   teamId?: string;
   workerId?: string;
