@@ -10,13 +10,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from durable_store import DurableRunStore
-from run_spec_workunit import capacity_retry_after, is_capacity_error, next_turn_limit
+from run_spec_workunit import capacity_retry_after, changed_source_paths, is_capacity_error, next_turn_limit
 
 
 class DevelopmentContinuationTests(unittest.TestCase):
     def test_max_turns_is_a_resumable_segment_boundary(self) -> None:
         self.assertEqual(next_turn_limit(12, 12), 24)
         self.assertEqual(next_turn_limit(24, 12), 36)
+
+    def test_source_delta_survives_restart_before_test_and_review(self) -> None:
+        before = {"api.py": "a", "api.test.py": "same"}
+        after = {"api.py": "b", "api.test.py": "same"}
+        self.assertEqual(changed_source_paths(before, after), ["api.py"])
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=False) as store:
+            store.state.setdefault("iterationStartHashes", {})["1"] = before
+            store.commit_state()
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=True) as store:
+            saved_before = store.state["iterationStartHashes"]["1"]
+            self.assertEqual(changed_source_paths(saved_before, after), ["api.py"])
 
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
