@@ -38,3 +38,16 @@
 - Next action: schedule the skipped build/typecheck against the integrated SHA
   in CI or an admitted resource window. Keep Gateway, Moli, Runner, and production
   evidence UNVERIFIED; do not change canonical SPEC status.
+
+## Autonomous development continuity hardening (PR #922)
+
+- Task worktree: `/home/dev/worktrees/agents-sdk-continuity-20261013`
+- Source branch: `codex/agents-sdk-continuity-20261013`
+- Canonical baseline: `15f3a9970bda6eafd274c2ff67bc6646ed18c84d`
+- Implementation commit: `957e426cad7ed7059aaf7d60181fd6ca5e8897d7`
+- PR: [#922](https://github.com/naibarn/SmartSpecPro/pull/922), pushed through the normal branch path; protected checks and merge remain pending.
+- Runtime changes: WorkUnit development proceeds through durable iterations after reviewer/test findings; same-run process recovery remains bound to its existing phase and Codex thread; MaxTurnsExceeded resumes the saved Agents SDK RunState; subscription capacity persists as WAITING_CAPACITY and supervisor wakes with backoff. Legacy maxAttempts is no longer a mission cutoff. Runtime delivery status does not update canonical requirement status.
+- Regression evidence: `python -m unittest discover -s experiments/agents-sdk-codex-subscription/tests -p 'test_*.py'` — 38/38 passed; `py_compile` for the changed Python modules and `git diff --check` passed. Tests cover structured repair continuation, simulated quota wait/restore, same-run process restart and stable phase identity.
+- Evidence boundary: quota restoration and the subprocess worker in the new supervisor tests are simulated fixtures. No new live Codex WorkUnit, browser UAT, Gateway usage, or SPEC-224 Runner receipt was generated. Prior live local restart evidence remains durable-recovery-r17.
+- Scope: no production code, shared database, canonical SPEC status, approval policy, worker_jobs/outbox integration, or remote trust setting was changed.
+- Next action: wait for PR #922 required checks, repair only slice-owned failures, merge through the protected executor when eligible, confirm the resulting `origin/main` SHA, then reselect eligible WorkUnits from the current SPEC registry. Keep SPEC-038 `REQ-028588461FFC` PARTIAL until active AgentRuntime artifact correlation and isolated dashboard UAT have real evidence.
