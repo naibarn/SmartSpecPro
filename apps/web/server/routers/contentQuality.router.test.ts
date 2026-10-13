@@ -163,3 +163,42 @@ describe("contentQuality.getStructuredDataIssues", () => {
     }]);
   });
 });
+
+describe("contentQuality.getCostBreakdown", () => {
+  beforeEach(() => mockSelect.mockReset());
+
+  it("groups tenant skill usage by skill slug and keeps legacy rows unattributed", async () => {
+    const tenantUsers = {
+      from: vi.fn(() => tenantUsers),
+      where: vi.fn(() => tenantUsers),
+    };
+    const rows = [
+      { skillSlug: "article-writer", total_cost_usd: "0.125", total_tokens: 1200, request_count: 2 },
+      { skillSlug: "product-reviewer", total_cost_usd: "0.05", total_tokens: 450, request_count: 1 },
+      { skillSlug: null, total_cost_usd: "0.01", total_tokens: 100, request_count: 1 },
+    ];
+    const usageQuery = {
+      from: vi.fn(() => usageQuery),
+      where: vi.fn(() => usageQuery),
+      groupBy: vi.fn(() => usageQuery),
+      orderBy: vi.fn().mockResolvedValue(rows),
+    };
+    mockSelect.mockReturnValueOnce(tenantUsers).mockReturnValueOnce(usageQuery);
+
+    const result = await contentQualityRouter.createCaller(createContext("admin"))
+      .getCostBreakdown({ days: 30 });
+
+    expect(usageQuery.groupBy).toHaveBeenCalledOnce();
+    expect(result).toEqual([
+      { skill_slug: "article-writer", total_cost_usd: 0.125, total_tokens: 1200, request_count: 2, avg_cost_per_request: 0.0625 },
+      { skill_slug: "product-reviewer", total_cost_usd: 0.05, total_tokens: 450, request_count: 1, avg_cost_per_request: 0.05 },
+      { skill_slug: "unknown", total_cost_usd: 0.01, total_tokens: 100, request_count: 1, avg_cost_per_request: 0.01 },
+    ]);
+  });
+
+  it("keeps cost details admin-only", async () => {
+    const caller = contentQualityRouter.createCaller(createContext("user"));
+    await expect(caller.getCostBreakdown()).rejects.toThrow("required permission");
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+});

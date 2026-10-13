@@ -1533,6 +1533,8 @@ export const providerUsageLog = pgTable(
     traceId: varchar("traceId", { length: 32 }),
     errorMessage: text("errorMessage"),
     requestType: varchar("requestType", { length: 32 }),
+    /** Skill that initiated this provider usage, when applicable. */
+    skillSlug: varchar("skillSlug", { length: 100 }),
 
     wasFallback: boolean("wasFallback").default(false).notNull(),
     fallbackFromProviderId: integer("fallbackFromProviderId").references(

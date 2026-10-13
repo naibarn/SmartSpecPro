@@ -300,8 +300,8 @@ export default function ContentQualityDashboard() {
           {costBreakdown.data && costBreakdown.data.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {costBreakdown.data.map((item: any) => (
-                <div key={item.request_type} className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">{item.request_type}</p>
+                <div key={item.skill_slug} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{item.skill_slug}</p>
                   <p className="text-lg font-bold">${item.total_cost_usd.toFixed(4)}</p>
                   <p className="text-xs text-muted-foreground">
                     {item.request_count} requests &middot; {(item.total_tokens / 1000).toFixed(1)}k tokens

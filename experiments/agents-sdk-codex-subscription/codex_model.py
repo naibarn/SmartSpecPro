@@ -112,7 +112,7 @@ class CodexSubscriptionModel(Model):
             "arguments object. Otherwise set action=final, name=null, arguments_json to an empty string, and text to "
             "your answer. Do not claim that a tool ran; "
             "the Agents SDK will execute any returned function call. Use only the listed tools. "
-            "The tools in Request JSON are host-executed application functions. Do not try to invoke or discuss tools from this Codex session, "
+            "The tools in Request JSON are host-executed application functions. The Codex shell sandbox may be read-only, but that restriction does not apply to a listed host tool whose description explicitly grants a scoped write or patch. Use those host tools when implementation is requested; never write through the Codex shell. Do not try to invoke or discuss tools from this Codex session, "
             "including functions.exec, and never claim the listed application tools are unavailable. When an action is needed, return its JSON dispatch. "
             "Return only the structured JSON decision; do not add prose outside it.\n"
             "Request JSON:\n" + json.dumps(request, ensure_ascii=False, separators=(",", ":"))

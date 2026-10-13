@@ -616,4 +616,12 @@ describe("executeSkillLlmWithFallback", () => {
       modelId: "gpt-4o-mini",
     });
   });
+
+  it("passes the skill slug into provider usage logging", async () => {
+    mockExecute.mockResolvedValueOnce(successResult());
+
+    await executeSkillLlmWithFallback(makeRequest({ skillSlug: "article-writer" }));
+
+    expect(mockExecute.mock.calls[0][0]).toMatchObject({ skillSlug: "article-writer" });
+  });
 });

@@ -25,6 +25,8 @@ export async function logRequest(params: {
   wasFallback: boolean;
   fallbackFromProviderId?: number;
   traceId?: string;
+  requestType?: string;
+  skillSlug?: string;
 }): Promise<void> {
   const db = await getDb();
   if (!db) return;
@@ -43,6 +45,8 @@ export async function logRequest(params: {
     wasFallback: params.wasFallback,
     fallbackFromProviderId: params.fallbackFromProviderId ?? null,
     traceId: params.traceId ?? null,
+    requestType: params.requestType ?? null,
+    skillSlug: params.skillSlug ?? null,
   });
 }
 

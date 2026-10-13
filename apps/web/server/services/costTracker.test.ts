@@ -140,6 +140,31 @@ describe("logRequest", () => {
       })
     );
   });
+
+  it("stores skill usage attribution in provider usage rows", async () => {
+    const valuesFn = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: valuesFn });
+
+    await logRequest({
+      userId: 1,
+      providerId: 2,
+      modelUsed: "gpt-4o",
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.001,
+      creditsCharged: 1,
+      responseTimeMs: 500,
+      statusCode: 200,
+      wasFallback: false,
+      requestType: "skill",
+      skillSlug: "article-writer",
+    });
+
+    expect(valuesFn).toHaveBeenCalledWith(expect.objectContaining({
+      requestType: "skill",
+      skillSlug: "article-writer",
+    }));
+  });
 });
 
 describe("calculateCost", () => {

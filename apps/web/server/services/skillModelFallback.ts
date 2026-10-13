@@ -168,6 +168,7 @@ export async function executeSkillLlmWithFallback(
       beforeProviderRequest: request.beforeProviderRequest,
       stream,
       userId,
+      skillSlug,
       preferredProvider: i === 0 ? executionPolicy.preferredProviderId : undefined,
       enableThinking,
       maxTokens,

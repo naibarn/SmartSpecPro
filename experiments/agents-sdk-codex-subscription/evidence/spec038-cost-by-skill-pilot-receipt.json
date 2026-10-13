@@ -1,0 +1,59 @@
+{
+  "schema": "spec-workunit-pilot-receipt.v1",
+  "mode": "AGENTS_SDK_CODEX_SUBSCRIPTION_EXPERIMENT",
+  "specId": "SPEC-038",
+  "workUnit": "SPEC038_CONTENT_COST_BY_SKILL",
+  "requirementId": "REQ-028588461FFC",
+  "sourceRevision": "1305cecb45dee4c66da978432005896012cea004",
+  "implementationAttempt": {
+    "runId": "9b43eefc-1d99-4972-8a51-c86dab41475b",
+    "status": "interrupted_before_final_verification",
+    "rawRunState": "spec038-cost-by-skill-9b43eefc-1d99-4972-8a51-c86dab41475b/run-state.json",
+    "authRoute": "existing ChatGPT/Codex login via official openai-codex Python SDK and Codex app-server",
+    "provider": "openai-codex-sdk",
+    "gatewayUsed": false,
+    "directProviderApiUsed": false,
+    "plannerTurns": 1,
+    "implementationTurns": 9,
+    "reviewerTurns": 7,
+    "totalCompletedModelTurns": 17,
+    "subscriptionUsage": {
+      "inputTokens": 918947,
+      "outputTokens": 3320,
+      "reasoningOutputTokens": 1025,
+      "cachedInputTokens": 706304,
+      "totalTokens": 922267
+    },
+    "modelTurnDurationMs": 162499,
+    "implementationAttempts": 3,
+    "testReceiptsInRun": 5,
+    "reviewOutcomes": [
+      { "complete": false, "findings": 3 },
+      { "complete": true, "findings": 3 }
+    ],
+    "finalReview": "still running when the experiment process was interrupted",
+    "finalVerification": "not run",
+    "processRestarts": 0,
+    "processResumes": 0,
+    "interventionTelemetry": "UNVERIFIED: store reported zero event-derived interventions, but the conductor sent SIGINT to stop this run and that action was not persisted as a human.intervention event",
+    "observedInterventions": [
+      "Conductor sent SIGINT after review attempts failed to establish the implementation and a third independent review was still running."
+    ]
+  },
+  "focusedVerification": {
+    "command": "pnpm --dir apps/web exec vitest run server/routers/contentQuality.router.test.ts server/routers/contentQuality.test.ts client/src/pages/__tests__/ContentQualityDashboard.test.tsx server/services/costTracker.test.ts server/services/skillModelFallback.test.ts",
+    "exitCode": 0,
+    "testFilesPassed": 5,
+    "testsPassed": 62,
+    "durationMs": 1820,
+    "browserUat": "UNVERIFIED; no isolated local database-backed runtime was used",
+    "migrationExecuted": false
+  },
+  "adapterToolTests": {
+    "command": "PYTHONPATH=experiments/agents-sdk-codex-subscription /tmp/agents-sdk-codex-bridge-venv/bin/python -m unittest experiments/agents-sdk-codex-subscription/test_spec_workunit_tools.py -v",
+    "exitCode": 0,
+    "testsPassed": 4
+  },
+  "scopeLimit": "This implementation attributes provider usage to a skill. provider_usage_log has no content_artifact_id correlation, so per-individual-piece cost remains OPEN and UNVERIFIED.",
+  "runnerAcceptance": "UNVERIFIED; this is not a registered SPEC-224 Runner caller and no Runner receipt is claimed"
+}

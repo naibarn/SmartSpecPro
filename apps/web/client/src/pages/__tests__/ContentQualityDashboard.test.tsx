@@ -210,4 +210,18 @@ describe("ContentQualityDashboard structured data KPIs", () => {
     expect(screen.getByText("Artifact #43")).toBeInTheDocument();
     expect(screen.getByText("Validation failed; no detail was recorded.")).toBeInTheDocument();
   });
+
+  it("renders token cost under each skill slug", () => {
+    useCostBreakdown.mockReturnValue({ data: [
+      { skill_slug: "article-writer", total_cost_usd: 0.125, total_tokens: 1200, request_count: 2, avg_cost_per_request: 0.0625 },
+      { skill_slug: "unknown", total_cost_usd: 0.01, total_tokens: 100, request_count: 1, avg_cost_per_request: 0.01 },
+    ] });
+
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByText("article-writer")).toBeInTheDocument();
+    expect(screen.getByText("unknown")).toBeInTheDocument();
+    expect(screen.getByText("$0.1250")).toBeInTheDocument();
+    expect(screen.getByText("$0.0100")).toBeInTheDocument();
+  });
 });

@@ -127,3 +127,27 @@ adoption; see `COMPARISON.md` for the license and integration notes.
 
 See [COMPARISON.md](COMPARISON.md) for the SPEC-224 evidence boundary and
 recommended next step.
+
+## SPEC WorkUnit pilot adapter
+
+`run_spec_workunit.py` reuses the same `openai-codex` custom Agents SDK Model,
+`Runner`, official `RunState`, `SQLiteSession`, and `DurableRunStore` for one
+fixed SPEC-038 cost-attribution WorkUnit. The adapter exposes only its
+allowlisted source files, exact-context write tools, and a fixed five-file
+Vitest command. It does not expose shell, database access, migrations, Gateway,
+or direct provider APIs.
+
+From the repository root, with the existing Codex login and web dependencies
+available:
+
+```sh
+/tmp/agents-sdk-codex-subscription-venv/bin/python \
+  experiments/agents-sdk-codex-subscription/run_spec_workunit.py
+```
+
+The generated run ID names its evidence directory. To resume a run after an
+interruption, pass `--run-id <run-id> --resume`; only one process can own a run
+at a time. The adapter is an experimental fixed WorkUnit, not a registered
+SPEC-224 Runner caller. Its current pilot did not complete autonomous
+acceptance; see `SPEC038_PILOT.md` and the corresponding receipt for exact
+limitations and evidence.

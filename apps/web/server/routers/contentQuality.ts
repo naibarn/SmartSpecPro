@@ -192,9 +192,9 @@ export const contentQualityRouter = router({
         .from(users)
         .where(sql`${users.currentTenantId}::text = ${tenantId}`);
 
-      const rows: { requestType: string | null; total_cost_usd: string; total_tokens: number; request_count: number }[] = await db
+      const rows: { skillSlug: string | null; total_cost_usd: string; total_tokens: number; request_count: number }[] = await db
         .select({
-          requestType: providerUsageLog.requestType,
+          skillSlug: providerUsageLog.skillSlug,
           total_cost_usd: sql<string>`COALESCE(SUM(${providerUsageLog.costUsd}), 0)::text`,
           total_tokens: sql<number>`COALESCE(SUM(${providerUsageLog.inputTokens} + ${providerUsageLog.outputTokens}), 0)::int`,
           request_count: sql<number>`count(*)::int`,
@@ -207,11 +207,11 @@ export const contentQualityRouter = router({
             inArray(providerUsageLog.userId, tenantUserIds)
           )
         )
-        .groupBy(providerUsageLog.requestType)
+        .groupBy(providerUsageLog.skillSlug)
         .orderBy(desc(sql`SUM(${providerUsageLog.costUsd})`));
 
       return rows.map((r) => ({
-        request_type: r.requestType ?? "unknown",
+        skill_slug: r.skillSlug ?? "unknown",
         total_cost_usd: parseFloat(r.total_cost_usd),
         total_tokens: r.total_tokens,
         request_count: r.request_count,
