@@ -9,8 +9,13 @@ third-party proxy. It does not extract or convert subscription credentials.
 This is an experimental adapter, not a built-in Agents SDK provider. The Codex
 model turn is restricted to a read-only sandbox with approvals denied. Workspace
 read/write and check functions run as scoped Agents SDK tools in this process.
-The first version supports non-streaming `Runner.run()` and function tools; it
-fails closed for unsupported hosted tools and streaming.
+The existing loop now checkpoints official Agents SDK `RunState` through
+`Runner.run_streamed()` and stores session history with `SQLiteSession`. A
+SQLite journal persists phases, model/thread/turn lifecycle, usage, and
+idempotent tool receipts; a process lock denies concurrent resume. Codex turns
+use stable IDs and persistent SDK threads. The public Codex SDK has no attach to
+active turn API, so recovery polls thread history and refuses a duplicate turn
+while the old turn remains active.
 
 ## Isolated setup
 
@@ -27,9 +32,18 @@ turn subscription credentials into an API key.
 
 ```sh
 /tmp/agents-sdk-codex-subscription-venv/bin/python \
-  experiments/agents-sdk-codex-subscription/run_experiment.py \
-  --workspace /tmp/split-fair-miniapp
+  experiments/agents-sdk-codex-subscription/supervise_run.py \
+  --workspace /tmp/split-fair-miniapp \
+  --crash-at model.after_receipt,model.after_turn_created_before_receipt,tool.write_file.after_effect,browser.after_receipt,verification.after_phase_complete \
+  --max-restarts 8 --max-attempts 3 --implementation-max-turns 20
 ```
+
+The supervisor is a subprocess restart harness for real forced process death;
+the development control loop remains the existing Agents SDK phase loop. To
+resume manually, run `run_experiment.py --workspace <workspace> --resume
+--run-id <runId>`. Pending tool intents are reconciled from durable inputs and
+current source digests before restoring `RunState`. Final acceptance requires
+zero unsettled tool intents.
 
 The run writes its state and real Codex turn receipts beneath the workspace's
 `evidence/`. The controlled acceptance check is held outside the agent-visible
@@ -52,7 +66,7 @@ Evidence labels are deliberately distinct:
 No Gateway usage or API dollar cost is claimed. Record Codex token usage from
 the SDK receipts separately as ChatGPT/Codex subscription usage.
 
-## Latest live acceptance run
+## Earlier live acceptance run (attempt 7)
 
 `evidence/acceptance-run-07/` contains the successful app, full run state,
 Chromium receipt, screenshot, and Playwright trace. The live Planner,
@@ -80,11 +94,29 @@ assertion incorrectly selected a `span` although the amount was rendered in a
 implementation of attempt 7 also remains in the run-state history; its browser
 label mismatch was independently caught and repaired before acceptance.
 
-This experiment's state file persists receipts after each completed model/tool
-turn, but restarting the Python harness does not resume an Agents SDK run.
-The separate `round3-interrupt-resume.json` from the earlier Codex-native
-experiment proves low-level Codex SDK thread interruption/resume only; durable
-interruption/resume of this Agents SDK control loop remains UNVERIFIED.
+Durable recovery evidence is stored in `evidence/durable-recovery-r9/`: process
+logs, lifecycle events, SQLite receipts, final app source, Chromium screenshot
+and trace, and the forced-restart receipt. Four injected process deaths were
+recovered automatically, including after final verification. See
+`COMPARISON.md` for measured recovery and token results. This remains distinct
+from Gateway verification, built-in OpenAI provider execution, and SPEC-224
+Runner acceptance.
+
+## Latest durable recovery acceptance
+
+`evidence/durable-recovery-r13/` contains the latest successful fresh run,
+including its five-crash recovery receipt, state/events, SQLite journal, real
+Codex turn receipts, app sources, Chromium screenshot, trace, and a hash
+manifest. It completed with five automatic process restarts, zero
+event-derived human interventions, 6/6 focused/hidden tests, functional browser
+UAT, independent review, and final verification. A hidden remainder-cent defect
+was discovered by tests and repaired by Codex. The failed r12 run and failed
+browser receipts are retained in `evidence/durable-recovery-r12-failed/` and
+inside r13 so the harness-selector defect and repair remain visible.
+
+Restate has not been added. The server's BSL 1.1 license and the fit of its
+model-provider wrapper with Codex subscription authentication need review before
+adoption; see `COMPARISON.md` for the license and integration notes.
 
 See [COMPARISON.md](COMPARISON.md) for the SPEC-224 evidence boundary and
 recommended next step.

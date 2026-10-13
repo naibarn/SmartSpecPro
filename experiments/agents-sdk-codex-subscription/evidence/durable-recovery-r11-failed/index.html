@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f2">
+  <title>SplitFair — split a bill fairly</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="SplitFair home"><span class="brand-mark" aria-hidden="true">S</span><span>SplitFair</span></a>
+      <span class="offline-tag"><span aria-hidden="true"></span> Works offline</span>
+    </header>
+
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">THE EASY WAY TO SETTLE UP</p>
+      <h1 id="page-title">Good times.<br><span>Fair splits.</span></h1>
+      <p class="intro-copy">Split the bill evenly, down to the last cent.</p>
+    </section>
+
+    <section class="split-card" aria-labelledby="form-title">
+      <div class="card-heading"><div><p class="eyebrow">QUICK SPLIT</p><h2 id="form-title">What's the total?</h2></div><span class="card-icon" aria-hidden="true">↗</span></div>
+      <form id="split-form" novalidate>
+        <div class="field-group">
+          <label for="bill-total">Bill total</label>
+          <div class="amount-input"><span aria-hidden="true">$</span><input id="bill-total" name="billTotal" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" aria-label="Bill total in dollars" aria-describedby="bill-error" required></div>
+          <p class="field-error" id="bill-error" aria-live="polite"></p>
+        </div>
+        <div class="field-group people-group">
+          <label for="people-count">Number of people</label>
+          <div class="people-input"><input id="people-count" name="people" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="2" aria-describedby="people-error" required><span>people</span></div>
+          <p class="field-error" id="people-error" aria-live="polite"></p>
+        </div>
+        <div class="form-actions"><button class="submit-button" type="submit">Split the bill <span aria-hidden="true">→</span></button><button class="reset-button" type="reset">Reset</button></div>
+      </form>
+      <section id="results" class="results" aria-live="polite" aria-labelledby="results-title" hidden></section>
+    </section>
+    <footer><span>SplitFair</span><span>Made for sharing</span></footer>
+  </main>
+</body>
+</html>

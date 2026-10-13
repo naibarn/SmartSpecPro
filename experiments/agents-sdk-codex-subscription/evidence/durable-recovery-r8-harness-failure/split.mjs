@@ -1,0 +1,8 @@
+export function allocateShares(totalCents, people) {
+  if (!Number.isInteger(totalCents) || totalCents <= 0) throw new Error('Bill total must be a positive whole number of cents.');
+  if (!Number.isInteger(people) || people < 1 || people > 1000) throw new Error('Number of people must be a whole number from 1 to 1,000.');
+
+  const base = Math.floor(totalCents / people);
+  const remainder = totalCents % people;
+  return Array.from({ length: people }, (_, index) => base + (index < remainder ? 1 : 0));
+}

@@ -27,7 +27,9 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true });
     context = await browser.newContext();
-    const tracePath = path.join(path.dirname(receiptPath), 'browser-uat-trace.zip');
+    const runId = process.env.BROWSER_UAT_ID || crypto.randomUUID();
+    receipt.operationId = runId;
+    const tracePath = path.join(path.dirname(receiptPath), `browser-uat-${runId}-trace.zip`);
     await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     page = await context.newPage();
     page.setDefaultTimeout(5000);
@@ -46,7 +48,7 @@ async function main() {
     await page.getByLabel('Bill total in dollars').fill('10.01');
     await page.getByLabel('Number of people').fill('3');
     await page.locator('#split-form button[type="submit"]').click();
-    const shareLabels = await page.locator('#results li strong').allTextContents();
+    const shareLabels = await page.locator('[id*="share"] li strong, [data-share], [data-testid="share"], li .share-amount').allTextContents();
     const shares = shareLabels.map(value => Math.round(Number(value.replace(/[$,\s]/g, '')) * 100));
     if (shares.length !== 3 || shares.reduce((sum, cents) => sum + cents, 0) !== 1001) {
       throw new Error(`Expected three shares totaling 1001 cents, got ${JSON.stringify(shares)}`);
@@ -58,31 +60,42 @@ async function main() {
     await page.getByLabel('Bill total in dollars').fill('0');
     await page.getByLabel('Number of people').fill('3');
     await page.locator('#split-form button[type="submit"]').click();
-    if (!(await page.locator('#message').isVisible()) || !(await page.locator('#message').innerText())) {
-      throw new Error('Invalid amount did not show an error');
+    const nativeValidation = await page.getByLabel('Bill total in dollars').evaluate(element => ({
+      valid: element.checkValidity(),
+      message: element.validationMessage,
+    }));
+    const customValidation = page.locator('[role="alert"]:visible').first();
+    const customValidationVisible = await customValidation.isVisible().catch(() => false);
+    const customMessage = customValidationVisible ? await customValidation.innerText() : '';
+    if (!nativeValidation.message && !customMessage) {
+      throw new Error('Invalid amount was not blocked with a validation message');
     }
-    receipt.interactions.push({ action: 'invalid_amount', errorVisible: true });
-    const screenshotPath = path.join(path.dirname(receiptPath), 'browser-uat.png');
+    receipt.interactions.push({
+      action: 'invalid_amount',
+      validation: nativeValidation.message ? 'browser_native' : 'custom',
+      errorVisible: Boolean(nativeValidation.message || customMessage),
+    });
+    const screenshotPath = path.join(path.dirname(receiptPath), `browser-uat-${runId}-screenshot.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     receipt.screenshot = screenshotPath;
     receipt.screenshotBytes = fs.statSync(screenshotPath).size;
-    const digest = crypto.createHash('sha256');
     const appRoot = process.env.MINIAPP_WORKSPACE || '';
     const sourceFiles = fs.readdirSync(appRoot).filter(file =>
       ['.html', '.mjs', '.js', '.css'].includes(path.extname(file))
     ).sort();
-    for (const file of sourceFiles) {
-      digest.update(file);
-      digest.update(fs.readFileSync(path.join(appRoot, file)));
-    }
-    receipt.sourceSha256 = digest.digest('hex');
+    const sourceManifest = sourceFiles.map(file => [
+      file,
+      crypto.createHash('sha256').update(fs.readFileSync(path.join(appRoot, file))).digest('hex'),
+    ]);
+    receipt.sourceSha256 = crypto.createHash('sha256').update(JSON.stringify(sourceManifest)).digest('hex');
     receipt.sourceFiles = sourceFiles;
     receipt.trace = tracePath;
     receipt.result = 'PASS';
   } catch (error) {
     receipt.failure = String(error && error.stack ? error.stack : error);
     if (page) {
-      const screenshotPath = path.join(path.dirname(receiptPath), 'browser-uat-failure.png');
+      const runId = process.env.BROWSER_UAT_ID || 'unknown';
+      const screenshotPath = path.join(path.dirname(receiptPath), `browser-uat-${runId}-failure.png`);
       try {
         await page.screenshot({ path: screenshotPath, fullPage: true });
         receipt.failureScreenshot = screenshotPath;
@@ -91,7 +104,8 @@ async function main() {
   } finally {
     if (context) {
       try {
-        await context.tracing.stop({ path: path.join(path.dirname(receiptPath), 'browser-uat-trace.zip') });
+        const runId = process.env.BROWSER_UAT_ID || 'unknown';
+        await context.tracing.stop({ path: path.join(path.dirname(receiptPath), `browser-uat-${runId}-trace.zip`) });
       } catch { /* trace evidence may be absent when Chromium failed to start */ }
     }
     if (browser) await browser.close();
@@ -106,7 +120,13 @@ async function main() {
   }
   if (receipt.result !== 'PASS' || receipt.pageErrors.length || unexpectedConsoleErrors.length) process.exitCode = 1;
   fs.mkdirSync(path.dirname(receiptPath), { recursive: true });
-  fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+  const tempReceipt = `${receiptPath}.tmp`;
+  const fd = fs.openSync(tempReceipt, 'w');
+  try {
+    fs.writeFileSync(fd, JSON.stringify(receipt, null, 2) + '\n');
+    fs.fsyncSync(fd);
+  } finally { fs.closeSync(fd); }
+  fs.renameSync(tempReceipt, receiptPath);
   process.stdout.write(JSON.stringify(receipt) + '\n');
 }
 

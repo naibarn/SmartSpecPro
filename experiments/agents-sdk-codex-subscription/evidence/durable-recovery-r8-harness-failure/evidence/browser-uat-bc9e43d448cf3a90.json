@@ -1,0 +1,14 @@
+{
+  "schema": "agents-sdk-miniapp-browser-uat.v1",
+  "result": "FAIL",
+  "url": "http://127.0.0.1:44999/",
+  "interactions": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "blockedExternalRequests": [],
+  "screenshot": null,
+  "operationId": "bc9e43d448cf3a90",
+  "failure": "Error: Expected three shares totaling 1001 cents, got []\n    at main (/home/dev/worktrees/agents-sdk-durable-recovery-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:54:13)",
+  "failureScreenshot": "/tmp/agents-sdk-durable-acceptance-r8-20261013/evidence/browser-uat-bc9e43d448cf3a90-failure.png",
+  "unexpectedConsoleErrors": []
+}
