@@ -10,6 +10,7 @@ import json
 import re
 import sqlite3
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -90,7 +91,7 @@ class WorkUnitContract:
     @property
     def test_command(self) -> list[str]:
         if self.raw["tests"]["runner"] == "pytest":
-            return ["python3", "-m", "pytest", "-q", *self.test_paths]
+            return [sys.executable, "-m", "pytest", "-q", *self.test_paths]
         package_root = self.raw["tests"]["cwd"]
         package_paths = [Path(path).relative_to(package_root).as_posix() for path in self.test_paths]
         return ["pnpm", "--dir", package_root, "exec", "vitest", "run", *package_paths]

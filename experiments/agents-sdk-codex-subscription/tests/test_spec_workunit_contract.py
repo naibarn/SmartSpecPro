@@ -82,6 +82,15 @@ class WorkUnitContractTests(unittest.TestCase):
         self.assertEqual(parsed.test_command, ["pnpm", "--dir", "apps/web", "exec", "vitest", "run", "server/test.test.ts"])
         self.assertEqual(parsed.binding["workspaceId"], "workspace-test")
 
+    def test_pytest_command_uses_the_active_runtime_interpreter(self) -> None:
+        self.contract["tests"] = {"runner": "pytest", "cwd": ".", "paths": ["tests/test_example.py"]}
+        self.contract["allowedFiles"] = ["apps/web/server/test.test.ts", "tests/test_example.py"]
+        (self.root / "tests").mkdir()
+        (self.root / "tests/test_example.py").write_text("# fixture\\n", encoding="utf-8")
+        self.write_contract()
+        parsed = load_contract(self.contract_path, self.root)
+        self.assertEqual(parsed.test_command, [sys.executable, "-m", "pytest", "-q", "tests/test_example.py"])
+
     def test_rejects_requirement_text_or_digest_not_matching_canonical_ledger(self) -> None:
         self.contract["requirementText"] = "Different requirement"
         self.write_contract()
