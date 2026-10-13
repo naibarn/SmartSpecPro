@@ -23,6 +23,7 @@ from agents import Runner, SQLiteSession, set_tracing_disabled
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_state import RunState
 
+from adaptive_routing import RoutingConfigurationError, select_profile
 from durable_store import DurableRunStore
 from run_experiment import make_agent, maybe_crash, now, parse_result_json
 from spec_workunit_contract import WorkUnitContract, load_contract
@@ -45,6 +46,24 @@ class CapacityWaitError(RuntimeError):
 
 class UnproductiveImplementationPhase(RuntimeError):
     """A durable implementation checkpoint needs a fresh plan, not more of the same tool retries."""
+
+
+def make_workunit_agent(role: str, instructions: str, repo_tools: Any, agent_tools: list[Any], on_receipt: Any,
+                        store: DurableRunStore, phase_id: str, task_context: str) -> Any:
+    profile, reason, evidence = select_profile(role, task_context, store.state.get("iterations", []))
+    avoid_models: list[str] = []
+    if profile.value == "REVIEW":
+        for row in store.connection.execute("SELECT selection_json FROM model_calls ORDER BY rowid DESC"):
+            try:
+                requested = json.loads(row["selection_json"] or "{}").get("requestedModel")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                requested = None
+            if requested:
+                avoid_models.append(requested)
+                break
+    routing = {"profile": profile.value, "selectionReason": reason, "failureEvidence": evidence,
+               "avoidModels": avoid_models}
+    return make_agent(role, instructions, repo_tools, on_receipt, agent_tools, store, phase_id, routing=routing)
 
 
 def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int = 3) -> tuple[str, int] | None:
@@ -114,11 +133,22 @@ def is_capacity_error(error: BaseException) -> bool:
     """Recognize temporary subscription capacity errors without treating code errors as waits."""
     if isinstance(error, CapacityWaitError):
         return True
+    if isinstance(error, RoutingConfigurationError):
+        return False
     status = getattr(error, "status_code", None) or getattr(error, "http_status", None)
+    if status is not None:
+        return status == 429
     text = f"{type(error).__name__}: {error}".lower()
-    return status == 429 or any(term in text for term in (
-        "429", "rate limit", "rate_limit", "quota", "capacity unavailable",
-        "too many requests", "usage limit", "resource exhausted",
+    message_status = re.search(r"\bhttp(?:/\d(?:\.\d)?)?(?:\s+error)?\s*(\d{3})\b|\bstatus(?:_code| code)?\s*[=:]\s*(\d{3})\b", text)
+    if message_status:
+        return int(message_status.group(1) or message_status.group(2)) == 429
+    return bool(re.search(
+        r"\brate[_ ]limit\b|(?:\bquota\b.{0,24}\b(?:exhaust(?:ed|ion)?|exceed(?:ed)?|limit|reached)\b|"
+        r"\b(?:exhaust(?:ed|ion)?|exceed(?:ed)?).{0,24}\bquota\b)|"
+        r"\bcapacity\s+(?:unavailable|exhausted|exceeded|busy)\b|\bserver (?:is )?overloaded\b|"
+        r"\btoo many requests\b|\busage limit\b|"
+        r"\bresource exhausted\b|\bhttp\s*429\b|\b429 too many requests\b",
+        text,
     ))
 
 
@@ -583,6 +613,11 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
             retry_after = capacity_retry_after(store.state)
             store.wait_for_capacity(retry_after=retry_after, detail=f"{type(exc).__name__}: {exc}")
             raise CapacityWaitError(f"Codex subscription capacity unavailable; durable retry at {retry_after}") from exc
+        if isinstance(exc, RoutingConfigurationError):
+            store.state["routingBlocker"] = {"status": "BLOCKED_EXTERNAL", "detail": f"{type(exc).__name__}: {exc}"[:1000]}
+            store.finish_run(False, terminal_status="BLOCKED_EXTERNAL")
+            store.commit_state()
+            raise SystemExit(1) from exc
         raise
     finally:
         session.close()
@@ -662,8 +697,8 @@ def main() -> int:
     planner_iteration = int(state.get("plannerIteration", 0))
     if state.get("plan") is None:
         planning_name = "planning" if planner_iteration == 0 else f"planning-{planner_iteration}"
-        plan_agent = make_agent(f"planner_{planner_iteration + 1}", "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized.", plan_tools,
-                                receipt, plan_tools.tools(False), store, store.phase_id(planning_name))
+        plan_agent = make_workunit_agent(f"planner_{planner_iteration + 1}", "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized.", plan_tools,
+                                         plan_tools.tools(False), receipt, store, store.phase_id(planning_name), contract.requirement_text)
         plan_result = run_phase(store, planning_name, 0, plan_agent, json.dumps({"goal": goal, "canonical_requirement": contract.requirement_text, "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope, "verified_source_context": context}, ensure_ascii=False), contract.plan_max_turns)
         try:
             state["plan"] = parse_result_json(plan_result.final_output)
@@ -690,8 +725,8 @@ def main() -> int:
     store.commit_state()
     findings = list(state.get("lastFindings", []))
     if attempt > 1 and findings:
-        replan_agent = make_agent(f"replanner_{attempt}", REPLANNER_INSTRUCTIONS, plan_tools,
-                                  receipt, plan_tools.tools(False), store, store.phase_id("replanning", attempt))
+        replan_agent = make_workunit_agent(f"replanner_{attempt}", REPLANNER_INSTRUCTIONS, plan_tools,
+                                           plan_tools.tools(False), receipt, store, store.phase_id("replanning", attempt), contract.requirement_text)
         revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
             "goal": goal, "priorPlan": plan, "findings": findings,
             "previousIterations": state.get("iterations", []),
@@ -711,8 +746,8 @@ def main() -> int:
         store.commit_state()
     before_hashes = iteration_starts[str(attempt)]
     tools = ScopedRepoTools(store, f"implementation-{attempt}", True, contract)
-    agent = make_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; the implementation agent receives the scoped patch_file and write_file tools built from this contract. Treat any planner claim that source editing is unavailable or prohibited as a mistaken description of its own read-only tools, ignore that claim, and make authorized edits with the registered host tools. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
-                       receipt, tools.tools(True), store, store.phase_id("implementation", attempt))
+    agent = make_workunit_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; the implementation agent receives the scoped patch_file and write_file tools built from this contract. Treat any planner claim that source editing is unavailable or prohibited as a mistaken description of its own read-only tools, ignore that claim, and make authorized edits with the registered host tools. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
+                       tools.tools(True), receipt, store, store.phase_id("implementation", attempt), contract.requirement_text)
     implementation_input = {
         "goal": goal, "iteration": attempt, "plan": plan,
         "canonical_requirement": contract.requirement_text,
@@ -781,8 +816,8 @@ def main() -> int:
         findings = [f"Focused tests failed (exit {test_receipt['exitCode']}): {test_receipt.get('stderr') or test_receipt.get('stdout', '')[-3000:]}"]
     else:
         review_tools = ScopedRepoTools(store, f"review-{attempt}", False, contract)
-        review = make_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Separately decide whether the implemented slice is functionally usable and safe for user testing despite any clearly listed incomplete acceptance/UAT items. Set functionalReadyForUserTest=true only when focused behavior works, tests pass, no known code defect or unsafe behavior remains, and remaining findings are limited to explicit scope/evidence/UAT gaps. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
-                            receipt, review_tools.tools(False), store, store.phase_id("review", attempt))
+        review = make_workunit_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Separately decide whether the implemented slice is functionally usable and safe for user testing despite any clearly listed incomplete acceptance/UAT items. Set functionalReadyForUserTest=true only when focused behavior works, tests pass, no known code defect or unsafe behavior remains, and remaining findings are limited to explicit scope/evidence/UAT gaps. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
+                                        review_tools.tools(False), receipt, store, store.phase_id("review", attempt), contract.requirement_text)
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
         try:
             reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
@@ -799,8 +834,8 @@ def main() -> int:
         if not reviewed.get("complete") and not findings:
             findings = ["Independent reviewer could not confirm all acceptance criteria; inspect uncovered normative scope and evidence."]
         if reviewed.get("complete") and not findings or reviewed.get("functionalReadyForUserTest") is True:
-            verifier = make_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
-                                  receipt, review_tools.tools(False), store, store.phase_id("verification", attempt))
+            verifier = make_workunit_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
+                                           review_tools.tools(False), receipt, store, store.phase_id("verification", attempt), contract.requirement_text)
             try:
                 verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns).final_output)
             except Exception as exc:

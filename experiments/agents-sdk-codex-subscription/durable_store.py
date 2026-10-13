@@ -115,7 +115,7 @@ class DurableRunStore:
               call_id TEXT PRIMARY KEY, phase_id TEXT NOT NULL, role TEXT NOT NULL,
               request_hash TEXT NOT NULL, request_json TEXT NOT NULL, status TEXT NOT NULL,
               thread_id TEXT, turn_id TEXT, turn_attempt INTEGER NOT NULL DEFAULT 0,
-              response_text TEXT, response_items_json TEXT NOT NULL DEFAULT '[]',
+              response_text TEXT, response_items_json TEXT NOT NULL DEFAULT '[]', selection_json TEXT,
               usage_json TEXT, receipt_json TEXT, updated_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS tool_receipts(
@@ -128,6 +128,9 @@ class DurableRunStore:
         tool_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(tool_receipts)")}
         if "input_json" not in tool_columns:
             self.connection.execute("ALTER TABLE tool_receipts ADD COLUMN input_json TEXT")
+        model_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(model_calls)")}
+        if "selection_json" not in model_columns:
+            self.connection.execute("ALTER TABLE model_calls ADD COLUMN selection_json TEXT")
 
     @property
     def run_id(self) -> str:
@@ -314,20 +317,52 @@ class DurableRunStore:
         self.event("run.waiting_capacity", {"retryAfter": retry_after, "detail": detail[:1000]},
                    stable_key=f"capacity-wait:{retry_after}")
 
-    def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any]) -> dict[str, Any]:
+    def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any],
+                           selection: dict[str, Any] | None = None) -> dict[str, Any]:
         request_json = canonical_json(request)
         request_hash = digest(request_json.encode())
+        selection_json = canonical_json(selection) if selection is not None else None
         self.connection.execute("BEGIN IMMEDIATE")
         try:
             row = self.connection.execute("SELECT * FROM model_calls WHERE call_id=?", (call_id,)).fetchone()
             if row is None:
+                previous_selection_row = self.connection.execute(
+                    "SELECT call_id,selection_json FROM model_calls WHERE selection_json IS NOT NULL ORDER BY rowid DESC LIMIT 1"
+                ).fetchone()
+                previous_selection = json.loads(previous_selection_row["selection_json"]) if previous_selection_row else None
                 self.connection.execute(
-                    "INSERT INTO model_calls(call_id,phase_id,role,request_hash,request_json,status,updated_at) VALUES(?,?,?,?,?,?,?)",
-                    (call_id, phase_id, role, request_hash, request_json, "planned", timestamp()),
+                    "INSERT INTO model_calls(call_id,phase_id,role,request_hash,request_json,status,selection_json,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                    (call_id, phase_id, role, request_hash, request_json, "planned", selection_json, timestamp()),
                 )
-                self._insert_event_in_tx("model.call.planned", {"callId": call_id, "phaseId": phase_id, "role": role, "requestHash": request_hash}, stable_key=f"model:{call_id}:planned")
+                self._insert_event_in_tx("model.call.planned", {
+                    "callId": call_id, "phaseId": phase_id, "role": role,
+                    "requestHash": request_hash,
+                    "selection": selection,
+                }, stable_key=f"model:{call_id}:planned")
+                if selection is not None:
+                    self._insert_event_in_tx("model.selection.persisted", {
+                        "callId": call_id, "phaseId": phase_id, **selection,
+                    }, stable_key=f"model:{call_id}:selection")
+                    if previous_selection:
+                        changed = any(previous_selection.get(key) != selection.get(key) for key in (
+                            "profile", "requestedModel", "reasoningEffort",
+                        ))
+                        if changed:
+                            self._insert_event_in_tx("model.selection.transitioned", {
+                                "fromCallId": previous_selection_row["call_id"],
+                                "toCallId": call_id,
+                                "fromProfile": previous_selection.get("profile"),
+                                "toProfile": selection.get("profile"),
+                                "fromModel": previous_selection.get("requestedModel"),
+                                "toModel": selection.get("requestedModel"),
+                                "fromReasoningEffort": previous_selection.get("reasoningEffort"),
+                                "toReasoningEffort": selection.get("reasoningEffort"),
+                                "selectionReason": selection.get("selectionReason"),
+                            }, stable_key=f"model:{call_id}:transition")
             elif row["request_hash"] != request_hash or row["phase_id"] != phase_id:
                 raise RuntimeError("Stable model call ID was reused with different request data")
+            elif selection_json and row["selection_json"] not in (None, selection_json):
+                raise RuntimeError("Stable model call ID was reused with a different model selection")
             self._refresh_event_projection_in_tx()
             self._persist_projection_in_tx()
             self.connection.execute("COMMIT")
@@ -338,7 +373,7 @@ class DurableRunStore:
         return dict(self.connection.execute("SELECT * FROM model_calls WHERE call_id=?", (call_id,)).fetchone())
 
     def update_model_call(self, call_id: str, *, event: str, stable_suffix: str, **fields: Any) -> None:
-        allowed = {"status", "thread_id", "turn_id", "turn_attempt", "response_text", "response_items_json", "usage_json", "receipt_json"}
+        allowed = {"status", "thread_id", "turn_id", "turn_attempt", "response_text", "response_items_json", "selection_json", "usage_json", "receipt_json"}
         if set(fields) - allowed:
             raise ValueError("Unsupported durable model-call field")
         assignments = ",".join(f"{field}=?" for field in fields)
