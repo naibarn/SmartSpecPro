@@ -143,6 +143,30 @@ iteration starts a new durable Plan/Implement/Test/Review cycle and passes
 reviewer findings, test failures, changed files and remaining requirement gaps
 to the implementer. `MaxTurnsExceeded` extends the same persisted Agents SDK
 `RunState`; quota/rate limits enter `WAITING_CAPACITY` and wake automatically.
+
+### Adaptive model routing pilot
+
+The experimental WorkUnit entry point uses runtime-discovered Codex models for
+three logical profiles: `GENERAL` for routine planning and implementation,
+`REASONING` for explicit high-risk tasks or repeated identical code failures,
+and `REVIEW` for independent review/final verification. The route uses only
+models and reasoning efforts returned by the logged-in Codex SDK. It does not
+assume a model ID, version order, intelligence ranking, or subscription tier.
+
+Optional environment overrides are `SMARTSPEC_CODEX_MODEL_GENERAL`,
+`SMARTSPEC_CODEX_MODEL_REASONING`, `SMARTSPEC_CODEX_MODEL_REVIEW`,
+`SMARTSPEC_CODEX_EFFORT_GENERAL`, `SMARTSPEC_CODEX_EFFORT_REASONING`, and
+`SMARTSPEC_CODEX_EFFORT_REVIEW`. `SMARTSPEC_CODEX_MODEL_FALLBACK` is the only
+explicit fallback override; an invalid or unsupported selection without an
+eligible fallback enters the existing durable `WAITING_CAPACITY` path. The
+selected profile, requested model, effort, provider/auth route, policy version,
+selection reason, usage, duration and Codex thread/turn IDs are persisted with
+the existing model-call identity. Runtime-confirmed model identity is recorded
+only if the installed app-server exposes it; otherwise it remains `UNVERIFIED`.
+
+This is still a local subscription experiment. It does not enable parallel
+write execution, change production Chat/Team Gateway policy, or establish
+SPEC-224 Runner acceptance.
 Ordinary unfinished work remains `PARTIAL_CONTINUABLE`; the legacy
 `budget.maxAttempts` and supervisor `--max-restarts` options do not terminate
 the development mission. Runtime delivery statuses do not modify canonical

@@ -76,12 +76,14 @@ class CodexSubscriptionModel(Model):
         on_receipt: Callable[[dict[str, Any]], None],
         store: DurableRunStore,
         phase_id: str,
+        routing: dict[str, Any] | None = None,
     ) -> None:
         self.codex_cwd = codex_cwd.resolve()
         self.role = role
         self.on_receipt = on_receipt
         self.store = store
         self.phase_id = phase_id
+        self.routing = dict(routing) if routing else None
 
     async def get_response(
         self,
@@ -119,12 +121,43 @@ class CodexSubscriptionModel(Model):
         )
         request_hash = digest(instruction)
         call_id = str(uuid.uuid5(uuid.UUID(self.store.run_id), f"model:{self.phase_id}:{self.role}:{request_hash}"))
-        call = self.store.reserve_model_call(call_id, self.phase_id, self.role, {"instruction": instruction, "schema": DISPATCH_SCHEMA})
+        prior = self.store.get_model_call(call_id)
+        selection = None
+        if prior and prior.get("selection_json"):
+            selection = json.loads(prior["selection_json"])
+        elif prior:
+            # Historical unresolved calls keep their implicit SDK default. Do
+            # not attach a newly computed route to an old durable call.
+            selection = None
+        elif self.routing:
+            from adaptive_routing import parse_catalog, route_model
+            from openai_codex import Codex
+
+            with Codex() as codex:
+                catalog = parse_catalog(codex.models())
+            selection = route_model(
+                catalog,
+                self.routing["profile"],
+                reason=self.routing.get("selectionReason", "task-aware profile policy"),
+                failure_evidence=self.routing.get("failureEvidence", []),
+                avoid_models=self.routing.get("avoidModels", []),
+            )
+        request = {"instruction": instruction, "schema": DISPATCH_SCHEMA}
+        if selection is not None:
+            request["selection"] = selection
+        call = self.store.reserve_model_call(call_id, self.phase_id, self.role, request, selection=selection)
+        if selection is not None:
+            _maybe_crash(self.store, "model.after_selection_persisted", {
+                "callId": call_id, "profile": selection.get("profile"),
+                "requestedModel": selection.get("requestedModel"),
+            })
         if call["status"] == "completed" and call.get("response_text"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
         else:
-            raw_text, receipt = self._run_codex_turn(instruction, DISPATCH_SCHEMA, call_id, call)
+            raw_text, receipt = self._run_codex_turn(instruction, DISPATCH_SCHEMA, call_id, call, selection=selection)
+            if selection is not None:
+                receipt["selection"] = selection
             self.store.update_model_call(
                 call_id, event="model.call.completed", stable_suffix="completed",
                 status="completed", response_text=raw_text,
@@ -321,7 +354,8 @@ class CodexSubscriptionModel(Model):
         return repaired
 
     def _run_codex_turn(
-        self, instruction: str, output_schema: dict[str, Any], call_id: str, call: dict[str, Any]
+        self, instruction: str, output_schema: dict[str, Any], call_id: str, call: dict[str, Any],
+        *, selection: dict[str, Any] | None = None,
     ) -> tuple[str, dict[str, Any]]:
         from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox
 
@@ -379,6 +413,7 @@ class CodexSubscriptionModel(Model):
                 thread = codex.thread_start(
                     cwd=str(self.codex_cwd), approval_mode=ApprovalMode.deny_all,
                     sandbox=Sandbox.read_only, ephemeral=False,
+                    model=selection.get("requestedModel") if selection else None,
                 )
                 self.store.update_model_call(call_id, event="model.thread.persisted", stable_suffix="thread", status="thread_started", thread_id=thread.id)
             handle = thread.turn(
@@ -387,6 +422,8 @@ class CodexSubscriptionModel(Model):
                 approval_mode=ApprovalMode.deny_all,
                 sandbox=Sandbox.read_only,
                 output_schema=output_schema,
+                model=selection.get("requestedModel") if selection else None,
+                effort=selection.get("reasoningEffort") if selection else None,
             )
             _maybe_crash(self.store, "model.after_turn_created_before_receipt", {"callId": call_id, "threadId": thread.id, "turnId": handle.id})
             self.store.update_model_call(
@@ -415,4 +452,13 @@ class CodexSubscriptionModel(Model):
             "itemCount": len(result.items),
             "usage": usage,
         }
+        if selection is not None:
+            # Some app-server versions may surface the effective model. An
+            # absent field stays explicitly unverified; requested != effective.
+            receipt["effectiveModel"] = None
+            receipt["effectiveModelStatus"] = "UNVERIFIED"
+            effective_model = getattr(result, "model", None)
+            if effective_model:
+                receipt["effectiveModel"] = str(getattr(effective_model, "value", effective_model))
+                receipt["effectiveModelStatus"] = "CONFIRMED"
         return result.final_response or "", receipt
