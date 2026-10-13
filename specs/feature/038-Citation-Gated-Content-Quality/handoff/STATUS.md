@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 8 pass / 98 unresolved of 106
+- Requirements: 0 pass / 106 unresolved of 106
 - Next action: Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.
-- Manifest generation: 32
+- Manifest generation: 35
 
 ## Source-declared status and relationship claims
 
