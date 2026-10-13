@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import uuid
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,25 @@ EXPERIMENT_ROOT = Path(__file__).resolve().parents[2]
 
 class CapacityWaitError(RuntimeError):
     pass
+
+
+class UnproductiveImplementationPhase(RuntimeError):
+    """A durable implementation checkpoint needs a fresh plan, not more of the same tool retries."""
+
+
+def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int = 3) -> tuple[str, int] | None:
+    reasons: Counter[str] = Counter()
+    for row in receipts:
+        if row.get("status") != "superseded" or row.get("tool") != "patch_file":
+            continue
+        try:
+            error = json.loads(str(row.get("result_json") or "{}")).get("error")
+        except json.JSONDecodeError:
+            continue
+        if error:
+            reasons[str(error)] += 1
+    reason, count = reasons.most_common(1)[0] if reasons else ("", 0)
+    return (reason, count) if count >= minimum else None
 
 
 def is_capacity_error(error: BaseException) -> bool:
@@ -395,6 +415,18 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                     "phaseId": phase_row["phase_id"], "attempt": attempt,
                     "previousLimit": previous_limit, "continuedLimit": turn_limit,
                 }, stable_key=f"phase:{phase_row['phase_id']}:turn-limit-continuation:{turn_limit}")
+                if phase == "implementation":
+                    rejected = store.connection.execute(
+                        "SELECT tool,status,result_json FROM tool_receipts WHERE phase_id=? AND tool='patch_file' AND status='superseded'",
+                        (phase_row["phase_id"],),
+                    ).fetchall()
+                    repeated = repeated_patch_rejection_reason([dict(row) for row in rejected])
+                    if repeated:
+                        reason, count = repeated
+                        raise UnproductiveImplementationPhase(
+                            f"Implementation checkpoint preserved after {count} repeated patch rejections: {reason}. "
+                            "The next durable development iteration must diagnose the rejection pattern and choose a different patch strategy."
+                        )
                 continue
             break
         output = {"finalOutput": streamed.final_output, "lastResponseId": streamed.last_response_id}
@@ -548,11 +580,23 @@ def main() -> int:
         after_failure_hashes = source_hashes(contract)
         changed_paths = changed_source_paths(before_hashes, after_failure_hashes)
         findings = [f"Implementation phase interrupted: {detail}", *findings]
-        state.setdefault("iterations", []).append({"iteration": attempt, "status": "phase_interrupted", "findings": findings, "changedPaths": changed_paths})
+        unproductive_boundary = isinstance(exc, UnproductiveImplementationPhase)
+        state.setdefault("iterations", []).append({
+            "iteration": attempt,
+            "status": "partial_continuable_replan_required" if unproductive_boundary else "phase_interrupted",
+            "findings": findings,
+            "changedPaths": changed_paths,
+        })
         state["lastFindings"] = findings
         state["sourceDelta"] = changed_paths
         state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
-        store.continue_development(iteration=attempt, findings=findings, reason="implementation phase needs durable continuation")
+        if unproductive_boundary:
+            state["iterationInProgress"] = False
+        store.continue_development(
+            iteration=attempt,
+            findings=findings,
+            reason="replan after repeated non-progressing patch rejections" if unproductive_boundary else "implementation phase needs durable continuation",
+        )
         store.commit_state(); print(json.dumps(state, ensure_ascii=False, indent=2)); store.close()
         return 75
 
