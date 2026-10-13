@@ -13,14 +13,14 @@ class RepeatedPatchRejectionTests(unittest.TestCase):
     def test_rejection_scan_uses_tool_phase_identity_not_agents_runstate_uuid(self) -> None:
         connection = sqlite3.connect(":memory:")
         connection.row_factory = sqlite3.Row
-        connection.execute("CREATE TABLE tool_receipts (phase_id TEXT, tool TEXT, status TEXT, result_json TEXT)")
+        connection.execute("CREATE TABLE tool_receipts (phase_id TEXT, tool TEXT, status TEXT, result_json TEXT, updated_at TEXT)")
         connection.executemany(
-            "INSERT INTO tool_receipts VALUES(?,?,?,?)",
+            "INSERT INTO tool_receipts VALUES(?,?,?,?,?)",
             [
-                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}'),
-                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}'),
-                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}'),
-                ("agents-runstate-uuid", "patch_file", "superseded", '{"error":"unrelated"}'),
+                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}', "1"),
+                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}', "2"),
+                ("implementation-2", "patch_file", "superseded", '{"error":"Patch marker mismatch"}', "3"),
+                ("agents-runstate-uuid", "patch_file", "superseded", '{"error":"unrelated"}', "4"),
             ],
         )
         store = type("Store", (), {"connection": connection})()
@@ -54,6 +54,15 @@ class RepeatedPatchRejectionTests(unittest.TestCase):
             repeated_patch_rejection_reason(receipts),
             ("Numbered patch context did not match at line 6; refresh source and retry", 3),
         )
+
+    def test_successful_patch_resets_the_consecutive_rejection_streak(self) -> None:
+        receipts = [
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 6; refresh source and retry"}'},
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 671; refresh source and retry"}'},
+            {"tool": "patch_file", "status": "superseded", "result_json": '{"error":"Numbered patch context did not match at line 1187; refresh source and retry"}'},
+            {"tool": "patch_file", "status": "completed", "result_json": '{"message":"Applied patch"}'},
+        ]
+        self.assertIsNone(repeated_patch_rejection_reason(receipts))
 
 
 if __name__ == "__main__":

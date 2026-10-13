@@ -41,18 +41,27 @@ class UnproductiveImplementationPhase(RuntimeError):
 def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int = 3) -> tuple[str, int] | None:
     reasons: Counter[str] = Counter()
     examples: dict[str, str] = {}
+    trailing_errors: list[tuple[str, str]] = []
     for row in receipts:
-        if row.get("status") != "superseded" or row.get("tool") != "patch_file":
+        if row.get("tool") != "patch_file":
+            continue
+        if row.get("status") == "completed":
+            trailing_errors.clear()
+            continue
+        if row.get("status") != "superseded":
             continue
         try:
             error = json.loads(str(row.get("result_json") or "{}")).get("error")
         except json.JSONDecodeError:
             continue
         if error:
-            error = re.sub(r" at line \d+", " at line <line>", str(error))
-            error = re.sub(r"\(matched \d+\)", "(matched <count>)", error)
-            reasons[error] += 1
-            examples.setdefault(error, str(json.loads(str(row.get("result_json") or "{}")).get("error", error)))
+            original = str(error)
+            signature = re.sub(r" at line \d+", " at line <line>", original)
+            signature = re.sub(r"\(matched \d+\)", "(matched <count>)", signature)
+            trailing_errors.append((signature, original))
+    for signature, original in trailing_errors:
+        reasons[signature] += 1
+        examples.setdefault(signature, original)
     reason, count = reasons.most_common(1)[0] if reasons else ("", 0)
     return (examples.get(reason, reason), count) if count >= minimum else None
 
@@ -62,7 +71,7 @@ def repeated_patch_rejection_for_phase(store: DurableRunStore, phase: str, attem
     # implementation-2); Agents SDK RunState rows use UUID phase IDs.
     tool_phase_id = f"{phase}-{attempt}"
     rows = store.connection.execute(
-        "SELECT tool,status,result_json FROM tool_receipts WHERE phase_id=? AND tool='patch_file' AND status='superseded'",
+        "SELECT tool,status,result_json FROM tool_receipts WHERE phase_id=? AND tool='patch_file' ORDER BY updated_at,rowid",
         (tool_phase_id,),
     ).fetchall()
     return repeated_patch_rejection_reason([dict(row) for row in rows])
