@@ -60,6 +60,17 @@ def next_turn_limit(current_limit: int, segment_limit: int) -> int:
 def changed_source_paths(before: dict[str, str], after: dict[str, str]) -> list[str]:
     return sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
 
+
+def is_ready_for_user_test(test_receipt: dict[str, Any], review: dict[str, Any] | None,
+                           verification: dict[str, Any] | None, pending_receipts: list[Any]) -> bool:
+    """Require independent confirmation of a usable slice without closing the SPEC requirement."""
+    return bool(
+        test_receipt.get("exitCode") == 0
+        and not pending_receipts
+        and review and review.get("functionalReadyForUserTest") is True
+        and verification and verification.get("functionalReadyForUserTest") is True
+    )
+
 def source_hashes(contract: WorkUnitContract) -> dict[str, str]:
     return {p: hashlib.sha256((contract.root / p).read_bytes()).hexdigest() for p in contract.allowed_files if (contract.root / p).is_file()}
 
@@ -476,8 +487,12 @@ def main() -> int:
     # A process restart leaves iterationInProgress set and resumes the same
     # stable phase IDs. A settled partial iteration advances to a new durable
     # implementation/review cycle, independent of process restart count.
-    attempt = int(state.get("developmentIteration", 0)) + (0 if state.get("iterationInProgress") else 1)
+    continuing_same_iteration = bool(state.get("iterationInProgress"))
+    attempt = int(state.get("developmentIteration", 0)) + (0 if continuing_same_iteration else 1)
     attempt = max(attempt, 1)
+    if not continuing_same_iteration:
+        state.pop("lastReview", None)
+        state.pop("verification", None)
     state["developmentIteration"] = attempt
     state["iterationInProgress"] = True
     store.commit_state()
@@ -562,7 +577,7 @@ def main() -> int:
         findings = [f"Focused tests failed (exit {test_receipt['exitCode']}): {test_receipt.get('stderr') or test_receipt.get('stdout', '')[-3000:]}"]
     else:
         review_tools = ScopedRepoTools(store, f"review-{attempt}", False, contract)
-        review = make_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Return JSON {complete:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
+        review = make_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Separately decide whether the implemented slice is functionally usable and safe for user testing despite any clearly listed incomplete acceptance/UAT items. Set functionalReadyForUserTest=true only when focused behavior works, tests pass, no known code defect or unsafe behavior remains, and remaining findings are limited to explicit scope/evidence/UAT gaps. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
                             receipt, review_tools.tools(False), store, store.phase_id("review", attempt))
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
         try:
@@ -579,8 +594,8 @@ def main() -> int:
         state["unresolvedRequirements"] = findings if not reviewed.get("complete") else []
         if not reviewed.get("complete") and not findings:
             findings = ["Independent reviewer could not confirm all acceptance criteria; inspect uncovered normative scope and evidence."]
-        if reviewed.get("complete") and not findings:
-            verifier = make_agent(f"independent_final_verifier_{attempt}", "Verify requirement, source, migration safety, tests and reviewer evidence independently. Return JSON {complete:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
+        if reviewed.get("complete") and not findings or reviewed.get("functionalReadyForUserTest") is True:
+            verifier = make_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
                                   receipt, review_tools.tools(False), store, store.phase_id("verification", attempt))
             try:
                 verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,**contract.binding}),contract.review_max_turns).final_output)
@@ -613,11 +628,19 @@ def main() -> int:
     unknown_turns = store.connection.execute("SELECT COUNT(*) FROM model_calls WHERE status IN ('planned','thread_started','turn_running','turn_reconciling')").fetchone()[0]
     state["modelTurnTelemetry"] = {"completedTurns": int(completed_turns), "unknownOrUnsettledCalls": int(unknown_turns)}
     store._refresh_event_projection()
+    ready_for_user_test = is_ready_for_user_test(test_receipt, state.get("lastReview"), state.get("verification"), pending)
+    state["readyForUserTest"] = ready_for_user_test
     if acceptance and not pending:
         state["iterationInProgress"] = False
         state["functionalDeliveryStatus"] = "IMPLEMENTED_READY_FOR_USER_TEST" if browser_pending else "VERIFIED_COMPLETE"
         status = "awaiting_browser_uat" if browser_pending else "VERIFIED_COMPLETE"
         store.finish_run(True, terminal_status=status)
+        return_code = 0
+    elif ready_for_user_test:
+        state["iterationInProgress"] = False
+        state["functionalDeliveryStatus"] = "IMPLEMENTED_READY_FOR_USER_TEST"
+        state["nextAction"] = "collect_user_test_feedback_and_continue_remaining_acceptance"
+        store.finish_run(False, terminal_status="IMPLEMENTED_READY_FOR_USER_TEST")
         return_code = 0
     else:
         state["lastFindings"] = findings

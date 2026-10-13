@@ -10,10 +10,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from durable_store import DurableRunStore
-from run_spec_workunit import capacity_retry_after, changed_source_paths, is_capacity_error, next_turn_limit
+from run_spec_workunit import capacity_retry_after, changed_source_paths, is_capacity_error, is_ready_for_user_test, next_turn_limit
 
 
 class DevelopmentContinuationTests(unittest.TestCase):
+    def test_readiness_is_separate_from_strict_acceptance_and_requires_independent_proof(self) -> None:
+        test_receipt = {"exitCode": 0}
+        review = {"complete": False, "functionalReadyForUserTest": True}
+        verification = {"complete": False, "functionalReadyForUserTest": True}
+        self.assertTrue(is_ready_for_user_test(test_receipt, review, verification, []))
+        self.assertFalse(is_ready_for_user_test({"exitCode": 1}, review, verification, []))
+        self.assertFalse(is_ready_for_user_test(test_receipt, {**review, "functionalReadyForUserTest": False}, verification, []))
+        self.assertFalse(is_ready_for_user_test(test_receipt, review, verification, [{"status": "pending"}]))
+
     def test_max_turns_is_a_resumable_segment_boundary(self) -> None:
         self.assertEqual(next_turn_limit(12, 12), 24)
         self.assertEqual(next_turn_limit(24, 12), 36)
