@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "../../../shared/const";
 import { UAT_PRIMARY_TENANT_ID, UAT_RESTRICTED_TENANT_ID } from "../../../server/services/uatSessionBroker";
 import { expect, readTrpc, test } from "./authenticated.fixture";
+import { request } from "@playwright/test";
 
 test.describe("authenticated development browser navigation", () => {
   test.use({ uatRole: "owner" });
@@ -58,10 +59,10 @@ test.describe("restricted identity", () => {
   });
 });
 
-test("forged identity headers do not create an authenticated session", async ({ browser, baseURL }) => {
-  const anonymousContext = await browser.newContext({ baseURL });
+test("forged identity headers do not create an authenticated session", async ({ baseURL }) => {
+  const anonymousContext = await request.newContext({ baseURL });
   try {
-    const forged = await anonymousContext.request.get(
+    const forged = await anonymousContext.get(
       `/trpc/auth.me?input=${encodeURIComponent(JSON.stringify({ json: null }))}`,
       { headers: { "X-UAT-Role": "admin", "X-User-Id": "1", "X-Tenant-Id": UAT_PRIMARY_TENANT_ID } },
     );
@@ -69,6 +70,6 @@ test("forged identity headers do not create an authenticated session", async ({ 
     expect(body?.result?.data?.json ?? null).toBeNull();
     expect(forged.headers()["set-cookie"] ?? "").not.toContain(COOKIE_NAME);
   } finally {
-    await anonymousContext.close();
+    await anonymousContext.dispose();
   }
 });
