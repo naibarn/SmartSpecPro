@@ -3900,7 +3900,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 SPEC-308 requirement rows unresolved until requirement-level evidence is recorded; continue any independent code gap from the ledger.",
+      "next_action": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4959,7 +4959,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 SPEC-308 requirement rows unresolved until requirement-level evidence is recorded; continue any independent code gap from the ledger.",
+      "rationale": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

@@ -1,7 +1,8 @@
 {
   "canonical_spec_count": 316,
   "counts": {
-    "acceptance.UNKNOWN": 473,
+    "acceptance.PASS": 1,
+    "acceptance.UNKNOWN": 472,
     "completion.ELIGIBLE": 2,
     "completion.INELIGIBLE": 314,
     "completion.NOT_APPLICABLE": 157,
@@ -41,8 +42,8 @@
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 1,
     "verification.PARTIAL": 15,
-    "verification.PASS": 4,
-    "verification.PENDING": 1,
+    "verification.PASS": 3,
+    "verification.PENDING": 2,
     "verification.UNKNOWN": 452
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
@@ -14835,7 +14836,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741",
+      "canonical_sha": "19574e81c1e7247cab1126dd422a2db1617881b4",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -14872,9 +14873,12 @@
         "requirement REQ-809B1F3A5820 is OPEN",
         "requirement REQ-5F44BC275481 is OPEN",
         "requirement REQ-EB44275F218A is OPEN",
+        "requirement REQ-B65ECF6CDA64 is STALE_EVIDENCE",
         "requirement REQ-1A32C33FB17C is OPEN",
         "requirement REQ-9758CAEA8902 is OPEN",
         "requirement REQ-2B0CEFB964B6 is OPEN",
+        "requirement REQ-82664B7A464F is STALE_EVIDENCE",
+        "requirement REQ-82D72A4A21B6 is STALE_EVIDENCE",
         "requirement REQ-C17EC9C16F3C is OPEN",
         "requirement REQ-F00FA36DC6B2 is OPEN",
         "requirement REQ-22685775D803 is OPEN",
@@ -14897,6 +14901,7 @@
         "requirement REQ-503E941908A3 is OPEN",
         "requirement REQ-0518C5A4CE92 is OPEN",
         "requirement REQ-57CA55F3D642 is OPEN",
+        "requirement REQ-AFBE9F138116 is STALE_EVIDENCE",
         "requirement REQ-90B20ACA3BDC is OPEN",
         "requirement REQ-22548CB2722F is OPEN",
         "requirement REQ-728D8EB9AEE5 is OPEN",
@@ -14923,21 +14928,26 @@
         "requirement REQ-D127D5DDD3C3 is OPEN",
         "requirement REQ-4ADF58D9FC3B is OPEN",
         "requirement REQ-28D93C3DBC72 is OPEN",
+        "requirement REQ-316FB9B1F7C4 is STALE_EVIDENCE",
         "requirement REQ-E4C76461299C is OPEN",
         "requirement REQ-E932270F4AB3 is OPEN",
         "requirement REQ-796E7A62B45B is OPEN",
         "requirement REQ-A2B452456E81 is OPEN",
+        "requirement REQ-FB7281AC8C41 is STALE_EVIDENCE",
         "requirement REQ-80910D9B529A is OPEN",
-        "requirement REQ-028588461FFC is OPEN",
+        "requirement REQ-028588461FFC is PARTIAL",
         "requirement REQ-75F629D444E5 is OPEN",
+        "requirement REQ-B71AF72845D1 is STALE_EVIDENCE",
         "requirement REQ-08E195E1F593 is OPEN",
         "requirement REQ-CF7A649A051B is OPEN",
+        "requirement REQ-706E5F6CC7D5 is STALE_EVIDENCE",
         "requirement REQ-04D9AE8459BB is OPEN",
         "requirement REQ-30D898BD995D is OPEN",
         "requirement REQ-73CE98F75FEF is OPEN",
         "requirement REQ-D5EC883ED4B6 is OPEN",
         "requirement REQ-767C058082A6 is OPEN",
-        "requirement REQ-3012D5FE33CE is OPEN"
+        "requirement REQ-3012D5FE33CE is OPEN",
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -15105,7 +15115,7 @@
       "deployment": "UNKNOWN",
       "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "FRESH",
+      "evidence_freshness": "STALE",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
@@ -15612,8 +15622,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 98,
-        "pass": 8,
+        "open": 106,
+        "pass": 0,
         "total": 106
       },
       "revision": null,
@@ -15758,7 +15768,7 @@
       "successors": [],
       "title": "Spec 038: Citation-Gated Content Quality & Multi-Model Publishing Intelligence",
       "true_blockers": 0,
-      "verification": "PASS"
+      "verification": "PENDING"
     },
     {
       "acceptance": "UNKNOWN",
@@ -133624,9 +133634,9 @@
       "verification": "UNKNOWN"
     },
     {
-      "acceptance": "UNKNOWN",
+      "acceptance": "PASS",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "bdc26f7b915d8c5d3da39b17b7f59a6d2240ff40",
+      "canonical_sha": "fdf3e2839bf93f8edc441f341a0679234f6a6f6e",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -133736,11 +133746,11 @@
       "deployment": "VALIDATION_PENDING",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PR #896 exact head f2f33664b5bd80cede8b7e9975fab276377788b4 passed progressive integration gate run 38272876059 and Mocked SPEC-308 browser simulation run 38272876040, then merged normally at Main e57a01616337b638529430662057bed62577c26b. Exact canonical Main was built and published with VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW=true; deployment index and live JS/CSS hashes match. Live https://smartaihub.app browser checks passed for legal-link collision avoidance at 320/390 widths, desktop launcher at 768/1024/1440, guest Chat sign-in gate, protected Settings redirect, and no overflow/page errors. Authenticated tenant behavior remains unverified.",
+      "evidence_freshness": "Deployed source e57a01616337b638529430662057bed62577c26b is still served at https://smartaihub.app; live JavaScript SHA-256 1218f5049ff82daf38f90123ea09f414e0a80cf81e63cf25c75b568ee48e82a1 matches the existing deployment record. Chromium checks at 320x740, 390x844, 768x900, 1024x900, and 1440x900 passed for responsive launcher, guest Chat dialog containment, no horizontal overflow, and protected Settings redirect. Bell/unread, real reminder CTA, persisted appearance settings, and signed-in controls remain unverified because this browser had no authenticated tenant session.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Obtain live authenticated tenant acceptance at https://smartaihub.app for tenant tenant-ZCSKEM9s: verify Bell/unread state and real reminder CTA, five appearance styles and persistence, authenticated Settings, and signed-in Chat/task controls. Keep all 66 SPEC-308 requirement rows unresolved until requirement-level evidence is recorded; continue any independent code gap from the ledger.",
+      "next_action": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "INTEGRATION_AUTHORITY",
