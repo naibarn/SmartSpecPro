@@ -10,6 +10,32 @@ Use the existing repository `AGENTS.md` and [development lifecycle](../developme
 
 ## Route the task
 
+### Canonical SPEC-ID requests
+
+When a user supplies a `SPEC-ID` (with or without `/orchestra`) and asks to
+continue, implement, finish, or debug it, resolve the ID from the current
+configured canonical Git ref before routing. Use the canonical Spec index and
+registry authority metadata (`specs/_status/spec-index.json` and the configured
+registry source), then read that entry's `spec.md`, existing Spec HandOff
+manifest/ledger/history, relevant implementation and planning artifacts, and
+current Git/PR state. The registry entry determines SPEC identity and scope;
+copied descriptions, stale chat text, directory-name matches, and another SPEC's
+artifacts cannot redirect the task. If the requested ID is aliased, conflicted,
+missing, or not canonical, follow its registry disposition and resolve authority
+before changing SPEC files.
+
+Select the existing `deep-plan`, `deep-implement`, resume, or debug route from
+the reconciled artifacts and current source state. Reuse completed planning and
+implementation; resume the earliest actually incomplete requirement. Apply this
+rule to every SPEC-ID, not just named examples. Continue through functional
+output, normal protected integration into the configured canonical ref, and a
+verifiable update to the existing Spec HandOff without asking the user to
+orchestrate each stage. A merge receipt or documentation-only commit is not
+functional output and cannot close a SPEC requirement or count as completion;
+when documentation is the actual requirement, verify it directly and record
+that requirement's evidence in the canonical HandOff instead of looping on
+receipts.
+
 - **Simple fix / UI edit:** investigate the affected files, implement directly, run a relevant focused check, integrate a coherent checkpoint, and continue.
 - **Feature / SPEC:** follow `deep-plan` when planning is needed, then `deep-implement` section by section. Do not repeat finished planning or require every requirement to pass final acceptance before integration.
 - **Parallel work:** delegate only genuinely independent owned file scopes. Do not serialize unrelated implementation work; serialize the Git merge-critical section when necessary.
