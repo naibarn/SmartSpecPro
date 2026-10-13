@@ -31,3 +31,14 @@ fixture renews a short-lived session per test, captures and scrubs Playwright
 trace evidence, screenshot, console and network details, and revokes the session
 afterward. Record Functional UAT and Gateway Integration UAT separately; a
 skipped or unavailable provider call is not a Gateway pass.
+
+Moli is the default for agent-oriented UAT (`npm run test:uat`). It connects to
+the existing Playwright fixture over a loopback CDP endpoint and retains the
+same authenticated session, role, evidence and authorization checks. Its
+systemd service denies all direct network egress; a per-run loopback CONNECT
+proxy permits only the development app and authorized Gateway HTTPS origins.
+The setup verifies this host isolation before starting Moli and refuses to run
+if it cannot prove the restriction. `npm run test:uat:chromium` selects ordinary
+Chromium when a flow specifically needs browser behavior representative of a
+human user. Neither profile may use IP-address UI navigation, ignore TLS
+errors, or reach an external provider directly.

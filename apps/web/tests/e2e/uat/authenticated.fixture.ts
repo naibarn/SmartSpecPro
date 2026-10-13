@@ -1,13 +1,24 @@
 import { mkdir, writeFile, chmod } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { expect as baseExpect, test as baseTest, type Page } from "@playwright/test";
+import {
+  chromium,
+  expect as baseExpect,
+  test as baseTest,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 import {
   issueUatSession,
   revokeUatSession,
   type UatRole,
 } from "../../../server/services/uatSessionBroker";
 import { COOKIE_NAME } from "../../../shared/const";
+import {
+  createMoliUatEgressProxy,
+  startMoliUatProcess,
+} from "./moliUatRuntime";
 
 const PROVIDER_HOSTS = [
   "api.openai.com",
@@ -35,28 +46,74 @@ const PROVIDER_HOSTS = [
 ];
 
 type Evidence = {
-  requests: Array<{ origin: string; path: string; method: string; resourceType: string }>;
+  requests: Array<{
+    origin: string;
+    path: string;
+    method: string;
+    resourceType: string;
+  }>;
   responses: Array<{ origin: string; path: string; status: number }>;
   failures: Array<{ origin: string; path: string; error: string }>;
   consoleErrors: string[];
   directProviderAttempts: string[];
+  screenshotErrors: string[];
 };
 
 export const test = baseTest.extend<{ uatRole: UatRole }>({
   uatRole: ["member", { option: true }],
-  page: async ({ page, uatRole }, use, testInfo) => {
+  page: async ({ uatRole }, use, testInfo) => {
+    const isMoli = process.env.SMARTSPEC_UAT_BROWSER === "moli";
     const session = await issueUatSession(uatRole);
-    const context = page.context();
-    await context.addCookies([{
-      name: COOKIE_NAME,
-      value: session.token,
-      domain: ".smartaihub.app",
-      path: "/",
-      expires: Math.floor(session.expiresAt / 1000),
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-    }]);
+    const egressProxy = isMoli ? await createMoliUatEgressProxy() : null;
+    let moliProcess: Awaited<ReturnType<typeof startMoliUatProcess>> | null =
+      null;
+    try {
+      if (isMoli) {
+        moliProcess = await startMoliUatProcess({
+          rootfs: process.env.SMARTSPEC_MOLI_UAT_ROOTFS!,
+          runId: process.env.SMARTSPEC_UAT_RUN_ID || "run",
+          testId: testInfo.testId,
+          proxyPort: egressProxy!.port,
+        });
+      }
+    } catch (error) {
+      await egressProxy?.close();
+      await revokeUatSession(session);
+      throw error;
+    }
+    let browser: Browser;
+    try {
+      browser = moliProcess
+        ? await chromium.connectOverCDP(moliProcess.endpoint, {
+            timeout: 15_000,
+          })
+        : await chromium.launch({ headless: true });
+    } catch (error) {
+      try {
+        moliProcess?.stop();
+      } finally {
+        await egressProxy?.close();
+        await revokeUatSession(session);
+      }
+      throw error;
+    }
+    const context: BrowserContext = await browser.newContext({
+      baseURL: "https://smartaihub.app",
+      viewport: { width: 1440, height: 1000 },
+    });
+    const page = await context.newPage();
+    await context.addCookies([
+      {
+        name: COOKIE_NAME,
+        value: session.token,
+        domain: ".smartaihub.app",
+        path: "/",
+        expires: Math.floor(session.expiresAt / 1000),
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+      },
+    ]);
 
     const evidence: Evidence = {
       requests: [],
@@ -64,21 +121,25 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
       failures: [],
       consoleErrors: [],
       directProviderAttempts: [],
+      screenshotErrors: [],
     };
-    await page.route("**/*", async (route) => {
-      const requestUrl = new URL(route.request().url());
-      const provider = PROVIDER_HOSTS.find((host) =>
-        requestUrl.hostname === host || requestUrl.hostname.endsWith(`.${host}`),
-      );
-      if (provider) {
-        evidence.directProviderAttempts.push(provider);
-        await route.abort("blockedbyclient");
-        return;
-      }
-      await route.continue();
-    });
+    if (!isMoli)
+      await page.route("**/*", async route => {
+        const requestUrl = new URL(route.request().url());
+        const provider = PROVIDER_HOSTS.find(
+          host =>
+            requestUrl.hostname === host ||
+            requestUrl.hostname.endsWith(`.${host}`)
+        );
+        if (provider) {
+          evidence.directProviderAttempts.push(provider);
+          await route.abort("blockedbyclient");
+          return;
+        }
+        await route.continue();
+      });
 
-    page.on("request", (request) => {
+    page.on("request", request => {
       const url = new URL(request.url());
       evidence.requests.push({
         origin: url.origin,
@@ -87,11 +148,15 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
         resourceType: request.resourceType(),
       });
     });
-    page.on("response", (response) => {
+    page.on("response", response => {
       const url = new URL(response.url());
-      evidence.responses.push({ origin: url.origin, path: url.pathname, status: response.status() });
+      evidence.responses.push({
+        origin: url.origin,
+        path: url.pathname,
+        status: response.status(),
+      });
     });
-    page.on("requestfailed", (request) => {
+    page.on("requestfailed", request => {
       const url = new URL(request.url());
       evidence.failures.push({
         origin: url.origin,
@@ -99,8 +164,9 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
         error: request.failure()?.errorText?.slice(0, 160) ?? "request failed",
       });
     });
-    page.on("console", (message) => {
-      if (message.type() === "error") evidence.consoleErrors.push(message.text().slice(0, 300));
+    page.on("console", message => {
+      if (message.type() === "error")
+        evidence.consoleErrors.push(message.text().slice(0, 300));
     });
 
     const tracePath = testInfo.outputPath("trace.zip");
@@ -108,48 +174,124 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
     const screenshotPath = testInfo.outputPath("authenticated-page.png");
     await mkdir(testInfo.outputDir, { recursive: true, mode: 0o700 });
     await chmod(testInfo.outputDir, 0o700);
-    await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
+    await context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: false,
+    });
 
     try {
       await use(page);
     } finally {
       try {
-        await page.screenshot({ path: screenshotPath, fullPage: true, timeout: 10_000 });
-      } catch {
-        // Keep the network and trace evidence when a page cannot be captured.
-      }
-      try {
-        await context.tracing.stop({ path: tracePath });
-        const scrubber = path.resolve("scripts/uat/scrub-playwright-trace.py");
-        execFileSync("python3", [scrubber, tracePath], { stdio: "ignore" });
-      } catch {
-        evidence.failures.push({
-          origin: "local://uat-evidence",
-          path: "/trace.zip",
-          error: "trace capture or token scrubbing failed",
-        });
-      }
+        try {
+          await page.screenshot({
+            path: screenshotPath,
+            fullPage: true,
+            timeout: 10_000,
+          });
+        } catch {
+          evidence.screenshotErrors.push(
+            isMoli
+              ? "Moli structured DOM profile does not provide the visual layout screenshot surface; use the Chromium profile for visual evidence"
+              : "Browser screenshot capture failed"
+          );
+        }
+        try {
+          await context.tracing.stop({ path: tracePath });
+          const scrubber = path.resolve(
+            "scripts/uat/scrub-playwright-trace.py"
+          );
+          execFileSync("python3", [scrubber, tracePath], { stdio: "ignore" });
+        } catch {
+          evidence.failures.push({
+            origin: "local://uat-evidence",
+            path: "/trace.zip",
+            error: "trace capture or token scrubbing failed",
+          });
+        }
 
-      // Revoke before marking the evidence successful. A failed revocation
-      // fails the test instead of leaving a live test session behind.
-      await revokeUatSession(session);
+        // Revoke before marking the evidence successful. Resource cleanup below
+        // still runs when revocation fails so Moli cannot outlive this test.
+        let revocationFailed = false;
+        try {
+          await revokeUatSession(session);
+        } catch {
+          revocationFailed = true;
+          evidence.failures.push({
+            origin: "local://uat-session-broker",
+            path: "/revoke",
+            error: "session revocation failed",
+          });
+        }
 
-      await writeFile(networkPath, JSON.stringify({
-        role: uatRole,
-        tenantId: session.tenantId,
-        userId: session.userId,
-        session: { revoked: true, expiresAt: session.expiresAt },
-        ...evidence,
-      }, null, 2), { mode: 0o600 });
-      try {
-        await testInfo.attach("network-evidence", { path: networkPath, contentType: "application/json" });
-        await testInfo.attach("authenticated-screenshot", { path: screenshotPath, contentType: "image/png" });
-        await testInfo.attach("playwright-trace", { path: tracePath, contentType: "application/zip" });
-      } catch {
-        // Attachments are best effort if setup failed before an artifact was written.
-      }
-      if (evidence.directProviderAttempts.length > 0) {
-        throw new Error("Browser attempted a direct provider request; use the SmartAIHub Gateway");
+        const egressAudit = egressProxy?.evidence();
+        for (const deniedTarget of egressAudit?.denied ?? []) {
+          const hostname = deniedTarget.split(":")[0]?.toLowerCase();
+          const provider = PROVIDER_HOSTS.find(
+            host => hostname === host || hostname?.endsWith(`.${host}`)
+          );
+          if (provider) evidence.directProviderAttempts.push(provider);
+        }
+
+        await writeFile(
+          networkPath,
+          JSON.stringify(
+            {
+              role: uatRole,
+              tenantId: session.tenantId,
+              userId: session.userId,
+              session: {
+                revoked: !revocationFailed,
+                expiresAt: session.expiresAt,
+              },
+              browser: isMoli ? "moli" : "chromium",
+              egress: egressAudit,
+              ...evidence,
+            },
+            null,
+            2
+          ),
+          { mode: 0o600 }
+        );
+        try {
+          await testInfo.attach("network-evidence", {
+            path: networkPath,
+            contentType: "application/json",
+          });
+          await testInfo.attach("authenticated-screenshot", {
+            path: screenshotPath,
+            contentType: "image/png",
+          });
+          await testInfo.attach("playwright-trace", {
+            path: tracePath,
+            contentType: "application/zip",
+          });
+        } catch {
+          // Attachments are best effort if setup failed before an artifact was written.
+        }
+        if (evidence.directProviderAttempts.length > 0) {
+          throw new Error(
+            "Browser attempted a direct provider request; use the SmartAIHub Gateway"
+          );
+        }
+        if (revocationFailed) throw new Error("UAT_SESSION_REVOCATION_FAILED");
+      } finally {
+        const cleanupErrors: unknown[] = [];
+        await context.close().catch(error => cleanupErrors.push(error));
+        await browser.close().catch(error => cleanupErrors.push(error));
+        try {
+          moliProcess?.stop();
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+        try {
+          await egressProxy?.close();
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+        if (cleanupErrors.length > 0)
+          throw new Error("MOLI_UAT_SESSION_CLEANUP_FAILED");
       }
     }
   },
@@ -157,14 +299,19 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
 
 export const expect = baseExpect;
 
-export async function readTrpc<T>(page: Page, procedure: string, input?: unknown): Promise<{
+export async function readTrpc<T>(
+  page: Page,
+  procedure: string,
+  input?: unknown
+): Promise<{
   status: number;
   body: any;
   data: T | null;
 }> {
-  const query = input === undefined
-    ? ""
-    : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
+  const query =
+    input === undefined
+      ? ""
+      : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
   const response = await page.request.get(`/trpc/${procedure}${query}`);
   const body = await response.json();
   return {

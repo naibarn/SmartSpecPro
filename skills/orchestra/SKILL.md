@@ -53,6 +53,14 @@ Load the relevant existing reference **only when needed**, rather than loading t
 6. Build/preview the integrated development source on the authorized development runtime as soon as possible. Review, test and close remaining gaps iteratively; each subsequent fix can become another integrated checkpoint.
 7. Continue until the requested scope is implemented and the relevant testing is done, or until an **actual external permission/product decision** prevents the affected path. Continue independent work while any path is waiting.
 
+### SmartAIHub authenticated UAT
+
+For SmartAIHub UI, authentication, tenant permissions, Mini Apps, or Gateway work,
+always apply [UI Browser Verification](references/ui-browser-verification.md)
+as part of development verification. Moli is the default for agent-oriented UAT;
+use Chromium when the user asks to verify behavior like a human browser user.
+Direct Codex over SSH is supported and Runner is not a prerequisite.
+
 ## Durable progress and interruption recovery
 
 For multi-step execution, **write durable state**, not just conversation memory. In an owned isolated Orchestra workspace, update its `orchestra/progress.md` (what works, active step, source/commit/Main SHA, workspace, tests, unresolved defects, and exact next action) and `orchestra/backlog.md` (remaining sections and dependencies) at each meaningful wave/integration checkpoint and before a known session boundary. When multiple sessions share a checkout, use each task's existing WorkUnit/Spec HandOff or Deep Implement `state_dir` instead of concurrently overwriting the same `orchestra/` files. Record the owned in-flight step **before** dispatching long-running work so a lost session does not orphan it. For Deep Implement, the existing section-state tool now writes `{state_dir}/HANDOFF.md` automatically from the authoritative config: record `in_progress` before work, local SHA after commit and merged SHA only after protected merge; read it anytime with `--show` (see `deep-implement` skill). The canonical Spec HandOff remains authoritative for cross-workunit requirement closure; neither projection substitutes for it. Do not use these writes as merge approval gates.
