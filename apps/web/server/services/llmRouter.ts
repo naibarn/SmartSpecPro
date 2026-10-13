@@ -863,6 +863,8 @@ function getAuditMessageContentLength(content: unknown): number {
 export async function executeWithFallback(params: {
   model: string;
   messages: Message[];
+  /** Skill attribution for provider usage rows initiated by a skill. */
+  skillSlug?: string;
   /** Server-owned authority check immediately before each provider request. */
   beforeProviderRequest?: () => Promise<void>;
   stream: boolean;
@@ -1423,6 +1425,8 @@ export async function executeWithFallback(params: {
             wasFallback: i > 0,
             fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
             traceId: getTraceId(),
+            requestType: params.skillSlug ? "skill" : undefined,
+            skillSlug: params.skillSlug,
           }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
           auditLogger.log({
             eventType: "llm_response",
@@ -1513,6 +1517,8 @@ export async function executeWithFallback(params: {
           wasFallback: i > 0,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
           traceId: getTraceId(),
+          requestType: params.skillSlug ? "skill" : undefined,
+          skillSlug: params.skillSlug,
         }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
         // Log LLM response to JSONL audit trail (with full payload for transparency)
@@ -1616,6 +1622,8 @@ export async function executeWithFallback(params: {
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
         traceId: getTraceId(),
+        requestType: params.skillSlug ? "skill" : undefined,
+        skillSlug: params.skillSlug,
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Log LLM error to JSONL audit trail
@@ -1713,6 +1721,8 @@ export async function executeWithFallback(params: {
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
         traceId: getTraceId(),
+        requestType: params.skillSlug ? "skill" : undefined,
+        skillSlug: params.skillSlug,
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       auditLogger.log({

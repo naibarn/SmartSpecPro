@@ -2703,6 +2703,13 @@
       "when": 1791798340609,
       "tag": "0399_spec014_funnel_query_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 386,
+      "version": "7",
+      "when": 1791892149000,
+      "tag": "0400_spec038_skill_cost_attribution",
+      "breakpoints": true
     }
   ]
 }
