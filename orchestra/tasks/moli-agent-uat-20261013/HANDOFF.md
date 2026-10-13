@@ -61,14 +61,18 @@ development test dependency; no application authentication behavior changed.
 
 Source branch: `codex/moli-authenticated-uat`
 
+Source commit: `6e3c804b2919e60fd480859c3203efd93472049b`
+
+Protected PR: [#908](https://github.com/naibarn/SmartSpecPro/pull/908)
+
 Base and expected canonical SHA: `bdb2f6f2576f5a327cfde18dfe774d662312abff`
 
 The implementation, full Moli UAT, Chromium smoke, and focused runtime tests are
 complete. The FAST INTEGRATION GATE passed locally: focused tests passed,
 `git diff --check` is clean, no conflict state or staged unrelated paths exist,
 and the source contains no credentials. The task-owned source paths are ready
-for an explicit-path commit and protected PR. PR/commit/integrated SHA will be
-recorded here after confirmation.
+The source commit is pushed and PR #908 is open. Record the confirmed integrated
+SHA after the protected merge.
 
 Keep `apps/web/test-results/smarthub-uat/` untracked as local evidence; do not
 stage it.
