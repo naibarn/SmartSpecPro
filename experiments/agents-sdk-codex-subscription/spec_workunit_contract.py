@@ -207,8 +207,14 @@ def load_contract(contract_path: Path, workspace: Path) -> WorkUnitContract:
     budget = raw.get("budget")
     if not isinstance(budget, dict):
         raise ContractError("budget is required")
-    caps = {"maxAttempts": (1, 4), "implementationMaxTurns": (1, 30), "planMaxTurns": (1, 8), "reviewMaxTurns": (1, 8)}
-    values: dict[str, int] = {}
+    # maxAttempts is accepted only as a legacy hint; it never bounds mission
+    # continuation. Turn values are per SDK segment and MaxTurnsExceeded
+    # resumes from the official RunState checkpoint.
+    values: dict[str, int] = {"maxAttempts": 1}
+    legacy_attempts = budget.get("maxAttempts", 1)
+    if type(legacy_attempts) is not int or legacy_attempts < 1:
+        raise ContractError("legacy budget.maxAttempts, when present, must be a positive integer")
+    caps = {"implementationMaxTurns": (1, 30), "planMaxTurns": (1, 8), "reviewMaxTurns": (1, 8)}
     for key, (lower, upper) in caps.items():
         value = budget.get(key)
         if type(value) is not int or not lower <= value <= upper:
@@ -232,7 +238,7 @@ def load_contract(contract_path: Path, workspace: Path) -> WorkUnitContract:
         requirement_digest=canonical_digest, source_revision=head,
         workspace_id=workspace_id, task_id=task_id, owner_session_id=owner_session_id, allowed_files=allowed,
         writable_files=writable, test_paths=test_paths,
-        acceptance=tuple(acceptance), max_attempts=values["maxAttempts"],
+        acceptance=tuple(acceptance), max_attempts=legacy_attempts,
         implementation_max_turns=values["implementationMaxTurns"],
         plan_max_turns=values["planMaxTurns"], review_max_turns=values["reviewMaxTurns"],
         browser_uat=browser_uat, database_mode=database_mode,

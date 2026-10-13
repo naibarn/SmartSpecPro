@@ -82,8 +82,8 @@ class DurableRunStore:
                 raise RuntimeError("Run ID does not match persisted state")
             if count_restart:
                 self.state["restartCount"] = int(self.state.get("restartCount", 0)) + 1
-            self.state["status"] = "recovering"
             if count_restart:
+                self.state["status"] = "recovering"
                 self.event("process.restarted", {"restartCount": self.state["restartCount"]}, stable_key=f"restart:{self.state['restartCount']}")
         else:
             if existing is not None or initial_state is None:
@@ -276,12 +276,43 @@ class DurableRunStore:
         self.export()
 
     def finish_run(self, accepted: bool, *, terminal_status: str | None = None) -> None:
-        if terminal_status not in {None, "awaiting_browser_uat"}:
-            raise ValueError("Unsupported terminal status")
-        self.state["status"] = terminal_status or ("completed" if accepted else "retry_exhausted")
+        allowed = {None, "awaiting_browser_uat", "PARTIAL_CONTINUABLE", "WAITING_CAPACITY",
+                   "IMPLEMENTED_READY_FOR_USER_TEST", "BLOCKED_EXTERNAL", "VERIFIED_COMPLETE"}
+        if terminal_status not in allowed:
+            raise ValueError("Unsupported run status")
+        self.state["status"] = terminal_status or ("VERIFIED_COMPLETE" if accepted else "PARTIAL_CONTINUABLE")
         self.state["finishedAt"] = timestamp()
-        kind = "run.awaiting_browser_uat" if terminal_status == "awaiting_browser_uat" else ("run.completed" if accepted else "run.retry_exhausted")
-        self.event(kind, {"accepted": accepted, "status": self.state["status"]}, stable_key=f"run:result:{self.state['status']}")
+        kind = ("run.awaiting_browser_uat" if terminal_status == "awaiting_browser_uat" else
+                "run.development_continuable" if terminal_status == "PARTIAL_CONTINUABLE" else
+                "run.waiting_capacity" if terminal_status == "WAITING_CAPACITY" else
+                "run.implemented_ready_for_user_test" if terminal_status == "IMPLEMENTED_READY_FOR_USER_TEST" else
+                "run.blocked_external" if terminal_status == "BLOCKED_EXTERNAL" else
+                "run.completed" if accepted else "run.development_continuable")
+        iteration = self.state.get("developmentIteration", 0)
+        self.event(kind, {"accepted": accepted, "status": self.state["status"], "iteration": iteration},
+                   stable_key=f"run:result:{self.state['status']}:{iteration}")
+
+    def continue_development(self, *, iteration: int, findings: list[str], reason: str) -> None:
+        """Persist a useful checkpoint for the next WorkUnit iteration."""
+        self.state["developmentIteration"] = iteration
+        self.state["iterationInProgress"] = False
+        self.state["lastFindings"] = findings
+        self.state["nextAction"] = "implement_repair_or_next_milestone"
+        self.state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
+        self.event("development.iteration.checkpointed", {
+            "iteration": iteration, "nextIteration": iteration + 1,
+            "findingCount": len(findings), "reason": reason,
+        }, stable_key=f"development:iteration:{iteration}:checkpoint")
+        self.finish_run(False, terminal_status="PARTIAL_CONTINUABLE")
+
+    def wait_for_capacity(self, *, retry_after: str, detail: str) -> None:
+        """Persist a provider-capacity wait without terminating the mission."""
+        self.state["status"] = "WAITING_CAPACITY"
+        self.state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
+        self.state["retryAfter"] = retry_after
+        self.state["capacityWaitDetail"] = detail[:1000]
+        self.event("run.waiting_capacity", {"retryAfter": retry_after, "detail": detail[:1000]},
+                   stable_key=f"capacity-wait:{retry_after}")
 
     def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any]) -> dict[str, Any]:
         request_json = canonical_json(request)

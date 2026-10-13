@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -26,6 +27,38 @@ from run_experiment import make_agent, maybe_crash, now, parse_result_json
 from spec_workunit_contract import WorkUnitContract, load_contract
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parents[2]
+
+
+class CapacityWaitError(RuntimeError):
+    pass
+
+
+def is_capacity_error(error: BaseException) -> bool:
+    """Recognize temporary subscription capacity errors without treating code errors as waits."""
+    if isinstance(error, CapacityWaitError):
+        return True
+    status = getattr(error, "status_code", None) or getattr(error, "http_status", None)
+    text = f"{type(error).__name__}: {error}".lower()
+    return status == 429 or any(term in text for term in (
+        "429", "rate limit", "rate_limit", "quota", "capacity unavailable",
+        "too many requests", "usage limit", "resource exhausted",
+    ))
+
+
+def capacity_retry_after(state: dict[str, Any], *, now_utc: datetime | None = None) -> str:
+    count = int(state.get("capacityWaitCount", 0)) + 1
+    state["capacityWaitCount"] = count
+    delay_seconds = min(30 * (2 ** min(count - 1, 5)), 900)
+    return ((now_utc or datetime.now(timezone.utc)) + timedelta(seconds=delay_seconds)).isoformat()
+
+
+def next_turn_limit(current_limit: int, segment_limit: int) -> int:
+    """Extend a bounded Agents SDK segment while preserving its RunState identity."""
+    return current_limit + segment_limit
+
+
+def changed_source_paths(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    return sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
 
 def source_hashes(contract: WorkUnitContract) -> dict[str, str]:
     return {p: hashlib.sha256((contract.root / p).read_bytes()).hexdigest() for p in contract.allowed_files if (contract.root / p).is_file()}
@@ -328,16 +361,12 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
     session = SQLiteSession(phase_row["phase_id"], db_path=store.evidence_dir / "agents-sessions.sqlite3")
     async def invoke():
         checkpoint = json.loads(phase_row["checkpoint_json"]) if phase_row.get("checkpoint_json") else None
-        # A resumed snapshot may already be at the original turn limit. Give
-        # that same phase/thread one bounded continuation window; never create
-        # a new phase merely because the SDK raised MaxTurnsExceeded.
-        turn_limit = max_turns * 2 if checkpoint else max_turns
-        if checkpoint and int(checkpoint.get("max_turns", 0)) < turn_limit:
-            # Runner.run_streamed deliberately restores max_turns from a
-            # supplied RunState, overriding its keyword argument. Persist the
-            # bounded continuation budget in the official SDK snapshot.
-            checkpoint = {**checkpoint, "max_turns": turn_limit}
-            store.save_checkpoint(phase_row["phase_id"], checkpoint)
+        # MaxTurnsExceeded marks an SDK segment boundary. Continue the same
+        # RunState, phase and Codex thread with a larger durable allowance.
+        # There is intentionally no mission-level turn stop here.
+        turn_limit = max_turns
+        if checkpoint:
+            turn_limit = max(max_turns, int(checkpoint.get("max_turns", max_turns)))
         run_input = await RunState.from_json(agent, checkpoint) if checkpoint else content
         while True:
             streamed = Runner.run_streamed(agent, run_input, max_turns=turn_limit, session=session)
@@ -345,16 +374,15 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                 async for _ in streamed.stream_events():
                     store.save_checkpoint(phase_row["phase_id"], streamed.to_state().to_json())
             except MaxTurnsExceeded:
-                if turn_limit >= max_turns * 2:
-                    raise
                 state_json = streamed.to_state().to_json()
-                turn_limit = max_turns * 2
+                previous_limit = turn_limit
+                turn_limit = next_turn_limit(turn_limit, max_turns)
                 state_json["max_turns"] = turn_limit
                 store.save_checkpoint(phase_row["phase_id"], state_json)
                 run_input = await RunState.from_json(agent, state_json)
                 store.event("phase.turn_limit_continued", {
                     "phaseId": phase_row["phase_id"], "attempt": attempt,
-                    "previousLimit": max_turns, "continuedLimit": turn_limit,
+                    "previousLimit": previous_limit, "continuedLimit": turn_limit,
                 }, stable_key=f"phase:{phase_row['phase_id']}:turn-limit-continuation:{turn_limit}")
                 continue
             break
@@ -366,6 +394,12 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
     try:
         import asyncio
         return asyncio.run(invoke())
+    except Exception as exc:
+        if is_capacity_error(exc):
+            retry_after = capacity_retry_after(store.state)
+            store.wait_for_capacity(retry_after=retry_after, detail=f"{type(exc).__name__}: {exc}")
+            raise CapacityWaitError(f"Codex subscription capacity unavailable; durable retry at {retry_after}") from exc
+        raise
     finally:
         session.close()
 
@@ -378,6 +412,7 @@ def main() -> int:
     parser.add_argument("--evidence-dir", required=True, type=Path, help="Durable run evidence directory outside the task worktree")
     parser.add_argument("--run-id", default=str(uuid.uuid4()))
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--continuation", action="store_true", help="Start a new WorkUnit iteration without counting it as crash recovery")
     args = parser.parse_args()
     contract = load_contract(args.contract, args.workspace)
     evidence = args.evidence_dir.resolve()
@@ -388,14 +423,20 @@ def main() -> int:
              **contract.binding, "contractDigest": contract.digest,
              "createdAt": now(), "status": "running", "modelReceipts": [], "operatorEvents": []}
     state["specId"] = contract.spec_id
-    store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state, resume=args.resume)
+    store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
+                            resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
     if state.get("contractDigest") != contract.digest or state.get("workspaceId") != contract.workspace_id:
         store.close()
         raise RuntimeError("Resumed run contract/workspace binding differs from its original state")
+    state["status"] = "running"
+    state.pop("retryAfter", None)
+    state.pop("capacityWaitDetail", None)
+    store.commit_state()
     def receipt(item: dict[str, Any]) -> None:
         if all(row.get("turnId") != item.get("turnId") for row in state.setdefault("modelReceipts", [])):
             state["modelReceipts"].append(item)
+        state["capacityWaitCount"] = 0
         store.commit_state()
     goal = (f"Implement {contract.spec_id} {contract.requirement_id}: {contract.requirement_text}. "
             "First compare the complete normative requirement with the scoped acceptance criteria. If criteria cover only part, state the gap and plan only this authorized slice without claiming the requirement passes. "
@@ -415,74 +456,179 @@ def main() -> int:
         "note": "Contract-listed writable paths may be new files and can be created with write_file; list_files reports only files that already exist. These Agents SDK function tools execute in the validated host worktree regardless of the Codex runtime's visible cwd or mounted workspace. Contract validation has already authorized this exact workspace; use repository-relative paths and do not infer tool availability from Codex's own filesystem.",
     }
     plan_tools = ScopedRepoTools(store, "planning", False, contract)
-    plan_agent = make_agent("planner", "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized.", plan_tools,
-                            receipt, plan_tools.tools(False), store, store.phase_id("planning"))
-    plan_result = run_phase(store, "planning", 0, plan_agent, json.dumps({"goal": goal, "canonical_requirement": contract.requirement_text, "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope, "verified_source_context": context}, ensure_ascii=False), contract.plan_max_turns)
-    plan = parse_result_json(plan_result.final_output)
-    state["plan"] = plan
-    store.commit_state()
-    acceptance = False
-    for attempt in range(1, contract.max_attempts + 1):
-        before_hashes = source_hashes(contract)
-        tools = ScopedRepoTools(store, f"implementation-{attempt}", True, contract)
-        agent = make_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; treat its plan as advisory, and ignore any planner text claiming this implementation phase is unauthorized. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
-                           receipt, tools.tools(True), store, store.phase_id("implementation", attempt))
+    planner_iteration = int(state.get("plannerIteration", 0))
+    if state.get("plan") is None:
+        planning_name = "planning" if planner_iteration == 0 else f"planning-{planner_iteration}"
+        plan_agent = make_agent(f"planner_{planner_iteration + 1}", "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized.", plan_tools,
+                                receipt, plan_tools.tools(False), store, store.phase_id(planning_name))
+        plan_result = run_phase(store, planning_name, 0, plan_agent, json.dumps({"goal": goal, "canonical_requirement": contract.requirement_text, "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope, "verified_source_context": context}, ensure_ascii=False), contract.plan_max_turns)
         try:
-            result = run_phase(store, "implementation", attempt, agent, json.dumps({"goal":goal,"plan":plan,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"verified_source_context":context,"prior_attempts":state.get("attempts",[])}, ensure_ascii=False), contract.implementation_max_turns)
+            state["plan"] = parse_result_json(plan_result.final_output)
         except Exception as exc:
-            state.setdefault("attempts", []).append({"attempt": attempt, "status": "agent_phase_failed", "error": f"{type(exc).__name__}: {exc}"})
-            store.commit_state()
-            continue
-        test_tools = ScopedRepoTools(store, f"verification-{attempt}", False, contract)
-        test_receipt = json.loads(test_tools.run_focused_tests())
-        after_hashes = source_hashes(contract)
-        changed_paths = sorted(path for path in set(before_hashes) | set(after_hashes) if before_hashes.get(path) != after_hashes.get(path))
-        test_receipt["changedPaths"] = changed_paths
-        test_receipt["sourceBefore"] = before_hashes
-        test_receipt["sourceAfter"] = after_hashes
-        state.setdefault("attempts", []).append({"attempt":attempt,"output":str(result.final_output),"testReceipt":test_receipt})
+            findings = [f"Planner output did not satisfy the plan contract: {type(exc).__name__}: {exc}"]
+            state["plannerIteration"] = planner_iteration + 1
+            state["lastFindings"] = findings
+            store.continue_development(iteration=int(state.get("developmentIteration", 0)), findings=findings, reason="planner response needs a fresh durable planning phase")
+            store.commit_state(); print(json.dumps(state, ensure_ascii=False, indent=2)); store.close()
+            return 75
         store.commit_state()
-        if test_receipt["exitCode"] != 0:
-            continue
+    plan = state["plan"]
+    # A process restart leaves iterationInProgress set and resumes the same
+    # stable phase IDs. A settled partial iteration advances to a new durable
+    # implementation/review cycle, independent of process restart count.
+    attempt = int(state.get("developmentIteration", 0)) + (0 if state.get("iterationInProgress") else 1)
+    attempt = max(attempt, 1)
+    state["developmentIteration"] = attempt
+    state["iterationInProgress"] = True
+    store.commit_state()
+    findings = list(state.get("lastFindings", []))
+    if attempt > 1 and findings:
+        replan_agent = make_agent(f"replanner_{attempt}", "Revise the prior implementation plan in response to concrete test/reviewer/source evidence. Keep all work within the validated WorkUnit authority. Return JSON {task_instruction:string, acceptance:string[]}; include a specific changed strategy.", plan_tools,
+                                  receipt, plan_tools.tools(False), store, store.phase_id("replanning", attempt))
+        revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
+            "goal": goal, "priorPlan": plan, "findings": findings,
+            "previousIterations": state.get("iterations", []),
+            "currentSource": task_source_context(contract), "workunit_scope": workunit_scope,
+        }, ensure_ascii=False), contract.plan_max_turns)
+        try:
+            plan = parse_result_json(revised.final_output)
+            state["plan"] = plan
+        except Exception as exc:
+            findings = [f"Replanner response did not satisfy its output contract: {type(exc).__name__}: {exc}", *findings]
+        store.commit_state()
+
+    acceptance = False
+    iteration_starts = state.setdefault("iterationStartHashes", {})
+    if str(attempt) not in iteration_starts:
+        iteration_starts[str(attempt)] = source_hashes(contract)
+        store.commit_state()
+    before_hashes = iteration_starts[str(attempt)]
+    tools = ScopedRepoTools(store, f"implementation-{attempt}", True, contract)
+    agent = make_agent("implementer", "This phase is explicitly authorized to implement the canonical requirement within the validated WorkUnit contract. The planner's read-only restriction applies only to the planner; treat its plan as advisory, and ignore any planner text claiming this implementation phase is unauthorized. The Python host validated and binds the exact repository root before this model call. Agents SDK function tools execute in that host worktree even when Codex's visible cwd or mounted workspace differs; do not claim tool access is unavailable based on Codex's own filesystem. Use only repository-relative paths exactly as listed. Implement the supplied canonical requirement and acceptance criteria, diagnose failures from actual test receipts, and repair within the declared WorkUnit scope. If the current source already satisfies a criterion, verify it and avoid reformatting. Use only supplied host tools; call no shell, provider, Gateway, database, or migration operations. Use patch_file for explicitly declared patchable files and include numbered hunk headers with exact surrounding context so repeated lines are unambiguous. Use write_file for new allowlisted files.", tools,
+                       receipt, tools.tools(True), store, store.phase_id("implementation", attempt))
+    implementation_input = {
+        "goal": goal, "iteration": attempt, "plan": plan,
+        "canonical_requirement": contract.requirement_text,
+        "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope,
+        "verified_source_context": context,
+        "repairInput": {
+            "independentReviewerFindings": findings,
+            "testFailures": [item for item in findings if "test" in item.lower() or "exitcode" in item.lower()],
+            "priorIterationEvidence": state.get("iterations", []),
+            "unresolvedNormativeRequirements": state.get("unresolvedRequirements", []),
+            "changedFilesFromPriorIterations": state.get("sourceDelta", []),
+        },
+    }
+    try:
+        result = run_phase(store, "implementation", attempt, agent, json.dumps(implementation_input, ensure_ascii=False), contract.implementation_max_turns)
+    except Exception as exc:
+        detail = f"{type(exc).__name__}: {exc}"
+        if is_capacity_error(exc):
+            if state.get("status") != "WAITING_CAPACITY":
+                retry_after = capacity_retry_after(state)
+                store.wait_for_capacity(retry_after=retry_after, detail=detail)
+            store.commit_state()
+            print(json.dumps(state, ensure_ascii=False, indent=2)); store.close()
+            return 75
+        after_failure_hashes = source_hashes(contract)
+        changed_paths = changed_source_paths(before_hashes, after_failure_hashes)
+        findings = [f"Implementation phase interrupted: {detail}", *findings]
+        state.setdefault("iterations", []).append({"iteration": attempt, "status": "phase_interrupted", "findings": findings, "changedPaths": changed_paths})
+        state["lastFindings"] = findings
+        state["sourceDelta"] = changed_paths
+        state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
+        store.continue_development(iteration=attempt, findings=findings, reason="implementation phase needs durable continuation")
+        store.commit_state(); print(json.dumps(state, ensure_ascii=False, indent=2)); store.close()
+        return 75
+
+    test_tools = ScopedRepoTools(store, f"verification-{attempt}", False, contract)
+    try:
+        test_receipt = json.loads(test_tools.run_focused_tests())
+    except Exception as exc:
+        test_receipt = {"exitCode": 124 if isinstance(exc, subprocess.TimeoutExpired) else 2,
+                        "command": contract.test_command, "stdout": "",
+                        "stderr": f"Focused test adapter failed: {type(exc).__name__}: {exc}",
+                        "recordedAt": now()}
+    after_hashes = source_hashes(contract)
+    changed_paths = changed_source_paths(before_hashes, after_hashes)
+    test_receipt["changedPaths"] = changed_paths
+    test_receipt["sourceBefore"] = before_hashes
+    test_receipt["sourceAfter"] = after_hashes
+    iteration_record: dict[str, Any] = {"iteration": attempt, "output": str(result.final_output), "testReceipt": test_receipt, "changedPaths": changed_paths}
+    state.setdefault("iterations", []).append(iteration_record)
+    state.setdefault("attempts", []).append({"attempt": attempt, "output": str(result.final_output), "testReceipt": test_receipt})
+    store.commit_state()
+    if test_receipt["exitCode"] != 0:
+        findings = [f"Focused tests failed (exit {test_receipt['exitCode']}): {test_receipt.get('stderr') or test_receipt.get('stdout', '')[-3000:]}"]
+    else:
         review_tools = ScopedRepoTools(store, f"review-{attempt}", False, contract)
         review = make_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Return JSON {complete:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
                             receipt, review_tools.tools(False), store, store.phase_id("review", attempt))
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
-        reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
+        try:
+            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":changed_paths,"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
+        except Exception as exc:
+            if is_capacity_error(exc):
+                raise
+            reviewed = {"complete": False, "findings": [f"Independent review needs a fresh iteration: {type(exc).__name__}: {exc}"], "evidence": []}
         state.setdefault("reviews", []).append(reviewed)
+        iteration_record["review"] = reviewed
+        state["lastReview"] = reviewed
         store.commit_state()
-        if reviewed.get("complete") and not reviewed.get("findings"):
+        findings = list(reviewed.get("findings", []))
+        state["unresolvedRequirements"] = findings if not reviewed.get("complete") else []
+        if not reviewed.get("complete") and not findings:
+            findings = ["Independent reviewer could not confirm all acceptance criteria; inspect uncovered normative scope and evidence."]
+        if reviewed.get("complete") and not findings:
             verifier = make_agent(f"independent_final_verifier_{attempt}", "Verify requirement, source, migration safety, tests and reviewer evidence independently. Return JSON {complete:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
                                   receipt, review_tools.tools(False), store, store.phase_id("verification", attempt))
-            verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,**contract.binding}),contract.review_max_turns).final_output)
+            try:
+                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,**contract.binding}),contract.review_max_turns).final_output)
+            except Exception as exc:
+                if is_capacity_error(exc):
+                    raise
+                verified = {"complete": False, "findings": [f"Independent verification needs a fresh iteration: {type(exc).__name__}: {exc}"], "evidence": []}
             state["verification"] = verified
             acceptance = bool(verified.get("complete") and not verified.get("findings"))
+            iteration_record["verification"] = verified
+            findings = list(verified.get("findings", []))
+            state["unresolvedRequirements"] = findings if not acceptance else []
+            if not acceptance and not findings:
+                findings = ["Independent final verifier did not confirm complete normative acceptance; identify and close the remaining evidence gap."]
             store.commit_state()
-            if acceptance: break
+
     pending = store.pending_tool_receipts()
     state["pendingToolReceiptCount"] = len(pending)
     if pending:
         acceptance = False
-        state["receiptSettlementError"] = "Unresolved scoped tool intents remain"
+        findings = ["Unresolved scoped tool intents remain and require receipt reconciliation.", *findings]
+        state["receiptSettlementError"] = findings[0]
     browser_pending = bool(contract.browser_uat and contract.browser_uat.get("status") == "configured")
     state["modelAcceptance"] = bool(acceptance)
-    state["status"] = "awaiting_browser_uat" if acceptance and browser_pending else ("completed" if acceptance else "retry_exhausted")
     state["browserUat"] = {"status": "UNVERIFIED", "reason": "No authorized browser UAT adapter is configured in this WorkUnit contract"} if contract.browser_uat is None or contract.browser_uat.get("status") == "unavailable" else {"status": "PENDING", "contract": contract.browser_uat}
-    state["finishedAt"] = now()
     state["durationMs"] = round((time.time() - __import__("datetime").datetime.fromisoformat(state["createdAt"]).timestamp()) * 1000)
     state["codexTurnCount"] = len(state.get("modelReceipts", []))
     state["subscriptionTokenUsage"] = {k:sum(int(((r.get("usage") or {}).get("last") or {}).get(k,0)) for r in state.get("modelReceipts",[])) for k in ("inputTokens","outputTokens","totalTokens","cachedInputTokens")}
-    completed_turns = store.connection.execute(
-        "SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')"
-    ).fetchone()[0]
-    unknown_turns = store.connection.execute(
-        "SELECT COUNT(*) FROM model_calls WHERE status IN ('planned','thread_started','turn_running','turn_reconciling')"
-    ).fetchone()[0]
+    completed_turns = store.connection.execute("SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')").fetchone()[0]
+    unknown_turns = store.connection.execute("SELECT COUNT(*) FROM model_calls WHERE status IN ('planned','thread_started','turn_running','turn_reconciling')").fetchone()[0]
     state["modelTurnTelemetry"] = {"completedTurns": int(completed_turns), "unknownOrUnsettledCalls": int(unknown_turns)}
     store._refresh_event_projection()
-    store.finish_run(acceptance and not browser_pending, terminal_status="awaiting_browser_uat" if acceptance and browser_pending else None); store.commit_state()
+    if acceptance and not pending:
+        state["iterationInProgress"] = False
+        state["functionalDeliveryStatus"] = "IMPLEMENTED_READY_FOR_USER_TEST" if browser_pending else "VERIFIED_COMPLETE"
+        status = "awaiting_browser_uat" if browser_pending else "VERIFIED_COMPLETE"
+        store.finish_run(True, terminal_status=status)
+        return_code = 0
+    else:
+        state["lastFindings"] = findings
+        state["sourceDelta"] = changed_paths
+        state["iterationInProgress"] = False
+        state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
+        store.continue_development(iteration=attempt, findings=findings, reason="tests, review, or independent verification found remaining work")
+        return_code = 75
+    store.commit_state()
     print(json.dumps(state,ensure_ascii=False,indent=2)); store.close()
-    return 0 if (acceptance and not pending) or state["status"] == "awaiting_browser_uat" else 1
+    return return_code
 
 
 if __name__ == "__main__":
