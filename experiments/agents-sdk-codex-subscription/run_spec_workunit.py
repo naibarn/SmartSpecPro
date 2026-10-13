@@ -242,6 +242,27 @@ def is_ready_for_user_test(test_receipt: dict[str, Any], review: dict[str, Any] 
 def source_hashes(contract: WorkUnitContract) -> dict[str, str]:
     return {p: hashlib.sha256((contract.root / p).read_bytes()).hexdigest() for p in contract.allowed_files if (contract.root / p).is_file()}
 
+def cumulative_source_paths(iterations: list[dict[str, Any]], current_paths: list[str]) -> list[str]:
+    """Keep every still-relevant path from prior cycles visible to later phases."""
+    paths = set(current_paths)
+    for iteration in iterations:
+        changed = iteration.get("changedPaths", [])
+        if isinstance(changed, list):
+            paths.update(path for path in changed if isinstance(path, str))
+    return sorted(paths)
+
+def source_diff_from_baseline(contract: WorkUnitContract) -> tuple[list[str], str]:
+    """Return the current allowlisted diff against the contract's original revision."""
+    result = subprocess.run(
+        ["git", "diff", "--no-ext-diff", "--unified=8", contract.source_revision, "--", *contract.allowed_files],
+        cwd=contract.root, text=True, capture_output=True, check=True,
+    )
+    names = subprocess.run(
+        ["git", "diff", "--name-only", contract.source_revision, "--", *contract.allowed_files],
+        cwd=contract.root, text=True, capture_output=True, check=True,
+    )
+    return sorted(path for path in names.stdout.splitlines() if path), result.stdout[:60000]
+
 def task_source_context(contract: WorkUnitContract) -> dict[str, str]:
     """Capture bounded context ranges declared by the trusted WorkUnit contract."""
     windows = contract.raw.get("contextRanges", {})
@@ -758,7 +779,10 @@ def main() -> int:
             "testFailures": [item for item in findings if "test" in item.lower() or "exitcode" in item.lower()],
             "priorIterationEvidence": state.get("iterations", []),
             "unresolvedNormativeRequirements": state.get("unresolvedRequirements", []),
-            "changedFilesFromPriorIterations": state.get("sourceDelta", []),
+            "changedFilesFromPriorIterations": cumulative_source_paths(
+                state.get("iterations", []), state.get("sourceDelta", [])
+            ),
+            "sourceDiffFromWorkUnitBaseline": source_diff_from_baseline(contract)[1],
         },
     }
     try:
@@ -774,6 +798,7 @@ def main() -> int:
             return 75
         after_failure_hashes = source_hashes(contract)
         changed_paths = changed_source_paths(before_hashes, after_failure_hashes)
+        baseline_changed_paths, _ = source_diff_from_baseline(contract)
         findings = [f"Implementation phase interrupted: {detail}", *findings]
         unproductive_boundary = isinstance(exc, UnproductiveImplementationPhase)
         state.setdefault("iterations", []).append({
@@ -783,7 +808,7 @@ def main() -> int:
             "changedPaths": changed_paths,
         })
         state["lastFindings"] = findings
-        state["sourceDelta"] = changed_paths
+        state["sourceDelta"] = baseline_changed_paths
         state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
         if unproductive_boundary:
             state["iterationInProgress"] = False
@@ -805,10 +830,15 @@ def main() -> int:
                         "recordedAt": now()}
     after_hashes = source_hashes(contract)
     changed_paths = changed_source_paths(before_hashes, after_hashes)
+    baseline_changed_paths, source_diff = source_diff_from_baseline(contract)
     test_receipt["changedPaths"] = changed_paths
     test_receipt["sourceBefore"] = before_hashes
     test_receipt["sourceAfter"] = after_hashes
-    iteration_record: dict[str, Any] = {"iteration": attempt, "output": str(result.final_output), "testReceipt": test_receipt, "changedPaths": changed_paths}
+    test_receipt["workUnitBaselineChangedPaths"] = baseline_changed_paths
+    iteration_record: dict[str, Any] = {
+        "iteration": attempt, "output": str(result.final_output), "testReceipt": test_receipt,
+        "changedPaths": changed_paths, "workUnitBaselineChangedPaths": baseline_changed_paths,
+    }
     state.setdefault("iterations", []).append(iteration_record)
     state.setdefault("attempts", []).append({"attempt": attempt, "output": str(result.final_output), "testReceipt": test_receipt})
     store.commit_state()
@@ -816,11 +846,23 @@ def main() -> int:
         findings = [f"Focused tests failed (exit {test_receipt['exitCode']}): {test_receipt.get('stderr') or test_receipt.get('stdout', '')[-3000:]}"]
     else:
         review_tools = ScopedRepoTools(store, f"review-{attempt}", False, contract)
-        review = make_workunit_agent(f"independent_reviewer_{attempt}", "Independently inspect the exact normative requirement, current diff, tests and actual receipt. Decide whether the stated acceptance is complete; identify uncovered requirement language and any evidence gaps. Separately decide whether the implemented slice is functionally usable and safe for user testing despite any clearly listed incomplete acceptance/UAT items. Set functionalReadyForUserTest=true only when focused behavior works, tests pass, no known code defect or unsafe behavior remains, and remaining findings are limited to explicit scope/evidence/UAT gaps. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}; read-only.", review_tools,
-                                        review_tools.tools(False), receipt, store, store.phase_id("review", attempt), contract.requirement_text)
+        review = make_workunit_agent(
+            f"independent_reviewer_{attempt}",
+            "Independently inspect the exact normative requirement, current diff, tests and actual receipt. "
+            "Use sourceDiffFromWorkUnitBaseline and workUnitBaselineChangedPaths as the cumulative source evidence "
+            "from the contract sourceRevision; sourceDelta is cumulative and iterationSourceDelta is only the current "
+            "cycle. Do not infer that a path is unchanged because it is absent from the current iteration delta or a "
+            "test receipt's changedPaths. Decide whether the stated acceptance is complete; identify uncovered "
+            "requirement language and any evidence gaps. Separately decide whether the implemented slice is functionally "
+            "usable and safe for user testing despite any clearly listed incomplete acceptance/UAT items. Set "
+            "functionalReadyForUserTest=true only when focused behavior works, tests pass, no known code defect or "
+            "unsafe behavior remains, and remaining findings are limited to explicit scope/evidence/UAT gaps. Return "
+            "JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}; read-only.",
+            review_tools, review_tools.tools(False), receipt, store, store.phase_id("review", attempt), contract.requirement_text,
+        )
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
         try:
-            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
+            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":baseline_changed_paths,"iterationSourceDelta":changed_paths,"sourceDiffFromWorkUnitBaseline":source_diff,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
         except Exception as exc:
             if is_capacity_error(exc):
                 raise
@@ -837,7 +879,7 @@ def main() -> int:
             verifier = make_workunit_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
                                            review_tools.tools(False), receipt, store, store.phase_id("verification", attempt), contract.requirement_text)
             try:
-                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns).final_output)
+                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"sourceDiffFromWorkUnitBaseline":source_diff,"workUnitBaselineChangedPaths":baseline_changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns).final_output)
             except Exception as exc:
                 if is_capacity_error(exc):
                     raise
@@ -883,7 +925,7 @@ def main() -> int:
         return_code = 0
     else:
         state["lastFindings"] = findings
-        state["sourceDelta"] = changed_paths
+        state["sourceDelta"] = baseline_changed_paths
         state["iterationInProgress"] = False
         state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
         store.continue_development(iteration=attempt, findings=findings, reason="tests, review, or independent verification found remaining work")
