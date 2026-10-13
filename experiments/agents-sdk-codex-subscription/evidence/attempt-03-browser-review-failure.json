@@ -1,0 +1,225 @@
+{
+  "attempt": 3,
+  "runId": "27ed237e-7052-4c5d-9a01-10f6a6d7e173",
+  "classification": "HARNESS_AND_ACCEPTANCE_CONTRACT_FAILURE",
+  "status": "FAILED",
+  "route": "OpenAI Agents SDK Runner -> custom Model -> openai-codex SDK -> existing ChatGPT/Codex login",
+  "workspace": "/tmp/agents-sdk-split-fair-20261013-run3",
+  "humanInterventions": 0,
+  "plannerStatus": "COMPLETED",
+  "implementerStatus": "COMPLETED",
+  "modelTurns": [
+    {
+      "role": "planner",
+      "turnId": "01a1338f-3752-7bb0-8864-eee63dacc202",
+      "action": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 4091,
+      "tokens": 17501
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338f-48b9-7741-a1de-d86733eb25cf",
+      "action": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 7147,
+      "tokens": 20806
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338f-6626-70e2-b1fc-03deeca0130d",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 6379,
+      "tokens": 17588
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338f-805a-7ce3-9fca-2d533086c38d",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 7222,
+      "tokens": 18162
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338f-9df0-7fc2-adb7-748f8b1ae447",
+      "action": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 8960,
+      "tokens": 27655
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338f-c244-75d0-b527-a2c5ad068e18",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 31908,
+      "tokens": 22475
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13390-4047-7b81-ae97-1ff693a66247",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 7911,
+      "tokens": 21195
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13390-607f-7192-bc65-aa7183391ade",
+      "action": "tool_call",
+      "toolName": "run_focused_tests",
+      "status": "completed",
+      "durationMs": 6022,
+      "tokens": 21033
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13390-799d-76f3-9853-8a5a5b594eed",
+      "action": "tool_call",
+      "toolName": "run_browser_uat",
+      "status": "completed",
+      "durationMs": 5705,
+      "tokens": 21555
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13391-0b61-7c13-9b07-f5fa9a6dd8e9",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 5562,
+      "tokens": 21996
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13391-2270-77d0-b2d4-c10891fad842",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 28097,
+      "tokens": 28675
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13391-91a8-7b50-8d71-54033de6d8a5",
+      "action": "tool_call",
+      "toolName": "run_browser_uat",
+      "status": "completed",
+      "durationMs": 5470,
+      "tokens": 26736
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13391-acb3-71e0-abdb-a2acdfa02e77",
+      "action": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 17045,
+      "tokens": 37638
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13391-f0a7-72a2-9dcc-1dc346d6225f",
+      "action": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 6484,
+      "tokens": 17422
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13392-0b56-7113-9c69-9142f5ddc981",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 5346,
+      "tokens": 17543
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13392-217e-7342-b618-b3ebe964637a",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 4253,
+      "tokens": 17771
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13392-337d-7091-976b-ae2295acd093",
+      "action": "tool_call",
+      "toolName": "run_focused_tests",
+      "status": "completed",
+      "durationMs": 3557,
+      "tokens": 19975
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13392-430f-7e51-b35b-a81fd5b6724b",
+      "action": "tool_call",
+      "toolName": "run_browser_uat",
+      "status": "completed",
+      "durationMs": 4721,
+      "tokens": 20511
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13392-5b31-7d92-947d-5747b0216cf6",
+      "action": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 4678,
+      "tokens": 21002
+    }
+  ],
+  "tokenUsage": {
+    "totalTokens": 417239,
+    "codexTurns": 19
+  },
+  "toolInvocationCount": 16,
+  "focusedChecks": [
+    {
+      "exitCode": 0,
+      "durationMs": 92,
+      "summary": "stributes remainder cents\nok 3 - allocates equal whole-cent shares and distributes remainder cents\n  ---\n  duration_ms: 0.969739\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and group sizes\nok 4 - rejects invalid totals and group sizes\n  ---\n  duration_ms: 0.371025\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 52.563171\n"
+    },
+    {
+      "exitCode": 0,
+      "durationMs": 89,
+      "summary": "stributes remainder cents\nok 3 - allocates equal whole-cent shares and distributes remainder cents\n  ---\n  duration_ms: 0.973188\n  type: 'test'\n  ...\n# Subtest: rejects invalid totals and group sizes\nok 4 - rejects invalid totals and group sizes\n  ---\n  duration_ms: 0.397413\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 52.799433\n"
+    }
+  ],
+  "browserUat": [
+    {
+      "result": "FAIL",
+      "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#calculate')\u001b[22m\n\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:38:38)"
+    },
+    {
+      "result": "FAIL",
+      "failure": "Error: Expected three shares totaling 1001 cents, got []\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:41:13)"
+    },
+    {
+      "result": "FAIL",
+      "failure": "Error: Expected three shares totaling 1001 cents, got []\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:41:13)"
+    }
+  ],
+  "rootCauses": [
+    "Browser acceptance probe required data attributes and aggregate output IDs that were not declared in the Mini App task contract. Updated the probe to assert observable behavior and reconcile rendered share amounts.",
+    "Reviewer final output did not parse as strict JSON; made review parsing tolerant of fenced JSON and added persistent raw role outputs so malformed output becomes a bounded finding instead of aborting the harness."
+  ],
+  "missingEvidence": [
+    "No browser PASS receipt was produced in this failed attempt.",
+    "Reviewer completion could not be interpreted; no independent final verification occurred.",
+    "No baseline failing hidden test was captured because the implementer inspected and repaired the defect before its first test run."
+  ],
+  "recovery": "Align the browser probe to semantic UI behavior, require baseline tests before edits, parse/fail-close malformed reviewer output, and start a fresh acceptance run."
+}

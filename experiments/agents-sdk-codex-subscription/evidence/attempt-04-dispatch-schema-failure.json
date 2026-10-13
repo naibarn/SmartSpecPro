@@ -1,0 +1,156 @@
+{
+  "attempt": 4,
+  "runId": "2ffc0044-ee5e-45c4-a53c-1a0433d2cb04",
+  "classification": "ADAPTER_CONTRACT_FAILURE",
+  "status": "FAILED",
+  "route": "OpenAI Agents SDK Runner -> custom Model -> official openai-codex SDK -> existing ChatGPT/Codex login",
+  "workspace": "/tmp/agents-sdk-split-fair-20261013-run4",
+  "humanInterventions": 0,
+  "planner": "completed",
+  "implementer": "returned final explanation after model dispatch output was rejected; generated split.mjs and index.html but no complete app",
+  "modelTurns": [
+    {
+      "role": "planner",
+      "turnId": "01a13393-c7e4-7893-aeb2-97d77822a0ff",
+      "action": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 6049,
+      "tokens": 17510
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13393-e0f9-71d1-a93b-df5569b2dd79",
+      "action": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 5336,
+      "tokens": 17486
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13393-f730-7642-bbb9-b048e2cf3a05",
+      "action": "tool_call",
+      "toolName": "run_focused_tests",
+      "status": "completed",
+      "durationMs": 7828,
+      "tokens": 17684
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13394-177b-7190-9f96-9ff123a7c188",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 5848,
+      "tokens": 18274
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13394-2f95-7970-bb01-ceaee00acf89",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 3829,
+      "tokens": 18459
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13394-3fe9-7180-96a1-946740a42d68",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 8724,
+      "tokens": 21744
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13394-6331-7342-b35f-ae530eb624e2",
+      "action": "tool_call",
+      "toolName": "write_file",
+      "status": "completed",
+      "durationMs": 36913,
+      "tokens": 23412
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a13394-f4ba-7161-828c-abea7695f5cf",
+      "action": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 27498,
+      "tokens": 25698
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13395-618e-7d92-85c2-4c8f6009376d",
+      "action": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 5017,
+      "tokens": 17440
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13395-767e-7780-866e-d1d48e35c31a",
+      "action": "tool_call",
+      "toolName": "read_file",
+      "status": "completed",
+      "durationMs": 4565,
+      "tokens": 17470
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13395-89b3-7df1-ae05-1e5a165529a6",
+      "action": "tool_call",
+      "toolName": "run_focused_tests",
+      "status": "completed",
+      "durationMs": 4838,
+      "tokens": 18452
+    },
+    {
+      "role": "independent_reviewer_1",
+      "turnId": "01a13395-9e3f-7d40-8c9a-67c06eaabe4d",
+      "action": "tool_call",
+      "toolName": "run_browser_uat",
+      "status": "completed",
+      "durationMs": 5019,
+      "tokens": 18848
+    }
+  ],
+  "subscriptionTotalTokens": 232477,
+  "toolInvocationCount": 10,
+  "baselineTestExitCode": 1,
+  "postRepairTestExitCode": 0,
+  "browserUat": [
+    {
+      "schema": "agents-sdk-miniapp-browser-uat.v1",
+      "result": "FAIL",
+      "url": "http://127.0.0.1:38383/",
+      "interactions": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (File not found)",
+        "Failed to load resource: the server responded with a status of 404 (File not found)"
+      ],
+      "screenshot": null,
+      "failure": "locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#calculate')\u001b[22m\n\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:45:38)",
+      "failureScreenshot": "/tmp/agents-sdk-split-fair-20261013-run4/evidence/browser-uat-failure.png",
+      "runner": {
+        "command": [
+          "node",
+          "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs"
+        ],
+        "exitCode": 1,
+        "stdout": "{\"schema\":\"agents-sdk-miniapp-browser-uat.v1\",\"result\":\"FAIL\",\"url\":\"http://127.0.0.1:38383/\",\"interactions\":[],\"pageErrors\":[],\"consoleErrors\":[\"Failed to load resource: the server responded with a status of 404 (File not found)\",\"Failed to load resource: the server responded with a status of 404 (File not found)\"],\"screenshot\":null,\"failure\":\"locator.click: Timeout 5000ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for locator('#calculate')\\u001b[22m\\n\\n    at main (/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs:45:38)\",\"failureScreenshot\":\"/tmp/agents-sdk-split-fair-20261013-run4/evidence/browser-uat-failure.png\"}\n",
+        "stderr": "",
+        "durationMs": 6277
+      }
+    }
+  ],
+  "rootCauses": [
+    "Codex structured output schema was only described in prompt, not enforced; a later response violated the dispatch envelope and Agents SDK could not interpret it.",
+    "The first browser UAT revealed the incomplete app (missing functional button/module) after that interrupted implementation."
+  ],
+  "recovery": "Validate Codex output schema format with the actual Codex app-server, pass it as thread.run(output_schema=...), and preserve malformed role output as a bounded reviewer failure."
+}

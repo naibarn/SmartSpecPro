@@ -1,0 +1,80 @@
+{
+  "attempt": 5,
+  "runId": "d9cddc95-0bfc-47d6-b787-b4dec61bd688",
+  "classification": "FAILED_ACCEPTANCE",
+  "status": "INCOMPLETE",
+  "route": "Agents SDK Runner -> custom Model -> openai-codex SDK -> existing ChatGPT/Codex login",
+  "plannerAndImplementerModelTurns": 21,
+  "independentReviewerTurns": 12,
+  "totalCodexSubscriptionTokens": 663497,
+  "toolInvocationCount": 28,
+  "testExitCodes": [
+    1,
+    0,
+    0,
+    0,
+    0
+  ],
+  "review": {
+    "complete": false,
+    "findings": [
+      "I cannot independently verify the app, run focused checks, or perform browser UAT: the listed workspace and test tools are not callable in this run.",
+      "The supplied history shows split.mjs exports allocateShares, but does not establish that the full acceptance criteria pass.",
+      "The supplied file listing does not include visible test files, so visible test coverage is unverified."
+    ],
+    "evidence": [
+      "The request includes prior tool outputs listing app.js, evidence/run-state.json, index.html, split.mjs, and styles.css, and showing the contents of split.mjs.",
+      "No callable list_files, read_file, run_focused_tests, or run_browser_uat tool is available in my current tool interface."
+    ]
+  },
+  "postHocBrowserUat": {
+    "schema": "agents-sdk-miniapp-browser-uat.v1",
+    "result": "FAIL",
+    "url": "http://127.0.0.1:56681/",
+    "interactions": [
+      {
+        "action": "calculate",
+        "shares": [
+          334,
+          334,
+          333
+        ],
+        "reconciledTotalCents": 1001
+      },
+      {
+        "action": "reset",
+        "resultsHidden": true
+      },
+      {
+        "action": "invalid_amount",
+        "errorVisible": true
+      }
+    ],
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_FAILED"
+    ],
+    "blockedExternalRequests": [
+      "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+    ],
+    "screenshot": "/tmp/agents-sdk-split-fair-20261013-run5/evidence/browser-uat.png",
+    "screenshotBytes": 191924,
+    "sourceSha256": "a028e3708400af457e5f82cda0b161b0ac1a8fa9c101da5cfed18b298ca214c0",
+    "sourceFiles": [
+      "app.js",
+      "index.html",
+      "split.mjs",
+      "split.test.mjs",
+      "styles.css"
+    ],
+    "trace": "/tmp/agents-sdk-split-fair-20261013-run5/evidence/browser-uat-trace.zip",
+    "unexpectedConsoleErrors": [],
+    "networkPolicyFailure": "The isolated Mini App requested non-loopback resources."
+  },
+  "findings": [
+    "Unit tests passed after repair, but the app did not add visible tests.",
+    "Functional Chromium interactions passed for calculate (334/334/333 cents), reset, and invalid amount, but UAT remains FAIL because the app requested Google Fonts from an external host which the isolated browser blocked.",
+    "Independent reviewer did not produce a satisfactory code review and claimed its tool interface was unavailable despite the recorded SDK tool calls."
+  ],
+  "evidenceDirectory": "/home/dev/worktrees/agents-sdk-subscription-bridge-20261013/experiments/agents-sdk-codex-subscription/evidence/attempt-05"
+}

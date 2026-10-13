@@ -1,0 +1,273 @@
+{
+  "attempt": 2,
+  "classification": "HARNESS_FAILURE",
+  "status": "INTERRUPTED_FOR_RECOVERY",
+  "route": "Agents SDK Runner -> custom Model -> official openai-codex SDK -> existing ChatGPT/Codex login",
+  "workspace": "/tmp/agents-sdk-split-fair-20261013-run2",
+  "completedPlanner": true,
+  "rootCause": "ToolBox methods were decorated before binding. The Agents SDK schema therefore required a self argument that the model could not supply; it repeatedly selected list_files and none of the Python tools executed. This was detected from actual SDK receipts and the generated tool schema.",
+  "toolSchemaEvidence": {
+    "before": {
+      "name": "list_files",
+      "required": [
+        "self"
+      ]
+    },
+    "afterFix": {
+      "name": "list_files",
+      "required": []
+    }
+  },
+  "modelTurns": [
+    {
+      "role": "planner",
+      "turnId": "01a1338d-d8a8-7553-8a29-7a1bcea5a842",
+      "agentAction": "final",
+      "toolName": null,
+      "status": "completed",
+      "durationMs": 6638,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 16856,
+          "outputTokens": 201,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 17057
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 16856,
+          "outputTokens": 201,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 17057
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338d-f3fa-7b32-9037-2030c7a46757",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 6591,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17450,
+          "outputTokens": 45,
+          "reasoningOutputTokens": 24,
+          "totalTokens": 17495
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 30208,
+          "inputTokens": 34823,
+          "outputTokens": 90,
+          "reasoningOutputTokens": 42,
+          "totalTokens": 34913
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-0f1c-7dd3-990f-c6d810684956",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 4288,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 17532,
+          "outputTokens": 54,
+          "reasoningOutputTokens": 30,
+          "totalTokens": 17586
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 28160,
+          "inputTokens": 35017,
+          "outputTokens": 69,
+          "reasoningOutputTokens": 30,
+          "totalTokens": 35086
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-212d-7da2-8e17-9655fa8bfd27",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 3650,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17602,
+          "outputTokens": 55,
+          "reasoningOutputTokens": 31,
+          "totalTokens": 17657
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 15104,
+          "inputTokens": 17602,
+          "outputTokens": 55,
+          "reasoningOutputTokens": 31,
+          "totalTokens": 17657
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-30b9-7050-aa21-f43442c478ca",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 8545,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 27392,
+          "inputTokens": 28037,
+          "outputTokens": 22,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 28059
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 79872,
+          "inputTokens": 94038,
+          "outputTokens": 339,
+          "reasoningOutputTokens": 148,
+          "totalTokens": 94377
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-536b-7de3-84ee-e417fb37d096",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 7073,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 17991,
+          "outputTokens": 231,
+          "reasoningOutputTokens": 207,
+          "totalTokens": 18222
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 32256,
+          "inputTokens": 35817,
+          "outputTokens": 372,
+          "reasoningOutputTokens": 283,
+          "totalTokens": 36189
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-7072-7133-8850-63c136181755",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 3459,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 11008,
+          "inputTokens": 17939,
+          "outputTokens": 50,
+          "reasoningOutputTokens": 26,
+          "totalTokens": 17989
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 11008,
+          "inputTokens": 17939,
+          "outputTokens": 50,
+          "reasoningOutputTokens": 26,
+          "totalTokens": 17989
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-7f43-7630-8de1-4ef32c85a6ff",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 5662,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 17152,
+          "inputTokens": 18149,
+          "outputTokens": 60,
+          "reasoningOutputTokens": 36,
+          "totalTokens": 18209
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 28160,
+          "inputTokens": 36205,
+          "outputTokens": 121,
+          "reasoningOutputTokens": 67,
+          "totalTokens": 36326
+        }
+      }
+    },
+    {
+      "role": "implementer",
+      "turnId": "01a1338e-966a-7301-b78e-c97b278f92af",
+      "agentAction": "tool_call",
+      "toolName": "list_files",
+      "status": "completed",
+      "durationMs": 9202,
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 19200,
+          "inputTokens": 28931,
+          "outputTokens": 136,
+          "reasoningOutputTokens": 112,
+          "totalTokens": 29067
+        },
+        "modelContextWindow": 258400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 51456,
+          "inputTokens": 66426,
+          "outputTokens": 300,
+          "reasoningOutputTokens": 196,
+          "totalTokens": 66726
+        }
+      }
+    }
+  ],
+  "modelTurnCount": 9,
+  "codexSubscriptionTotalTokens": 181341,
+  "executedWorkspaceTools": 0,
+  "workspaceWrites": 0,
+  "browserUat": "NOT_RUN",
+  "humanInterventions": 0,
+  "recovery": "Rebuild each function tool from a bound method with function_tool(...), so the SDK schema omits self. Stop this run, preserve it as failed, then start a fresh acceptance run."
+}

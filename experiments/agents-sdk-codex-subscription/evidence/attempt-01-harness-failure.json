@@ -1,0 +1,25 @@
+{
+  "attempt": 1,
+  "classification": "HARNESS_FAILURE",
+  "status": "FAILED",
+  "route": "Agents SDK Runner -> custom Model -> official openai-codex SDK -> existing ChatGPT/Codex login",
+  "workspace": "/tmp/agents-sdk-split-fair-20261013",
+  "planner": {
+    "status": "completed",
+    "turnId": "01a1338a-d3c1-7961-bbb8-9949b935fb9c",
+    "durationMs": 4195,
+    "totalTokens": 17036
+  },
+  "implementer": {
+    "status": "failed",
+    "error": "Agents SDK MaxTurnsExceeded: Max turns (18) exceeded",
+    "filesWritten": 0,
+    "rootCause": "The harness did not persist model/tool receipts until the entire Agent run returned, so a max-turn exception discarded the implementer execution trace. It also treated MaxTurnsExceeded as fatal instead of continuing to the next bounded attempt."
+  },
+  "missingEvidence": [
+    "Implementer per-turn token usage and call receipts were not persisted by the faulty harness.",
+    "No tests or browser UAT ran in this attempt.",
+    "No claim is made about autonomous completion for this failed run."
+  ],
+  "recovery": "Persist each model/tool receipt immediately, catch bounded-run failure, and start a new acceptance run in a fresh workspace."
+}

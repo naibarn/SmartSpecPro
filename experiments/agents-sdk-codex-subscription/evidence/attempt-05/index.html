@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f2ec">
+  <title>SplitFair — split a bill, fairly</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand" aria-label="SplitFair home"><span class="brand-mark" aria-hidden="true">÷</span><span>splitfair</span></header>
+    <section class="card" aria-labelledby="page-title">
+      <div class="intro"><span class="eyebrow">GOOD TIMES, FAIRLY SHARED</span><h1 id="page-title">Let’s split<br>the bill.</h1><p>One total, everyone’s fair share. We’ll take care of the pennies.</p></div>
+      <form id="split-form" novalidate>
+        <div class="field"><label for="amount">Bill total</label><div class="input-wrap money"><span aria-hidden="true">$</span><input id="amount" name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" autocomplete="off" aria-describedby="amount-hint amount-error" required></div><small id="amount-hint">Enter an amount in dollars</small><small id="amount-error" class="error" hidden></small></div>
+        <div class="field"><label for="people">Split between</label><div class="input-wrap people"><input id="people" name="people" type="number" inputmode="numeric" min="1" step="1" value="2" aria-describedby="people-hint people-error" required><span>people</span></div><small id="people-hint">How many people are sharing?</small><small id="people-error" class="error" hidden></small></div>
+        <div class="actions"><button class="primary" type="submit">Split the bill <span aria-hidden="true">↗</span></button><button class="reset" type="reset">Reset</button></div>
+      </form>
+      <section id="results" class="results" aria-live="polite" aria-atomic="true" hidden></section>
+    </section>
+    <footer>Made for friends who split fairly <span aria-hidden="true">✳</span></footer>
+  </main>
+</body>
+</html>
