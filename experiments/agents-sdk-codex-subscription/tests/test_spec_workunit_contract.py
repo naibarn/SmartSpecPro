@@ -14,7 +14,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from spec_workunit_contract import ContractError, developer_workspace_write_guard, load_contract
+from spec_workunit_contract import (
+    ContractError,
+    developer_workspace_write_guard,
+    load_contract,
+    verify_developer_workspace_claim,
+)
 
 
 class WorkUnitContractTests(unittest.TestCase):
@@ -194,6 +199,36 @@ class WorkUnitContractTests(unittest.TestCase):
                 pass
         self.assertEqual(parsed.work_unit, "DEV-WU-0123456789AB")
         self.assertEqual(parsed.browser_uat["status"], "configured")
+        db = sqlite3.connect(self.registry)
+        renewed_expiry = parsed.raw["workspaceLeaseExpiresAt"] + 60
+        db.execute(
+            "UPDATE workspaces SET owner_lease_expires_at=? WHERE workspace_id='workspace-test'",
+            (renewed_expiry,),
+        )
+        db.commit()
+        db.close()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}):
+            self.assertEqual(verify_developer_workspace_claim(self.root, parsed.raw), 1)
+            with developer_workspace_write_guard(self.root, parsed.raw):
+                pass
+        db = sqlite3.connect(self.registry)
+        db.execute(
+            "UPDATE workspaces SET owner_lease_expires_at=? WHERE workspace_id='workspace-test'",
+            (parsed.raw["workspaceLeaseExpiresAt"] - 1,),
+        )
+        db.commit()
+        db.close()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), self.assertRaisesRegex(
+            ContractError, "lease, source owner, or fence",
+        ):
+            verify_developer_workspace_claim(self.root, parsed.raw)
+        db = sqlite3.connect(self.registry)
+        db.execute(
+            "UPDATE workspaces SET owner_lease_expires_at=? WHERE workspace_id='workspace-test'",
+            (renewed_expiry,),
+        )
+        db.commit()
+        db.close()
         self.contract["writableFiles"] = [test_path, "newly-added-path.txt"]
         self.write_contract()
         with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), patch(

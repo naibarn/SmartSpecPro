@@ -114,7 +114,7 @@ class DurableRunStore:
             CREATE TABLE IF NOT EXISTS model_calls(
               call_id TEXT PRIMARY KEY, phase_id TEXT NOT NULL, role TEXT NOT NULL,
               request_hash TEXT NOT NULL, request_json TEXT NOT NULL, status TEXT NOT NULL,
-              thread_id TEXT, turn_id TEXT, turn_attempt INTEGER NOT NULL DEFAULT 0,
+              thread_id TEXT, turn_id TEXT, prior_turn_id TEXT, turn_attempt INTEGER NOT NULL DEFAULT 0,
               response_text TEXT, response_items_json TEXT NOT NULL DEFAULT '[]', selection_json TEXT,
               usage_json TEXT, receipt_json TEXT, updated_at TEXT NOT NULL
             );
@@ -131,6 +131,8 @@ class DurableRunStore:
         model_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(model_calls)")}
         if "selection_json" not in model_columns:
             self.connection.execute("ALTER TABLE model_calls ADD COLUMN selection_json TEXT")
+        if "prior_turn_id" not in model_columns:
+            self.connection.execute("ALTER TABLE model_calls ADD COLUMN prior_turn_id TEXT")
 
     @property
     def run_id(self) -> str:
@@ -373,7 +375,7 @@ class DurableRunStore:
         return dict(self.connection.execute("SELECT * FROM model_calls WHERE call_id=?", (call_id,)).fetchone())
 
     def update_model_call(self, call_id: str, *, event: str, stable_suffix: str, **fields: Any) -> None:
-        allowed = {"status", "thread_id", "turn_id", "turn_attempt", "response_text", "response_items_json", "selection_json", "usage_json", "receipt_json"}
+        allowed = {"status", "thread_id", "turn_id", "prior_turn_id", "turn_attempt", "response_text", "response_items_json", "selection_json", "usage_json", "receipt_json"}
         if set(fields) - allowed:
             raise ValueError("Unsupported durable model-call field")
         assignments = ",".join(f"{field}=?" for field in fields)
@@ -404,6 +406,20 @@ class DurableRunStore:
     def get_model_call(self, call_id: str) -> dict[str, Any] | None:
         row = self.connection.execute("SELECT * FROM model_calls WHERE call_id=?", (call_id,)).fetchone()
         return dict(row) if row else None
+
+    def reusable_model_thread(self, phase_id: str, role: str, *, exclude_call_id: str) -> dict[str, Any] | None:
+        """Return the last completed thread for this phase/role, refusing unresolved turns."""
+        row = self.connection.execute(
+            "SELECT call_id,status,thread_id,turn_id FROM model_calls "
+            "WHERE phase_id=? AND role=? AND call_id<>? AND thread_id IS NOT NULL "
+            "ORDER BY rowid DESC LIMIT 1",
+            (phase_id, role, exclude_call_id),
+        ).fetchone()
+        if row is None:
+            return None
+        if row["status"] != "completed" or not row["turn_id"]:
+            raise RuntimeError("Prior Codex thread has an unresolved model call")
+        return dict(row)
 
     def begin_tool(self, operation_id: str, phase_id: str, tool: str, input_value: Any) -> dict[str, Any]:
         encoded = canonical_json(input_value)
