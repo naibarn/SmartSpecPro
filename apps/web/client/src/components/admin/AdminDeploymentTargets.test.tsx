@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   disable: vi.fn(),
+  saveCredential: vi.fn(),
+  revokeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
   targetsError: false,
 }));
@@ -17,7 +19,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("wouter", () => ({ useLocation: () => ["/admin/settings", vi.fn()] }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ infrastructure: { listProviderDeploymentTargets: { invalidate: mocks.invalidate } } }),
+    useUtils: () => ({ infrastructure: {
+      listProviderDeploymentTargets: { invalidate: mocks.invalidate },
+      getDeploymentCredentialState: { invalidate: mocks.invalidate },
+    } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [{ id: "8de1a509-6177-49b7-b57d-5d3b5228d75f", name: "Tenant One" }] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
@@ -26,6 +31,8 @@ vi.mock("@/lib/trpc", () => ({
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
+      saveDeploymentCredential: { useMutation: () => ({ mutate: mocks.saveCredential, isPending: false, error: null }) },
+      revokeDeploymentCredential: { useMutation: () => ({ mutate: mocks.revokeCredential, isPending: false, error: null }) },
     },
   },
 }));
@@ -81,6 +88,21 @@ describe("AdminDeploymentTargets", () => {
     expect(await screen.findByText("wiki-staging-worker")).toBeInTheDocument();
     expect(screen.getByText("Credential: CONFIGURED")).toBeInTheDocument();
     expect(screen.queryByText(/secret-token|encryptedSecret/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/dedicated non-production Mini-App Cloudflare account/)).toBeInTheDocument();
+
+    await user.click(screen.getByText("Configure target account credential"));
+    await user.type(screen.getByLabelText("Cloudflare API token"), "target-only-cloudflare-token-123");
+    await user.click(screen.getByRole("button", { name: "Save encrypted token" }));
+    expect(mocks.saveCredential).toHaveBeenCalledWith({
+      tenantId,
+      projectId,
+      environment: "staging",
+      provider: "cloudflare",
+      token: "target-only-cloudflare-token-123",
+    });
+    expect(screen.getByRole("button", { name: "Revoke target token" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Revoke target token" }));
+    expect(mocks.revokeCredential).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare" });
 
     await user.click(screen.getByText("Edit target"));
     const targetIdentityInputs = screen.getAllByLabelText("Deployment target identity");
@@ -118,6 +140,7 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
     await user.click(screen.getByText("Record an explicitly approved Cloudflare target"));
     await user.type(screen.getByLabelText("Deployment target identity"), "approved-worker");
+    await user.type(screen.getByLabelText("Cloudflare account ID (this target only)"), "dedicated-cf-account-123");
     await user.type(screen.getByLabelText("Approval or change provenance"), "change-123 approved by owner");
     await user.click(screen.getByRole("button", { name: "Record approved target" }));
 
@@ -127,7 +150,7 @@ describe("AdminDeploymentTargets", () => {
       environment: "staging",
       provider: "cloudflare",
       deploymentTargetId: "approved-worker",
-      accountRef: null,
+      accountRef: "dedicated-cf-account-123",
       workerRef: null,
       containerApplicationRef: null,
       provenance: "change-123 approved by owner",
