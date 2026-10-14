@@ -611,11 +611,16 @@ def execute_native_skill_agent_sync(request: NativeSkillRuntimeRequest) -> dict[
         },
         max_turns=max_turns,
     )
+    usage = getattr(getattr(result, "context_wrapper", None), "usage", None)
     last_agent = getattr(result, "last_agent", None)
     return {
         "status": "completed",
         "selectedAgentName": getattr(last_agent, "name", None) or request.skill_slug,
         "finalOutput": getattr(result, "final_output", None),
+        "usage": {
+            "promptTokens": getattr(usage, "input_tokens", 0) or 0,
+            "completionTokens": getattr(usage, "output_tokens", 0) or 0,
+        },
         "requestedSubagent": request.requested_subagent,
         "subagentCount": len(topology.subagents) if topology else 0,
     }

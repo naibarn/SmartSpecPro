@@ -297,6 +297,7 @@ def _native_runtime_result_to_agent_response(
     phase_results = result.get("phase_results") if isinstance(result.get("phase_results"), dict) else {}
     execute_details = phase_results.get("execute") if isinstance(phase_results.get("execute"), dict) else {}
     agent_result = execute_details.get("agentResult") if isinstance(execute_details.get("agentResult"), dict) else {}
+    usage = agent_result.get("usage") if isinstance(agent_result.get("usage"), dict) else {}
     agent_output = agent_result.get("finalOutput")
     raw_content = (
         str(agent_output)
@@ -353,7 +354,10 @@ def _native_runtime_result_to_agent_response(
             "resolvedGatewayModelId": body.modelConfig.resolvedGatewayModelId,
             "finalOutput": {
                 "rawContent": raw_content,
-                "usage": {"promptTokens": 0, "completionTokens": 0},
+                "usage": {
+                    "promptTokens": usage.get("promptTokens", 0) or 0,
+                    "completionTokens": usage.get("completionTokens", 0) or 0,
+                },
                 "creditsUsed": 0,
                 "providerName": body.modelConfig.providerId,
                 "modelId": body.modelConfig.resolvedGatewayModelId or body.modelConfig.modelId,
