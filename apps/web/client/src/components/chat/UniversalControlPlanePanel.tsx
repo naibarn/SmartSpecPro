@@ -1169,6 +1169,14 @@ export function UniversalControlPlanePanel({
                       {nextSafeActionLabel(run.nextSafeAction)}
                     </p>
                     <section className="mt-2 flex flex-wrap gap-2">
+                      {run.previewUrl ? (
+                        <Button type="button" variant="outline" size="sm" asChild>
+                          <a href={run.previewUrl} target="_blank" rel="noopener noreferrer">
+                            Open Mini App
+                            <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+                          </a>
+                        </Button>
+                      ) : null}
                       {run.actions.pause ? (
                         <Button
                           type="button"

@@ -117,6 +117,27 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
     });
   });
 
+  it("projects the owner-facing Mini App URL from the persisted Factory identity", async () => {
+    const run = {
+      ...runAtPlanning(),
+      metadata: {
+        miniAppFactoryProgramState: {
+          schemaVersion: "mini-app-factory-program-state.v1",
+          miniAppId: "app_factory_123",
+        },
+      },
+    };
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memoryAdapter({ run, revision: 0, events: [] }).adapter,
+      listRuns: async () => [run],
+    });
+    await expect(bridge.list({ tenantId: run.tenantId, actorId: run.actorId, limit: 10 }))
+      .resolves.toMatchObject([{
+        miniAppId: "app_factory_123",
+        previewUrl: "https://smartaihub.app/miniapp/app_factory_123",
+      }]);
+  });
+
   it("projects persisted deferred obligations from canonical closure state", async () => {
     const run = runAtPlanning();
     const memory = memoryAdapter({ run, revision: 0, events: [] });

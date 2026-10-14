@@ -792,6 +792,8 @@ describe("UniversalControlPlanePanel", () => {
           revision: 3,
           decisionEpoch: 4,
           eventSequence: 9,
+          miniAppId: "app_created",
+          previewUrl: "https://smartaihub.app/miniapp/app_created",
           nextSafeAction: { command: "RUN_PHASE", phase: "BUILD" },
           actions: { pause: true, cancel: true },
         },
@@ -816,6 +818,10 @@ describe("UniversalControlPlanePanel", () => {
     expect(
       screen.getByText("Next safe action: run phase · build")
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Mini App" })).toHaveAttribute(
+      "href",
+      "https://smartaihub.app/miniapp/app_created",
+    );
     expect(
       screen.getByRole("button", { name: "Pause run run-226-ui" })
     ).toBeInTheDocument();

@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   },
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
+  createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
   workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
 }));
@@ -68,6 +69,10 @@ vi.mock("../../services/spec224RunnerInputStaging", () => ({
 vi.mock("../../services/miniAppVisualBlueprint", () => ({
   analyzeMiniAppVisualReferences: mocks.analyzeVisualReferences,
   MiniAppVisionCapabilityUnavailableError: mocks.VisionUnavailableError,
+}));
+
+vi.mock("../../services/appIdentityRepository", () => ({
+  createPrivateMiniAppIdentity: (...args: unknown[]) => mocks.createMiniAppIdentity(...args),
 }));
 
 vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
@@ -206,7 +211,20 @@ describe("spec226DevelopmentControlRouter", () => {
       },
     });
 
-    expect(result).toMatchObject({ jobId: "canonical-factory-job", factoryStageRunId: result.runId, factoryStageId: "requirements_intake", dispatchStatus: "PENDING_AUTHORIZATION" });
+    expect(result).toMatchObject({
+      jobId: "canonical-factory-job",
+      factoryStageRunId: result.runId,
+      factoryStageId: "requirements_intake",
+      miniAppId: expect.stringMatching(/^app_/),
+      previewUrl: `https://smartaihub.app/miniapp/${result.miniAppId}`,
+      dispatchStatus: "PENDING_AUTHORIZATION",
+    });
+    expect(mocks.createMiniAppIdentity).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-acme",
+      ownerUserId: 42,
+      idempotencyKey: `spec224:${result.runId}`,
+      preferredAppId: result.miniAppId,
+    }));
     const stagedBlueprint = mocks.runnerInputStaging.preStageRunnerInput.mock.calls[0]![0].files.find((file: any) => file.path === "visual-blueprint.json");
     expect(stagedBlueprint).toBeDefined();
     expect(JSON.parse(Buffer.from(stagedBlueprint.contentBase64, "base64").toString("utf8"))).toEqual(visualBlueprint);

@@ -14,6 +14,27 @@ function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
       publicAppId: "public_research",
       tenantId: "tenant-account",
     })),
+    createPrivateMiniAppIdentity: vi.fn(async (input: any) => ({
+      appId: "app_created",
+      publicAppId: "mini_created",
+      tenantId: input.tenantId,
+      ownerUserId: input.ownerUserId,
+      visibility: "private",
+      deploymentVersion: 0,
+      lastKnownGoodArtifactRef: null,
+      lifecycle: "draft",
+    })),
+    resolveMiniAppForViewer: vi.fn(async () => ({
+      appId: "app_created",
+      publicAppId: "mini_created",
+      tenantId: "tenant-account",
+      ownerUserId: 1,
+      visibility: "private",
+      deploymentVersion: 0,
+      lastKnownGoodArtifactRef: null,
+      lifecycle: "draft",
+    })),
+    setMiniAppVisibility: vi.fn(async (input: any) => ({ appId: input.appId, visibility: input.visibility, lifecycle: "active" })),
   };
   const caller = createAppIdentityRouter(service).createCaller({
     user,
@@ -82,5 +103,68 @@ describe("appIdentity runtime router", () => {
       publicAppId: "public_research",
     });
     resolver.mockRestore();
+  });
+
+  it("creates a private Mini App identity for the authenticated owner and tenant", async () => {
+    const { caller, service } = setup({ id: 91, currentTenantId: "tenant-owner" });
+    await expect(caller.createMiniApp({ idempotencyKey: "run-create:abcdefghijkl" })).resolves.toMatchObject({
+      appId: "app_created",
+      visibility: "private",
+      lifecycle: "draft",
+    });
+    expect(service.createPrivateMiniAppIdentity).toHaveBeenCalledWith({
+      tenantId: "tenant-owner",
+      ownerUserId: 91,
+      idempotencyKey: "run-create:abcdefghijkl",
+    });
+  });
+
+  it("resolves a development preview only through the authenticated owner scope", async () => {
+    const { caller, service } = setup({ id: 91, currentTenantId: "tenant-owner" });
+    await caller.resolveMiniApp({ appId: "app_created" });
+    expect(service.resolveMiniAppForViewer).toHaveBeenCalledWith({
+      appId: "app_created",
+      tenantId: "tenant-owner",
+      userId: 91,
+    });
+  });
+
+  it("permits the public resolver to serve published apps without a session", async () => {
+    const service = {
+      resolveAppRouteForTenant: vi.fn(),
+      resolveActiveAppByPublicId: vi.fn(),
+      createPrivateMiniAppIdentity: vi.fn(),
+      resolveMiniAppForViewer: vi.fn(async (input: any) => input.userId === null ? {
+        appId: "app_public",
+        publicAppId: "mini_public",
+        tenantId: "tenant-owner",
+        ownerUserId: 1,
+        visibility: "public",
+        deploymentVersion: 1,
+        lastKnownGoodArtifactRef: "r2://preview/app_public/v1/index.html",
+        lifecycle: "active",
+      } : null),
+    };
+    const caller = createAppIdentityRouter(service).createCaller({ user: null, tenantId: null } as any);
+    await expect(caller.resolveMiniApp({ appId: "app_public" })).resolves.toMatchObject({ visibility: "public" });
+    expect(service.resolveMiniAppForViewer).toHaveBeenCalledWith({ appId: "app_public", tenantId: null, userId: null });
+  });
+
+  it("denies missing or foreign private Mini App identities", async () => {
+    const { caller, service } = setup({ id: 92, currentTenantId: "tenant-other" });
+    vi.mocked(service.resolveMiniAppForViewer).mockResolvedValueOnce(null as any);
+    await expect(caller.resolveMiniApp({ appId: "app_created" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("publishes and unpublishes only through the authenticated owner scope", async () => {
+    const { caller, service } = setup({ id: 91, currentTenantId: "tenant-owner" });
+    await expect(caller.publishMiniApp({ appId: "app_created" })).resolves.toMatchObject({ visibility: "public" });
+    await expect(caller.unpublishMiniApp({ appId: "app_created" })).resolves.toMatchObject({ visibility: "private" });
+    expect(service.setMiniAppVisibility).toHaveBeenNthCalledWith(1, {
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 91, visibility: "public",
+    });
+    expect(service.setMiniAppVisibility).toHaveBeenNthCalledWith(2, {
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 91, visibility: "private",
+    });
   });
 });

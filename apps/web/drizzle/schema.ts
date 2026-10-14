@@ -2669,6 +2669,11 @@ export const appIdentities = pgTable(
     tenantId: varchar("tenant_id", { length: 36 })
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
+    ownerUserId: integer("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    visibility: varchar("visibility", { length: 16 }).notNull().default("private"),
+    deploymentVersion: integer("deployment_version").notNull().default(0),
+    lastKnownGoodArtifactRef: varchar("last_known_good_artifact_ref", { length: 512 }),
+    creationIdempotencyKey: varchar("creation_idempotency_key", { length: 160 }),
     publisherRef: varchar("publisher_ref", { length: 128 }).notNull(),
     canonicalProductId: varchar("canonical_product_id", { length: 128 }).notNull(),
     lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("draft"),
@@ -2680,7 +2685,10 @@ export const appIdentities = pgTable(
   t => [
     uniqueIndex("app_identities_public_app_id_unique").on(t.publicAppId),
     uniqueIndex("app_identities_tenant_app_id_unique").on(t.tenantId, t.appId),
+    uniqueIndex("app_identities_owner_create_key_unique").on(t.tenantId, t.ownerUserId, t.creationIdempotencyKey),
     check("app_identities_lifecycle_check", sql`${t.lifecycle} IN ('draft', 'active', 'suspended', 'archived')`),
+    check("app_identities_visibility_check", sql`${t.visibility} IN ('private', 'public')`),
+    check("app_identities_deployment_version_check", sql`${t.deploymentVersion} >= 0`),
     check("app_identities_parent_not_self_check", sql`${t.parentAppId} IS NULL OR ${t.parentAppId} <> ${t.appId}`),
   ],
 );

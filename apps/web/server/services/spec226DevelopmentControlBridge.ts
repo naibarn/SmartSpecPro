@@ -16,6 +16,7 @@ import {
   type DevelopmentRunPersistenceAdapter,
 } from "./spec224DevelopmentRunPersistence";
 import { createRequirementClosurePersistenceService } from "./spec224RequirementClosurePersistence";
+import { MINI_APP_FACTORY_STATE_KEY } from "./miniAppFactoryDurableState";
 
 export const SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION =
   "spec-226-development-control-v3" as const;
@@ -43,6 +44,8 @@ export type Spec226DevelopmentRunView = {
   decisionEpoch: number;
   eventSequence: number;
   evidenceRefs: string[];
+  miniAppId: string | null;
+  previewUrl: string | null;
   closure: RequirementClosureGraph | null;
   nextSafeAction: ReturnType<typeof decideNextSafeAction>;
   actions: {
@@ -86,6 +89,10 @@ function toView(input: {
   revision: number;
   closure?: Spec226DevelopmentRunView["closure"];
 }): Spec226DevelopmentRunView {
+  const factory = input.run.metadata?.[MINI_APP_FACTORY_STATE_KEY];
+  const miniAppId = factory && typeof factory === "object" && !Array.isArray(factory)
+    ? (factory as Record<string, unknown>).miniAppId
+    : null;
   return {
     bridgeVersion: SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION,
     runId: input.run.runId,
@@ -112,6 +119,10 @@ function toView(input: {
     decisionEpoch: input.run.decisionEpoch,
     eventSequence: input.run.eventSequence,
     evidenceRefs: [...input.run.evidenceRefs],
+    miniAppId: typeof miniAppId === "string" && /^app_[A-Za-z0-9_-]{1,120}$/.test(miniAppId) ? miniAppId : null,
+    previewUrl: typeof miniAppId === "string" && /^app_[A-Za-z0-9_-]{1,120}$/.test(miniAppId)
+      ? `https://smartaihub.app/miniapp/${encodeURIComponent(miniAppId)}`
+      : null,
     closure: input.closure ?? null,
     nextSafeAction: decideNextSafeAction(input.run),
     actions: {

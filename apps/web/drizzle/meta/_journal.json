@@ -2717,6 +2717,13 @@
       "when": 1791892800000,
       "tag": "0401_spec038_artifact_cost_correlation",
       "breakpoints": true
+    },
+    {
+      "idx": 402,
+      "version": "7",
+      "when": 1792065600000,
+      "tag": "0402_spec224_mini_app_delivery_identity",
+      "breakpoints": true
     }
   ]
 }
