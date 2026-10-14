@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import secrets
+import importlib
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -19,6 +21,10 @@ from app.core.config import settings
 from app.services.openai_agents_adapter import (
     OpenAIAgentsAdapter,
     OpenAIAgentsAdapterError,
+)
+from app.services.openai_agents_gateway_model import (
+    build_gateway_transport_config,
+    create_gateway_async_openai_client,
 )
 from app.services.openai_agents_contracts import (
     CURRENT_CHECKPOINT_SCHEMA_VERSION,
@@ -193,7 +199,26 @@ def _extract_native_skill_runtime_request(body: AgentRuntimeRequest) -> NativeSk
         model=body.modelConfig.resolvedGatewayModelId or body.modelConfig.modelId,
         requested_subagent=str(requested_subagent).strip() if requested_subagent else None,
         task_hint=str(task_hint).strip() if task_hint else None,
+        gateway_model_required=True,
     )
+
+
+def _build_native_skill_gateway_model(body: AgentRuntimeRequest, attribution_token: str) -> tuple[Any, Any, Any]:
+    transport_config = build_gateway_transport_config(
+        surface=body.surface,
+        model_config=body.modelConfig,
+        attribution_token=attribution_token,
+        tenant_id=body.tenantId,
+        gateway_base_url=getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None) or None,
+        transport="responses",
+    )
+    sdk = importlib.import_module("agents")
+    client = create_gateway_async_openai_client(transport_config)
+    model = sdk.OpenAIResponsesModel(
+        model=transport_config.resolved_gateway_model_id,
+        openai_client=client,
+    )
+    return model, client, transport_config
 
 
 def _shell_request(command: str) -> Any:
@@ -373,6 +398,9 @@ def _native_runtime_result_to_agent_response(
             "events": [],
             "traceMetadata": {
                 "nativeSkillRuntime": True,
+                "modelTransport": "smartaihub_llm_gateway",
+                "gatewayRouteId": native_request.gateway_route_id,
+                "gatewayModelId": native_request.gateway_model_id,
                 "bundleDir": str(native_request.bundle_dir),
                 "workspaceDir": str(native_request.workspace_dir),
                 "lineage": result.get("lineage"),
@@ -398,16 +426,30 @@ def _native_runtime_result_to_agent_response(
     )
 
 
-async def _run_native_skill_if_requested(body: AgentRuntimeRequest) -> AgentRuntimeResponse | None:
+async def _run_native_skill_if_requested(
+    body: AgentRuntimeRequest,
+    gateway_attribution_token: str,
+) -> AgentRuntimeResponse | None:
     if body.surface == "media_production" and _native_skill_runtime_payload(body) is not None:
         raise HTTPException(status_code=422, detail="nativeSkillRuntime is not allowed for media_production")
     native_request = _extract_native_skill_runtime_request(body)
     if native_request is None:
         return None
-    result = run_native_skill_runtime(
+    sdk_model, gateway_client, transport_config = _build_native_skill_gateway_model(body, gateway_attribution_token)
+    native_request = replace(
         native_request,
-        _build_default_native_phase_executor(native_request),
+        gateway_sdk_model=sdk_model,
+        model=transport_config.resolved_gateway_model_id,
+        gateway_route_id=transport_config.gateway_route_id,
+        gateway_model_id=transport_config.resolved_gateway_model_id,
     )
+    try:
+        result = run_native_skill_runtime(
+            native_request,
+            _build_default_native_phase_executor(native_request),
+        )
+    finally:
+        await gateway_client.close()
     return _native_runtime_result_to_agent_response(
         body=body,
         native_request=native_request,
@@ -434,7 +476,7 @@ async def run(
     )
     try:
         preflight_orchestra_request(body)
-        native_response = await _run_native_skill_if_requested(body)
+        native_response = await _run_native_skill_if_requested(body, gateway_attribution_token)
         if native_response is not None:
             return native_response
         return await run_orchestra(
@@ -471,7 +513,7 @@ async def run_streamed(
     )
     try:
         preflight_orchestra_request(body)
-        native_response = await _run_native_skill_if_requested(body)
+        native_response = await _run_native_skill_if_requested(body, gateway_attribution_token)
         if native_response is not None:
             return native_response
         return await run_orchestra(
@@ -508,7 +550,7 @@ async def resume(
     )
     try:
         preflight_orchestra_request(body)
-        native_response = await _run_native_skill_if_requested(body)
+        native_response = await _run_native_skill_if_requested(body, gateway_attribution_token)
         if native_response is not None:
             return native_response
         return await run_orchestra(

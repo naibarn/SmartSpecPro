@@ -109,6 +109,10 @@ class NativeSkillRuntimeRequest:
     model: str | None = None
     requested_subagent: str | None = None
     task_hint: str | None = None
+    gateway_sdk_model: Any | None = None
+    gateway_model_required: bool = False
+    gateway_route_id: str | None = None
+    gateway_model_id: str | None = None
 
 
 class NativeSkillShellExecutor:
@@ -500,7 +504,7 @@ def _build_specialist_agent(
     )
     return Agent(
         name=node.name,
-        model=node.model or request.model or "gpt-5.4",
+        model=request.gateway_sdk_model or node.model or request.model or "gpt-5.4",
         instructions=instructions,
         tools=[shell_tool],
     )
@@ -569,6 +573,8 @@ def build_native_subagent_runtime_components(
 
 def build_native_skill_agent(request: NativeSkillRuntimeRequest) -> Agent[Any]:
     _require_agents_sdk()
+    if request.gateway_model_required and request.gateway_sdk_model is None:
+        raise RuntimeError("NATIVE_SKILL_GATEWAY_MODEL_REQUIRED")
     shell_tool = build_native_skill_shell_tool(request)
     topology = load_native_skill_topology(request.bundle_dir)
     route = resolve_native_subagent_route(topology, request.requested_subagent)
@@ -584,7 +590,7 @@ def build_native_skill_agent(request: NativeSkillRuntimeRequest) -> Agent[Any]:
         )
     return Agent(
         name=request.skill_slug,
-        model=request.model or "gpt-5.4",
+        model=request.gateway_sdk_model or request.model or "gpt-5.4",
         instructions=instructions,
         tools=[shell_tool, *subagent_runtime["tools"]],
         handoffs=subagent_runtime["handoffs"],

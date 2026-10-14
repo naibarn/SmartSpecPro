@@ -395,6 +395,40 @@ def test_build_native_skill_agent_builds_sdk_agent(tmp_path: Path) -> None:
     assert agent.tools[0].environment["skills"][0]["path"] == str((tmp_path / "bundle").resolve())
 
 
+def test_native_skill_agent_uses_gateway_sdk_model_when_required(tmp_path: Path, monkeypatch) -> None:
+    from app.services import openai_agents_skill_runtime as skill_runtime
+
+    monkeypatch.setattr(skill_runtime, "Agent", lambda **kwargs: SimpleNamespace(**kwargs))
+    gateway_model = object()
+    request = NativeSkillRuntimeRequest(
+        skill_slug="demo-skill",
+        bundle_dir=tmp_path / "bundle",
+        workspace_dir=tmp_path / "workspace",
+        model="gateway/test-model",
+        gateway_sdk_model=gateway_model,
+        gateway_model_required=True,
+    )
+
+    agent = build_native_skill_agent(request)
+
+    assert agent.model is gateway_model
+
+
+def test_native_skill_agent_fails_closed_when_gateway_model_is_required_but_missing(tmp_path: Path, monkeypatch) -> None:
+    from app.services import openai_agents_skill_runtime as skill_runtime
+
+    monkeypatch.setattr(skill_runtime, "Agent", lambda **kwargs: SimpleNamespace(**kwargs))
+    request = NativeSkillRuntimeRequest(
+        skill_slug="demo-skill",
+        bundle_dir=tmp_path / "bundle",
+        workspace_dir=tmp_path / "workspace",
+        gateway_model_required=True,
+    )
+
+    with pytest.raises(RuntimeError, match="NATIVE_SKILL_GATEWAY_MODEL_REQUIRED"):
+        build_native_skill_agent(request)
+
+
 def test_native_skill_shell_executor_blocks_disallowed_commands(tmp_path: Path) -> None:
     executor = NativeSkillShellExecutor(tmp_path / "bundle", tmp_path / "workspace")
     request = SimpleNamespace(
