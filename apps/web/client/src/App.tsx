@@ -743,6 +743,9 @@ function Router() {
               <MiniAppRoute />
             </RequireAuth>
           </Route>
+          <Route path="/miniapp/:appId">
+            <MiniAppRoute />
+          </Route>
           <Route path="/marketplace-capture/intelligence/connect/authorize">
             <RequireAuth>
               <MarketplaceConnectorConnect />

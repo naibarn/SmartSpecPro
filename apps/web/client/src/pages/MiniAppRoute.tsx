@@ -7,13 +7,34 @@ const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
 const ProjectWikiPagesPage = lazy(() => import("@/pages/ProjectWikiPagesPage"));
 
 export default function MiniAppRoute() {
-  const [, params] = useRoute("/apps/:publicAppId");
-  const publicAppId = params?.publicAppId ?? "";
-  const appQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: Boolean(publicAppId), retry: false });
+  const [, miniAppParams] = useRoute("/miniapp/:appId");
+  const [, legacyParams] = useRoute("/apps/:publicAppId");
+  const appId = miniAppParams?.appId ?? "";
+  const publicAppId = legacyParams?.publicAppId ?? "";
+  const isMiniAppRoute = Boolean(appId);
+  const miniAppQuery = trpc.appIdentity.resolveMiniApp.useQuery({ appId }, { enabled: isMiniAppRoute, retry: false });
+  const legacyQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: !isMiniAppRoute && Boolean(publicAppId), retry: false });
+  const appQuery = isMiniAppRoute ? miniAppQuery : legacyQuery;
 
   if (appQuery.isLoading) return <AppPage title="Mini App" state="loading" />;
   if (appQuery.isError || !appQuery.data) {
     return <AppPage title="Mini App unavailable" state="error" error={{ title: "This App is unavailable", description: "Check the app link and your tenant access, then try again.", onRetry: () => { void appQuery.refetch(); } }} />;
+  }
+  if (isMiniAppRoute) {
+    const previewAvailable = Boolean(miniAppQuery.data.lastKnownGoodArtifactRef);
+    return (
+      <AppPage
+        title="Mini App"
+        description={`/miniapp/${miniAppQuery.data.appId}`}
+        state="empty"
+        empty={{
+          title: previewAvailable ? "Preview runtime unavailable" : "Development preview",
+          description: previewAvailable
+            ? "A last-known-good artifact is retained, but the preview delivery runtime is not yet connected."
+            : "This private Mini App has been created. Its first deployed preview will appear here when the current build is ready.",
+        }}
+      />
+    );
   }
   if (appQuery.data.appId === "app_project_wiki_pages") return <ProjectWikiPagesPage appId={appQuery.data.appId} />;
   if (appQuery.data.appId === "app_research_notes") return <ResearchNotesPage />;

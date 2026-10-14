@@ -1,10 +1,10 @@
 # Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime
 ## One-Goal-to-Final-Verify, Durable Auto-Continuation, Recovery, Human-Decision Gates, GitHub Automation Fork & Controlled Self-Development
 
-**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending
+**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance
 **Spec ID:** 224  
-**Revision:** 23 — Durable owned-PR reconciliation; preserves Revision 22 contracts
-**Date:** 2026-10-03
+**Revision:** 24 — Canonical Internet-first Mini-App Delivery; preserves prior durable execution contracts
+**Date:** 2026-10-15
 **Target repository path:** `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md`  
 **Primary owner:** SmartAIHub Development Orchestration / Autonomous Development Runtime  
 **Core implementation dependencies:** Spec 186 / canonical `worker_jobs` + events; existing Feature 195 / Runner Control where applicable; Feature 196 ingress where applicable; Specs 199, 200, 218, 220, 222 Revision 17+, 229 Revision 2+ Retrieval Broker, 230 Revision 3+; shared Approval, Capability, Audit, Billing, Identity, Policy and Secret-Broker infrastructure  
@@ -17262,3 +17262,27 @@ The Decision Model may classify request types, rank eligible Skills/capabilities
 Tests, rendering, functional verification, durable execution evidence, final settlement, and completion remain owned by the existing execution infrastructure and final evidence gates. Decision confidence never satisfies those gates. Do not weaken authorization, approvals for effects that already require them, credit accounting, or final verification; do not add a new mandatory approval step for low-risk decisions. Existing in-flight jobs keep their pinned provider/policy snapshot.
 
 Acceptance: shadow evaluation includes Mini App creation and Screenshot-to-Code end-to-end completion/cost; rollout compares full task completion and cost per successfully completed Mini App, not only decision token price; and provider fallback leaves current autonomous completion and evidence requirements intact. Production Clef use is not claimed by this Spec update.
+
+## Revision 24 — Canonical SmartAIHub Internet-First Mini-App Delivery (2026-10-15)
+
+This revision sets the default Mini-App workflow to creation, development, verification, and delivery inside SmartAIHub. It supersedes prior clauses only where they imply local-only preview delivery, an optional SmartAIHub entry point, or a Codex Subscription/direct-provider fallback for this workflow. It composes the existing DevelopmentRun, Mini-App Factory, Task Control, Skill Registry/Executor, LLM Gateway, R2, Cloudflare Runtime, and App Identity contracts; it adds no second orchestrator, approval layer, or deployment control plane.
+
+1. A user starts or edits a Mini-App from SmartAIHub. The existing authenticated task flow creates or reuses a durable App identity at work start and returns `https://smartaihub.app/miniapp/{appId}` on the same DevelopmentRun/WorkUnit. A private Development state or retained last-known-good preview remains visible at that URL while work continues.
+2. New Mini-Apps default to `private`. Server-side resolution requires both the authenticated `ownerTenantId` and `ownerUserId` before returning app content, scripts, styles, assets, or app API data. Same-tenant non-owners, cross-tenant users, and anonymous users are denied while the app is private. Public resolution is allowed only after the authenticated owner explicitly publishes an available artifact. Unpublish immediately restores private owner-only access.
+3. The workflow SHALL perform Plan, Implement, Test, Repair, Verify, and deployment through existing SmartAIHub capabilities and authorized deployment policy. All LLM model calls made by this default workflow SHALL enter through Skill Execution and the SmartAIHub Gateway, with usage, credits, budget, and trace receipts bound to the owning run. Codex Subscription SDKs, direct provider APIs, and `OPENAI_API_KEY` are prohibited as this workflow's default or fallback model routes. Gateway unavailability is a durable retryable wait or authorized replan, never a provider bypass.
+4. Mini-App source executes in the existing approved isolated runtime and does not inherit SmartAIHub host privileges. Preview resources, credentials, and data are isolated from production. Deployment records retain app identity, tenant/owner, visibility, version, artifact digest/ref, source binding, target, and receipt on the existing persistent authorities. Failed candidate build or deployment preserves the last-known-good artifact and its availability.
+5. Functional acceptance SHALL open the deployed HTTPS URL from an internet-accessible Browser/Runner. A localhost or LAN Browser result is not Internet Delivery acceptance. Browser receipts bind the run, app identity, source/workspace, deployed artifact, target URL, authenticated principal/tenant, and pending tool-receipt state.
+6. The lightest existing authorized Cloudflare path is preferred for static Mini-Apps; Workers or Containers are selected only when the app requires them. Linux installation and privately operated Cloudflare targets are optional deployment targets. Existing protected deployment policy remains authoritative; absent Runner or Cloud authority is not grounds to fabricate dispatch or use production credentials.
+
+### Revision 24 acceptance
+
+- [ ] Creation from SmartAIHub persists an app identity and displays its canonical HTTPS URL before implementation begins; interruption and resume preserve the same app ID, URL, owner, and run binding.
+- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.
+- [ ] Anonymous access to an explicitly published app passes, and owner unpublish immediately denies anonymous access.
+- [ ] Every model call in the Mini-App workflow has a Skill Execution → SmartAIHub Gateway usage/credit/budget/trace receipt; tests prove the Codex Subscription, direct-provider, and API-key fallback paths are not invoked.
+- [ ] A static or dynamic artifact is automatically deployed only to the authorized isolated target; Preview code and data cannot address Production resources.
+- [ ] A partial development state or retained last-known-good build remains addressable at the canonical app URL, and a failed candidate does not replace the last-known-good version.
+- [ ] Automatic defect repair is bounded, durable, and followed by independent verification.
+- [ ] A real internet HTTPS Browser passes functional acceptance on the deployed artifact and records app/run/source/tenant/principal/target binding. Local Browser PASS is explicitly excluded.
+- [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.
+- [ ] Functional Mini-App Delivery, SPEC-224 normative completion, and Protected Runner acceptance are reported and evidenced independently.

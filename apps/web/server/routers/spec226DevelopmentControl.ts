@@ -16,6 +16,7 @@ import { buildDevelopmentRun } from "../services/spec224DevelopmentRunContracts"
 import { createDevelopmentWorkUnit } from "../services/developmentLifecycleContracts";
 import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../services/miniAppFactoryPipeline";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
+import { createPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import {
   createDevelopmentRunService,
   createPersistedDevelopmentRun,
@@ -616,6 +617,14 @@ export const spec226DevelopmentControlRouter = router({
           authorizationScope: "spec226-development-control",
           correlationId: traceId,
         });
+        const miniAppIdentity = factoryState
+          ? await createPrivateMiniAppIdentity({
+              tenantId: scope.tenantId,
+              ownerUserId: scope.actorId,
+              idempotencyKey: `spec224:${runId}`,
+              preferredAppId: factoryState.miniAppId,
+            })
+          : null;
         await defaultSpec224RunnerInputStagingService.bindSourceToWorkerJob({
           tenantId: scope.tenantId,
           startRef: runId,
@@ -642,6 +651,10 @@ export const spec226DevelopmentControlRouter = router({
           runId,
           jobId: created.jobRef.jobId,
           ...(factoryStageDocument ? { factoryStageRunId: runId, factoryStageId: firstFactoryStage?.id } : {}),
+          ...(miniAppIdentity ? {
+            miniAppId: miniAppIdentity.appId,
+            previewUrl: `https://smartaihub.app/miniapp/${encodeURIComponent(miniAppIdentity.appId)}`,
+          } : {}),
           state: created.run.state,
           dispatchStatus: "PENDING_AUTHORIZATION" as const,
           inputDigest: stagedSource.inputDigest,

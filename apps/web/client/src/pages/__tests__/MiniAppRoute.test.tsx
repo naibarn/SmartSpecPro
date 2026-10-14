@@ -8,6 +8,7 @@ import MiniAppRoute from "../MiniAppRoute";
 
 const mocks = vi.hoisted(() => ({
   params: { publicAppId: "research-notes" },
+  miniAppParams: { appId: "" },
   appQuery: {
     data: { appId: "app_research_notes" },
     isLoading: false,
@@ -15,10 +16,11 @@ const mocks = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
   resolvePublicApp: vi.fn(),
+  resolveMiniApp: vi.fn(),
 }));
 
 vi.mock("wouter", () => ({
-  useRoute: () => [true, mocks.params],
+  useRoute: (path: string) => [true, path === "/miniapp/:appId" ? mocks.miniAppParams : mocks.params],
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -26,6 +28,9 @@ vi.mock("@/lib/trpc", () => ({
     appIdentity: {
       resolvePublicApp: {
         useQuery: mocks.resolvePublicApp,
+      },
+      resolveMiniApp: {
+        useQuery: mocks.resolveMiniApp,
       },
     },
   },
@@ -43,6 +48,7 @@ describe("MiniAppRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.params = { publicAppId: "research-notes" };
+    mocks.miniAppParams = { appId: "" };
     mocks.appQuery = {
       data: { appId: "app_research_notes" },
       isLoading: false,
@@ -50,6 +56,7 @@ describe("MiniAppRoute", () => {
       refetch: vi.fn(),
     };
     mocks.resolvePublicApp.mockImplementation(() => mocks.appQuery);
+    mocks.resolveMiniApp.mockImplementation(() => mocks.appQuery);
   });
 
   it("renders Research Notes only for its canonical App identity", async () => {
@@ -77,5 +84,17 @@ describe("MiniAppRoute", () => {
 
     expect(await screen.findByText("This App is not supported yet")).toBeInTheDocument();
     expect(screen.queryByText("Research Notes runtime")).not.toBeInTheDocument();
+  });
+
+  it("renders the private Development Preview status at the canonical Mini App route", async () => {
+    mocks.miniAppParams = { appId: "app_created" };
+    mocks.appQuery.data = {
+      appId: "app_created",
+      deploymentVersion: 0,
+      lastKnownGoodArtifactRef: null,
+    };
+    render(<MiniAppRoute />);
+    expect(await screen.findByText("This private Mini App has been created. Its first deployed preview will appear here when the current build is ready.")).toBeInTheDocument();
+    expect(mocks.resolveMiniApp).toHaveBeenCalledWith({ appId: "app_created" }, { enabled: true, retry: false });
   });
 });
