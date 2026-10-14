@@ -608,7 +608,7 @@ async def test_media_production_native_skill_runtime_is_denied_before_execution(
     request = AgentRuntimeRequest.model_validate(payload)
 
     with pytest.raises(HTTPException) as exc_info:
-        await _run_native_skill_if_requested(request)
+        await _run_native_skill_if_requested(request, "test-gateway-attribution")
 
     assert exc_info.value.status_code == 422
     assert exc_info.value.detail == "nativeSkillRuntime is not allowed for media_production"

@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import json
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 VALID_TOKEN = "test-internal-secret"
+
+
+def _fake_native_gateway_model(*_args):
+    client = SimpleNamespace(close=AsyncMock())
+    return object(), client, SimpleNamespace(
+        gateway_route_id="gateway_default",
+        resolved_gateway_model_id="gateway/test-model",
+    )
 
 
 def _canonical_hash(value: object) -> str:
@@ -276,6 +285,7 @@ def test_run_routes_native_skill_runtime_when_plan_context_requests_it(tmp_path,
     with (
         patch("app.api.internal_openai_agents_runtime.settings") as mock_settings,
         patch("app.api.internal_openai_agents_runtime._adapter") as mock_adapter,
+        patch("app.api.internal_openai_agents_runtime._build_native_skill_gateway_model", side_effect=_fake_native_gateway_model) as mock_gateway_model,
     ):
         mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = VALID_TOKEN
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
@@ -294,10 +304,45 @@ def test_run_routes_native_skill_runtime_when_plan_context_requests_it(tmp_path,
     assert body["status"] == "completed"
     assert body["toolCallsMade"] == ["native-skill-shell"]
     assert body["traceMetadata"]["nativeSkillRuntime"] is True
+    assert body["traceMetadata"]["modelTransport"] == "smartaihub_llm_gateway"
+    assert body["traceMetadata"]["gatewayRouteId"] == "gateway_default"
+    assert mock_gateway_model.call_args.args[1] == VALID_TOKEN
     assert body["assurance"]["state"] == "provider_ready"
     assert body["assurance"]["attemptId"] == "attempt_native"
     assert body["assurance"]["contractHash"] == "a" * 64
     assert mock_adapter.run.await_count == 0
+
+
+@pytest.mark.unit
+def test_native_skill_gateway_model_uses_only_the_configured_gateway(monkeypatch):
+    from types import SimpleNamespace
+
+    import app.api.internal_openai_agents_runtime as runtime_api
+    from app.services.openai_agents_contracts import AgentRuntimeRequest
+
+    payload = _make_request_payload()
+    payload.update({"surface": "skill", "originSurface": "unknown", "entryPoint": "system", "roomId": None})
+    payload["teamProjectProviderBinding"] = None
+    body = AgentRuntimeRequest.model_validate(payload)
+    client = object()
+    created = {}
+
+    class ResponsesModel:
+        def __init__(self, *, model, openai_client):
+            created.update(model=model, openai_client=openai_client)
+
+    monkeypatch.setattr(runtime_api.settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://gateway.internal")
+    monkeypatch.setattr(runtime_api, "create_gateway_async_openai_client", lambda config: (created.update(config=config) or client))
+    monkeypatch.setattr(runtime_api.importlib, "import_module", lambda _name: SimpleNamespace(OpenAIResponsesModel=ResponsesModel))
+
+    model, returned_client, transport = runtime_api._build_native_skill_gateway_model(body, "gateway-attribution")
+
+    assert isinstance(model, ResponsesModel)
+    assert returned_client is client
+    assert transport.base_url == "http://gateway.internal/v1"
+    assert transport.api_key == "gateway-attribution"
+    assert created["openai_client"] is client
+    assert created["model"] == transport.resolved_gateway_model_id
 
 
 @pytest.mark.unit
@@ -396,6 +441,7 @@ def test_run_invokes_native_agent_runner_for_subagent_bundle(tmp_path, monkeypat
         patch("app.api.internal_openai_agents_runtime.settings") as mock_settings,
         patch("app.api.internal_openai_agents_runtime._adapter") as mock_adapter,
         patch("app.api.internal_openai_agents_runtime.execute_native_skill_agent_sync") as mock_agent_runner,
+        patch("app.api.internal_openai_agents_runtime._build_native_skill_gateway_model", side_effect=_fake_native_gateway_model),
     ):
         mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = VALID_TOKEN
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
@@ -471,6 +517,7 @@ def test_resume_routes_native_skill_runtime_when_plan_context_requests_it(tmp_pa
     with (
         patch("app.api.internal_openai_agents_runtime.settings") as mock_settings,
         patch("app.api.internal_openai_agents_runtime._adapter") as mock_adapter,
+        patch("app.api.internal_openai_agents_runtime._build_native_skill_gateway_model", side_effect=_fake_native_gateway_model),
     ):
         mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = VALID_TOKEN
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
