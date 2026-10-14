@@ -892,14 +892,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f36b8315d34f8e4c4564b41cecddd22f886c98a7",
+    "expected_canonical_sha": "20e53af08487c22ed1eb69b8b0e1207745118345",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
     "next_action": "Complete the gateway-only Skill execution adapter and sandboxed artifact runtime/publication using existing approved capabilities; then run Mini-App delivery E2E against a registered isolated non-production Cloudflare target with Internet Browser acceptance. Do not use Production Worker/R2 or Codex Subscription/direct provider routes. Keep Runner-authorized SPEC-224 M6/M7 and PR #944 as separate tracks.",
-    "next_ready_workunit": "IMPLEMENTATION_READY: Gateway-only Mini-App Factory model execution. PR #954 merged at f36b8315d34f8e4c4564b41cecddd22f886c98a7 after 4 focused suites / 24 tests plus required PR checks passed. The vision provider call and fallback are fail-closed until Skill Gateway vision support is available. Next implement the existing Gateway Skill runtime path for all Factory model operations; then artifact runtime/deployment. No authorized non-production Cloudflare Preview target is currently available, so Internet UAT remains pending.",
+    "next_ready_workunit": "IMPLEMENTATION_READY: implement Gateway-only Skill execution for Mini-App Factory plan/implement/test/repair/verify using existing registry and Agents runtime. Then add the isolated artifact runtime/deployment path and run E2E once an authorized non-production Cloudflare target exists. Functional delivery, SPEC-224 normative completion, and protected Runner acceptance remain separate and incomplete.",
     "reactivation_predicate": "A registered isolated non-production Preview target with verified ownership, storage/runtime bindings, deployment authority, and internet Browser capability becomes available; Gateway-backed Skill execution is selected for every Factory model call; test tenant owner and denial principals are available.",
-    "resume_point": "Current canonical origin/main SHA f36b8315d34f8e4c4564b41cecddd22f886c98a7, PR #954 merged from code commit b682e6d9a53fdcb8f3f7b72b365bce81f43b457c and handoff commit 3d24c0b1314f08a5289b64d992c6ab9a229955a3. Direct-provider and external Runner fallbacks for Mini-App screenshot analysis are removed; image requests fail closed until Skill Gateway vision support is wired. Focused evidence: 4 Vitest files / 24 tests pass; progressive integration gate and Mocked SPEC-308 browser simulation pass; build-preview skipped. Next: Gateway-only Skill execution for the whole Factory plan/implement/test/repair/verify path. Hosting still waits for an authorized isolated non-production Cloudflare target; production was not accessed.",
+    "resume_point": "Current canonical origin/main SHA 20e53af08487c22ed1eb69b8b0e1207745118345 (PR #955 handoff record merged). Code safety change is PR #954 at f36b8315d34f8e4c4564b41cecddd22f886c98a7: Mini-App screenshot analysis now fails closed without a Gateway-backed Skill vision adapter; focused tests 4 files / 24 tests passed, required PR checks passed, build-preview skipped. Remaining work is Gateway-only model execution for all Factory phases, sandboxed artifact runtime, non-production Cloudflare deployment, real Internet Browser UAT and ownership/publication acceptance. No authorized non-production Cloudflare target was available in this session; production resources were not used.",
     "waiting_predicate": "Do not retry hosted deployment or Internet Browser acceptance until a registered isolated non-production Preview target has verified ownership, storage/runtime bindings, deployment authority and Internet Browser reachability. Do not route Factory calls through Codex Subscription, direct provider API, OPENAI_API_KEY, or production resources. This target wait does not block safe code work; Runner-authorized M6/M7 and PR #944 remain separate."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 80,
+  "generation": 81,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1336,11 +1336,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f36b8315d34f8e4c4564b41cecddd22f886c98a7",
+    "canonical_sha": "20e53af08487c22ed1eb69b8b0e1207745118345",
     "integrated": true,
-    "integrated_at": "2026-10-14T17:25:33Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/954",
-    "source_sha": "3d24c0b1314f08a5289b64d992c6ab9a229955a3"
+    "integrated_at": "2026-10-14T17:28:02Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/955",
+    "source_sha": "53eec027d83b346f754496736139e1aa2528fc6a"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2680,7 +2680,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-14T17:25:53.394797Z",
+  "updated_at": "2026-10-14T17:28:22.482710Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
