@@ -51,6 +51,31 @@ class DurableRunStoreTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "reused"):
                 store.event("human.intervention.note", {"reason": "different"}, actor="human", stable_key="human:1")
 
+    def test_reusable_codex_thread_is_scoped_and_requires_completed_prior_call(self):
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
+            implementation = store.phase_id("implementation", 1)
+            review = store.phase_id("review", 1)
+            store.reserve_model_call("call-1", implementation, "implementer", {"input": "first"})
+            store.update_model_call(
+                "call-1", event="model.call.completed", stable_suffix="completed",
+                status="completed", thread_id="thread-implementation", turn_id="turn-1",
+            )
+            store.reserve_model_call("call-2", implementation, "implementer", {"input": "next"})
+            store.reserve_model_call("call-review", review, "reviewer", {"input": "review"})
+            self.assertEqual(
+                store.reusable_model_thread(implementation, "implementer", exclude_call_id="call-2"),
+                {"call_id": "call-1", "status": "completed", "thread_id": "thread-implementation", "turn_id": "turn-1"},
+            )
+            self.assertIsNone(store.reusable_model_thread(review, "reviewer", exclude_call_id="call-review"))
+
+            store.reserve_model_call("call-unresolved", implementation, "implementer", {"input": "uncertain"})
+            store.update_model_call(
+                "call-unresolved", event="model.turn.started", stable_suffix="started",
+                status="turn_running", thread_id="thread-implementation", turn_id="turn-2",
+            )
+            with self.assertRaisesRegex(RuntimeError, "unresolved model call"):
+                store.reusable_model_thread(implementation, "implementer", exclude_call_id="call-2")
+
     def test_browser_pending_is_not_projected_as_completed(self):
         with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
             store.finish_run(False, terminal_status="awaiting_browser_uat")

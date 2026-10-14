@@ -39,6 +39,16 @@ def _repo_root(path: Path) -> Path:
     return Path(result.stdout.strip()).resolve()
 
 
+def _lease_expiry_is_current(contract_expiry: Any, registry_expiry: Any) -> bool:
+    """Allow a monotonic renewal while requiring the registry lease to remain live."""
+    if (
+        not isinstance(contract_expiry, (int, float)) or isinstance(contract_expiry, bool)
+        or not isinstance(registry_expiry, (int, float)) or isinstance(registry_expiry, bool)
+    ):
+        return False
+    return registry_expiry >= contract_expiry and registry_expiry > time.time()
+
+
 def _safe_paths(value: Any, field: str, *, allow_missing: bool = False) -> tuple[str, ...]:
     if not isinstance(value, list) or not value or any(not isinstance(item, str) for item in value):
         raise ContractError(f"{field} must be a non-empty array of repository-relative paths")
@@ -170,8 +180,7 @@ def verify_developer_workspace_claim(root: Path, raw: dict[str, Any]) -> int:
         or task_id != raw.get("taskId") or lifecycle in {"RETIRED", "MISSING"}
         or session_id != raw.get("ownerSessionId") or pid != owner_pid or start != process_start
         or type(fence) is not int or fence < 1 or fence != raw.get("ownerFencingVersion")
-        or not isinstance(expiry, (int, float)) or expiry <= time.time()
-        or expiry != raw.get("workspaceLeaseExpiresAt")
+        or not _lease_expiry_is_current(raw.get("workspaceLeaseExpiresAt"), expiry)
     ):
         raise ContractError("developer task workspace lease, source owner, or fence no longer matches")
     return fence
@@ -203,8 +212,7 @@ def developer_workspace_write_guard(root: Path, raw: dict[str, Any]):
             or lifecycle in {"RETIRED", "MISSING"} or session_id != raw.get("ownerSessionId")
             or pid != raw.get("ownerPid") or start != raw.get("ownerProcessStart")
             or fence != expected_fence or fence != raw.get("ownerFencingVersion")
-            or not isinstance(expiry, (int, float)) or expiry <= time.time()
-            or expiry != raw.get("workspaceLeaseExpiresAt")
+            or not _lease_expiry_is_current(raw.get("workspaceLeaseExpiresAt"), expiry)
         ):
             raise ContractError("developer workspace owner/fence changed before write")
         yield expected_fence

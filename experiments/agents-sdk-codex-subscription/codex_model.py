@@ -71,6 +71,19 @@ def _select_thread_turn(turns: list[Any], turn_id: str | None, *, recover_latest
     return turns[-1] if recover_latest and turns else None
 
 
+def _select_turn_after_baseline(turns: list[Any], prior_turn_id: str | None) -> Any | None:
+    """Recover only a turn appended after the durable thread reuse boundary."""
+    if prior_turn_id is None:
+        return turns[-1] if len(turns) == 1 else None
+    baseline_index = next((index for index, item in enumerate(turns) if item.id == prior_turn_id), None)
+    if baseline_index is None:
+        raise RuntimeError("Persisted Codex thread reuse boundary is missing")
+    appended = turns[baseline_index + 1 :]
+    if len(appended) > 1:
+        raise RuntimeError("Codex thread has multiple turns beyond the persisted reuse boundary")
+    return appended[0] if appended else None
+
+
 class CodexSubscriptionModel(Model):
     """A deliberately narrow model adapter for Agents SDK `Runner.run()`.
 
@@ -157,6 +170,17 @@ class CodexSubscriptionModel(Model):
         if selection is not None:
             request["selection"] = selection
         call = self.store.reserve_model_call(call_id, self.phase_id, self.role, request, selection=selection)
+        if not call.get("thread_id"):
+            reusable = self.store.reusable_model_thread(
+                self.phase_id, self.role, exclude_call_id=call_id,
+            )
+            if reusable is not None:
+                self.store.update_model_call(
+                    call_id, event="model.thread.reused", stable_suffix="thread-reused",
+                    status="thread_reused", thread_id=reusable["thread_id"],
+                    prior_turn_id=reusable["turn_id"],
+                )
+                call = self.store.get_model_call(call_id) or call
         if selection is not None:
             _maybe_crash(self.store, "model.after_selection_persisted", {
                 "callId": call_id, "profile": selection.get("profile"),
@@ -380,9 +404,13 @@ class CodexSubscriptionModel(Model):
                 turns = getattr(existing, "turns", []) or []
                 turn_id = call.get("turn_id")
                 prior = _select_thread_turn(turns, turn_id)
-                if prior is None and turn_id is None and call.get("status") in {"thread_started", "turn_completed"}:
-                    # Reconcile the narrow crash window after server turn creation but before local turn ID persistence.
-                    prior = _select_thread_turn(turns, None, recover_latest=True)
+                if prior is None and turn_id is None and call.get("status") in {"thread_started", "thread_reused", "turn_completed"}:
+                    # Reconcile a turn created before its receipt without mistaking an earlier reused-thread turn for this call.
+                    if call.get("status") == "thread_reused":
+                        prior = _select_turn_after_baseline(turns, call.get("prior_turn_id"))
+                    else:
+                        prior = _select_thread_turn(turns, None, recover_latest=True)
+                if prior is not None and turn_id is None:
                     turn_id = prior.id
                     self.store.update_model_call(
                         call_id, event="model.turn.reconciled", stable_suffix=f"turn-reconciled:{prior.id}",
