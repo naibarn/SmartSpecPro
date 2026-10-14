@@ -897,9 +897,9 @@
   },
   "continuation": {
     "next_action": "Complete the gateway-only Skill execution adapter and sandboxed artifact runtime/publication using existing approved capabilities; then run Mini-App delivery E2E against a registered isolated non-production Cloudflare target with Internet Browser acceptance. Do not use Production Worker/R2 or Codex Subscription/direct provider routes. Keep Runner-authorized SPEC-224 M6/M7 and PR #944 as separate tracks.",
-    "next_ready_workunit": "IMPLEMENTATION_READY: Gateway-only Mini-App Skill execution routing. The visual screenshot analyzer previously called executeWithFallback and then silently allowed the external Runner vision path. The current continuation removes those provider paths and fails closed when the existing Skill runtime has no Gateway vision adapter. Focused tests: 3 files / 24 tests passed on the current code slice. Next implement Gateway-backed model routing for every Mini-App Factory model operation, then isolated artifact runtime and authorized internet deployment.",
+    "next_ready_workunit": "IMPLEMENTATION_READY: current PR #954 (branch spec224-gateway-miniapp-continuation-20261015, code commit b682e6d9a53fdcb8f3f7b72b365bce81f43b457c) removes the direct provider and external Runner fallback from image analysis; four focused Vitest files / 24 tests and diff check passed. Next implement Gateway-only execution for Factory planning/implementation/repair/verification, then artifact runtime. Internet deployment/UAT remains waiting for an authorized isolated non-production target.",
     "reactivation_predicate": "A registered isolated non-production Preview target with verified ownership, storage/runtime bindings, deployment authority, and internet Browser capability becomes available; Gateway-backed Skill execution is selected for every Factory model call; test tenant owner and denial principals are available.",
-    "resume_point": "Current canonical base origin/main eec605ff4286d6185cd86d49e9a25cbb3472e2da (PR #953 merged). This source change removes Mini-App visual model calls through executeWithFallback and prevents silent external-Runner fallback. Focused tests and git diff --check pending. Existing deployment evidence remains: no authorized isolated non-production Cloudflare target/bindings, Wrangler unavailable; production config was not used. Continue Gateway-only Skill model execution and safe private preview runtime, then run internet acceptance when authorized target exists.",
+    "resume_point": "Base origin/main SHA eec605ff4286d6185cd86d49e9a25cbb3472e2da. Source branch spec224-gateway-miniapp-continuation-20261015, owned code commit b682e6d9a53fdcb8f3f7b72b365bce81f43b457c, PR #954. The visual image analyzer direct provider call and external-Runner fallback have been removed; requests with images fail closed until Gateway Skill vision support exists. Focused evidence: four Vitest files, 24 tests passed; git diff --check passed. Required checks/merge status pending. Next continue Gateway-backed Skill execution for all Mini-App LLM operations, then isolated artifact runtime and authorized non-production Internet deployment. Hosted acceptance remains unavailable without registered non-production Cloudflare target authority.",
     "waiting_predicate": "Do not retry hosted deployment or Internet Browser acceptance until a registered isolated non-production Preview target has verified ownership, storage/runtime bindings, deployment authority and Internet Browser reachability. Do not route Factory calls through Codex Subscription, direct provider API, OPENAI_API_KEY, or production resources. This target wait does not block safe code work; Runner-authorized M6/M7 and PR #944 remain separate."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 78,
+  "generation": 79,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2680,7 +2680,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-14T17:19:21.623389Z",
+  "updated_at": "2026-10-14T17:20:11.954753Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
