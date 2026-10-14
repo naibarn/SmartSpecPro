@@ -109,7 +109,9 @@ class DurableRunStore:
               phase_id TEXT PRIMARY KEY, name TEXT NOT NULL, attempt INTEGER NOT NULL,
               input_hash TEXT NOT NULL, status TEXT NOT NULL, input_json TEXT NOT NULL,
               output_json TEXT, checkpoint_json TEXT, checkpoint_hash TEXT,
-              checkpoint_revision INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+              checkpoint_revision INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL,
+              progress_signature TEXT, turn_limit_progress_signature TEXT,
+              no_progress_segments INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS model_calls(
               call_id TEXT PRIMARY KEY, phase_id TEXT NOT NULL, role TEXT NOT NULL,
@@ -133,6 +135,13 @@ class DurableRunStore:
             self.connection.execute("ALTER TABLE model_calls ADD COLUMN selection_json TEXT")
         if "prior_turn_id" not in model_columns:
             self.connection.execute("ALTER TABLE model_calls ADD COLUMN prior_turn_id TEXT")
+        phase_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(phases)")}
+        if "progress_signature" not in phase_columns:
+            self.connection.execute("ALTER TABLE phases ADD COLUMN progress_signature TEXT")
+        if "turn_limit_progress_signature" not in phase_columns:
+            self.connection.execute("ALTER TABLE phases ADD COLUMN turn_limit_progress_signature TEXT")
+        if "no_progress_segments" not in phase_columns:
+            self.connection.execute("ALTER TABLE phases ADD COLUMN no_progress_segments INTEGER NOT NULL DEFAULT 0")
 
     @property
     def run_id(self) -> str:
@@ -231,14 +240,17 @@ class DurableRunStore:
         row = self.connection.execute("SELECT * FROM phases WHERE phase_id=?", (phase_id,)).fetchone()
         return dict(row) if row else None
 
-    def save_checkpoint(self, phase_id: str, checkpoint: dict[str, Any]) -> None:
+    def save_checkpoint(self, phase_id: str, checkpoint: dict[str, Any]) -> bool:
         encoded = canonical_json(checkpoint)
         checkpoint_hash = digest(encoded.encode("utf-8"))
         self.connection.execute("BEGIN IMMEDIATE")
         try:
-            row = self.connection.execute("SELECT checkpoint_revision FROM phases WHERE phase_id=?", (phase_id,)).fetchone()
+            row = self.connection.execute("SELECT checkpoint_revision,checkpoint_hash FROM phases WHERE phase_id=?", (phase_id,)).fetchone()
             if row is None:
                 raise KeyError(f"Unknown phase checkpoint: {phase_id}")
+            if row["checkpoint_hash"] == checkpoint_hash:
+                self.connection.execute("COMMIT")
+                return False
             revision = int(row["checkpoint_revision"]) + 1
             phase = self.connection.execute("SELECT name,attempt FROM phases WHERE phase_id=?", (phase_id,)).fetchone()
             self.state.setdefault("phases", {}).setdefault(phase_id, {"phaseId": phase_id, "name": phase["name"], "attempt": phase["attempt"]})
@@ -259,6 +271,98 @@ class DurableRunStore:
             self.connection.execute("ROLLBACK")
             raise
         self.export()
+        return True
+
+    def observe_phase_progress(self, phase_id: str, progress: dict[str, Any]) -> tuple[bool, int]:
+        """Persist only meaningful progress and count identical MaxTurns boundaries."""
+        signature = digest(progress)
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            row = self.connection.execute(
+                "SELECT progress_signature,no_progress_segments FROM phases WHERE phase_id=?", (phase_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"Unknown phase progress: {phase_id}")
+            prior = row["progress_signature"]
+            changed = prior is None or prior != signature
+            self.connection.execute(
+                "UPDATE phases SET progress_signature=?,updated_at=? WHERE phase_id=?",
+                (signature, timestamp(), phase_id),
+            )
+            if changed and prior is not None:
+                self._insert_event_in_tx(
+                    "phase.meaningful_progress",
+                    {"phaseId": phase_id, "signature": signature, "progress": progress},
+                    stable_key=f"phase:{phase_id}:progress:{signature}",
+                )
+            self._refresh_event_projection_in_tx()
+            self._persist_projection_in_tx()
+            self.connection.execute("COMMIT")
+        except BaseException:
+            self.connection.execute("ROLLBACK")
+            raise
+        if changed and prior is not None:
+            self.export()
+        return changed, 0
+
+    def initialize_turn_limit_progress(self, phase_id: str, progress: dict[str, Any]) -> None:
+        signature = digest(progress)
+        self.connection.execute(
+            "UPDATE phases SET turn_limit_progress_signature=COALESCE(turn_limit_progress_signature,?),no_progress_segments=COALESCE(no_progress_segments,0) WHERE phase_id=?",
+            (signature, phase_id),
+        )
+
+    def record_no_progress_segment(self, phase_id: str, progress: dict[str, Any]) -> int:
+        """Count repeated MaxTurns boundaries that produced no model/tool/source/test progress."""
+        signature = digest(progress)
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            row = self.connection.execute(
+                "SELECT turn_limit_progress_signature,no_progress_segments FROM phases WHERE phase_id=?", (phase_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"Unknown phase progress: {phase_id}")
+            changed = row["turn_limit_progress_signature"] != signature
+            count = 0 if changed else int(row["no_progress_segments"] or 0) + 1
+            self.connection.execute(
+                "UPDATE phases SET turn_limit_progress_signature=?,no_progress_segments=?,updated_at=? WHERE phase_id=?",
+                (signature, count, timestamp(), phase_id),
+            )
+            self._insert_event_in_tx(
+                "phase.turn_limit_boundary",
+                {"phaseId": phase_id, "signature": signature, "progressChanged": changed,
+                 "consecutiveNoProgressSegments": count},
+                stable_key=f"phase:{phase_id}:turn-limit-boundary:{signature}:{count}",
+            )
+            self._refresh_event_projection_in_tx()
+            self._persist_projection_in_tx()
+            self.connection.execute("COMMIT")
+        except BaseException:
+            self.connection.execute("ROLLBACK")
+            raise
+        self.export()
+        return 0 if changed else count
+
+    def meaningful_progress(self, source_hashes: dict[str, str] | None = None) -> dict[str, Any]:
+        turns = int(self.connection.execute(
+            "SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')"
+        ).fetchone()[0])
+        tools = int(self.connection.execute(
+            "SELECT COUNT(*) FROM tool_receipts WHERE status='completed'"
+        ).fetchone()[0])
+        test_outcomes = []
+        for item in self.state.get("iterations", []):
+            if isinstance(item, dict) and isinstance(item.get("testReceipt"), dict):
+                receipt = item["testReceipt"]
+                browser = receipt.get("browserUat") if isinstance(receipt.get("browserUat"), dict) else {}
+                test_outcomes.append({"iteration": item.get("iteration"), "exitCode": receipt.get("exitCode"),
+                                      "revision": receipt.get("revision"), "browserUat": browser.get("result")})
+        return {
+            "completedModelTurns": turns,
+            "completedToolReceipts": tools,
+            "sourceHash": digest(source_hashes or {}),
+            "verifiedTestOutcomes": test_outcomes,
+        }
 
     def complete_phase(self, phase_id: str, result: dict[str, Any]) -> None:
         encoded = canonical_json(result)
@@ -272,6 +376,28 @@ class DurableRunStore:
             self.state.setdefault("phases", {}).setdefault(phase_id, {"phaseId": phase_id, "name": phase["name"], "attempt": phase["attempt"], "inputHash": phase["input_hash"]})
             self.state["phases"][phase_id].update({"status": "completed", "output": result})
             self._insert_event_in_tx("phase.completed", {"phaseId": phase_id, "outputHash": digest(encoded.encode())}, stable_key=f"phase:{phase_id}:completed")
+            self._refresh_event_projection_in_tx()
+            self._persist_projection_in_tx()
+            self.connection.execute("COMMIT")
+        except BaseException:
+            self.connection.execute("ROLLBACK")
+            raise
+        self.export()
+
+    def mark_phase_needs_replan(self, phase_id: str, *, diagnosis: str, progress: dict[str, Any]) -> None:
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            row = self.connection.execute("SELECT name,attempt FROM phases WHERE phase_id=?", (phase_id,)).fetchone()
+            if row is None:
+                raise KeyError(f"Unknown phase: {phase_id}")
+            self.connection.execute("UPDATE phases SET status='needs_replan',updated_at=? WHERE phase_id=?", (timestamp(), phase_id))
+            self.state.setdefault("phases", {}).setdefault(phase_id, {"phaseId": phase_id, "name": row["name"], "attempt": row["attempt"]})
+            self.state["phases"][phase_id].update({"status": "needs_replan", "diagnosis": diagnosis, "progress": progress})
+            self._insert_event_in_tx(
+                "phase.no_progress_diagnosed",
+                {"phaseId": phase_id, "diagnosis": diagnosis, "progress": progress},
+                stable_key=f"phase:{phase_id}:no-progress-diagnosed",
+            )
             self._refresh_event_projection_in_tx()
             self._persist_projection_in_tx()
             self.connection.execute("COMMIT")

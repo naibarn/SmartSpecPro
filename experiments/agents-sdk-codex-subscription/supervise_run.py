@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
 import os
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -14,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from durable_store import DurableRunStore
+from durable_store import DurableRunStore, digest
 
 
 HERE = Path(__file__).resolve().parent
@@ -32,6 +34,49 @@ def continuation_result(exit_code: int, status: str | None) -> bool:
 
 def contract_binding_rejection(output: str) -> bool:
     return "Resumed run contract/workspace binding differs" in output
+
+
+def meaningful_progress_signature(evidence: Path, workspace: Path, contract_path: Path) -> str:
+    """Ignore checkpoint churn; include only model turns, tool effects, source, and verified tests."""
+    state: dict[str, Any] = {}
+    model_turns = tool_receipts = 0
+    db_path = evidence / "runtime.sqlite3"
+    if db_path.is_file():
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            row = connection.execute("SELECT state_json FROM projection WHERE id=1").fetchone()
+            if row:
+                state = json.loads(row[0])
+            model_turns = int(connection.execute(
+                "SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')"
+            ).fetchone()[0])
+            tool_receipts = int(connection.execute(
+                "SELECT COUNT(*) FROM tool_receipts WHERE status='completed'"
+            ).fetchone()[0])
+        finally:
+            connection.close()
+    source_hashes: dict[str, str] = {}
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        paths = contract.get("writableFiles", [])
+        for relative in paths if isinstance(paths, list) else []:
+            if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
+                continue
+            target = (workspace / relative).resolve()
+            if target == workspace or workspace not in target.parents:
+                continue
+            source_hashes[relative] = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else "MISSING"
+    except (OSError, ValueError, TypeError):
+        pass
+    test_outcomes = []
+    for item in state.get("iterations", []):
+        if isinstance(item, dict) and isinstance(item.get("testReceipt"), dict):
+            receipt = item["testReceipt"]
+            browser = receipt.get("browserUat") if isinstance(receipt.get("browserUat"), dict) else {}
+            test_outcomes.append({"iteration": item.get("iteration"), "exitCode": receipt.get("exitCode"),
+                                  "revision": receipt.get("revision"), "browserUat": browser.get("result")})
+    return digest({"completedModelTurns": model_turns, "completedToolReceipts": tool_receipts,
+                   "sourceHash": digest(source_hashes), "verifiedTestOutcomes": test_outcomes})
 
 
 def write_recovery_receipt(evidence: Path, logs: Path, *, run_id: str | None, restarts: int,
@@ -102,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     restarts = 0
     consecutive_crashes = 0
     continuation_processes = 0
+    diagnostic_next = False
     process_count = 0
     started = time.monotonic()
     operator_signals: list[int] = []
@@ -111,6 +157,8 @@ def main(argv: list[str] | None = None) -> int:
     prior_handlers = {sig: signal.signal(sig, receive_operator_signal) for sig in (signal.SIGINT, signal.SIGTERM)}
     while True:
         process_count += 1
+        used_diagnostic = diagnostic_next
+        diagnostic_next = False
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
         if prior_status == "WAITING_CAPACITY":
             current = json.loads(existing_state.read_text(encoding="utf-8"))
@@ -124,12 +172,15 @@ def main(argv: list[str] | None = None) -> int:
                        "--contract", str(args.spec_contract.resolve()), "--evidence-dir", str(evidence), "--run-id", run_id]
             if prior_status in {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY"}:
                 command.append("--continuation")
+            if used_diagnostic:
+                command.append("--diagnose-no-progress")
         else:
             command = [sys.executable, str(HERE / "run_experiment.py"), "--workspace", str(workspace), "--max-attempts", str(args.max_attempts), "--implementation-max-turns", str(args.implementation_max_turns), "--run-id", run_id]
         if existing_state.is_file():
             command += ["--resume"]
         env = os.environ.copy()
         env["AUTONOMY_CRASH_AT"] = args.crash_at
+        progress_before = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else ""
         result = subprocess.run(command, cwd=HERE, env=env, text=True, capture_output=True, check=False)
         logs.mkdir(parents=True, exist_ok=True)
         (logs / f"process-{process_count:04d}.json").write_text(json.dumps({
@@ -155,6 +206,30 @@ def main(argv: list[str] | None = None) -> int:
             return 128 + signum
         current_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         current_status = current_state.get("status")
+        progress_after = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else progress_before
+        if (args.spec_contract and current_status == "PARTIAL_CONTINUABLE" and result.returncode == 75
+                and progress_after == progress_before):
+            reason = "WorkUnit continuation returned exit 75 without a completed model turn, tool receipt, source change, or verified test outcome"
+            with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
+                if used_diagnostic:
+                    store.event("supervisor.no_progress_repair_exhausted", {
+                        "processCount": process_count, "iteration": current_state.get("developmentIteration"),
+                        "progressSignature": progress_after, "reason": reason,
+                    }, stable_key=f"supervisor:no-progress-repair-exhausted:{process_count}:{progress_after}")
+                else:
+                    store.event("supervisor.no_progress_diagnosed", {
+                        "processCount": process_count, "iteration": current_state.get("developmentIteration"),
+                        "progressSignature": progress_after, "reason": reason,
+                    }, stable_key=f"supervisor:no-progress-diagnosed:{process_count}:{progress_after}")
+            if used_diagnostic:
+                receipt = write_recovery_receipt(
+                    evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                    crash_at=args.crash_at, supervisor_result="FAILED", reason=f"automatic diagnosis/replan made no progress: {reason}",
+                    return_code=result.returncode, process_count=process_count, continuation_processes=continuation_processes,
+                )
+                print(json.dumps(receipt, ensure_ascii=False, indent=2))
+                return 1
+            diagnostic_next = True
         if args.spec_contract and current_status in CONTINUABLE_STATUSES and not continuation_result(result.returncode, current_status):
             failure_text = f"{result.stdout[-3000:]}\n{result.stderr[-3000:]}"
             if contract_binding_rejection(failure_text):

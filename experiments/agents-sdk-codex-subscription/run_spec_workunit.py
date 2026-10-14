@@ -53,6 +53,10 @@ class UnproductiveImplementationPhase(RuntimeError):
     """A durable implementation checkpoint needs a fresh plan, not more of the same tool retries."""
 
 
+class NoProgressPhaseError(RuntimeError):
+    """MaxTurnsExceeded repeated without a completed turn, receipt, source, or test delta."""
+
+
 def make_workunit_agent(role: str, instructions: str, repo_tools: Any, agent_tools: list[Any], on_receipt: Any,
                         store: DurableRunStore, phase_id: str, task_context: str) -> Any:
     profile, reason, evidence = select_profile(role, task_context, store.state.get("iterations", []))
@@ -664,13 +668,16 @@ class ScopedRepoTools:
         return self.contract.binding
 
 
-def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, content: str, max_turns: int) -> Any:
+def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, content: str, max_turns: int,
+              progress_probe: Any = None) -> Any:
     phase_id = store.phase_id(phase, attempt)
     existing = store.get_phase(phase_id)
     if existing and existing.get("status") == "completed":
         from types import SimpleNamespace
         result = json.loads(existing["output_json"])
         return SimpleNamespace(final_output=result["finalOutput"], new_items=[])
+    if existing and existing.get("status") == "needs_replan":
+        raise NoProgressPhaseError(f"{phase} phase already has a durable no-progress diagnosis; use a fresh phase for replanning")
     phase_input = {"input": content, "maxTurns": max_turns}
     if existing:
         # Source snapshots can legitimately change after an implementation
@@ -685,6 +692,10 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         result = json.loads(phase_row["output_json"])
         return SimpleNamespace(final_output=result["finalOutput"], new_items=[])
     session = SQLiteSession(phase_row["phase_id"], db_path=store.evidence_dir / "agents-sessions.sqlite3")
+    def progress_snapshot() -> dict[str, Any]:
+        source = progress_probe() if callable(progress_probe) else None
+        return store.meaningful_progress(source)
+
     async def invoke():
         checkpoint = json.loads(phase_row["checkpoint_json"]) if phase_row.get("checkpoint_json") else None
         # MaxTurnsExceeded marks an SDK segment boundary. Continue the same
@@ -693,14 +704,28 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         turn_limit = max_turns
         if checkpoint:
             turn_limit = max(max_turns, int(checkpoint.get("max_turns", max_turns)))
+        initial_progress = progress_snapshot()
+        store.observe_phase_progress(phase_row["phase_id"], initial_progress)
+        store.initialize_turn_limit_progress(phase_row["phase_id"], initial_progress)
         run_input = await RunState.from_json(agent, checkpoint) if checkpoint else content
         while True:
             streamed = Runner.run_streamed(agent, run_input, max_turns=turn_limit, session=session)
             try:
                 async for _ in streamed.stream_events():
-                    store.save_checkpoint(phase_row["phase_id"], streamed.to_state().to_json())
+                    if store.save_checkpoint(phase_row["phase_id"], streamed.to_state().to_json()):
+                        store.observe_phase_progress(phase_row["phase_id"], progress_snapshot())
             except MaxTurnsExceeded:
                 state_json = streamed.to_state().to_json()
+                progress = progress_snapshot()
+                store.observe_phase_progress(phase_row["phase_id"], progress)
+                no_progress_segments = store.record_no_progress_segment(phase_row["phase_id"], progress)
+                if no_progress_segments >= 1:
+                    diagnosis = (
+                        "Agents SDK raised MaxTurnsExceeded again without a completed model turn, completed tool receipt, "
+                        "allowlisted source change, or verified test outcome. Stop extending max_turns and replan in a fresh phase."
+                    )
+                    store.mark_phase_needs_replan(phase_row["phase_id"], diagnosis=diagnosis, progress=progress)
+                    raise NoProgressPhaseError(diagnosis)
                 previous_limit = turn_limit
                 turn_limit = next_turn_limit(turn_limit, max_turns)
                 state_json["max_turns"] = turn_limit
@@ -772,6 +797,7 @@ def main() -> int:
     parser.add_argument("--run-id", default=str(uuid.uuid4()))
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--continuation", action="store_true", help="Start a new WorkUnit iteration without counting it as crash recovery")
+    parser.add_argument("--diagnose-no-progress", action="store_true", help="Force a fresh diagnostic planning/replan strategy after a no-progress continuation")
     args = parser.parse_args()
     contract = load_contract(args.contract, args.workspace)
     evidence = args.evidence_dir.resolve()
@@ -807,6 +833,23 @@ def main() -> int:
     elif not state.get("contractScopeSnapshot"):
         state["contractScopeSnapshot"] = current_scope
         store.commit_state()
+    if args.diagnose_no_progress:
+        diagnosis = "Supervisor observed an exit-75 continuation without meaningful progress; diagnose the prior phase and choose a fresh phase/strategy."
+        findings = list(state.get("lastFindings", []))
+        if diagnosis not in findings:
+            findings.append(diagnosis)
+        state["lastFindings"] = findings
+        if state.get("plan") is None:
+            state["plannerIteration"] = int(state.get("plannerIteration", 0)) + 1
+        else:
+            state["iterationInProgress"] = False
+        store.event("development.no_progress_diagnostic_applied", {
+            "plannerIteration": state.get("plannerIteration", 0),
+            "developmentIteration": state.get("developmentIteration", 0),
+            "phase": "planning" if state.get("plan") is None else "implementation",
+            "reason": diagnosis,
+        }, stable_key=f"development:no-progress-diagnosis:{state.get('plannerIteration', 0)}:{state.get('developmentIteration', 0)}")
+        store.commit_state()
     reconciled_writes = reconcile_interrupted_write_intents(store, contract)
     if reconciled_writes:
         state.setdefault("recoveredToolReceipts", []).extend(reconciled_writes)
@@ -841,9 +884,27 @@ def main() -> int:
     planner_iteration = int(state.get("plannerIteration", 0))
     if state.get("plan") is None:
         planning_name = "planning" if planner_iteration == 0 else f"planning-{planner_iteration}"
-        plan_agent = make_workunit_agent(f"planner_{planner_iteration + 1}", "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized.", plan_tools,
+        planner_instructions = "You are the read-only planning phase of an authorized implementation run. Do not modify files or run tests yourself. Produce a concrete implementation and verification plan for the next phase; the read-only limit applies only to this planner, not to the authorized implementer or tests. Return JSON {task_instruction:string, acceptance:string[]}; never claim that implementation is unauthorized."
+        if planner_iteration > 0 or state.get("lastFindings"):
+            planner_instructions += " Diagnose the prior phase findings and MaxTurns/no-progress evidence; choose a materially different phase strategy rather than repeating an SDK continuation that made no meaningful progress."
+        plan_agent = make_workunit_agent(f"planner_{planner_iteration + 1}", planner_instructions, plan_tools,
                                          plan_tools.tools(False), receipt, store, store.phase_id(planning_name), contract.requirement_text)
-        plan_result = run_phase(store, planning_name, 0, plan_agent, json.dumps({"goal": goal, "canonical_requirement": contract.requirement_text, "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope, "verified_source_context": context}, ensure_ascii=False), contract.plan_max_turns)
+        try:
+            plan_result = run_phase(
+                store, planning_name, 0, plan_agent,
+                json.dumps({"goal": goal, "canonical_requirement": contract.requirement_text,
+                            "acceptanceCriteria": contract.acceptance, "workunit_scope": workunit_scope,
+                            "verified_source_context": context, "priorFindings": state.get("lastFindings", [])}, ensure_ascii=False),
+                contract.plan_max_turns, progress_probe=lambda: source_hashes(contract),
+            )
+        except NoProgressPhaseError as exc:
+            findings = [f"Planning phase stalled and was diagnosed for automatic replanning: {exc}"]
+            state["plannerIteration"] = planner_iteration + 1
+            state["lastFindings"] = findings
+            store.continue_development(iteration=int(state.get("developmentIteration", 0)), findings=findings,
+                                       reason="MaxTurnsExceeded repeated without meaningful progress; start a fresh diagnostic planning phase")
+            store.commit_state(); print(json.dumps(state, ensure_ascii=False, indent=2)); store.close()
+            return 75
         try:
             state["plan"] = parse_result_json(plan_result.final_output)
         except Exception as exc:
@@ -871,14 +932,17 @@ def main() -> int:
     if attempt > 1 and findings:
         replan_agent = make_workunit_agent(f"replanner_{attempt}", REPLANNER_INSTRUCTIONS, plan_tools,
                                            plan_tools.tools(False), receipt, store, store.phase_id("replanning", attempt), contract.requirement_text)
-        revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
-            "goal": goal, "priorPlan": plan, "findings": findings,
-            "previousIterations": state.get("iterations", []),
-            "currentSource": task_source_context(contract), "workunit_scope": workunit_scope,
-        }, ensure_ascii=False), contract.plan_max_turns)
         try:
+            revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
+                "goal": goal, "priorPlan": plan, "findings": findings,
+                "previousIterations": state.get("iterations", []),
+                "currentSource": task_source_context(contract), "workunit_scope": workunit_scope,
+            }, ensure_ascii=False), contract.plan_max_turns, progress_probe=lambda: source_hashes(contract))
             plan = parse_result_json(revised.final_output)
             state["plan"] = plan
+        except NoProgressPhaseError as exc:
+            findings = [f"Replanner hit a no-progress MaxTurns boundary; continue from the prior plan and diagnose during implementation: {exc}", *findings]
+            state["lastFindings"] = findings
         except Exception as exc:
             findings = [f"Replanner response did not satisfy its output contract: {type(exc).__name__}: {exc}", *findings]
         store.commit_state()
@@ -909,7 +973,8 @@ def main() -> int:
         },
     }
     try:
-        result = run_phase(store, "implementation", attempt, agent, json.dumps(implementation_input, ensure_ascii=False), contract.implementation_max_turns)
+        result = run_phase(store, "implementation", attempt, agent, json.dumps(implementation_input, ensure_ascii=False),
+                           contract.implementation_max_turns, progress_probe=lambda: source_hashes(contract))
     except Exception as exc:
         detail = f"{type(exc).__name__}: {exc}"
         if is_capacity_error(exc):
@@ -923,7 +988,7 @@ def main() -> int:
         changed_paths = changed_source_paths(before_hashes, after_failure_hashes)
         baseline_changed_paths, _ = source_diff_from_baseline(contract)
         findings = [f"Implementation phase interrupted: {detail}", *findings]
-        unproductive_boundary = isinstance(exc, UnproductiveImplementationPhase)
+        unproductive_boundary = isinstance(exc, (UnproductiveImplementationPhase, NoProgressPhaseError))
         state.setdefault("iterations", []).append({
             "iteration": attempt,
             "status": "partial_continuable_replan_required" if unproductive_boundary else "phase_interrupted",
@@ -995,7 +1060,7 @@ def main() -> int:
         )
         snapshot = {path: (contract.root / path).read_text(encoding="utf-8")[:20000] for path in contract.allowed_files if (contract.root / path).is_file()}
         try:
-            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":baseline_changed_paths,"iterationSourceDelta":changed_paths,"sourceDiffFromWorkUnitBaseline":source_diff,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns).final_output)
+            reviewed = parse_result_json(run_phase(store,"review",attempt,review,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"source_snapshot":snapshot,"sourceDelta":baseline_changed_paths,"iterationSourceDelta":changed_paths,"sourceDiffFromWorkUnitBaseline":source_diff,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),"test_receipt":test_receipt,**contract.binding}),contract.review_max_turns,progress_probe=lambda: source_hashes(contract)).final_output)
         except Exception as exc:
             if is_capacity_error(exc):
                 raise
@@ -1012,7 +1077,7 @@ def main() -> int:
             verifier = make_workunit_agent(f"independent_final_verifier_{attempt}", "Independently verify the exact normative requirement and whether the implemented slice is functionally usable and safe for user testing. Keep these judgments separate: complete is true only when full normative acceptance is proven; functionalReadyForUserTest may be true for a usable slice with explicit remaining acceptance/UAT gaps, but only if focused tests pass and no known code defect remains. Return JSON {complete:boolean,functionalReadyForUserTest:boolean,findings:string[],evidence:string[]}. Read-only.", review_tools,
                                            review_tools.tools(False), receipt, store, store.phase_id("verification", attempt), contract.requirement_text)
             try:
-                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"sourceDiffFromWorkUnitBaseline":source_diff,"workUnitBaselineChangedPaths":baseline_changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns).final_output)
+                verified = parse_result_json(run_phase(store,"verification",attempt,verifier,json.dumps({"goal":goal,"canonical_requirement":contract.requirement_text,"acceptanceCriteria":contract.acceptance,"workunit_scope":workunit_scope,"review":reviewed,"test":test_receipt,"source_snapshot":snapshot,"sourceDiffFromWorkUnitBaseline":source_diff,"workUnitBaselineChangedPaths":baseline_changed_paths,"iterationEvidence":iteration_evidence_summary(state.get("iterations", [])),**contract.binding}),contract.review_max_turns,progress_probe=lambda: source_hashes(contract)).final_output)
             except Exception as exc:
                 if is_capacity_error(exc):
                     raise

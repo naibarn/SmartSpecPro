@@ -137,6 +137,80 @@ class SupervisorTelemetryTests(unittest.TestCase):
             receipt = json.loads((evidence / "recovery-receipt.json").read_text())
             self.assertEqual(receipt["continuationProcessCount"], 1)
 
+    def test_supervisor_runs_one_diagnostic_replan_for_exit_75_without_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "workspace"
+            workspace.mkdir()
+            evidence = Path(temp) / "evidence"
+            contract = Path(temp) / "contract.json"
+            contract.write_text("{}", encoding="utf-8")
+            calls: list[list[str]] = []
+
+            def fake_run(command, **_kwargs):
+                calls.append(command)
+                run_id = command[command.index("--run-id") + 1]
+                if len(calls) == 1:
+                    with DurableRunStore(evidence, run_id=run_id, initial_state={
+                        "runId": run_id, "status": "running", "developmentIteration": 1,
+                        "iterationInProgress": False, "iterations": [],
+                    }) as store:
+                        store.continue_development(iteration=1, findings=["planner phase emitted no progress"],
+                                                   reason="diagnostic replan needed")
+                    return subprocess.CompletedProcess(command, 75, "", "")
+                self.assertIn("--diagnose-no-progress", command)
+                with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
+                    phase = store.phase_id("planning-1", 0)
+                    store.reserve_model_call("diagnostic-turn", phase, "planner_2", {"input": "diagnose"})
+                    store.update_model_call("diagnostic-turn", event="model.call.completed", stable_suffix="completed",
+                                            status="completed", thread_id="thread", turn_id="turn-diagnostic")
+                    store.finish_run(True, terminal_status="VERIFIED_COMPLETE")
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            with patch.object(supervise_run.subprocess, "run", side_effect=fake_run), patch.object(supervise_run.time, "sleep"):
+                self.assertEqual(supervise_run.main([
+                    "--workspace", str(workspace), "--spec-contract", str(contract),
+                    "--evidence-dir", str(evidence),
+                ]), 0)
+            self.assertEqual(len(calls), 2)
+            state = json.loads((evidence / "run-state.json").read_text())
+            self.assertIn("VERIFIED_COMPLETE", [event.get("payload", {}).get("status") for event in state["lifecycleEvents"]
+                                                  if event["kind"] == "run.completed"])
+
+    def test_supervisor_stops_after_diagnostic_replan_also_makes_no_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "workspace"
+            workspace.mkdir()
+            evidence = Path(temp) / "evidence"
+            contract = Path(temp) / "contract.json"
+            contract.write_text("{}", encoding="utf-8")
+            calls: list[list[str]] = []
+
+            def fake_run(command, **_kwargs):
+                calls.append(command)
+                run_id = command[command.index("--run-id") + 1]
+                if len(calls) == 1:
+                    with DurableRunStore(evidence, run_id=run_id, initial_state={
+                        "runId": run_id, "status": "running", "developmentIteration": 1,
+                        "iterationInProgress": False, "iterations": [],
+                    }) as store:
+                        store.continue_development(iteration=1, findings=["stalled"], reason="replan")
+                else:
+                    self.assertIn("--diagnose-no-progress", command)
+                    with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
+                        store.continue_development(iteration=1, findings=["still stalled"], reason="replan")
+                return subprocess.CompletedProcess(command, 75, "", "")
+
+            with patch.object(supervise_run.subprocess, "run", side_effect=fake_run), patch.object(supervise_run.time, "sleep"):
+                self.assertEqual(supervise_run.main([
+                    "--workspace", str(workspace), "--spec-contract", str(contract),
+                    "--evidence-dir", str(evidence),
+                ]), 1)
+            self.assertEqual(len(calls), 2)
+            state = json.loads((evidence / "run-state.json").read_text())
+            self.assertTrue(any(event["kind"] == "supervisor.no_progress_repair_exhausted" for event in state["lifecycleEvents"]))
+            receipt = json.loads((evidence / "recovery-receipt.json").read_text())
+            self.assertEqual(receipt["supervisorResult"], "FAILED")
+
     def test_operator_intervention_count_is_projected_from_human_signal_event(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             evidence = Path(temp)

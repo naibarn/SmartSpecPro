@@ -44,6 +44,47 @@ class DurableRunStoreTests(unittest.TestCase):
             self.assertEqual(store.state["restartCount"], 2)
             self.assertEqual(store.state["humanInterventions"], 0)
 
+    def test_identical_checkpoint_hash_does_not_create_revision_event_or_export(self):
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
+            phase = store.start_phase("dedup", 0, {"goal": "x"}, 3)
+            checkpoint = {"agent": {"run_id": "stable", "turns": []}}
+            self.assertTrue(store.save_checkpoint(phase["phase_id"], checkpoint))
+            before_events = store.connection.execute("SELECT COUNT(*) FROM events WHERE kind='agents.run_state.checkpointed'").fetchone()[0]
+            exports = 0
+            original_export = store.export
+            def count_export():
+                nonlocal exports
+                exports += 1
+                original_export()
+            store.export = count_export
+            self.assertFalse(store.save_checkpoint(phase["phase_id"], checkpoint))
+            self.assertEqual(exports, 0)
+            current = store.get_phase(phase["phase_id"])
+            self.assertEqual(current["checkpoint_revision"], 1)
+            self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM events WHERE kind='agents.run_state.checkpointed'").fetchone()[0], before_events)
+            self.assertTrue(store.save_checkpoint(phase["phase_id"], {"agent": {"run_id": "stable", "turns": [1]}}))
+            self.assertEqual(store.get_phase(phase["phase_id"])["checkpoint_revision"], 2)
+
+    def test_meaningful_progress_signature_changes_for_completed_turn_and_tool_receipt(self):
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
+            before = store.meaningful_progress({"app.py": "a"})
+            phase = store.phase_id("progress")
+            store.reserve_model_call("progress-call", phase, "planner", {"input": "x"})
+            store.update_model_call("progress-call", event="model.call.completed", stable_suffix="complete",
+                                    status="completed", thread_id="thread", turn_id="turn")
+            after_turn = store.meaningful_progress({"app.py": "a"})
+            self.assertNotEqual(before, after_turn)
+            self.assertEqual(after_turn["completedModelTurns"], 1)
+            store.begin_tool("progress-tool", phase, "write_file", {"path": "app.py"})
+            store.complete_tool("progress-tool", {"written": True}, effect_hash="new-source")
+            after_tool = store.meaningful_progress({"app.py": "b"})
+            self.assertEqual(after_tool["completedToolReceipts"], 1)
+            self.assertNotEqual(after_turn, after_tool)
+            store.state["iterations"] = [{"iteration": 1, "testReceipt": {"exitCode": 0, "revision": "source-sha"}}]
+            after_test = store.meaningful_progress({"app.py": "b"})
+            self.assertNotEqual(after_tool, after_test)
+            self.assertEqual(after_test["verifiedTestOutcomes"][0]["exitCode"], 0)
+
     def test_stable_ids_reject_payload_conflicts(self):
         with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
             store.event("human.intervention.note", {"reason": "asked"}, actor="human", stable_key="human:1")
