@@ -1241,6 +1241,8 @@ def create_registered_worktree(
         "status": "WORKTREE_CREATED_AND_REGISTERED",
         "workspace": str(selected),
         "workspace_id": registered["workspace_id"],
+        "owner_fencing_version": registered.get("owner_fencing_version", 0),
+        "owner_lease_expires_at": registered.get("owner_lease_expires_at"),
         "base_sha": revision,
         "canonical_tip": canonical_tip,
         "role": role,

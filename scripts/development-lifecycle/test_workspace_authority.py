@@ -228,6 +228,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             )
         self.assertTrue(str(result["workspace"]).startswith(str(self.root / "fallback-source")))
         self.assertEqual(result["base_sha"], git(self.canonical, "rev-parse", "HEAD"))
+        self.assertEqual(result["owner_fencing_version"], 1)
+        self.assertGreaterEqual(result["owner_lease_expires_at"], time.time())
         self.assertEqual(result["recovery_attempts"][0]["resource_code"], "ENOSPC")
         failed_path = Path(str(result["recovery_attempts"][0]["path"]))
         self.assertFalse(failed_path.exists())
