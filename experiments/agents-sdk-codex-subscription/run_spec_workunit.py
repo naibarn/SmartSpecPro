@@ -254,6 +254,87 @@ def is_ready_for_user_test(test_receipt: dict[str, Any], review: dict[str, Any] 
         and verification and verification.get("functionalReadyForUserTest") is True
     )
 
+
+def browser_source_hash(contract: WorkUnitContract) -> str:
+    """Hash only the contract-authorized browser app files, matching its UAT receipt."""
+    browser = contract.browser_uat or {}
+    project_path = Path(str(browser.get("projectPath", ""))).as_posix().rstrip("/")
+    files = []
+    for relative in sorted(contract.allowed_files):
+        if not relative.startswith(project_path + "/"):
+            continue
+        target = contract.root / relative
+        if target.is_file() and target.suffix.lower() in {".html", ".js", ".mjs", ".css"}:
+            files.append([Path(relative).name, hashlib.sha256(target.read_bytes()).hexdigest()])
+    return hashlib.sha256(json.dumps(files, separators=(",", ":")).encode()).hexdigest()
+
+
+def project_browser_uat(contract: WorkUnitContract, run_id: str, receipts: list[dict[str, Any]],
+                        pending_receipts: list[Any]) -> dict[str, Any]:
+    """Project a Browser UAT result only from a completed, run/source/workspace-bound receipt."""
+    browser = contract.browser_uat
+    if browser is None or browser.get("status") != "configured":
+        return {"status": "UNVERIFIED", "reason": "No authorized browser UAT adapter is configured in this WorkUnit contract"}
+    if pending_receipts:
+        return {"status": "PENDING", "reason": "Unresolved tool receipts remain", "pendingToolReceiptCount": len(pending_receipts)}
+    if not receipts:
+        return {"status": "PENDING", "reason": "No completed Browser UAT receipt exists for this run"}
+
+    receipt = receipts[0]
+    result = receipt.get("result")
+    if isinstance(result, str):
+        try:
+            result = json.loads(result)
+        except json.JSONDecodeError:
+            result = None
+    result = result if isinstance(result, dict) else receipt
+    expected_source = browser_source_hash(contract)
+    expected = {
+        "runId": run_id,
+        "taskId": contract.task_id,
+        "workspaceId": contract.workspace_id,
+        "workspace": str(contract.root),
+        "sourceRevision": contract.source_revision,
+        "projectPath": str(browser.get("projectPath", "")),
+        "contractSourceSha256": expected_source,
+        "sourceSha256": expected_source,
+        "operationId": receipt.get("operation_id"),
+    }
+    mismatches = [key for key, value in expected.items() if result.get(key) != value]
+    if mismatches:
+        return {"status": "FAILED", "reason": "Browser receipt binding mismatch", "mismatchedBindings": mismatches,
+                "runId": run_id, "sourceRevision": contract.source_revision, "workspaceId": contract.workspace_id}
+    if receipt.get("status", "completed") != "completed":
+        return {"status": "PENDING", "reason": "Browser tool receipt is not completed", "runId": run_id}
+    browser_result = result.get("result")
+    runner = result.get("runner") if isinstance(result.get("runner"), dict) else {}
+    if (result.get("schema") != "agents-sdk-miniapp-browser-uat.v1" or browser_result != "PASS"
+            or runner.get("exitCode") != 0 or result.get("pageErrors")
+            or result.get("unexpectedConsoleErrors") or result.get("blockedExternalRequests")):
+        return {"status": "FAILED", "reason": "Browser UAT did not pass cleanly", "browserResult": browser_result,
+                "runId": run_id, "sourceRevision": contract.source_revision, "workspaceId": contract.workspace_id,
+                "sourceSha256": result.get("contractSourceSha256")}
+    return {"status": "PASS", "runId": run_id, "taskId": contract.task_id,
+            "workspaceId": contract.workspace_id, "workspace": str(contract.root),
+            "sourceRevision": contract.source_revision, "sourceSha256": result["contractSourceSha256"],
+            "browserResult": "PASS", "operationId": receipt.get("operation_id") or result.get("operationId"),
+            "completedToolReceipt": True, "pendingToolReceiptCount": 0}
+
+
+def terminal_workunit_status(normative_complete: bool, ready_for_user_test: bool, browser_required: bool,
+                             browser_status: str, pending_receipt_count: int) -> str:
+    """Keep normative WorkUnit completion distinct from functional Browser UAT."""
+    if pending_receipt_count:
+        return "PARTIAL_CONTINUABLE"
+    if normative_complete:
+        if browser_required and browser_status != "PASS":
+            return "awaiting_browser_uat"
+        return "VERIFIED_COMPLETE"
+    if ready_for_user_test:
+        return "IMPLEMENTED_READY_FOR_USER_TEST"
+    return "PARTIAL_CONTINUABLE"
+
+
 def source_hashes(contract: WorkUnitContract) -> dict[str, str]:
     return {p: hashlib.sha256((contract.root / p).read_bytes()).hexdigest() for p in contract.allowed_files if (contract.root / p).is_file()}
 
@@ -632,7 +713,9 @@ class ScopedRepoTools:
         result["projectPath"] = project_path.as_posix()
         result["contractSourceSha256"] = source_sha
         result["harnessSha256"] = harness_sha
-        result.update({"taskId": self.contract.task_id, "workspaceId": self.contract.workspace_id})
+        result.update({"runId": self.store.run_id, "taskId": self.contract.task_id,
+                       "workspaceId": self.contract.workspace_id, "workspace": str(self.contract.root),
+                       "sourceRevision": self.contract.source_revision})
         self.store.complete_tool(operation_id, result, effect_hash=source_sha)
         return json.dumps(result, ensure_ascii=False)
 
@@ -1097,9 +1180,22 @@ def main() -> int:
         acceptance = False
         findings = ["Unresolved scoped tool intents remain and require receipt reconciliation.", *findings]
         state["receiptSettlementError"] = findings[0]
-    browser_pending = bool(contract.browser_uat and contract.browser_uat.get("status") == "configured")
     state["modelAcceptance"] = bool(acceptance)
-    state["browserUat"] = {"status": "UNVERIFIED", "reason": "No authorized browser UAT adapter is configured in this WorkUnit contract"} if contract.browser_uat is None or contract.browser_uat.get("status") == "unavailable" else {"status": "PENDING", "contract": contract.browser_uat}
+    browser_rows = store.connection.execute(
+        "SELECT operation_id,status,result_json FROM tool_receipts WHERE tool='run_browser_uat' ORDER BY updated_at DESC,rowid DESC"
+    ).fetchall()
+    browser_receipts = []
+    for row in browser_rows:
+        try:
+            result = json.loads(row["result_json"]) if row["result_json"] else None
+        except (TypeError, json.JSONDecodeError):
+            result = None
+        browser_receipts.append({"operation_id": row["operation_id"], "status": row["status"], "result": result})
+    browser_projection = project_browser_uat(contract, store.run_id, browser_receipts, pending)
+    state["browserUat"] = {**browser_projection, "contract": contract.browser_uat}
+    # This Development WorkUnit proves only its own normative requirement and
+    # functional browser slice. It never closes the parent SPEC-224 handoff.
+    state["specCompletionStatus"] = "NOT_CLAIMED"
     state["durationMs"] = round((time.time() - __import__("datetime").datetime.fromisoformat(state["createdAt"]).timestamp()) * 1000)
     state["codexTurnCount"] = len(state.get("modelReceipts", []))
     state["subscriptionTokenUsage"] = {k:sum(int(((r.get("usage") or {}).get("last") or {}).get(k,0)) for r in state.get("modelReceipts",[])) for k in ("inputTokens","outputTokens","totalTokens","cachedInputTokens")}
@@ -1109,13 +1205,22 @@ def main() -> int:
     store._refresh_event_projection()
     ready_for_user_test = is_ready_for_user_test(test_receipt, state.get("lastReview"), state.get("verification"), pending)
     state["readyForUserTest"] = ready_for_user_test
-    if acceptance and not pending:
+    browser_required = bool(contract.browser_uat and contract.browser_uat.get("status") == "configured")
+    terminal_status = terminal_workunit_status(
+        acceptance, ready_for_user_test, browser_required, browser_projection["status"], len(pending)
+    )
+    if terminal_status == "VERIFIED_COMPLETE":
         state["iterationInProgress"] = False
-        state["functionalDeliveryStatus"] = "IMPLEMENTED_READY_FOR_USER_TEST" if browser_pending else "VERIFIED_COMPLETE"
-        status = "awaiting_browser_uat" if browser_pending else "VERIFIED_COMPLETE"
-        store.finish_run(True, terminal_status=status)
+        state["functionalDeliveryStatus"] = "VERIFIED_COMPLETE"
+        store.finish_run(True, terminal_status="VERIFIED_COMPLETE")
         return_code = 0
-    elif ready_for_user_test:
+    elif terminal_status == "awaiting_browser_uat":
+        state["iterationInProgress"] = False
+        state["functionalDeliveryStatus"] = "AWAITING_BROWSER_UAT"
+        state["nextAction"] = "rerun_or_reconcile_browser_uat_for_bound_source"
+        store.finish_run(True, terminal_status="awaiting_browser_uat")
+        return_code = 0
+    elif terminal_status == "IMPLEMENTED_READY_FOR_USER_TEST":
         state["iterationInProgress"] = False
         state["functionalDeliveryStatus"] = "IMPLEMENTED_READY_FOR_USER_TEST"
         state["nextAction"] = "collect_user_test_feedback_and_continue_remaining_acceptance"
