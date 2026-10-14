@@ -14,19 +14,22 @@
   ],
   "sections_state": {
     "section-01-local-fast-lane": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Complete focused developer-fast-lane implementation and verify exact-source acceptance."
+      "next_action": "Open the normal PR, wait for its CI status, then resume Section 03 separately under its owned candidate task.",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
     },
     "section-02-atomic-continuation": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Finalize fenced continuation implementation and scoped recovery verification."
+      "next_action": "Open the normal PR and track CI; extended stale-owner/replay vectors remain pending.",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
     },
     "section-04-working-ui-acceptance": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Bind the completed local Mini-App test and browser receipts to the implementation checkpoint."
+      "next_action": "Local browser acceptance passed: Run ID 65b217cf-414c-47d3-b14f-5800ac96b4dc; receipts at /home/dev/.cache/codex/canonical-sources/developer-fast-lane-evidence/m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6. Keep separate from Runner acceptance.",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
     }
   },
   "pre_commit": {
@@ -38,11 +41,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-14T11:41:57.136867+00:00",
-  "generation": 4,
-  "updated_at": "2026-10-14T11:42:13.192858+00:00",
+  "generation": 8,
+  "updated_at": "2026-10-14T11:46:49.266587+00:00",
   "progress": {
     "active_section": "section-04-working-ui-acceptance",
-    "next_action": "Bind the completed local Mini-App test and browser receipts to the implementation checkpoint.",
-    "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014"
+    "next_action": "Local browser acceptance passed: Run ID 65b217cf-414c-47d3-b14f-5800ac96b4dc; receipts at /home/dev/.cache/codex/canonical-sources/developer-fast-lane-evidence/m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6. Keep separate from Runner acceptance.",
+    "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+    "gaps": [
+      "Section 03 candidate SHA binding remains outside this checkpoint; use an owner-authorized continuation branch based on PR #944 head."
+    ]
   }
 }
