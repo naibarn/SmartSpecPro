@@ -54,20 +54,73 @@ function useText() {
 
 function CredentialReadiness({ target }: { target: DeploymentTarget }) {
   const text = useText();
-  const { data, isLoading, isError } = trpc.infrastructure.getDeploymentCredentialState.useQuery({
+  const utils = trpc.useUtils();
+  const [token, setToken] = useState("");
+  const identity = {
     tenantId: target.tenantId,
     projectId: target.projectId,
     environment: target.environment,
-    provider: "cloudflare",
+    provider: "cloudflare" as const,
+  };
+  const { data, isLoading, isError } = trpc.infrastructure.getDeploymentCredentialState.useQuery({
+    ...identity,
   }, { enabled: target.provider === "cloudflare" });
+  const saveCredential = trpc.infrastructure.saveDeploymentCredential.useMutation({
+    onSuccess: async () => {
+      setToken("");
+      await utils.infrastructure.getDeploymentCredentialState.invalidate(identity);
+    },
+  });
+  const revokeCredential = trpc.infrastructure.revokeDeploymentCredential.useMutation({
+    onSuccess: async () => { await utils.infrastructure.getDeploymentCredentialState.invalidate(identity); },
+  });
   const label = isLoading
     ? "Checking"
     : isError
       ? "Unavailable"
       : data?.status ?? "Unavailable";
-  return <Badge variant={data?.status === "CONFIGURED" ? "default" : "secondary"}>
-    {text("Credential", "Credential")}: {label}
-  </Badge>;
+  return (
+    <VStack as="section" gap={2}>
+      <Badge variant={data?.status === "CONFIGURED" ? "default" : "secondary"}>
+        {text("Credential", "Credential")}: {label}
+      </Badge>
+      <details>
+        <summary>{text("Configure target account credential", "ตั้งค่า credential ของบัญชีสำหรับ target นี้")}</summary>
+        <VStack as="form" gap={2} onSubmit={event => {
+          event.preventDefault();
+          saveCredential.mutate({ ...identity, token: token.trim() });
+        }}>
+          <p>{text(
+            "This token is encrypted and scoped to this tenant, project, and environment. It is never returned to the browser. Use a token from the dedicated non-production Mini-App Cloudflare account.",
+            "Token นี้จะถูกเข้ารหัสและผูกกับ tenant, project และ environment นี้เท่านั้น ระบบจะไม่ส่ง token กลับไปยัง browser ให้ใช้ token จาก Cloudflare account สำหรับ Mini-App non-production ที่แยกไว้",
+          )}</p>
+          <Label htmlFor={`deployment-credential-${target.id}`}>{text("Cloudflare API token", "Cloudflare API token")}</Label>
+          <Input
+            id={`deployment-credential-${target.id}`}
+            type="password"
+            autoComplete="new-password"
+            value={token}
+            onChange={event => setToken(event.target.value)}
+            minLength={20}
+            maxLength={512}
+            required
+          />
+          <HStack gap={2} wrap="wrap">
+            <Button type="submit" disabled={saveCredential.isPending || token.trim().length < 20}>
+              {saveCredential.isPending ? text("Saving…", "กำลังบันทึก…") : text("Save encrypted token", "บันทึก token แบบเข้ารหัส")}
+            </Button>
+            {data?.status === "CONFIGURED" ? <Button
+              type="button"
+              variant="destructive"
+              disabled={revokeCredential.isPending}
+              onClick={() => revokeCredential.mutate(identity)}
+            >{text("Revoke target token", "เพิกถอน token ของ target")}</Button> : null}
+          </HStack>
+          {saveCredential.error || revokeCredential.error ? <p role="alert">{text("Credential update failed. No credential state was assumed.", "อัปเดต credential ไม่สำเร็จ ระบบจะไม่สมมติสถานะ credential")}</p> : null}
+        </VStack>
+      </details>
+    </VStack>
+  );
 }
 
 function TargetEditor({
@@ -94,7 +147,7 @@ function TargetEditor({
       <Label htmlFor={`target-id-${target.id}`}>{text("Deployment target identity", "ตัวตนของ deployment target")}</Label>
       <Input id={`target-id-${target.id}`} value={fields.deploymentTargetId} onChange={set("deploymentTargetId")} required maxLength={160} />
       <HStack gap={2} wrap="wrap">
-        <VStack gap={1}><Label htmlFor={`account-${target.id}`}>{text("Cloudflare account reference", "อ้างอิงบัญชี Cloudflare")}</Label><Input id={`account-${target.id}`} value={fields.accountRef} onChange={set("accountRef")} maxLength={255} /></VStack>
+        <VStack gap={1}><Label htmlFor={`account-${target.id}`}>{text("Cloudflare account ID (this target only)", "Cloudflare account ID (เฉพาะ target นี้)")}</Label><Input id={`account-${target.id}`} value={fields.accountRef} onChange={set("accountRef")} maxLength={255} /></VStack>
         <VStack gap={1}><Label htmlFor={`worker-${target.id}`}>{text("Worker reference", "อ้างอิง Worker")}</Label><Input id={`worker-${target.id}`} value={fields.workerRef} onChange={set("workerRef")} maxLength={255} /></VStack>
         <VStack gap={1}><Label htmlFor={`container-${target.id}`}>{text("Container application reference", "อ้างอิงแอป Container")}</Label><Input id={`container-${target.id}`} value={fields.containerApplicationRef} onChange={set("containerApplicationRef")} maxLength={255} /></VStack>
       </HStack>
@@ -272,7 +325,7 @@ export default function AdminDeploymentTargets() {
             <Label htmlFor="new-target-id">{text("Deployment target identity", "ตัวตนของ deployment target")}</Label>
             <Input id="new-target-id" value={fields.deploymentTargetId} onChange={setNewField("deploymentTargetId")} required maxLength={160} />
             <HStack gap={2} wrap="wrap">
-              <VStack gap={1}><Label htmlFor="new-target-account">{text("Cloudflare account reference", "อ้างอิงบัญชี Cloudflare")}</Label><Input id="new-target-account" value={fields.accountRef} onChange={setNewField("accountRef")} maxLength={255} /></VStack>
+              <VStack gap={1}><Label htmlFor="new-target-account">{text("Cloudflare account ID (this target only)", "Cloudflare account ID (เฉพาะ target นี้)")}</Label><Input id="new-target-account" value={fields.accountRef} onChange={setNewField("accountRef")} maxLength={255} /></VStack>
               <VStack gap={1}><Label htmlFor="new-target-worker">{text("Worker reference", "อ้างอิง Worker")}</Label><Input id="new-target-worker" value={fields.workerRef} onChange={setNewField("workerRef")} maxLength={255} /></VStack>
               <VStack gap={1}><Label htmlFor="new-target-container">{text("Container application reference", "อ้างอิงแอป Container")}</Label><Input id="new-target-container" value={fields.containerApplicationRef} onChange={setNewField("containerApplicationRef")} maxLength={255} /></VStack>
             </HStack>
