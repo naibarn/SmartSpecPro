@@ -25,3 +25,12 @@
 - Focused proof: `python -m unittest tests.test_adaptive_routing -v` passed 13/13 in both registered worktrees; `py_compile` and `git diff --check` passed in the adaptive worktree.
 - Pending: commit/promotion through a protected PR; live comparable fixed/adaptive SPEC WorkUnit runs; real interruption/recovery at the REASONING selection boundary; source-bound independent review and final checks.
 - Effective per-turn model identity remains UNVERIFIED with installed Codex SDK 0.162.1; SPEC-224 Runner acceptance remains UNVERIFIED.
+
+## Follow-up: reviewer model avoidance scope
+
+- Independent regression: `make_workunit_agent()` searched the newest model receipt when choosing a distinct REVIEW model, including earlier calls from the same reviewer phase. A fixed REVIEW override therefore blocked a second reviewer turn; the WorkUnit ended `BLOCKED_EXTERNAL` before final verification.
+- Repair under review in `/home/dev/worktrees/adaptive-review-profile-fix-20261014`: select the last persisted model from a different phase, preserving the distinct-model rule between phases while allowing multi-turn review within one phase.
+- Failed live adaptive run retained at `/home/dev/worktrees/adaptive-routing-evidence-20261014/adaptive-run`: 210.481 s, 18 completed Codex turns, 544,669 reported subscription tokens, 0 human interventions, 0 restarts. It repaired the independent usage test and reviewer marked that scoped behavior ready for user testing; final verification was blocked by the review routing configuration defect. The configured REASONING-only fault was not consumed because the run never produced a code-failure replanning boundary. Do not count this as REASONING transition or recovery acceptance.
+- The acceptance test reproduces the existing `0/0` AgentRuntime token usage defect before implementation and passed after the live model's two-file fix. SPEC-038 remains PARTIAL because piece/artifact accounting and authenticated browser UAT are outside this slice.
+- Full regression suite for the reviewer-routing fix: `python -m unittest discover -s tests -v` passed 69/69; targeted adaptive routing passed 14/14; syntax compilation and diff checks passed.
+- Next action: promote the reviewer-routing fix through a protected PR, then resume the durable run only after updating the registered runtime harness consistently. Repeat fixed/adaptive WorkUnits on equivalent source and receipts; verify effective model identity stays UNVERIFIED absent per-turn runtime telemetry. Keep SPEC-224 Runner acceptance UNVERIFIED.

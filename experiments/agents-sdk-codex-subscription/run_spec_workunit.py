@@ -53,7 +53,9 @@ def make_workunit_agent(role: str, instructions: str, repo_tools: Any, agent_too
     profile, reason, evidence = select_profile(role, task_context, store.state.get("iterations", []))
     avoid_models: list[str] = []
     if profile.value == "REVIEW":
-        for row in store.connection.execute("SELECT selection_json FROM model_calls ORDER BY rowid DESC"):
+        for row in store.connection.execute(
+            "SELECT selection_json FROM model_calls WHERE phase_id != ? ORDER BY rowid DESC", (phase_id,)
+        ):
             try:
                 requested = json.loads(row["selection_json"] or "{}").get("requestedModel")
             except (TypeError, ValueError, json.JSONDecodeError):
