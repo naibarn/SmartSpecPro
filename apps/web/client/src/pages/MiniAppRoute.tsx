@@ -28,10 +28,10 @@ export default function MiniAppRoute() {
         description={`/miniapp/${miniAppQuery.data.appId}`}
         state="empty"
         empty={{
-          title: previewAvailable ? "Preview runtime unavailable" : "Development preview",
+          title: previewAvailable ? "Preview runtime unavailable" : "BUILDING",
           description: previewAvailable
             ? "A last-known-good artifact is retained, but the preview delivery runtime is not yet connected."
-            : "This private Mini App has been created. Its first deployed preview will appear here when the current build is ready.",
+            : "No runnable artifact is available yet. The Mini App will appear here after its build and deployment complete.",
         }}
       />
     );
