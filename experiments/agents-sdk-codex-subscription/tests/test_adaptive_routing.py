@@ -233,5 +233,20 @@ class DurableSelectionTests(unittest.TestCase):
             resumed.close()
 
 
+    def test_profile_qualified_crash_only_fires_for_matching_real_transition(self):
+        run_id = str(uuid.uuid4())
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = Path(temp)
+            store = DurableRunStore(evidence, run_id=run_id, initial_state={"runId": run_id, "status": "running"})
+            with patch.dict("os.environ", {"AUTONOMY_CRASH_AT": "model.after_selection_persisted@profile=REASONING"}), \
+                 patch("codex_model.os.kill", side_effect=RuntimeError("injected crash")) as kill:
+                from codex_model import _maybe_crash
+                _maybe_crash(store, "model.after_selection_persisted", {"profile": "GENERAL", "requestedModel": "general-model"})
+                kill.assert_not_called()
+                with self.assertRaisesRegex(RuntimeError, "injected crash"):
+                    _maybe_crash(store, "model.after_selection_persisted", {"profile": "REASONING", "requestedModel": "reasoning-model"})
+            store.close()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,3 +16,12 @@
 - Scope boundary: experimental development pilot only. Production Chat/Team Gateway policy, broad concurrent writes, production resources, Moli UAT and SPEC-224 Runner acceptance are unchanged and not claimed.
 - Integration: PR [#936](https://github.com/naibarn/SmartSpecPro/pull/936), source head `603995022e83580bae9914278b14c1b65b2250a3`, merged to configured canonical `main` at `213f392cf7f59553032a52095068772ce31b21e5`. `progressive_integration_gate` passed; `build-preview` and cleanup were skipped by workflow. The merge SHA is confirmed as `origin/main`.
 - Post-integration verification: experiment suite passed 66/66 against `213f392cf7f59553032a52095068772ce31b21e5` (`python -m unittest discover -s tests`, from the experiment directory). Repository-wide typecheck/build, UAT, production and SPEC-224 acceptance remain unverified; no repository-wide typecheck/build was run in this shared implementation session.
+
+## Follow-up: profile-scoped interruption acceptance
+
+- Acceptance workspace: `/home/dev/worktrees/adaptive-acceptance-adaptive-20261014` (registered Task worktree, owner session `codex-adaptive-acceptance-adaptive-20261014`). The fixed-model comparison workspace is `/home/dev/worktrees/adaptive-acceptance-fixed-20261014`.
+- Base canonical revision: `8450ab2b6809fd2aa718bdf1afd7f059066e10ce`.
+- This checkpoint adds a profile-qualified crash trigger to the existing model-selection fault injector. `model.after_selection_persisted@profile=REASONING` now waits through GENERAL selections and injects only after the REASONING selection receipt is durable. The same change is prepared in both comparison worktrees so the benchmark uses the same harness.
+- Focused proof: `python -m unittest tests.test_adaptive_routing -v` passed 13/13 in both registered worktrees; `py_compile` and `git diff --check` passed in the adaptive worktree.
+- Pending: commit/promotion through a protected PR; live comparable fixed/adaptive SPEC WorkUnit runs; real interruption/recovery at the REASONING selection boundary; source-bound independent review and final checks.
+- Effective per-turn model identity remains UNVERIFIED with installed Codex SDK 0.162.1; SPEC-224 Runner acceptance remains UNVERIFIED.

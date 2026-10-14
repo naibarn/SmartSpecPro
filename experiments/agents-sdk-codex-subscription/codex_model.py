@@ -43,13 +43,24 @@ DISPATCH_SCHEMA: dict[str, Any] = {
 
 def _maybe_crash(store: DurableRunStore, boundary: str, payload: dict[str, Any]) -> None:
     requested = {part.strip() for part in os.getenv("AUTONOMY_CRASH_AT", "").split(",") if part.strip()}
-    if boundary not in requested:
+    matching = []
+    for trigger in requested:
+        trigger_boundary, separator, qualifier = trigger.partition("@")
+        if trigger_boundary != boundary:
+            continue
+        if separator:
+            key, equals, expected = qualifier.partition("=")
+            if not equals or str(payload.get(key.strip(), "")) != expected.strip():
+                continue
+        matching.append(trigger)
+    if not matching:
         return
+    trigger = sorted(matching)[0]
     consumed = store.state.setdefault("crashConsumed", [])
-    if boundary in consumed or any(str(item).startswith(f"{boundary}:") for item in consumed):
+    if trigger in consumed or any(str(item).startswith(f"{trigger}:") for item in consumed):
         return
-    consumed.append(boundary)
-    store.event("fault.injected", {"boundary": boundary, **payload}, stable_key=f"fault:{boundary}")
+    consumed.append(trigger)
+    store.event("fault.injected", {"boundary": boundary, "trigger": trigger, **payload}, stable_key=f"fault:{trigger}")
     os.kill(os.getpid(), signal.SIGKILL)
 
 
