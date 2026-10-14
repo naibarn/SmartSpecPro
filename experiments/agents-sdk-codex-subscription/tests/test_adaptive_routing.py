@@ -17,7 +17,7 @@ from adaptive_routing import (
     select_profile,
 )
 from durable_store import DurableRunStore
-from run_spec_workunit import is_capacity_error
+from run_spec_workunit import is_capacity_error, make_workunit_agent
 
 
 def model(model_id: str, efforts: set[str] | None = None, default: bool = False) -> CatalogModel:
@@ -245,6 +245,25 @@ class DurableSelectionTests(unittest.TestCase):
                 kill.assert_not_called()
                 with self.assertRaisesRegex(RuntimeError, "injected crash"):
                     _maybe_crash(store, "model.after_selection_persisted", {"profile": "REASONING", "requestedModel": "reasoning-model"})
+            store.close()
+
+
+class WorkUnitReviewRoutingTests(unittest.TestCase):
+    def test_review_model_avoidance_uses_prior_phase_not_same_phase_turns(self):
+        run_id = str(uuid.uuid4())
+        with tempfile.TemporaryDirectory() as temp:
+            store = DurableRunStore(Path(temp), run_id=run_id, initial_state={"runId": run_id, "status": "running"})
+            implementation = store.start_phase("implementation", 1, {"input": "work"}, 3)
+            reviewer = store.start_phase("review", 1, {"input": "review"}, 3)
+            store.reserve_model_call(str(uuid.uuid4()), implementation["phase_id"], "implementer", {"instruction": "implement"},
+                                     selection={"profile": "GENERAL", "requestedModel": "general-model"})
+            store.reserve_model_call(str(uuid.uuid4()), reviewer["phase_id"], "independent_reviewer_1", {"instruction": "review"},
+                                     selection={"profile": "REVIEW", "requestedModel": "review-model"})
+            with patch("run_spec_workunit.select_profile", return_value=(ModelProfile.REVIEW, "independent", [])), \
+                 patch("run_spec_workunit.make_agent") as make_agent:
+                make_workunit_agent("independent_reviewer_1", "review", None, [], lambda _item: None,
+                                    store, reviewer["phase_id"], "low-risk task")
+            self.assertEqual(make_agent.call_args.kwargs["routing"]["avoidModels"], ["general-model"])
             store.close()
 
 
