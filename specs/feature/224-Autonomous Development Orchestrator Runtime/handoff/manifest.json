@@ -892,7 +892,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
+    "expected_canonical_sha": "1ebdae926ea420f8af0dad6173454fe864ff4479",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
@@ -1082,7 +1082,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 68,
+  "generation": 70,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1109,7 +1109,8 @@
       "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
       "9bfe80208293b47153b4736e5c8a29ac98609e8b",
       "0683e8eec2324672355e3329f9d05a987462f6b7",
-      "5bc461753c6fbf968b9874257892631ad8c4b089"
+      "5bc461753c6fbf968b9874257892631ad8c4b089",
+      "45783a68631008ea604b3ef5c4dbcda03193d2d2"
     ],
     "mapping": [
       {
@@ -1227,6 +1228,21 @@
           "scripts/development-lifecycle/test_workspace_authority.py"
         ],
         "source_sha": "5bc461753c6fbf968b9874257892631ad8c4b089"
+      },
+      {
+        "coverage": "PARTIAL; focused checkpoint-livelock recovery slice, not mapped to all SPEC-224 requirements",
+        "evidence_path": "/mnt/SmartSpecDev/evidence/spec224-checkpoint-livelock-fix-20261014/HANDOFF.md",
+        "integrated_sha": "1ebdae926ea420f8af0dad6173454fe864ff4479",
+        "scope": "SPEC-224 PR #948: checkpoint hash deduplication, meaningful progress signatures, bounded MaxTurns diagnosis/replanning, supervisor continuation guard, capacity-wait separation, Codex thread reuse regression coverage, and authorized disposable Developer WorkUnit acceptance",
+        "source_paths": [
+          "experiments/agents-sdk-codex-subscription/durable_store.py",
+          "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+          "experiments/agents-sdk-codex-subscription/supervise_run.py",
+          "experiments/agents-sdk-codex-subscription/tests/test_durable_store.py",
+          "experiments/agents-sdk-codex-subscription/tests/test_phase_progress.py",
+          "experiments/agents-sdk-codex-subscription/tests/test_supervise_run.py"
+        ],
+        "source_sha": "45783a68631008ea604b3ef5c4dbcda03193d2d2"
       }
     ],
     "source_paths": [
@@ -1257,11 +1273,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
+    "canonical_sha": "1ebdae926ea420f8af0dad6173454fe864ff4479",
     "integrated": true,
-    "integrated_at": "2026-10-12T01:52:25Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/848",
-    "source_sha": "b0741ba95d47ddf9cb273e80fdb3aa19d4990352"
+    "integrated_at": "2026-10-14T15:23:54Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/948",
+    "source_sha": "45783a68631008ea604b3ef5c4dbcda03193d2d2"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2420,7 +2436,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T01:56:59.943250Z",
+  "updated_at": "2026-10-14T15:38:52.772559Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2528,7 +2544,10 @@
         "source_sha": "5bc461753c6fbf968b9874257892631ad8c4b089",
         "status": "PARTIAL"
       },
-      "orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md"
+      "orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md",
+      "/mnt/SmartSpecDev/evidence/spec224-checkpoint-livelock-fix-20261014/HANDOFF.md",
+      "/mnt/SmartSpecDev/evidence/spec224-live-acceptance-20261014/b68dbd07-e7c8-4d62-baef-b0a990888107/runtime.sqlite3",
+      "/mnt/SmartSpecDev/evidence/spec224-live-acceptance-20261014/b68dbd07-e7c8-4d62-baef-b0a990888107/browser-supplemental.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
