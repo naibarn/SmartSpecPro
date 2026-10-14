@@ -86,7 +86,7 @@ describe("MiniAppRoute", () => {
     expect(screen.queryByText("Research Notes runtime")).not.toBeInTheDocument();
   });
 
-  it("renders the private Development Preview status at the canonical Mini App route", async () => {
+  it("reports BUILDING when the canonical Mini App route has no runnable artifact", async () => {
     mocks.miniAppParams = { appId: "app_created" };
     mocks.appQuery.data = {
       appId: "app_created",
@@ -94,7 +94,8 @@ describe("MiniAppRoute", () => {
       lastKnownGoodArtifactRef: null,
     };
     render(<MiniAppRoute />);
-    expect(await screen.findByText("This private Mini App has been created. Its first deployed preview will appear here when the current build is ready.")).toBeInTheDocument();
+    expect(await screen.findByText("BUILDING")).toBeInTheDocument();
+    expect(await screen.findByText("No runnable artifact is available yet. The Mini App will appear here after its build and deployment complete.")).toBeInTheDocument();
     expect(mocks.resolveMiniApp).toHaveBeenCalledWith({ appId: "app_created" }, { enabled: true, retry: false });
   });
 });

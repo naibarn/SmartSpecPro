@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "20e53af08487c22ed1eb69b8b0e1207745118345",
+    "expected_canonical_sha": "3f6c7cde3a2a84e3237726738b6895c52c18b46a",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Complete the gateway-only Skill execution adapter and sandboxed artifact runtime/publication using existing approved capabilities; then run Mini-App delivery E2E against a registered isolated non-production Cloudflare target with Internet Browser acceptance. Do not use Production Worker/R2 or Codex Subscription/direct provider routes. Keep Runner-authorized SPEC-224 M6/M7 and PR #944 as separate tracks.",
-    "next_ready_workunit": "IMPLEMENTATION_READY: implement Gateway-only Skill execution for Mini-App Factory plan/implement/test/repair/verify using existing registry and Agents runtime. Then add the isolated artifact runtime/deployment path and run E2E once an authorized non-production Cloudflare target exists. Functional delivery, SPEC-224 normative completion, and protected Runner acceptance remain separate and incomplete.",
-    "reactivation_predicate": "A registered isolated non-production Preview target with verified ownership, storage/runtime bindings, deployment authority, and internet Browser capability becomes available; Gateway-backed Skill execution is selected for every Factory model call; test tenant owner and denial principals are available.",
-    "resume_point": "Current canonical origin/main SHA 20e53af08487c22ed1eb69b8b0e1207745118345 (PR #955 handoff record merged). Code safety change is PR #954 at f36b8315d34f8e4c4564b41cecddd22f886c98a7: Mini-App screenshot analysis now fails closed without a Gateway-backed Skill vision adapter; focused tests 4 files / 24 tests passed, required PR checks passed, build-preview skipped. Remaining work is Gateway-only model execution for all Factory phases, sandboxed artifact runtime, non-production Cloudflare deployment, real Internet Browser UAT and ownership/publication acceptance. No authorized non-production Cloudflare target was available in this session; production resources were not used.",
-    "waiting_predicate": "Do not retry hosted deployment or Internet Browser acceptance until a registered isolated non-production Preview target has verified ownership, storage/runtime bindings, deployment authority and Internet Browser reachability. Do not route Factory calls through Codex Subscription, direct provider API, OPENAI_API_KEY, or production resources. This target wait does not block safe code work; Runner-authorized M6/M7 and PR #944 remain separate."
+    "next_action": "Continue the functional Mini-App delivery path: finish truthful BUILDING state, connect every text-only Factory phase to Skill execution through the SmartAIHub Gateway, then implement the isolated static artifact runtime and release activation using existing contracts. Before deployment, an owner must make a separate non-production Cloudflare account, R2 bucket, Worker and preview hostname available, enter the account ID and least-privilege target token in the merged Admin Deployment Targets UI, and make the existing SmartAIHub admin UI available from an authorized non-production host. Do not use the production tunnel/account, Codex Subscription, direct-provider API, or production data. Continue Runner-authorized SPEC-224 M6/M7 and PR #944 separately.",
+    "next_ready_workunit": "IMPLEMENTATION_READY: show BUILDING when no runnable artifact exists; then route Mini-App Factory text-model phases through existing Skill→SmartAIHub Gateway. After that, consume the owner-provisioned non-production Cloudflare target and deliver the real HTTPS preview with ownership, browser and publish/unpublish evidence. Functional Mini-App delivery, SPEC-224 normative completion and Protected Runner Acceptance remain separate states.",
+    "reactivation_predicate": "An authorized non-production SmartAIHub admin host is available for target setup, and the owner creates a separate Cloudflare account with a dedicated R2 bucket, isolated Worker/runtime and HTTPS preview hostname, then configures the account ID and target-scoped least-privilege token through Admin Deployment Targets. A disposable test tenant/owner and same-tenant/cross-tenant/anonymous principals are available for E2E.",
+    "resume_point": "Canonical origin/main is 3f6c7cde3a2a84e3237726738b6895c52c18b46a, including PR #957 gateway-native Native Skill transport and PR #958 target-scoped Cloudflare admin configuration. PR #957 focused pytest passed 24 tests; PR #958 AdminDeploymentTargets tests passed 5/5, Cloudflare credential service tests passed, progressive_integration_gate and mocked SPEC-308 browser simulation passed. PR Preview was skipped. The current Mini-App route is being corrected to show BUILDING with no artifact. There is still no owner-provisioned non-production Cloudflare account/target, no isolated artifact runtime or deployment ID, and no real Internet Browser/tenant/publish evidence. Existing production Cloudflare tunnel points at the main platform and remains unused for this acceptance.",
+    "waiting_predicate": "Do not claim or attempt Cloudflare deployment/Internet acceptance until the dedicated non-production account, isolated Worker, separate R2 bucket, preview hostname, target-scoped least-privilege token, and non-production SmartAIHub admin configuration host are available. Continue code/test work that requires no external credentials. Keep all production resources and data untouched; keep Factory model calls on Skill→Gateway only; keep Runner acceptance and PR #944 separate."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1052,7 +1052,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.",
+    "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 81,
+  "generation": 83,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1161,7 +1161,9 @@
       "0683e8eec2324672355e3329f9d05a987462f6b7",
       "5bc461753c6fbf968b9874257892631ad8c4b089",
       "45783a68631008ea604b3ef5c4dbcda03193d2d2",
-      "7fa2103c437462de3ff5e5ddac66fdc4a6d725a0"
+      "7fa2103c437462de3ff5e5ddac66fdc4a6d725a0",
+      "1d080e1e0a44470cbf0ae5da6a615f432c35fce4",
+      "265b7f79ed26e7df9931bf80f6b0e0099b10ae12"
     ],
     "mapping": [
       {
@@ -1336,11 +1338,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "20e53af08487c22ed1eb69b8b0e1207745118345",
+    "canonical_sha": "3f6c7cde3a2a84e3237726738b6895c52c18b46a",
     "integrated": true,
-    "integrated_at": "2026-10-14T17:28:02Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/955",
-    "source_sha": "53eec027d83b346f754496736139e1aa2528fc6a"
+    "integrated_at": "2026-10-14T17:55:25Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/958",
+    "source_sha": "265b7f79ed26e7df9931bf80f6b0e0099b10ae12"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2375,7 +2377,7 @@
           "path": "apps/web/server/routes/jobControlPlane.ts"
         }
       ],
-      "next_action": "R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.",
+      "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -2680,7 +2682,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-14T17:28:22.482710Z",
+  "updated_at": "2026-10-14T17:57:57.489340Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2805,6 +2807,24 @@
         "scope": "Candidate 7fa2103c437462de3ff5e5ddac66fdc4a6d725a0; focused Vitest run: six files / 50 tests passed, covering owner-only private resolution, public visibility revocation, idempotent factory URL persistence/projection, API procedures, and Mini App/Task Control UI. Static drizzle-kit check passed with placeholder DATABASE_URL; no database connection or deployment. `git diff --check` passed.",
         "source_sha": "7fa2103c437462de3ff5e5ddac66fdc4a6d725a0",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "9a9011f5d871cb3ae1b4a9e36765d3651646d6a6",
+        "kind": "SPEC224_GATEWAY_NATIVE_SKILL_TRANSPORT",
+        "path": "python-backend/tests/api/test_internal_openai_agents_runtime.py",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/957",
+        "scope": "Native Skill Runtime in the internal Agents API now receives a Gateway-backed Responses model using the existing request attribution token, fails closed when that model is absent, and emits gateway route/model trace metadata. Focused pytest passed 24 tests; no claim that Mini-App Factory phases use the Native Skill route or that all Factory calls are gateway-only.",
+        "source_sha": "1d080e1e0a44470cbf0ae5da6a615f432c35fce4",
+        "status": "PARTIAL"
+      },
+      {
+        "canonical_sha": "3f6c7cde3a2a84e3237726738b6895c52c18b46a",
+        "kind": "SPEC224_SCOPED_MINIAPP_CLOUDFLARE_ADMIN",
+        "path": "apps/web/client/src/components/admin/AdminDeploymentTargets.test.tsx",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/958",
+        "scope": "Admin target editor now accepts a per-target Cloudflare account ID and saves/revokes the exact tenant/project/environment token through the existing encrypted deployment credential APIs. Focused UI tests passed 5/5; progressive integration and mocked browser gates passed. No Cloudflare account, R2 bucket, Worker, hostname, or deployment was provisioned.",
+        "source_sha": "265b7f79ed26e7df9931bf80f6b0e0099b10ae12",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",

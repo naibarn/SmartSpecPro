@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1259 unresolved of 1259
-- Next action: R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.
-- Manifest generation: 81
+- Next action: Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.
+- Manifest generation: 83
 
 ## Source-declared status and relationship claims
 
