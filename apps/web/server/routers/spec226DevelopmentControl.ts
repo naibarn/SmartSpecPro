@@ -25,7 +25,7 @@ import {
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
 import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
 import { prepareSpec224VisualReferenceInputs } from "../services/spec224VisualReferenceIntake";
-import { analyzeMiniAppVisualReferences, MiniAppVisionCapabilityUnavailableError } from "../services/miniAppVisualBlueprint";
+import { analyzeMiniAppVisualReferences } from "../services/miniAppVisualBlueprint";
 import { designPreferencesSchema } from "../../shared/designIntelligence";
 import { getWorkspaceAuthorityProjectReadModel } from "../services/workspaceAuthorityProjectReadModel";
 import {
@@ -466,26 +466,22 @@ export const spec226DevelopmentControlRouter = router({
                 ...(typeof reference.viewportHint === "string" ? { viewportHint: reference.viewportHint } : {}),
               };
             });
-            try {
-              const analysis = await analyzeMiniAppVisualReferences({
-                userId: scope.actorId,
-                tenantId: scope.tenantId,
-                runId,
-                references,
-                designPreferences: visualInputs.manifest.designPreferences as Record<string, unknown>,
-              });
-              const blueprintBytes = Buffer.from(JSON.stringify(analysis.blueprint), "utf8");
-              visualBlueprintArtifact = { path: "visual-blueprint.json", contentBase64: blueprintBytes.toString("base64") };
-              visualBlueprintMetadata = {
-                schemaVersion: analysis.blueprint.schemaVersion,
-                sha256: createHash("sha256").update(blueprintBytes).digest("hex"),
-                inputDigest: analysis.inputDigest,
-                modelId: analysis.modelId,
-              };
-            } catch (error) {
-              if (!(error instanceof MiniAppVisionCapabilityUnavailableError)) throw error;
-              // Keep screenshot-only requests viable through the already-authorized Runner vision path.
-            }
+            // A visual request must not silently fall through to a non-Gateway model path.
+            const analysis = await analyzeMiniAppVisualReferences({
+              userId: scope.actorId,
+              tenantId: scope.tenantId,
+              runId,
+              references,
+              designPreferences: visualInputs.manifest.designPreferences as Record<string, unknown>,
+            });
+            const blueprintBytes = Buffer.from(JSON.stringify(analysis.blueprint), "utf8");
+            visualBlueprintArtifact = { path: "visual-blueprint.json", contentBase64: blueprintBytes.toString("base64") };
+            visualBlueprintMetadata = {
+              schemaVersion: analysis.blueprint.schemaVersion,
+              sha256: createHash("sha256").update(blueprintBytes).digest("hex"),
+              inputDigest: analysis.inputDigest,
+              modelId: analysis.modelId,
+            };
           }
         }
         const factoryWorkUnit = factoryPipeline ? createDevelopmentWorkUnit({
