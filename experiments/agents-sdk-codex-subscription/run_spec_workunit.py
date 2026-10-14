@@ -298,7 +298,7 @@ def project_browser_uat(contract: WorkUnitContract, run_id: str, receipts: list[
         "projectPath": str(browser.get("projectPath", "")),
         "contractSourceSha256": expected_source,
         "sourceSha256": expected_source,
-        "operationId": receipt.get("operation_id"),
+        "toolOperationId": receipt.get("operation_id"),
     }
     mismatches = [key for key, value in expected.items() if result.get(key) != value]
     if mismatches:
@@ -317,7 +317,8 @@ def project_browser_uat(contract: WorkUnitContract, run_id: str, receipts: list[
     return {"status": "PASS", "runId": run_id, "taskId": contract.task_id,
             "workspaceId": contract.workspace_id, "workspace": str(contract.root),
             "sourceRevision": contract.source_revision, "sourceSha256": result["contractSourceSha256"],
-            "browserResult": "PASS", "operationId": receipt.get("operation_id") or result.get("operationId"),
+            "browserResult": "PASS", "toolOperationId": receipt.get("operation_id"),
+            "browserOperationId": result.get("operationId"),
             "completedToolReceipt": True, "pendingToolReceiptCount": 0}
 
 
@@ -715,7 +716,7 @@ class ScopedRepoTools:
         result["harnessSha256"] = harness_sha
         result.update({"runId": self.store.run_id, "taskId": self.contract.task_id,
                        "workspaceId": self.contract.workspace_id, "workspace": str(self.contract.root),
-                       "sourceRevision": self.contract.source_revision})
+                       "sourceRevision": self.contract.source_revision, "toolOperationId": operation_id})
         self.store.complete_tool(operation_id, result, effect_hash=source_sha)
         return json.dumps(result, ensure_ascii=False)
 

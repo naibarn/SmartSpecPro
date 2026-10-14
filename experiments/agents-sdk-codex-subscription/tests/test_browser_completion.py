@@ -44,7 +44,8 @@ class BrowserCompletionTests(unittest.TestCase):
             "pageErrors": [],
             "unexpectedConsoleErrors": [],
             "blockedExternalRequests": [],
-            "operationId": "op-1",
+            "operationId": "browser-op-1",
+            "toolOperationId": "op-1",
             "runner": {"exitCode": 0},
         }
         result.update(overrides)
@@ -90,6 +91,11 @@ class BrowserCompletionTests(unittest.TestCase):
         projected = project_browser_uat(self.contract, "run-1", [self.receipt(workspaceId="workspace-old")], [])
         self.assertEqual(projected["status"], "FAILED")
         self.assertIn("workspaceId", projected["mismatchedBindings"])
+
+    def test_tool_operation_id_must_match_durable_receipt(self):
+        projected = project_browser_uat(self.contract, "run-1", [self.receipt(toolOperationId="other-op")], [])
+        self.assertEqual(projected["status"], "FAILED")
+        self.assertIn("toolOperationId", projected["mismatchedBindings"])
 
 
 if __name__ == "__main__":
