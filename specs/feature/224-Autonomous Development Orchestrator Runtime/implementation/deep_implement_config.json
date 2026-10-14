@@ -1,0 +1,48 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014/specs/feature/224-Autonomous Development Orchestrator Runtime/sections",
+  "target_dir": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+  "state_dir": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014/specs/feature/224-Autonomous Development Orchestrator Runtime/implementation",
+  "git_root": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-local-fast-lane",
+    "section-02-atomic-continuation",
+    "section-03-ci-candidate-binding",
+    "section-04-working-ui-acceptance"
+  ],
+  "sections_state": {
+    "section-01-local-fast-lane": {
+      "status": "in_progress",
+      "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+      "next_action": "Complete focused developer-fast-lane implementation and verify exact-source acceptance."
+    },
+    "section-02-atomic-continuation": {
+      "status": "in_progress",
+      "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+      "next_action": "Finalize fenced continuation implementation and scoped recovery verification."
+    },
+    "section-04-working-ui-acceptance": {
+      "status": "in_progress",
+      "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
+      "next_action": "Bind the completed local Mini-App test and browser receipts to the implementation checkpoint."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-14T11:41:57.136867+00:00",
+  "generation": 4,
+  "updated_at": "2026-10-14T11:42:13.192858+00:00",
+  "progress": {
+    "active_section": "section-04-working-ui-acceptance",
+    "next_action": "Bind the completed local Mini-App test and browser receipts to the implementation checkpoint.",
+    "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014"
+  }
+}

@@ -3,9 +3,11 @@ from __future__ import annotations
 import sys
 import sqlite3
 import json
+import subprocess
 import tempfile
 import unittest
 import uuid
+from types import SimpleNamespace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,8 +16,10 @@ from run_spec_workunit import (
     contract_scope_snapshot,
     iteration_evidence_summary,
     prior_contract_scope_from_model_calls,
+    reconcile_interrupted_write_intents,
     repeated_patch_rejection_for_phase,
     repeated_patch_rejection_reason,
+    source_diff_from_baseline,
     unexecuted_patch_dispatch_streak,
 )
 from durable_store import DurableRunStore
@@ -35,6 +39,40 @@ class RepeatedPatchRejectionTests(unittest.TestCase):
         self.assertNotEqual(contract_scope_snapshot(original), contract_scope_snapshot(widened))
         changed_acceptance = {**refreshed, "acceptanceCriteria": ["Skip tenant checks"]}
         self.assertNotEqual(contract_scope_snapshot(original), contract_scope_snapshot(changed_acceptance))
+
+
+class DeveloperRecoveryEvidenceTests(unittest.TestCase):
+    def test_source_diff_includes_allowlisted_untracked_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+            (root / "tracked.txt").write_text("base\n")
+            subprocess.run(["git", "add", "tracked.txt"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True)
+            base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True, check=True).stdout.strip()
+            (root / "new-allowlisted.txt").write_text("new task output\n")
+            paths, diff = source_diff_from_baseline(SimpleNamespace(root=root, source_revision=base, allowed_files=("tracked.txt", "new-allowlisted.txt")))
+            self.assertEqual(paths, ["new-allowlisted.txt"])
+            self.assertIn("new task output", diff)
+
+    def test_interrupted_write_reconciliation_records_exact_effect_without_rewriting(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "output.txt"
+            content = "durable result\n"
+            target.write_text(content)
+            run_id = str(uuid.uuid4())
+            with DurableRunStore(root / "evidence", run_id=run_id, initial_state={"runId": run_id, "status": "running"}) as store:
+                operation = str(uuid.uuid4())
+                store.begin_tool(operation, "implementation-1", "write_file", {"path": "output.txt", "content": content})
+                settled = reconcile_interrupted_write_intents(store, SimpleNamespace(root=root, writable_files=("output.txt",)))
+                self.assertEqual(settled[0]["status"], "RECOVERED_EXACT_EFFECT")
+                receipt = store.get_tool_receipt(operation)
+                self.assertEqual(receipt["status"], "completed")
+                self.assertEqual(target.read_text(), content)
+                self.assertEqual(store.pending_tool_receipts(), [])
 
     def test_legacy_contract_scope_is_recovered_from_durable_planner_request(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

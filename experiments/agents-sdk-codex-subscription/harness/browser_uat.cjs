@@ -60,13 +60,15 @@ async function main() {
     await page.locator('#split-form button[type="submit"]').click();
     const shareLabels = await page.locator(SHARE_SELECTOR).allTextContents();
     const shares = shareLabels.map(shareTextToCents);
-    if (shares.length !== 3 || shares.reduce((sum, cents) => sum + cents, 0) !== 1001) {
-      throw new Error(`Expected three shares totaling 1001 cents, got ${JSON.stringify(shares)}`);
+    if (JSON.stringify(shares) !== JSON.stringify([334, 334, 333]) || shares.reduce((sum, cents) => sum + cents, 0) !== 1001) {
+      throw new Error(`Expected deterministic shares [334, 334, 333] totaling 1001 cents, got ${JSON.stringify(shares)}`);
     }
     receipt.interactions.push({ action: 'calculate', shares, reconciledTotalCents: 1001 });
     await page.getByRole('button', { name: 'Reset' }).click();
-    if (await page.locator('#results').isVisible()) throw new Error('Reset left results visible');
-    receipt.interactions.push({ action: 'reset', resultsHidden: true });
+    if (await page.locator('#results').isVisible() || await page.locator('#results li').count() !== 0) throw new Error('Reset left shares visible');
+    if (await page.getByLabel('Bill total in dollars').inputValue() || await page.getByLabel('Number of people').inputValue()) throw new Error('Reset did not clear inputs');
+    if (await page.getByRole('alert', { includeHidden: true }).isVisible().catch(() => false)) throw new Error('Reset left an error visible');
+    receipt.interactions.push({ action: 'reset', resultsHidden: true, sharesCleared: true, inputsCleared: true, errorHidden: true });
     await page.getByLabel('Bill total in dollars').fill('0.001');
     await page.getByLabel('Number of people').fill('3');
     await page.locator('#split-form button[type="submit"]').click();
@@ -74,14 +76,26 @@ async function main() {
     const customValidationVisible = await customValidation.isVisible().catch(() => false);
     const customMessage = customValidationVisible ? await customValidation.innerText() : '';
     const invalidAmountShares = await page.locator(SHARE_SELECTOR).count();
-    if (!customValidationVisible || invalidAmountShares !== 0) {
+    const amount = page.getByLabel('Bill total in dollars');
+    const describedBy = await amount.getAttribute('aria-describedby');
+    if (!customValidationVisible || !customMessage || invalidAmountShares !== 0 || !describedBy || describedBy !== await customValidation.getAttribute('id')) {
       throw new Error(`Sub-cent amount was not rejected with an accessible error (alert=${customValidationVisible}, shares=${invalidAmountShares})`);
     }
     receipt.interactions.push({
       action: 'invalid_subcent_amount',
       validation: 'application',
       errorVisible: Boolean(customMessage),
+      noShares: invalidAmountShares === 0,
+      errorAssociated: describedBy === await customValidation.getAttribute('id'),
     });
+    await amount.fill('10.01');
+    await page.getByLabel('Number of people').fill('1.0000000000000001');
+    await page.locator('#split-form button[type="submit"]').click();
+    const peopleError = page.getByRole('alert');
+    if (!(await peopleError.isVisible()) || await page.locator(SHARE_SELECTOR).count() !== 0) {
+      throw new Error('A fractional people value that rounds to an integer was accepted');
+    }
+    receipt.interactions.push({ action: 'invalid_fractional_people', rejected: true, noShares: true });
     const screenshotPath = path.join(path.dirname(receiptPath), `browser-uat-${runId}-screenshot.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     receipt.screenshot = screenshotPath;

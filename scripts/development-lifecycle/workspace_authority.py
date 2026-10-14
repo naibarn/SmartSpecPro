@@ -28,6 +28,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
+from urllib.parse import urlsplit
 
 
 _CANONICAL_SOURCE_SPEC = importlib.util.spec_from_file_location(
@@ -257,6 +258,7 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
               owner_host TEXT,
               owner_process_start TEXT,
               owner_lease_expires_at REAL,
+              owner_fencing_version INTEGER NOT NULL DEFAULT 0,
               owner_state TEXT NOT NULL DEFAULT 'NONE',
               task_id TEXT,
               created_by TEXT,
@@ -286,6 +288,13 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
             );
             """
         )
+        workspace_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(workspaces)")
+        }
+        if "owner_fencing_version" not in workspace_columns:
+            connection.execute(
+                "ALTER TABLE workspaces ADD COLUMN owner_fencing_version INTEGER NOT NULL DEFAULT 0"
+            )
         yield connection
     finally:
         connection.close()
@@ -437,14 +446,25 @@ def _upsert_workspace(
             host = socket.gethostname() if owner_pid is not None else previous_owner.get("owner_host")
             process_start = owner_start if owner_pid is not None else previous_owner.get("owner_process_start")
             expiry = expires if owner_lease_seconds is not None else previous_owner.get("owner_lease_expires_at")
+            previous_session = previous_owner.get("owner_session_id")
+            previous_pid = previous_owner.get("owner_pid")
+            owner_changed = bool(
+                old
+                and (session != previous_session or pid != previous_pid)
+            )
+            if owner_changed and (previous_session or previous_pid):
+                raise WorkspaceAuthorityError("WORKSPACE_OWNER_TRANSFER_REQUIRED")
+            owner_fence = int(previous_owner.get("owner_fencing_version") or 0)
+            if (session or pid) and not (previous_session or previous_pid):
+                owner_fence += 1
             owner_state = "LEASED" if session or pid else "NONE"
             db.execute(
                 """INSERT INTO workspaces(
                    workspace_id,project_id,repository_id,common_dir,git_dir,location,generation,role,
                    head_sha,branch,upstream,dirty,dirty_path_count,owner_session_id,owner_pid,owner_host,
-                   owner_process_start,owner_lease_expires_at,owner_state,task_id,created_by,created_at,
+                   owner_process_start,owner_lease_expires_at,owner_fencing_version,owner_state,task_id,created_by,created_at,
                    last_verified_state,last_verified_at,convergence_state,lifecycle_state,recovery_linkage
-                   ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(workspace_id) DO UPDATE SET
                    location=excluded.location,role=excluded.role,head_sha=excluded.head_sha,
                    branch=excluded.branch,upstream=excluded.upstream,dirty=excluded.dirty,
@@ -452,6 +472,7 @@ def _upsert_workspace(
                    owner_pid=excluded.owner_pid,owner_host=excluded.owner_host,
                    owner_process_start=excluded.owner_process_start,
                    owner_lease_expires_at=excluded.owner_lease_expires_at,owner_state=excluded.owner_state,
+                   owner_fencing_version=excluded.owner_fencing_version,
                    task_id=COALESCE(excluded.task_id,workspaces.task_id),
                    created_by=COALESCE(excluded.created_by,workspaces.created_by),
                    last_verified_state=excluded.last_verified_state,last_verified_at=excluded.last_verified_at,
@@ -465,7 +486,7 @@ def _upsert_workspace(
                     workspace_id, policy["project_id"], policy["repository_id"], str(workspace_common_dir), str(git_dir),
                     str(workspace), generation, role, facts["head_sha"], facts["branch"], facts["upstream"],
                     int(facts["dirty"]), facts["dirty_path_count"], session, pid, host, process_start,
-                    expiry, owner_state, task_id, created_by or os.environ.get("USER"), now,
+                    expiry, owner_fence, owner_state, task_id, created_by or os.environ.get("USER"), now,
                     "OBSERVED", now, "UNKNOWN", "ACTIVE", old.get("recovery_linkage") if old else None,
                 ),
             )
@@ -1018,6 +1039,117 @@ def register_workspace(
     )
 
 
+def claim_registered_workspace(
+    repo: Path,
+    policy_path: Path | None,
+    workspace_id: str,
+    *,
+    task_id: str,
+    expected_head_sha: str,
+    developer_login: str,
+    owner_session_id: str,
+    owner_pid: int,
+    owner_lease_seconds: int = 300,
+) -> dict[str, Any]:
+    """Atomically reclaim a local task worktree for a verified repo developer.
+
+    This is limited to local TASK_WORKTREE source work. It grants no runner,
+    production, tenant-data, GitHub-write, or deployment authority.
+    """
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    if not developer_login or not owner_session_id or not task_id:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_IDENTITY_REQUIRED")
+    if not 30 <= owner_lease_seconds <= 3600:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_LEASE_OUT_OF_RANGE")
+    if not _pid_alive(owner_pid, _process_start(owner_pid)):
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_PROCESS_NOT_ACTIVE")
+
+    remote = _canonical_remote_url(repo, policy["remote"]) or str(policy["remote"])
+    parsed = urlsplit(remote)
+    if parsed.scheme == "ssh" and parsed.hostname:
+        host = parsed.hostname
+        repo_path = parsed.path.lstrip("/")
+    elif remote.startswith("git@") and ":" in remote:
+        host, repo_path = remote[4:].split(":", 1)
+    else:
+        host, repo_path = parsed.hostname or "", parsed.path.lstrip("/")
+    repository = repo_path.removesuffix(".git").strip("/")
+    if not host or len(repository.split("/")) != 2:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_REMOTE_INVALID")
+    identity = subprocess.run(["gh", "api", "--hostname", host, "user"], cwd=repo, text=True, capture_output=True, timeout=15, check=False)
+    if identity.returncode:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_AUTHENTICATION_UNAVAILABLE")
+    try:
+        actor = str(json.loads(identity.stdout).get("login", ""))
+    except (ValueError, AttributeError) as exc:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_AUTHENTICATION_INVALID") from exc
+    if actor != developer_login:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_IDENTITY_MISMATCH")
+    permission = subprocess.run(
+        ["gh", "api", "--hostname", host, f"repos/{repository}/collaborators/{actor}/permission"],
+        cwd=repo, text=True, capture_output=True, timeout=15, check=False,
+    )
+    if permission.returncode:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_PERMISSION_UNAVAILABLE")
+    try:
+        access = str(json.loads(permission.stdout).get("permission", ""))
+    except (ValueError, AttributeError) as exc:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_PERMISSION_INVALID") from exc
+    if access not in {"write", "maintain", "admin"}:
+        raise WorkspaceAuthorityError("DEVELOPER_CLAIM_REQUIRES_REPOSITORY_WRITE")
+
+    now = time.time()
+    process_start = _process_start(owner_pid)
+    with _db(repo) as db:
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            row = _workspace_by_id(db, workspace_id)
+            if not row or row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"]:
+                raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+            if row["role"] != "TASK_WORKTREE" or row["task_id"] != task_id or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
+                raise WorkspaceAuthorityError("DEVELOPER_CLAIM_TASK_BINDING_MISMATCH")
+            workspace = Path(row["location"]).resolve()
+            if not workspace.is_dir() or str(_git(workspace, "rev-parse", "HEAD")).strip() != expected_head_sha:
+                raise WorkspaceAuthorityError("DEVELOPER_CLAIM_SOURCE_SHA_MISMATCH")
+            old_pid = row.get("owner_pid")
+            old_host = row.get("owner_host")
+            old_start = row.get("owner_process_start")
+            old_expiry = row.get("owner_lease_expires_at")
+            if old_pid and old_host == socket.gethostname() and _pid_alive(int(old_pid), old_start):
+                raise WorkspaceAuthorityError("DEVELOPER_CLAIM_ACTIVE_OWNER")
+            if old_host and old_host != socket.gethostname() and old_expiry and float(old_expiry) > now:
+                raise WorkspaceAuthorityError("DEVELOPER_CLAIM_ACTIVE_REMOTE_LEASE")
+            if row.get("owner_session_id") == owner_session_id and old_pid == owner_pid:
+                raise WorkspaceAuthorityError("DEVELOPER_CLAIM_ALREADY_OWNED")
+            version = int(row.get("owner_fencing_version") or 0) + 1
+            expires = now + owner_lease_seconds
+            db.execute(
+                "UPDATE workspaces SET owner_session_id=?,owner_pid=?,owner_host=?,owner_process_start=?,owner_lease_expires_at=?,owner_fencing_version=?,owner_state='LEASED' WHERE workspace_id=?",
+                (owner_session_id, owner_pid, socket.gethostname(), process_start, expires, version, workspace_id),
+            )
+            receipt_id = str(uuid.uuid4())
+            receipt = {
+                "schema": "workspace-ownership-transfer-receipt.v1", "receiptId": receipt_id,
+                "workspaceId": workspace_id, "taskId": task_id, "sourceSha": expected_head_sha,
+                "previousSessionId": row.get("owner_session_id"), "newSessionId": owner_session_id,
+                "newProcessId": owner_pid, "ownerFencingVersion": version,
+                "developerLogin": actor, "repositoryPermission": access,
+                "leaseExpiresAt": expires, "claimedAt": _now(), "authority": "github-repository-write-local-development",
+            }
+            db.execute(
+                "INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                (receipt_id, policy["project_id"], policy["repository_id"], workspace_id,
+                 "LOCAL_DEVELOPER_WORKSPACE_CLAIM", expected_head_sha, expected_head_sha,
+                 json.dumps(receipt, sort_keys=True), _now()),
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    return {**receipt, "status": "WORKSPACE_CLAIMED"}
+
+
 def create_registered_worktree(
     repo: Path,
     policy_path: Path | None,
@@ -1028,6 +1160,7 @@ def create_registered_worktree(
     task_id: str | None = None,
     session_id: str | None = None,
     owner_pid: int | None = None,
+    owner_lease_seconds: int = 300,
 ) -> dict[str, Any]:
     """Create and register a task/session worktree with shared admission and recovery."""
     repo = _repo_root(repo)
@@ -1097,6 +1230,7 @@ def create_registered_worktree(
         registered = register_workspace(
             repo, policy_path, selected, role=role, task_id=task_id,
             owner_session_id=session_id, owner_pid=owner_pid,
+            owner_lease_seconds=owner_lease_seconds if session_id or owner_pid else None,
         )
     except (OSError, WorkspaceAuthorityError) as exc:
         raise WorkspaceAuthorityError(
@@ -1990,7 +2124,7 @@ def _cli() -> int:
             result = create_registered_worktree(
                 repo, args.policy, args.workspace, base_sha=args.base_sha,
                 role=args.role, task_id=args.task_id, session_id=args.session_id,
-                owner_pid=args.owner_pid,
+                owner_pid=args.owner_pid, owner_lease_seconds=args.owner_lease_seconds,
             )
         elif args.action == "converge":
             result = converge_canonical_workspace(repo, args.policy, integrated_sha=args.integrated_sha, task_id=args.task_id)

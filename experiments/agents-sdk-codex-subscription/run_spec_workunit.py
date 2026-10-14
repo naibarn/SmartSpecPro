@@ -6,6 +6,7 @@ test command; model output never becomes shell input.
 from __future__ import annotations
 
 import hashlib
+import difflib
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import sys
 import time
 import uuid
 from collections import Counter
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -25,7 +27,10 @@ from agents.run_state import RunState
 
 from adaptive_routing import RoutingConfigurationError, select_profile
 from durable_store import DurableRunStore
-from run_experiment import make_agent, maybe_crash, now, parse_result_json
+from run_experiment import (
+    make_agent, maybe_crash, now, parse_result_json,
+    run_browser_uat as run_miniapp_browser_uat,
+)
 from spec_workunit_contract import WorkUnitContract, load_contract
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parents[2]
@@ -195,13 +200,17 @@ CONTRACT_SCOPE_FIELDS = (
     "specId", "workUnit", "requirementId", "requirementDigest", "requirementText",
     "sourceSpecDigest", "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
     "workspace", "allowedFiles", "writableFiles", "patchableFiles", "tests", "authority",
-    "browserUat", "acceptanceCriteria",
+    "browserUat", "acceptanceCriteria", "allowedTools", "scopeExpiresAt",
+    "authorizationDigest", "developerIdentity",
 )
 
 
 def contract_scope_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     """Capture the authority and acceptance surface, excluding editable guidance/budget."""
-    return {field: raw.get(field) for field in CONTRACT_SCOPE_FIELDS}
+    snapshot = {field: raw.get(field) for field in CONTRACT_SCOPE_FIELDS}
+    if raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+        snapshot.pop("ownerSessionId", None)
+    return snapshot
 
 
 def prior_contract_scope_from_model_calls(store: DurableRunStore) -> dict[str, Any] | None:
@@ -263,7 +272,50 @@ def source_diff_from_baseline(contract: WorkUnitContract) -> tuple[list[str], st
         ["git", "diff", "--name-only", contract.source_revision, "--", *contract.allowed_files],
         cwd=contract.root, text=True, capture_output=True, check=True,
     )
-    return sorted(path for path in names.stdout.splitlines() if path), result.stdout[:60000]
+    tracked = {path for path in names.stdout.splitlines() if path}
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "--", *contract.allowed_files],
+        cwd=contract.root, text=True, capture_output=True, check=True,
+    )
+    added = {path for path in untracked.stdout.splitlines() if path in contract.allowed_files}
+    extra_diff = []
+    for path in sorted(added - tracked):
+        target = contract.root / path
+        if not target.is_file():
+            continue
+        lines = target.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
+        extra_diff.extend(difflib.unified_diff([], lines, fromfile="/dev/null", tofile=path))
+    return sorted(tracked | added), (result.stdout + ("\n" if result.stdout and extra_diff else "") + "".join(extra_diff))[:60000]
+
+
+def reconcile_interrupted_write_intents(store: DurableRunStore, contract: WorkUnitContract) -> list[dict[str, Any]]:
+    """Settle completed file writes after a crash without replaying or overwriting them."""
+    settled = []
+    for row in store.pending_tool_receipts():
+        if row.get("tool") != "write_file":
+            continue
+        operation_id = row["operation_id"]
+        try:
+            value = json.loads(row.get("input_json") or "{}")
+            path, content = value.get("path"), value.get("content")
+            if path not in contract.writable_files or not isinstance(content, str):
+                store.supersede_tool(operation_id, {"status": "UNVERIFIED", "reason": "interrupted write is outside the current task allowlist"}, reason="write intent cannot be safely reconciled")
+                continue
+            target = contract.root / path
+            expected = hashlib.sha256(content.encode()).hexdigest()
+            actual = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else None
+            if actual == expected:
+                receipt = {"message": f"Reconciled interrupted write {path}; sha256={expected}", "sha256": expected}
+                store.complete_tool(operation_id, receipt, effect_hash=expected, recovered=True)
+                settled.append({"operationId": operation_id, "path": path, "status": "RECOVERED_EXACT_EFFECT"})
+            else:
+                store.supersede_tool(operation_id, {"status": "SUPERSEDED", "expectedSha256": expected, "currentSha256": actual}, reason="interrupted write effect differs; recovery does not overwrite current source")
+                settled.append({"operationId": operation_id, "path": path, "status": "SUPERSEDED_SOURCE_CHANGED"})
+        except Exception as exc:
+            store.event("tool.intent.reconciliation_failed", {"operationId": operation_id, "tool": "write_file", "error": f"{type(exc).__name__}: {exc}"})
+    if settled:
+        store.event("tool.write_intents.reconciled", {"receipts": settled}, stable_key=f"tool:write-intents-reconciled:{store.run_id}:{len(settled)}")
+    return settled
 
 def task_source_context(contract: WorkUnitContract) -> dict[str, str]:
     """Capture bounded context ranges declared by the trusted WorkUnit contract."""
@@ -308,6 +360,11 @@ class ScopedRepoTools:
             raise PermissionError("Path resolves outside the selected task worktree")
         return target
 
+    def _assert_current_owner(self) -> None:
+        if self.contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+            from spec_workunit_contract import verify_developer_workspace_claim
+            verify_developer_workspace_claim(self.root, self.contract.raw)
+
     def list_files(self) -> list[str]:
         """List only files named by the validated WorkUnit contract."""
         return [p for p in self.contract.allowed_files if self._path(p).is_file()]
@@ -329,6 +386,7 @@ class ScopedRepoTools:
         """Write an allowlisted small source/test/migration file inside this task worktree. This is an authorized host-executed write; never use shell writes."""
         if not self.writable:
             raise PermissionError("Review tools are read-only")
+        self._assert_current_owner()
         target = self._path(path)
         if path in set(self.contract.raw.get("patchableFiles", [])) and target.exists():
             raise PermissionError("This large/structured file requires the scoped patch_file tool")
@@ -341,21 +399,27 @@ class ScopedRepoTools:
         receipt = self.store.begin_tool(operation_id, self.phase_id, "write_file", value)
         if receipt["status"] == "completed":
             return json.loads(receipt["result_json"])["message"]
-        target.parent.mkdir(parents=True, exist_ok=True)
         raw = content.encode()
         sha = hashlib.sha256(raw).hexdigest()
-        if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == sha:
-            message = f"Reconciled existing {path}; sha256={sha}"
-            self.store.complete_tool(operation_id, {"message": message, "sha256": sha}, effect_hash=sha, recovered=True)
-            return message
-        temp = target.with_name(f".{target.name}.{operation_id}.tmp")
-        with temp.open("wb") as stream:
-            stream.write(raw)
-            stream.flush()
-            __import__("os").fsync(stream.fileno())
-        temp.replace(target)
-        maybe_crash(self.store, "tool.write_file.after_effect", operation_id)
-        message = f"Wrote {path}; sha256={sha}"
+        if self.contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+            from spec_workunit_contract import developer_workspace_write_guard
+            guard = developer_workspace_write_guard(self.root, self.contract.raw)
+        else:
+            guard = nullcontext()
+        with guard:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == sha:
+                message = f"Reconciled existing {path}; sha256={sha}"
+                self.store.complete_tool(operation_id, {"message": message, "sha256": sha}, effect_hash=sha, recovered=True)
+                return message
+            temp = target.with_name(f".{target.name}.{operation_id}.tmp")
+            with temp.open("wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                __import__("os").fsync(stream.fileno())
+            temp.replace(target)
+            maybe_crash(self.store, "tool.write_file.after_effect", operation_id)
+            message = f"Wrote {path}; sha256={sha}"
         self.store.complete_tool(operation_id, {"message": message, "sha256": sha}, effect_hash=sha)
         return message
 
@@ -363,6 +427,7 @@ class ScopedRepoTools:
         """Apply exact-context Update File hunks; numbered hunk headers disambiguate repeated source text. Authorized host-executed write, bounded to this file; never use shell writes."""
         if not self.writable:
             raise PermissionError("Review tools are read-only")
+        self._assert_current_owner()
         target_path = Path(path)
         if target_path.is_absolute() or ".." in target_path.parts:
             raise PermissionError("Patch target must be a repository-relative path without traversal")
@@ -455,18 +520,28 @@ class ScopedRepoTools:
                 reject(message)
                 raise ValueError(message)
             updated = updated.replace(old_text, new_text, 1)
-        if updated == original:
-            message = f"Reconciled already-applied patch for {path}"
+        if self.contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+            from spec_workunit_contract import developer_workspace_write_guard
+            guard = developer_workspace_write_guard(self.root, self.contract.raw)
         else:
-            temp = target.with_name(f".{target.name}.{op}.tmp")
-            temp.write_text(updated, encoding="utf-8")
-            temp.replace(target)
-            maybe_crash(self.store, "tool.patch_file.after_effect", op)
-            message = f"Applied scoped patch to {path}"
+            guard = nullcontext()
+        with guard:
+            if target.read_text(encoding="utf-8") != original:
+                reject("Source changed while preparing the patch; refresh source and retry")
+                raise ValueError("Source changed while preparing the patch; refresh source and retry")
+            if updated == original:
+                message = f"Reconciled already-applied patch for {path}"
+            else:
+                temp = target.with_name(f".{target.name}.{op}.tmp")
+                temp.write_text(updated, encoding="utf-8")
+                temp.replace(target)
+                maybe_crash(self.store, "tool.patch_file.after_effect", op)
+                message = f"Applied scoped patch to {path}"
         self.store.complete_tool(op, {"message": message, "path": path}, effect_hash=hashlib.sha256(patch.encode()).hexdigest(), recovered="Reconciled" in message)
         return message
 
     def run_focused_tests(self) -> str:
+        self._assert_current_owner()
         """Run only the WorkUnit's predeclared tests; no model-provided command is executed."""
         revision = hashlib.sha256("".join(hashlib.sha256(self._path(p).read_bytes()).hexdigest() for p in self.contract.allowed_files if self._path(p).is_file()).encode()).hexdigest()
         command = self.contract.test_command
@@ -518,12 +593,54 @@ class ScopedRepoTools:
         self.store.complete_tool(operation_id, receipt, effect_hash=revision)
         return json.dumps(receipt)
 
+    def run_browser_uat(self) -> str:
+        """Run the existing loopback Chromium UAT only for the contract's scoped Mini-App directory."""
+        browser = self.contract.browser_uat
+        if not browser or browser.get("status") != "configured":
+            raise PermissionError("Browser UAT is not authorized by this WorkUnit contract")
+        self._assert_current_owner()
+        relative = str(browser.get("projectPath", ""))
+        project_path = Path(relative)
+        if project_path.is_absolute() or ".." in project_path.parts or not relative:
+            raise PermissionError("Browser UAT project path is invalid")
+        project = (self.root / project_path).resolve()
+        if self.root not in project.parents or not project.is_dir():
+            raise PermissionError("Browser UAT project must be an existing directory inside the task workspace")
+        scoped = [path for path in self.contract.allowed_files if path.startswith(project_path.as_posix().rstrip("/") + "/")]
+        if not any(Path(path).name == "index.html" for path in scoped):
+            raise PermissionError("Browser UAT project must include an allowlisted index.html")
+        files = []
+        for path in sorted(scoped):
+            target = self._path(path)
+            if target.is_file() and target.suffix.lower() in {".html", ".js", ".mjs", ".css"}:
+                files.append([Path(path).name, hashlib.sha256(target.read_bytes()).hexdigest()])
+        source_sha = hashlib.sha256(json.dumps(files, separators=(",", ":")).encode()).hexdigest()
+        harness_sha = hashlib.sha256((Path(__file__).parent / "harness/browser_uat.cjs").read_bytes()).hexdigest()
+        operation_input = {"sourceSha256": source_sha, "projectPath": project_path.as_posix(), "harnessSha256": harness_sha}
+        operation_id = str(uuid.uuid5(
+            uuid.UUID(self.store.run_id),
+            f"tool:{self.phase_id}:run_browser_uat:{hashlib.sha256(json.dumps(operation_input, sort_keys=True).encode()).hexdigest()}"
+        ))
+        existing = self.store.begin_tool(operation_id, self.phase_id, "run_browser_uat", operation_input)
+        if existing["status"] == "completed":
+            return str(existing["result_json"])
+        result = run_miniapp_browser_uat(project, operation_id=operation_id)
+        result["projectPath"] = project_path.as_posix()
+        result["contractSourceSha256"] = source_sha
+        result["harnessSha256"] = harness_sha
+        result.update({"taskId": self.contract.task_id, "workspaceId": self.contract.workspace_id})
+        self.store.complete_tool(operation_id, result, effect_hash=source_sha)
+        return json.dumps(result, ensure_ascii=False)
+
     def tools(self, writable: bool) -> list[Any]:
         from functools import wraps
         import inspect
         from agents import function_tool
         names = ("list_files", "read_file", "write_file", "patch_file", "run_focused_tests") if writable else ("list_files", "read_file", "run_focused_tests")
+        if self.contract.browser_uat and self.contract.browser_uat.get("status") == "configured":
+            names = (*names, "run_browser_uat")
         names = (*names, "read_range")
+        names = tuple(name for name in names if name in self.contract.allowed_tools)
         wrapped = []
         for name in names:
             impl = getattr(self, name)
@@ -690,6 +807,10 @@ def main() -> int:
     elif not state.get("contractScopeSnapshot"):
         state["contractScopeSnapshot"] = current_scope
         store.commit_state()
+    reconciled_writes = reconcile_interrupted_write_intents(store, contract)
+    if reconciled_writes:
+        state.setdefault("recoveredToolReceipts", []).extend(reconciled_writes)
+        store.commit_state()
     state["status"] = "running"
     state.pop("retryAfter", None)
     state.pop("capacityWaitDetail", None)
@@ -830,6 +951,15 @@ def main() -> int:
                         "command": contract.test_command, "stdout": "",
                         "stderr": f"Focused test adapter failed: {type(exc).__name__}: {exc}",
                         "recordedAt": now()}
+    browser_receipt = None
+    if contract.browser_uat and contract.browser_uat.get("status") == "configured":
+        try:
+            browser_receipt = json.loads(test_tools.run_browser_uat())
+        except Exception as exc:
+            browser_receipt = {"result": "UNVERIFIED", "failure": f"{type(exc).__name__}: {exc}"}
+        test_receipt["browserUat"] = browser_receipt
+        if browser_receipt.get("result") != "PASS":
+            test_receipt["exitCode"] = max(1, int(test_receipt.get("exitCode", 0)))
     after_hashes = source_hashes(contract)
     changed_paths = changed_source_paths(before_hashes, after_hashes)
     baseline_changed_paths, source_diff = source_diff_from_baseline(contract)
@@ -845,7 +975,8 @@ def main() -> int:
     state.setdefault("attempts", []).append({"attempt": attempt, "output": str(result.final_output), "testReceipt": test_receipt})
     store.commit_state()
     if test_receipt["exitCode"] != 0:
-        findings = [f"Focused tests failed (exit {test_receipt['exitCode']}): {test_receipt.get('stderr') or test_receipt.get('stdout', '')[-3000:]}"]
+        failure_detail = test_receipt.get("stderr") or test_receipt.get("stdout", "")[-3000:] or json.dumps(browser_receipt, ensure_ascii=False)[:3000]
+        findings = [f"Focused tests or configured Browser UAT failed (exit {test_receipt['exitCode']}): {failure_detail}"]
     else:
         review_tools = ScopedRepoTools(store, f"review-{attempt}", False, contract)
         review = make_workunit_agent(

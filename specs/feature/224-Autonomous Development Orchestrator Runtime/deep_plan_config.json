@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014/specs/feature/224-Autonomous Development Orchestrator Runtime",
+  "initial_file": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014/specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
+  "review_mode": "self_review"
+}
