@@ -899,7 +899,7 @@
     "next_action": "Do not re-enable the production-bound Linux user Runner. Obtain an owner-approved non-production control-plane target or authorization for an isolated disposable local target. Through the canonical enrollment/grant workflow, issue a current Runner session and protected_dispatch grant scoped to the approved tenant/project, Runner/session, DevelopmentRun/job/attempt, exact source commit+digest, workspace, workpackage/operation/path, node-control-plane runtime, isolated-non-production environment, and required approval/budget. Then probe Codex and browser through that Runner and execute real M6 before M7.",
     "next_ready_workunit": "WAITING_AUTHORITY: no eligible real Runner work until an authorized isolated non-production control plane, current Runner session, canonical protected_dispatch grant, and bound DevelopmentRun/workspace/source are available.",
     "reactivation_predicate": "A suitable non-production control-plane endpoint and isolated DB/storage are identified or explicitly authorized; a current enrolled Runner session and canonical protected_dispatch grant exist; and fresh Runner evidence binds Codex/browser readiness, tenant/project, exact source/workspace, DevelopmentRun/job attempt, operation/path/runtime/environment, approval and budget.",
-    "resume_point": "PR #848 status-readiness repair merged at 8eefd800eb8a13389dd75bc4bc61547a1262aef4; focused Rust test, Rust formatting check, and offline Linux installer lifecycle test passed; progressive integration gate passed. Bootstrap evidence at orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md records that systemd user service was active but repeatedly rejected with 409, has been stopped/disabled, the installed Session Host is absent, and the discovered local control plane is production-configured/shared. No M6/M7 dispatch or functional browser UAT occurred.",
+    "resume_point": "PR #848 status-readiness repair merged at 8eefd800eb8a13389dd75bc4bc61547a1262aef4; focused Rust test, Rust formatting check, and offline Linux installer lifecycle test passed; progressive integration gate passed. Bootstrap evidence at orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md records that systemd user service was active but repeatedly rejected with 409, has been stopped/disabled, the installed Session Host is absent, and the discovered local control plane is production-configured/shared. No M6/M7 dispatch or functional browser UAT occurred. Local Developer Fast Lane Mini-App acceptance is now recorded separately: WorkUnit b48e8bcd-dea9-4909-91cc-c6ab7ec984e4 / Run c26fd841-cdb0-485d-bc43-c6ecf904ef4a on b06e292939d468c64508ae460a04dd0900155cbb reached IMPLEMENTED_READY_FOR_USER_TEST with a run/source/workspace-bound Browser PASS and zero pending receipts; evidence is /mnt/SmartSpecDev/evidence/spec224-browser-projection-20261015/FINAL-DELIVERY-RECEIPT.md. Independent normative completion remains false. This does not reactivate Runner-authorized M6/M7; retain WAITING_AUTHORITY and keep PR #944 separate.",
     "waiting_predicate": "Do not repeat local status, systemd, Docker, expired-credential, or 7070 health checks without changed evidence. Do not connect to or re-enable the production-bound Runner. Resume only when non-production control-plane/enrollment/grant authority changes or new owner evidence is provided."
   },
   "continuation_assessment": {
@@ -1082,7 +1082,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 70,
+  "generation": 71,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -2436,7 +2436,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-14T15:38:52.772559Z",
+  "updated_at": "2026-10-14T16:28:46.624631Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2547,7 +2547,14 @@
       "orchestra/tasks/spec224-m6-m7-autonomous-recovery-20261012/runner-bootstrap-evidence.md",
       "/mnt/SmartSpecDev/evidence/spec224-checkpoint-livelock-fix-20261014/HANDOFF.md",
       "/mnt/SmartSpecDev/evidence/spec224-live-acceptance-20261014/b68dbd07-e7c8-4d62-baef-b0a990888107/runtime.sqlite3",
-      "/mnt/SmartSpecDev/evidence/spec224-live-acceptance-20261014/b68dbd07-e7c8-4d62-baef-b0a990888107/browser-supplemental.json"
+      "/mnt/SmartSpecDev/evidence/spec224-live-acceptance-20261014/b68dbd07-e7c8-4d62-baef-b0a990888107/browser-supplemental.json",
+      {
+        "kind": "LOCAL_DEVELOPER_FAST_LANE_BROWSER_ACCEPTANCE",
+        "path": "/mnt/SmartSpecDev/evidence/spec224-browser-projection-20261015/FINAL-DELIVERY-RECEIPT.md",
+        "scope": "Disposable local Developer WorkUnit b48e8bcd-dea9-4909-91cc-c6ab7ec984e4 / Run c26fd841-cdb0-485d-bc43-c6ecf904ef4a on source b06e292939d468c64508ae460a04dd0900155cbb. Focused browser UAT PASS with exact run/workspace/source/tool receipt bindings and zero pending receipts; terminal status IMPLEMENTED_READY_FOR_USER_TEST because independent normative acceptance is false. Local UI acceptance only; does not satisfy Runner-authorized M6/M7 or complete SPEC-224.",
+        "source_sha": "b06e292939d468c64508ae460a04dd0900155cbb",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
