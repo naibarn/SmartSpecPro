@@ -224,6 +224,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             result = authority.create_registered_worktree(
                 self.canonical, self.policy, destination, base_sha=git(self.canonical, "rev-parse", "HEAD"),
                 role="TASK_WORKTREE", task_id="task-recovery", session_id="session-recovery",
+                owner_pid=os.getpid(), owner_lease_seconds=300,
             )
         self.assertTrue(str(result["workspace"]).startswith(str(self.root / "fallback-source")))
         self.assertEqual(result["base_sha"], git(self.canonical, "rev-parse", "HEAD"))
@@ -234,12 +235,120 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(registered["role"], "TASK_WORKTREE")
         self.assertEqual(registered["task_id"], "task-recovery")
         self.assertEqual(registered["owner_session_id"], "session-recovery")
+        self.assertEqual(registered["session_state"], "ACTIVE_SESSION")
+        self.assertGreaterEqual(registered["owner_lease_expires_at"], time.time())
+        self.assertEqual(registered["owner_fencing_version"], 1)
         self.assertEqual(git(self.canonical, "status", "--porcelain=v1", "--untracked-files=all"), "")
         recovered_workspace = Path(str(result["workspace"]))
         self.assertEqual(git(recovered_workspace, "rev-parse", "HEAD"), result["base_sha"])
         git(recovered_workspace, "switch", "-c", "task/recovered-after-enospc")
         (recovered_workspace / "continued.txt").write_text("task resumed\n", encoding="utf-8")
         self.assertIn("continued.txt", git(recovered_workspace, "status", "--short"))
+
+    def test_registered_workspace_owner_cannot_be_silently_replaced(self) -> None:
+        workspace_path = self.root / "owned-task"
+        git(self.canonical, "worktree", "add", "-b", "task/owned", str(workspace_path), "HEAD")
+        registered = authority.register_workspace(
+            self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+            task_id="task-owned", owner_session_id="session-owner",
+            owner_pid=os.getpid(), owner_lease_seconds=300,
+        )
+
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "WORKSPACE_OWNER_TRANSFER_REQUIRED"):
+            authority.register_workspace(
+                self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+                task_id="task-owned", owner_session_id="session-other",
+                owner_pid=os.getpid(), owner_lease_seconds=300,
+            )
+
+        current = authority.observe_workspace(self.canonical, self.policy, workspace_path)
+        self.assertEqual(current["workspace_id"], registered["workspace_id"])
+        self.assertEqual(current["owner_session_id"], "session-owner")
+        self.assertEqual(current["owner_fencing_version"], 1)
+        self.assertEqual(current["session_state"], "ACTIVE_SESSION")
+
+    def test_authorized_local_claim_fences_stale_owner_and_records_receipt(self) -> None:
+        workspace_path = self.root / "reclaimable-task"
+        git(self.canonical, "worktree", "add", "-b", "task/reclaimable", str(workspace_path), "HEAD")
+        original = authority.register_workspace(
+            self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+            task_id="task-reclaimable", owner_session_id="session-ended",
+            owner_pid=99999999, owner_lease_seconds=30,
+        )
+        self.policy.write_text(self.policy.read_text(encoding="utf-8").replace('remote = "origin"', 'remote = "https://github.com/example/smartspec.git"'), encoding="utf-8")
+        original_run = authority.subprocess.run
+
+        def github_stub(args, **kwargs):
+            if args[:3] == ["gh", "api", "--hostname"] and args[-1] == "user":
+                return subprocess.CompletedProcess(args, 0, '{"login":"dev-owner"}', "")
+            if args[:3] == ["gh", "api", "--hostname"]:
+                return subprocess.CompletedProcess(args, 0, '{"permission":"write"}', "")
+            return original_run(args, **kwargs)
+
+        with patch.object(authority.subprocess, "run", side_effect=github_stub):
+            claimed = authority.claim_registered_workspace(
+                self.canonical, self.policy, original["workspace_id"], task_id="task-reclaimable",
+                expected_head_sha=git(workspace_path, "rev-parse", "HEAD"), developer_login="dev-owner",
+                owner_session_id="session-resumed", owner_pid=os.getpid(), owner_lease_seconds=60,
+            )
+        current = authority.observe_workspace(self.canonical, self.policy, workspace_path)
+        self.assertEqual(claimed["status"], "WORKSPACE_CLAIMED")
+        self.assertEqual(claimed["ownerFencingVersion"], original["owner_fencing_version"] + 1)
+        self.assertEqual(current["owner_session_id"], "session-resumed")
+        self.assertEqual(current["owner_fencing_version"], claimed["ownerFencingVersion"])
+        self.assertEqual(current["session_state"], "ACTIVE_SESSION")
+        with authority._db(self.canonical) as db:
+            receipt = db.execute(
+                "SELECT result_json FROM receipts WHERE receipt_id=?", (claimed["receiptId"],)
+            ).fetchone()
+        self.assertIsNotNone(receipt)
+
+    def test_concurrent_local_reclaim_has_one_winner_and_one_transfer_receipt(self) -> None:
+        workspace_path = self.root / "race-reclaim-task"
+        git(self.canonical, "worktree", "add", "-b", "task/race-reclaim", str(workspace_path), "HEAD")
+        original = authority.register_workspace(
+            self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+            task_id="task-race-reclaim", owner_session_id="session-ended",
+            owner_pid=99999998, owner_lease_seconds=30,
+        )
+        self.policy.write_text(self.policy.read_text(encoding="utf-8").replace('remote = "origin"', 'remote = "https://github.com/example/smartspec.git"'), encoding="utf-8")
+        original_run = authority.subprocess.run
+
+        def github_stub(args, **kwargs):
+            if args[:3] == ["gh", "api", "--hostname"] and args[-1] == "user":
+                return subprocess.CompletedProcess(args, 0, '{"login":"dev-owner"}', "")
+            if args[:3] == ["gh", "api", "--hostname"]:
+                return subprocess.CompletedProcess(args, 0, '{"permission":"write"}', "")
+            return original_run(args, **kwargs)
+
+        def claim(session):
+            return authority.claim_registered_workspace(
+                self.canonical, self.policy, original["workspace_id"], task_id="task-race-reclaim",
+                expected_head_sha=git(workspace_path, "rev-parse", "HEAD"), developer_login="dev-owner",
+                owner_session_id=session, owner_pid=os.getpid(), owner_lease_seconds=60,
+            )
+
+        with patch.object(authority.subprocess, "run", side_effect=github_stub):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                attempts = [executor.submit(claim, session) for session in ("session-a", "session-b")]
+                results = []
+                for future in attempts:
+                    try:
+                        results.append(future.result())
+                    except authority.WorkspaceAuthorityError as exc:
+                        results.append(str(exc))
+        successes = [row for row in results if isinstance(row, dict) and row.get("status") == "WORKSPACE_CLAIMED"]
+        failures = [row for row in results if isinstance(row, str)]
+        self.assertEqual(len(successes), 1)
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0], "DEVELOPER_CLAIM_ACTIVE_OWNER")
+        self.assertEqual(successes[0]["ownerFencingVersion"], original["owner_fencing_version"] + 1)
+        with authority._db(self.canonical) as db:
+            count = db.execute(
+                "SELECT COUNT(*) FROM receipts WHERE kind='LOCAL_DEVELOPER_WORKSPACE_CLAIM' AND workspace_id=?",
+                (original["workspace_id"],),
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
 
     def test_unknown_workspace_does_not_gain_authority_from_branch_or_path(self) -> None:
         other = self.root / "main-canonical"

@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import sqlite3
 import subprocess
 import tempfile
 import sys
+import os
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from spec_workunit_contract import ContractError, load_contract
+from spec_workunit_contract import ContractError, developer_workspace_write_guard, load_contract
 
 
 class WorkUnitContractTests(unittest.TestCase):
@@ -89,7 +93,8 @@ class WorkUnitContractTests(unittest.TestCase):
         (self.root / "tests/test_example.py").write_text("# fixture\\n", encoding="utf-8")
         self.write_contract()
         parsed = load_contract(self.contract_path, self.root)
-        self.assertEqual(parsed.test_command, [sys.executable, "-m", "pytest", "--no-cov", "-q", "tests/test_example.py"])
+        expected = [sys.executable, "-m", "pytest", *( ["--no-cov"] if importlib.util.find_spec("pytest_cov") else []), "-q", "tests/test_example.py"]
+        self.assertEqual(parsed.test_command, expected)
 
     def test_pytest_command_prefers_the_worktree_python_backend_environment(self) -> None:
         test_path = "python-backend/tests/test_example.py"
@@ -102,7 +107,8 @@ class WorkUnitContractTests(unittest.TestCase):
         interpreter.write_text("test interpreter marker\\n", encoding="utf-8")
         self.write_contract()
         parsed = load_contract(self.contract_path, self.root)
-        self.assertEqual(parsed.test_command, [str(interpreter), "-m", "pytest", "--no-cov", "-q", test_path])
+        expected = [str(interpreter), "-m", "pytest", *( ["--no-cov"] if importlib.util.find_spec("pytest_cov") else []), "-q", test_path]
+        self.assertEqual(parsed.test_command, expected)
 
     def test_rejects_requirement_text_or_digest_not_matching_canonical_ledger(self) -> None:
         self.contract["requirementText"] = "Different requirement"
@@ -132,6 +138,77 @@ class WorkUnitContractTests(unittest.TestCase):
         self.write_contract()
         with self.assertRaisesRegex(ContractError, "sourceRevision"):
             load_contract(self.contract_path, self.root)
+
+    def test_accepts_developer_fast_lane_only_with_authenticated_identity_and_live_registered_lease(self) -> None:
+        test_path = "apps/web/server/fast-lane.test.ts"
+        (self.root / test_path).write_text("// developer fixture\n", encoding="utf-8")
+        requirement = "Build a bounded, disposable Mini-App and verify it in a local browser."
+        identity = {"login": "dev-owner", "permission": "write", "repository": "example/smartspec", "host": "github.com"}
+        self.contract.update({
+            "schema": "agents-sdk-developer-workunit-contract.v1", "specId": "DEVELOPER-TASK",
+            "workUnit": "DEV-WU-0123456789AB", "requirementId": "DEV-0123456789AB",
+            "requirementText": requirement, "requirementDigest": hashlib.sha256(requirement.encode()).hexdigest(),
+            "authorizationDigest": "b" * 64, "sourceSpecDigest": "b" * 64,
+            "scopeExpiresAt": time.time() + 300,
+            "allowedTools": ["list_files", "read_file", "read_range", "write_file", "patch_file", "run_focused_tests", "run_browser_uat"],
+            "allowedFiles": ["apps/web/server/test.test.ts", test_path], "writableFiles": [test_path],
+            "tests": {"runner": "vitest", "cwd": "apps/web", "paths": [test_path]},
+            "developerIdentity": identity,
+            "ownerSessionId": "current-session", "ownerPid": os.getpid(),
+            "ownerProcessStart": __import__("spec_workunit_contract")._process_start(os.getpid()),
+            "ownerFencingVersion": 1, "workspaceLeaseExpiresAt": time.time() + 300,
+            "browserUat": {"status": "configured", "projectPath": "apps/web/server"},
+            "authority": {"source": "authenticated-github-developer-policy", "productionAccess": False,
+                          "sharedDatabaseWrite": False, "gateway": False, "provider": "codex-subscription",
+                          "isolatedTestDatabase": False},
+        })
+        auth_scope = {
+            "developer": identity, "taskId": "task-test", "task": requirement,
+            "acceptanceCriteria": self.contract["acceptanceCriteria"], "sourceSha": self.head,
+            "workspaceId": "workspace-test", "allowedFiles": self.contract["allowedFiles"],
+            "writableFiles": self.contract["writableFiles"], "patchableFiles": self.contract["patchableFiles"],
+            "allowedTools": self.contract["allowedTools"], "tests": self.contract["tests"],
+            "browserUat": self.contract["browserUat"], "budget": self.contract["budget"],
+            "expiresAt": self.contract["scopeExpiresAt"], "productionAccess": False,
+            "sharedDatabaseWrite": False, "runnerDispatch": False,
+        }
+        self.contract["authorizationDigest"] = hashlib.sha256(
+            json.dumps(auth_scope, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        self.contract["sourceSpecDigest"] = self.contract["authorizationDigest"]
+        db = sqlite3.connect(self.registry)
+        db.execute("DROP TABLE workspaces")
+        db.execute("CREATE TABLE workspaces (workspace_id TEXT, location TEXT, role TEXT, task_id TEXT, lifecycle_state TEXT, owner_session_id TEXT, owner_pid INTEGER, owner_process_start TEXT, owner_lease_expires_at REAL, owner_fencing_version INTEGER)")
+        db.execute("INSERT INTO workspaces VALUES(?,?,?,?,?,?,?,?,?,?)", (
+            "workspace-test", str(self.root), "TASK_WORKTREE", "task-test", "ACTIVE", "current-session",
+            os.getpid(), self.contract["ownerProcessStart"], self.contract["workspaceLeaseExpiresAt"], 1,
+        ))
+        db.commit()
+        db.close()
+        self.write_contract()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), patch(
+            "spec_workunit_contract.verify_github_developer_permission", return_value=identity,
+        ):
+            parsed = load_contract(self.contract_path, self.root)
+            with developer_workspace_write_guard(self.root, parsed.raw):
+                pass
+        self.assertEqual(parsed.work_unit, "DEV-WU-0123456789AB")
+        self.assertEqual(parsed.browser_uat["status"], "configured")
+        self.contract["writableFiles"] = [test_path, "newly-added-path.txt"]
+        self.write_contract()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), patch(
+            "spec_workunit_contract.verify_github_developer_permission", return_value=identity,
+        ), self.assertRaisesRegex(ContractError, "digest does not match"):
+            load_contract(self.contract_path, self.root)
+        db = sqlite3.connect(self.registry)
+        db.execute("UPDATE workspaces SET owner_fencing_version=2 WHERE workspace_id='workspace-test'")
+        db.commit()
+        db.close()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), self.assertRaisesRegex(
+            ContractError, "lease, source owner, or fence",
+        ):
+            with developer_workspace_write_guard(self.root, parsed.raw):
+                self.fail("stale fence acquired a mutation lock")
 
 
 if __name__ == "__main__":
