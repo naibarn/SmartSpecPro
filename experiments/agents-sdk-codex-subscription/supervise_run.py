@@ -129,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-restarts", type=int, default=8, help="Deprecated compatibility option; automatic crash recovery has no count stop")
     parser.add_argument("--max-attempts", type=int, default=2)
     parser.add_argument("--implementation-max-turns", type=int, default=12)
+    parser.add_argument("--canonical-admission-fd", type=int, help="Private inherited IPC descriptor from the canonical server executor")
     args = parser.parse_args(argv)
     if args.max_restarts < 0:
         parser.error("--max-restarts cannot be negative")
@@ -159,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
         if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY"}:
             prior_state = json.loads(existing_state.read_text(encoding="utf-8"))
-            if prior_state.get("canonicalModelAdmissionRequired"):
+            if prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_fd is None:
                 # The canonical scheduler owns eligibility and lease reacquisition.
                 # A local supervisor must not wake a WorkUnit with a stale lease.
                 return 75
@@ -173,6 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_contract:
             command = [sys.executable, str(HERE / "run_spec_workunit.py"), "--workspace", str(workspace),
                        "--contract", str(args.spec_contract.resolve()), "--evidence-dir", str(evidence), "--run-id", run_id]
+            if args.canonical_admission_fd is not None:
+                command += ["--canonical-admission-fd", str(args.canonical_admission_fd)]
             if prior_status in {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY", "WAITING_BUDGET"}:
                 command.append("--continuation")
             if used_diagnostic:
@@ -184,7 +187,8 @@ def main(argv: list[str] | None = None) -> int:
         env = os.environ.copy()
         env["AUTONOMY_CRASH_AT"] = args.crash_at
         progress_before = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else ""
-        result = subprocess.run(command, cwd=HERE, env=env, text=True, capture_output=True, check=False)
+        result = subprocess.run(command, cwd=HERE, env=env, text=True, capture_output=True, check=False,
+                                pass_fds=(args.canonical_admission_fd,) if args.canonical_admission_fd is not None else ())
         logs.mkdir(parents=True, exist_ok=True)
         (logs / f"process-{process_count:04d}.json").write_text(json.dumps({
             "command": command,

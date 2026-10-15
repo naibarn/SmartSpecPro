@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   },
   auditLog: vi.fn(),
   createRun: vi.fn(),
+  createDeveloperFastLaneJob: vi.fn(),
   requestFullVerification: vi.fn(),
   workspaceSpecSets: {
     availableWorkspaces: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("../../_core/trpc", () => {
   };
   return {
     protectedProcedure: procedure,
+    adminProcedure: procedure,
     router: (routes: unknown) => routes,
   };
 });
@@ -49,6 +51,12 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
   defaultDevelopmentRunPersistenceAdapter: {},
+}));
+
+vi.mock("../../services/spec224DeveloperFastLane", () => ({
+  DEVELOPER_FAST_LANE_JOB: "developer.fast_lane",
+  DEVELOPER_FAST_LANE_CONTRACT: "developer-fast-lane-v1",
+  createDeveloperFastLaneJob: (...args: unknown[]) => mocks.createDeveloperFastLaneJob(...args),
 }));
 
 vi.mock("../../services/auditLogger", () => ({
@@ -92,6 +100,37 @@ beforeEach(() => {
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("creates a scoped Developer Fast Lane Job from authenticated admin tenant and actor identity", async () => {
+    mocks.createDeveloperFastLaneJob.mockResolvedValueOnce({ created: true, jobId: "job-fast-1", runId: "run-fast-1", workerJobId: "job-fast-1" });
+    const input = {
+      idempotencyKey: "developer-fast-lane-key-1",
+      developerLogin: "dev-user",
+      sourceRevision: "a".repeat(40),
+      task: "Fix one scoped regression",
+      allowedFiles: ["apps/web/server/services/example.ts", "apps/web/server/services/example.test.ts"],
+      writableFiles: ["apps/web/server/services/example.ts"],
+      tests: { runner: "vitest", cwd: "apps/web", paths: ["apps/web/server/services/example.test.ts"] },
+      acceptanceCriteria: ["The focused regression passes"],
+    };
+    await expect((spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as Function)({ ctx: CTX, input })).resolves.toEqual({
+      runId: "run-fast-1", jobId: "job-fast-1", created: true,
+    });
+    expect(mocks.createDeveloperFastLaneJob).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, idempotencyKey: input.idempotencyKey }));
+    expect(mocks.auditLog).toHaveBeenCalledWith(expect.objectContaining({ userId: 42, tenantId: "tenant-acme", metadata: expect.objectContaining({ jobType: "developer.fast_lane", accepted: true }) }));
+  });
+
+  it("does not accept tenant or actor bindings from the Developer request payload", async () => {
+    mocks.createDeveloperFastLaneJob.mockResolvedValueOnce({ created: true, jobId: "job-fast-2", runId: "run-fast-2", workerJobId: "job-fast-2" });
+    const input = {
+      idempotencyKey: "developer-fast-lane-key-2", developerLogin: "dev-user", sourceRevision: "b".repeat(40),
+      task: "Task", allowedFiles: ["apps/web/a.ts"], writableFiles: ["apps/web/a.ts"],
+      tests: { runner: "vitest", cwd: "apps/web", paths: ["apps/web/a.ts"] }, acceptanceCriteria: ["Done"],
+      tenantId: "attacker-tenant", actorId: 999,
+    };
+    await expect((spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as Function)({ ctx: CTX, input })).resolves.toBeDefined();
+    expect(mocks.createDeveloperFastLaneJob).toHaveBeenCalledWith(expect.not.objectContaining({ tenantId: "attacker-tenant", actorId: 999 }));
+  });
+
   it("keeps workspace viewing a query and treats preparation as a mutation", () => {
     expect((spec226DevelopmentControlRouter.getConversationWorkspace as any).procedureType).toBe("query");
     expect((spec226DevelopmentControlRouter.prepareWorkspaceRun as any).procedureType).toBe("mutation");

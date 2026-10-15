@@ -11,6 +11,10 @@ const MAX_INPUT_KEYS = 500;
 const MAX_STRING_LENGTH = 24_000;
 const MAX_SERIALIZED_PAYLOAD_BYTES = 1_048_576;
 const SECRET_KEY = /(authorization|api[_-]?key|credential|password|secret|token|private[_-]?key|signed[_-]?url)/i;
+const SAFE_USAGE_COUNT_KEYS = new Set([
+  "inputTokens", "cachedInputTokens", "outputTokens", "reservedTokens", "reservationEstimateTokens",
+  "actualTokens", "actualTotalTokens", "overrunTokens", "chargedTokens", "conservativeTokens", "tokenBudget",
+]);
 const EXECUTION_CLASSES = new Set(["short", "long", "external", "cpu", "gpu", "scheduled"]);
 
 function assertSafeValue(value: unknown, depth: number, seenKeys: { count: number }, ancestors = new WeakSet<object>()): void {
@@ -227,7 +231,9 @@ export function redactJobPayload(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, child]) => [
       key,
-      SECRET_KEY.test(key) ? "[REDACTED]" : redactJobPayload(child),
+      SECRET_KEY.test(key) && !(SAFE_USAGE_COUNT_KEYS.has(key) && typeof child === "number" && Number.isSafeInteger(child) && child >= 0)
+        ? "[REDACTED]"
+        : redactJobPayload(child),
     ]),
   );
 }

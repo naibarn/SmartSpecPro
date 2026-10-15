@@ -131,8 +131,8 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           !Number.isSafeInteger(input.promptBytes) || input.promptBytes < 0 || input.promptBytes > 1_000_000) {
         return { kind: "denied", reason: "idempotency_conflict" };
       }
-      // UTF-8 byte count is used as a deliberately conservative prompt-token
-      // reservation because this adapter does not expose Codex tokenization.
+      // This is only a local admission estimate: UTF-8 prompt bytes plus a
+      // configured output allowance. It is not provider tokenization or a hard cap.
       const operationKey = codexModelCallOperationKey(input.lease.jobId, input.runId, input.modelCallId);
       const reservedTokens = input.promptBytes + limits.maxOutputTokensPerTurn;
       if (reservedTokens > limits.maxTokensPerWindow) {
@@ -272,9 +272,11 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           payloadJson: {
             operationKey, runId: input.runId, modelCallId: input.modelCallId,
             phase: input.phase, role: input.role, requestedModel: input.requestedModel,
-            reasoningEffort: input.reasoningEffort, selection: input.selection ?? null, reservedTokens,
+            reasoningEffort: input.reasoningEffort, selection: input.selection ?? null,
+            reservationEstimateTokens: reservedTokens,
+            reservationBasis: "utf8_prompt_bytes_plus_configured_output_allowance",
             tokenWindowStartedAt: tokenWindowStartedAt.toISOString(),
-            tokenBudget: limits.maxTokensPerWindow,
+            localEstimatedAdmissionBudget: limits.maxTokensPerWindow,
           },
         });
         return { kind: "reserved", operationKey, reservedTokens, tokenWindowStartedAt, replayed: false };
@@ -529,6 +531,10 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           inputTokens: usage.inputTokens,
           cachedInputTokens: usage.cachedInputTokens,
           outputTokens: usage.outputTokens,
+          reservationEstimateTokens: numberValue(reservation, "reservedTokens") ?? 0,
+          actualTotalTokens: usage.inputTokens + usage.outputTokens,
+          overrunTokens: Math.max(0, usage.inputTokens + usage.outputTokens - (numberValue(reservation, "reservedTokens") ?? 0)),
+          reservationBasis: "utf8_prompt_bytes_plus_configured_output_allowance",
           usageState: "known",
           observedAt: usage.observedAt,
         };
@@ -540,6 +546,8 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           return { kind: "duplicate", operationKey: input.operationKey, chargedTokens: usage.inputTokens + usage.outputTokens };
         }
         const chargedTokens = usage.inputTokens + usage.outputTokens;
+        const reservationEstimateTokens = numberValue(reservation, "reservedTokens") ?? 0;
+        const overrunTokens = Math.max(0, chargedTokens - reservationEstimateTokens);
         await query.execute(sql`
           UPDATE "worker_job_provider_reservations"
           SET "reservationStatus" = 'released', "usageState" = 'known', "dispatchState" = 'settled',
@@ -554,9 +562,29 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           attemptId: input.lease.attemptId,
           eventType: "CODEX_MODEL_USAGE_SETTLED",
           eventIdempotencyKey: `${input.operationKey}:usage-settled`,
-          payloadJson: { ...normalizedReceipt, operationKey: input.operationKey, chargedTokens },
+          payloadJson: {
+            ...normalizedReceipt, operationKey: input.operationKey,
+            chargedTokens, overrunTokens,
+            ...(overrunTokens > 0 ? { admissionAction: "actual_usage_charged_to_window_and_next_reservations_checked_against_actual" } : {}),
+          },
         });
-        return { kind: "settled", operationKey: input.operationKey, chargedTokens };
+        if (overrunTokens > 0) {
+          await appendJobEvent(query, {
+            workerJobId: input.lease.jobId,
+            attemptId: input.lease.attemptId,
+            eventType: "CODEX_MODEL_BUDGET_OVERRUN",
+            eventIdempotencyKey: `${input.operationKey}:budget-overrun`,
+            payloadJson: {
+              operationKey: input.operationKey,
+              reservationEstimateTokens,
+              actualTokens: chargedTokens,
+              overrunTokens,
+              reservationBasis: "utf8_prompt_bytes_plus_configured_output_allowance",
+              nextAdmissionUsesActualUsage: true,
+            },
+          });
+        }
+        return { kind: "settled", operationKey: input.operationKey, chargedTokens, overrunTokens };
       });
     },
 

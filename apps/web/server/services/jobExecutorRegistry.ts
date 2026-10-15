@@ -23,6 +23,8 @@ import {
   SPEC224_FULL_VERIFICATION_CONTRACT,
   SPEC224_FULL_VERIFICATION_JOB_TYPE,
 } from "./spec224VerificationJob";
+import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
+import { executeSpec224DeveloperFastLaneJob } from "./spec224DeveloperFastLaneExecutor";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -354,6 +356,15 @@ export function createJobExecutorRegistry(
 }
 
 export const defaultJobExecutorRegistry = createJobExecutorRegistry();
+
+// Development-only local Node executor. It uses a server-owned private pipe
+// for model admission and never binds this work to a Protected Runner grant.
+defaultJobExecutorRegistry.register({
+  jobType: DEVELOPER_FAST_LANE_JOB,
+  executionClass: "long",
+  contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+  executor: executeSpec224DeveloperFastLaneJob,
+});
 
 defaultJobExecutorRegistry.register({
   jobType: "external_agent_task",

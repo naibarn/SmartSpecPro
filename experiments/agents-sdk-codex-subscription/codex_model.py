@@ -337,8 +337,16 @@ class CodexSubscriptionModel(Model):
                     admission=self.admission if admission_result else None,
                     operation_key=operation_key,
                 )
-            except BaseException:
+            except BaseException as exc:
                 if self.admission is not None and operation_key and admission_result and admission_result.get("kind") == "reserved":
+                    capacity_evidence = self._provider_capacity_evidence(exc)
+                    if capacity_evidence is not None:
+                        wait = self.admission.provider_capacity(operation_key, capacity_evidence)
+                        if wait.get("kind") == "waiting_capacity":
+                            self.admission.settle(operation_key, None)
+                            next_eligible = str(wait.get("nextEligibleAt", ""))
+                            self.admission.wait(operation_key, "provider_capacity", next_eligible, evidence=wait.get("evidence"))
+                            raise ModelAdmissionWait("provider_capacity", next_eligible, operation_key) from exc
                     self.admission.settle(operation_key, None)
                 raise
             if selection is not None:
@@ -699,6 +707,32 @@ class CodexSubscriptionModel(Model):
     def _require_admission_identity(result: dict[str, Any], identity: str) -> None:
         if not isinstance(result, dict) or result.get("kind") not in {"recorded", "duplicate"}:
             raise ModelAdmissionDenied(f"canonical Task Control refused Codex {identity} identity")
+
+    @staticmethod
+    def _provider_capacity_evidence(error: BaseException) -> dict[str, Any] | None:
+        status = getattr(error, "status_code", None) or getattr(error, "http_status", None)
+        if status is None:
+            response = getattr(error, "response", None)
+            status = getattr(response, "status_code", None)
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            return None
+        if status != 429:
+            return None
+        headers = getattr(getattr(error, "response", None), "headers", {}) or {}
+        retry_after: float | None = None
+        for name in ("retry-after", "x-ratelimit-reset-after", "retry-after-ms"):
+            value = headers.get(name) if hasattr(headers, "get") else None
+            if value is None:
+                continue
+            try:
+                retry_after = float(value) / (1000 if name == "retry-after-ms" else 1)
+            except (TypeError, ValueError):
+                retry_after = None
+            if retry_after is not None:
+                break
+        return {"statusCode": 429, **({"retryAfterSeconds": retry_after} if retry_after is not None else {})}
 
     def _compact_reused_thread_input(self, instruction: str, call: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         prior = self.store.connection.execute(

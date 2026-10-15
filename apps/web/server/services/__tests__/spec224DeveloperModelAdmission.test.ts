@@ -57,4 +57,17 @@ describe("SPEC-224 Developer model admission contract adapter", () => {
     expect(await transport.reserve({ ...call, runId: "other-run" })).toEqual({ kind: "denied", reason: "run_binding" });
     expect(repository.reserveCodexModelCall).not.toHaveBeenCalled();
   });
+
+  it("keeps overlapping model call identities independent within one transport", async () => {
+    const { transport, repository } = setup();
+    const secondCall = { ...call, modelCallId: "model-call-2" };
+    const [first, second] = await Promise.all([transport.reserve(call), transport.reserve(secondCall)]);
+    expect(first.kind).toBe("reserved");
+    expect(second.kind).toBe("reserved");
+    const firstKey = operationKey("job-1", call.runId, call.modelCallId);
+    const secondKey = operationKey("job-1", secondCall.runId, secondCall.modelCallId);
+    expect(await transport.dispatching(firstKey)).toEqual({ kind: "marked" });
+    expect(await transport.dispatching(secondKey)).toEqual({ kind: "marked" });
+    expect(repository.markCodexModelCallDispatching).toHaveBeenCalledTimes(2);
+  });
 });

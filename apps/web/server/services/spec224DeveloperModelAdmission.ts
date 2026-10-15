@@ -16,6 +16,7 @@ export type DeveloperModelAdmissionTransport = {
   threadCreated(operationKey: string, threadId: string): Promise<Record<string, unknown>>;
   turnStarted(operationKey: string, threadId: string, turnId: string): Promise<Record<string, unknown>>;
   settle(operationKey: string, usage: CodexModelUsage | null, reconcile?: boolean): Promise<Record<string, unknown>>;
+  providerCapacity(operationKey: string, evidence: Record<string, unknown>): Promise<Record<string, unknown>>;
   wait(operationKey: string, reason: "budget" | "provider_capacity", nextEligibleAt: string): Promise<void>;
 };
 
@@ -42,8 +43,7 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
   repository: CodexModelAdmissionRepository;
   now?: () => Date;
 }): DeveloperModelAdmissionTransport {
-  let lastOperationKey: string | null = null;
-  let lastWait: { operationKey: string; reason: "budget"; nextEligibleAt: string } | null = null;
+  const operations = new Map<string, { waiting?: { reason: "budget" | "provider_capacity"; nextEligibleAt: string }; dispatched?: boolean }>();
   const now = input.now ?? (() => new Date());
 
   return {
@@ -64,38 +64,56 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
       } satisfies CodexModelCallInput;
       if (call.runId !== input.runId) return { kind: "denied", reason: "run_binding" };
       const operationKey = stableWaitKey(input.lease.jobId, call.runId, call.modelCallId);
-      lastOperationKey = operationKey;
-      lastWait = null;
+      const operation = operations.get(operationKey) ?? {};
+      delete operation.waiting;
+      operation.dispatched = false;
+      operations.set(operationKey, operation);
       const result = await input.repository.reserveCodexModelCall(call);
       if (result.kind === "waiting_budget") {
-        lastWait = { operationKey, reason: "budget", nextEligibleAt: result.nextEligibleAt.toISOString() };
+        operation.waiting = { reason: "budget", nextEligibleAt: result.nextEligibleAt.toISOString() };
         return { ...result, operationKey, nextEligibleAt: result.nextEligibleAt.toISOString() };
       }
       return result;
     },
     async dispatching(operationKey) {
       await input.reporter.assertActive(input.lease);
-      if (operationKey !== lastOperationKey) return { kind: "denied", reason: "reservation_missing" };
-      return input.repository.markCodexModelCallDispatching({ lease: input.lease, operationKey, now: now() });
+      if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
+      const result = await input.repository.markCodexModelCallDispatching({ lease: input.lease, operationKey, now: now() });
+      if (result.kind === "marked" || result.kind === "duplicate") operations.get(operationKey)!.dispatched = true;
+      return result;
     },
     async threadCreated(operationKey, threadId) {
       await input.reporter.assertActive(input.lease);
-      if (operationKey !== lastOperationKey) return { kind: "denied", reason: "reservation_missing" };
+      if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
       return input.repository.recordCodexModelThreadIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), now: now() });
     },
     async turnStarted(operationKey, threadId, turnId) {
       await input.reporter.assertActive(input.lease);
-      if (operationKey !== lastOperationKey) return { kind: "denied", reason: "reservation_missing" };
+      if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
       return input.repository.recordCodexModelTurnIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), turnId: text(turnId, 160), now: now() });
     },
     async settle(operationKey, usage, reconcile = false) {
       await input.reporter.assertActive(input.lease);
-      if (operationKey !== lastOperationKey) return { kind: "denied", reason: "reservation_missing" };
-      return input.repository.settleCodexModelCall({ lease: input.lease, runId: input.runId, operationKey, usage, reconcile, now: now() });
+      if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
+      const result = await input.repository.settleCodexModelCall({ lease: input.lease, runId: input.runId, operationKey, usage, reconcile, now: now() });
+      if ((result.kind === "settled" || result.kind === "duplicate" || result.kind === "unknown") && !operations.get(operationKey)?.waiting) operations.delete(operationKey);
+      return result;
+    },
+    async providerCapacity(operationKey, evidence) {
+      await input.reporter.assertActive(input.lease);
+      const operation = operations.get(operationKey);
+      const status = Number(evidence.statusCode);
+      if (!operation?.dispatched || status !== 429) return { kind: "denied", reason: "capacity_evidence_invalid" };
+      const retryAfterSeconds = Number(evidence.retryAfterSeconds);
+      const delaySeconds = Number.isFinite(retryAfterSeconds) ? Math.max(30, Math.min(900, Math.ceil(retryAfterSeconds))) : 60;
+      const nextEligibleAt = new Date(now().getTime() + delaySeconds * 1_000).toISOString();
+      operation.waiting = { reason: "provider_capacity", nextEligibleAt };
+      return { kind: "waiting_capacity", nextEligibleAt, evidence: { statusCode: 429, retryAfterSeconds: delaySeconds } };
     },
     async wait(operationKey, reason, nextEligibleAt) {
       await input.reporter.assertActive(input.lease);
-      if (!lastWait || operationKey !== lastWait.operationKey || reason !== lastWait.reason || nextEligibleAt !== lastWait.nextEligibleAt) {
+      const operation = operations.get(operationKey);
+      if (!operation?.waiting || reason !== operation.waiting.reason || nextEligibleAt !== operation.waiting.nextEligibleAt) {
         throw new Error("DEVELOPER_MODEL_WAIT_BINDING_INVALID");
       }
       await input.reporter.waitForExternal(input.lease, {
@@ -104,8 +122,7 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
         resumeAfter: nextEligibleAt,
         metadata: { schemaVersion: "spec224.developer-model-wait.v1", runId: input.runId, reservationState: "not_dispatched" },
       });
-      lastWait = null;
-      lastOperationKey = null;
+      operations.delete(operationKey);
     },
   };
 }

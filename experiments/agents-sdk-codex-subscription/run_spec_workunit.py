@@ -284,6 +284,9 @@ def contract_scope_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     snapshot = {field: raw.get(field) for field in CONTRACT_SCOPE_FIELDS}
     if raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
         snapshot.pop("ownerSessionId", None)
+    binding = raw.get("canonicalJobBinding")
+    if isinstance(binding, dict):
+        snapshot["canonicalJobIdentity"] = {key: binding.get(key) for key in ("jobId", "runId", "tenantId", "actorId")}
     return snapshot
 
 
@@ -929,7 +932,10 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         return asyncio.run(invoke())
     except Exception as exc:
         if isinstance(exc, ModelAdmissionWait):
-            store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key)
+            if exc.reason == "provider_capacity":
+                store.wait_for_capacity(retry_after=exc.next_eligible_at, detail="Codex Subscription reported HTTP 429; canonical scheduler owns retry eligibility")
+            else:
+                store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key)
             store.commit_state()
             print(json.dumps(store.state, ensure_ascii=False, indent=2))
             store.close()
@@ -958,6 +964,7 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--continuation", action="store_true", help="Start a new WorkUnit iteration without counting it as crash recovery")
     parser.add_argument("--diagnose-no-progress", action="store_true", help="Force a fresh diagnostic planning/replan strategy after a no-progress continuation")
+    parser.add_argument("--canonical-admission-fd", type=int, help="Private inherited IPC descriptor owned by the canonical server executor")
     args = parser.parse_args()
     contract = load_contract(args.contract, args.workspace)
     evidence = args.evidence_dir.resolve()
@@ -972,7 +979,10 @@ def main() -> int:
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
-    if contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+    if args.canonical_admission_fd is not None:
+        from model_admission import FdCanonicalModelAdmissionTransport
+        store.model_admission_transport = FdCanonicalModelAdmissionTransport(args.canonical_admission_fd)
+    if contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1" or contract.raw.get("canonicalJobBinding"):
         state["canonicalModelAdmissionRequired"] = True
     if state.get("workspaceId") != contract.workspace_id:
         store.close()

@@ -128,4 +128,30 @@ describe("SPEC-224 Codex model-call admission on isolated PostgreSQL", () => {
     const result = await repository.reserveCodexModelCall({ lease: stale, runId: legacy.runId, modelCallId: "stale", phase: "IMPLEMENT", role: "implementer", requestedModel: "gpt-6-luna", reasoningEffort: "medium", promptBytes: 20 });
     expect(result).toEqual({ kind: "denied", reason: "stale_lease" });
   });
+
+  it("records usage above the estimate and admits later calls against actual usage", async () => {
+    const { runId, lease } = await createAuthorizedDeveloperLease();
+    process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "500";
+    const admitted = await repository.reserveCodexModelCall({ lease, runId, modelCallId: "call-overrun", phase: "IMPLEMENT", role: "implementer", requestedModel: "gpt-6-luna", reasoningEffort: "medium", promptBytes: 1 });
+    expect(admitted.kind).toBe("reserved");
+    if (admitted.kind !== "reserved") return;
+    await repository.markCodexModelCallDispatching({ lease, operationKey: admitted.operationKey });
+    await repository.recordCodexModelThreadIdentity({ lease, operationKey: admitted.operationKey, threadId: "thread-overrun" });
+    await repository.recordCodexModelTurnIdentity({ lease, operationKey: admitted.operationKey, threadId: "thread-overrun", turnId: "turn-overrun" });
+    const usage = { inputTokens: 420, cachedInputTokens: 0, outputTokens: 120, threadId: "thread-overrun", turnId: "turn-overrun", effectiveModel: "gpt-6-luna", observedAt: new Date().toISOString() };
+    expect(await repository.settleCodexModelCall({ lease, runId, operationKey: admitted.operationKey, usage })).toMatchObject({ kind: "settled", chargedTokens: 540, overrunTokens: 439 });
+    const receipt = await client`SELECT "usageReceiptJson" FROM worker_job_provider_reservations WHERE "operationKey" = ${admitted.operationKey}`;
+    expect(receipt[0].usageReceiptJson).toMatchObject({
+      reservationEstimateTokens: 101,
+      actualTotalTokens: 540,
+      overrunTokens: 439,
+      reservationBasis: "utf8_prompt_bytes_plus_configured_output_allowance",
+    });
+    const overrunEvent = await client`SELECT "payloadJson" FROM worker_job_events WHERE "workerJobId" = ${lease.jobId} AND "eventType" = 'CODEX_MODEL_BUDGET_OVERRUN'`;
+    expect(overrunEvent[0].payloadJson).toMatchObject({ actualTokens: 540, overrunTokens: 439, nextAdmissionUsesActualUsage: true });
+
+    const next = await createAuthorizedDeveloperLease();
+    const blocked = await repository.reserveCodexModelCall({ lease: next.lease, runId: next.runId, modelCallId: "call-after-overrun", phase: "IMPLEMENT", role: "implementer", requestedModel: "gpt-6-luna", reasoningEffort: "medium", promptBytes: 1 });
+    expect(blocked).toMatchObject({ kind: "waiting_budget", reason: "token_budget" });
+  });
 });

@@ -42,7 +42,7 @@ export type CodexModelThreadIdentityDecision = { kind: "recorded" | "duplicate" 
 export type CodexModelTurnIdentityDecision = { kind: "recorded" | "duplicate" } | { kind: "denied"; reason: "stale_lease" | "reservation_missing" | "turn_conflict" };
 
 export type CodexModelSettlementDecision =
-  | { kind: "settled" | "duplicate"; operationKey: string; chargedTokens: number }
+  | { kind: "settled" | "duplicate"; operationKey: string; chargedTokens: number; overrunTokens?: number }
   | { kind: "unknown"; operationKey: string; conservativelyChargedTokens: number }
   | { kind: "denied"; reason: "stale_lease" | "reservation_missing" | "receipt_conflict" };
 
