@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 84,
+  "generation": 85,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2682,7 +2682,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T00:00:38.500386Z",
+  "updated_at": "2026-10-15T15:29:36.755686Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2825,13 +2825,20 @@
         "scope": "Admin target editor now accepts a per-target Cloudflare account ID and saves/revokes the exact tenant/project/environment token through the existing encrypted deployment credential APIs. Focused UI tests passed 5/5; progressive integration and mocked browser gates passed. No Cloudflare account, R2 bucket, Worker, hostname, or deployment was provisioned.",
         "source_sha": "265b7f79ed26e7df9931bf80f6b0e0099b10ae12",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_AUTONOMOUS_RECOVERY_AND_ECONOMICS_AUDIT",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-autonomous-completion-economics-audit-20261015.md",
+        "scope": "Source commit 06ea9d9cfe92de5ebbaf31db4cc1c367040f0a46: BLOCKED_RECOVERABLE replan fix; scoped Vitest 9 files/58 tests passed. Fast Lane E2E 4 tests could not load because isolated dependency tree lacks superjson. No protected Runner/real acceptance.",
+        "source_sha": "06ea9d9cfe92de5ebbaf31db4cc1c367040f0a46",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
+    "sha": "06ea9d9cfe92de5ebbaf31db4cc1c367040f0a46",
     "status": "PARTIAL",
     "task_regressions": []
   }

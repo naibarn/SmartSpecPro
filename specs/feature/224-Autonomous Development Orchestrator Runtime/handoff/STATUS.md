@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1259 unresolved of 1259
 - Next action: Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.
-- Manifest generation: 84
+- Manifest generation: 85
 
 ## Source-declared status and relationship claims
 
