@@ -105,7 +105,12 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
       const status = Number(evidence.statusCode);
       if (!operation?.dispatched || status !== 429) return { kind: "denied", reason: "capacity_evidence_invalid" };
       const retryAfterSeconds = Number(evidence.retryAfterSeconds);
-      const delaySeconds = Number.isFinite(retryAfterSeconds) ? Math.max(30, Math.min(900, Math.ceil(retryAfterSeconds))) : 60;
+      // Preserve provider supplied reset windows, including multi-day waits.
+      // Capping this at 15 minutes made the scheduler dispatch again before
+      // the provider's confirmed capacity reset time.
+      const delaySeconds = Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+        ? Math.max(30, Math.ceil(retryAfterSeconds))
+        : 60;
       const nextEligibleAt = new Date(now().getTime() + delaySeconds * 1_000).toISOString();
       operation.waiting = { reason: "provider_capacity", nextEligibleAt };
       return { kind: "waiting_capacity", nextEligibleAt, evidence: { statusCode: 429, retryAfterSeconds: delaySeconds } };

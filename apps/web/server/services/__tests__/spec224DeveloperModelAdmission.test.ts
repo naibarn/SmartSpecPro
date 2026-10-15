@@ -70,6 +70,24 @@ describe("SPEC-224 Developer model admission contract adapter", () => {
     }));
   });
 
+  it("preserves a provider reset time several days away", async () => {
+    const { transport, reporter } = setup();
+    const admitted = await transport.reserve(call);
+    const op = operationKey("job-1", call.runId, call.modelCallId);
+    expect(admitted.kind).toBe("reserved");
+    await transport.dispatching(op);
+
+    const threeDays = 3 * 24 * 60 * 60;
+    const wait = await transport.providerCapacity(op, { statusCode: 429, retryAfterSeconds: threeDays });
+
+    expect(wait).toMatchObject({ kind: "waiting_capacity", nextEligibleAt: "2026-10-18T11:30:00.000Z" });
+    expect(wait).toMatchObject({ evidence: { statusCode: 429, retryAfterSeconds: threeDays } });
+    await transport.wait(op, "provider_capacity", String(wait.nextEligibleAt));
+    expect(reporter.waitForExternal).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      reason: "provider_capacity", resumeAfter: "2026-10-18T11:30:00.000Z",
+    }));
+  });
+
   it("rejects a mismatched run binding before touching the budget repository", async () => {
     const { repository, transport } = setup();
     expect(await transport.reserve({ ...call, runId: "other-run" })).toEqual({ kind: "denied", reason: "run_binding" });

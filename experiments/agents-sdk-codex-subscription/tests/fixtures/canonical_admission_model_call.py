@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 import types
 from pathlib import Path
 
@@ -24,7 +25,11 @@ class Codex:
     def __enter__(self): return self
     def __exit__(self, *_args): pass
     def models(self): return types.SimpleNamespace(data=[row])
-    def thread_start(self, **_kwargs): return FakeThread()
+    def thread_start(self, **_kwargs):
+        count_path = store_dir / "mock-thread-start-count"
+        count = int(count_path.read_text() if count_path.exists() else "0") + 1
+        count_path.write_text(str(count))
+        return FakeThread()
 
 class FakeThread:
     id = "mock-thread-e2e"
@@ -42,13 +47,41 @@ sys.modules["openai_codex"] = types.SimpleNamespace(Codex=Codex,
     CodexConfig=lambda **_kw: object(), ApprovalMode=types.SimpleNamespace(deny_all="deny_all"),
     Sandbox=types.SimpleNamespace(read_only="read_only"))
 store_dir = evidence_root / run_id
-store = DurableRunStore(store_dir, run_id=run_id, initial_state={"runId": run_id, "iterations": [], "status": "completed"})
+store = DurableRunStore(store_dir, run_id=run_id,
+    initial_state=None if (store_dir / "runtime.sqlite3").exists() else {"runId": run_id, "iterations": [], "status": "active"},
+    resume=(store_dir / "runtime.sqlite3").exists())
 receipts = []
+admission = FdCanonicalModelAdmissionTransport(3)
+pause_dir = os.environ.get("SPEC224_E2E_PAUSE_AFTER_RESERVE")
+if pause_dir:
+    original_reserve = admission.reserve
+    def reserve_then_pause(request):
+        result = original_reserve(request)
+        pause = Path(pause_dir)
+        pause.mkdir(parents=True, exist_ok=True)
+        (pause / "reserved").touch()
+        deadline = time.monotonic() + 15
+        while not (pause / "continue").exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        if not (pause / "continue").exists():
+            raise RuntimeError("test dispatch barrier timed out")
+        return result
+    admission.reserve = reserve_then_pause
 model = CodexSubscriptionModel(codex_cwd=ROOT, role="implementer", on_receipt=receipts.append,
     store=store, phase_id="implement:1", routing={"profile": "GENERAL"},
-    admission=FdCanonicalModelAdmissionTransport(3), admission_required=True)
-asyncio.run(model.get_response(None, "authenticated fast lane acceptance", None, [], None, [], None,
-    previous_response_id=None, conversation_id=None, prompt=None))
+    admission=admission, admission_required=True)
+try:
+    asyncio.run(model.get_response(None, "authenticated fast lane acceptance", None, [], None, [], None,
+        previous_response_id=None, conversation_id=None, prompt=None))
+except BaseException:
+    call = store.connection.execute("SELECT call_id FROM model_calls ORDER BY rowid DESC LIMIT 1").fetchone()
+    if call:
+        (store_dir / "mock-model-call-id").write_text(call["call_id"])
+    store.close()
+    raise
+call = store.connection.execute("SELECT call_id FROM model_calls ORDER BY rowid DESC LIMIT 1").fetchone()
+if call:
+    (store_dir / "mock-model-call-id").write_text(call["call_id"])
 store.state["status"] = "completed"
 store.export()
 store.close()
