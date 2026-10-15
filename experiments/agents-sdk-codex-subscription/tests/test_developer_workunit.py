@@ -137,7 +137,7 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
             developer_workunit._verify_resume_scope(contract, request,
                 {"jobId": "job", "runId": "run", "tenantId": "tenant", "actorId": 4}, Path("/missing/receipt"))
 
-    def test_existing_fast_lane_resume_keeps_source_baseline_after_origin_main_advances(self) -> None:
+    def test_default_fast_lane_resume_after_three_day_scope_expiry_keeps_baseline_and_applies_bounded_continuation(self) -> None:
         task_id = "12345678-90ab-cdef-1234-567890abcdef"
         request = {
             "developerLogin": "developer", "sourceRevision": "a" * 40,
@@ -154,7 +154,7 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
             root = Path(raw_dir)
             workspace = root / "workspace"
             workspace.mkdir()
-            scope_expiry = time.time() + 3600
+            scope_expiry = time.time() - 3 * 24 * 60 * 60
             contract = developer_workunit._request_contract(
                 request, identity=identity, workspace=workspace,
                 registered={"base_sha": request["sourceRevision"], "workspace_id": "workspace:test",
@@ -171,7 +171,7 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
             binding_path = root / "binding.json"
             binding_path.write_text(json.dumps(binding), encoding="utf-8")
             receipt_path = evidence / "authorization-receipt.json"
-            receipt_path.write_text(json.dumps({
+            original_receipt = {
                 "schema": "developer-local-workunit-authorization.v1", "taskId": task_id,
                 "workspaceId": contract["workspaceId"], "sourceSha": contract["sourceRevision"],
                 "developerIdentity": identity, "ownerSessionId": "initial-session", "ownerPid": 1,
@@ -179,29 +179,59 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
                 "writableFiles": contract["writableFiles"], "allowedTools": contract["allowedTools"],
                 "budget": contract["budget"], "scopeExpiresAt": scope_expiry,
                 "productionAccess": False, "runnerDispatch": False,
-            }), encoding="utf-8")
+            }
+            receipt_path.write_text(json.dumps(original_receipt), encoding="utf-8")
+            receipt_digest = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+            issued_at = scope_expiry + 3 * 24 * 60 * 60
+            scope = {key: request[key] for key in (
+                "developerLogin", "sourceRevision", "task", "allowedFiles", "writableFiles", "patchableFiles",
+                "tests", "acceptanceCriteria", "budget", "browserUat", "implementationGuidance", "scopeTtlSeconds",
+            ) if key in request}
+            grant = {
+                "schema": "spec224.developer-continuation-grant.v1", "continuationId": "continuation-after-three-days",
+                "continuationOrdinal": 1, **binding, "developerLogin": "developer",
+                "workspaceId": contract["workspaceId"], "sourceRevision": request["sourceRevision"],
+                "originalAuthorizationReceiptSha256": receipt_digest,
+                "scopeDigest": developer_workunit._canonical_digest(scope),
+                "issuedAt": datetime.fromtimestamp(issued_at, timezone.utc).isoformat(),
+                "scopeExpiresAt": datetime.fromtimestamp(issued_at + 3600, timezone.utc).isoformat(),
+            }
+            grant_path = root / "continuation-grant.json"
+            grant_path.write_text(json.dumps(grant), encoding="utf-8")
             args = SimpleNamespace(
                 scope_ttl_seconds=3600, repository=root, developer_login="developer", request=request_path,
                 canonical_job_binding_file=binding_path, policy=root / "policy.toml", evidence_root=root / "evidence",
-                continuation_grant_file=None, base_sha=request["sourceRevision"], crash_at="", canonical_admission_fd=None,
+                continuation_grant_file=grant_path, base_sha=request["sourceRevision"], crash_at="", canonical_admission_fd=None,
             )
             run_called = []
             def git_only_source_existence(argv, **kwargs):
                 if argv[:3] != ["git", "cat-file", "-e"]:
                     raise AssertionError(f"resume attempted Initial Admission check: {argv}")
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
+            os.environ["CODEX_SESSION_ID"] = "session-after-supervisor-restart"
             with patch.object(developer_workunit, "verify_github_developer_permission", return_value=identity), \
                  patch.object(developer_workunit, "_validate_request"), \
                  patch.object(developer_workunit.AUTHORITY, "load_source_policy", return_value={"source_root": str(root / "source")}), \
                  patch.object(developer_workunit.AUTHORITY, "claim_registered_workspace", return_value={
                      "workspaceId": "workspace:test", "taskId": task_id, "sourceSha": request["sourceRevision"],
-                     "ownerFencingVersion": 2, "leaseExpiresAt": scope_expiry,
-                 }), \
+                     "ownerFencingVersion": 2, "leaseExpiresAt": issued_at + 3600,
+                 }) as claim_workspace, \
                  patch.object(developer_workunit.subprocess, "run", side_effect=git_only_source_existence), \
                  patch.object(developer_workunit, "_run", side_effect=lambda *a, **k: run_called.append((a, k)) or 0):
                 self.assertEqual(developer_workunit.start(args), 0)
             self.assertEqual(len(run_called), 1)
-            self.assertEqual(json.loads(contract_path.read_text())["sourceRevision"], request["sourceRevision"])
+            resumed = json.loads(contract_path.read_text())
+            self.assertEqual(resumed["sourceRevision"], request["sourceRevision"])
+            self.assertEqual(resumed["taskId"], task_id)
+            self.assertEqual(resumed["ownerSessionId"], "session-after-supervisor-restart")
+            self.assertEqual(claim_workspace.call_args.kwargs["expected_head_sha"], request["sourceRevision"])
+            self.assertAlmostEqual(resumed["scopeExpiresAt"], issued_at + 3600, places=3)
+            self.assertEqual(resumed["originalScopeExpiresAt"], scope_expiry)
+            self.assertEqual(resumed["originalAuthorizationReceiptSha256"], receipt_digest)
+            self.assertEqual(hashlib.sha256(receipt_path.read_bytes()).hexdigest(), receipt_digest)
+            continuation = json.loads((evidence / "continuation-receipts.jsonl").read_text().splitlines()[0])
+            self.assertEqual(continuation["continuationId"], grant["continuationId"])
+            self.assertEqual(continuation["sourceRevision"], request["sourceRevision"])
 
     def test_contract_requires_explicit_paths_tests_and_acceptance(self) -> None:
         identity = {"login": "developer", "permission": "write", "repository": "team/project", "host": "github.com"}
