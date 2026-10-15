@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "b96431e8d9c1a1daa755e2c857755cf6c51456cb",
+    "expected_canonical_sha": "af92f9107dbfb57c86d02327bcbe054d56d2c5ce",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Continue the functional Mini-App delivery path by wiring text-only Factory phases through Skill→SmartAIHub Gateway, then implement isolated artifact serving and release activation against the owner-provisioned non-production Cloudflare target. PR #959 now shows BUILDING accurately when no runnable artifact exists. Do not use production resources. Keep Protected Runner Acceptance and PR #944 separate.",
-    "next_ready_workunit": "IMPLEMENTATION_READY: route Mini-App Factory text model calls through the existing Skill→SmartAIHub Gateway with no direct provider or Codex Subscription fallback. Then deploy a disposable Mini-App on the isolated non-production Cloudflare target and verify HTTPS runtime, owner/tenant isolation, Browser receipt, and publish/unpublish. Functional Mini-App delivery, SPEC-224 normative completion and Protected Runner Acceptance remain separate.",
-    "reactivation_predicate": "An authorized non-production SmartAIHub admin host is available for target setup, and the owner creates a separate Cloudflare account with a dedicated R2 bucket, isolated Worker/runtime and HTTPS preview hostname, then configures the account ID and target-scoped least-privilege token through Admin Deployment Targets. A disposable test tenant/owner and same-tenant/cross-tenant/anonymous principals are available for E2E.",
-    "resume_point": "Canonical origin/main is b96431e8d9c1a1daa755e2c857755cf6c51456cb, including PR #959 truthful BUILDING state. Focused MiniAppRoute tests passed 4/4; progressive_integration_gate and mocked SPEC-308 browser simulation passed; build-preview was skipped by policy. No non-production SmartAIHub host, dedicated Cloudflare account/R2/Worker/hostname, artifact runtime, deployment ID or real Internet Browser/tenant/publish evidence is available yet. Production tunnel/account remains unused.",
-    "waiting_predicate": "Internet deployment and acceptance wait for owner-provisioned non-production SmartAIHub admin host plus dedicated Cloudflare account, R2 bucket, isolated Worker/runtime, HTTPS preview hostname and target-scoped least-privilege credential configured through Admin Deployment Targets. Continue code/test work that does not require those resources. Never use production resources, direct provider API or Codex Subscription for hosted Factory calls; keep Runner acceptance and PR #944 separate."
+    "next_action": "Continue the hosted Mini-App functional path on current main: complete isolated artifact upload, owner-authorized runtime serving and release activation; wire text-only Factory phases through Skill→SmartAIHub Gateway with no direct provider or Codex Subscription fallback; then run Internet Browser and tenant-isolation acceptance. This provisioning slice only provisions isolated Cloudflare preview resources and keeps the Worker unexposed/BUILDING. Functional delivery, SPEC-224 normative completion and Protected Runner Acceptance remain separate.",
+    "next_ready_workunit": "IMPLEMENTATION_READY: implement the Mini-App artifact runtime and activation path using the isolated Worker/R2 target from this provisioning slice; in parallel, route Factory text model calls through existing Skill→SmartAIHub Gateway and remove hosted-path model fallbacks. Then use the owner-configured target for a disposable Mini-App HTTPS acceptance. Do not claim functional delivery from provisioning alone.",
+    "reactivation_predicate": "Cloudflare deployment authority becomes available when an exact admin configures an isolated preview/staging target and scoped credential through Admin Deployment Targets on the existing SmartAIHub control plane. A separate Cloudflare account is optional; isolated Worker/R2 resources and permissions are required. No separate non-production SmartAIHub host is required. Continue code and mocked acceptance while credentials are absent.",
+    "resume_point": "Source checkpoint d9f2a1f8e5f5abbf4f95ce83e335dff266e04a2e is based on canonical af92f9107dbfb57c86d02327bcbe054d56d2c5ce. It adds exact-admin provisioning of deterministic isolated preview R2/Worker resources, disables workers.dev and preview URLs, and reports BUILDING until artifact delivery is connected. Provisioning/UI/service focused tests pass 11/11; one unrelated existing Project Wiki preflight expectation failed when the entire existing deployment-target test file was run. No Cloudflare credential was used and no Internet deployment, Gateway trace, Browser receipt or ownership acceptance is claimed. Next: continue Factory Gateway adapter and artifact runtime on this code PR.",
+    "waiting_predicate": "Only credential-backed Cloudflare provisioning/deployment and real Internet acceptance wait for an enabled exact-scope preview/staging target and configured scoped credential. Gateway-only Factory execution, artifact/runtime implementation, tests and release logic remain actionable without Cloudflare credentials. Never use production resources, direct provider or Codex Subscription for hosted Factory calls; keep Protected Runner Acceptance and PR #944 separate."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 84,
+  "generation": 86,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1338,11 +1338,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b96431e8d9c1a1daa755e2c857755cf6c51456cb",
+    "canonical_sha": "af92f9107dbfb57c86d02327bcbe054d56d2c5ce",
     "integrated": true,
-    "integrated_at": "2026-10-14T17:55:25Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/959",
-    "source_sha": "4edab829f7d0de6ce28397cc89659b906d55b9e1"
+    "integrated_at": "2026-10-15T00:03:00Z",
+    "last_source_branch": "codex/spec224-miniapp-preview-provisioning",
+    "last_source_sha": "d9f2a1f8e5f5abbf4f95ce83e335dff266e04a2e",
+    "pending_action": "Open a normal protected code PR from codex/spec224-miniapp-preview-provisioning; run required checks, then continue the remaining Factory Gateway and artifact runtime work in the same functional PR.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/960",
+    "source_sha": "f23e25244fa1a429305e8737a68d96bf45405db1"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2682,7 +2685,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T00:00:38.500386Z",
+  "updated_at": "2026-10-15T00:16:43.806266Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
