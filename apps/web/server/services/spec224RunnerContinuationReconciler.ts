@@ -165,6 +165,7 @@ export async function reconcileSpec224RunnerContinuations(
       .select({
         tenantId: workerJobs.tenantId,
         requestedByUserId: workerJobs.requestedByUserId,
+        jobType: workerJobs.jobType,
         attempt: workerJobs.attempt,
         fencingVersion: workerJobs.fencingVersion,
         status: workerJobs.status,
@@ -314,7 +315,10 @@ export async function reconcileSpec224RunnerContinuations(
     }
 
     if (alreadyContinued.length) {
-      if (intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED") {
+      if (
+        intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED" &&
+        job.jobType === "mini_app_factory.stage"
+      ) {
         await settleMiniAppFactoryRunnerStage({
           runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
           receiptEventId: intent.receiptEventId, receiptEventType: intent.receiptEventType, developmentRuns,
@@ -401,7 +405,10 @@ export async function reconcileSpec224RunnerContinuations(
       );
       reviewRequired += 1;
     } else {
-      if (intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED") {
+      if (
+        intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED" &&
+        job.jobType === "mini_app_factory.stage"
+      ) {
         await settleMiniAppFactoryRunnerStage({
           runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
           receiptEventId: intent.receiptEventId, receiptEventType: intent.receiptEventType, developmentRuns,

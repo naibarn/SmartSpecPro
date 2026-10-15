@@ -6,10 +6,8 @@
  * The provider is a deterministic, loopback-only adapter fixture; this is not
  * Codex/Claude Live Provider Certification.
  *
- * Run from apps/web with:
- *   RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://spec224_d385_runtime:<password>@127.0.0.1:55493/spec224_d385_test \
- *   JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 \
- *   npx vitest run server/services/__tests__/spec224RegisteredRunnerE2E.integration.test.ts
+ * Run with a newly provisioned SPEC224_TEST_* disposable target, its
+ * passwordless loopback DATABASE_URL, and RUN_DB_INTEGRATION_TESTS=true.
  */
 import crypto from "node:crypto";
 import {
@@ -33,10 +31,16 @@ import { createServer as createTcpServer } from "node:net";
 import { promisify } from "node:util";
 
 import postgres from "postgres";
+import { sql as drizzleSql } from "drizzle-orm";
 import { WebSocket } from "ws";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { getDb } from "../../db";
 import { RUNNER_CONTRACT_VERSION } from "../runnerContracts";
 import { runnerDeviceProofPayload } from "../runnerAuthService";
+import {
+  assertSpec224DisposableDatabaseUrl,
+  assertSpec224OwnedPostgresContainer,
+} from "./support/spec224DisposablePostgres";
 
 const enabled = process.env.RUN_DB_INTEGRATION_TESTS === "true";
 const suite = enabled ? describe : describe.skip;
@@ -47,15 +51,13 @@ const databaseName = parsedDatabaseUrl.pathname.replace(/^\/+/, "");
 if (
   enabled &&
   (!/(^|_|-)(test|ci)(_|-|$)/i.test(databaseName) ||
-    parsedDatabaseUrl.hostname !== "127.0.0.1" ||
-    parsedDatabaseUrl.port !== "55493" ||
-    databaseName !== "spec224_d385_test" ||
-    decodeURIComponent(parsedDatabaseUrl.username) !== "spec224_d385_runtime")
+    databaseName !== "spec224_d385_test")
 ) {
   throw new Error(
-    "Registered Runner E2E requires the isolated D3.85 PostgreSQL identity"
+    "Registered Runner E2E requires the isolated SPEC-224 test database"
   );
 }
+if (enabled) assertSpec224DisposableDatabaseUrl(databaseUrl);
 process.env.DATABASE_URL = databaseUrl;
 
 const sql = postgres(databaseUrl, { max: 4 });
@@ -646,39 +648,18 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     });
     expect(databaseIdentity.server_version).toMatch(/^PostgreSQL 15\.17/);
 
-    const [container] = JSON.parse(
-      execFileSync("docker", ["inspect", "spec224-d385-pg"], {
-        encoding: "utf8",
-      })
-    ) as Array<{
-      Name: string;
-      Config: { Image: string };
-      State: { Running: boolean };
-      HostConfig: { NetworkMode: string };
-      Mounts: Array<{ Name: string; Destination: string }>;
-      NetworkSettings: {
-        Ports: Record<
-          string,
-          Array<{ HostIp: string; HostPort: string }> | null
-        >;
-      };
-    }>;
-    expect(container).toMatchObject({
-      Name: "/spec224-d385-pg",
-      Config: { Image: "postgres:15.17" },
-      State: { Running: true },
-      HostConfig: { NetworkMode: "spec224-d385-net" },
-    });
-    expect(container.Mounts).toContainEqual(
-      expect.objectContaining({
-        Name: "spec224-d385-pgdata",
-        Destination: "/var/lib/postgresql/data",
-      })
+    if (process.env.DATABASE_URL !== databaseUrl) {
+      throw new Error("SPEC224_TEST_DATABASE_URL_CHANGED_DURING_SETUP");
+    }
+    const [applicationDatabaseIdentity] = await getDb().execute(
+      drizzleSql`SELECT current_database() AS database_name, current_user AS role_name`
     );
-    expect(container.NetworkSettings.Ports["5432/tcp"]).toContainEqual({
-      HostIp: "127.0.0.1",
-      HostPort: "55493",
+    expect(applicationDatabaseIdentity).toMatchObject({
+      database_name: "spec224_d385_test",
+      role_name: "spec224_d385_runtime",
     });
+
+    assertSpec224OwnedPostgresContainer();
 
     const crashMode = process.env.SPEC224_RUNNER_CRASH_CASE ?? "baseline";
     if (
