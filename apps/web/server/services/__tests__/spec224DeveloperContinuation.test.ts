@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { issueContinuationGrant } from "../spec224DeveloperFastLaneExecutor";
@@ -22,7 +23,7 @@ async function makeContinuationFixture(scopeExpiresAt: number, maxAttempts = 2) 
     actorId: 42,
     request: {
       developerLogin: "developer",
-      sourceRevision: "e10bcb103912b71e6fc6f953f92f366ee12a10c6",
+      sourceRevision: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
       task: "Continue within the original scope",
       allowedFiles: ["src/main.py"],
       writableFiles: ["src/main.py"],
