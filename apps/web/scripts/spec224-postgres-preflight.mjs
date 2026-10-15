@@ -26,7 +26,7 @@ const SPEC_KEYS = new Set([
 export const TARGET_FACTS_QUERY = `
 SELECT json_build_object(
   'database', current_database(),
-  'server_address', inet_server_addr()::text,
+  'server_address', host(inet_server_addr()),
   'server_port', inet_server_port(),
   'server_version_num', current_setting('server_version_num')::integer,
   'database_comment', shobj_description(d.oid, 'pg_database'),

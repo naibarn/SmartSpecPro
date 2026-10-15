@@ -133,6 +133,7 @@ describe("Spec 224 PostgreSQL target preflight policy", () => {
 
   it("uses a SELECT-only query and has no migration or provisioning command", () => {
     expect(TARGET_FACTS_QUERY.trimStart().startsWith("SELECT")).toBe(true);
+    expect(TARGET_FACTS_QUERY).toMatch(/'server_address',\s*host\(inet_server_addr\(\)\)/);
     expect(TARGET_FACTS_QUERY).not.toMatch(/^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|GRANT|REVOKE|TRUNCATE)\b/im);
   });
 });
