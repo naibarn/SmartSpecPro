@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   disable: vi.fn(),
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
+  provisionRuntime: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
   targetsError: false,
 }));
@@ -31,6 +32,7 @@ vi.mock("@/lib/trpc", () => ({
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
+      provisionMiniAppPreviewRuntime: { useMutation: () => ({ mutate: mocks.provisionRuntime, isPending: false, error: null }) },
       saveDeploymentCredential: { useMutation: () => ({ mutate: mocks.saveCredential, isPending: false, error: null }) },
       revokeDeploymentCredential: { useMutation: () => ({ mutate: mocks.revokeCredential, isPending: false, error: null }) },
     },
@@ -88,7 +90,11 @@ describe("AdminDeploymentTargets", () => {
     expect(await screen.findByText("wiki-staging-worker")).toBeInTheDocument();
     expect(screen.getByText("Credential: CONFIGURED")).toBeInTheDocument();
     expect(screen.queryByText(/secret-token|encryptedSecret/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/dedicated non-production Mini-App Cloudflare account/)).toBeInTheDocument();
+    expect(screen.getByText(/isolated Mini-App Workers and storage with scoped permissions/)).toBeInTheDocument();
+    expect(screen.getByText(/separate Cloudflare account is optional/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Provision isolated Mini-App runtime" }));
+    expect(mocks.provisionRuntime).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" });
 
     await user.click(screen.getByText("Configure target account credential"));
     await user.type(screen.getByLabelText("Cloudflare API token"), "target-only-cloudflare-token-123");

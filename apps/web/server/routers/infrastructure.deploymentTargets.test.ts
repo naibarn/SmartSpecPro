@@ -6,6 +6,8 @@ vi.mock("../db", () => ({ getDb: getDbMock }));
 import { infrastructureRouter } from "./infrastructure";
 import { projectWikiHostedRoutePreflightProviders } from "../services/projectWikiHostedRoutePreflight";
 import { deploymentCredentialRef } from "../services/providerDeploymentTargetAuthority";
+import * as deploymentTargets from "../services/providerDeploymentTargetAuthority";
+import * as miniAppProvisioning from "../services/miniAppCloudflareProvisioning";
 
 const tenantId = "8de1a509-6177-49b7-b57d-5d3b5228d75f";
 const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
@@ -598,5 +600,38 @@ describe("infrastructure deployment target project selector", () => {
       );
     expect(revoked.state).toBe("REVOKED");
     expect(revoked.value?.targetAuthorized).toBe(false);
+  });
+});
+
+describe("Mini-App preview runtime provisioning route", () => {
+  it("uses only exact-admin preview target authority and persists isolated resource identities", async () => {
+    const target = { id: "target-row", tenantId, projectId, environment: "preview", provider: "cloudflare", enabled: true,
+      deploymentTargetId: "preview", accountRef: "a".repeat(32), credentialRef: deploymentCredentialRef({ tenantId, projectId, environment: "preview", provider: "cloudflare" }) };
+    const resolve = vi.spyOn(deploymentTargets, "resolveProviderDeploymentTarget").mockResolvedValue({ status: "CONFIGURED", target: target as any });
+    const provision = vi.spyOn(miniAppProvisioning, "provisionMiniAppCloudflareTarget").mockResolvedValue({ status: "PROVISIONED",
+      bucketName: "smartspec-miniapp-preview-bucket", workerName: "smartspec-miniapp-preview-worker", workerExposure: "DISABLED", runtimeStatus: "BUILDING" });
+    const update = vi.spyOn(deploymentTargets, "updateProviderDeploymentTarget").mockResolvedValue({ status: "UPDATED", target: target as any });
+    getDbMock.mockResolvedValue({});
+    const admin = infrastructureRouter.createCaller({ user: { id: 1, role: "admin" } } as any);
+
+    await expect(admin.provisionMiniAppPreviewRuntime({ tenantId, projectId, environment: "preview" })).resolves.toMatchObject({
+      status: "PROVISIONED", workerExposure: "DISABLED", runtimeStatus: "BUILDING",
+    });
+    expect(resolve).toHaveBeenCalledWith({}, { tenantId, projectId, environment: "preview", provider: "cloudflare" });
+    expect(provision).toHaveBeenCalledWith({ db: {}, target });
+    expect(update).toHaveBeenCalledWith({}, expect.objectContaining({
+      identity: { tenantId, projectId, environment: "preview", provider: "cloudflare" },
+      targetRowId: "target-row",
+      changes: expect.objectContaining({ workerRef: "smartspec-miniapp-preview-worker", runtimePolicy: expect.stringContaining("mini-app-preview-runtime/v1") }),
+      actorUserId: 1,
+    }));
+    const persistedPolicy = update.mock.calls[0]?.[1]?.changes?.runtimePolicy;
+    expect(persistedPolicy?.length).toBeLessThanOrEqual(160);
+    expect(JSON.parse(persistedPolicy ?? "{}")).toMatchObject({ bucketName: "smartspec-miniapp-preview-bucket" });
+    await expect((infrastructureRouter.createCaller({ user: { id: 2, role: "system_agent" } } as any)
+      .provisionMiniAppPreviewRuntime({ tenantId, projectId, environment: "preview" }))).rejects.toMatchObject({ code: "FORBIDDEN" });
+    resolve.mockRestore();
+    provision.mockRestore();
+    update.mockRestore();
   });
 });

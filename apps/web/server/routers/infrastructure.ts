@@ -56,7 +56,8 @@ import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfigurat
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
 import { composeProjectWikiHostedRoutePreflight } from "../services/projectWikiHostedRoutePreflight";
-import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
+import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, resolveProviderDeploymentTarget, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
+import { provisionMiniAppCloudflareTarget } from "../services/miniAppCloudflareProvisioning";
 import {
   PROJECT_WIKI_CANDIDATE,
   createDrizzleProjectWikiCandidateRepository,
@@ -487,6 +488,29 @@ export const infrastructureRouter = router({
       if (result.status === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Deployment target not found in the requested scope" });
       auditLogger.log({ eventType: "provider_deployment_target_disabled", userId: ctx.user?.id ?? null,
         requestType: "deployment_target_disable", responsePayload: { targetRowId: input.targetRowId, tenantId: input.tenantId, projectId: input.projectId, environment: input.environment, provider: input.provider }, statusCode: 200 });
+      return result;
+    }),
+
+  provisionMiniAppPreviewRuntime: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.enum(["preview", "staging"]) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const identity = { ...input, provider: "cloudflare" };
+      const resolution = await resolveProviderDeploymentTarget(db, identity);
+      if (resolution.status !== "CONFIGURED") throw new TRPCError({ code: resolution.status === "TARGET_AUTHORITY_CONFLICT" ? "CONFLICT" : "PRECONDITION_FAILED", message: `Mini-App target unavailable: ${resolution.status}` });
+      const result = await provisionMiniAppCloudflareTarget({ db, target: resolution.target });
+      // runtimePolicy is varchar(160); workerRef and the provisioning result
+      // already carry the other fields, so persist only the stable schema and bucket.
+      const runtimePolicy = JSON.stringify({ schemaVersion: "mini-app-preview-runtime/v1", bucketName: result.bucketName });
+      if (runtimePolicy.length > 160) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Mini-App runtime policy exceeds the deployment target limit" });
+      const persisted = await updateProviderDeploymentTarget(db, { identity, targetRowId: resolution.target.id,
+        changes: { workerRef: result.workerName, runtimePolicy }, actorUserId: ctx.user?.id });
+      if (persisted.status !== "UPDATED") throw new TRPCError({ code: "CONFLICT", message: "Mini-App resources were provisioned but target authority could not be updated; retry is safe" });
+      auditLogger.log({ eventType: "mini_app_preview_runtime_provisioned", userId: ctx.user?.id ?? null,
+        requestType: "mini_app_runtime_provision", responsePayload: { targetRowId: resolution.target.id, tenantId: input.tenantId,
+          projectId: input.projectId, environment: input.environment, workerRef: result.workerName, bucketName: result.bucketName,
+          runtimeStatus: result.runtimeStatus, workerExposure: result.workerExposure }, statusCode: 200 });
       return result;
     }),
 
