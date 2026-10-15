@@ -296,7 +296,8 @@ def _renew(workspace: Path, contract: dict[str, Any], lease_seconds: int = 300) 
 
 
 def _run(contract_path: Path, evidence: Path, *, crash_at: str, run_id: str | None = None,
-         canonical_admission_fd: int | None = None) -> int:
+         canonical_admission_response_fd: int | None = None,
+         canonical_admission_request_fd: int | None = None) -> int:
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     workspace = Path(contract["workspace"]).resolve()
     state_path = evidence / "run-state.json"
@@ -307,13 +308,22 @@ def _run(contract_path: Path, evidence: Path, *, crash_at: str, run_id: str | No
     command = [sys.executable, str(HERE / "supervise_run.py"), "--workspace", str(workspace),
                "--spec-contract", str(contract_path), "--evidence-dir", str(evidence), "--run-id", run_id,
                "--crash-at", crash_at]
-    if canonical_admission_fd is not None:
-        command += ["--canonical-admission-fd", str(canonical_admission_fd)]
+    if (canonical_admission_response_fd is None) != (canonical_admission_request_fd is None):
+        raise ContractError("canonical model admission requires both private IPC descriptors")
+    if canonical_admission_response_fd is not None and canonical_admission_request_fd is not None:
+        from model_admission import ModelAdmissionDenied, validate_private_admission_fds
+        try:
+            validate_private_admission_fds(canonical_admission_response_fd, canonical_admission_request_fd)
+        except ModelAdmissionDenied as exc:
+            raise ContractError(str(exc)) from exc
+        command += ["--canonical-admission-response-fd", str(canonical_admission_response_fd),
+                    "--canonical-admission-request-fd", str(canonical_admission_request_fd)]
     environment = os.environ.copy()
     environment.pop("OPENAI_API_KEY", None)
     last_renewal = time.monotonic()
     with subprocess.Popen(command, cwd=HERE, env=environment,
-                          pass_fds=(canonical_admission_fd,) if canonical_admission_fd is not None else ()) as child:
+                          pass_fds=(canonical_admission_response_fd, canonical_admission_request_fd)
+                          if canonical_admission_response_fd is not None and canonical_admission_request_fd is not None else ()) as child:
         while child.poll() is None:
             if time.monotonic() - last_renewal >= 60:
                 _renew(workspace, contract)
@@ -434,7 +444,8 @@ def start(args: argparse.Namespace) -> int:
         contract["sourceSpecDigest"] = contract["authorizationDigest"]
         _write_json(contract_path, contract)
         return _run(contract_path, evidence, crash_at=args.crash_at, run_id=canonical_binding["runId"],
-                    canonical_admission_fd=args.canonical_admission_fd)
+                    canonical_admission_response_fd=args.canonical_admission_response_fd,
+                    canonical_admission_request_fd=args.canonical_admission_request_fd)
     remote_result = subprocess.run(
         ["git", "ls-remote", "origin", "refs/heads/main"], cwd=repo,
         text=True, capture_output=True, check=True, timeout=30,
@@ -476,7 +487,8 @@ def start(args: argparse.Namespace) -> int:
     _write_json(contract_path, contract)
     return _run(contract_path, evidence, crash_at=args.crash_at,
                 run_id=canonical_binding["runId"] if canonical_binding else None,
-                canonical_admission_fd=args.canonical_admission_fd)
+                canonical_admission_response_fd=args.canonical_admission_response_fd,
+                canonical_admission_request_fd=args.canonical_admission_request_fd)
 
 
 def resume(args: argparse.Namespace) -> int:
@@ -518,7 +530,8 @@ def main() -> int:
     new.add_argument("--crash-at", default="")
     new.add_argument("--canonical-job-binding-file", type=Path)
     new.add_argument("--continuation-grant-file", type=Path)
-    new.add_argument("--canonical-admission-fd", type=int)
+    new.add_argument("--canonical-admission-response-fd", type=int)
+    new.add_argument("--canonical-admission-request-fd", type=int)
     new.set_defaults(handler=start)
     continued = commands.add_parser("resume", help="Fenced claim and durable resume of an expired local task owner")
     continued.add_argument("evidence", type=Path)

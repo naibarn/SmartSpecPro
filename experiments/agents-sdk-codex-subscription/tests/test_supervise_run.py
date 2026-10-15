@@ -165,9 +165,10 @@ class SupervisorTelemetryTests(unittest.TestCase):
                 original_handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
                 with patch.object(sys, "argv", ["supervise_run.py", "--workspace", str(workspace),
                           "--spec-contract", str(contract), "--evidence-dir", str(evidence),
-                          "--canonical-admission-fd", "91"]), \
+                          "--canonical-admission-response-fd", "3", "--canonical-admission-request-fd", "4"]), \
                      patch.object(supervise_run.subprocess, "run", side_effect=fake_wait), \
                      patch.object(supervise_run.time, "sleep") as sleep, \
+                     patch.object(supervise_run, "validate_private_admission_fds"), \
                      patch.object(supervise_run.signal, "signal", side_effect=lambda sig, _handler: original_handlers[sig]):
                     self.assertEqual(supervise_run.main(), 75)
                 self.assertEqual(len(calls), 1)
@@ -201,9 +202,10 @@ class SupervisorTelemetryTests(unittest.TestCase):
             original_handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
             with patch.object(sys, "argv", ["supervise_run.py", "--workspace", str(workspace),
                       "--spec-contract", str(contract), "--evidence-dir", str(evidence),
-                      "--canonical-admission-fd", "91"]), \
+                      "--canonical-admission-response-fd", "3", "--canonical-admission-request-fd", "4"]), \
                  patch.object(supervise_run.subprocess, "run", side_effect=fake_unacknowledged_wait), \
                  patch.object(supervise_run.time, "sleep") as sleep, \
+                 patch.object(supervise_run, "validate_private_admission_fds"), \
                  patch.object(supervise_run.signal, "signal", side_effect=lambda sig, _handler: original_handlers[sig]):
                 self.assertEqual(supervise_run.main(), 1)
             self.assertEqual(len(calls), 1)
@@ -237,9 +239,10 @@ class SupervisorTelemetryTests(unittest.TestCase):
             original_handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
             with patch.object(sys, "argv", ["supervise_run.py", "--workspace", str(workspace),
                       "--spec-contract", str(contract), "--evidence-dir", str(evidence), "--run-id", run_id,
-                      "--canonical-admission-fd", "91"]), \
+                      "--canonical-admission-response-fd", "3", "--canonical-admission-request-fd", "4"]), \
                  patch.object(supervise_run.subprocess, "run", side_effect=finish_resumed_run), \
                  patch.object(supervise_run.signal, "signal", side_effect=lambda sig, _handler: original_handlers[sig]), \
+                 patch.object(supervise_run, "validate_private_admission_fds"), \
                  patch.object(supervise_run.time, "sleep") as sleep:
                 self.assertEqual(supervise_run.main(), 0)
             sleep.assert_not_called()

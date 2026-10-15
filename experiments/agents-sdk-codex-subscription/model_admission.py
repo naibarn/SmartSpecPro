@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import os
+import fcntl
+import stat
 import threading
 from typing import Any, Protocol
 
@@ -21,6 +23,30 @@ class ModelAdmissionWait(RuntimeError):
 
 class ModelAdmissionDenied(RuntimeError):
     pass
+
+
+def validate_private_admission_fds(response_fd: int, request_fd: int) -> None:
+    """Validate the fixed private duplex pipe before entering model execution."""
+    if response_fd != 3 or request_fd != 4:
+        raise ModelAdmissionDenied("canonical admission requires response FD 3 and request FD 4")
+    descriptors = []
+    for descriptor, expected_access, label in ((response_fd, os.O_RDONLY, "response"),
+                                                (request_fd, os.O_WRONLY, "request")):
+        try:
+            info = os.fstat(descriptor)
+            flags = fcntl.fcntl(descriptor, fcntl.F_GETFL)
+        except OSError as exc:
+            raise ModelAdmissionDenied(f"canonical admission {label} FD is unavailable") from exc
+        if not (stat.S_ISFIFO(info.st_mode) or stat.S_ISSOCK(info.st_mode)):
+            raise ModelAdmissionDenied(f"canonical admission {label} FD is not a private pipe")
+        descriptors.append((info.st_dev, info.st_ino))
+        # Node child_process stdio pipes are duplex socketpairs (O_RDWR) even
+        # though this protocol assigns one logical direction to each FD.
+        # Anonymous FIFOs do expose their access direction and can be checked.
+        if stat.S_ISFIFO(info.st_mode) and flags & os.O_ACCMODE != expected_access:
+            raise ModelAdmissionDenied(f"canonical admission {label} FD has the wrong direction")
+    if descriptors[0] == descriptors[1]:
+        raise ModelAdmissionDenied("canonical admission response and request FDs must be distinct")
 
 
 class CanonicalModelAdmissionTransport(Protocol):
@@ -43,6 +69,7 @@ class FdCanonicalModelAdmissionTransport:
     """Private parent/child RPC over an inherited duplex pipe; no lease material crosses it."""
 
     def __init__(self, read_fd: int = 3, write_fd: int = 4):
+        validate_private_admission_fds(read_fd, write_fd)
         self._reader = os.fdopen(read_fd, "r", encoding="utf-8", buffering=1, closefd=False)
         self._writer = os.fdopen(write_fd, "w", encoding="utf-8", buffering=1, closefd=False)
         self._lock = threading.Lock()

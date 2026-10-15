@@ -68,7 +68,7 @@ store = DurableRunStore(store_dir, run_id=run_id,
     initial_state=None if (store_dir / "runtime.sqlite3").exists() else {"runId": run_id, "iterations": [], "status": "active"},
     resume=(store_dir / "runtime.sqlite3").exists())
 receipts = []
-admission = FdCanonicalModelAdmissionTransport(3)
+admission = FdCanonicalModelAdmissionTransport(3, 4)
 pause_dir = os.environ.get("SPEC224_E2E_PAUSE_AFTER_RESERVE")
 if pause_dir:
     original_reserve = admission.reserve

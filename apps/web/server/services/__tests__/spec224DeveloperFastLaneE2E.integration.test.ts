@@ -106,6 +106,47 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     }
   }, 60_000);
 
+  it("preserves both private admission FDs through a grandchild Python reserve and response", async () => {
+    const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
+      import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+    ]);
+    const fs = await import("node:fs/promises");
+    const evidenceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "spec224-fast-lane-grandchild-fd-"));
+    try {
+      const procedure = spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } };
+      const created = await procedure._def.resolver({ ctx: { tenantId: "tenant-grandchild-fd", user: { id: 22401, role: "admin" } }, input: {
+        idempotencyKey: `authenticated-fast-lane-grandchild-${randomUUID()}`, developerLogin: "developer",
+        sourceRevision: "d".repeat(40), task: "Verify inherited request and response descriptors",
+        allowedFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_grandchild.py"],
+        writableFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_grandchild.py"],
+        tests: { runner: "pytest", cwd: ".", paths: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_grandchild.py"] },
+        acceptanceCriteria: ["A grandchild reserve request receives a canonical server response over the private FD protocol"],
+        budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 },
+      } });
+      const repositoryRoot = process.cwd().replace(/\/apps\/web$/, "");
+      const executorRegistry = createJobExecutorRegistry([{
+        jobType: DEVELOPER_FAST_LANE_JOB, executionClass: "long", contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+        executor: createSpec224DeveloperFastLaneExecutor({ repositoryRoot, evidenceRoot,
+          pythonExecutable: process.env.SPEC224_PYTHON ?? "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          pythonScript: path.join(repositoryRoot, "experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_grandchild_parent.py"),
+          pythonScriptArgs: (binding, root) => [binding.runId, root], includeStderrInFailure: true,
+        }),
+      }]);
+      const result = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: 1 }, {
+        controlPlane: createJobControlPlane(), executorRegistry, runnerId: `spec224-grandchild-fd-${randomUUID()}`, adapter: "test",
+      });
+      expect(result).toMatchObject({ state: "succeeded", jobId: created.jobId });
+      const grandchildReceipt = JSON.parse(await fs.readFile(path.join(evidenceRoot, created.runId, "grandchild-admission-response.json"), "utf8"));
+      expect(grandchildReceipt).toMatchObject({ runId: created.runId, reservation: { kind: "reserved", operationKey: expect.any(String) } });
+      const [reservation] = await sql`SELECT "reservationStatus", "usageReceiptJson", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(reservation).toMatchObject({ reservationStatus: "released", threadId: "mock-grandchild-thread", turnId: "mock-grandchild-turn" });
+      expect(reservation.usageReceiptJson).toMatchObject({ inputTokens: 13, cachedInputTokens: 2, outputTokens: 5, effectiveModel: "gpt-6-luna" });
+      expect(JSON.stringify(reservation)).not.toContain("leaseToken");
+    } finally {
+      await fs.rm(evidenceRoot, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("parks on budget, waits until eligibility, then resumes the same durable WorkUnit without duplicate model dispatch", async () => {
     const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { runJobReconciler }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
       import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../jobReconciler"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),

@@ -967,8 +967,17 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--continuation", action="store_true", help="Start a new WorkUnit iteration without counting it as crash recovery")
     parser.add_argument("--diagnose-no-progress", action="store_true", help="Force a fresh diagnostic planning/replan strategy after a no-progress continuation")
-    parser.add_argument("--canonical-admission-fd", type=int, help="Private inherited IPC descriptor owned by the canonical server executor")
+    parser.add_argument("--canonical-admission-response-fd", type=int, help="Private server-to-Python response descriptor")
+    parser.add_argument("--canonical-admission-request-fd", type=int, help="Private Python-to-server request descriptor")
     args = parser.parse_args()
+    if (args.canonical_admission_response_fd is None) != (args.canonical_admission_request_fd is None):
+        parser.error("canonical model admission requires both private IPC descriptors")
+    if args.canonical_admission_response_fd is not None:
+        from model_admission import ModelAdmissionDenied, validate_private_admission_fds
+        try:
+            validate_private_admission_fds(args.canonical_admission_response_fd, args.canonical_admission_request_fd)
+        except ModelAdmissionDenied as exc:
+            parser.error(str(exc))
     contract = load_contract(args.contract, args.workspace)
     evidence = args.evidence_dir.resolve()
     if contract.root == evidence or contract.root in evidence.parents:
@@ -982,9 +991,11 @@ def main() -> int:
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
-    if args.canonical_admission_fd is not None:
+    if args.canonical_admission_response_fd is not None:
         from model_admission import FdCanonicalModelAdmissionTransport
-        store.model_admission_transport = FdCanonicalModelAdmissionTransport(args.canonical_admission_fd)
+        store.model_admission_transport = FdCanonicalModelAdmissionTransport(
+            args.canonical_admission_response_fd, args.canonical_admission_request_fd,
+        )
     if contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1" or contract.raw.get("canonicalJobBinding"):
         state["canonicalModelAdmissionRequired"] = True
     if state.get("workspaceId") != contract.workspace_id:

@@ -201,7 +201,8 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
             args = SimpleNamespace(
                 scope_ttl_seconds=3600, repository=root, developer_login="developer", request=request_path,
                 canonical_job_binding_file=binding_path, policy=root / "policy.toml", evidence_root=root / "evidence",
-                continuation_grant_file=grant_path, base_sha=request["sourceRevision"], crash_at="", canonical_admission_fd=None,
+                continuation_grant_file=grant_path, base_sha=request["sourceRevision"], crash_at="",
+                canonical_admission_response_fd=None, canonical_admission_request_fd=None,
             )
             run_called = []
             def git_only_source_existence(argv, **kwargs):

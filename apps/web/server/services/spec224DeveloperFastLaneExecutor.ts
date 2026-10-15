@@ -346,7 +346,8 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
       ...(options.pythonScript ? (options.pythonScriptArgs?.(binding, evidenceRoot) ?? []) : [
       "start", requestPath, "--repository", repositoryRoot, "--policy", path.join(repositoryRoot, ".development-repository.toml"),
       "--developer-login", binding.request.developerLogin, "--base-sha", binding.request.sourceRevision,
-      "--canonical-job-binding-file", bindingPath, "--canonical-admission-fd", "3", "--evidence-root", evidenceRoot,
+      "--canonical-job-binding-file", bindingPath,
+      "--canonical-admission-response-fd", "3", "--canonical-admission-request-fd", "4", "--evidence-root", evidenceRoot,
       "--scope-ttl-seconds", String(binding.request.scopeTtlSeconds ?? 8 * 60 * 60),
       ...(await access(continuationGrantPath).then(() => ["--continuation-grant-file", continuationGrantPath], () => [])),
       ]),
