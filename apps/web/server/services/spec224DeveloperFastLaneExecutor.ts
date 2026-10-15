@@ -144,7 +144,7 @@ function requestScope(binding: FastLaneBinding): Record<string, unknown> {
   ].includes(key)));
 }
 
-async function issueContinuationGrant(input: {
+export async function issueContinuationGrant(input: {
   binding: FastLaneBinding;
   lease: LeaseContext;
   evidenceRoot: string;
@@ -188,8 +188,16 @@ async function issueContinuationGrant(input: {
   await runLocalCommand("git", ["cat-file", "-e", `${sourceSha}^{commit}`], input.repositoryRoot);
   const workspaceHead = (await runLocalCommand("git", ["rev-parse", "HEAD"], String(contract.workspace))).trim();
   if (workspaceHead !== sourceSha) throw new Error("DEVELOPER_CONTINUATION_SOURCE_BASELINE_CHANGED");
-  const oldExpiry = Number(contract.scopeExpiresAt);
-  if (!Number.isFinite(oldExpiry) || oldExpiry > input.now.getTime()) return null;
+  // Developer WorkUnit contracts persist scope expiry as Unix seconds. Compare
+  // milliseconds only after normalizing the durable representation; the
+  // previous seconds-vs-milliseconds comparison treated every active scope as
+  // expired and reauthorized it on every attempt.
+  const rawExpiry = contract.scopeExpiresAt;
+  const parsedExpiry = typeof rawExpiry === "number"
+    ? rawExpiry * (rawExpiry < 100_000_000_000 ? 1_000 : 1)
+    : typeof rawExpiry === "string" ? Date.parse(rawExpiry) : Number.NaN;
+  if (!Number.isFinite(parsedExpiry)) throw new Error("DEVELOPER_CONTINUATION_SCOPE_EXPIRY_INVALID");
+  if (parsedExpiry > input.now.getTime()) return null;
   const priorContinuations = await readFile(path.join(evidenceDir, "continuation-receipts.jsonl"), "utf8").catch(error => {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
     throw error;

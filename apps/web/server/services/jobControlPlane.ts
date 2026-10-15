@@ -3461,7 +3461,7 @@ export function createJobControlPlane(
         !input.operationKey ||
         input.operationKey.length > 200 ||
         (input.providerReference?.length ?? 0) > 255 ||
-        (input.reason !== undefined && !["budget", "provider_capacity"].includes(input.reason)) ||
+        (input.reason !== undefined && !["budget", "provider_capacity", "authorization"].includes(input.reason)) ||
         Number.isNaN(Date.parse(input.resumeAfter))
       )
         throw new JobControlPlaneError(

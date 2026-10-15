@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createSpec277DisposablePostgres } from "./support/spec277DisposablePostgres";
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
 
@@ -163,6 +164,89 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     } finally {
       process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
       await import("node:fs/promises").then(fs => fs.rm(evidenceRoot, { recursive: true, force: true }));
+    }
+  }, 90_000);
+
+  it("parks expired scope in WAITING_AUTHORIZATION and rechecks authority before any Python/Codex dispatch", async () => {
+    const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { runJobReconciler }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
+      import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../jobReconciler"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+    ]);
+    const fs = await import("node:fs/promises");
+    const evidenceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "spec224-fast-lane-authorization-wait-"));
+    const repositoryRoot = process.cwd().replace(/\/apps\/web$/, "");
+    const sourceRevision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
+    const fixedNow = new Date();
+    const authorizeContinuation = vi.fn(async () => { throw new Error("DEVELOPER_CONTINUATION_PERMISSION_REQUIRED"); });
+    const spawnImpl = vi.fn(() => { throw new Error("DENIED_AUTHORITY_MUST_NOT_SPAWN_PYTHON_OR_CODEX"); });
+    const controlPlane = createJobControlPlane();
+    try {
+      const procedure = spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } };
+      const request = {
+        idempotencyKey: `authenticated-fast-lane-auth-wait-${randomUUID()}`,
+        developerLogin: "developer", sourceRevision, task: "Wait for fresh authorization without dispatch",
+        allowedFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"],
+        writableFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"],
+        tests: { runner: "pytest", cwd: ".", paths: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"] },
+        acceptanceCriteria: ["Expired scope requires fresh server authorization"],
+        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 3600,
+      };
+      const created = await procedure._def.resolver({ ctx: { tenantId: "tenant-e2e", user: { id: 22401, role: "admin" } }, input: request });
+      const evidenceDir = path.join(evidenceRoot, created.runId);
+      await fs.mkdir(evidenceDir, { recursive: true });
+      const allowedTools = ["list_files", "read_file", "read_range", "write_file", "patch_file", "run_focused_tests"];
+      const expiredAt = fixedNow.getTime() / 1_000 - 1;
+      const receipt = {
+        schema: "developer-local-workunit-authorization.v1", taskId: created.runId, workspaceId: "workspace-auth-wait",
+        sourceSha: sourceRevision, developerIdentity: { login: "developer", permission: "write" },
+        allowedFiles: request.allowedFiles, writableFiles: request.writableFiles, allowedTools, budget: request.budget,
+        scopeExpiresAt: expiredAt, productionAccess: false, runnerDispatch: false,
+      };
+      await fs.writeFile(path.join(evidenceDir, "authorization-receipt.json"), JSON.stringify(receipt));
+      await fs.writeFile(path.join(evidenceDir, "contract.json"), JSON.stringify({
+        taskId: created.runId, sourceRevision, requirementText: request.task, workspace: repositoryRoot,
+        workspaceId: receipt.workspaceId, allowedFiles: request.allowedFiles, writableFiles: request.writableFiles,
+        patchableFiles: [], acceptanceCriteria: request.acceptanceCriteria, tests: request.tests,
+        budget: request.budget, allowedTools, authority: { productionAccess: false, sharedDatabaseWrite: false, runnerDispatch: false },
+        scopeExpiresAt: expiredAt,
+        canonicalJobBinding: { jobId: created.jobId, runId: created.runId, tenantId: "tenant-e2e", actorId: 22401 },
+      }));
+      const executorRegistry = createJobExecutorRegistry([{
+        jobType: DEVELOPER_FAST_LANE_JOB, executionClass: "long", contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+        executor: createSpec224DeveloperFastLaneExecutor({
+          repositoryRoot, evidenceRoot, now: () => fixedNow, authorizeContinuation, spawnImpl: spawnImpl as never,
+        }),
+      }]);
+      const first = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: 1 }, {
+        controlPlane, executorRegistry, runnerId: `spec224-auth-wait-${randomUUID()}`, adapter: "test",
+      });
+      expect(first).toMatchObject({ state: "deferred", jobId: created.jobId });
+      const [waiting] = await sql`SELECT status, "statusReason", "leaseOwnerToken", "leaseExpiresAt", "progressJson" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(waiting).toMatchObject({ status: "waiting_external", statusReason: "WAITING_AUTHORIZATION", leaseOwnerToken: null, leaseExpiresAt: null });
+      const externalWait = waiting.progressJson.externalWait;
+      expect(externalWait).toMatchObject({ reason: "authorization", metadata: { schemaVersion: "spec224.developer-authorization-wait.v1" } });
+      expect(spawnImpl).not.toHaveBeenCalled();
+
+      const early = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) - 1) });
+      expect(early.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: "authorization_not_yet_eligible" });
+      const [stillWaiting] = await sql`SELECT status FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(stillWaiting.status).toBe("waiting_external");
+
+      const due = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) + 1) });
+      expect(due.decisions).toContainEqual({ jobId: created.jobId, action: "resume", reasonCode: "authorization_recheck_due" });
+      const [queued] = await sql`SELECT status, attempt FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(queued.status).toBe("queued");
+      await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: queued.attempt }, {
+        controlPlane, executorRegistry, runnerId: `spec224-auth-recheck-${randomUUID()}`, adapter: "test",
+      });
+      expect(authorizeContinuation).toHaveBeenCalledTimes(2);
+      expect(spawnImpl).not.toHaveBeenCalled();
+      const [reservationCount] = await sql`SELECT count(*)::int AS count FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId}`;
+      expect(reservationCount.count).toBe(0);
+      // Do not leave an auth wait behind for later simulated-clock tests in
+      // this shared disposable database fixture.
+      await sql`UPDATE worker_jobs SET status = 'cancelled' WHERE id = ${created.jobId}`;
+    } finally {
+      await fs.rm(evidenceRoot, { recursive: true, force: true });
     }
   }, 90_000);
 
