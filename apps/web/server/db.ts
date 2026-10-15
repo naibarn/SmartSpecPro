@@ -227,7 +227,7 @@ const AUTH_USER_SELECT_FIELDS = {
   sessionRevokedAt: users.sessionRevokedAt,
 } as const;
 
-type AuthUserRow = Omit<User, "tenantIdentityMigrationReason" | "tenantIdentityMigratedAt">;
+export type AuthUserRow = Omit<User, "tenantIdentityMigrationReason" | "tenantIdentityMigratedAt">;
 
 async function findAuthUser(where: SQL<unknown>): Promise<AuthUserRow | undefined> {
   const db = await getDb();
