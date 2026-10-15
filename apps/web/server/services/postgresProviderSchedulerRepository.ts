@@ -169,7 +169,8 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         await query.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userKey}))`);
         const existing = rows(await query.execute(sql`
           SELECT "id", "modelCallId", "modelPhase", "modelRole", "requestedModel", "reasoningEffort", "modelSelectionJson",
-                 "reservedTokens", "tokenWindowStartedAt", "dispatchState", "threadId", "turnId", "usageState"
+                 "reservedTokens", "tokenWindowStartedAt", "dispatchState", "threadId", "turnId", "usageState",
+                 "attemptId", "businessAttempt", "leaseFencingVersion", "reservationStatus"
           FROM "worker_job_provider_reservations"
           WHERE "operationKey" = ${operationKey}
           FOR UPDATE
@@ -190,6 +191,21 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
               threadId: stringValue(existing, "threadId"),
               turnId: stringValue(existing, "turnId"),
             };
+          }
+          if (numberValue(existing, "leaseFencingVersion") !== input.lease.fencingVersion) {
+            if (stringValue(existing, "reservationStatus") !== "reserved" ||
+                stringValue(existing, "usageState") !== "reserved") {
+              return { kind: "denied", reason: "stale_lease" };
+            }
+            // A reservation proven not to have reached dispatch is safe to
+            // rebind to the newly claimed canonical attempt.
+            await query.execute(sql`
+              UPDATE "worker_job_provider_reservations"
+              SET "attemptId" = ${input.lease.attemptId}, "businessAttempt" = ${numberValue(job, "attempt")},
+                  "leaseFencingVersion" = ${input.lease.fencingVersion}, "updatedAt" = ${timestampParameter(now)}
+              WHERE "operationKey" = ${operationKey} AND "reservationKind" = 'model_call'
+                AND "dispatchState" = 'reserved' AND "reservationStatus" = 'reserved' AND "usageState" = 'reserved'
+            `);
           }
           return {
             kind: "reserved",
@@ -350,14 +366,16 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           FROM "worker_job_provider_reservations"
           WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call' FOR UPDATE
         `));
-        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId ||
-            numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion ||
-            stringValue(reservation, "dispatchState") !== "dispatching") {
+        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId) {
           return { kind: "denied", reason: "reservation_missing" };
         }
         const priorThread = stringValue(reservation, "threadId");
         if (priorThread && priorThread !== input.threadId) return { kind: "denied", reason: "thread_conflict" };
         if (priorThread) return { kind: "duplicate" };
+        if (stringValue(reservation, "dispatchState") !== "dispatching") return { kind: "denied", reason: "reservation_missing" };
+        if (numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion && !input.reconcile) {
+          return { kind: "denied", reason: "reservation_missing" };
+        }
         await query.execute(sql`
           UPDATE "worker_job_provider_reservations" SET "threadId" = ${input.threadId}, "updatedAt" = ${timestampParameter(now)}
           WHERE "operationKey" = ${input.operationKey} AND "reservationStatus" = 'reserved'
@@ -378,7 +396,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
       return db.transaction(async tx => {
         const query = tx as any;
         const [active] = rows(await query.execute(sql`
-          SELECT j."status", j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", a."id" AS "attemptId", a."leaseGeneration", a."leaseTokenHash"
+          SELECT j."status", j."attempt" AS "businessAttempt", j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", a."id" AS "attemptId", a."leaseGeneration", a."leaseTokenHash"
           FROM "worker_jobs" j JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
           WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId} FOR UPDATE OF j, a
         `));
@@ -396,9 +414,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
           FOR UPDATE
         `));
-        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId ||
-            numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion ||
-            stringValue(reservation, "dispatchState") !== "dispatching") {
+        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId) {
           return { kind: "denied", reason: "reservation_missing" };
         }
         const priorThread = stringValue(reservation, "threadId");
@@ -407,6 +423,27 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           return { kind: "denied", reason: "turn_conflict" };
         }
         if (priorTurn) return { kind: "duplicate" };
+        if (stringValue(reservation, "dispatchState") !== "dispatching") return { kind: "denied", reason: "reservation_missing" };
+        if (numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion) {
+          if (!input.reconcile || !priorThread || priorThread !== input.threadId) {
+            return { kind: "denied", reason: "reservation_missing" };
+          }
+          await query.execute(sql`
+            UPDATE "worker_job_provider_reservations"
+            SET "attemptId" = ${input.lease.attemptId}, "businessAttempt" = ${numberValue(active, "businessAttempt")},
+                "leaseFencingVersion" = ${input.lease.fencingVersion}, "dispatchState" = 'started',
+                "turnId" = ${input.turnId}, "updatedAt" = ${timestampParameter(now)}
+            WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
+          `);
+          await appendJobEvent(query, {
+            workerJobId: input.lease.jobId,
+            attemptId: input.lease.attemptId,
+            eventType: "CODEX_MODEL_TURN_RECONCILED",
+            eventIdempotencyKey: `${input.operationKey}:turn-reconciled:${input.lease.fencingVersion}`,
+            payloadJson: { operationKey: input.operationKey, threadId: input.threadId, turnId: input.turnId, priorFencingVersion: numberValue(reservation, "leaseFencingVersion"), fencingVersion: input.lease.fencingVersion },
+          });
+          return { kind: "recorded" };
+        }
         await query.execute(sql`
           UPDATE "worker_job_provider_reservations"
           SET "dispatchState" = 'started', "threadId" = ${input.threadId}, "turnId" = ${input.turnId}, "updatedAt" = ${timestampParameter(now)}

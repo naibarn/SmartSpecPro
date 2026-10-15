@@ -35,6 +35,10 @@ class RepeatedPatchRejectionTests(unittest.TestCase):
         }
         refreshed = {**original, "implementationGuidance": "Additional recovery note", "budget": {"implementationMaxTurns": 8}}
         self.assertEqual(contract_scope_snapshot(original), contract_scope_snapshot(refreshed))
+        renewed = {**refreshed, "scopeExpiresAt": 1_900_000_000}
+        self.assertEqual(contract_scope_snapshot(original), contract_scope_snapshot(renewed))
+        reauthorized = {**renewed, "authorizationDigest": "fresh-grant-digest", "sourceSpecDigest": "fresh-grant-digest"}
+        self.assertEqual(contract_scope_snapshot(original), contract_scope_snapshot(reauthorized))
         widened = {**refreshed, "writableFiles": ["apps/web/a.ts", "apps/web/b.ts"]}
         self.assertNotEqual(contract_scope_snapshot(original), contract_scope_snapshot(widened))
         changed_acceptance = {**refreshed, "acceptanceCriteria": ["Skip tenant checks"]}

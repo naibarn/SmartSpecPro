@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Writable } from "node:stream";
 
 import type { JobExecutor, JobExecutorContext } from "./jobExecutor";
+import type { LeaseContext } from "./jobControlPlaneTypes";
 import { createPostgresProviderSchedulerRepository } from "./postgresProviderSchedulerRepository";
 import { createSpec224DeveloperModelAdmissionTransport } from "./spec224DeveloperModelAdmission";
 import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB, type DeveloperFastLaneRequest } from "./spec224DeveloperFastLaneContract";
@@ -175,7 +176,7 @@ export async function issueContinuationGrant(input: {
     receipt.sourceSha === contract.sourceRevision && receipt.taskId === runId &&
     sameJson(receipt.allowedFiles, contract.allowedFiles) && sameJson(receipt.writableFiles, contract.writableFiles) &&
     sameJson(receipt.allowedTools, contract.allowedTools) && sameJson(receipt.budget, contract.budget);
-  if (!immutableScopeMatches || expectedJob?.jobId !== lease.jobId || expectedJob.runId !== runId ||
+  if (!immutableScopeMatches || !expectedJob || expectedJob.jobId !== lease.jobId || expectedJob.runId !== runId ||
       expectedJob.tenantId !== binding.tenantId || expectedJob.actorId !== binding.actorId ||
       receipt.developerIdentity?.login !== request.developerLogin) {
     throw new Error("DEVELOPER_CONTINUATION_SCOPE_BINDING_MISMATCH");
@@ -232,11 +233,11 @@ function connectAdmissionRpc(child: ChildProcess, transport: ReturnType<typeof c
   let buffer = "";
   requestStream.on("data", (chunk: Buffer) => {
     buffer += chunk.toString("utf8");
-    if (buffer.length > 64_000 && !buffer.includes("\n")) { child.kill("SIGKILL"); return; }
+    if (buffer.length > 64_000 && !buffer.includes("\n")) { terminateAuthorizedProcessChain(child, "SIGKILL"); return; }
     let newline: number;
     while ((newline = buffer.indexOf("\n")) >= 0) {
       const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
-      if (!line || line.length > 64_000) { child.kill("SIGKILL"); return; }
+      if (!line || line.length > 64_000) { terminateAuthorizedProcessChain(child, "SIGKILL"); return; }
       void (async () => {
         const message = asObject(JSON.parse(line));
         if (!message || !Number.isSafeInteger(message.id) || typeof message.method !== "string") throw new Error("DEVELOPER_FAST_LANE_RPC_REQUEST_INVALID");
@@ -285,6 +286,19 @@ function connectAdmissionRpc(child: ChildProcess, transport: ReturnType<typeof c
   });
 }
 
+function terminateAuthorizedProcessChain(child: ChildProcess, signal: NodeJS.Signals): void {
+  if (process.platform !== "win32" && child.pid) {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ESRCH") child.kill(signal);
+      return;
+    }
+  }
+  child.kill(signal);
+}
+
 export function createSpec224DeveloperFastLaneExecutor(options: {
   spawnImpl?: typeof spawn;
   pythonExecutable?: string;
@@ -293,6 +307,8 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
   pythonScript?: string;
   pythonScriptArgs?: (binding: FastLaneBinding, evidenceRoot: string) => string[];
   includeStderrInFailure?: boolean;
+  crashAt?: string;
+  terminateOnInjectedFault?: boolean;
   now?: () => Date;
   authorizeContinuation?: (repositoryRoot: string, developerLogin: string) => Promise<void>;
 } = {}): JobExecutor {
@@ -349,11 +365,12 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
       "--canonical-job-binding-file", bindingPath,
       "--canonical-admission-response-fd", "3", "--canonical-admission-request-fd", "4", "--evidence-root", evidenceRoot,
       "--scope-ttl-seconds", String(binding.request.scopeTtlSeconds ?? 8 * 60 * 60),
+      ...(options.crashAt ? ["--crash-at", options.crashAt] : []),
       ...(await access(continuationGrantPath).then(() => ["--continuation-grant-file", continuationGrantPath], () => [])),
       ]),
-    ], { cwd: repositoryRoot, env: { ...process.env, CODEX_SESSION_ID: sessionId, PYTHONUNBUFFERED: "1" }, stdio: ["ignore", "pipe", "pipe", "pipe", "pipe"] });
+    ], { cwd: repositoryRoot, env: { ...process.env, CODEX_SESSION_ID: sessionId, PYTHONUNBUFFERED: "1" }, stdio: ["ignore", "pipe", "pipe", "pipe", "pipe"], detached: process.platform !== "win32" });
     const transport = createSpec224DeveloperModelAdmissionTransport({
-      lease, runId: binding.runId, reporter, repository: createPostgresProviderSchedulerRepository(),
+      lease, runId: binding.runId, reporter, repository: createPostgresProviderSchedulerRepository(), now,
     });
     let deferred = false;
     let heartbeatError: unknown;
@@ -364,15 +381,41 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
     child.stdout.on("data", (chunk: Buffer) => { stdout = append(stdout, chunk); });
     child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
     connectAdmissionRpc(child, transport, () => { deferred = true; });
+    let faultMonitor: NodeJS.Timeout | undefined;
+    if (options.terminateOnInjectedFault && options.crashAt) {
+      const eventsPath = path.join(evidenceDir, "events.jsonl");
+      let terminating = false;
+      faultMonitor = setInterval(() => {
+        if (terminating) return;
+        void readFile(eventsPath, "utf8").then(contents => {
+          const injected = contents.split("\n").some(line => {
+            try {
+              const event = JSON.parse(line);
+              return event.kind === "fault.injected" && event.payload?.trigger === options.crashAt;
+            } catch {
+              return false;
+            }
+          });
+          if (injected) {
+            terminating = true;
+            terminateAuthorizedProcessChain(child, "SIGKILL");
+          }
+        }).catch(() => undefined);
+      }, 20);
+      faultMonitor.unref?.();
+    }
     const heartbeat = setInterval(() => {
       if (deferred || heartbeatError) return;
-      void reporter.heartbeat(lease).catch(error => { heartbeatError = error; child.kill("SIGTERM"); });
+      void reporter.heartbeat(lease).catch(error => { heartbeatError = error; terminateAuthorizedProcessChain(child, "SIGTERM"); });
     }, 10_000);
     heartbeat.unref?.();
     const exit = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
       child.once("error", reject);
       child.once("close", (code, signal) => resolve({ code, signal }));
-    }).finally(() => clearInterval(heartbeat));
+    }).finally(() => {
+      clearInterval(heartbeat);
+      if (faultMonitor) clearInterval(faultMonitor);
+    });
     if (heartbeatError) throw Object.assign(new Error("DEVELOPER_FAST_LANE_LEASE_LOST"), { diagnosticCode: "DEVELOPER_FAST_LANE_LEASE_LOST" });
     if (deferred) return { deferred: true };
     if (exit.code !== 0) throw Object.assign(new Error(`DEVELOPER_FAST_LANE_PROCESS_FAILED:${exit.code ?? exit.signal ?? "unknown"}:${createHash("sha256").update(stderr).digest("hex").slice(0, 16)}${options.includeStderrInFailure ? `:${stderr.slice(-2_000)}` : ""}`), { diagnosticCode: "DEVELOPER_FAST_LANE_PROCESS_FAILED" });

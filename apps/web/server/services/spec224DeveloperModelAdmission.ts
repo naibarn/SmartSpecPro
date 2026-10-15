@@ -43,7 +43,7 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
   repository: CodexModelAdmissionRepository;
   now?: () => Date;
 }): DeveloperModelAdmissionTransport {
-  const operations = new Map<string, { waiting?: { reason: "budget" | "provider_capacity"; nextEligibleAt: string }; dispatched?: boolean }>();
+  const operations = new Map<string, { waiting?: { reason: "budget" | "provider_capacity"; nextEligibleAt: string }; dispatched?: boolean; reconciling?: boolean }>();
   const now = input.now ?? (() => new Date());
 
   return {
@@ -69,6 +69,7 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
       operation.dispatched = false;
       operations.set(operationKey, operation);
       const result = await input.repository.reserveCodexModelCall(call);
+      operation.reconciling = result.kind === "reconcile_required";
       if (result.kind === "waiting_budget") {
         operation.waiting = { reason: "budget", nextEligibleAt: result.nextEligibleAt.toISOString() };
         return { ...result, operationKey, nextEligibleAt: result.nextEligibleAt.toISOString() };
@@ -85,12 +86,12 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
     async threadCreated(operationKey, threadId) {
       await input.reporter.assertActive(input.lease);
       if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
-      return input.repository.recordCodexModelThreadIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), now: now() });
+      return input.repository.recordCodexModelThreadIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), reconcile: operations.get(operationKey)?.reconciling, now: now() });
     },
     async turnStarted(operationKey, threadId, turnId) {
       await input.reporter.assertActive(input.lease);
       if (!operations.has(operationKey)) return { kind: "denied", reason: "reservation_missing" };
-      return input.repository.recordCodexModelTurnIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), turnId: text(turnId, 160), now: now() });
+      return input.repository.recordCodexModelTurnIdentity({ lease: input.lease, operationKey, threadId: text(threadId, 160), turnId: text(turnId, 160), reconcile: operations.get(operationKey)?.reconciling, now: now() });
     },
     async settle(operationKey, usage, reconcile = false) {
       await input.reporter.assertActive(input.lease);

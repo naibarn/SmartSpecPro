@@ -1,11 +1,152 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createSpec277DisposablePostgres } from "./support/spec277DisposablePostgres";
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
+
+async function prepareGoldenDefaultPathRepository(sourceRoot: string, tempRoot: string) {
+  const repositoryRoot = path.join(tempRoot, "repository");
+  const originPath = path.join(tempRoot, "spec224-fixture", "developer-workunit.git");
+  const sourceRootPath = path.join(tempRoot, "workspace-sources");
+  const workunitPath = "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/golden_workunit_test.py";
+  const execGit = (args: string[], cwd = repositoryRoot) => execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }).trim();
+  execFileSync("git", ["clone", "--shared", "--no-checkout", sourceRoot, repositoryRoot], { stdio: "ignore" });
+  await (await import("node:fs/promises")).mkdir(path.dirname(originPath), { recursive: true });
+  execFileSync("git", ["init", "--bare", originPath], { stdio: "ignore" });
+  const sourceObjects = execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: sourceRoot, encoding: "utf8" }).trim();
+  const cloneObjects = execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-dir"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
+  await (await import("node:fs/promises")).mkdir(path.join(originPath, "objects", "info"), { recursive: true });
+  await (await import("node:fs/promises")).writeFile(path.join(originPath, "objects", "info", "alternates"), `${path.join(sourceObjects, "objects")}\n${path.join(cloneObjects, "objects")}\n`);
+  const portServer = net.createServer();
+  await new Promise<void>(resolve => portServer.listen(0, "127.0.0.1", resolve));
+  const port = (portServer.address() as net.AddressInfo).port;
+  await new Promise<void>(resolve => portServer.close(() => resolve()));
+  const originServer = spawn("git", ["daemon", "--reuseaddr", "--export-all", `--base-path=${tempRoot}`, "--listen=127.0.0.1", `--port=${port}`], { stdio: "ignore" });
+  const ready = await new Promise<boolean>(resolve => {
+    const attempt = (remaining: number) => {
+      const socket = net.connect(port, "127.0.0.1");
+      socket.once("connect", () => { socket.destroy(); resolve(true); });
+      socket.once("error", () => { socket.destroy(); if (remaining <= 0) resolve(false); else setTimeout(() => attempt(remaining - 1), 25); });
+    };
+    attempt(40);
+  });
+  if (!ready) { originServer.kill("SIGTERM"); throw new Error("GOLDEN_LOCAL_GIT_ORIGIN_FAILED_TO_START"); }
+  execGit(["remote", "set-url", "origin", `git://127.0.0.1:${port}/spec224-fixture/developer-workunit.git`]);
+  execGit(["config", "user.name", "SPEC-224 test fixture"]);
+  execGit(["config", "user.email", "spec224-fixture@example.invalid"]);
+  execGit(["config", "core.hooksPath", "/dev/null"]);
+  const originalSourceRevision = execGit(["rev-parse", "HEAD"]);
+  execFileSync("git", ["--git-dir", originPath, "update-ref", "refs/heads/main", originalSourceRevision], { stdio: "ignore" });
+  execGit(["checkout", "--detach", originalSourceRevision]);
+  const fixturePath = path.join(repositoryRoot, workunitPath);
+  await (await import("node:fs/promises")).mkdir(path.dirname(fixturePath), { recursive: true });
+  await (await import("node:fs/promises")).copyFile(path.join(sourceRoot, workunitPath), fixturePath);
+  for (const harnessPath of [
+    "experiments/agents-sdk-codex-subscription/developer_workunit.py",
+    "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+    "experiments/agents-sdk-codex-subscription/codex_model.py",
+  ]) {
+    await (await import("node:fs/promises")).copyFile(path.join(sourceRoot, harnessPath), path.join(repositoryRoot, harnessPath));
+  }
+  const policy = `[repository]\nrepository_id = "spec224-golden-${path.basename(tempRoot)}"\nremote = "origin"\ncanonical_ref = "refs/heads/main"\ncanonical_user_workspace = "${path.join(tempRoot, "primary-workspace")}"\nsource_root = "${sourceRootPath}"\nsource_fallback_roots = ["/mnt/SmartSpecDev/.tmp"]\nlease_root = "${path.join(tempRoot, "leases")}"\nbuild_target = "spec224-test"\n`;
+  await (await import("node:fs/promises")).writeFile(path.join(repositoryRoot, ".development-repository.toml"), policy);
+  execGit(["add", ".development-repository.toml", workunitPath, "experiments/agents-sdk-codex-subscription/developer_workunit.py", "experiments/agents-sdk-codex-subscription/run_spec_workunit.py", "experiments/agents-sdk-codex-subscription/codex_model.py"]);
+  execGit(["commit", "-m", "Configure isolated golden E2E workspace authority"]);
+  const sourceRevision = execGit(["rev-parse", "HEAD"]);
+  execFileSync("git", ["--git-dir", originPath, "update-ref", "refs/heads/main", sourceRevision], { stdio: "ignore" });
+  return { repositoryRoot, originPath, sourceRootPath, sourceRevision, originServer };
+}
+
+async function createGoldenFastLaneHarness(sourceRoot: string) {
+  const fs = await import("node:fs/promises");
+  const originalSystemTime = new Date();
+  const tempRoot = await fs.mkdtemp("/mnt/SmartSpecDev/.tmp/spec224-golden-harness-");
+  const repositoryRoot = sourceRoot;
+  const stateRoot = path.join(tempRoot, "mock-codex");
+  const evidenceRoot = path.join(tempRoot, "evidence");
+  const fakeBin = path.join(tempRoot, "bin");
+  const clockPath = path.join(tempRoot, "clock-epoch-seconds");
+  const initialClock = new Date();
+  const prior = Object.fromEntries(["PATH", "PYTHONPATH", "SPEC224_GOLDEN_STATE_DIR", "SPEC224_GOLDEN_CLOCK_FILE", "SPEC224_GOLDEN_429_ONCE", "SPEC224_GOLDEN_RETRY_AFTER_SECONDS"].map(key => [key, process.env[key]]));
+  await fs.mkdir(fakeBin, { recursive: true });
+  await fs.writeFile(path.join(fakeBin, "gh"), "#!/bin/sh\ncase \"$*\" in\n  *user) echo '{\"login\":\"developer\"}' ;;\n  *permission) echo '{\"permission\":\"write\"}' ;;\n  *) exit 2 ;;\nesac\n", { mode: 0o755 });
+  process.env.PATH = `${fakeBin}${path.delimiter}${prior.PATH ?? ""}`;
+  process.env.PYTHONPATH = [path.join(sourceRoot, "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/pythonpath"), prior.PYTHONPATH].filter(Boolean).join(path.delimiter);
+  process.env.SPEC224_GOLDEN_STATE_DIR = stateRoot;
+  process.env.SPEC224_GOLDEN_CLOCK_FILE = clockPath;
+  await fs.writeFile(clockPath, String(initialClock.getTime() / 1_000));
+  const isolated = await prepareGoldenDefaultPathRepository(sourceRoot, tempRoot);
+  const [spec226DevelopmentControlRouter, jobControl, executorRegistryModule, jobConsumer, executorModule, contractModule] = await Promise.all([
+    import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+  ]);
+  let serverNow = initialClock;
+  let crashAt: string | undefined;
+  let terminateOnInjectedFault = false;
+  let simulateRunnerProcessLoss = false;
+  const controlPlane = jobControl.createJobControlPlane();
+  const registry = executorRegistryModule.createJobExecutorRegistry([{
+    jobType: contractModule.DEVELOPER_FAST_LANE_JOB, executionClass: "long",
+    contractVersions: new Set([contractModule.DEVELOPER_FAST_LANE_CONTRACT]),
+    executor: executorModule.createSpec224DeveloperFastLaneExecutor({
+      repositoryRoot: isolated.repositoryRoot, evidenceRoot,
+      pythonExecutable: process.env.SPEC224_PYTHON ?? "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+      includeStderrInFailure: true, now: () => new Date(serverNow), get crashAt() { return crashAt; },
+      get terminateOnInjectedFault() { return terminateOnInjectedFault; },
+    }),
+  }]);
+  const procedure = spec226DevelopmentControlRouter.spec226DevelopmentControlRouter.startDeveloperFastLane;
+  const resolver = (procedure as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } })._def.resolver;
+  const execute = (jobId: string, attempt: number) => jobConsumer.executeCanonicalJobEnvelope(
+    { jobId, contractVersion: contractModule.DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: attempt },
+    {
+      controlPlane: simulateRunnerProcessLoss ? {
+        ...controlPlane,
+        async fail(_lease: Parameters<typeof controlPlane.fail>[0], error: Parameters<typeof controlPlane.fail>[1]) {
+          throw new Error(`SIMULATED_CANONICAL_RUNNER_PROCESS_LOSS:${error.message}`);
+        },
+      } : controlPlane,
+      executorRegistry: registry, runnerId: `spec224-golden-${randomUUID()}`, adapter: "test",
+    },
+  );
+  return {
+    ...isolated, tempRoot, stateRoot, evidenceRoot, clockPath, controlPlane,
+    async createJob(request: Record<string, unknown>) {
+      return resolver({ ctx: { tenantId: "tenant-golden-default", user: { id: 22401, role: "admin" } }, input: request });
+    },
+    execute,
+    setCrashAt(value?: string, terminateAtBoundary = false) {
+      crashAt = value;
+      terminateOnInjectedFault = terminateAtBoundary;
+      simulateRunnerProcessLoss = terminateAtBoundary;
+    },
+    setTime(date: Date) {
+      serverNow = new Date(date);
+      vi.setSystemTime(date);
+      return fs.writeFile(clockPath, String(date.getTime() / 1_000));
+    },
+    async advanceOrigin() {
+      const revisionPath = path.join(isolated.repositoryRoot, "origin-advanced-for-e2e.txt");
+      await fs.writeFile(revisionPath, `${new Date().toISOString()}\n`);
+      execFileSync("git", ["add", "origin-advanced-for-e2e.txt"], { cwd: isolated.repositoryRoot, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "Advance isolated origin during provider wait"], { cwd: isolated.repositoryRoot, stdio: "ignore" });
+      const revision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: isolated.repositoryRoot, encoding: "utf8" }).trim();
+      execFileSync("git", ["--git-dir", isolated.originPath, "update-ref", "refs/heads/main", revision], { stdio: "ignore" });
+      return revision;
+    },
+    async close() {
+      vi.setSystemTime(originalSystemTime);
+      for (const [key, value] of Object.entries(prior)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+      if (isolated.originServer.exitCode === null && isolated.originServer.signalCode === null) {
+        await new Promise<void>(resolve => { isolated.originServer.once("close", () => resolve()); isolated.originServer.kill("SIGTERM"); });
+      }
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    },
+  };
+}
 
 describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () => {
   const priorEnv = {
@@ -47,7 +188,7 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     process.env.FEATURE_186_MAX_CONCURRENT_GLOBAL_LONG = "100";
     ({ closeDb } = await import("../../db"));
     await (await import("../../db")).getDb();
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await closeDb?.();
@@ -105,6 +246,228 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
       await import("node:fs/promises").then(fs => fs.rm(evidenceRoot, { recursive: true, force: true }));
     }
   }, 60_000);
+
+  it("completes the golden authenticated default Developer Fast Lane process chain", async () => {
+    const fs = await import("node:fs/promises");
+    const repositoryRoot = process.cwd().replace(/\/apps\/web$/, "");
+    const harness = await createGoldenFastLaneHarness(repositoryRoot);
+    const workunitPath = "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/golden_workunit_test.py";
+    try {
+      const created = await harness.createJob({
+        idempotencyKey: `authenticated-fast-lane-golden-${randomUUID()}`, developerLogin: "developer",
+        sourceRevision: harness.sourceRevision,
+        task: "Verify that the pre-seeded golden workunit behavior satisfies its focused acceptance test.",
+        allowedFiles: [workunitPath], writableFiles: [workunitPath],
+        tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
+        acceptanceCriteria: ["The allowlisted focused pytest passes on the pinned source revision."],
+        budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 3600,
+      });
+      const result = await harness.execute(created.jobId, 1);
+      expect(result).toMatchObject({ state: "succeeded", jobId: created.jobId });
+      const state = JSON.parse(await fs.readFile(path.join(harness.evidenceRoot, created.runId, "run-state.json"), "utf8"));
+      const contract = JSON.parse(await fs.readFile(path.join(harness.evidenceRoot, created.runId, "contract.json"), "utf8"));
+      const authorizationReceipt = await fs.readFile(path.join(harness.evidenceRoot, created.runId, "authorization-receipt.json"));
+      const [job] = await sql`SELECT status, "progressJson" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const reservations = await sql`SELECT "modelCallId", "reservationStatus", "requestedModel", "reasoningEffort", "threadId", "turnId", "usageReceiptJson", "modelSelectionJson" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call' ORDER BY "createdAt"`;
+      expect(job.status).toBe("succeeded");
+      expect(state).toMatchObject({ runId: created.runId, workspaceId: contract.workspaceId, status: "VERIFIED_COMPLETE" });
+      expect(contract.sourceRevision).toBe(harness.sourceRevision);
+      expect(contract.canonicalJobBinding).toMatchObject({ jobId: created.jobId, runId: created.runId, tenantId: "tenant-golden-default", actorId: 22401 });
+      expect(contract.originalAuthorizationReceiptSha256).toBe(createHash("sha256").update(authorizationReceipt).digest("hex"));
+      expect(state.iterations?.[0]?.testReceipt?.exitCode).toBe(0);
+      expect(state.reviews?.at(-1)?.complete).toBe(true);
+      expect(state.verification?.complete).toBe(true);
+      expect(reservations.length).toBeGreaterThanOrEqual(3);
+      expect(reservations.every(row => row.reservationStatus === "released")).toBe(true);
+      expect(reservations.every(row => row.requestedModel === "gpt-6-luna" && row.reasoningEffort === "medium")).toBe(true);
+      expect(reservations.every(row => row.usageReceiptJson?.inputTokens === 19 && row.usageReceiptJson?.outputTokens === 7)).toBe(true);
+      expect(reservations.every(row => row.modelSelectionJson?.requestedModel === "gpt-6-luna")).toBe(true);
+      expect(new Set(reservations.map(row => row.modelCallId)).size).toBe(reservations.length);
+      expect(Number(await fs.readFile(path.join(harness.stateRoot, "turn-dispatch-count"), "utf8"))).toBe(reservations.length);
+      expect(JSON.stringify(job.progressJson)).not.toContain("leaseToken");
+    } finally {
+      await harness.close();
+    }
+  }, 240_000);
+
+  it("resumes the same default Fast Lane WorkUnit after a three-day capacity wait and source advance", async () => {
+    const [{ runJobReconciler }] = await Promise.all([import("../jobReconciler")]);
+    const fs = await import("node:fs/promises");
+    const repositoryRoot = process.cwd().replace(/\/apps\/web$/, "");
+    const harness = await createGoldenFastLaneHarness(repositoryRoot);
+    const workunitPath = "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/golden_workunit_test.py";
+    try {
+      process.env.SPEC224_GOLDEN_429_ONCE = "1";
+      process.env.SPEC224_GOLDEN_RETRY_AFTER_SECONDS = String(3 * 24 * 60 * 60);
+      const created = await harness.createJob({
+        idempotencyKey: `authenticated-fast-lane-golden-capacity-${randomUUID()}`, developerLogin: "developer",
+        sourceRevision: harness.sourceRevision,
+        task: "Verify the seeded behavior after scheduler-controlled provider recovery.",
+        allowedFiles: [workunitPath], writableFiles: [workunitPath],
+        tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
+        acceptanceCriteria: ["The allowlisted focused pytest passes on the original pinned source revision."],
+        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 300,
+      });
+      const firstStarted = Date.now();
+      const first = await harness.execute(created.jobId, 1);
+      expect(first).toMatchObject({ state: "deferred", jobId: created.jobId });
+      const provider429 = JSON.parse(await fs.readFile(path.join(harness.stateRoot, "provider-429-issued"), "utf8"));
+      expect(Date.now() - provider429.atEpochSeconds * 1_000).toBeLessThan(5_000);
+      expect(Date.now() - firstStarted).toBeLessThan(60_000);
+
+      const runDirectory = path.join(harness.evidenceRoot, created.runId);
+      const originalState = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      const originalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));
+      const originalReceipt = await fs.readFile(path.join(runDirectory, "authorization-receipt.json"));
+      const originalReceiptHash = createHash("sha256").update(originalReceipt).digest("hex");
+      const [waitingJob] = await sql`SELECT status, "progressJson", attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const wait = waitingJob.progressJson.externalWait;
+      expect(waitingJob.status).toBe("waiting_external");
+      expect(wait).toMatchObject({ reason: "provider_capacity", metadata: { schemaVersion: "spec224.developer-model-wait.v1" } });
+      expect(Date.parse(wait.resumeAfter)).toBeGreaterThanOrEqual(provider429.atEpochSeconds * 1_000 + 3 * 24 * 60 * 60 * 1_000 - 30_000);
+      expect(originalState).toMatchObject({ runId: created.runId, status: "WAITING_CAPACITY", canonicalWaitPersisted: true });
+      expect(originalState.modelReceipts).toHaveLength(0);
+      const [unknown] = await sql`SELECT "modelCallId", "reservationStatus", "usageState", "dispatchState", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(unknown).toMatchObject({ reservationStatus: "unknown", usageState: "unknown", dispatchState: "unknown", threadId: null, turnId: null });
+
+      const due = new Date(Date.parse(wait.resumeAfter) + 1);
+      await harness.setTime(due);
+      const advancedMain = await harness.advanceOrigin();
+      expect(advancedMain).not.toBe(harness.sourceRevision);
+      expect(originalContract.scopeExpiresAt * 1_000).toBeLessThan(due.getTime());
+      const early = await runJobReconciler({ now: new Date(Date.parse(wait.resumeAfter) - 1) });
+      expect(early.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: "provider_capacity_not_yet_eligible" });
+      const dueResult = await runJobReconciler({ now: due });
+      expect(dueResult.decisions).toContainEqual({ jobId: created.jobId, action: "resume", reasonCode: "provider_capacity_retry_due" });
+      const [queued] = await sql`SELECT status, attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(queued.status).toBe("queued");
+
+      let resumed: Awaited<ReturnType<typeof harness.execute>>;
+      try {
+        resumed = await harness.execute(created.jobId, queued.attempt);
+      } catch (error) {
+        const recovery = await fs.readFile(path.join(runDirectory, "recovery-receipt.json"), "utf8").then(value => JSON.parse(value), () => null);
+        const runState = await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8").then(value => JSON.parse(value), () => null);
+        const logNames = await fs.readdir(path.join(runDirectory, "process-logs")).catch(() => [] as string[]);
+        const processLogs = await Promise.all(logNames.map(async name => [name, await fs.readFile(path.join(runDirectory, "process-logs", name), "utf8").then(value => JSON.parse(value), () => null)]));
+        console.error("GOLDEN_RESUME_FAILURE", JSON.stringify({ error: String(error), recovery, status: runState?.status, blocker: runState?.routingBlocker, processLogs }));
+        throw error;
+      }
+      expect(resumed).toMatchObject({ state: "succeeded", jobId: created.jobId });
+      const finalState = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      const finalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));
+      const [completedJob] = await sql`SELECT status, attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const reservations = await sql`SELECT "modelCallId", "reservationStatus", "usageState", "dispatchState", "requestedModel", "reasoningEffort", "threadId", "turnId", "usageReceiptJson" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call' ORDER BY "createdAt"`;
+      const continuationLines = (await fs.readFile(path.join(runDirectory, "continuation-receipts.jsonl"), "utf8")).trim().split("\n");
+      const continuation = JSON.parse(continuationLines.at(-1)!);
+      expect(completedJob).toMatchObject({ status: "succeeded", attempt: queued.attempt });
+      expect(Number(completedJob.fencingVersion)).toBeGreaterThan(Number(waitingJob.fencingVersion));
+      expect(finalState).toMatchObject({ runId: created.runId, workspaceId: originalState.workspaceId, status: "VERIFIED_COMPLETE" });
+      expect(finalContract.sourceRevision).toBe(harness.sourceRevision);
+      expect(finalContract.originalAuthorizationReceiptSha256).toBe(originalReceiptHash);
+      expect(continuation).toMatchObject({ jobId: created.jobId, runId: created.runId, workspaceId: originalState.workspaceId, sourceRevision: harness.sourceRevision, originalAuthorizationReceiptSha256: originalReceiptHash, attemptId: expect.any(String) });
+      expect(Number(continuation.fencingVersion)).toBe(Number(completedJob.fencingVersion));
+      expect(reservations[0]).toMatchObject({ ...unknown, reservationStatus: "unknown", usageState: "unknown" });
+      expect(reservations.slice(1).every(row => row.reservationStatus === "released" && row.usageState === "known")).toBe(true);
+      expect(reservations.slice(1).every(row => row.requestedModel === "gpt-6-luna" && row.reasoningEffort === "medium")).toBe(true);
+      expect(reservations.slice(1).every(row => row.usageReceiptJson?.inputTokens === 19)).toBe(true);
+      expect(new Set(reservations.map(row => row.modelCallId)).size).toBe(reservations.length);
+      expect(Number(await fs.readFile(path.join(harness.stateRoot, "turn-dispatch-count"), "utf8"))).toBe(reservations.length - 1);
+      const workspaceHead = execFileSync("git", ["-C", finalContract.workspace, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+      expect(workspaceHead).toBe(harness.sourceRevision);
+      expect(advancedMain).not.toBe(workspaceHead);
+    } finally {
+      await harness.close();
+    }
+  }, 240_000);
+
+  it.each([
+    "model.after_selection_persisted",
+    "model.after_reservation_before_dispatch",
+    "model.after_turn_created_before_receipt",
+    "model.after_turn_identity_persisted",
+    "model.after_receipt_persisted_before_settlement",
+    "model.after_receipt",
+  ])("recovers the default Fast Lane process chain through a new canonical Attempt after %s", async crashBoundary => {
+    const fs = await import("node:fs/promises");
+    const repositoryRoot = process.cwd().replace(/\/apps\/web$/, "");
+    const harness = await createGoldenFastLaneHarness(repositoryRoot);
+    const workunitPath = "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/golden_workunit_test.py";
+    try {
+      const created = await harness.createJob({
+        idempotencyKey: `authenticated-fast-lane-crash-${crashBoundary}-${randomUUID()}`, developerLogin: "developer",
+        sourceRevision: harness.sourceRevision, task: `Recover the default WorkUnit at ${crashBoundary}.`,
+        allowedFiles: [workunitPath], writableFiles: [workunitPath],
+        tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
+        acceptanceCriteria: ["The allowlisted focused pytest passes on the pinned source revision."],
+        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 3600,
+      });
+      harness.setCrashAt(crashBoundary, true);
+      const runDirectory = path.join(harness.evidenceRoot, created.runId);
+      let crash: unknown;
+      try {
+        await harness.execute(created.jobId, 1);
+      } catch (error) {
+        crash = error;
+      }
+      expect(String(crash)).toContain("SIMULATED_CANONICAL_RUNNER_PROCESS_LOSS");
+      expect(String(crash)).toContain("DEVELOPER_FAST_LANE_PROCESS_FAILED:SIGKILL");
+      const originalState = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      const originalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));
+      const originalReceipt = await fs.readFile(path.join(runDirectory, "authorization-receipt.json"));
+      const originalReceiptHash = createHash("sha256").update(originalReceipt).digest("hex");
+      const [interruptedJob] = await sql`SELECT status, attempt, "fencingVersion", "leaseExpiresAt" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(interruptedJob).toMatchObject({ status: "running", attempt: 1 });
+      expect(originalState.crashConsumed).toContain(crashBoundary);
+      const firstPlannedCall = originalState.lifecycleEvents.find((event: any) => event.kind === "model.call.planned")?.payload?.callId;
+      expect(firstPlannedCall).toBeTruthy();
+
+      const { runJobReconciler } = await import("../jobReconciler");
+      const due = new Date(new Date(interruptedJob.leaseExpiresAt).getTime() + 1);
+      await harness.setTime(due);
+      const reconciled = await runJobReconciler({ now: due });
+      expect(reconciled.expiredRecovered).toBe(1);
+      let [queued] = await sql`SELECT status, attempt, "fencingVersion", "nextRetryAt" FROM worker_jobs WHERE id = ${created.jobId}`;
+      if (queued.status === "retry_scheduled") {
+        const retryAt = new Date(queued.nextRetryAt);
+        await harness.setTime(new Date(retryAt.getTime() + 1));
+        await runJobReconciler({ now: new Date(retryAt.getTime() + 1) });
+        [queued] = await sql`SELECT status, attempt, "fencingVersion", "nextRetryAt" FROM worker_jobs WHERE id = ${created.jobId}`;
+      }
+      expect(queued).toMatchObject({ status: "queued", attempt: 2 });
+      harness.setCrashAt();
+      const result = await harness.execute(created.jobId, queued.attempt);
+      expect(result).toMatchObject({ state: "succeeded", jobId: created.jobId });
+      const [job] = await sql`SELECT status, attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const state = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      const recovery = JSON.parse(await fs.readFile(path.join(runDirectory, "recovery-receipt.json"), "utf8"));
+      const reservations = await sql`SELECT "modelCallId", "reservationStatus", "usageState", "dispatchState", "reservedTokens", "requestedModel", "reasoningEffort", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call' ORDER BY "createdAt"`;
+      const events = await fs.readFile(path.join(runDirectory, "events.jsonl"), "utf8");
+      const finalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));
+      expect(job).toMatchObject({ status: "succeeded", attempt: 2 });
+      expect(Number(job.fencingVersion)).toBeGreaterThan(Number(interruptedJob.fencingVersion));
+      expect(state.runId).toBe(created.runId);
+      expect(state.workspaceId).toBe(originalState.workspaceId);
+      expect(state.crashConsumed).toContain(crashBoundary);
+      expect(recovery.supervisorResult).toBe("COMPLETED");
+      expect(finalContract.sourceRevision).toBe(harness.sourceRevision);
+      expect(finalContract.originalAuthorizationReceiptSha256).toBe(originalReceiptHash);
+      expect(originalContract.sourceRevision).toBe(harness.sourceRevision);
+      expect(reservations[0]?.modelCallId).toBe(firstPlannedCall);
+      expect(Number(await fs.readFile(path.join(harness.stateRoot, "turn-dispatch-count"), "utf8"))).toBe(reservations.length);
+      expect(new Set(reservations.map(row => row.modelCallId)).size).toBe(reservations.length);
+      expect(reservations.every(row => row.requestedModel === "gpt-6-luna" && row.reasoningEffort === "medium")).toBe(true);
+      expect(reservations.every(row => row.usageState === "known" || row.usageState === "unknown" || row.usageState === "reserved")).toBe(true);
+      expect(reservations.filter(row => row.usageState !== "known").every(row => Number(row.reservedTokens) > 0)).toBe(true);
+      if (crashBoundary === "model.after_turn_created_before_receipt" || crashBoundary === "model.after_turn_identity_persisted") {
+        expect(reservations[0]).toMatchObject({ reservationStatus: "released", usageState: "known", threadId: expect.any(String), turnId: expect.any(String) });
+      }
+      expect(events).toContain(`"trigger": "${crashBoundary}"`);
+      expect(JSON.stringify(job)).not.toContain("leaseToken");
+    } finally {
+      await harness.close();
+    }
+  }, 240_000);
 
   it("preserves both private admission FDs through a grandchild Python reserve and response", async () => {
     const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
@@ -441,7 +804,7 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
       else await sql`UPDATE worker_jobs SET "leaseOwnerToken" = 'revoked-before-dispatch' WHERE id = ${created.jobId}`;
       await fs.writeFile(path.join(pauseDir, "continue"), "go");
       const outcome = await execution;
-      expect(outcome?.error).toBeTruthy();
+      expect(outcome?.error, JSON.stringify(outcome)).toBeTruthy();
       const [reservation] = await sql`SELECT "dispatchState", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
       expect(reservation).toMatchObject({ dispatchState: "reserved", threadId: null, turnId: null });
       const dispatched = await sql`SELECT count(*)::int AS count FROM worker_job_events WHERE "workerJobId" = ${created.jobId} AND "eventType" IN ('CODEX_MODEL_TURN_DISPATCHING', 'CODEX_MODEL_THREAD_CREATED', 'CODEX_MODEL_TURN_STARTED')`;

@@ -272,10 +272,10 @@ def iteration_evidence_summary(iterations: list[dict[str, Any]]) -> list[dict[st
 
 CONTRACT_SCOPE_FIELDS = (
     "specId", "workUnit", "requirementId", "requirementDigest", "requirementText",
-    "sourceSpecDigest", "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
+    "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
     "workspace", "allowedFiles", "writableFiles", "patchableFiles", "tests", "authority",
-    "browserUat", "acceptanceCriteria", "allowedTools", "scopeExpiresAt",
-    "authorizationDigest", "developerIdentity",
+    "browserUat", "acceptanceCriteria", "allowedTools",
+    "developerIdentity",
 )
 
 

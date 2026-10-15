@@ -165,7 +165,8 @@ def _request_contract(request: dict[str, Any], *, identity: dict[str, str], work
         "scopeTtlSeconds": int(request.get("scopeTtlSeconds", 8 * 60 * 60)),
         "authority": {
             "source": "authenticated-github-developer-policy", "productionAccess": False,
-            "sharedDatabaseWrite": False, "gateway": False, "provider": "codex-subscription",
+            "sharedDatabaseWrite": False, "gateway": False, "runnerDispatch": False,
+            "provider": "codex-subscription",
             "isolatedTestDatabase": False,
         },
         "implementationGuidance": request.get("implementationGuidance"),

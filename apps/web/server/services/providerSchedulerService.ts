@@ -49,8 +49,8 @@ export type CodexModelSettlementDecision =
 export type CodexModelAdmissionRepository = {
   reserveCodexModelCall(input: CodexModelCallInput): Promise<CodexModelAdmissionDecision>;
   markCodexModelCallDispatching(input: { lease: LeaseContext; operationKey: string; threadId?: string | null; now?: Date }): Promise<CodexModelCallDispatchDecision>;
-  recordCodexModelThreadIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; now?: Date }): Promise<CodexModelThreadIdentityDecision>;
-  recordCodexModelTurnIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; turnId: string; now?: Date }): Promise<CodexModelTurnIdentityDecision>;
+  recordCodexModelThreadIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; reconcile?: boolean; now?: Date }): Promise<CodexModelThreadIdentityDecision>;
+  recordCodexModelTurnIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; turnId: string; reconcile?: boolean; now?: Date }): Promise<CodexModelTurnIdentityDecision>;
   settleCodexModelCall(input: {
     lease: LeaseContext;
     runId: string;

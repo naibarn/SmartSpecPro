@@ -340,15 +340,19 @@ class CodexSubscriptionModel(Model):
                 canonical_turn = admission_result.get("turnId")
                 if call.get("status") == "completed" and call.get("receipt_json"):
                     pass
-                elif not isinstance(canonical_thread, str) or not isinstance(canonical_turn, str):
+                elif not isinstance(canonical_thread, str) or not canonical_thread:
                     raise ModelAdmissionDenied("Codex turn dispatch is ambiguous; refusing replay without persisted turn identity")
                 else:
                     call["thread_id"] = canonical_thread
-                    call["turn_id"] = canonical_turn
+                    # When the server has only the thread identity, reconcile
+                    # the original provider turn from that thread before any
+                    # possible dispatch. _run_codex_turn fails closed if the
+                    # provider cannot prove the turn exists.
+                    call["turn_id"] = canonical_turn if isinstance(canonical_turn, str) else None
         if admission_result and admission_result.get("kind") == "reconcile_required" and call.get("status") == "completed" and call.get("receipt_json"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
-            self.admission.settle(operation_key, self._usage_receipt(receipt))
+            self.admission.settle(operation_key, self._usage_receipt(receipt), reconcile=True)
         elif admission_result and admission_result.get("kind") == "reserved" and call["status"] == "completed" and call.get("receipt_json"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
@@ -405,7 +409,10 @@ class CodexSubscriptionModel(Model):
             )
             _maybe_crash(self.store, "model.after_receipt_persisted_before_settlement", {"callId": call_id})
             if self.admission is not None and operation_key:
-                self.admission.settle(operation_key, self._usage_receipt(receipt))
+                self.admission.settle(
+                    operation_key, self._usage_receipt(receipt),
+                    reconcile=bool(admission_result and admission_result.get("kind") == "reconcile_required"),
+                )
             _maybe_crash(self.store, "model.after_receipt", {"callId": call_id})
         parsed = self._parse_dispatch(raw_text, tools, handoffs, identity=call_id)
         receipt["agentAction"] = "tool_call" if isinstance(parsed, ResponseFunctionToolCall) else "final"
@@ -644,6 +651,10 @@ class CodexSubscriptionModel(Model):
                         prior = _select_turn_after_baseline(turns, call.get("prior_turn_id"))
                     else:
                         prior = _select_thread_turn(turns, None, recover_latest=True)
+                if prior is None and turn_id is None and call.get("status") in {
+                    "thread_started", "turn_running", "turn_reconciling", "turn_completed",
+                }:
+                    raise RuntimeError("Previously dispatched Codex turn cannot be proven from its persisted thread; refusing replay")
                 if turn_id is not None and prior is None:
                     raise RuntimeError("Canonical Codex turn identity is absent from the persisted thread; refusing replay")
                 if prior is not None and turn_id is None:
@@ -660,7 +671,12 @@ class CodexSubscriptionModel(Model):
                     final = next((item.text for item in reversed(prior.items) if getattr(item, "type", None) == "agentMessage" and getattr(getattr(item, "phase", None), "value", getattr(item, "phase", None)) == "finalAnswer"), None)
                     if final is None:
                         raise RuntimeError("Completed Codex turn has no recoverable final answer")
-                    usage = json.loads(call.get("usage_json") or "null")
+                    provider_usage = getattr(prior, "usage", None)
+                    usage = (
+                        provider_usage.model_dump(mode="json", by_alias=True)
+                        if provider_usage is not None and hasattr(provider_usage, "model_dump")
+                        else json.loads(call.get("usage_json") or "null")
+                    )
                     receipt = json.loads(call.get("receipt_json") or "{}")
                     receipt.update({"status": "completed_reconciled", "threadId": thread.id, "turnId": prior.id, "usage": usage, "usageRecovery": "UNVERIFIED" if usage is None else "persisted"})
                     return final, receipt
@@ -684,7 +700,12 @@ class CodexSubscriptionModel(Model):
                         final = next((item.text for item in reversed(prior.items) if getattr(item, "type", None) == "agentMessage" and getattr(getattr(item, "phase", None), "value", getattr(item, "phase", None)) == "finalAnswer"), None)
                         if final is None:
                             raise RuntimeError("Completed Codex turn has no recoverable final answer")
-                        usage = json.loads(call.get("usage_json") or "null")
+                        provider_usage = getattr(prior, "usage", None)
+                        usage = (
+                            provider_usage.model_dump(mode="json", by_alias=True)
+                            if provider_usage is not None and hasattr(provider_usage, "model_dump")
+                            else json.loads(call.get("usage_json") or "null")
+                        )
                         receipt = json.loads(call.get("receipt_json") or "{}")
                         receipt.update({"status": "completed_reconciled", "threadId": thread.id, "turnId": prior.id, "usage": usage, "usageRecovery": "UNVERIFIED" if usage is None else "persisted"})
                         return final, receipt
