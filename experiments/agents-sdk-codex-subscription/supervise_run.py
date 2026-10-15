@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from durable_store import DurableRunStore, digest
+from model_admission import ModelAdmissionDenied, validate_private_admission_fds
 
 
 HERE = Path(__file__).resolve().parent
@@ -129,8 +130,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-restarts", type=int, default=8, help="Deprecated compatibility option; automatic crash recovery has no count stop")
     parser.add_argument("--max-attempts", type=int, default=2)
     parser.add_argument("--implementation-max-turns", type=int, default=12)
-    parser.add_argument("--canonical-admission-fd", type=int, help="Private inherited IPC descriptor from the canonical server executor")
+    parser.add_argument("--canonical-admission-response-fd", type=int, help="Private server-to-Python response descriptor")
+    parser.add_argument("--canonical-admission-request-fd", type=int, help="Private Python-to-server request descriptor")
     args = parser.parse_args(argv)
+    if (args.canonical_admission_response_fd is None) != (args.canonical_admission_request_fd is None):
+        parser.error("canonical model admission requires both private IPC descriptors")
+    if args.canonical_admission_response_fd is not None:
+        try:
+            validate_private_admission_fds(args.canonical_admission_response_fd, args.canonical_admission_request_fd)
+        except ModelAdmissionDenied as exc:
+            parser.error(str(exc))
     if args.max_restarts < 0:
         parser.error("--max-restarts cannot be negative")
     workspace = args.workspace.resolve()
@@ -158,13 +167,15 @@ def main(argv: list[str] | None = None) -> int:
         used_diagnostic = diagnostic_next
         diagnostic_next = False
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
+        prior_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY"}:
-            prior_state = json.loads(existing_state.read_text(encoding="utf-8"))
-            if prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_fd is None:
+            if prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_response_fd is None:
                 # The canonical scheduler owns eligibility and lease reacquisition.
                 # A local supervisor must not wake a WorkUnit with a stale lease.
                 return 75
-        if prior_status == "WAITING_CAPACITY":
+        if prior_status == "WAITING_CAPACITY" and not (
+            prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_response_fd is not None
+        ):
             current = json.loads(existing_state.read_text(encoding="utf-8"))
             retry_after = current.get("retryAfter")
             if retry_after:
@@ -174,8 +185,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_contract:
             command = [sys.executable, str(HERE / "run_spec_workunit.py"), "--workspace", str(workspace),
                        "--contract", str(args.spec_contract.resolve()), "--evidence-dir", str(evidence), "--run-id", run_id]
-            if args.canonical_admission_fd is not None:
-                command += ["--canonical-admission-fd", str(args.canonical_admission_fd)]
+            if args.canonical_admission_response_fd is not None:
+                command += ["--canonical-admission-response-fd", str(args.canonical_admission_response_fd),
+                            "--canonical-admission-request-fd", str(args.canonical_admission_request_fd)]
             if prior_status in {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY", "WAITING_BUDGET"}:
                 command.append("--continuation")
             if used_diagnostic:
@@ -188,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
         env["AUTONOMY_CRASH_AT"] = args.crash_at
         progress_before = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else ""
         result = subprocess.run(command, cwd=HERE, env=env, text=True, capture_output=True, check=False,
-                                pass_fds=(args.canonical_admission_fd,) if args.canonical_admission_fd is not None else ())
+                                pass_fds=(args.canonical_admission_response_fd, args.canonical_admission_request_fd)
+                                if args.canonical_admission_response_fd is not None and args.canonical_admission_request_fd is not None else ())
         logs.mkdir(parents=True, exist_ok=True)
         (logs / f"process-{process_count:04d}.json").write_text(json.dumps({
             "command": command,
@@ -213,6 +226,30 @@ def main(argv: list[str] | None = None) -> int:
             return 128 + signum
         current_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         current_status = current_state.get("status")
+        if args.spec_contract and current_status in {"WAITING_BUDGET", "WAITING_CAPACITY"} and current_state.get("canonicalModelAdmissionRequired"):
+            expected_reason = "budget" if current_status == "WAITING_BUDGET" else "provider_capacity"
+            new_canonical_wait = (
+                current_state.get("canonicalWaitPersisted") is True
+                and current_state.get("canonicalWaitReason") == expected_reason
+                and int(current_state.get("canonicalWaitSequence", 0)) > int(prior_state.get("canonicalWaitSequence", 0))
+            )
+            if new_canonical_wait:
+                receipt = write_recovery_receipt(
+                    evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                    crash_at=args.crash_at, supervisor_result="DEFERRED_CANONICAL_WAIT",
+                    reason=f"canonical scheduler persisted {expected_reason} wait; returning invocation for eligible scheduler resume",
+                    return_code=75, process_count=process_count, continuation_processes=continuation_processes,
+                )
+                print(json.dumps(receipt, ensure_ascii=False, indent=2))
+                return 75
+            receipt = write_recovery_receipt(
+                evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                crash_at=args.crash_at, supervisor_result="FAILED",
+                reason="canonical wait state has no newly acknowledged durable scheduler wait; refusing local retry",
+                return_code=result.returncode, process_count=process_count, continuation_processes=continuation_processes,
+            )
+            print(json.dumps(receipt, ensure_ascii=False, indent=2))
+            return 1
         progress_after = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else progress_before
         if (args.spec_contract and current_status == "PARTIAL_CONTINUABLE" and result.returncode == 75
                 and progress_after == progress_before):

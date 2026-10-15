@@ -34,6 +34,9 @@ class Codex:
         if retry_after and not rejected_path.exists():
             rejected_path.touch()
             raise MockCodexRateLimit(float(retry_after))
+        if os.environ.get("SPEC224_MOCK_ACCEPTED_THREAD_RESPONSE_LOST"):
+            (store_dir / "mock-provider-accepted-thread-with-lost-identity").touch()
+            raise RuntimeError("mock provider accepted thread but response identity was lost")
         count_path = store_dir / "mock-thread-start-count"
         count = int(count_path.read_text() if count_path.exists() else "0") + 1
         count_path.write_text(str(count))
@@ -65,7 +68,7 @@ store = DurableRunStore(store_dir, run_id=run_id,
     initial_state=None if (store_dir / "runtime.sqlite3").exists() else {"runId": run_id, "iterations": [], "status": "active"},
     resume=(store_dir / "runtime.sqlite3").exists())
 receipts = []
-admission = FdCanonicalModelAdmissionTransport(3)
+admission = FdCanonicalModelAdmissionTransport(3, 4)
 pause_dir = os.environ.get("SPEC224_E2E_PAUSE_AFTER_RESERVE")
 if pause_dir:
     original_reserve = admission.reserve

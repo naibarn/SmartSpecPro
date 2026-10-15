@@ -3,7 +3,7 @@ export type ReconciliationAction =
 
 export type WaitingExternalEvidence = {
   operationKey: string;
-  waitReason?: "budget" | "provider_capacity";
+  waitReason?: "budget" | "provider_capacity" | "authorization";
   runStatus: string | null;
   providerReference: string | null;
   resumeAfter: string | null;
@@ -26,7 +26,7 @@ const STORYBOARD_PAUSE_PREFIX = "storyboard.pause:";
 export function classifyWaitingExternal(
   evidence: WaitingExternalEvidence
 ): WaitingExternalDecision {
-  const { operationKey, runStatus, resumeAfter, now } = evidence;
+  const { operationKey, runStatus, resumeAfter, now, waitReason } = evidence;
   const isStoryboardPause = operationKey.startsWith(STORYBOARD_PAUSE_PREFIX);
 
   if (operationKey.startsWith("development-dependency:")) {
@@ -34,6 +34,24 @@ export function classifyWaitingExternal(
       action: "wait",
       reasonCode: "development_dependency_unsatisfied",
       explanation: "The dependency predicate is non-terminal; keep its durable work handoff available for event or reconciliation evidence.",
+      operatorReviewRequired: false,
+    };
+  }
+
+  if (waitReason === "authorization") {
+    const resumeAt = resumeAfter ? Date.parse(resumeAfter) : Number.NaN;
+    if (Number.isFinite(resumeAt) && resumeAt > now.getTime()) {
+      return {
+        action: "wait",
+        reasonCode: "authorization_not_yet_eligible",
+        explanation: "The bounded authorization recheck interval has not elapsed.",
+        operatorReviewRequired: false,
+      };
+    }
+    return {
+      action: "resume",
+      reasonCode: "authorization_recheck_due",
+      explanation: "Recheck the Developer and workspace continuation authority before dispatch.",
       operatorReviewRequired: false,
     };
   }

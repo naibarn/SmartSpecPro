@@ -220,7 +220,7 @@ export type ExternalWait = {
   providerReference?: string;
   resumeAfter: string;
   /** Typed recoverable reason owned by an existing canonical scheduler. */
-  reason?: "budget" | "provider_capacity";
+  reason?: "budget" | "provider_capacity" | "authorization";
   metadata?: Record<string, unknown>;
 };
 

@@ -272,10 +272,10 @@ def iteration_evidence_summary(iterations: list[dict[str, Any]]) -> list[dict[st
 
 CONTRACT_SCOPE_FIELDS = (
     "specId", "workUnit", "requirementId", "requirementDigest", "requirementText",
-    "sourceSpecDigest", "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
+    "sourceRevision", "workspaceId", "taskId", "ownerSessionId",
     "workspace", "allowedFiles", "writableFiles", "patchableFiles", "tests", "authority",
-    "browserUat", "acceptanceCriteria", "allowedTools", "scopeExpiresAt",
-    "authorizationDigest", "developerIdentity",
+    "browserUat", "acceptanceCriteria", "allowedTools",
+    "developerIdentity",
 )
 
 
@@ -932,10 +932,13 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         return asyncio.run(invoke())
     except Exception as exc:
         if isinstance(exc, ModelAdmissionWait):
+            canonical_scheduler_owned = getattr(store, "model_admission_transport", None) is not None
             if exc.reason == "provider_capacity":
-                store.wait_for_capacity(retry_after=exc.next_eligible_at, detail="Codex Subscription reported HTTP 429; canonical scheduler owns retry eligibility")
+                store.wait_for_capacity(retry_after=exc.next_eligible_at, detail="Codex Subscription reported HTTP 429; canonical scheduler owns retry eligibility",
+                                        canonical_scheduler_owned=canonical_scheduler_owned)
             else:
-                store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key)
+                store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key,
+                                      canonical_scheduler_owned=canonical_scheduler_owned)
             store.commit_state()
             print(json.dumps(store.state, ensure_ascii=False, indent=2))
             store.close()
@@ -964,8 +967,17 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--continuation", action="store_true", help="Start a new WorkUnit iteration without counting it as crash recovery")
     parser.add_argument("--diagnose-no-progress", action="store_true", help="Force a fresh diagnostic planning/replan strategy after a no-progress continuation")
-    parser.add_argument("--canonical-admission-fd", type=int, help="Private inherited IPC descriptor owned by the canonical server executor")
+    parser.add_argument("--canonical-admission-response-fd", type=int, help="Private server-to-Python response descriptor")
+    parser.add_argument("--canonical-admission-request-fd", type=int, help="Private Python-to-server request descriptor")
     args = parser.parse_args()
+    if (args.canonical_admission_response_fd is None) != (args.canonical_admission_request_fd is None):
+        parser.error("canonical model admission requires both private IPC descriptors")
+    if args.canonical_admission_response_fd is not None:
+        from model_admission import ModelAdmissionDenied, validate_private_admission_fds
+        try:
+            validate_private_admission_fds(args.canonical_admission_response_fd, args.canonical_admission_request_fd)
+        except ModelAdmissionDenied as exc:
+            parser.error(str(exc))
     contract = load_contract(args.contract, args.workspace)
     evidence = args.evidence_dir.resolve()
     if contract.root == evidence or contract.root in evidence.parents:
@@ -979,9 +991,11 @@ def main() -> int:
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
-    if args.canonical_admission_fd is not None:
+    if args.canonical_admission_response_fd is not None:
         from model_admission import FdCanonicalModelAdmissionTransport
-        store.model_admission_transport = FdCanonicalModelAdmissionTransport(args.canonical_admission_fd)
+        store.model_admission_transport = FdCanonicalModelAdmissionTransport(
+            args.canonical_admission_response_fd, args.canonical_admission_request_fd,
+        )
     if contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1" or contract.raw.get("canonicalJobBinding"):
         state["canonicalModelAdmissionRequired"] = True
     if state.get("workspaceId") != contract.workspace_id:
@@ -1029,6 +1043,8 @@ def main() -> int:
     state["status"] = "running"
     state.pop("retryAfter", None)
     state.pop("capacityWaitDetail", None)
+    state.pop("canonicalWaitPersisted", None)
+    state.pop("canonicalWaitReason", None)
     store.commit_state()
     def receipt(item: dict[str, Any]) -> None:
         if all(row.get("turnId") != item.get("turnId") for row in state.setdefault("modelReceipts", [])):

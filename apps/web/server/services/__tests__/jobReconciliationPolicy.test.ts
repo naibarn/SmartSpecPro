@@ -127,4 +127,17 @@ describe("job reconciliation policy", () => {
       operatorReviewRequired: false,
     });
   });
+
+  it("keeps authorization waits parked until recheck time and then resumes for a fresh authority check", () => {
+    expect(classifyWaitingExternal(evidence({
+      operationKey: "developer-authorization:run-1:4",
+      waitReason: "authorization",
+      resumeAfter: new Date(Date.now() + 60_000).toISOString(),
+    }))).toMatchObject({ action: "wait", reasonCode: "authorization_not_yet_eligible" });
+    expect(classifyWaitingExternal(evidence({
+      operationKey: "developer-authorization:run-1:5",
+      waitReason: "authorization",
+      resumeAfter: new Date(Date.now() - 1).toISOString(),
+    }))).toMatchObject({ action: "resume", reasonCode: "authorization_recheck_due" });
+  });
 });

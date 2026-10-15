@@ -1,6 +1,9 @@
 import sys
+import os
+import subprocess
 import types
 import unittest
+import uuid
 from unittest.mock import patch
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
@@ -261,6 +264,45 @@ class CodexTurnRecoveryTests(unittest.TestCase):
         self.assertEqual(thread.turn_calls, 0)
         self.assertEqual(len(store.updates), 1)
         self.assertEqual(store.updates[0][1]["turn_id"], "turn-created-before-crash")
+
+    def test_real_process_kill_after_model_receipt_persistence_keeps_receipt_for_reconciliation(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from durable_store import DurableRunStore
+
+        run_id = str(uuid.uuid4())
+        call_id = str(uuid.uuid4())
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = Path(temp)
+            with DurableRunStore(evidence, run_id=run_id, initial_state={"runId": run_id, "status": "running"}) as store:
+                phase = store.start_phase("implementation", 1, {"input": "mock"}, 1)
+                store.reserve_model_call(call_id, phase["phase_id"], "implementer", {"instruction": "mock"})
+                store.update_model_call(
+                    call_id, event="model.call.completed", stable_suffix="completed", status="completed",
+                    response_text='{"type":"message","text":"done"}',
+                    receipt_json=json.dumps({"threadId": "thread-known", "turnId": "turn-known", "usage": {"inputTokens": 5, "outputTokens": 2}}),
+                )
+            script = (
+                "import sys; from pathlib import Path; from durable_store import DurableRunStore; "
+                "from codex_model import _maybe_crash; "
+                "store=DurableRunStore(Path(sys.argv[1]), run_id=sys.argv[2], resume=True, count_restart=False); "
+                "_maybe_crash(store, 'model.after_receipt_persisted_before_settlement', {'callId': sys.argv[3]})"
+            )
+            env = {**os.environ, "AUTONOMY_CRASH_AT": "model.after_receipt_persisted_before_settlement",
+                   "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
+            killed = subprocess.run([sys.executable, "-c", script, str(evidence), run_id, call_id], env=env,
+                                    capture_output=True, check=False)
+            self.assertEqual(killed.returncode, -9, killed.stderr.decode("utf-8", errors="replace"))
+            with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as recovered:
+                call = recovered.get_model_call(call_id)
+                self.assertEqual(call["status"], "completed")
+                self.assertIn("thread-known", call["receipt_json"])
+                self.assertIn("turn-known", call["receipt_json"])
+                events = [row[0] for row in recovered.connection.execute(
+                    "SELECT kind FROM events WHERE kind='fault.injected'"
+                ).fetchall()]
+                self.assertEqual(events, ["fault.injected"])
 
 
 if __name__ == "__main__":

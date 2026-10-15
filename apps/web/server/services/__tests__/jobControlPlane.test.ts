@@ -2295,6 +2295,36 @@ describe("job control plane", () => {
     expect(state.attempts).toHaveLength(1);
   });
 
+  it("persists authorization waits as a typed non-dispatchable lifecycle state and releases the lease", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+
+    await expect(controlPlane.waitForExternal(lease!, {
+      operationKey: "developer-authorization:run-1:3",
+      resumeAfter: "2026-10-15T13:00:00.000Z",
+      reason: "authorization",
+      metadata: { runId: "run-1", attemptId: lease!.attemptId, fencingVersion: lease!.fencingVersion },
+    })).resolves.toBeUndefined();
+
+    const waiting = state.jobs.get(created.jobId);
+    expect(waiting).toMatchObject({
+      status: "waiting_external",
+      statusReason: "WAITING_AUTHORIZATION",
+      leaseOwnerToken: null,
+      leaseExpiresAt: null,
+      progressJson: { externalWait: {
+        operationKey: "developer-authorization:run-1:3",
+        resumeAfter: "2026-10-15T13:00:00.000Z",
+        reason: "authorization",
+      } },
+    });
+    expect(state.events.at(-1)).toMatchObject({ eventType: "WAITING_AUTHORIZATION", attemptId: lease!.attemptId });
+    await expect(controlPlane.assertActive(lease!)).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+  });
+
   it("advances the business attempt when a resumable storyboard pass is repaired", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
