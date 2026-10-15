@@ -156,6 +156,10 @@ class SupervisorTelemetryTests(unittest.TestCase):
                     }) as store:
                         store.continue_development(iteration=1, findings=["planner phase emitted no progress"],
                                                    reason="diagnostic replan needed")
+                        phase = store.phase_id("planning", 0)
+                        store.reserve_model_call("model-only-progress", phase, "planner", {"input": "same plan"})
+                        store.update_model_call("model-only-progress", event="model.call.completed", stable_suffix="completed",
+                                                status="completed", thread_id="thread-only", turn_id="turn-only")
                     return subprocess.CompletedProcess(command, 75, "", "")
                 self.assertIn("--diagnose-no-progress", command)
                 with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:

@@ -39,6 +39,61 @@ DISPATCH_SCHEMA: dict[str, Any] = {
     "required": ["action", "name", "arguments_json", "text"],
     "additionalProperties": False,
 }
+REQUEST_JSON_MARKER = "Request JSON:\n"
+
+
+def compact_reused_thread_instruction(
+    instruction: str, previous_instruction: str | None,
+) -> tuple[str, dict[str, Any]]:
+    """Send only newly appended Agents SDK inputs when Codex already has the prefix in its thread."""
+    original_bytes = len(instruction.encode("utf-8"))
+    metrics: dict[str, Any] = {
+        "applied": False,
+        "reason": "prior_request_unavailable",
+        "originalInstructionBytes": original_bytes,
+        "dispatchedInstructionBytes": original_bytes,
+        "omittedInputItems": 0,
+    }
+    if not previous_instruction or REQUEST_JSON_MARKER not in instruction or REQUEST_JSON_MARKER not in previous_instruction:
+        return instruction, metrics
+    current_prefix, current_json = instruction.split(REQUEST_JSON_MARKER, 1)
+    previous_prefix, previous_json = previous_instruction.split(REQUEST_JSON_MARKER, 1)
+    if current_prefix != previous_prefix:
+        metrics["reason"] = "instruction_preamble_changed"
+        return instruction, metrics
+    try:
+        current = json.loads(current_json)
+        previous = json.loads(previous_json)
+    except json.JSONDecodeError:
+        metrics["reason"] = "request_json_invalid"
+        return instruction, metrics
+    for field in ("instructions", "tools", "final_output_schema"):
+        if current.get(field) != previous.get(field):
+            metrics["reason"] = f"{field}_changed"
+            return instruction, metrics
+    current_input, previous_input = current.get("input"), previous.get("input")
+    if not isinstance(current_input, list) or not isinstance(previous_input, list):
+        metrics["reason"] = "input_not_a_message_list"
+        return instruction, metrics
+    if len(current_input) < len(previous_input) or current_input[:len(previous_input)] != previous_input:
+        metrics["reason"] = "input_history_not_an_exact_prefix"
+        return instruction, metrics
+    new_items = current_input[len(previous_input):]
+    if not new_items:
+        metrics["reason"] = "no_new_input_items"
+        return instruction, metrics
+    compacted = dict(current)
+    compacted["input"] = new_items
+    result = current_prefix + REQUEST_JSON_MARKER + json.dumps(compacted, ensure_ascii=False, separators=(",", ":"))
+    metrics.update({
+        "applied": True,
+        "reason": "reused_thread_prefix_referenced",
+        "dispatchedInstructionBytes": len(result.encode("utf-8")),
+        "omittedInputItems": len(previous_input),
+        "originalInputItems": len(current_input),
+        "dispatchedInputItems": len(new_items),
+    })
+    return result, metrics
 
 
 def _maybe_crash(store: DurableRunStore, boundary: str, payload: dict[str, Any]) -> None:
@@ -470,6 +525,9 @@ class CodexSubscriptionModel(Model):
                     model=selection.get("requestedModel") if selection else None,
                 )
                 self.store.update_model_call(call_id, event="model.thread.persisted", stable_suffix="thread", status="thread_started", thread_id=thread.id)
+            prompt_metrics = None
+            if call.get("status") == "thread_reused":
+                instruction, prompt_metrics = self._compact_reused_thread_input(instruction, call)
             handle = thread.turn(
                 instruction,
                 cwd=str(self.codex_cwd),
@@ -506,6 +564,8 @@ class CodexSubscriptionModel(Model):
             "itemCount": len(result.items),
             "usage": usage,
         }
+        if prompt_metrics is not None:
+            receipt["promptMetrics"] = prompt_metrics
         if selection is not None:
             # Some app-server versions may surface the effective model. An
             # absent field stays explicitly unverified; requested != effective.
@@ -516,3 +576,18 @@ class CodexSubscriptionModel(Model):
                 receipt["effectiveModel"] = str(getattr(effective_model, "value", effective_model))
                 receipt["effectiveModelStatus"] = "CONFIRMED"
         return result.final_response or "", receipt
+
+    def _compact_reused_thread_input(self, instruction: str, call: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        prior = self.store.connection.execute(
+            """SELECT request_json FROM model_calls
+               WHERE phase_id=? AND role=? AND thread_id=? AND turn_id=? AND call_id<>?
+               ORDER BY rowid DESC LIMIT 1""",
+            (self.phase_id, self.role, call.get("thread_id"), call.get("prior_turn_id"), call.get("call_id", "")),
+        ).fetchone()
+        previous_instruction = None
+        if prior:
+            try:
+                previous_instruction = json.loads(prior["request_json"]).get("instruction")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                previous_instruction = None
+        return compact_reused_thread_instruction(instruction, previous_instruction)

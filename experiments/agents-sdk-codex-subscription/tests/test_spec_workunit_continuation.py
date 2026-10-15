@@ -110,11 +110,16 @@ class DeveloperRecoveryEvidenceTests(unittest.TestCase):
 
         self.assertEqual(evidence[0]["iteration"], 3)
         self.assertEqual(evidence[0]["changedPaths"], ["python-backend/app/services/openai_agents_adapter.py"])
+        self.assertEqual(evidence[0]["testReceiptRef"], "run-state.json#/iterations/3/testReceipt")
         self.assertEqual(evidence[0]["test"], {
             "exitCode": 0,
             "revision": "revision-3",
             "sourceRevision": "base-sha",
             "changedPaths": [],
+            "failureCategory": "none",
+            "failureSignature": None,
+            "stdoutBytes": len("large logs are intentionally omitted"),
+            "stderrBytes": 0,
         })
         self.assertEqual(evidence[1]["test"]["exitCode"], None)
 

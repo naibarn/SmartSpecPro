@@ -37,9 +37,9 @@ def contract_binding_rejection(output: str) -> bool:
 
 
 def meaningful_progress_signature(evidence: Path, workspace: Path, contract_path: Path) -> str:
-    """Ignore checkpoint churn; include only model turns, tool effects, source, and verified tests."""
+    """Ignore checkpoint churn and model-only activity; include functional effects and verified tests."""
     state: dict[str, Any] = {}
-    model_turns = tool_receipts = 0
+    tool_receipts = 0
     db_path = evidence / "runtime.sqlite3"
     if db_path.is_file():
         connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
@@ -47,9 +47,6 @@ def meaningful_progress_signature(evidence: Path, workspace: Path, contract_path
             row = connection.execute("SELECT state_json FROM projection WHERE id=1").fetchone()
             if row:
                 state = json.loads(row[0])
-            model_turns = int(connection.execute(
-                "SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')"
-            ).fetchone()[0])
             tool_receipts = int(connection.execute(
                 "SELECT COUNT(*) FROM tool_receipts WHERE status='completed'"
             ).fetchone()[0])
@@ -75,8 +72,8 @@ def meaningful_progress_signature(evidence: Path, workspace: Path, contract_path
             browser = receipt.get("browserUat") if isinstance(receipt.get("browserUat"), dict) else {}
             test_outcomes.append({"iteration": item.get("iteration"), "exitCode": receipt.get("exitCode"),
                                   "revision": receipt.get("revision"), "browserUat": browser.get("result")})
-    return digest({"completedModelTurns": model_turns, "completedToolReceipts": tool_receipts,
-                   "sourceHash": digest(source_hashes), "verifiedTestOutcomes": test_outcomes})
+    return digest({"completedToolReceipts": tool_receipts, "sourceHash": digest(source_hashes),
+                   "verifiedTestOutcomes": test_outcomes})
 
 
 def write_recovery_receipt(evidence: Path, logs: Path, *, run_id: str | None, restarts: int,
@@ -209,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         progress_after = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else progress_before
         if (args.spec_contract and current_status == "PARTIAL_CONTINUABLE" and result.returncode == 75
                 and progress_after == progress_before):
-            reason = "WorkUnit continuation returned exit 75 without a completed model turn, tool receipt, source change, or verified test outcome"
+            reason = "WorkUnit continuation returned exit 75 without a tool receipt, source change, or verified test outcome; model responses alone do not count as progress"
             with DurableRunStore(evidence, run_id=run_id, resume=True, count_restart=False) as store:
                 if used_diagnostic:
                     store.event("supervisor.no_progress_repair_exhausted", {

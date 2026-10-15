@@ -4,10 +4,107 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
-from codex_model import CodexSubscriptionModel, _select_turn_after_baseline
+from codex_model import CodexSubscriptionModel, _select_turn_after_baseline, compact_reused_thread_instruction
 
 
 class CodexTurnRecoveryTests(unittest.TestCase):
+    @staticmethod
+    def instruction(input_items, tools=None):
+        import json
+        return (
+            "adapter preamble\nRequest JSON:\n"
+            + json.dumps({"instructions": "system", "input": input_items,
+                          "tools": tools if tools is not None else [{"name": "tool", "description": "x" * 1000}],
+                          "final_output_schema": None}, separators=(",", ":"))
+        )
+
+    def test_reused_thread_sends_only_new_input_when_persisted_history_is_an_exact_prefix(self):
+        previous = [{"role": "user", "content": "goal"}, {"type": "function_call", "call_id": "1"}]
+        current = previous + [{"type": "function_call_output", "call_id": "1", "output": "done"}]
+        full, metrics = compact_reused_thread_instruction(self.instruction(current), self.instruction(previous))
+        import json
+        sent = json.loads(full.split("Request JSON:\n", 1)[1])
+        self.assertEqual(sent["input"], current[-1:])
+        self.assertTrue(metrics["applied"])
+        self.assertGreater(metrics["originalInstructionBytes"], metrics["dispatchedInstructionBytes"])
+        self.assertEqual(metrics["omittedInputItems"], 2)
+
+    def test_reused_thread_keeps_full_history_when_prefix_or_tool_contract_changes(self):
+        previous = [{"role": "user", "content": "goal"}, {"type": "function_call", "call_id": "1"}]
+        changed = [{"role": "user", "content": "rewritten goal"}]
+        full, mismatch = compact_reused_thread_instruction(self.instruction(changed), self.instruction(previous))
+        self.assertEqual(full, self.instruction(changed))
+        self.assertEqual(mismatch["reason"], "input_history_not_an_exact_prefix")
+        current = previous + [{"type": "function_call_output", "call_id": "1", "output": "done"}]
+        full, mismatch = compact_reused_thread_instruction(
+            self.instruction(current, tools=[{"name": "changed"}]), self.instruction(previous),
+        )
+        self.assertEqual(full, self.instruction(current, tools=[{"name": "changed"}]))
+        self.assertEqual(mismatch["reason"], "tools_changed")
+
+    def test_mocked_codex_dispatch_records_and_uses_compacted_thread_input(self):
+        import json
+        from pathlib import Path
+
+        previous_items = [{"role": "user", "content": "goal"}, {"type": "function_call", "call_id": "1"}]
+        current_items = previous_items + [{"type": "function_call_output", "call_id": "1", "output": "tool completed"}]
+        previous_instruction = self.instruction(previous_items)
+        current_instruction = self.instruction(current_items)
+        previous_call = {"instruction": previous_instruction}
+
+        class Result:
+            id = "turn-2"
+            status = "completed"
+            items = []
+            duration_ms = 12
+            usage = types.SimpleNamespace(model_dump=lambda **_kwargs: {"last": {"inputTokens": 10, "outputTokens": 2, "totalTokens": 12}})
+            final_response = "done"
+
+        class Thread:
+            id = "thread"
+            def __init__(self): self.sent = None
+            def read(self, **_kwargs):
+                baseline = types.SimpleNamespace(id="turn-1", status="completed", items=[])
+                return types.SimpleNamespace(thread=types.SimpleNamespace(turns=[baseline]))
+            def turn(self, instruction, **_kwargs):
+                self.sent = instruction
+                return types.SimpleNamespace(id="turn-2", run=lambda: Result())
+
+        thread = Thread()
+        class Codex:
+            def __init__(self, *_args, **_kwargs): pass
+            def __enter__(self): return self
+            def __exit__(self, *_args): pass
+            def thread_resume(self, *_args, **_kwargs): return thread
+
+        class Store:
+            connection = types.SimpleNamespace(execute=lambda *_args: types.SimpleNamespace(
+                fetchone=lambda: {"request_json": json.dumps({"instruction": previous_call["instruction"]})}
+            ))
+            def __init__(self): self.updates = []
+            def update_model_call(self, *_args, **kwargs): self.updates.append(kwargs)
+
+        fake_sdk = types.SimpleNamespace(
+            ApprovalMode=types.SimpleNamespace(deny_all="deny_all"),
+            Codex=Codex, CodexConfig=lambda **_kwargs: object(),
+            Sandbox=types.SimpleNamespace(read_only="read_only"),
+        )
+        store = Store()
+        model = CodexSubscriptionModel.__new__(CodexSubscriptionModel)
+        model.codex_cwd = Path("/tmp")
+        model.store = store
+        model.phase_id = "phase"
+        model.role = "implementer"
+        with patch.dict(sys.modules, {"openai_codex": fake_sdk}):
+            _text, receipt = model._run_codex_turn(
+                current_instruction, {}, "call-2",
+                {"call_id": "call-2", "thread_id": "thread", "prior_turn_id": "turn-1",
+                 "turn_id": None, "status": "thread_reused", "turn_attempt": 0},
+            )
+        sent = json.loads(thread.sent.split("Request JSON:\n", 1)[1])
+        self.assertEqual(sent["input"], current_items[-1:])
+        self.assertTrue(receipt["promptMetrics"]["applied"])
+
     def test_reused_thread_recovery_selects_only_turns_after_the_persisted_baseline(self):
         baseline = types.SimpleNamespace(id="turn-1")
         appended = types.SimpleNamespace(id="turn-2")

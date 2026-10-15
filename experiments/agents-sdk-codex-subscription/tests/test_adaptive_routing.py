@@ -63,6 +63,22 @@ class RoutingTests(unittest.TestCase):
         risky = select_profile("implementer", "migrate tenant authorization", [])[0]
         self.assertEqual(route_model(self.catalog, risky, config={})["requestedModel"], LUNA_MODEL_ID)
 
+    def test_thirty_simulated_turn_selections_stay_luna_under_failure_and_high_risk_signals(self):
+        catalog = self.catalog + [model(ASTRA_MODEL_ID), model("gpt-6-sol")]
+        failures = [{"category": "code_failure", "signature": "same", "iteration": 2,
+                     "repairAttempted": True}]
+        for turn in range(30):
+            profile = list(ModelProfile)[turn % len(ModelProfile)]
+            route = route_model(
+                catalog[::(-1 if turn % 2 else 1)], profile,
+                reason="high-risk authorization; repeated failure",
+                failure_evidence=failures,
+                escalation_authorization={"requestedModel": ASTRA_MODEL_ID, "astraOptIn": True,
+                                          "budgetAuthorized": True, "quotaAvailable": True},
+            )
+            self.assertEqual(route["requestedModel"], LUNA_MODEL_ID)
+            self.assertEqual(route["reasoningEffort"], "medium")
+
     def test_review_independence_does_not_require_a_different_model(self):
         result = route_model(self.catalog, "REVIEW", config={}, avoid_models={LUNA_MODEL_ID})
         self.assertEqual(result["requestedModel"], LUNA_MODEL_ID)

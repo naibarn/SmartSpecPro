@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from durable_store import DurableRunStore
-from run_spec_workunit import capacity_retry_after, changed_source_paths, cumulative_source_paths, is_capacity_error, is_ready_for_user_test, next_turn_limit
+from run_spec_workunit import capacity_retry_after, changed_source_paths, cumulative_source_paths, is_capacity_error, is_ready_for_user_test, iteration_evidence_summary, next_turn_limit
 
 
 class DevelopmentContinuationTests(unittest.TestCase):
@@ -51,6 +51,22 @@ class DevelopmentContinuationTests(unittest.TestCase):
                 "python-backend/app/services/openai_agents_adapter.py",
             ],
         )
+
+    def test_iteration_evidence_references_and_summarizes_large_test_logs(self) -> None:
+        iterations = [{"iteration": 1, "changedPaths": ["src/a.py"], "testReceipt": {
+            "exitCode": 1, "revision": "r1", "stdout": "FAILED test_route AssertionError: expected deny\n" + "noise\n" * 4000,
+            "stderr": "traceback\n" * 1000,
+        }}]
+        summary = iteration_evidence_summary(iterations)
+        import json
+        full_bytes = len(json.dumps(iterations).encode("utf-8"))
+        summary_bytes = len(json.dumps(summary).encode("utf-8"))
+        self.assertLess(summary_bytes, full_bytes // 10)
+        self.assertEqual(summary[0]["testReceiptRef"], "run-state.json#/iterations/1/testReceipt")
+        self.assertEqual(summary[0]["test"]["failureCategory"], "code_failure")
+        self.assertIsNotNone(summary[0]["test"]["failureSignature"])
+        self.assertNotIn("stdout", summary[0]["test"])
+        self.assertEqual(summary[0]["test"]["stdoutBytes"], len(iterations[0]["testReceipt"]["stdout"].encode()))
 
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
