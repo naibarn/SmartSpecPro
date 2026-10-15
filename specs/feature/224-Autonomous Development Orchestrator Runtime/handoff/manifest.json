@@ -878,29 +878,29 @@
       "class": "AUTHORITY",
       "classification": "TRUE_EXTERNAL",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Provide an owner-authorized disposable Runner registration with fresh capability/source/workspace binding and a disposable PostgreSQL database using the supported app schema; then run real guarded integration, independent verification, receipt readback and restart acceptance. Keep protected dispatch DENY until those exact grants are verified.",
+      "next_action": "Provide or discover through the authorized control plane an owner-approved isolated Runner registration and protected dispatch grant with fresh identity/capability/source/workspace/allowed-operations/lease/fencing/expiry binding. Then run Live Agents SDK + Codex subscription acceptance, crash/restart/quota resume, durable receipt settlement and independent final verification. Keep protected dispatch fail-closed until that binding is verified.",
       "owner": "SPEC-224/workspace-authority maintainer",
-      "root_cause": "Read-only inventory of the local shared test database found zero trusted, non-revoked Runner registrations with fresh snapshots and no DevelopmentRun table; there is no authorized disposable Runner/database fixture that can issue genuine lifecycle receipts."
+      "root_cause": "The disposable PostgreSQL prerequisite is now provisioned and migrated, and the existing registered Runner loopback E2E passes. The isolated runtime still lacks an owner-authorized protected dispatch grant bound to an active trusted Runner session and current DevelopmentRun source/workspace. A crash-mode attempt stopped at canonical admission with “protected dispatch is fail-closed until canonical admission commits a durable execution-start”; no authority was created or widened."
     },
     {
       "class": "WORKSPACE_LIFECYCLE",
       "classification": "TRUE_EXTERNAL",
       "id": "R11_CANONICAL_WORKSPACE_CONVERGENCE",
-      "next_action": "Do not retry without changed filesystem or owner-activity evidence. Obtain a different bounded filesystem/owner diagnostic, then retry once conditions change; preserve the original dirty content and require exact-SHA clean-state verification before closure.",
+      "next_action": "The current dirty canonical user checkout was non-destructively preserved at .git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261015T164243063456Z (manifest SHA 08cff2f56a476f09509c9d58293bd61fa49fa5fe03c992de8deb896efc5b502c). Do not retry convergence without changed owner/filesystem evidence. Continue from the clean isolated task checkout and record any later workspace convergence receipt separately.",
       "owner": "workspace-authority maintainers / canonical user workspace owner",
-      "root_cause": "The registered canonical user checkout is dirty. After PR #694 integrated the 15-second bounded converge/verify path, a single attempt returned CONVERGENCE_TIMEOUT with workspace_state UNKNOWN before recovery capture. No convergence receipt or recovery archive was created, and the primary remained unchanged."
+      "root_cause": "The registered canonical user checkout remains dirty with 73 user-owned paths and has no active owner lease. Its current content was preserved to a recovery archive without modifying the checkout. The prior bounded converge attempt timed out before recovery capture; this task did not repeat that unchanged operation."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ecde88f59f3f08d9460ba8be691095019780b705",
+    "expected_canonical_sha": "b38213f3d03df87b5b6e9eb82d56ae684f88ff1f",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "When the owner-authorized isolated Runner registration with fresh capability/source/workspace binding and its disposable PostgreSQL identity are available, run the existing Registered Runner crash/restart acceptance, independent Final Verification, and durable receipt readback. Continue the Revision 24 hosted Mini-App path only on its separate authorized non-production SmartAIHub/Gateway/Cloudflare target; keep all acceptance evidence separate.",
-    "next_ready_workunit": "WAITING_EXTERNAL: authorized isolated SPEC-224 Runner registration plus fresh source/workspace/capability binding and disposable PostgreSQL identity; then run guarded Registered Runner E2E, crash/restart, independent final verification, and receipt settlement. Simulated Fast Lane recovery is verified but is not live acceptance.",
-    "reactivation_predicate": "The isolated SPEC-224 test database is available at the existing registered-runner test identity on 127.0.0.1:55493, and an owner-authorized Runner registration has fresh capability/source/workspace bindings with Codex Subscription readiness established through its supported login path. Recheck all authorization, lease, and fencing gates before dispatch.",
-    "resume_point": "PR #970 merged through the protected promotion executor at canonical SHA ecde88f59f3f08d9460ba8be691095019780b705. The exact canonical merge SHA passed the SPEC-224 quick profile: 72 passed, 1 Registered Runner E2E skipped because the required isolated database on 127.0.0.1:55493 is unavailable. PR checks passed: progressive_integration_gate and mocked browser simulation; build-preview was skipped by policy. Local Fast Lane uses deterministic model fixtures and is not live Runner acceptance. SPEC-224 remains PARTIAL pending owner-authorized protected Runner acceptance, independent Final Verification, and durable receipt settlement. Keep hosted Mini-App acceptance separate under Revision 24.",
-    "waiting_predicate": "Protected Runner acceptance waits only for the owner-authorized disposable Runner registration with fresh capability/source/workspace binding and isolated PostgreSQL test identity. Do not route around trust, lease, or fencing gates or use production. Hosted Mini-App acceptance remains a separate Revision 24 path requiring its own authorized non-production host/Gateway/runtime/HTTPS target; Codex Subscription is not a Mini-App fallback."
+    "next_action": "After the protected PR for source candidate 11a2aa39df31f12d0668fd192da3731a0d29fcbc passes required checks, verify the merged canonical SHA, then discover an owner-authorized isolated Runner registration and dispatch grant bound to current identity/capability/source/workspace/operations/lease. Run real Agents SDK + Codex subscription acceptance, crash/restart/quota resume, durable receipt reconciliation, and independent final verification. Keep Revision 24 hosted Mini-App/Gateway acceptance separate.",
+    "next_ready_workunit": "PR checkpoint 11a2aa39df31f12d0668fd192da3731a0d29fcbc: registered Runner E2E 1/1 and PostgreSQL durable continuation recovery 5/5 passed on disposable PostgreSQL 15.17. Next: protected PR checks and canonical SHA confirmation; then owner-authorized isolated Runner registration plus protected dispatch grant for Live Codex acceptance.",
+    "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
+    "resume_point": "Candidate 11a2aa39df31f12d0668fd192da3731a0d29fcbc based on canonical b38213f3d03df87b5b6e9eb82d56ae684f88ff1f. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-readiness-remediation-20261015.md. PostgreSQL continuation recovery passed 5/5 and registered Runner loopback E2E passed 1/1 on the exact candidate SHA. Installed Runner 0.2.23 shows readyToolCount=0 with Codex auth/availability unknown; current source has a zero-capability degraded-status test, so the installed binary is stale relative to source behavior. E2E uses deterministic local provider and verifies fail-closed behavior without protected admission; no Live Codex turn, protected dispatch, independent final verification or final settlement was claimed. SPEC-224 remains PARTIAL.",
+    "waiting_predicate": "Only protected Live Runner dispatch waits for an owner-authorized isolated Runner registration and grant with fresh identity/capability/source/workspace/allowed-operations/lease/fencing/expiry binding. Do not widen authority, use production, or bypass trust gates. Continue the protected PR and all independent permitted work. Revision 24 hosted Mini-App/Gateway acceptance remains a separate authorization path; Codex Subscription is not a Mini-App fallback."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 89,
+  "generation": 93,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1348,11 +1348,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ecde88f59f3f08d9460ba8be691095019780b705",
+    "canonical_sha": "b38213f3d03df87b5b6e9eb82d56ae684f88ff1f",
     "integrated": true,
-    "integrated_at": "2026-10-15T16:11:47Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/970",
-    "source_sha": "54eaf502da9ed7f65243ab42c2e1fcc5a27d8489"
+    "integrated_at": "2026-10-15T16:15:20Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/971",
+    "source_sha": "5decafc01846fd588a9d5c051f57ae37b045232c"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2692,7 +2692,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T16:13:21.483565Z",
+  "updated_at": "2026-10-15T16:54:48.293927Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2858,7 +2858,14 @@
         "source_sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
         "status": "PARTIAL"
       },
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-autonomous-acceptance-closure-20261015.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-autonomous-acceptance-closure-20261015.md",
+      {
+        "kind": "SPEC224_RUNNER_READINESS_REMEDIATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-readiness-remediation-20261015.md",
+        "scope": "Exact candidate source SHA 11a2aa39df31f12d0668fd192da3731a0d29fcbc: PostgreSQL process-boundary continuation recovery 5/5 and existing Registered Runner loopback E2E 1/1 passed on an ownership-labeled disposable PostgreSQL 15.17 target. Deterministic local provider fixture only; no Live Codex turn, protected dispatch, independent final verification or final settlement. Installed Runner 0.2.23 reports state=ready despite readyToolCount=0; Codex auth/availability remain unknown with probe_required, while current source has a focused test requiring degraded status for zero ready capabilities. No local service restart or authority change was made.",
+        "source_sha": "11a2aa39df31f12d0668fd192da3731a0d29fcbc",
+        "status": "PARTIAL"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
