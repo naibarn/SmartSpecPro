@@ -25,7 +25,7 @@ from agents import Runner, SQLiteSession, set_tracing_disabled
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_state import RunState
 
-from adaptive_routing import RoutingConfigurationError, select_profile
+from adaptive_routing import LUNA_MODEL_ID, RoutingConfigurationError, classify_failure, select_profile
 from durable_store import DurableRunStore
 from run_experiment import (
     make_agent, maybe_crash, now, parse_result_json,
@@ -57,23 +57,76 @@ class NoProgressPhaseError(RuntimeError):
     """MaxTurnsExceeded repeated without a completed turn, receipt, source, or test delta."""
 
 
+def luna_repair_failure_evidence(store: DurableRunStore, iterations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return only real code-failure receipts after a persisted Luna repair call."""
+    by_iteration = {item.get("iteration"): item for item in iterations if isinstance(item, dict)}
+    evidence = []
+    rows = store.connection.execute(
+        """SELECT m.role,m.status,m.selection_json,p.name,p.attempt
+           FROM model_calls m JOIN phases p ON p.phase_id=m.phase_id
+           WHERE p.name='implementation' AND m.status='completed' ORDER BY m.rowid"""
+    ).fetchall()
+    for row in rows:
+        if row["role"] not in {"implementer", "repairer"}:
+            continue
+        try:
+            selection = json.loads(row["selection_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        attempt = int(row["attempt"])
+        if selection.get("requestedModel") != LUNA_MODEL_ID or attempt < 2:
+            continue
+        prior = by_iteration.get(attempt - 1, {}).get("testReceipt") or {}
+        after = by_iteration.get(attempt, {}).get("testReceipt") or {}
+        prior_category, _ = classify_failure(
+            "\n".join(str(prior.get(key) or "") for key in ("stderr", "stdout")),
+            exit_code=prior.get("exitCode"), tests_executed=not bool(prior.get("missingTestPaths")),
+            signal=prior.get("signal") or prior.get("terminationSignal"),
+        )
+        after_category, signature = classify_failure(
+            "\n".join(str(after.get(key) or "") for key in ("stderr", "stdout")),
+            exit_code=after.get("exitCode"), tests_executed=not bool(after.get("missingTestPaths")),
+            signal=after.get("signal") or after.get("terminationSignal"),
+        )
+        if prior_category == "code_failure" and after_category == "code_failure":
+            evidence.append({
+                "category": after_category, "signature": signature, "iteration": attempt,
+                "requestedModel": LUNA_MODEL_ID, "repairAttempted": True,
+                "sourceRevision": after.get("revision") or after.get("sourceRevision"),
+            })
+    return evidence
+
+
 def make_workunit_agent(role: str, instructions: str, repo_tools: Any, agent_tools: list[Any], on_receipt: Any,
                         store: DurableRunStore, phase_id: str, task_context: str) -> Any:
     profile, reason, evidence = select_profile(role, task_context, store.state.get("iterations", []))
-    avoid_models: list[str] = []
-    if profile.value == "REVIEW":
-        for row in store.connection.execute(
-            "SELECT selection_json FROM model_calls WHERE phase_id != ? ORDER BY rowid DESC", (phase_id,)
-        ):
-            try:
-                requested = json.loads(row["selection_json"] or "{}").get("requestedModel")
-            except (TypeError, ValueError, json.JSONDecodeError):
-                requested = None
-            if requested:
-                avoid_models.append(requested)
-                break
+    authorization_json = os.environ.get("SMARTSPEC_CODEX_ESCALATION_AUTHORIZATION")
+    try:
+        escalation_authorization = json.loads(authorization_json) if authorization_json else None
+    except json.JSONDecodeError as exc:
+        raise RoutingConfigurationError("SMARTSPEC_CODEX_ESCALATION_AUTHORIZATION must be valid JSON") from exc
+    if escalation_authorization is not None and not isinstance(escalation_authorization, dict):
+        raise RoutingConfigurationError("SMARTSPEC_CODEX_ESCALATION_AUTHORIZATION must be a JSON object")
+    if escalation_authorization:
+        iterations = store.state.get("iterations", [])
+        latest_iteration = max(
+            (item for item in iterations if isinstance(item, dict) and isinstance(item.get("iteration"), int)),
+            key=lambda item: item["iteration"], default={},
+        )
+        latest_test = latest_iteration.get("testReceipt") or {}
+        if latest_test.get("exitCode") == 0 or bool((latest_iteration.get("review") or {}).get("complete")):
+            escalation_authorization = None
+    if escalation_authorization:
+        repair_failure_evidence = luna_repair_failure_evidence(store, store.state.get("iterations", []))
+        escalation_authorization = {
+            **escalation_authorization,
+            "lunaRepairAttempted": bool(repair_failure_evidence),
+            "failureEvidence": repair_failure_evidence,
+        }
+    if escalation_authorization and os.environ.get("SMARTSPEC_CODEX_ASTRA_OPT_IN") == "true":
+        escalation_authorization = {**escalation_authorization, "astraOptIn": True}
     routing = {"profile": profile.value, "selectionReason": reason, "failureEvidence": evidence,
-               "avoidModels": avoid_models}
+               "escalationAuthorization": escalation_authorization}
     return make_agent(role, instructions, repo_tools, on_receipt, agent_tools, store, phase_id, routing=routing)
 
 
@@ -863,8 +916,8 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
             store.wait_for_capacity(retry_after=retry_after, detail=f"{type(exc).__name__}: {exc}")
             raise CapacityWaitError(f"Codex subscription capacity unavailable; durable retry at {retry_after}") from exc
         if isinstance(exc, RoutingConfigurationError):
-            store.state["routingBlocker"] = {"status": "BLOCKED_EXTERNAL", "detail": f"{type(exc).__name__}: {exc}"[:1000]}
-            store.finish_run(False, terminal_status="BLOCKED_EXTERNAL")
+            store.state["routingBlocker"] = {"status": "BLOCKED_MODEL_POLICY", "detail": f"{type(exc).__name__}: {exc}"[:1000]}
+            store.finish_run(False, terminal_status="BLOCKED_MODEL_POLICY")
             store.commit_state()
             raise SystemExit(1) from exc
         raise

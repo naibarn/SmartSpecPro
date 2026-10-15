@@ -154,7 +154,7 @@ class CodexSubscriptionModel(Model):
             # not attach a newly computed route to an old durable call.
             selection = None
         elif self.routing:
-            from adaptive_routing import parse_catalog, route_model
+            from adaptive_routing import parse_catalog, route_model, validate_run_model_transition
             from openai_codex import Codex
 
             with Codex() as codex:
@@ -165,6 +165,21 @@ class CodexSubscriptionModel(Model):
                 reason=self.routing.get("selectionReason", "task-aware profile policy"),
                 failure_evidence=self.routing.get("failureEvidence", []),
                 avoid_models=self.routing.get("avoidModels", []),
+                escalation_authorization=self.routing.get("escalationAuthorization"),
+            )
+            last_selection_row = self.store.connection.execute(
+                "SELECT selection_json FROM model_calls WHERE selection_json IS NOT NULL ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            previous_selection = json.loads(last_selection_row["selection_json"]) if last_selection_row else None
+            iterations = self.store.state.get("iterations", [])
+            latest_iteration = max(
+                (item for item in iterations if isinstance(item, dict) and isinstance(item.get("iteration"), int)),
+                key=lambda item: item["iteration"], default={},
+            )
+            latest_test = latest_iteration.get("testReceipt") or {}
+            verified_recovery = latest_test.get("exitCode") == 0 or bool((latest_iteration.get("review") or {}).get("complete"))
+            selection = validate_run_model_transition(
+                previous_selection, selection, verified_recovery=verified_recovery,
             )
         request = {"instruction": instruction, "schema": DISPATCH_SCHEMA}
         if selection is not None:

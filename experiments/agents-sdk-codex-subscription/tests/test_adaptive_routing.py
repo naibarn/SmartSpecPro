@@ -8,16 +8,19 @@ import unittest
 from unittest.mock import patch
 
 from adaptive_routing import (
+    ASTRA_MODEL_ID,
     CatalogModel,
+    LUNA_MODEL_ID,
     ModelProfile,
     RoutingConfigurationError,
     classify_failure,
     parse_catalog,
     route_model,
     select_profile,
+    validate_run_model_transition,
 )
 from durable_store import DurableRunStore
-from run_spec_workunit import is_capacity_error, make_workunit_agent
+from run_spec_workunit import is_capacity_error, luna_repair_failure_evidence, make_workunit_agent
 
 
 def model(model_id: str, efforts: set[str] | None = None, default: bool = False) -> CatalogModel:
@@ -46,81 +49,101 @@ class CatalogTests(unittest.TestCase):
 
 class RoutingTests(unittest.TestCase):
     def setUp(self):
-        self.catalog = [model("account-default", default=True), model("catalog-peer"),
-                        model("low-capability", {"low", "medium"})]
+        self.catalog = [model("gpt-6.1-sol", default=True), model("catalog-peer"),
+                        model(LUNA_MODEL_ID, {"low", "medium"})]
 
-    def test_profiles_map_dynamically_and_request_supported_effort(self):
-        general = route_model(self.catalog, ModelProfile.GENERAL, config={})
-        reasoning = route_model(self.catalog, ModelProfile.REASONING, config={})
-        review = route_model(self.catalog, ModelProfile.REVIEW, config={})
-        self.assertEqual(general["requestedModel"], "account-default")
-        self.assertEqual(general["reasoningEffort"], "medium")
-        self.assertEqual(reasoning["requestedModel"], "catalog-peer")
-        self.assertEqual(reasoning["reasoningEffort"], "high")
-        self.assertEqual(review["requestedModel"], "catalog-peer")
-        self.assertIn("providerAuthRoute", review)
-        independent_review = route_model(self.catalog, "REVIEW", config={}, avoid_models={"account-default", "catalog-peer"})
-        self.assertEqual(independent_review["requestedModel"], "low-capability")
-        self.assertEqual(independent_review["reviewIndependence"], "DISTINCT_MODEL")
-        constrained_review = route_model(self.catalog[:1], "REVIEW", config={}, avoid_models={"account-default"})
-        self.assertEqual(constrained_review["reviewIndependence"], "SINGLE_MODEL_AVAILABLE")
+    def test_all_phases_pin_luna_medium_even_when_sdk_default_or_catalog_order_changes(self):
+        for profile in ModelProfile:
+            result = route_model(self.catalog, profile, config={})
+            self.assertEqual(result["requestedModel"], LUNA_MODEL_ID)
+            self.assertEqual(result["reasoningEffort"], "medium")
+            self.assertEqual(result["modelPolicy"], "LUNA_ONLY")
+        shuffled = list(reversed(self.catalog))
+        self.assertEqual(route_model(shuffled, "REASONING", config={})["requestedModel"], LUNA_MODEL_ID)
+        risky = select_profile("implementer", "migrate tenant authorization", [])[0]
+        self.assertEqual(route_model(self.catalog, risky, config={})["requestedModel"], LUNA_MODEL_ID)
+
+    def test_review_independence_does_not_require_a_different_model(self):
+        result = route_model(self.catalog, "REVIEW", config={}, avoid_models={LUNA_MODEL_ID})
+        self.assertEqual(result["requestedModel"], LUNA_MODEL_ID)
+        self.assertEqual(result["reviewIndependence"], "INDEPENDENT_CONTEXT_SAME_MODEL_ALLOWED")
 
     def test_configured_model_and_effort_are_validated(self):
+        self.assertEqual(route_model(self.catalog, "GENERAL", config={
+            "SMARTSPEC_CODEX_MODEL_GENERAL": "invented-model",
+            "SMARTSPEC_CODEX_EFFORT_GENERAL": "ultra",
+        })["requestedModel"], LUNA_MODEL_ID)
         with self.assertRaises(RoutingConfigurationError):
-            route_model(self.catalog, "GENERAL", config={"SMARTSPEC_CODEX_MODEL_GENERAL": "invented-model"})
-        with self.assertRaises(RoutingConfigurationError):
-            route_model(self.catalog, "GENERAL", config={"SMARTSPEC_CODEX_EFFORT_GENERAL": "ultra"})
+            route_model(self.catalog, "GENERAL", config={"SMARTSPEC_CODEX_MODEL_POLICY": "AUTO"})
 
-    def test_only_explicit_catalog_fallback_is_used(self):
-        route = route_model(self.catalog, "GENERAL", config={
-            "SMARTSPEC_CODEX_MODEL_GENERAL": "unavailable",
-            "SMARTSPEC_CODEX_MODEL_FALLBACK": "catalog-peer",
-        })
-        self.assertEqual(route["requestedModel"], "catalog-peer")
-        self.assertTrue(route["fallbackUsed"])
-        self.assertIn("fallback", route["selectionReason"])
-
-    def test_unsupported_effort_uses_only_explicit_compatible_fallback(self):
-        route = route_model(self.catalog, "GENERAL", config={
-            "SMARTSPEC_CODEX_MODEL_GENERAL": "low-capability",
-            "SMARTSPEC_CODEX_EFFORT_GENERAL": "high",
-            "SMARTSPEC_CODEX_MODEL_FALLBACK": "catalog-peer",
-        })
-        self.assertEqual(route["requestedModel"], "catalog-peer")
-        self.assertTrue(route["fallbackUsed"])
+    def test_luna_unavailable_or_missing_medium_fails_closed_without_catalog_fallback(self):
         with self.assertRaises(RoutingConfigurationError):
-            route_model([model("primary", {"low", "medium"}), model("fallback", {"low", "medium"})], "GENERAL", config={
-                "SMARTSPEC_CODEX_MODEL_GENERAL": "primary",
-                "SMARTSPEC_CODEX_EFFORT_GENERAL": "high",
-                "SMARTSPEC_CODEX_MODEL_FALLBACK": "fallback",
+            route_model([model("gpt-6.1-sol", default=True)], "GENERAL", config={
+                "SMARTSPEC_CODEX_MODEL_FALLBACK": "gpt-6.1-sol",
             })
+        with self.assertRaises(RoutingConfigurationError):
+            route_model([model(LUNA_MODEL_ID, {"low"}), model("gpt-6.1-sol", default=True)], "GENERAL", config={})
 
-    def test_review_prefers_a_model_different_from_the_prior_phase(self):
-        two_model_catalog = [model("general" , default=True), model("reasoning")]
-        result = route_model(two_model_catalog, "REVIEW", config={
-            "SMARTSPEC_CODEX_MODEL_GENERAL": "general",
-            "SMARTSPEC_CODEX_MODEL_REASONING": "reasoning",
-        }, avoid_models={"reasoning"})
-        self.assertEqual(result["requestedModel"], "general")
-        self.assertEqual(result["reviewIndependence"], "DISTINCT_MODEL")
+    def test_repeated_code_failure_does_not_escalate_without_budget_authorization(self):
+        failed = [{"category": "code_failure", "signature": "same"},
+                  {"category": "code_failure", "signature": "same"}]
+        profile = select_profile("implementer", "routine", [
+            {"iteration": n, "testReceipt": {"exitCode": 1, "stdout": "AssertionError: expected 2 got 3"}}
+            for n in (1, 2)
+        ])[0]
+        route = route_model(self.catalog, profile, config={"SMARTSPEC_CODEX_MODEL_POLICY": "CONTROLLED_ESCALATION"},
+                            failure_evidence=failed)
+        self.assertEqual(route["requestedModel"], LUNA_MODEL_ID)
+        self.assertNotIn("escalationReceipt", route)
+
+    def test_controlled_sol_escalation_requires_failure_luna_repair_budget_and_allowlist(self):
+        auth = {"requestedModel": "gpt-6-sol", "modelAllowlist": ["gpt-6-sol"],
+                "budgetAuthorizationId": "budget-42", "budgetAuthorized": True,
+                "quotaAvailable": True, "quotaObservationId": "quota-42",
+                "remainingBudgetTokens": 10000, "requestedBudgetTokens": 1000,
+                "lunaRepairAttempted": True,
+                "failureEvidence": [{"category": "code_failure", "iteration": 2}]}
+        route = route_model(self.catalog + [model("gpt-6-sol", default=False)], "REASONING",
+                            config={"SMARTSPEC_CODEX_MODEL_POLICY": "CONTROLLED_ESCALATION"},
+                            escalation_authorization=auth)
+        self.assertEqual(route["requestedModel"], "gpt-6-sol")
+        self.assertEqual(route["escalationReceipt"]["budgetAuthorizationId"], "budget-42")
+        for denied in ({**auth, "quotaAvailable": False}, {**auth, "lunaRepairAttempted": False},
+                       {**auth, "remainingBudgetTokens": 1},
+                       {**auth, "failureEvidence": [{"category": "network"}]}):
+            blocked = route_model(self.catalog + [model("gpt-6-sol")], "REASONING",
+                                  config={"SMARTSPEC_CODEX_MODEL_POLICY": "CONTROLLED_ESCALATION"},
+                                  escalation_authorization=denied)
+            self.assertEqual(blocked["requestedModel"], LUNA_MODEL_ID)
+
+    def test_astra_needs_additional_explicit_opt_in(self):
+        auth = {"requestedModel": ASTRA_MODEL_ID, "modelAllowlist": [ASTRA_MODEL_ID],
+                "budgetAuthorizationId": "budget-43", "budgetAuthorized": True,
+                "quotaAvailable": True, "quotaObservationId": "quota-43",
+                "remainingBudgetTokens": 10000, "requestedBudgetTokens": 1000,
+                "lunaRepairAttempted": True,
+                "failureEvidence": [{"category": "code_failure"}]}
+        catalog = self.catalog + [model(ASTRA_MODEL_ID)]
+        config = {"SMARTSPEC_CODEX_MODEL_POLICY": "CONTROLLED_ESCALATION"}
+        self.assertEqual(route_model(catalog, "REASONING", config=config, escalation_authorization=auth)["requestedModel"], LUNA_MODEL_ID)
+        auth["astraOptIn"] = True
+        self.assertEqual(route_model(catalog, "REASONING", config=config, escalation_authorization=auth)["requestedModel"], ASTRA_MODEL_ID)
+
+    def test_run_model_binding_requires_authorized_escalation_or_verified_luna_recovery(self):
+        luna = {"requestedModel": LUNA_MODEL_ID, "modelPolicy": "LUNA_ONLY"}
+        sol = {"requestedModel": "gpt-6-sol", "modelPolicy": "CONTROLLED_ESCALATION",
+               "escalationReceipt": {"budgetAuthorizationId": "budget-1"}}
+        self.assertEqual(validate_run_model_transition(luna, sol), sol)
         with self.assertRaises(RoutingConfigurationError):
-            route_model(two_model_catalog, "REVIEW", config={
-                "SMARTSPEC_CODEX_MODEL_GENERAL": "general",
-                "SMARTSPEC_CODEX_MODEL_REVIEW": "reasoning",
-            }, avoid_models={"reasoning"})
-        configured_fallback = route_model(two_model_catalog, "REVIEW", config={
-            "SMARTSPEC_CODEX_MODEL_GENERAL": "general",
-            "SMARTSPEC_CODEX_MODEL_REVIEW": "reasoning",
-            "SMARTSPEC_CODEX_MODEL_FALLBACK": "general",
-        }, avoid_models={"reasoning"})
-        self.assertEqual(configured_fallback["requestedModel"], "general")
-        self.assertTrue(configured_fallback["fallbackUsed"])
+            validate_run_model_transition({"requestedModel": "gpt-6.1-sol"}, luna)
         with self.assertRaises(RoutingConfigurationError):
-            route_model(two_model_catalog, "REVIEW", config={
-                "SMARTSPEC_CODEX_MODEL_GENERAL": "general",
-                "SMARTSPEC_CODEX_MODEL_REVIEW": "missing-review",
-                "SMARTSPEC_CODEX_MODEL_FALLBACK": "reasoning",
-            }, avoid_models={"reasoning"})
+            validate_run_model_transition(sol, {"requestedModel": LUNA_MODEL_ID, "modelPolicy": "LUNA_ONLY"},
+                                          verified_recovery=True)
+        downshift = validate_run_model_transition(sol, {"requestedModel": LUNA_MODEL_ID,
+                                                        "modelPolicy": "CONTROLLED_ESCALATION"},
+                                                  verified_recovery=True)
+        self.assertEqual(downshift["deescalationReceipt"]["fromModel"], "gpt-6-sol")
+        self.assertNotIn("deescalationReceipt", validate_run_model_transition(luna, dict(luna)))
 
     def test_roles_high_risk_and_repeated_failures_choose_profiles(self):
         self.assertEqual(select_profile("independent_reviewer", "routine", [])[0], ModelProfile.REVIEW)
@@ -182,7 +205,8 @@ class RoutingTests(unittest.TestCase):
 class DurableSelectionTests(unittest.TestCase):
     def test_selection_is_durable_idempotent_and_rejects_rebinding(self):
         run_id = str(uuid.uuid4())
-        selection = {"profile": "GENERAL", "requestedModel": "account-default", "reasoningEffort": "medium", "policyVersion": "adaptive-routing.v1"}
+        selection = {"profile": "GENERAL", "requestedModel": LUNA_MODEL_ID, "reasoningEffort": "medium",
+                     "modelPolicy": "LUNA_ONLY", "policyVersion": "model-policy.v2"}
         with tempfile.TemporaryDirectory() as temp:
             store = DurableRunStore(Path(temp), run_id=run_id, initial_state={"runId": run_id, "status": "running"})
             phase = store.start_phase("implementation", 1, {"input": "x"}, 3)
@@ -191,6 +215,10 @@ class DurableSelectionTests(unittest.TestCase):
             first = store.reserve_model_call(call_id, phase["phase_id"], "implementer", request, selection=selection)
             second = store.get_model_call(call_id)
             self.assertEqual(first["selection_json"], second["selection_json"])
+            persisted = __import__("json").loads(second["selection_json"])
+            self.assertEqual(persisted["requestedModel"], LUNA_MODEL_ID)
+            self.assertEqual(persisted["reasoningEffort"], "medium")
+            self.assertEqual(persisted["modelPolicy"], "LUNA_ONLY")
             self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM model_calls").fetchone()[0], 1)
             self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM events WHERE kind='model.call.planned'").fetchone()[0], 1)
             self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM events WHERE kind='model.selection.persisted'").fetchone()[0], 1)
@@ -249,21 +277,44 @@ class DurableSelectionTests(unittest.TestCase):
 
 
 class WorkUnitReviewRoutingTests(unittest.TestCase):
-    def test_review_model_avoidance_uses_prior_phase_not_same_phase_turns(self):
+    def test_escalation_evidence_requires_completed_luna_repair_and_following_code_failure(self):
+        run_id = str(uuid.uuid4())
+        with tempfile.TemporaryDirectory() as temp:
+            store = DurableRunStore(Path(temp), run_id=run_id, initial_state={"runId": run_id, "status": "running"})
+            first = store.start_phase("implementation", 1, {"input": "first"}, 3)
+            repair = store.start_phase("implementation", 2, {"input": "repair"}, 3)
+            iterations = [
+                {"iteration": 1, "testReceipt": {"exitCode": 1, "stdout": "AssertionError: expected deny"}},
+                {"iteration": 2, "testReceipt": {"exitCode": 1, "stdout": "AssertionError: expected deny"}},
+            ]
+            self.assertEqual(luna_repair_failure_evidence(store, iterations), [])
+            call_id = str(uuid.uuid4())
+            store.reserve_model_call(call_id, repair["phase_id"], "implementer", {"instruction": "repair"},
+                                     selection={"profile": "GENERAL", "requestedModel": LUNA_MODEL_ID})
+            store.update_model_call(call_id, event="model.call.completed", stable_suffix="completed", status="completed")
+            evidence = luna_repair_failure_evidence(store, iterations)
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["requestedModel"], LUNA_MODEL_ID)
+            self.assertTrue(evidence[0]["repairAttempted"])
+            environment_failure = [iterations[0], {"iteration": 2, "testReceipt": {
+                "exitCode": 1, "stderr": "Connection timed out", "stdout": ""}}]
+            self.assertEqual(luna_repair_failure_evidence(store, environment_failure), [])
+            store.close()
+
+    def test_review_keeps_independent_agent_context_without_model_avoidance(self):
         run_id = str(uuid.uuid4())
         with tempfile.TemporaryDirectory() as temp:
             store = DurableRunStore(Path(temp), run_id=run_id, initial_state={"runId": run_id, "status": "running"})
             implementation = store.start_phase("implementation", 1, {"input": "work"}, 3)
             reviewer = store.start_phase("review", 1, {"input": "review"}, 3)
             store.reserve_model_call(str(uuid.uuid4()), implementation["phase_id"], "implementer", {"instruction": "implement"},
-                                     selection={"profile": "GENERAL", "requestedModel": "general-model"})
-            store.reserve_model_call(str(uuid.uuid4()), reviewer["phase_id"], "independent_reviewer_1", {"instruction": "review"},
-                                     selection={"profile": "REVIEW", "requestedModel": "review-model"})
+                                     selection={"profile": "GENERAL", "requestedModel": LUNA_MODEL_ID})
             with patch("run_spec_workunit.select_profile", return_value=(ModelProfile.REVIEW, "independent", [])), \
                  patch("run_spec_workunit.make_agent") as make_agent:
                 make_workunit_agent("independent_reviewer_1", "review", None, [], lambda _item: None,
                                     store, reviewer["phase_id"], "low-risk task")
-            self.assertEqual(make_agent.call_args.kwargs["routing"]["avoidModels"], ["general-model"])
+            self.assertNotIn("avoidModels", make_agent.call_args.kwargs["routing"])
+            self.assertEqual(make_agent.call_args.kwargs["routing"]["profile"], "REVIEW")
             store.close()
 
 
