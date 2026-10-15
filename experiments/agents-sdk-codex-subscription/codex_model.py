@@ -360,6 +360,9 @@ class CodexSubscriptionModel(Model):
             pass
         else:
             if self.admission is not None and admission_result and admission_result.get("kind") == "reserved":
+                _maybe_crash(self.store, "model.after_reservation_before_dispatch", {
+                    "callId": call_id, "operationKey": operation_key,
+                })
                 dispatch = self.admission.dispatching(operation_key)
                 if not isinstance(dispatch, dict) or dispatch.get("kind") != "marked":
                     raise ModelAdmissionDenied("canonical Task Control refused Codex dispatch")
@@ -400,6 +403,7 @@ class CodexSubscriptionModel(Model):
                 status="completed", response_text=raw_text,
                 usage_json=canonical_json(receipt.get("usage")), receipt_json=canonical_json(receipt),
             )
+            _maybe_crash(self.store, "model.after_receipt_persisted_before_settlement", {"callId": call_id})
             if self.admission is not None and operation_key:
                 self.admission.settle(operation_key, self._usage_receipt(receipt))
             _maybe_crash(self.store, "model.after_receipt", {"callId": call_id})
@@ -713,6 +717,9 @@ class CodexSubscriptionModel(Model):
             )
             if admission is not None and operation_key:
                 self._require_admission_identity(admission.turn_started(operation_key, thread.id, handle.id), "turn")
+            _maybe_crash(self.store, "model.after_turn_identity_persisted", {
+                "callId": call_id, "threadId": thread.id, "turnId": handle.id,
+            })
             result = handle.run()
         status = getattr(result.status, "value", result.status)
         if status != "completed":
