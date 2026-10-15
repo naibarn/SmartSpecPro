@@ -892,14 +892,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "8ae9575ef15ece3eeacb19b133c6fdb71d8932df",
+    "expected_canonical_sha": "ecde88f59f3f08d9460ba8be691095019780b705",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
     "next_action": "When the owner-authorized isolated Runner registration with fresh capability/source/workspace binding and its disposable PostgreSQL identity are available, run the existing Registered Runner crash/restart acceptance, independent Final Verification, and durable receipt readback. Continue the Revision 24 hosted Mini-App path only on its separate authorized non-production SmartAIHub/Gateway/Cloudflare target; keep all acceptance evidence separate.",
     "next_ready_workunit": "WAITING_EXTERNAL: authorized isolated SPEC-224 Runner registration plus fresh source/workspace/capability binding and disposable PostgreSQL identity; then run guarded Registered Runner E2E, crash/restart, independent final verification, and receipt settlement. Simulated Fast Lane recovery is verified but is not live acceptance.",
     "reactivation_predicate": "The isolated SPEC-224 test database is available at the existing registered-runner test identity on 127.0.0.1:55493, and an owner-authorized Runner registration has fresh capability/source/workspace bindings with Codex Subscription readiness established through its supported login path. Recheck all authorization, lease, and fencing gates before dispatch.",
-    "resume_point": "PR #969 is merged at canonical SHA 8ae9575ef15ece3eeacb19b133c6fdb71d8932df. Recovery decision implementation source commit 4a5a2317004d79f4a5c3cce15fc616dc1564fb25 passed scoped quick verification (72 passed, 1 registered-runner integration skipped). Fast Lane E2E uses deterministic model fixtures and proves simulated three-day wait/resume only. Port 55493 is not serving the required disposable test database; port 5432 was not used. SPEC-224 remains PARTIAL pending authorized Runner acceptance and independent Final Verification.",
+    "resume_point": "PR #970 merged through the protected promotion executor at canonical SHA ecde88f59f3f08d9460ba8be691095019780b705. The exact canonical merge SHA passed the SPEC-224 quick profile: 72 passed, 1 Registered Runner E2E skipped because the required isolated database on 127.0.0.1:55493 is unavailable. PR checks passed: progressive_integration_gate and mocked browser simulation; build-preview was skipped by policy. Local Fast Lane uses deterministic model fixtures and is not live Runner acceptance. SPEC-224 remains PARTIAL pending owner-authorized protected Runner acceptance, independent Final Verification, and durable receipt settlement. Keep hosted Mini-App acceptance separate under Revision 24.",
     "waiting_predicate": "Protected Runner acceptance waits only for the owner-authorized disposable Runner registration with fresh capability/source/workspace binding and isolated PostgreSQL test identity. Do not route around trust, lease, or fencing gates or use production. Hosted Mini-App acceptance remains a separate Revision 24 path requiring its own authorized non-production host/Gateway/runtime/HTTPS target; Codex Subscription is not a Mini-App fallback."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 88,
+  "generation": 89,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1348,11 +1348,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8ae9575ef15ece3eeacb19b133c6fdb71d8932df",
+    "canonical_sha": "ecde88f59f3f08d9460ba8be691095019780b705",
     "integrated": true,
-    "integrated_at": "2026-10-15T15:43:21Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/969",
-    "source_sha": "f87622912563642131d270e55df4b016745b189c"
+    "integrated_at": "2026-10-15T16:11:47Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/970",
+    "source_sha": "54eaf502da9ed7f65243ab42c2e1fcc5a27d8489"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2692,7 +2692,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T16:01:36.441461Z",
+  "updated_at": "2026-10-15T16:13:21.483565Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

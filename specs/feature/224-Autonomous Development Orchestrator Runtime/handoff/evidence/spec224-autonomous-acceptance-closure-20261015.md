@@ -23,3 +23,9 @@ Repairable canonical worker-job failures now include a replayable decision in th
 **SPEC-224: PARTIAL.** No live protected Runner dispatch, genuine Codex subscription turn through the authorized Runner, independent final verification on that run, or final settlement evidence was available. The real Runner and hosted Mini-App paths remain separate. The Mini-App/Gateway/HTTPS Browser path has no new evidence in this report and must not use Codex Subscription as a fallback.
 
 Next action: when the owner-authorized isolated Runner registration and disposable PostgreSQL identity are available, enable the existing Registered Runner E2E through its documented test profile; run crash/restart acceptance, then perform independent final verification and read back durable receipts. Preserve the existing protected dispatch, trust, lease, and fencing gates. Continue hosted Mini-App acceptance independently only on its Revision 24 authorized non-production target.
+
+## Post-integration verification
+
+- Exact canonical merge SHA: `ecde88f59f3f08d9460ba8be691095019780b705` (PR #970).
+- The same SPEC-224 quick profile was rerun from a clean detached worktree pinned to that SHA after an offline frozen-lockfile dependency restore. Result: **72 passed, 1 skipped**, 12 files passed, 1 skipped; exit 0; available-memory observation 24,694 MiB; run time 2026-10-15T16:12:31Z–16:12:58Z.
+- Thus the recovery decision test and existing synthetic Fast Lane cases pass against the merged canonical tree. The Registered Runner E2E remains skipped for the unavailable isolated DB identity; no live Runner acceptance is claimed.
