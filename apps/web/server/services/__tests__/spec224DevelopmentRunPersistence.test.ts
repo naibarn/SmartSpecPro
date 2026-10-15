@@ -801,6 +801,72 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     expect(result.run.events.at(-1)?.type).toBe("PHASE_COMPLETED");
   });
 
+  it("persists an evidence-bound recovery decision that replays idempotently after restart", async () => {
+    const run = {
+      ...baseRun,
+      state: "IMPLEMENT" as const,
+      workerJobId: "worker-job-recovery-decision",
+    };
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      {
+        status: "failed",
+        attempt: 2,
+        errorCode: "PYTHON_EXECUTION_FAILED",
+        errorMessage: "The isolated execution process exited with status 1",
+        output: { evidenceRefs: ["evidence:failure:worker-job-recovery-decision"] },
+      }
+    );
+    const service = createDevelopmentRunService(adapter);
+    const first = await service.reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+    const persisted = await adapter.read();
+    const replayed = await createDevelopmentRunService(
+      memoryAdapter(persisted)
+    ).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+
+    expect(first).toMatchObject({ action: "RECOVER", run: { state: "DEBUG_REPAIR" } });
+    expect(first.run.events.at(-1)).toMatchObject({
+      type: "PHASE_FAILED",
+      payload: {
+        recoveryDecision: {
+          schemaVersion: "spec224.recovery-decision.v1",
+          affectedWorkUnit: run.runId,
+          rootCause: {
+            category: "TECHNICAL",
+            code: "PYTHON_EXECUTION_FAILED",
+            evidenceRefs: ["evidence:failure:worker-job-recovery-decision"],
+          },
+          authorizedAlternatives: ["DEBUG_REPAIR"],
+          chosenStrategy: "DEBUG_REPAIR",
+          resourceImpact: "UNKNOWN",
+          acceptanceBinding: {
+            sourceRevision: run.baseRevision,
+            contextPackHash: run.contextPackHash,
+          },
+          resumeCondition: {
+            kind: "CANONICAL_WORKER_JOB_TERMINAL",
+            workerJobId: run.workerJobId,
+            attempt: 2,
+          },
+          retryBudget: { workerJobAttempt: 2, maxPhaseAttempts: run.maxPhaseAttempts },
+          fencingVersion: run.fencingVersion,
+        },
+      },
+    });
+    expect(replayed.reason).toBe("worker_job_already_reconciled");
+    expect(replayed.run.events.at(-1)?.payload).toEqual(
+      persisted?.events.at(-1)?.payload
+    );
+  });
+
   it("fails closed to owner decision for an unknown external outcome", async () => {
     const run = {
       ...baseRun,
