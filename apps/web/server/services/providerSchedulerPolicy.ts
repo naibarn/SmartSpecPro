@@ -3,6 +3,34 @@ import { createHash } from "node:crypto";
 export type ProviderClass = "kie_ai" | "wavespeed_ai" | "openrouter";
 export type ProviderKind = "llm" | "media";
 
+/** Internal shared guardrails for Codex Subscription turns. These are local
+ * admission ceilings, not claims about provider/account quota. */
+export type CodexSubscriptionAdmissionLimits = {
+  windowSeconds: number;
+  maxTokensPerWindow: number;
+  maxConcurrentTurnsPerUser: number;
+  maxOutputTokensPerTurn: number;
+};
+
+function boundedIntegerEnv(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new Error(`${name}_INVALID`);
+  }
+  return value;
+}
+
+export function getCodexSubscriptionAdmissionLimits(): CodexSubscriptionAdmissionLimits {
+  return {
+    windowSeconds: boundedIntegerEnv("SPEC224_CODEX_TOKEN_WINDOW_SECONDS", 3_600, 60, 86_400),
+    maxTokensPerWindow: boundedIntegerEnv("SPEC224_CODEX_MAX_TOKENS_PER_WINDOW", 500_000, 1, 2_000_000_000),
+    maxConcurrentTurnsPerUser: boundedIntegerEnv("SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER", 2, 1, 32),
+    maxOutputTokensPerTurn: boundedIntegerEnv("SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN", 8_192, 1, 131_072),
+  };
+}
+
 export type ProviderSchedulerLimits = {
   submissionWindowSeconds: number;
   submissionWindowMax: number;

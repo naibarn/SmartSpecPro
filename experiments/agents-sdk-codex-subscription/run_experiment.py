@@ -480,10 +480,12 @@ def reconcile_completed_verifications(
 def make_agent(
     role: str, instructions: str, toolbox: ToolBox,
     on_receipt: Any, tools: list[Any], store: DurableRunStore, phase_id: str,
-    *, routing: dict[str, Any] | None = None,
+    *, routing: dict[str, Any] | None = None, admission: Any | None = None, admission_required: bool = False,
 ) -> Agent:
     codex_workdir = Path(os.getenv("TMPDIR", "/tmp")).resolve()
-    model = CodexSubscriptionModel(codex_cwd=codex_workdir, role=role, on_receipt=on_receipt, store=store, phase_id=phase_id, routing=routing)
+    model = CodexSubscriptionModel(codex_cwd=codex_workdir, role=role, on_receipt=on_receipt, store=store,
+                                   phase_id=phase_id, routing=routing, admission=admission,
+                                   admission_required=admission_required)
     return Agent(name=role.replace("_", " ").title(), instructions=instructions, model=model, tools=tools)
 
 

@@ -27,6 +27,7 @@ from agents.run_state import RunState
 
 from adaptive_routing import LUNA_MODEL_ID, RoutingConfigurationError, classify_failure, select_profile
 from durable_store import DurableRunStore
+from model_admission import ModelAdmissionDenied, ModelAdmissionWait
 from run_experiment import (
     make_agent, maybe_crash, now, parse_result_json,
     run_browser_uat as run_miniapp_browser_uat,
@@ -127,7 +128,12 @@ def make_workunit_agent(role: str, instructions: str, repo_tools: Any, agent_too
         escalation_authorization = {**escalation_authorization, "astraOptIn": True}
     routing = {"profile": profile.value, "selectionReason": reason, "failureEvidence": evidence,
                "escalationAuthorization": escalation_authorization}
-    return make_agent(role, instructions, repo_tools, on_receipt, agent_tools, store, phase_id, routing=routing)
+    admission = getattr(store, "model_admission_transport", None)
+    return make_agent(
+        role, instructions, repo_tools, on_receipt, agent_tools, store, phase_id,
+        routing=routing, admission=admission,
+        admission_required=bool(store.state.get("canonicalModelAdmissionRequired")),
+    )
 
 
 def repeated_patch_rejection_reason(receipts: list[dict[str, Any]], minimum: int = 3) -> tuple[str, int] | None:
@@ -922,11 +928,17 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         import asyncio
         return asyncio.run(invoke())
     except Exception as exc:
+        if isinstance(exc, ModelAdmissionWait):
+            store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key)
+            store.commit_state()
+            print(json.dumps(store.state, ensure_ascii=False, indent=2))
+            store.close()
+            raise SystemExit(75) from exc
         if is_capacity_error(exc):
             retry_after = capacity_retry_after(store.state)
             store.wait_for_capacity(retry_after=retry_after, detail=f"{type(exc).__name__}: {exc}")
             raise CapacityWaitError(f"Codex subscription capacity unavailable; durable retry at {retry_after}") from exc
-        if isinstance(exc, RoutingConfigurationError):
+        if isinstance(exc, (RoutingConfigurationError, ModelAdmissionDenied)):
             store.state["routingBlocker"] = {"status": "BLOCKED_MODEL_POLICY", "detail": f"{type(exc).__name__}: {exc}"[:1000]}
             store.finish_run(False, terminal_status="BLOCKED_MODEL_POLICY")
             store.commit_state()
@@ -960,6 +972,8 @@ def main() -> int:
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
+    if contract.raw.get("schema") == "agents-sdk-developer-workunit-contract.v1":
+        state["canonicalModelAdmissionRequired"] = True
     if state.get("workspaceId") != contract.workspace_id:
         store.close()
         raise RuntimeError("Resumed run contract/workspace binding differs from its original state")

@@ -2724,6 +2724,13 @@
       "when": 1792065600000,
       "tag": "0402_spec224_mini_app_delivery_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 403,
+      "version": "7",
+      "when": 1792065600001,
+      "tag": "0403_spec224_codex_model_call_admission",
+      "breakpoints": true
     }
   ]
 }

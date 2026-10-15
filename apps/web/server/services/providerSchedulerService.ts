@@ -5,6 +5,61 @@ import {
   selectFairProviderCandidates,
   type FairnessCandidate,
 } from "./providerSchedulerPolicy";
+import type { LeaseContext } from "./jobControlPlaneTypes";
+
+export type CodexModelUsage = {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  threadId: string | null;
+  turnId: string;
+  effectiveModel?: string | null;
+  observedAt: string;
+};
+
+export type CodexModelCallInput = {
+  lease: LeaseContext;
+  runId: string;
+  modelCallId: string;
+  phase: string;
+  role: string;
+  requestedModel: string;
+  reasoningEffort: string;
+  selection?: Record<string, unknown>;
+  promptBytes: number;
+  threadId?: string | null;
+  now?: Date;
+};
+
+export type CodexModelAdmissionDecision =
+  | { kind: "reserved"; operationKey: string; reservedTokens: number; tokenWindowStartedAt: Date; replayed: boolean }
+  | { kind: "reconcile_required"; operationKey: string; threadId: string | null; turnId: string | null }
+  | { kind: "waiting_budget"; operationKey: string; nextEligibleAt: Date; reason: "token_budget" | "concurrent_capacity" }
+  | { kind: "denied"; reason: "stale_lease" | "run_binding" | "model_policy" | "idempotency_conflict" };
+
+export type CodexModelCallDispatchDecision = { kind: "marked" | "duplicate" } | { kind: "denied"; reason: "stale_lease" | "reservation_missing" };
+export type CodexModelThreadIdentityDecision = { kind: "recorded" | "duplicate" } | { kind: "denied"; reason: "stale_lease" | "reservation_missing" | "thread_conflict" };
+export type CodexModelTurnIdentityDecision = { kind: "recorded" | "duplicate" } | { kind: "denied"; reason: "stale_lease" | "reservation_missing" | "turn_conflict" };
+
+export type CodexModelSettlementDecision =
+  | { kind: "settled" | "duplicate"; operationKey: string; chargedTokens: number }
+  | { kind: "unknown"; operationKey: string; conservativelyChargedTokens: number }
+  | { kind: "denied"; reason: "stale_lease" | "reservation_missing" | "receipt_conflict" };
+
+export type CodexModelAdmissionRepository = {
+  reserveCodexModelCall(input: CodexModelCallInput): Promise<CodexModelAdmissionDecision>;
+  markCodexModelCallDispatching(input: { lease: LeaseContext; operationKey: string; threadId?: string | null; now?: Date }): Promise<CodexModelCallDispatchDecision>;
+  recordCodexModelThreadIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; now?: Date }): Promise<CodexModelThreadIdentityDecision>;
+  recordCodexModelTurnIdentity(input: { lease: LeaseContext; operationKey: string; threadId: string; turnId: string; now?: Date }): Promise<CodexModelTurnIdentityDecision>;
+  settleCodexModelCall(input: {
+    lease: LeaseContext;
+    runId: string;
+    operationKey: string;
+    usage: CodexModelUsage | null;
+    now?: Date;
+    reconcile?: boolean;
+  }): Promise<CodexModelSettlementDecision>;
+};
 
 export type ProviderQueueCandidate = FairnessCandidate & {
   tenantId: string;

@@ -3,6 +3,7 @@ export type ReconciliationAction =
 
 export type WaitingExternalEvidence = {
   operationKey: string;
+  waitReason?: "budget" | "provider_capacity";
   runStatus: string | null;
   providerReference: string | null;
   resumeAfter: string | null;
@@ -33,6 +34,32 @@ export function classifyWaitingExternal(
       action: "wait",
       reasonCode: "development_dependency_unsatisfied",
       explanation: "The dependency predicate is non-terminal; keep its durable work handoff available for event or reconciliation evidence.",
+      operatorReviewRequired: false,
+    };
+  }
+
+  if (evidence.waitReason === "budget" || evidence.waitReason === "provider_capacity") {
+    const resumeAt = resumeAfter ? Date.parse(resumeAfter) : Number.NaN;
+    if (!Number.isFinite(resumeAt)) {
+      return {
+        action: "hold",
+        reasonCode: evidence.waitReason === "budget" ? "budget_wait_without_eligible_time" : "capacity_wait_without_eligible_time",
+        explanation: "A typed capacity wait without a durable next eligible time remains held for safe repair.",
+        operatorReviewRequired: false,
+      };
+    }
+    if (resumeAt > now.getTime()) {
+      return {
+        action: "wait",
+        reasonCode: evidence.waitReason === "budget" ? "budget_not_yet_eligible" : "provider_capacity_not_yet_eligible",
+        explanation: "Keep the existing WorkUnit parked until its persisted retry time.",
+        operatorReviewRequired: false,
+      };
+    }
+    return {
+      action: "resume",
+      reasonCode: evidence.waitReason === "budget" ? "budget_retry_due" : "provider_capacity_retry_due",
+      explanation: "The bounded wait time elapsed; re-enter the same canonical WorkUnit and let admission decide again.",
       operatorReviewRequired: false,
     };
   }

@@ -412,7 +412,7 @@ class DurableRunStore:
         self.export()
 
     def finish_run(self, accepted: bool, *, terminal_status: str | None = None) -> None:
-        allowed = {None, "awaiting_browser_uat", "PARTIAL_CONTINUABLE", "WAITING_CAPACITY",
+        allowed = {None, "awaiting_browser_uat", "PARTIAL_CONTINUABLE", "WAITING_CAPACITY", "WAITING_BUDGET",
                    "IMPLEMENTED_READY_FOR_USER_TEST", "BLOCKED_EXTERNAL", "BLOCKED_MODEL_POLICY", "VERIFIED_COMPLETE"}
         if terminal_status not in allowed:
             raise ValueError("Unsupported run status")
@@ -421,6 +421,7 @@ class DurableRunStore:
         kind = ("run.awaiting_browser_uat" if terminal_status == "awaiting_browser_uat" else
                 "run.development_continuable" if terminal_status == "PARTIAL_CONTINUABLE" else
                 "run.waiting_capacity" if terminal_status == "WAITING_CAPACITY" else
+                "run.waiting_budget" if terminal_status == "WAITING_BUDGET" else
                 "run.implemented_ready_for_user_test" if terminal_status == "IMPLEMENTED_READY_FOR_USER_TEST" else
                 "run.blocked_model_policy" if terminal_status == "BLOCKED_MODEL_POLICY" else
                 "run.blocked_external" if terminal_status == "BLOCKED_EXTERNAL" else
@@ -450,6 +451,15 @@ class DurableRunStore:
         self.state["capacityWaitDetail"] = detail[:1000]
         self.event("run.waiting_capacity", {"retryAfter": retry_after, "detail": detail[:1000]},
                    stable_key=f"capacity-wait:{retry_after}")
+
+    def wait_for_budget(self, *, next_eligible_at: str, operation_key: str) -> None:
+        """Persist a local projection of the canonical Task Control budget wait."""
+        self.state["status"] = "WAITING_BUDGET"
+        self.state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
+        self.state["retryAfter"] = next_eligible_at
+        self.state["budgetWaitOperationKey"] = operation_key
+        self.event("run.waiting_budget", {"nextEligibleAt": next_eligible_at, "operationKey": operation_key},
+                   stable_key=f"budget-wait:{operation_key}:{next_eligible_at}")
 
     def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any],
                            selection: dict[str, Any] | None = None) -> dict[str, Any]:

@@ -20,7 +20,7 @@ from durable_store import DurableRunStore, digest
 
 
 HERE = Path(__file__).resolve().parent
-CONTINUABLE_STATUSES = {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY"}
+CONTINUABLE_STATUSES = {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY", "WAITING_BUDGET"}
 SUCCESS_STATUSES = {"completed", "VERIFIED_COMPLETE", "awaiting_browser_uat", "IMPLEMENTED_READY_FOR_USER_TEST"}
 
 
@@ -157,6 +157,12 @@ def main(argv: list[str] | None = None) -> int:
         used_diagnostic = diagnostic_next
         diagnostic_next = False
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
+        if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY"}:
+            prior_state = json.loads(existing_state.read_text(encoding="utf-8"))
+            if prior_state.get("canonicalModelAdmissionRequired"):
+                # The canonical scheduler owns eligibility and lease reacquisition.
+                # A local supervisor must not wake a WorkUnit with a stale lease.
+                return 75
         if prior_status == "WAITING_CAPACITY":
             current = json.loads(existing_state.read_text(encoding="utf-8"))
             retry_after = current.get("retryAfter")
@@ -167,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_contract:
             command = [sys.executable, str(HERE / "run_spec_workunit.py"), "--workspace", str(workspace),
                        "--contract", str(args.spec_contract.resolve()), "--evidence-dir", str(evidence), "--run-id", run_id]
-            if prior_status in {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY"}:
+            if prior_status in {"PARTIAL_CONTINUABLE", "WAITING_CAPACITY", "WAITING_BUDGET"}:
                 command.append("--continuation")
             if used_diagnostic:
                 command.append("--diagnose-no-progress")

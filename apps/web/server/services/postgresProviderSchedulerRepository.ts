@@ -1,10 +1,12 @@
+import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
-import { createJobControlPlane } from "./jobControlPlane";
+import { appendJobEvent, createJobControlPlane } from "./jobControlPlane";
 import { workerJobProviderReservations } from "../../drizzle/schema";
 import {
   deriveServerUserKey,
+  getCodexSubscriptionAdmissionLimits,
   getProviderSchedulerLimits,
   normalizeProviderClass,
   nextFairnessEligibleAt,
@@ -14,10 +16,63 @@ import type {
   ProviderQueueCandidate,
   ProviderReservation,
   ProviderSchedulerRepository,
+  CodexModelAdmissionRepository,
+  CodexModelCallInput,
+  CodexModelUsage,
 } from "./providerSchedulerService";
 import type { ProviderPollRecord, ProviderPollRepository, ProviderPollObservation } from "./providerPollerService";
 
 type ProviderRow = Record<string, unknown>;
+
+function hashLeaseToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+function codexModelCallOperationKey(jobId: string, runId: string, modelCallId: string): string {
+  const material = `${jobId}\0${runId}\0${modelCallId}`;
+  return `spec224-codex-turn:${createHash("sha256").update(material, "utf8").digest("hex")}`;
+}
+
+function validNonNegativeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && Number(value) >= 0;
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  let parsed = value;
+  if (typeof value === "string") {
+    try { parsed = JSON.parse(value); } catch { return null; }
+  }
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : null;
+}
+
+function modelCallAuthorityBound(job: ProviderRow, input: CodexModelCallInput): boolean {
+  if (stringValue(job, "status") !== "running" ||
+      numberValue(job, "attempt") === null ||
+      stringValue(job, "tenantId") === null) return false;
+  const inputJson = objectValue(job.inputJson) ?? {};
+  const run = inputJson.developerWorkUnit && typeof inputJson.developerWorkUnit === "object" && !Array.isArray(inputJson.developerWorkUnit)
+    ? inputJson.developerWorkUnit as Record<string, unknown>
+    : null;
+  return Boolean(
+    stringValue(job, "jobType") === "developer.fast_lane" &&
+    run?.runId === input.runId &&
+    run?.workerJobId === input.lease.jobId &&
+    run?.tenantId === job.tenantId &&
+    Number(run?.actorId) === numberValue(job, "requestedByUserId") &&
+    run?.contractVersion === "developer-fast-lane-v1"
+  );
+}
 
 function rows(value: unknown): ProviderRow[] {
   return Array.isArray(value) ? value as ProviderRow[] : [];
@@ -61,8 +116,451 @@ function activeReservationStatusSql() {
  * PostgreSQL implementation of the provider scheduler ports. It intentionally
  * uses short row-locked transactions and never performs HTTP inside one.
  */
-export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRepository & ProviderPollRepository {
+export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRepository & ProviderPollRepository & CodexModelAdmissionRepository {
   return {
+    async reserveCodexModelCall(input) {
+      const now = input.now ?? new Date();
+      const limits = getCodexSubscriptionAdmissionLimits();
+      if (input.requestedModel !== "gpt-6-luna" || input.reasoningEffort !== "medium") {
+        return { kind: "denied", reason: "model_policy" };
+      }
+      if (!input.modelCallId.trim() || input.modelCallId.length > 160 ||
+          !input.runId.trim() || input.runId.length > 160 ||
+          !input.phase.trim() || input.phase.length > 40 ||
+          !input.role.trim() || input.role.length > 64 ||
+          !Number.isSafeInteger(input.promptBytes) || input.promptBytes < 0 || input.promptBytes > 1_000_000) {
+        return { kind: "denied", reason: "idempotency_conflict" };
+      }
+      // UTF-8 byte count is used as a deliberately conservative prompt-token
+      // reservation because this adapter does not expose Codex tokenization.
+      const operationKey = codexModelCallOperationKey(input.lease.jobId, input.runId, input.modelCallId);
+      const reservedTokens = input.promptBytes + limits.maxOutputTokensPerTurn;
+      if (reservedTokens > limits.maxTokensPerWindow) {
+        return { kind: "waiting_budget", operationKey, reason: "token_budget", nextEligibleAt: new Date(now.getTime() + limits.windowSeconds * 1_000) };
+      }
+      const tokenWindowStartedAt = new Date(Math.floor(now.getTime() / (limits.windowSeconds * 1_000)) * limits.windowSeconds * 1_000);
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [job] = rows(await query.execute(sql`
+          SELECT j."id", j."tenantId", j."requestedByUserId", j."jobType", j."status", j."attempt",
+                 j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", j."inputJson",
+                 a."id" AS "activeAttemptId", a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j
+          JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId}
+          FOR UPDATE OF j, a
+        `));
+        if (!job || !modelCallAuthorityBound(job, input) ||
+            stringValue(job, "status") !== "running" ||
+            numberValue(job, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(job, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(job, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(job, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(job, "leaseExpiresAt") || dateValue(job, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+
+        if (!stringValue(job, "tenantId")) return { kind: "denied", reason: "run_binding" };
+        const poolKey = "llm:codex_subscription:shared";
+        // Account identity is not exposed by the Codex SDK. Use one conservative
+        // installation-wide bucket so distinct WorkUnit owners cannot each
+        // reserve an independent copy of the same local budget.
+        const userKey = "codex_subscription:shared";
+        await query.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userKey}))`);
+        const existing = rows(await query.execute(sql`
+          SELECT "id", "modelCallId", "modelPhase", "modelRole", "requestedModel", "reasoningEffort", "modelSelectionJson",
+                 "reservedTokens", "tokenWindowStartedAt", "dispatchState", "threadId", "turnId", "usageState"
+          FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${operationKey}
+          FOR UPDATE
+        `))[0];
+        if (existing) {
+          if (stringValue(existing, "modelCallId") !== input.modelCallId ||
+              stringValue(existing, "modelPhase") !== input.phase ||
+              stringValue(existing, "modelRole") !== input.role ||
+              stringValue(existing, "requestedModel") !== input.requestedModel ||
+              stringValue(existing, "reasoningEffort") !== input.reasoningEffort ||
+              stableJson(objectValue(existing.modelSelectionJson)) !== stableJson(input.selection ?? null)) {
+            return { kind: "denied", reason: "idempotency_conflict" };
+          }
+          if (stringValue(existing, "dispatchState") && stringValue(existing, "dispatchState") !== "reserved") {
+            return {
+              kind: "reconcile_required",
+              operationKey,
+              threadId: stringValue(existing, "threadId"),
+              turnId: stringValue(existing, "turnId"),
+            };
+          }
+          return {
+            kind: "reserved",
+            operationKey,
+            reservedTokens: numberValue(existing, "reservedTokens") ?? reservedTokens,
+            tokenWindowStartedAt: dateValue(existing, "tokenWindowStartedAt") ?? tokenWindowStartedAt,
+            replayed: true,
+          };
+        }
+
+        await query.execute(sql`
+          INSERT INTO "provider_scheduler_states" ("providerKind", "providerPoolKey", "userKey", "activeCount")
+          VALUES ('llm', ${poolKey}, ${userKey}, 0)
+          ON CONFLICT ("providerPoolKey", "userKey") DO NOTHING
+        `);
+        await query.execute(sql`
+          SELECT "id" FROM "provider_scheduler_states"
+          WHERE "providerPoolKey" = ${poolKey} AND "userKey" = ${userKey}
+          FOR UPDATE
+        `);
+        const activeRows = rows(await query.execute(sql`
+          SELECT count(*)::int AS "count"
+          FROM "worker_job_provider_reservations" r
+          WHERE r."providerName" = 'codex_subscription'
+            AND r."userKey" = ${userKey}
+            AND r."reservationKind" = 'model_call'
+            AND r."reservationStatus" IN ('reserved', 'unknown')
+        `));
+        if ((numberValue(activeRows[0] ?? {}, "count") ?? 0) >= limits.maxConcurrentTurnsPerUser) {
+          return {
+            kind: "waiting_budget",
+            operationKey,
+            reason: "concurrent_capacity",
+            // Unsettled turns keep their slot until the token window rotates;
+            // expired execution leases alone do not prove the provider turn ended.
+            nextEligibleAt: new Date(tokenWindowStartedAt.getTime() + limits.windowSeconds * 1_000),
+          };
+        }
+        const spentRows = rows(await query.execute(sql`
+          SELECT COALESCE(sum(
+            CASE WHEN "usageState" = 'known'
+              THEN COALESCE("inputTokens", 0) + COALESCE("outputTokens", 0)
+              WHEN "usageState" = 'not_dispatched' THEN 0
+              ELSE COALESCE("reservedTokens", 0)
+            END
+          ), 0)::bigint AS "spentTokens"
+          FROM "worker_job_provider_reservations"
+          WHERE "providerName" = 'codex_subscription' AND "userKey" = ${userKey}
+            AND "reservationKind" = 'model_call'
+            AND "tokenWindowStartedAt" = ${timestampParameter(tokenWindowStartedAt)}
+        `));
+        const spentTokens = numberValue(spentRows[0] ?? {}, "spentTokens") ?? 0;
+        if (spentTokens + reservedTokens > limits.maxTokensPerWindow) {
+          return {
+            kind: "waiting_budget",
+            operationKey,
+            reason: "token_budget",
+            nextEligibleAt: new Date(tokenWindowStartedAt.getTime() + limits.windowSeconds * 1_000),
+          };
+        }
+
+        await query.execute(sql`
+          INSERT INTO "worker_job_provider_reservations" (
+            "workerJobId", "attemptId", "businessAttempt", "providerKind", "providerName",
+            "reservationKind", "reservationStatus", "userKey", "operationKey", "modelCallId",
+            "leaseFencingVersion", "dispatchState", "modelPhase", "modelRole", "requestedModel",
+            "reasoningEffort", "modelSelectionJson", "threadId", "tokenWindowStartedAt", "reservedTokens", "usageState"
+          ) VALUES (
+            ${input.lease.jobId}, ${input.lease.attemptId}, ${numberValue(job, "attempt")}, 'llm', 'codex_subscription',
+            'model_call', 'reserved', ${userKey}, ${operationKey}, ${input.modelCallId},
+            ${input.lease.fencingVersion}, 'reserved', ${input.phase}, ${input.role}, ${input.requestedModel},
+            ${input.reasoningEffort}, ${JSON.stringify(input.selection ?? null)}::jsonb, ${input.threadId ?? null}, ${timestampParameter(tokenWindowStartedAt)}, ${reservedTokens}, 'reserved'
+          )
+        `);
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId,
+          attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_TURN_RESERVED",
+          eventIdempotencyKey: `${operationKey}:reserved`,
+          payloadJson: {
+            operationKey, runId: input.runId, modelCallId: input.modelCallId,
+            phase: input.phase, role: input.role, requestedModel: input.requestedModel,
+            reasoningEffort: input.reasoningEffort, selection: input.selection ?? null, reservedTokens,
+            tokenWindowStartedAt: tokenWindowStartedAt.toISOString(),
+            tokenBudget: limits.maxTokensPerWindow,
+          },
+        });
+        return { kind: "reserved", operationKey, reservedTokens, tokenWindowStartedAt, replayed: false };
+      });
+    },
+
+    async markCodexModelCallDispatching(input) {
+      const now = input.now ?? new Date();
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [active] = rows(await query.execute(sql`
+          SELECT j."status", j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", a."id" AS "attemptId", a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId} FOR UPDATE OF j, a
+        `));
+        if (!active || stringValue(active, "status") !== "running" ||
+            numberValue(active, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(active, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(active, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(active, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(active, "leaseExpiresAt") || dateValue(active, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        const reservationRows = rows(await query.execute(sql`
+          SELECT "workerJobId", "attemptId", "leaseFencingVersion", "dispatchState", "threadId", "turnId"
+          FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
+          FOR UPDATE
+        `));
+        const reservation = reservationRows[0];
+        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId ||
+            numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion) {
+          return { kind: "denied", reason: "reservation_missing" };
+        }
+        if (stringValue(reservation, "dispatchState") !== "reserved") return { kind: "duplicate" };
+        await query.execute(sql`
+          UPDATE "worker_job_provider_reservations"
+          SET "dispatchState" = 'dispatching', "threadId" = COALESCE(${input.threadId ?? null}, "threadId"), "updatedAt" = ${timestampParameter(now)}
+          WHERE "operationKey" = ${input.operationKey} AND "reservationStatus" = 'reserved'
+        `);
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId,
+          attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_TURN_DISPATCHING",
+          eventIdempotencyKey: `${input.operationKey}:dispatching`,
+          payloadJson: { operationKey: input.operationKey, threadId: input.threadId ?? null },
+        });
+        return { kind: "marked" };
+      });
+    },
+
+    async recordCodexModelThreadIdentity(input) {
+      const now = input.now ?? new Date();
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [active] = rows(await query.execute(sql`
+          SELECT j."status", j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId} FOR UPDATE OF j, a
+        `));
+        if (!active || stringValue(active, "status") !== "running" ||
+            numberValue(active, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(active, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(active, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(active, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(active, "leaseExpiresAt") || dateValue(active, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        const [reservation] = rows(await query.execute(sql`
+          SELECT "workerJobId", "leaseFencingVersion", "dispatchState", "threadId"
+          FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call' FOR UPDATE
+        `));
+        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId ||
+            numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion ||
+            stringValue(reservation, "dispatchState") !== "dispatching") {
+          return { kind: "denied", reason: "reservation_missing" };
+        }
+        const priorThread = stringValue(reservation, "threadId");
+        if (priorThread && priorThread !== input.threadId) return { kind: "denied", reason: "thread_conflict" };
+        if (priorThread) return { kind: "duplicate" };
+        await query.execute(sql`
+          UPDATE "worker_job_provider_reservations" SET "threadId" = ${input.threadId}, "updatedAt" = ${timestampParameter(now)}
+          WHERE "operationKey" = ${input.operationKey} AND "reservationStatus" = 'reserved'
+        `);
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId,
+          attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_THREAD_CREATED",
+          eventIdempotencyKey: `${input.operationKey}:thread-created`,
+          payloadJson: { operationKey: input.operationKey, threadId: input.threadId },
+        });
+        return { kind: "recorded" };
+      });
+    },
+
+    async recordCodexModelTurnIdentity(input) {
+      const now = input.now ?? new Date();
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [active] = rows(await query.execute(sql`
+          SELECT j."status", j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", a."id" AS "attemptId", a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId} FOR UPDATE OF j, a
+        `));
+        if (!active || stringValue(active, "status") !== "running" ||
+            numberValue(active, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(active, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(active, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(active, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(active, "leaseExpiresAt") || dateValue(active, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        const [reservation] = rows(await query.execute(sql`
+          SELECT "workerJobId", "leaseFencingVersion", "dispatchState", "threadId", "turnId"
+          FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
+          FOR UPDATE
+        `));
+        if (!reservation || stringValue(reservation, "workerJobId") !== input.lease.jobId ||
+            numberValue(reservation, "leaseFencingVersion") !== input.lease.fencingVersion ||
+            stringValue(reservation, "dispatchState") !== "dispatching") {
+          return { kind: "denied", reason: "reservation_missing" };
+        }
+        const priorThread = stringValue(reservation, "threadId");
+        const priorTurn = stringValue(reservation, "turnId");
+        if ((priorThread && priorThread !== input.threadId) || (priorTurn && priorTurn !== input.turnId)) {
+          return { kind: "denied", reason: "turn_conflict" };
+        }
+        if (priorTurn) return { kind: "duplicate" };
+        await query.execute(sql`
+          UPDATE "worker_job_provider_reservations"
+          SET "dispatchState" = 'started', "threadId" = ${input.threadId}, "turnId" = ${input.turnId}, "updatedAt" = ${timestampParameter(now)}
+          WHERE "operationKey" = ${input.operationKey} AND "reservationStatus" = 'reserved'
+        `);
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId,
+          attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_TURN_STARTED",
+          eventIdempotencyKey: `${input.operationKey}:turn-started`,
+          payloadJson: { operationKey: input.operationKey, threadId: input.threadId, turnId: input.turnId },
+        });
+        return { kind: "recorded" };
+      });
+    },
+
+    async settleCodexModelCall(input) {
+      const now = input.now ?? new Date();
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [job] = rows(await query.execute(sql`
+          SELECT j."id", j."tenantId", j."requestedByUserId", j."jobType", j."status", j."attempt",
+                 j."leaseOwnerToken", j."leaseExpiresAt", j."fencingVersion", j."inputJson",
+                 a."id" AS "activeAttemptId", a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j
+          JOIN "worker_job_attempts" a ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId}
+          FOR UPDATE OF j, a
+        `));
+        if (!job || stringValue(job, "status") !== "running" ||
+            numberValue(job, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(job, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(job, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(job, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(job, "leaseExpiresAt") || dateValue(job, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        const jobInput = objectValue(job.inputJson) ?? {};
+        const devRun = jobInput.developerWorkUnit && typeof jobInput.developerWorkUnit === "object" && !Array.isArray(jobInput.developerWorkUnit)
+          ? jobInput.developerWorkUnit as Record<string, unknown>
+          : null;
+        if (stringValue(job, "jobType") !== "developer.fast_lane" ||
+            devRun?.contractVersion !== "developer-fast-lane-v1" ||
+            devRun.runId !== input.runId || devRun.workerJobId !== input.lease.jobId ||
+            devRun.tenantId !== stringValue(job, "tenantId") ||
+            Number(devRun.actorId) !== numberValue(job, "requestedByUserId")) {
+          return { kind: "denied", reason: "reservation_missing" };
+        }
+        const [reservation] = rows(await query.execute(sql`
+          SELECT * FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${input.lease.jobId}
+            AND "reservationKind" = 'model_call'
+          FOR UPDATE
+        `));
+        if (!reservation) return { kind: "denied", reason: "reservation_missing" };
+        const storedTurnId = stringValue(reservation, "turnId");
+        const storedThreadId = stringValue(reservation, "threadId");
+        const reservationFence = numberValue(reservation, "leaseFencingVersion");
+        const fenceChanged = reservationFence !== input.lease.fencingVersion;
+        if (fenceChanged && (!input.reconcile || !storedTurnId || input.usage?.turnId !== storedTurnId)) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        if (input.usage?.turnId && storedTurnId && input.usage.turnId !== storedTurnId) {
+          return { kind: "denied", reason: "receipt_conflict" };
+        }
+        if (input.usage?.threadId && storedThreadId && input.usage.threadId !== storedThreadId) {
+          return { kind: "denied", reason: "receipt_conflict" };
+        }
+        if (!input.usage) {
+          const charged = numberValue(reservation, "reservedTokens") ?? 0;
+          if (!["dispatching", "started", "unknown"].includes(stringValue(reservation, "dispatchState") ?? "")) {
+            return { kind: "denied", reason: "receipt_conflict" };
+          }
+          if (stringValue(reservation, "usageState") === "known") {
+            return { kind: "denied", reason: "receipt_conflict" };
+          }
+          await query.execute(sql`
+            UPDATE "worker_job_provider_reservations"
+            SET "reservationStatus" = 'unknown', "usageState" = 'unknown',
+                "dispatchState" = 'unknown', "updatedAt" = ${timestampParameter(now)}
+            WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
+          `);
+          await appendJobEvent(query, {
+            workerJobId: input.lease.jobId,
+            attemptId: input.lease.attemptId,
+            eventType: "CODEX_MODEL_USAGE_UNKNOWN",
+            eventIdempotencyKey: `${input.operationKey}:usage-unknown`,
+            payloadJson: {
+              operationKey: input.operationKey,
+              runId: input.runId,
+              modelCallId: reservation.modelCallId,
+              conservativeTokens: charged,
+              usageUnknown: true,
+            },
+          });
+          return { kind: "unknown", operationKey: input.operationKey, conservativelyChargedTokens: charged };
+        }
+        const usage = input.usage;
+        if (!validNonNegativeInteger(usage.inputTokens) ||
+            !validNonNegativeInteger(usage.cachedInputTokens) ||
+            usage.cachedInputTokens > usage.inputTokens ||
+            !validNonNegativeInteger(usage.outputTokens) ||
+            !usage.turnId.trim() || usage.turnId.length > 160 || storedTurnId !== usage.turnId ||
+            (stringValue(reservation, "usageState") !== "known" &&
+              !["started", "unknown"].includes(stringValue(reservation, "dispatchState") ?? "")) ||
+            !usage.observedAt.trim() || !Number.isFinite(Date.parse(usage.observedAt)) ||
+            !usage.threadId || usage.threadId.length > 160 || storedThreadId !== usage.threadId ||
+            (usage.effectiveModel !== undefined && usage.effectiveModel !== null &&
+              (typeof usage.effectiveModel !== "string" || usage.effectiveModel.length > 120))) {
+          return { kind: "denied", reason: "receipt_conflict" };
+        }
+        const normalizedReceipt = {
+          schemaVersion: "codex-model-usage.v1",
+          modelCallId: reservation.modelCallId,
+          requestedModel: reservation.requestedModel,
+          effectiveModel: usage.effectiveModel ?? null,
+          selection: objectValue(reservation.modelSelectionJson),
+          role: reservation.modelRole,
+          phase: reservation.modelPhase,
+          threadId: usage.threadId,
+          turnId: usage.turnId,
+          inputTokens: usage.inputTokens,
+          cachedInputTokens: usage.cachedInputTokens,
+          outputTokens: usage.outputTokens,
+          usageState: "known",
+          observedAt: usage.observedAt,
+        };
+        if (stringValue(reservation, "usageState") === "known") {
+          const priorReceipt = objectValue(reservation.usageReceiptJson);
+          if (!priorReceipt || stableJson(priorReceipt) !== stableJson(normalizedReceipt)) {
+            return { kind: "denied", reason: "receipt_conflict" };
+          }
+          return { kind: "duplicate", operationKey: input.operationKey, chargedTokens: usage.inputTokens + usage.outputTokens };
+        }
+        const chargedTokens = usage.inputTokens + usage.outputTokens;
+        await query.execute(sql`
+          UPDATE "worker_job_provider_reservations"
+          SET "reservationStatus" = 'released', "usageState" = 'known', "dispatchState" = 'settled',
+              "inputTokens" = ${usage.inputTokens}, "cachedInputTokens" = ${usage.cachedInputTokens},
+              "outputTokens" = ${usage.outputTokens}, "threadId" = COALESCE(${usage.threadId}, "threadId"),
+              "turnId" = ${usage.turnId}, "usageReceiptJson" = ${JSON.stringify(normalizedReceipt)}::jsonb,
+              "releasedAt" = ${timestampParameter(now)}, "updatedAt" = ${timestampParameter(now)}
+          WHERE "operationKey" = ${input.operationKey} AND "reservationKind" = 'model_call'
+        `);
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId,
+          attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_USAGE_SETTLED",
+          eventIdempotencyKey: `${input.operationKey}:usage-settled`,
+          payloadJson: { ...normalizedReceipt, operationKey: input.operationKey, chargedTokens },
+        });
+        return { kind: "settled", operationKey: input.operationKey, chargedTokens };
+      });
+    },
+
+
     async findCandidates(input) {
       getDb();
       const result = await (getDb() as any).execute(sql`
