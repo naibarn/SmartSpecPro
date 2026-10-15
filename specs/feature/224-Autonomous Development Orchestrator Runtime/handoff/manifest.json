@@ -892,7 +892,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "b96431e8d9c1a1daa755e2c857755cf6c51456cb",
+    "expected_canonical_sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 86,
+  "generation": 87,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1338,11 +1338,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b96431e8d9c1a1daa755e2c857755cf6c51456cb",
+    "canonical_sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
     "integrated": true,
-    "integrated_at": "2026-10-14T17:55:25Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/959",
-    "source_sha": "4edab829f7d0de6ce28397cc89659b906d55b9e1"
+    "integrated_at": "2026-10-15T15:40:12Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/968",
+    "source_sha": "054e1fc2f0dfb8220299bb5f45f23669555d5d26"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2682,7 +2682,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T15:35:26.450266Z",
+  "updated_at": "2026-10-15T15:41:20.786234Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2839,13 +2839,21 @@
         "scope": "PR #968 exact head 8be1b3230641a0966a7f9a99ba2483a5cd32ff44: progressive_integration_gate passed; build-preview skipped; mocked SPEC-308 browser simulation failed 1/27 at tests/e2e/spec-308-route-surfaces.spec.ts:106 (sign-in onboarding hint expected hidden, received visible); 26 passed. UI failure is outside this PR file scope; PR cannot merge until required check is repaired or legitimately cleared. Not SPEC-224 acceptance evidence.",
         "source_sha": "8be1b3230641a0966a7f9a99ba2483a5cd32ff44",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_AUTONOMOUS_RECOVERY_INTEGRATED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-autonomous-completion-economics-audit-20261015.md",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/968",
+        "scope": "PR #968 merged via protected path at 2026-10-15T15:40:12Z. Merge SHA dcd0e66f2981a5270e6162d5e7bdff2f21e1f465 is reachable from origin/main. Source code fix 06ea9d9cfe92de5ebbaf31db4cc1c367040f0a46; 9 focused Vitest files/58 passed; progressive_integration_gate and mocked browser simulation passed on final PR head 054e1fc2f0dfb8220299bb5f45f23669555d5d26. build-preview skipped. SPEC-224 live Runner acceptance remains UNKNOWN.",
+        "source_sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "8be1b3230641a0966a7f9a99ba2483a5cd32ff44",
+    "sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
     "status": "PARTIAL",
     "task_regressions": []
   }
