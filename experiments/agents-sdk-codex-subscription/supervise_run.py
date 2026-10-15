@@ -158,13 +158,15 @@ def main(argv: list[str] | None = None) -> int:
         used_diagnostic = diagnostic_next
         diagnostic_next = False
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
+        prior_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY"}:
-            prior_state = json.loads(existing_state.read_text(encoding="utf-8"))
             if prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_fd is None:
                 # The canonical scheduler owns eligibility and lease reacquisition.
                 # A local supervisor must not wake a WorkUnit with a stale lease.
                 return 75
-        if prior_status == "WAITING_CAPACITY":
+        if prior_status == "WAITING_CAPACITY" and not (
+            prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_fd is not None
+        ):
             current = json.loads(existing_state.read_text(encoding="utf-8"))
             retry_after = current.get("retryAfter")
             if retry_after:
@@ -213,6 +215,30 @@ def main(argv: list[str] | None = None) -> int:
             return 128 + signum
         current_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         current_status = current_state.get("status")
+        if args.spec_contract and current_status in {"WAITING_BUDGET", "WAITING_CAPACITY"} and current_state.get("canonicalModelAdmissionRequired"):
+            expected_reason = "budget" if current_status == "WAITING_BUDGET" else "provider_capacity"
+            new_canonical_wait = (
+                current_state.get("canonicalWaitPersisted") is True
+                and current_state.get("canonicalWaitReason") == expected_reason
+                and int(current_state.get("canonicalWaitSequence", 0)) > int(prior_state.get("canonicalWaitSequence", 0))
+            )
+            if new_canonical_wait:
+                receipt = write_recovery_receipt(
+                    evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                    crash_at=args.crash_at, supervisor_result="DEFERRED_CANONICAL_WAIT",
+                    reason=f"canonical scheduler persisted {expected_reason} wait; returning invocation for eligible scheduler resume",
+                    return_code=75, process_count=process_count, continuation_processes=continuation_processes,
+                )
+                print(json.dumps(receipt, ensure_ascii=False, indent=2))
+                return 75
+            receipt = write_recovery_receipt(
+                evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                crash_at=args.crash_at, supervisor_result="FAILED",
+                reason="canonical wait state has no newly acknowledged durable scheduler wait; refusing local retry",
+                return_code=result.returncode, process_count=process_count, continuation_processes=continuation_processes,
+            )
+            print(json.dumps(receipt, ensure_ascii=False, indent=2))
+            return 1
         progress_after = meaningful_progress_signature(evidence, workspace, args.spec_contract) if args.spec_contract else progress_before
         if (args.spec_contract and current_status == "PARTIAL_CONTINUABLE" and result.returncode == 75
                 and progress_after == progress_before):

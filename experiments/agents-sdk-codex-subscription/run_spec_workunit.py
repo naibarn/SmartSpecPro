@@ -932,10 +932,13 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         return asyncio.run(invoke())
     except Exception as exc:
         if isinstance(exc, ModelAdmissionWait):
+            canonical_scheduler_owned = getattr(store, "model_admission_transport", None) is not None
             if exc.reason == "provider_capacity":
-                store.wait_for_capacity(retry_after=exc.next_eligible_at, detail="Codex Subscription reported HTTP 429; canonical scheduler owns retry eligibility")
+                store.wait_for_capacity(retry_after=exc.next_eligible_at, detail="Codex Subscription reported HTTP 429; canonical scheduler owns retry eligibility",
+                                        canonical_scheduler_owned=canonical_scheduler_owned)
             else:
-                store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key)
+                store.wait_for_budget(next_eligible_at=exc.next_eligible_at, operation_key=exc.operation_key,
+                                      canonical_scheduler_owned=canonical_scheduler_owned)
             store.commit_state()
             print(json.dumps(store.state, ensure_ascii=False, indent=2))
             store.close()
@@ -1029,6 +1032,8 @@ def main() -> int:
     state["status"] = "running"
     state.pop("retryAfter", None)
     state.pop("capacityWaitDetail", None)
+    state.pop("canonicalWaitPersisted", None)
+    state.pop("canonicalWaitReason", None)
     store.commit_state()
     def receipt(item: dict[str, Any]) -> None:
         if all(row.get("turnId") != item.get("turnId") for row in state.setdefault("modelReceipts", [])):

@@ -443,22 +443,38 @@ class DurableRunStore:
         }, stable_key=f"development:iteration:{iteration}:checkpoint")
         self.finish_run(False, terminal_status="PARTIAL_CONTINUABLE")
 
-    def wait_for_capacity(self, *, retry_after: str, detail: str) -> None:
+    def wait_for_capacity(self, *, retry_after: str, detail: str, canonical_scheduler_owned: bool = False) -> None:
         """Persist a provider-capacity wait without terminating the mission."""
         self.state["status"] = "WAITING_CAPACITY"
         self.state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
         self.state["retryAfter"] = retry_after
         self.state["capacityWaitDetail"] = detail[:1000]
-        self.event("run.waiting_capacity", {"retryAfter": retry_after, "detail": detail[:1000]},
+        if canonical_scheduler_owned:
+            self.state["canonicalWaitPersisted"] = True
+            self.state["canonicalWaitReason"] = "provider_capacity"
+            self.state["canonicalWaitSequence"] = int(self.state.get("canonicalWaitSequence", 0)) + 1
+        else:
+            self.state.pop("canonicalWaitPersisted", None)
+            self.state.pop("canonicalWaitReason", None)
+        self.event("run.waiting_capacity", {"retryAfter": retry_after, "detail": detail[:1000],
+                                             "canonicalSchedulerOwned": canonical_scheduler_owned},
                    stable_key=f"capacity-wait:{retry_after}")
 
-    def wait_for_budget(self, *, next_eligible_at: str, operation_key: str) -> None:
+    def wait_for_budget(self, *, next_eligible_at: str, operation_key: str, canonical_scheduler_owned: bool = False) -> None:
         """Persist a local projection of the canonical Task Control budget wait."""
         self.state["status"] = "WAITING_BUDGET"
         self.state["functionalDeliveryStatus"] = "PARTIAL_CONTINUABLE"
         self.state["retryAfter"] = next_eligible_at
         self.state["budgetWaitOperationKey"] = operation_key
-        self.event("run.waiting_budget", {"nextEligibleAt": next_eligible_at, "operationKey": operation_key},
+        if canonical_scheduler_owned:
+            self.state["canonicalWaitPersisted"] = True
+            self.state["canonicalWaitReason"] = "budget"
+            self.state["canonicalWaitSequence"] = int(self.state.get("canonicalWaitSequence", 0)) + 1
+        else:
+            self.state.pop("canonicalWaitPersisted", None)
+            self.state.pop("canonicalWaitReason", None)
+        self.event("run.waiting_budget", {"nextEligibleAt": next_eligible_at, "operationKey": operation_key,
+                                           "canonicalSchedulerOwned": canonical_scheduler_owned},
                    stable_key=f"budget-wait:{operation_key}:{next_eligible_at}")
 
     def reserve_model_call(self, call_id: str, phase_id: str, role: str, request: dict[str, Any],
