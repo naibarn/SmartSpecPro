@@ -144,25 +144,47 @@ reviewer findings, test failures, changed files and remaining requirement gaps
 to the implementer. `MaxTurnsExceeded` extends the same persisted Agents SDK
 `RunState`; quota/rate limits enter `WAITING_CAPACITY` and wake automatically.
 
-### Adaptive model routing pilot
+### Strict model policy
 
-The experimental WorkUnit entry point uses runtime-discovered Codex models for
-three logical profiles: `GENERAL` for routine planning and implementation,
-`REASONING` for explicit high-risk tasks or repeated identical code failures,
-and `REVIEW` for independent review/final verification. The route uses only
-models and reasoning efforts returned by the logged-in Codex SDK. It does not
-assume a model ID, version order, intelligence ranking, or subscription tier.
+New WorkUnits default to `SMARTSPEC_CODEX_MODEL_POLICY=LUNA_ONLY`. `GENERAL`,
+`REASONING`, and `REVIEW` all request the catalog-verified `gpt-6-luna` with
+`medium` effort. SDK default flags, catalog order, high-risk keywords, review
+independence, and legacy model/fallback environment variables cannot change
+that choice. If Luna or its medium effort is absent, the run ends
+`BLOCKED_MODEL_POLICY`; it does not try Sol or Astra. Account quota, network,
+or service-capacity failures retain the existing `WAITING_CAPACITY` behavior.
 
-Optional environment overrides are `SMARTSPEC_CODEX_MODEL_GENERAL`,
-`SMARTSPEC_CODEX_MODEL_REASONING`, `SMARTSPEC_CODEX_MODEL_REVIEW`,
-`SMARTSPEC_CODEX_EFFORT_GENERAL`, `SMARTSPEC_CODEX_EFFORT_REASONING`, and
-`SMARTSPEC_CODEX_EFFORT_REVIEW`. `SMARTSPEC_CODEX_MODEL_FALLBACK` is the only
-explicit fallback override; an invalid or unsupported selection without an
-eligible fallback enters the existing durable `WAITING_CAPACITY` path. The
-selected profile, requested model, effort, provider/auth route, policy version,
-selection reason, usage, duration and Codex thread/turn IDs are persisted with
-the existing model-call identity. Runtime-confirmed model identity is recorded
-only if the installed app-server exposes it; otherwise it remains `UNVERIFIED`.
+`CONTROLLED_ESCALATION` is opt-in through `SMARTSPEC_CODEX_MODEL_POLICY` and
+requires a JSON `SMARTSPEC_CODEX_ESCALATION_AUTHORIZATION` with a Sol/Astra
+`requestedModel`, `modelAllowlist`, `budgetAuthorizationId`,
+`budgetAuthorized: true`, a `quotaObservationId`, positive
+`remainingBudgetTokens` and `requestedBudgetTokens` where the remaining amount
+covers the requested amount. The runner independently verifies a completed
+Luna implementation attempt followed by a real code-test failure; environment,
+quota, network, and tool errors cannot satisfy that requirement. Astra also
+requires `SMARTSPEC_CODEX_ASTRA_OPT_IN=true`. Successful test or review evidence
+removes escalation authorization so a new call returns to Luna.
+
+The selected profile, requested model, medium effort, policy version, auth
+route, escalation authorization/evidence, usage, duration, and Codex thread and
+turn IDs remain bound to the existing durable model-call receipt. A resumed
+call reuses its original persisted selection. A new call in a legacy run cannot
+silently switch an existing run-level model binding; only an authorized
+controlled transition is accepted. Runtime-confirmed model identity remains
+`UNVERIFIED` unless the app-server exposes it.
+
+To audit a new run, inspect its `runtime.sqlite3` without changing it:
+
+```sh
+sqlite3 -readonly <evidence-dir>/runtime.sqlite3 \
+  "SELECT role, selection_json, usage_json, receipt_json FROM model_calls ORDER BY rowid;"
+```
+
+Every newly routed call should show `requestedModel=gpt-6-luna`,
+`reasoningEffort=medium`, and `modelPolicy=LUNA_ONLY`; the receipt also includes
+its role, `threadId`, `turnId`, usage, and `effectiveModelStatus`. Keep
+`UNVERIFIED` as unverified; the requested model alone does not prove the
+server-confirmed effective model.
 
 This is still a local subscription experiment. It does not enable parallel
 write execution, change production Chat/Team Gateway policy, or establish

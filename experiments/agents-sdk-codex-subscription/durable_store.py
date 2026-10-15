@@ -408,7 +408,7 @@ class DurableRunStore:
 
     def finish_run(self, accepted: bool, *, terminal_status: str | None = None) -> None:
         allowed = {None, "awaiting_browser_uat", "PARTIAL_CONTINUABLE", "WAITING_CAPACITY",
-                   "IMPLEMENTED_READY_FOR_USER_TEST", "BLOCKED_EXTERNAL", "VERIFIED_COMPLETE"}
+                   "IMPLEMENTED_READY_FOR_USER_TEST", "BLOCKED_EXTERNAL", "BLOCKED_MODEL_POLICY", "VERIFIED_COMPLETE"}
         if terminal_status not in allowed:
             raise ValueError("Unsupported run status")
         self.state["status"] = terminal_status or ("VERIFIED_COMPLETE" if accepted else "PARTIAL_CONTINUABLE")
@@ -417,6 +417,7 @@ class DurableRunStore:
                 "run.development_continuable" if terminal_status == "PARTIAL_CONTINUABLE" else
                 "run.waiting_capacity" if terminal_status == "WAITING_CAPACITY" else
                 "run.implemented_ready_for_user_test" if terminal_status == "IMPLEMENTED_READY_FOR_USER_TEST" else
+                "run.blocked_model_policy" if terminal_status == "BLOCKED_MODEL_POLICY" else
                 "run.blocked_external" if terminal_status == "BLOCKED_EXTERNAL" else
                 "run.completed" if accepted else "run.development_continuable")
         iteration = self.state.get("developmentIteration", 0)

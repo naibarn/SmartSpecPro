@@ -11,14 +11,23 @@ from enum import StrEnum
 from typing import Any, Iterable
 
 
-POLICY_VERSION = "adaptive-routing.v1"
+POLICY_VERSION = "model-policy.v2"
 AUTH_ROUTE = "existing ChatGPT/Codex login through Codex app-server"
+DEFAULT_MODEL_POLICY = "LUNA_ONLY"
+LUNA_MODEL_ID = "gpt-6-luna"
+SOL_MODEL_IDS = frozenset({"gpt-6-sol", "gpt-6.1-sol"})
+ASTRA_MODEL_ID = "gpt-6-astra"
 
 
 class ModelProfile(StrEnum):
     GENERAL = "GENERAL"
     REASONING = "REASONING"
     REVIEW = "REVIEW"
+
+
+class ModelPolicy(StrEnum):
+    LUNA_ONLY = "LUNA_ONLY"
+    CONTROLLED_ESCALATION = "CONTROLLED_ESCALATION"
 
 
 @dataclass(frozen=True)
@@ -208,7 +217,7 @@ def select_profile(role: str, task_text: str, iterations: Iterable[dict[str, Any
     if any(tag in lower_role for tag in ("review", "verifier")):
         return ModelProfile.REVIEW, "independent review or final verification phase", []
     if _HIGH_RISK.search(task_text):
-        return ModelProfile.REASONING, "approved high-risk task signal", []
+        return ModelProfile.REASONING, "high-risk task signal; profile only under model policy", []
     repeated: list[FailureEvidence] = []
     for item in reversed(evidence):
         if item.category != "code_failure" or item.meaningful_progress or not item.signature:
@@ -220,10 +229,10 @@ def select_profile(role: str, task_text: str, iterations: Iterable[dict[str, Any
                   "changedPaths": list(item.changed_paths), "sourceRevision": item.source_revision,
                   "unresolvedRequirementCount": item.unresolved_requirement_count}
                  for item in reversed(repeated[:2])]
-        return ModelProfile.REASONING, "same code-failure signature repeated twice without verified progress", proof
+        return ModelProfile.REASONING, "same code-failure signature repeated twice without verified progress; profile only under model policy", proof
     if "replan" in lower_role and evidence and evidence[-1].category == "code_failure":
         last = evidence[-1]
-        return ModelProfile.REASONING, "replanning after an evidenced code failure", [{
+        return ModelProfile.REASONING, "replanning after an evidenced code failure; profile only under model policy", [{
             "category": last.category, "signature": last.signature, "iteration": last.iteration,
             "changedPaths": list(last.changed_paths), "sourceRevision": last.source_revision,
         }]
@@ -249,67 +258,101 @@ def _choose_effort(model: CatalogModel, profile: ModelProfile, configured: str |
 def route_model(
     catalog: list[CatalogModel], profile: ModelProfile | str, *, config: dict[str, str] | None = None,
     reason: str = "profile policy", failure_evidence: list[dict[str, Any]] | None = None,
-    avoid_models: Iterable[str] = (),
+    avoid_models: Iterable[str] = (), escalation_authorization: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     profile = ModelProfile(profile)
     config = os.environ if config is None else config
     models = {model.model_id: model for model in catalog}
-    ordered = catalog
-    default = next((model for model in ordered if model.is_default), ordered[0])
-    general = config.get("SMARTSPEC_CODEX_MODEL_GENERAL") or default.model_id
-    reasoning = config.get("SMARTSPEC_CODEX_MODEL_REASONING") or next(
-        (model.model_id for model in ordered if model.model_id != general and "high" in model.efforts), general
-    )
-    avoided = set(avoid_models)
-    review_distinct_candidates = [model.model_id for model in ordered
-                                  if model.model_id not in avoided and (bool(avoided) or model.model_id != general)]
-    review_candidates = [model.model_id for model in ordered if model.model_id != general]
-    configured_review = config.get("SMARTSPEC_CODEX_MODEL_REVIEW")
-    review = configured_review or next(
-        iter(review_distinct_candidates or review_candidates or [general])
-    )
-    selected_id = {ModelProfile.GENERAL: general, ModelProfile.REASONING: reasoning, ModelProfile.REVIEW: review}[profile]
-    requested_effort = config.get(f"SMARTSPEC_CODEX_EFFORT_{profile.value}")
-    fallback_id = config.get("SMARTSPEC_CODEX_MODEL_FALLBACK")
-    fallback_used = False
-    if profile == ModelProfile.REVIEW and configured_review and selected_id in avoided:
-        alternatives = [model_id for model_id in models if model_id not in avoided]
-        if alternatives:
-            if fallback_id and fallback_id in models and fallback_id not in avoided:
-                selected_id, fallback_used = fallback_id, True
-            else:
-                raise RoutingUnavailableError(
-                    "Configured review model is the same as the prior phase; configure a distinct eligible review model or authorized fallback"
-                )
-    if selected_id not in models:
-        if fallback_id and fallback_id in models:
-            selected_id, fallback_used = fallback_id, True
-        else:
-            raise RoutingUnavailableError(f"Configured model {selected_id!r} is absent from the live Codex catalog")
     try:
-        effort = _choose_effort(models[selected_id], profile, requested_effort)
-    except RoutingConfigurationError as exc:
-        if not fallback_id or fallback_id not in models or fallback_id == selected_id:
-            raise RoutingUnavailableError(str(exc)) from exc
-        selected_id, fallback_used = fallback_id, True
-        try:
-            effort = _choose_effort(models[selected_id], profile, requested_effort)
-        except RoutingConfigurationError as fallback_exc:
-            raise RoutingUnavailableError(str(fallback_exc)) from fallback_exc
-    if profile == ModelProfile.REVIEW and selected_id in avoided and any(model_id not in avoided for model_id in models):
-        raise RoutingUnavailableError("Review fallback matches the prior model while a distinct eligible catalog model exists")
+        policy = ModelPolicy(config.get("SMARTSPEC_CODEX_MODEL_POLICY", DEFAULT_MODEL_POLICY))
+    except ValueError as exc:
+        raise RoutingConfigurationError("SMARTSPEC_CODEX_MODEL_POLICY must be LUNA_ONLY or CONTROLLED_ESCALATION") from exc
+
+    if LUNA_MODEL_ID not in models:
+        raise RoutingUnavailableError(f"Required model {LUNA_MODEL_ID!r} is absent from the live Codex catalog")
+    if "medium" not in models[LUNA_MODEL_ID].efforts:
+        raise RoutingUnavailableError(f"Required reasoning effort 'medium' is unsupported by {LUNA_MODEL_ID!r}")
+
+    escalation_receipt = None
+    selected_id = LUNA_MODEL_ID
+    effort = "medium"
+    if policy == ModelPolicy.CONTROLLED_ESCALATION and escalation_authorization:
+        authorization = escalation_authorization
+        allowed = set(authorization.get("modelAllowlist") or [])
+        candidate = str(authorization.get("requestedModel") or "")
+        evidence = authorization.get("failureEvidence") or failure_evidence or []
+        has_code_failure = any(item.get("category") == "code_failure" for item in evidence if isinstance(item, dict))
+        authorized = (
+            bool(authorization.get("budgetAuthorizationId"))
+            and bool(authorization.get("budgetAuthorized"))
+            and bool(authorization.get("quotaAvailable"))
+            and bool(authorization.get("quotaObservationId"))
+            and type(authorization.get("remainingBudgetTokens")) is int
+            and type(authorization.get("requestedBudgetTokens")) is int
+            and authorization.get("remainingBudgetTokens", 0) >= authorization.get("requestedBudgetTokens", 1) > 0
+            and bool(authorization.get("lunaRepairAttempted"))
+            and has_code_failure
+            and candidate in allowed
+            and candidate in SOL_MODEL_IDS | {ASTRA_MODEL_ID}
+            and candidate in models
+            and (candidate not in SOL_MODEL_IDS | {ASTRA_MODEL_ID}
+                 or (candidate != ASTRA_MODEL_ID or bool(authorization.get("astraOptIn"))))
+        )
+        if authorized:
+            selected_id = candidate
+            effort = _choose_effort(models[selected_id], profile, "medium")
+            escalation_receipt = {
+                "policy": policy.value,
+                "requestedModel": selected_id,
+                "modelAllowlist": sorted(allowed),
+                "budgetAuthorizationId": str(authorization["budgetAuthorizationId"]),
+                "quotaObservationId": str(authorization["quotaObservationId"]),
+                "remainingBudgetTokens": authorization["remainingBudgetTokens"],
+                "requestedBudgetTokens": authorization["requestedBudgetTokens"],
+                "quotaAvailable": True,
+                "lunaRepairAttempted": True,
+                "failureEvidence": evidence,
+                "astraOptIn": bool(authorization.get("astraOptIn")),
+            }
+
     selection = {
         "profile": profile.value,
         "requestedModel": selected_id,
-        "reasoningEffort": effort or None,
+        "reasoningEffort": effort,
         "providerAuthRoute": AUTH_ROUTE,
         "policyVersion": POLICY_VERSION,
-        "selectionReason": reason + ("; configured compatible fallback used" if fallback_used else ""),
-        "fallbackUsed": fallback_used,
+        "modelPolicy": policy.value,
+        "selectionReason": reason if selected_id == LUNA_MODEL_ID else "authorized controlled escalation",
+        "fallbackUsed": False,
         "failureEvidence": failure_evidence or [],
     }
+    if escalation_receipt:
+        selection["escalationReceipt"] = escalation_receipt
     if profile == ModelProfile.REVIEW:
-        selection["reviewIndependence"] = "DISTINCT_MODEL" if selected_id not in avoided else (
-            "CATALOG_LIMITED" if len(models) > 1 else "SINGLE_MODEL_AVAILABLE"
-        )
+        selection["reviewIndependence"] = "INDEPENDENT_CONTEXT_SAME_MODEL_ALLOWED"
     return selection
+
+
+def validate_run_model_transition(
+    previous: dict[str, Any] | None, current: dict[str, Any], *, verified_recovery: bool = False,
+) -> dict[str, Any]:
+    """Keep a WorkUnit's established model binding unless a controlled transition is evidenced."""
+    previous_model = (previous or {}).get("requestedModel")
+    current_model = current.get("requestedModel")
+    if not previous_model or previous_model == current_model:
+        return current
+    if current.get("escalationReceipt") and previous_model == LUNA_MODEL_ID:
+        return current
+    if (current_model == LUNA_MODEL_ID and current.get("modelPolicy") == ModelPolicy.CONTROLLED_ESCALATION
+            and verified_recovery):
+        return {
+            **current,
+            "deescalationReceipt": {
+                "fromModel": previous_model,
+                "toModel": LUNA_MODEL_ID,
+                "recoveryVerified": True,
+            },
+        }
+    raise RoutingConfigurationError(
+        f"Existing WorkUnit model binding {previous_model!r} cannot transition to {current_model!r} without an authorized policy transition"
+    )

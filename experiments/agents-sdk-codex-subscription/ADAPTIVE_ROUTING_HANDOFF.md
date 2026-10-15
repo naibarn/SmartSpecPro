@@ -1,5 +1,50 @@
 # Adaptive routing implementation handoff
 
+## P0 strict Luna policy audit (2026-10-15)
+
+- Root cause: `adaptive-routing.v1` selected the account default for GENERAL (the
+  live SDK catalog marks `gpt-6.1-sol` as default), selected a `high`-effort
+  peer for REASONING after high-risk keywords/repeated code failures, and
+  selected a distinct catalog peer for REVIEW. An explicit configured fallback
+  could also replace a missing model. The Codex SDK model catalog can therefore
+  reorder/default Sol or Astra without any Developer choice in the WorkUnit.
+- Catalog check: read-only `openai-codex` SDK call returned `gpt-6-luna` with
+  `medium` supported and marked `gpt-6.1-sol` as the default. No provider API or
+  Gateway path was used.
+- Run evidence: the prior adaptive SPEC-038 WorkUnit recorded in this handoff
+  is `30a9faff-add6-439b-9ff7-1395893118d1`; the existing summary reports 23
+  Codex turns and 726,995 subscription tokens. Selection summaries show 16
+  GENERAL calls requested `gpt-6.1-sol` and 7 REVIEW calls requested
+  `gpt-5.6-sol` / `gpt-6.1-sol`; no REASONING transition occurred. Effective
+  model identity was `UNVERIFIED` for all 23 calls. This SPEC-038 run is related
+  harness evidence, not an identified SPEC-224 run. No target SPEC-224 Run ID
+  or its raw model-call/usage receipts were supplied or located in this audit
+  workspace, so no per-role target-run usage is inferred from session counts.
+- Actor boundary: those 23 recorded turns belong to the Agents SDK custom Model
+  delegating through the Codex SDK, not the outer Codex Controller or Codex
+  collaboration subagents. `AGENTS.md` has a separate Codex subagent rule (Sol
+  only for planning; Terra otherwise) and does not configure the harness or
+  mention Astra. Controller/subagent usage must be attributed from their own
+  thread receipts; the harness receipts do not prove it.
+- Fix: `model-policy.v2` defaults to `LUNA_ONLY`, pins GENERAL/REASONING/REVIEW
+  to catalog-verified `gpt-6-luna` at medium, disables catalog/fallback-based
+  model substitution, and records policy and escalation receipts with the
+  existing durable model-call selection. REVIEW remains a distinct agent and
+  phase while permitting the same model. Historical calls retain their stored
+  selection; new calls in a legacy run cannot silently change the established
+  model binding.
+- Controlled mode: Sol requires a real persisted Luna repair call followed by
+  a code-test failure, explicit model allowlist, budget authorization, quota
+  observation and sufficient token budget. Astra adds a separate opt-in.
+  Environment/quota/network/tool failures are not escalation evidence. Passing
+  test/review evidence returns the next new call to Luna under a recorded
+  de-escalation receipt. Missing Luna/medium ends as `BLOCKED_MODEL_POLICY`;
+  account capacity/network failures continue through `WAITING_CAPACITY`.
+- Verification: see P0 routing regression tests in
+  `tests/test_adaptive_routing.py`. Full experiment-suite and SPEC-224 live
+  acceptance remain pending. No existing run/worktree/evidence/receipt was
+  modified.
+
 - Task branch: `codex/adaptive-multi-model-routing-20261014`
 - Base at task start: `origin/main` SHA `5d94eea92a2cd1b6f00460c4550fefcfb6dd2987`
 - Workspace: `/home/dev/worktrees/adaptive-multi-model-routing-20261014`
