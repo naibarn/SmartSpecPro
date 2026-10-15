@@ -44,6 +44,11 @@
   `tests/test_adaptive_routing.py`. Full experiment-suite and SPEC-224 live
   acceptance remain pending. No existing run/worktree/evidence/receipt was
   modified.
+- P0 task checkpoint: branch `codex/spec224-luna-policy-20261015`, based on
+  canonical Main `af92f9107dbfb57c86d02327bcbe054d56d2c5ce`; implementation
+  commit `2202eb2395ffd61b850256f7a2ed4e94e8488402`. Next action: open the
+  protected PR and run the repository-required checks, then record the merged
+  Main SHA and queue the live SPEC-224 receipt audit/acceptance.
 
 - Task branch: `codex/adaptive-multi-model-routing-20261014`
 - Base at task start: `origin/main` SHA `5d94eea92a2cd1b6f00460c4550fefcfb6dd2987`
