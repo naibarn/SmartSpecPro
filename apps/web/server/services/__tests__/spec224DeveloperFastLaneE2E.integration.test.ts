@@ -13,6 +13,8 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     SPEC224_CODEX_MAX_TOKENS_PER_WINDOW: process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW,
     SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER: process.env.SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER,
     SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN: process.env.SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN,
+    SPEC224_E2E_PAUSE_AFTER_RESERVE: process.env.SPEC224_E2E_PAUSE_AFTER_RESERVE,
+    SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS: process.env.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS,
   };
   let fixture: Awaited<ReturnType<typeof createSpec277DisposablePostgres>>;
   let sql: postgres.Sql;
@@ -93,6 +95,195 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
       expect(JSON.stringify(reservation[0])).not.toContain("leaseToken");
     } finally {
       await import("node:fs/promises").then(fs => fs.rm(evidenceRoot, { recursive: true, force: true }));
+    }
+  }, 60_000);
+
+  it("parks on budget, waits until eligibility, then resumes the same durable WorkUnit without duplicate model dispatch", async () => {
+    const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { runJobReconciler }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
+      import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../jobReconciler"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+    ]);
+    const evidenceRoot = await import("node:fs/promises").then(fs => fs.mkdtemp(path.join(os.tmpdir(), "spec224-fast-lane-resume-")));
+    const controlPlane = createJobControlPlane();
+    try {
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "1";
+      const request = {
+        idempotencyKey: `authenticated-fast-lane-resume-${randomUUID()}`,
+        developerLogin: "developer", sourceRevision: "b".repeat(40), task: "Resume mocked authenticated model call", allowedFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"], writableFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"],
+        tests: { runner: "pytest", cwd: ".", paths: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"] }, acceptanceCriteria: ["Budget wait resumes through the canonical scheduler"], budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 },
+      };
+      const procedure = spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } };
+      const created = await procedure._def.resolver({ ctx: { tenantId: "tenant-e2e", user: { id: 22401, role: "admin" } }, input: request });
+      const executorRegistry = createJobExecutorRegistry([{
+        jobType: DEVELOPER_FAST_LANE_JOB, executionClass: "long", contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+        executor: createSpec224DeveloperFastLaneExecutor({ repositoryRoot: process.cwd().replace(/\/apps\/web$/, ""), evidenceRoot,
+          pythonExecutable: process.env.SPEC224_PYTHON ?? "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          pythonScript: path.join(process.cwd().replace(/\/apps\/web$/, ""), "experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"),
+          includeStderrInFailure: true, pythonScriptArgs: (binding, root) => [binding.runId, root],
+        }),
+      }]);
+      const first = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: 1 }, {
+        controlPlane, executorRegistry, runnerId: `spec224-resume-${randomUUID()}`, adapter: "test",
+      });
+      expect(first).toMatchObject({ state: "deferred", jobId: created.jobId });
+
+      const [waitingJob] = await sql`SELECT status, "progressJson", attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const externalWait = waitingJob.progressJson.externalWait;
+      expect(waitingJob.status).toBe("waiting_external");
+      expect(externalWait).toMatchObject({ reason: "budget", metadata: { schemaVersion: "spec224.developer-model-wait.v1", reservationState: "not_reserved" } });
+      const [waitEvent] = await sql`SELECT "eventType", "payloadJson" FROM worker_job_events WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'WAITING_BUDGET'`;
+      expect(waitEvent.payloadJson).toMatchObject({ resumeAfter: externalWait.resumeAfter, operationKey: externalWait.operationKey });
+      const [before] = await sql`SELECT count(*)::int AS count FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(before.count).toBe(0);
+      const modelCallIdBefore = await import("node:fs/promises").then(fs => fs.readFile(path.join(evidenceRoot, created.runId, "mock-model-call-id"), "utf8"));
+
+      const early = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) - 1) });
+      expect(early.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: "budget_not_yet_eligible" });
+      const [stillWaiting] = await sql`SELECT status FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(stillWaiting.status).toBe("waiting_external");
+
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
+      const due = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) + 1) });
+      expect(due.decisions).toContainEqual({ jobId: created.jobId, action: "resume", reasonCode: "budget_retry_due" });
+      const [queued] = await sql`SELECT status, attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(queued.status).toBe("queued");
+      const resumed = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: queued.attempt }, {
+        controlPlane, executorRegistry, runnerId: `spec224-resume-${randomUUID()}`, adapter: "test",
+      });
+      expect(resumed).toMatchObject({ state: "succeeded", jobId: created.jobId });
+
+      const [job] = await sql`SELECT status, attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(job).toMatchObject({ status: "succeeded", attempt: queued.attempt });
+      expect(Number(job.fencingVersion)).toBeGreaterThan(Number(waitingJob.fencingVersion));
+      const [reservation] = await sql`SELECT "modelCallId", "reservationStatus", "threadId", "turnId", "usageReceiptJson" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(reservation).toMatchObject({ reservationStatus: "released", threadId: "mock-thread-e2e", turnId: "mock-turn-e2e" });
+      expect(reservation.modelCallId).toBe(modelCallIdBefore);
+      const effectCount = await import("node:fs/promises").then(fs => fs.readFile(path.join(evidenceRoot, created.runId, "mock-thread-start-count"), "utf8"));
+      expect(effectCount).toBe("1");
+      expect(reservation.usageReceiptJson).toMatchObject({ inputTokens: 31, cachedInputTokens: 4, outputTokens: 9, effectiveModel: "gpt-6-luna" });
+    } finally {
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
+      await import("node:fs/promises").then(fs => fs.rm(evidenceRoot, { recursive: true, force: true }));
+    }
+  }, 90_000);
+
+  it("preserves a multi-day provider reset, then resumes the same WorkUnit with a distinct call ID and unknown usage retained", async () => {
+    const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { runJobReconciler }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
+      import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../jobReconciler"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+    ]);
+    const fs = await import("node:fs/promises");
+    const evidenceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "spec224-fast-lane-capacity-resume-"));
+    const controlPlane = createJobControlPlane();
+    try {
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
+      process.env.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS = String(3 * 24 * 60 * 60);
+      const procedure = spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } };
+      const created = await procedure._def.resolver({ ctx: { tenantId: "tenant-e2e", user: { id: 22401, role: "admin" } }, input: {
+        idempotencyKey: `authenticated-fast-lane-capacity-${randomUUID()}`, developerLogin: "developer", sourceRevision: "d".repeat(40), task: "Resume after mocked multi-day Codex capacity wait",
+        allowedFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"], writableFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"],
+        tests: { runner: "pytest", cwd: ".", paths: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"] }, acceptanceCriteria: ["Provider reset wait resumes through the canonical scheduler"], budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 },
+      } });
+      const executorRegistry = createJobExecutorRegistry([{
+        jobType: DEVELOPER_FAST_LANE_JOB, executionClass: "long", contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+        executor: createSpec224DeveloperFastLaneExecutor({ repositoryRoot: process.cwd().replace(/\/apps\/web$/, ""), evidenceRoot,
+          pythonExecutable: process.env.SPEC224_PYTHON ?? "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          pythonScript: path.join(process.cwd().replace(/\/apps\/web$/, ""), "experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"),
+          pythonScriptArgs: (binding, root) => [binding.runId, root], includeStderrInFailure: true,
+        }),
+      }]);
+      const first = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: 1 }, {
+        controlPlane, executorRegistry, runnerId: `spec224-capacity-${randomUUID()}`, adapter: "test",
+      });
+      expect(first).toMatchObject({ state: "deferred", jobId: created.jobId });
+      const [waitingJob] = await sql`SELECT status, "progressJson", attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const externalWait = waitingJob.progressJson.externalWait;
+      expect(waitingJob.status).toBe("waiting_external");
+      expect(externalWait).toMatchObject({ reason: "provider_capacity", metadata: { schemaVersion: "spec224.developer-model-wait.v1", reservationState: "unknown_after_dispatch" } });
+      expect(Date.parse(externalWait.resumeAfter) - Date.now()).toBeGreaterThan(3 * 24 * 60 * 60 * 1_000 - 5_000);
+      const [unknownReservation] = await sql`SELECT "modelCallId", "reservationStatus", "usageState", "dispatchState", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(unknownReservation).toMatchObject({ reservationStatus: "unknown", usageState: "unknown", dispatchState: "unknown", threadId: null, turnId: null });
+      const idsBeforeResume = JSON.parse(await fs.readFile(path.join(evidenceRoot, created.runId, "mock-model-call-ids.json"), "utf8"));
+
+      const early = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) - 1) });
+      expect(early.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: "provider_capacity_not_yet_eligible" });
+      const [stillWaiting] = await sql`SELECT status FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(stillWaiting.status).toBe("waiting_external");
+
+      process.env.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS = "";
+      const due = await runJobReconciler({ now: new Date(Date.parse(externalWait.resumeAfter) + 1) });
+      expect(due.decisions).toContainEqual({ jobId: created.jobId, action: "resume", reasonCode: "provider_capacity_retry_due" });
+      const [queued] = await sql`SELECT status, attempt FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(queued.status).toBe("queued");
+      const resumed = await executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: queued.attempt }, {
+        controlPlane, executorRegistry, runnerId: `spec224-capacity-${randomUUID()}`, adapter: "test",
+      });
+      expect(resumed).toMatchObject({ state: "succeeded", jobId: created.jobId });
+
+      const reservations = await sql`SELECT "modelCallId", "reservationStatus", "usageState", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call' ORDER BY "createdAt"`;
+      expect(reservations).toHaveLength(2);
+      expect(reservations[0]).toMatchObject({ modelCallId: unknownReservation.modelCallId, reservationStatus: "unknown", usageState: "unknown", threadId: null, turnId: null });
+      expect(reservations[1]).toMatchObject({ reservationStatus: "released", usageState: "known", threadId: "mock-thread-e2e", turnId: "mock-turn-e2e" });
+      expect(reservations[1].modelCallId).not.toBe(reservations[0].modelCallId);
+      const idsAfterResume = JSON.parse(await fs.readFile(path.join(evidenceRoot, created.runId, "mock-model-call-ids.json"), "utf8"));
+      expect(idsAfterResume).toHaveLength(2);
+      expect(idsAfterResume[0]).toBe(idsBeforeResume[0]);
+      expect(idsAfterResume[1]).toBe(reservations[1].modelCallId);
+      expect(await fs.readFile(path.join(evidenceRoot, created.runId, "mock-thread-start-count"), "utf8")).toBe("1");
+    } finally {
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
+      if (priorEnv.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS === undefined) delete process.env.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS;
+      else process.env.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS = priorEnv.SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS;
+      await fs.rm(evidenceRoot, { recursive: true, force: true });
+    }
+  }, 90_000);
+
+  it("denies a Python Codex caller when fencing changes after reserve but before dispatch", async () => {
+    const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
+      import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
+    ]);
+    const fs = await import("node:fs/promises");
+    const evidenceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "spec224-fast-lane-fence-"));
+    const pauseDir = path.join(evidenceRoot, "dispatch-barrier");
+    let execution: Promise<{ result?: unknown; error?: unknown }> | undefined;
+    try {
+      process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = "100000";
+      process.env.SPEC224_E2E_PAUSE_AFTER_RESERVE = pauseDir;
+      const procedure = spec226DevelopmentControlRouter.startDeveloperFastLane as unknown as { _def: { resolver: (value: unknown) => Promise<{ runId: string; jobId: string }> } };
+      const created = await procedure._def.resolver({ ctx: { tenantId: "tenant-e2e", user: { id: 22401, role: "admin" } }, input: {
+        idempotencyKey: `authenticated-fast-lane-fence-${randomUUID()}`, developerLogin: "developer", sourceRevision: "c".repeat(40), task: "Deny dispatch after fencing changes",
+        allowedFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"], writableFiles: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"],
+        tests: { runner: "pytest", cwd: ".", paths: ["experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"] }, acceptanceCriteria: ["Stale fencing prevents Codex dispatch"], budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 },
+      } });
+      const executorRegistry = createJobExecutorRegistry([{
+        jobType: DEVELOPER_FAST_LANE_JOB, executionClass: "long", contractVersions: new Set([DEVELOPER_FAST_LANE_CONTRACT]),
+        executor: createSpec224DeveloperFastLaneExecutor({ repositoryRoot: process.cwd().replace(/\/apps\/web$/, ""), evidenceRoot,
+          pythonExecutable: process.env.SPEC224_PYTHON ?? "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          pythonScript: path.join(process.cwd().replace(/\/apps\/web$/, ""), "experiments/agents-sdk-codex-subscription/tests/fixtures/canonical_admission_model_call.py"),
+          pythonScriptArgs: (binding, root) => [binding.runId, root], includeStderrInFailure: true,
+        }),
+      }]);
+      const controlPlane = createJobControlPlane();
+      execution = executeCanonicalJobEnvelope({ jobId: created.jobId, contractVersion: DEVELOPER_FAST_LANE_CONTRACT, businessAttempt: 1 }, {
+        controlPlane, executorRegistry, runnerId: `spec224-fence-${randomUUID()}`, adapter: "test",
+      }).then(result => ({ result }), error => ({ error }));
+      const deadline = Date.now() + 10_000;
+      while (!(await fs.stat(path.join(pauseDir, "reserved")).then(() => true, () => false)) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
+      expect(await fs.stat(path.join(pauseDir, "reserved")).then(() => true, () => false)).toBe(true);
+
+      await sql`UPDATE worker_jobs SET "fencingVersion" = "fencingVersion" + 1 WHERE id = ${created.jobId}`;
+      await fs.writeFile(path.join(pauseDir, "continue"), "go");
+      const outcome = await execution;
+      expect(outcome?.error).toBeTruthy();
+      const [reservation] = await sql`SELECT "dispatchState", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      expect(reservation).toMatchObject({ dispatchState: "reserved", threadId: null, turnId: null });
+      const dispatched = await sql`SELECT count(*)::int AS count FROM worker_job_events WHERE "workerJobId" = ${created.jobId} AND "eventType" IN ('CODEX_MODEL_TURN_DISPATCHING', 'CODEX_MODEL_THREAD_CREATED', 'CODEX_MODEL_TURN_STARTED')`;
+      expect(dispatched[0].count).toBe(0);
+      await expect(fs.readFile(path.join(evidenceRoot, created.runId, "mock-thread-start-count"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await fs.mkdir(pauseDir, { recursive: true });
+      await fs.writeFile(path.join(pauseDir, "continue"), "go");
+      await execution?.catch(() => undefined);
+      await fs.rm(evidenceRoot, { recursive: true, force: true });
+      if (priorEnv.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW === undefined) delete process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW; else process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW = priorEnv.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW;
     }
   }, 60_000);
 });

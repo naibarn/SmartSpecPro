@@ -121,6 +121,35 @@ def _maybe_crash(store: DurableRunStore, boundary: str, payload: dict[str, Any])
     os.kill(os.getpid(), signal.SIGKILL)
 
 
+def _model_call_for_instruction(store: DurableRunStore, phase_id: str, role: str,
+                                instruction: str, base_call_id: str) -> tuple[str, dict[str, Any] | None, dict[str, Any] | None]:
+    """Resume a persisted call, or start a distinct call after a definitive pre-thread 429."""
+    rows = store.connection.execute(
+        "SELECT * FROM model_calls WHERE phase_id=? AND role=? ORDER BY rowid",
+        (phase_id, role),
+    ).fetchall()
+    matching = []
+    for row in rows:
+        try:
+            request = json.loads(row["request_json"])
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if request.get("instruction") == instruction:
+            matching.append(dict(row))
+    if not matching:
+        return base_call_id, None, None
+
+    latest = matching[-1]
+    if (latest.get("status") == "provider_capacity_rejected" and
+            not latest.get("thread_id") and not latest.get("turn_id")):
+        retry_number = len(matching)
+        retry_id = str(uuid.uuid5(
+            uuid.UUID(store.run_id), f"{base_call_id}:provider-capacity-retry:{retry_number}",
+        ))
+        return retry_id, None, latest
+    return latest["call_id"], latest, latest
+
+
 def _select_thread_turn(turns: list[Any], turn_id: str | None, *, recover_latest: bool = False) -> Any | None:
     """Keep resume bound to the persisted turn, or recover only the newest unbound turn."""
     if turn_id is not None:
@@ -205,11 +234,14 @@ class CodexSubscriptionModel(Model):
             "Request JSON:\n" + json.dumps(request, ensure_ascii=False, separators=(",", ":"))
         )
         request_hash = digest(instruction)
-        call_id = str(uuid.uuid5(uuid.UUID(self.store.run_id), f"model:{self.phase_id}:{self.role}:{request_hash}"))
-        prior = self.store.get_model_call(call_id)
+        base_call_id = str(uuid.uuid5(uuid.UUID(self.store.run_id), f"model:{self.phase_id}:{self.role}:{request_hash}"))
+        call_id, prior, prior_selection = _model_call_for_instruction(
+            self.store, self.phase_id, self.role, instruction, base_call_id,
+        )
         selection = None
-        if prior and prior.get("selection_json"):
-            selection = json.loads(prior["selection_json"])
+        selection_source = prior or prior_selection
+        if selection_source and selection_source.get("selection_json"):
+            selection = json.loads(selection_source["selection_json"])
         elif prior:
             # Historical unresolved calls keep their implicit SDK default. Do
             # not attach a newly computed route to an old durable call.
@@ -343,6 +375,18 @@ class CodexSubscriptionModel(Model):
                     if capacity_evidence is not None:
                         wait = self.admission.provider_capacity(operation_key, capacity_evidence)
                         if wait.get("kind") == "waiting_capacity":
+                            if not call.get("thread_id") and not call.get("turn_id"):
+                                self.store.update_model_call(
+                                    call_id, event="model.provider_capacity.rejected_before_thread",
+                                    stable_suffix="provider-capacity-rejected-before-thread",
+                                    status="provider_capacity_rejected",
+                                    response_text=canonical_json({
+                                        "statusCode": 429,
+                                        "retryAfterSeconds": capacity_evidence.get("retryAfterSeconds"),
+                                        "threadCreated": False,
+                                        "turnCreated": False,
+                                    }),
+                                )
                             self.admission.settle(operation_key, None)
                             next_eligible = str(wait.get("nextEligibleAt", ""))
                             self.admission.wait(operation_key, "provider_capacity", next_eligible, evidence=wait.get("evidence"))
