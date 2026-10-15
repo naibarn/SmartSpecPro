@@ -38,15 +38,17 @@ No double-counting defect was found in reviewed settlement paths: operation/rece
 - On source commit `06ea9d9cf`: 9 focused Vitest files / 58 tests passed, covering DevelopmentRun contracts, phase controller, persistence, model admission, recovery grants/fence, DevelopmentRun integration, Fast Lane behavior and task control integration. These are scoped code-level tests; they do not establish real Runner acceptance.
 - Existing Fast Lane E2E suite was attempted; its 4 tests could not load because the isolated checkout's shared dependency tree lacks `superjson` (`Cannot find package 'superjson'` from `server/_core/trpc.ts`). This is an environment/dependency limitation, not an assertion failure. No dependency installation was attempted.
 - Existing SPEC-224 mock E2E / injected reset simulations are not counted as real acceptance.
+- PR #968 CI: `progressive_integration_gate` passed; `build-preview` was skipped; mocked SPEC-308 browser simulation failed 1/27. Failure: `tests/e2e/spec-308-route-surfaces.spec.ts:106`, sign-in surface expected `.assistant-chat-onboarding-hint` hidden but received visible; the other 26 cases passed. The failing UI test is outside this PR's changed files. PR remains open because this required check is red. This is not SPEC-224 acceptance evidence.
 - No multi-day live Runner E2E, protected dispatch, post-process-restart real session resume, external Codex Subscription call, or independent final verification was performed in this environment.
 - No repository-wide typecheck/build was run; repository policy prohibits local full typecheck due RAM constraints.
 
 ## Remaining blockers and next actions
 
-1. Keep acceptance `UNKNOWN` until owner-authorized disposable Runner registration, fresh source/workspace/capability binding, disposable PostgreSQL, protected dispatch grant, and non-production runtime are available.
-2. Repair/prepare the scoped E2E dependency environment (install only from the existing lockfile in a resource-admitted checkout), then run the existing Fast Lane E2E and crash/restart tests; do not treat mock runner success as final acceptance.
-3. Run multi-day injected-clock E2E with the real Agents SDK + Codex Subscription adapter + existing Runner, including quota resume, crash boundaries, fencing, source revision change, evidence finalization, and independent final verification.
-4. Use the owner-provisioned HTTPS Mini-App/Gateway environment separately for Revision 24 hosted Factory acceptance; Codex Subscription is not a hosted Mini-App fallback.
-5. After real verified SPEC-224 completions accrue, calculate outcome economics by task/model/harness with actual, estimated, unknown and quota measures kept separate; do not make new metrics a closure condition for current acceptance.
+1. Resolve the red PR required check at `tests/e2e/spec-308-route-surfaces.spec.ts:106` in its owning UI/test scope (or establish with exact baseline evidence that it is pre-existing and use the repository's normal check-repair path); do not weaken the check to merge this change.
+2. Keep acceptance `UNKNOWN` until owner-authorized disposable Runner registration, fresh source/workspace/capability binding, disposable PostgreSQL, protected dispatch grant, and non-production runtime are available.
+3. Repair/prepare the scoped E2E dependency environment (install only from the existing lockfile in a resource-admitted checkout), then run the existing Fast Lane E2E and crash/restart tests; do not treat mock runner success as final acceptance.
+4. Run multi-day injected-clock E2E with the real Agents SDK + Codex Subscription adapter + existing Runner, including quota resume, crash boundaries, fencing, source revision change, evidence finalization, and independent final verification.
+5. Use the owner-provisioned HTTPS Mini-App/Gateway environment separately for Revision 24 hosted Factory acceptance; Codex Subscription is not a hosted Mini-App fallback.
+6. After real verified SPEC-224 completions accrue, calculate outcome economics by task/model/harness with actual, estimated, unknown and quota measures kept separate; do not make new metrics a closure condition for current acceptance.
 
 **Status: PARTIAL.** The blocker-state recovery defect is fixed and scoped tests pass. SPEC-224 remains open; required real end-to-end acceptance and independent verification have not been evidenced.
