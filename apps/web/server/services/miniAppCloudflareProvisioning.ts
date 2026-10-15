@@ -98,8 +98,6 @@ export async function provisionMiniAppCloudflareTarget(input: {
     const metadata = {
       main_module: "runtime.mjs",
       compatibility_date: "2026-09-14",
-      workers_dev: false,
-      preview_urls: false,
       bindings: [{ type: "r2_bucket", name: "MINIAPP_ARTIFACTS", bucket_name: bucketName }],
     };
     const form = new FormData();
@@ -108,6 +106,13 @@ export async function provisionMiniAppCloudflareTarget(input: {
     await assertCloudflareSuccess(await fetchImpl(scriptUrl, {
       method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: form, signal: AbortSignal.timeout(30_000),
     }), "WORKER_UPLOAD");
+    const exposureResponse = await fetchImpl(`${scriptUrl}/subdomain`, {
+      method: "POST", headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ enabled: false, previews_enabled: false }), signal: AbortSignal.timeout(15_000),
+    });
+    const exposure = await assertCloudflareSuccess(exposureResponse, "WORKER_EXPOSURE_LOCK");
+    const exposureResult = exposure.result as Record<string, unknown> | undefined;
+    if (exposureResult?.enabled !== false || exposureResult.previews_enabled !== false) throw new Error("MINI_APP_WORKER_EXPOSURE_NOT_DISABLED");
     return { status: "PROVISIONED", bucketName, workerName, workerExposure: "DISABLED", runtimeStatus: "BUILDING" };
   };
   const result = await withCloudflareDeploymentCredential(input.db, { identity, credentialRef: target.credentialRef }, provision);

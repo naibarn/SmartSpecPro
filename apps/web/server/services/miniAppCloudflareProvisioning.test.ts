@@ -32,20 +32,20 @@ describe("Mini-App Cloudflare target provisioning", () => {
       if (url.includes("/r2/buckets?")) return response(200, { success: true, result: { buckets: [] } });
       if (url.endsWith("/r2/buckets")) return response(200, { success: true, result: { name: "created" } });
       if (url.includes("/workers/scripts/") && !init.method) return response(404, { success: false });
+      if (url.endsWith("/subdomain")) return response(200, { success: true, result: { enabled: false, previews_enabled: false } });
       return response(200, { success: true, result: { id: "deployment-1" } });
     });
 
     const result = await provisionMiniAppCloudflareTarget({ db: {} as never, target, fetchImpl });
     const names = miniAppRuntimeResourceNamesForTarget(target.id);
     expect(result).toEqual({ status: "PROVISIONED", ...names, workerExposure: "DISABLED", runtimeStatus: "BUILDING" });
-    expect(requests.map(request => request.init.method ?? "GET")).toEqual(["GET", "POST", "GET", "PUT"]);
+    expect(requests.map(request => request.init.method ?? "GET")).toEqual(["GET", "POST", "GET", "PUT", "POST"]);
     expect(JSON.parse(String(requests[1]?.init.body))).toEqual({ name: names.bucketName });
     expect(requests[3]?.url).toContain(names.workerName);
     expect(requests[3]?.init.headers).toEqual({ Authorization: "Bearer secret-token-for-test" });
+    expect(JSON.parse(String(requests[4]?.init.body))).toEqual({ enabled: false, previews_enabled: false });
     const form = requests[3]?.init.body as FormData;
     expect(JSON.parse(await (form.get("metadata") as Blob).text())).toMatchObject({
-      workers_dev: false,
-      preview_urls: false,
       bindings: [{ type: "r2_bucket", name: "MINIAPP_ARTIFACTS", bucket_name: names.bucketName }],
     });
     expect(await (form.get("runtime.mjs") as Blob).text()).toContain('"BUILDING"');
@@ -75,12 +75,24 @@ describe("Mini-App Cloudflare target provisioning", () => {
     const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
       if (url.includes("/r2/buckets?")) return response(200, { success: true, result: { buckets: [{ name: names.bucketName }] } });
       if (url.includes("/workers/scripts/") && !init.method) return response(200, {}, `// smartaihub-miniapp-runtime/v1\n${"x".repeat(100)}`);
+      if (url.endsWith("/subdomain")) return response(200, { success: true, result: { enabled: false, previews_enabled: false } });
       return response(200, { success: true, result: { id: "deployment-2" } });
     });
     await expect(provisionMiniAppCloudflareTarget({ db: {} as never, target, fetchImpl })).resolves.toMatchObject({
       status: "PROVISIONED", ...names,
     });
     expect(fetchImpl.mock.calls.some(([url, init]) => url.endsWith("/r2/buckets") && init?.method === "POST")).toBe(false);
+  });
+
+  it("fails provisioning unless Cloudflare confirms both Worker endpoints are disabled", async () => {
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      if (url.includes("/r2/buckets?")) return response(200, { success: true, result: { buckets: [] } });
+      if (url.endsWith("/r2/buckets")) return response(200, { success: true, result: {} });
+      if (url.includes("/workers/scripts/") && !init.method) return response(404, {});
+      if (url.endsWith("/subdomain")) return response(200, { success: true, result: { enabled: true, previews_enabled: false } });
+      return response(200, { success: true, result: {} });
+    });
+    await expect(provisionMiniAppCloudflareTarget({ db: {} as never, target, fetchImpl })).rejects.toThrow("MINI_APP_WORKER_EXPOSURE_NOT_DISABLED");
   });
 
   it("fails closed when the configured credential is absent", async () => {
