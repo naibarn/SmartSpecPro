@@ -26,10 +26,24 @@ class Codex:
     def __exit__(self, *_args): pass
     def models(self): return types.SimpleNamespace(data=[row])
     def thread_start(self, **_kwargs):
+        attempt_path = store_dir / "mock-thread-start-attempt-count"
+        attempts = int(attempt_path.read_text() if attempt_path.exists() else "0") + 1
+        attempt_path.write_text(str(attempts))
+        retry_after = os.environ.get("SPEC224_MOCK_PROVIDER_RETRY_AFTER_SECONDS")
+        rejected_path = store_dir / "mock-provider-rejection-recorded"
+        if retry_after and not rejected_path.exists():
+            rejected_path.touch()
+            raise MockCodexRateLimit(float(retry_after))
         count_path = store_dir / "mock-thread-start-count"
         count = int(count_path.read_text() if count_path.exists() else "0") + 1
         count_path.write_text(str(count))
         return FakeThread()
+
+class MockCodexRateLimit(Exception):
+    status_code = 429
+    def __init__(self, retry_after):
+        self.response = types.SimpleNamespace(headers={"retry-after": str(retry_after)})
+        super().__init__("mock Codex capacity reset")
 
 class FakeThread:
     id = "mock-thread-e2e"
@@ -77,11 +91,21 @@ except BaseException:
     call = store.connection.execute("SELECT call_id FROM model_calls ORDER BY rowid DESC LIMIT 1").fetchone()
     if call:
         (store_dir / "mock-model-call-id").write_text(call["call_id"])
+        ids_path = store_dir / "mock-model-call-ids.json"
+        ids = json.loads(ids_path.read_text()) if ids_path.exists() else []
+        if call["call_id"] not in ids:
+            ids.append(call["call_id"])
+        ids_path.write_text(json.dumps(ids))
     store.close()
     raise
 call = store.connection.execute("SELECT call_id FROM model_calls ORDER BY rowid DESC LIMIT 1").fetchone()
 if call:
     (store_dir / "mock-model-call-id").write_text(call["call_id"])
+    ids_path = store_dir / "mock-model-call-ids.json"
+    ids = json.loads(ids_path.read_text()) if ids_path.exists() else []
+    if call["call_id"] not in ids:
+        ids.append(call["call_id"])
+    ids_path.write_text(json.dumps(ids))
 store.state["status"] = "completed"
 store.export()
 store.close()
