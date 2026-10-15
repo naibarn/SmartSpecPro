@@ -589,11 +589,16 @@ export function decideNextSafeAction(run: DevelopmentRun): DevelopmentCommand {
   if (run.state === "RECOVERY") {
     return { command: "RECOVER_PHASE", phase: run.resumeState ?? "DISCOVERY" };
   }
+  if (run.state === "BLOCKED_RECOVERABLE") {
+    if (run.phaseAttempt < run.maxPhaseAttempts) {
+      return { command: "RECOVER_PHASE", phase: run.resumeState ?? "DISCOVERY" };
+    }
+    return { command: "WAIT_FOR_HUMAN_DECISION", reason: "RECOVERY_EXHAUSTED_PENDING_DECISION" };
+  }
   if (
     [
       "WAITING_HUMAN_DECISION",
       "PAUSED_POLICY",
-      "BLOCKED_RECOVERABLE",
       "RECOVERY_EXHAUSTED_PENDING_DECISION",
     ].includes(run.state)
   ) {
