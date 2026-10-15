@@ -899,7 +899,7 @@
     "next_action": "After the protected PR for source candidate 11a2aa39df31f12d0668fd192da3731a0d29fcbc passes required checks, verify the merged canonical SHA, then discover an owner-authorized isolated Runner registration and dispatch grant bound to current identity/capability/source/workspace/operations/lease. Run real Agents SDK + Codex subscription acceptance, crash/restart/quota resume, durable receipt reconciliation, and independent final verification. Keep Revision 24 hosted Mini-App/Gateway acceptance separate.",
     "next_ready_workunit": "PR checkpoint 11a2aa39df31f12d0668fd192da3731a0d29fcbc: registered Runner E2E 1/1 and PostgreSQL durable continuation recovery 5/5 passed on disposable PostgreSQL 15.17. Next: protected PR checks and canonical SHA confirmation; then owner-authorized isolated Runner registration plus protected dispatch grant for Live Codex acceptance.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
-    "resume_point": "Candidate 11a2aa39df31f12d0668fd192da3731a0d29fcbc based on canonical b38213f3d03df87b5b6e9eb82d56ae684f88ff1f. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-readiness-remediation-20261015.md. PostgreSQL continuation recovery passed 5/5 and registered Runner loopback E2E passed 1/1 on the exact candidate SHA. E2E uses a deterministic local provider and verifies fail-closed behavior without protected admission; no Live Codex turn, protected dispatch, independent final verification or final settlement was claimed. SPEC-224 remains PARTIAL.",
+    "resume_point": "Candidate 11a2aa39df31f12d0668fd192da3731a0d29fcbc based on canonical b38213f3d03df87b5b6e9eb82d56ae684f88ff1f. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-readiness-remediation-20261015.md. PostgreSQL continuation recovery passed 5/5 and registered Runner loopback E2E passed 1/1 on the exact candidate SHA. Installed Runner 0.2.23 shows readyToolCount=0 with Codex auth/availability unknown; current source has a zero-capability degraded-status test, so the installed binary is stale relative to source behavior. E2E uses deterministic local provider and verifies fail-closed behavior without protected admission; no Live Codex turn, protected dispatch, independent final verification or final settlement was claimed. SPEC-224 remains PARTIAL.",
     "waiting_predicate": "Only protected Live Runner dispatch waits for an owner-authorized isolated Runner registration and grant with fresh identity/capability/source/workspace/allowed-operations/lease/fencing/expiry binding. Do not widen authority, use production, or bypass trust gates. Continue the protected PR and all independent permitted work. Revision 24 hosted Mini-App/Gateway acceptance remains a separate authorization path; Codex Subscription is not a Mini-App fallback."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 92,
+  "generation": 93,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2692,7 +2692,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T16:52:09.004015Z",
+  "updated_at": "2026-10-15T16:54:48.293927Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2862,7 +2862,7 @@
       {
         "kind": "SPEC224_RUNNER_READINESS_REMEDIATION",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-readiness-remediation-20261015.md",
-        "scope": "Exact candidate source SHA 11a2aa39df31f12d0668fd192da3731a0d29fcbc: PostgreSQL process-boundary continuation recovery 5/5 and existing Registered Runner loopback E2E 1/1 passed on an ownership-labeled disposable PostgreSQL 15.17 target. Deterministic local provider fixture only; no Live Codex turn, protected dispatch, independent final verification or final settlement.",
+        "scope": "Exact candidate source SHA 11a2aa39df31f12d0668fd192da3731a0d29fcbc: PostgreSQL process-boundary continuation recovery 5/5 and existing Registered Runner loopback E2E 1/1 passed on an ownership-labeled disposable PostgreSQL 15.17 target. Deterministic local provider fixture only; no Live Codex turn, protected dispatch, independent final verification or final settlement. Installed Runner 0.2.23 reports state=ready despite readyToolCount=0; Codex auth/availability remain unknown with probe_required, while current source has a focused test requiring degraded status for zero ready capabilities. No local service restart or authority change was made.",
         "source_sha": "11a2aa39df31f12d0668fd192da3731a0d29fcbc",
         "status": "PARTIAL"
       }
