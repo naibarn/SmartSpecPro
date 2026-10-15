@@ -37,6 +37,20 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     });
   });
 
+  it("automatically schedules a recoverable blocker within its retry budget", () => {
+    const run = {
+      ...buildDevelopmentRun({ ...baseRun, maxPhaseAttempts: 3 }),
+      state: "BLOCKED_RECOVERABLE" as const,
+      phaseAttempt: 1,
+      resumeState: "TEST" as const,
+    };
+    expect(decideNextSafeAction(run)).toEqual({ command: "RECOVER_PHASE", phase: "TEST" });
+    expect(decideNextSafeAction({ ...run, phaseAttempt: 3 })).toEqual({
+      command: "WAIT_FOR_HUMAN_DECISION",
+      reason: "RECOVERY_EXHAUSTED_PENDING_DECISION",
+    });
+  });
+
   it("enforces resumable transitions and blocks completion without final verification", () => {
     const run = buildDevelopmentRun(baseRun);
     expect(() => transitionDevelopmentRun(run, "COMPLETED")).toThrow(
