@@ -10,6 +10,7 @@ import {
   buildDevelopmentHarnessJob,
   decideNextSafeAction,
   recordDevelopmentEvent,
+  transitionDevelopmentRun,
   type DevelopmentEvent,
   type DevelopmentRun,
 } from "./spec224DevelopmentRunContracts";
@@ -95,11 +96,16 @@ function phaseJobIdempotencyKey(input: {
   runId: string;
   phase: string;
   planRevision: number;
+  retryAttempt?: number;
 }): string {
   if (!Number.isSafeInteger(input.planRevision) || input.planRevision < 1) {
     throw new Spec224PhaseControllerError("PLAN_REVISION_INVALID");
   }
-  const key = `spec224:phase:${input.runId}:${input.phase}:plan:${input.planRevision}`;
+  if (input.retryAttempt !== undefined && (!Number.isSafeInteger(input.retryAttempt) || input.retryAttempt < 1)) {
+    throw new Spec224PhaseControllerError("PHASE_RETRY_ATTEMPT_INVALID");
+  }
+  const retryKey = input.retryAttempt === undefined ? "" : `:retry:${input.retryAttempt}`;
+  const key = `spec224:phase:${input.runId}:${input.phase}:plan:${input.planRevision}${retryKey}`;
   if (key.length <= 128) return key;
   return `spec224:phase:sha256:${createHash("sha256")
     .update(key, "utf8")
@@ -198,7 +204,21 @@ export async function createAndBindNextPhase(
         throw new Spec224PhaseControllerError("RUN_NEXT_PHASE_NOT_AUTHORIZED");
       }
 
-      const temporaryRun = { ...record.run, workerJobId: null };
+      const isRecovery =
+        record.run.state === "BLOCKED_RECOVERABLE" ||
+        record.run.state === "RECOVERY";
+      const transitionedRun = record.run.state === "BLOCKED_RECOVERABLE"
+        ? transitionDevelopmentRun(
+            transitionDevelopmentRun(record.run, "RECOVERY"),
+            nextAction.phase
+          )
+        : record.run.state === "RECOVERY"
+          ? transitionDevelopmentRun(record.run, nextAction.phase)
+          : record.run;
+      const phaseRun = isRecovery
+        ? { ...transitionedRun, phaseAttempt: record.run.phaseAttempt + 1 }
+        : transitionedRun;
+      const temporaryRun = { ...phaseRun, workerJobId: null };
       const prepared = buildDevelopmentHarnessJob({
         run: temporaryRun,
         provider: input.provider,
@@ -210,8 +230,9 @@ export async function createAndBindNextPhase(
       });
       const jobIdempotencyKey = phaseJobIdempotencyKey({
         runId: record.run.runId,
-        phase: record.run.state,
+        phase: phaseRun.state,
         planRevision: input.planRevision,
+        ...(isRecovery ? { retryAttempt: phaseRun.phaseAttempt } : {}),
       });
       const canonicalJobId = stableCanonicalJobId(jobIdempotencyKey);
       admittedJob = await createControlPlaneJob({
@@ -222,7 +243,7 @@ export async function createAndBindNextPhase(
           authorizationScope: input.authorizationScope,
           correlationId:
             input.correlationId ??
-            `development-run:${record.run.runId}:phase:${record.run.state}`,
+            `development-run:${record.run.runId}:phase:${phaseRun.state}`,
           idempotencyKey: jobIdempotencyKey,
         },
         definition: {
@@ -248,7 +269,8 @@ export async function createAndBindNextPhase(
         type: "PHASE_STARTED",
         payload: {
           workerJobId: admittedJob.jobId,
-          phase: record.run.state,
+          phase: phaseRun.state,
+          phaseAttempt: phaseRun.phaseAttempt,
           planRevision: input.planRevision,
         },
       });

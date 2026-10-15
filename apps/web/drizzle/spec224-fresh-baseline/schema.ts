@@ -184,6 +184,7 @@ export const workerJobs = pgTable(
     maxAttempts: integer("maxAttempts").notNull().default(1),
     nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
     idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+    activeDedupeKey: varchar("activeDedupeKey", { length: 160 }),
     leaseOwnerToken: varchar("leaseOwnerToken", { length: 128 }),
     leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
     heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
@@ -209,6 +210,11 @@ export const workerJobs = pgTable(
       t.tenantId,
       t.idempotencyKey
     ),
+    uniqueIndex("worker_jobs_tenant_active_dedupe_key_unique")
+      .on(t.tenantId, t.activeDedupeKey)
+      .where(
+        sql`"activeDedupeKey" IS NOT NULL AND "status" IN ('pending', 'queued', 'leased', 'claimed', 'preparing', 'running', 'waiting_external', 'retry_scheduled', 'uploading', 'publishing', 'indexing')`
+      ),
     index("worker_jobs_tenant_status_priority_idx").on(
       t.tenantId,
       t.status,

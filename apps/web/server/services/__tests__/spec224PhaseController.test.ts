@@ -204,6 +204,45 @@ describe("Spec 224 executable phase continuation", () => {
     ]);
   });
 
+  it("resumes a recoverable blocker at its recorded phase without duplicate dispatch", async () => {
+    const blocked = reconciledRun();
+    blocked.run.state = "BLOCKED_RECOVERABLE";
+    blocked.run.resumeState = "TEST";
+    blocked.run.phaseAttempt = 1;
+    blocked.run.maxPhaseAttempts = 3;
+    const memory = memoryAdapter(blocked);
+    let admissions = 0;
+    const controlPlane = {
+      create: async () => {
+        admissions += 1;
+        return { jobId: "worker-recovered-test", created: true };
+      },
+    };
+    const input = {
+      ...phaseInput({ idempotencyKey: "recover:test:revision-2" }),
+      persistence: memory.adapter,
+      controlPlane: controlPlane as never,
+      executorRegistry: { has: () => true } as never,
+    };
+    const result = await createAndBindNextPhase(input);
+    const duplicate = await createAndBindNextPhase(input);
+
+    expect(result.run).toMatchObject({
+      state: "TEST",
+      workerJobId: "worker-recovered-test",
+      phaseAttempt: 2,
+    });
+    expect(result.event).toMatchObject({
+      type: "PHASE_STARTED",
+      payload: { phase: "TEST", workerJobId: "worker-recovered-test" },
+    });
+    expect(duplicate).toMatchObject({
+      accepted: false,
+      jobRef: { jobId: "worker-recovered-test", created: false },
+    });
+    expect(admissions).toBe(1);
+  });
+
   it("rejects an active current job, stale projections, and an out-of-scope caller", async () => {
     const active = reconciledRun();
     active.run.events = [];

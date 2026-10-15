@@ -22,6 +22,20 @@
       "when": 1790603207328,
       "tag": "0002_spec224_audit_log_for_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792082258844,
+      "tag": "0003_curious_lady_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792082280042,
+      "tag": "0004_sleepy_george_stacy",
+      "breakpoints": true
     }
   ]
 }

@@ -178,6 +178,62 @@ const CLOSURE_METADATA_KEY = "spec224RequirementClosure";
 const FINAL_VERIFY_PROVENANCE_STALE = "FINAL_VERIFY_PROVENANCE_STALE";
 const FINAL_VERIFY_PROVENANCE_INVALID = "FINAL_VERIFY_PROVENANCE_INVALID";
 
+function recoveryDecisionForPhaseFailure(
+  run: DevelopmentRun,
+  job: CanonicalDevelopmentJobSnapshot,
+  evidenceRefs: readonly string[]
+): Record<string, unknown> {
+  const errorCode = job.errorCode ?? "CANONICAL_WORKER_JOB_FAILED";
+  const normalizedCode = errorCode.toUpperCase();
+  const category = /QUOTA|RATE_LIMIT|CAPACITY/.test(normalizedCode)
+    ? "QUOTA"
+    : /DEPENDENCY|MISSING_PACKAGE/.test(normalizedCode)
+      ? "DEPENDENCY"
+      : /RUNTIME|RUNNER/.test(normalizedCode)
+        ? "RUNTIME"
+        : /PERMISSION|AUTHORIZATION/.test(normalizedCode)
+          ? "PERMISSION"
+          : job.status === "failed" && job.errorCode
+            ? "TECHNICAL"
+            : "UNKNOWN";
+  const attempt = job.attempt ?? 0;
+  const identity = `${run.runId}:${run.workerJobId}:${attempt}:${errorCode}`;
+  const blockerId = `blocker:${createHash("sha256").update(identity).digest("hex").slice(0, 32)}`;
+
+  return {
+    schemaVersion: "spec224.recovery-decision.v1",
+    blockerId,
+    affectedWorkUnit: run.workUnit?.workId ?? run.runId,
+    rootCause: {
+      category,
+      code: errorCode,
+      evidenceRefs: [...new Set(evidenceRefs)],
+    },
+    authorizedAlternatives: ["DEBUG_REPAIR"],
+    chosenStrategy: "DEBUG_REPAIR",
+    reasonCode: "REPAIRABLE_PHASE_FAILURE",
+    resourceImpact: "UNKNOWN",
+    acceptanceBinding: {
+      sourceRevision: run.baseRevision,
+      contextPackHash: run.contextPackHash,
+      workPackageId: run.workPackageId ?? null,
+      workUnitId: run.workUnit?.workId ?? null,
+    },
+    resumeCondition: {
+      kind: "CANONICAL_WORKER_JOB_TERMINAL",
+      workerJobId: run.workerJobId,
+      attempt,
+    },
+    nextExecutableAction: { kind: "RUN_PHASE", phase: "DEBUG_REPAIR" },
+    retryBudget: {
+      phaseAttempt: run.phaseAttempt,
+      maxPhaseAttempts: run.maxPhaseAttempts,
+      workerJobAttempt: attempt,
+    },
+    fencingVersion: run.fencingVersion,
+  };
+}
+
 function persistedClosureGraph(run: DevelopmentRun): RequirementClosureGraph {
   const value = run.metadata?.[CLOSURE_METADATA_KEY];
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -1366,6 +1422,11 @@ export function createDevelopmentRunService(
         const failureState: DevelopmentRunState = canRepair
           ? "DEBUG_REPAIR"
           : "WAITING_HUMAN_DECISION";
+        const failureEvidenceRefs = Array.isArray(job.output?.evidenceRefs)
+          ? job.output.evidenceRefs.filter(
+              (value): value is string => typeof value === "string"
+            )
+          : [];
         const failed = await applyTransition(tx, record, scope, {
           idempotencyKey: `reconcile:${record.run.workerJobId}:${job.attempt ?? 0}:failed`,
           nextState: failureState,
@@ -1376,7 +1437,17 @@ export function createDevelopmentRunService(
             status: job.status,
             errorCode: job.errorCode ?? null,
             errorMessage: job.errorMessage ?? null,
+            ...(canRepair
+              ? {
+                  recoveryDecision: recoveryDecisionForPhaseFailure(
+                    record.run,
+                    job,
+                    failureEvidenceRefs
+                  ),
+                }
+              : {}),
           },
+          ...(canRepair ? { evidenceRefs: failureEvidenceRefs } : {}),
         });
         return {
           action: canRepair ? "RECOVER" : "WAIT",
