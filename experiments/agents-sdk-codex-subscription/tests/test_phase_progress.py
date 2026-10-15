@@ -65,7 +65,7 @@ class PhaseProgressTests(unittest.TestCase):
         ).fetchone()[0], 1)
         store.close()
 
-    def test_repeated_max_turns_without_progress_diagnoses_and_stops_extending(self):
+    def test_model_activity_without_functional_progress_diagnoses_without_extending(self):
         store = DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=False)
         calls = 0
 
@@ -86,17 +86,54 @@ class PhaseProgressTests(unittest.TestCase):
         with patch.object(run_spec_workunit, "SQLiteSession", FakeSession), \
              patch.object(run_spec_workunit.Runner, "run_streamed", side_effect=lambda *_a, **_kw: Stream()), \
              patch.object(run_spec_workunit.RunState, "from_json", new=AsyncMock(return_value="resumed")):
-            with self.assertRaisesRegex(run_spec_workunit.NoProgressPhaseError, "without a completed model turn"):
+            with self.assertRaisesRegex(run_spec_workunit.NoProgressPhaseError, "Model responses alone"):
                 run_spec_workunit.run_phase(store, "planning", 0, object(), "plan", 1)
-        self.assertEqual(calls, 2)
+        self.assertEqual(calls, 1)
         phase = store.get_phase(store.phase_id("planning", 0))
         self.assertEqual(phase["status"], "needs_replan")
         self.assertEqual(phase["no_progress_segments"], 1)
         self.assertEqual(store.connection.execute(
             "SELECT COUNT(*) FROM events WHERE kind='phase.turn_limit_continued'"
-        ).fetchone()[0], 1)
+        ).fetchone()[0], 0)
         self.assertEqual(store.connection.execute(
             "SELECT COUNT(*) FROM events WHERE kind='phase.no_progress_diagnosed'"
+        ).fetchone()[0], 1)
+        store.close()
+
+    def test_max_turns_can_continue_after_a_tool_receipt_makes_functional_progress(self):
+        store = DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=False)
+        phase_id = store.phase_id("planning", 0)
+        calls = 0
+
+        class InterruptedStream:
+            def to_state(self):
+                return FakeState()
+            async def stream_events(self):
+                nonlocal calls
+                calls += 1
+                store.begin_tool("planning-tool", phase_id, "write_file", {"path": "plan.md"})
+                store.complete_tool("planning-tool", {"written": True}, effect_hash="plan-revised")
+                raise MaxTurnsExceeded("functional progress happened")
+                yield  # pragma: no cover - make this an async generator
+
+        class CompletedStream:
+            final_output = "done"
+            last_response_id = "response-2"
+            def to_state(self):
+                return FakeState()
+            async def stream_events(self):
+                nonlocal calls
+                calls += 1
+                yield object()
+
+        with patch.object(run_spec_workunit, "SQLiteSession", FakeSession), \
+             patch.object(run_spec_workunit.Runner, "run_streamed", side_effect=[InterruptedStream(), CompletedStream()]), \
+             patch.object(run_spec_workunit.RunState, "from_json", new=AsyncMock(return_value="resumed")):
+            result = run_spec_workunit.run_phase(store, "planning", 0, object(), "plan", 1)
+        self.assertEqual(result.final_output, "done")
+        self.assertEqual(calls, 2)
+        self.assertEqual(store.connection.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='phase.turn_limit_continued'"
         ).fetchone()[0], 1)
         store.close()
 

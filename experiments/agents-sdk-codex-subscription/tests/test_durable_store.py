@@ -85,6 +85,21 @@ class DurableRunStoreTests(unittest.TestCase):
             self.assertNotEqual(after_tool, after_test)
             self.assertEqual(after_test["verifiedTestOutcomes"][0]["exitCode"], 0)
 
+    def test_turn_limit_progress_ignores_model_activity_but_observes_functional_progress(self):
+        with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
+            phase_id = store.start_phase("budget-progress", 0, {"goal": "x"}, 3)["phase_id"]
+            before = {
+                "completedModelTurns": 0,
+                "completedToolReceipts": 0,
+                "sourceHash": digest({"app.py": "before"}),
+                "verifiedTestOutcomes": [],
+            }
+            store.initialize_turn_limit_progress(phase_id, before)
+            model_only = {**before, "completedModelTurns": 30}
+            self.assertEqual(store.record_no_progress_segment(phase_id, model_only), 1)
+            tool_progress = {**model_only, "completedToolReceipts": 1}
+            self.assertEqual(store.record_no_progress_segment(phase_id, tool_progress), 0)
+
     def test_stable_ids_reject_payload_conflicts(self):
         with DurableRunStore(self.evidence, run_id=self.run_id, resume=True) as store:
             store.event("human.intervention.note", {"reason": "asked"}, actor="human", stable_key="human:1")

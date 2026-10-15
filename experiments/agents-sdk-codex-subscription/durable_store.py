@@ -26,6 +26,11 @@ def timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def functional_progress_signature(progress: dict[str, Any]) -> str:
+    """Hash only functional progress; another model response is not progress by itself."""
+    return digest({key: value for key, value in progress.items() if key != "completedModelTurns"})
+
+
 class DurableRunStore:
     """SQLite-backed phase, checkpoint, event, model-call, and tool receipt store.
 
@@ -306,15 +311,15 @@ class DurableRunStore:
         return changed, 0
 
     def initialize_turn_limit_progress(self, phase_id: str, progress: dict[str, Any]) -> None:
-        signature = digest(progress)
+        signature = functional_progress_signature(progress)
         self.connection.execute(
             "UPDATE phases SET turn_limit_progress_signature=COALESCE(turn_limit_progress_signature,?),no_progress_segments=COALESCE(no_progress_segments,0) WHERE phase_id=?",
             (signature, phase_id),
         )
 
     def record_no_progress_segment(self, phase_id: str, progress: dict[str, Any]) -> int:
-        """Count repeated MaxTurns boundaries that produced no model/tool/source/test progress."""
-        signature = digest(progress)
+        """Count MaxTurns boundaries lacking tool, source, or verified-test progress."""
+        signature = functional_progress_signature(progress)
         self.connection.execute("BEGIN IMMEDIATE")
         try:
             row = self.connection.execute(

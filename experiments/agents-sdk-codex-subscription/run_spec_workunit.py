@@ -233,21 +233,32 @@ def changed_source_paths(before: dict[str, str], after: dict[str, str]) -> list[
 
 
 def iteration_evidence_summary(iterations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Give reviewers the durable cumulative source/test history without replaying logs."""
+    """Reference durable source/test history without replaying full logs into each phase."""
     summary = []
     for item in iterations:
         if not isinstance(item, dict):
             continue
         receipt = item.get("testReceipt")
         receipt = receipt if isinstance(receipt, dict) else {}
+        failure_text = "\n".join(str(receipt.get(key) or "") for key in ("stderr", "stdout"))
+        category, signature = classify_failure(
+            failure_text, exit_code=receipt.get("exitCode"),
+            tests_executed=not bool(receipt.get("missingTestPaths")),
+            signal=receipt.get("signal") or receipt.get("terminationSignal"),
+        )
         summary.append({
             "iteration": item.get("iteration"),
             "changedPaths": item.get("changedPaths", []),
+            "testReceiptRef": f"run-state.json#/iterations/{item.get('iteration')}/testReceipt",
             "test": {
                 "exitCode": receipt.get("exitCode"),
                 "revision": receipt.get("revision"),
                 "sourceRevision": receipt.get("sourceRevision"),
                 "changedPaths": receipt.get("changedPaths", []),
+                "failureCategory": category,
+                "failureSignature": signature,
+                "stdoutBytes": len(str(receipt.get("stdout") or "").encode("utf-8")),
+                "stderrBytes": len(str(receipt.get("stderr") or "").encode("utf-8")),
             },
         })
     return summary
@@ -858,8 +869,8 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                 no_progress_segments = store.record_no_progress_segment(phase_row["phase_id"], progress)
                 if no_progress_segments >= 1:
                     diagnosis = (
-                        "Agents SDK raised MaxTurnsExceeded again without a completed model turn, completed tool receipt, "
-                        "allowlisted source change, or verified test outcome. Stop extending max_turns and replan in a fresh phase."
+                        "Agents SDK raised MaxTurnsExceeded without a completed tool receipt, allowlisted source change, "
+                        "or verified test outcome. Model responses alone do not justify extending max_turns; replan in a fresh phase."
                     )
                     store.mark_phase_needs_replan(phase_row["phase_id"], diagnosis=diagnosis, progress=progress)
                     raise NoProgressPhaseError(diagnosis)
@@ -1072,7 +1083,7 @@ def main() -> int:
         try:
             revised = run_phase(store, "replanning", attempt, replan_agent, json.dumps({
                 "goal": goal, "priorPlan": plan, "findings": findings,
-                "previousIterations": state.get("iterations", []),
+                "previousIterations": iteration_evidence_summary(state.get("iterations", [])),
                 "currentSource": task_source_context(contract), "workunit_scope": workunit_scope,
             }, ensure_ascii=False), contract.plan_max_turns, progress_probe=lambda: source_hashes(contract))
             plan = parse_result_json(revised.final_output)
@@ -1101,7 +1112,7 @@ def main() -> int:
         "repairInput": {
             "independentReviewerFindings": findings,
             "testFailures": [item for item in findings if "test" in item.lower() or "exitcode" in item.lower()],
-            "priorIterationEvidence": state.get("iterations", []),
+            "priorIterationEvidence": iteration_evidence_summary(state.get("iterations", [])),
             "unresolvedNormativeRequirements": state.get("unresolvedRequirements", []),
             "changedFilesFromPriorIterations": cumulative_source_paths(
                 state.get("iterations", []), state.get("sourceDelta", [])
