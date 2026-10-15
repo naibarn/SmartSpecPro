@@ -625,6 +625,9 @@ describe("Mini-App preview runtime provisioning route", () => {
       changes: expect.objectContaining({ workerRef: "smartspec-miniapp-preview-worker", runtimePolicy: expect.stringContaining("mini-app-preview-runtime/v1") }),
       actorUserId: 1,
     }));
+    const persistedPolicy = update.mock.calls[0]?.[1]?.changes?.runtimePolicy;
+    expect(persistedPolicy?.length).toBeLessThanOrEqual(160);
+    expect(JSON.parse(persistedPolicy ?? "{}")).toMatchObject({ bucketName: "smartspec-miniapp-preview-bucket" });
     await expect((infrastructureRouter.createCaller({ user: { id: 2, role: "system_agent" } } as any)
       .provisionMiniAppPreviewRuntime({ tenantId, projectId, environment: "preview" }))).rejects.toMatchObject({ code: "FORBIDDEN" });
     resolve.mockRestore();

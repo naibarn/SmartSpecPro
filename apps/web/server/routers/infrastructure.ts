@@ -500,7 +500,10 @@ export const infrastructureRouter = router({
       const resolution = await resolveProviderDeploymentTarget(db, identity);
       if (resolution.status !== "CONFIGURED") throw new TRPCError({ code: resolution.status === "TARGET_AUTHORITY_CONFLICT" ? "CONFLICT" : "PRECONDITION_FAILED", message: `Mini-App target unavailable: ${resolution.status}` });
       const result = await provisionMiniAppCloudflareTarget({ db, target: resolution.target });
-      const runtimePolicy = JSON.stringify({ schemaVersion: "mini-app-preview-runtime/v1", bucketName: result.bucketName, runtimeStatus: result.runtimeStatus, workerExposure: result.workerExposure });
+      // runtimePolicy is varchar(160); workerRef and the provisioning result
+      // already carry the other fields, so persist only the stable schema and bucket.
+      const runtimePolicy = JSON.stringify({ schemaVersion: "mini-app-preview-runtime/v1", bucketName: result.bucketName });
+      if (runtimePolicy.length > 160) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Mini-App runtime policy exceeds the deployment target limit" });
       const persisted = await updateProviderDeploymentTarget(db, { identity, targetRowId: resolution.target.id,
         changes: { workerRef: result.workerName, runtimePolicy }, actorUserId: ctx.user?.id });
       if (persisted.status !== "UPDATED") throw new TRPCError({ code: "CONFLICT", message: "Mini-App resources were provisioned but target authority could not be updated; retry is safe" });
