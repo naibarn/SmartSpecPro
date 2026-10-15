@@ -899,7 +899,7 @@
     "next_action": "Continue the hosted Mini-App functional path on current main: complete isolated artifact upload, owner-authorized runtime serving and release activation; wire text-only Factory phases through Skill→SmartAIHub Gateway with no direct provider or Codex Subscription fallback; then run Internet Browser and tenant-isolation acceptance. This provisioning slice only provisions isolated Cloudflare preview resources and keeps the Worker unexposed/BUILDING. Functional delivery, SPEC-224 normative completion and Protected Runner Acceptance remain separate.",
     "next_ready_workunit": "IMPLEMENTATION_READY: implement the Mini-App artifact runtime and activation path using the isolated Worker/R2 target from this provisioning slice; in parallel, route Factory text model calls through existing Skill→SmartAIHub Gateway and remove hosted-path model fallbacks. Then use the owner-configured target for a disposable Mini-App HTTPS acceptance. Do not claim functional delivery from provisioning alone.",
     "reactivation_predicate": "Cloudflare deployment authority becomes available when an exact admin configures an isolated preview/staging target and scoped credential through Admin Deployment Targets on the existing SmartAIHub control plane. A separate Cloudflare account is optional; isolated Worker/R2 resources and permissions are required. No separate non-production SmartAIHub host is required. Continue code and mocked acceptance while credentials are absent.",
-    "resume_point": "Source checkpoint d9f2a1f8e5f5abbf4f95ce83e335dff266e04a2e is based on canonical af92f9107dbfb57c86d02327bcbe054d56d2c5ce. It adds exact-admin provisioning of deterministic isolated preview R2/Worker resources, disables workers.dev and preview URLs, and reports BUILDING until artifact delivery is connected. Provisioning/UI/service focused tests pass 11/11; one unrelated existing Project Wiki preflight expectation failed when the entire existing deployment-target test file was run. No Cloudflare credential was used and no Internet deployment, Gateway trace, Browser receipt or ownership acceptance is claimed. Next: continue Factory Gateway adapter and artifact runtime on this code PR.",
+    "resume_point": "Source checkpoint 04863c10de59333ebf8d171e02cea7118ece4c94 is based on canonical af92f9107dbfb57c86d02327bcbe054d56d2c5ce. It adds fail-closed verification that both workers.dev and Worker Preview URLs are disabled after upload. Focused provisioning/UI/admin tests pass 7 selected cases; git diff --check passes. PR #961 remains open and draft. The isolated Worker still only reports health/BUILDING: artifact upload/serving, atomic activation, Gateway-only Factory execution, real HTTPS Browser receipt, and tenant/publication acceptance remain incomplete. No Cloudflare credential was used and no Internet delivery is claimed.",
     "waiting_predicate": "Only credential-backed Cloudflare provisioning/deployment and real Internet acceptance wait for an enabled exact-scope preview/staging target and configured scoped credential. Gateway-only Factory execution, artifact/runtime implementation, tests and release logic remain actionable without Cloudflare credentials. Never use production resources, direct provider or Codex Subscription for hosted Factory calls; keep Protected Runner Acceptance and PR #944 separate."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 87,
+  "generation": 88,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2685,7 +2685,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T00:17:48.613496Z",
+  "updated_at": "2026-10-15T00:23:26.235581Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
