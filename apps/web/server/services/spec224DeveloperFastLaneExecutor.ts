@@ -1,8 +1,9 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { Writable } from "node:stream";
 
 import type { JobExecutor, JobExecutorContext } from "./jobExecutor";
 import { createPostgresProviderSchedulerRepository } from "./postgresProviderSchedulerRepository";
@@ -61,11 +62,13 @@ function stringField(value: unknown, name: string, max = 160): string {
   return value.trim();
 }
 
-function connectAdmissionRpc(child: ChildProcessWithoutNullStreams, transport: ReturnType<typeof createSpec224DeveloperModelAdmissionTransport>, setWaiting: () => void) {
+function connectAdmissionRpc(child: ChildProcess, transport: ReturnType<typeof createSpec224DeveloperModelAdmissionTransport>, setWaiting: () => void) {
   // FD 4 is child-to-server requests; FD 3 is server-to-child replies.
   const requestStream = child.stdio[4];
-  const responseStream = child.stdio[3];
-  if (!requestStream || !responseStream) throw new Error("DEVELOPER_FAST_LANE_PRIVATE_IPC_UNAVAILABLE");
+  const responseWriter = child.stdio[3] as Writable | null;
+  if (!requestStream || typeof requestStream.on !== "function" || !responseWriter || typeof responseWriter.write !== "function") {
+    throw new Error("DEVELOPER_FAST_LANE_PRIVATE_IPC_UNAVAILABLE");
+  }
   let buffer = "";
   requestStream.on("data", (chunk: Buffer) => {
     buffer += chunk.toString("utf8");
@@ -113,10 +116,10 @@ function connectAdmissionRpc(child: ChildProcessWithoutNullStreams, transport: R
           }
           default: throw new Error("DEVELOPER_FAST_LANE_RPC_METHOD_DENIED");
         }
-        responseStream.write(`${JSON.stringify({ id: message.id, result })}\n`);
+        responseWriter.write(`${JSON.stringify({ id: message.id, result })}\n`);
       })().catch(error => {
         const message = asObject(JSON.parse(line));
-        if (message) responseStream.write(`${JSON.stringify({ id: message.id, error: error instanceof Error ? error.message.slice(0, 160) : "RPC_FAILED" })}\n`);
+        if (message) responseWriter.write(`${JSON.stringify({ id: message.id, error: error instanceof Error ? error.message.slice(0, 160) : "RPC_FAILED" })}\n`);
       });
     }
   });
@@ -162,6 +165,7 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
     let stdout = "";
     let stderr = "";
     const append = (current: string, chunk: Buffer) => (current + chunk.toString("utf8")).slice(-64_000);
+    if (!child.stdout || !child.stderr) throw new Error("DEVELOPER_FAST_LANE_PROCESS_STREAMS_UNAVAILABLE");
     child.stdout.on("data", (chunk: Buffer) => { stdout = append(stdout, chunk); });
     child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
     connectAdmissionRpc(child, transport, () => { deferred = true; });

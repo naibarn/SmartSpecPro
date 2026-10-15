@@ -883,6 +883,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         const providerJobId = stringValue(row, "providerJobId");
         const jobId = stringValue(row, "jobId");
         const provider = stringValue(row, "provider");
+        if (!provider) return [];
         const operationKey = stringValue(row, "operationKey");
         const deadline = dateValue(row, "providerDeadlineAt");
         const pollerLeaseTokenHash = stringValue(row, "pollerLeaseTokenHash");
