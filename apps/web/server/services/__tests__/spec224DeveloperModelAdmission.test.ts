@@ -52,6 +52,24 @@ describe("SPEC-224 Developer model admission contract adapter", () => {
     expect(repository.markCodexModelCallDispatching).not.toHaveBeenCalled();
   });
 
+  it("persists provider capacity waiting separately and keeps dispatched unknown usage charged", async () => {
+    const { repository, reporter, transport } = setup();
+    const admitted = await transport.reserve(call);
+    const op = operationKey("job-1", call.runId, call.modelCallId);
+    expect(admitted.kind).toBe("reserved");
+    await transport.dispatching(op);
+    const wait = await transport.providerCapacity(op, { statusCode: 429, retryAfterSeconds: 90 });
+    expect(wait).toMatchObject({ kind: "waiting_capacity", evidence: { statusCode: 429, retryAfterSeconds: 90 } });
+    repository.settleCodexModelCall.mockResolvedValueOnce({ kind: "unknown", operationKey: op, conservativelyChargedTokens: 120 } as any);
+    expect(await transport.settle(op, null)).toMatchObject({ kind: "unknown", conservativelyChargedTokens: 120 });
+    const nextEligibleAt = String(wait.nextEligibleAt);
+    await transport.wait(op, "provider_capacity", nextEligibleAt);
+    expect(reporter.waitForExternal).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      reason: "provider_capacity", resumeAfter: nextEligibleAt,
+      metadata: expect.objectContaining({ reservationState: "unknown_after_dispatch" }),
+    }));
+  });
+
   it("rejects a mismatched run binding before touching the budget repository", async () => {
     const { repository, transport } = setup();
     expect(await transport.reserve({ ...call, runId: "other-run" })).toEqual({ kind: "denied", reason: "run_binding" });
