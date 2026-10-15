@@ -2,6 +2,7 @@
 mod tests {
     use crate::{config::RunnerConfig, workspace_registry};
     use std::fs;
+    use std::sync::{Arc, Barrier};
 
     #[test]
     fn registers_workspace_without_serializing_local_path() {
@@ -32,6 +33,44 @@ mod tests {
                 .unwrap()
                 .is_dir()
         );
+    }
+
+    #[test]
+    fn parallel_workspace_registration_preserves_every_owner() {
+        let temp = tempfile::tempdir().unwrap();
+        let data_root = temp.path().join("runner-data");
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let start = Arc::new(Barrier::new(17));
+        let mut workers = Vec::new();
+        for index in 0..16 {
+            let project = temp.path().join(format!("agent-{index}"));
+            fs::create_dir_all(&project).unwrap();
+            let config = config.clone();
+            let start = Arc::clone(&start);
+            workers.push(std::thread::spawn(move || {
+                start.wait();
+                workspace_registry::register(&config, &project).unwrap()
+            }));
+        }
+        start.wait();
+        let registered = workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap())
+            .collect::<Vec<_>>();
+        let listed = workspace_registry::list(&config).unwrap();
+        let ids = listed
+            .iter()
+            .map(|workspace| workspace.workspace_id.as_str())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(registered.len(), 16);
+        assert_eq!(listed.len(), 16);
+        assert_eq!(ids.len(), 16);
+        for workspace in registered {
+            assert!(workspace_registry::resolve(&config, &workspace.workspace_id).is_ok());
+        }
     }
 
     #[test]
@@ -294,11 +333,12 @@ mod tests {
     }
 }
 use crate::config::RunnerConfig;
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::borrow::Cow;
 use std::ffi::OsStr;
-use std::fs;
+use std::fs::{self, File, OpenOptions};
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
 #[cfg(windows)]
@@ -613,6 +653,7 @@ fn valid_git_branch(value: &str) -> bool {
 }
 
 pub fn register(config: &RunnerConfig, path: &Path) -> Result<RegisteredWorkspace, String> {
+    let _registry_lock = lock_registry(config)?;
     let canonical_path = path
         .canonicalize()
         .map_err(|_| "RUNNER_WORKSPACE_PATH_NOT_FOUND".to_string())?;
@@ -678,6 +719,7 @@ pub fn bind_identity(
     project_id: Option<&str>,
     repository_id: Option<&str>,
 ) -> Result<RegisteredWorkspace, String> {
+    let _registry_lock = lock_registry(config)?;
     fn valid_identity(value: &str) -> bool {
         !value.is_empty()
             && value.len() <= 200
@@ -713,6 +755,7 @@ pub fn bind_identity(
 }
 
 pub fn remove(config: &RunnerConfig, workspace_id: &str) -> Result<bool, String> {
+    let _registry_lock = lock_registry(config)?;
     let mut records = load_records(config)?;
     let original_len = records.len();
     records.retain(|record| record.workspace_id != workspace_id);
@@ -761,6 +804,35 @@ fn load_records(config: &RunnerConfig) -> Result<Vec<WorkspaceRecord>, String> {
         }
     }
     Ok(records)
+}
+
+fn lock_registry(config: &RunnerConfig) -> Result<File, String> {
+    let path = registry_file(config);
+    let parent = path
+        .parent()
+        .ok_or_else(|| "RUNNER_WORKSPACE_REGISTRY_PATH_INVALID".to_string())?;
+    fs::create_dir_all(parent).map_err(|_| "RUNNER_WORKSPACE_REGISTRY_WRITE_FAILED")?;
+    set_private_directory_permissions(parent)?;
+    let lock_path = parent.join("workspace_registry.lock");
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    }
+    let file = options
+        .open(lock_path)
+        .map_err(|_| "RUNNER_WORKSPACE_REGISTRY_LOCK_FAILED")?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        file.set_permissions(fs::Permissions::from_mode(0o600))
+            .map_err(|_| "RUNNER_WORKSPACE_REGISTRY_PERMISSIONS_FAILED")?;
+    }
+    file.lock_exclusive()
+        .map_err(|_| "RUNNER_WORKSPACE_REGISTRY_LOCK_FAILED")?;
+    Ok(file)
 }
 
 fn save_records(config: &RunnerConfig, records: &[WorkspaceRecord]) -> Result<(), String> {

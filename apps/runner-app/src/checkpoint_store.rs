@@ -390,4 +390,26 @@ mod tests {
             Some("RUNNER_CHECKPOINT_STORE_UNSAFE_ROOT")
         );
     }
+
+    #[test]
+    fn checkpoint_store_rejects_quota_exhaustion_before_write() {
+        let root = tempfile::tempdir().unwrap();
+        assert_eq!(
+            ensure_capacity(root.path(), MAX_STORE_BYTES + 1, true).unwrap_err(),
+            "RUNNER_CHECKPOINT_STORE_QUOTA_EXCEEDED"
+        );
+        assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn checkpoint_store_rejects_checkpoint_count_quota() {
+        let root = tempfile::tempdir().unwrap();
+        for index in 0..MAX_CHECKPOINTS {
+            fs::write(root.path().join(format!("{index}.manifest")), b"{}").unwrap();
+        }
+        assert_eq!(
+            ensure_capacity(root.path(), 0, true).unwrap_err(),
+            "RUNNER_CHECKPOINT_STORE_QUOTA_EXCEEDED"
+        );
+    }
 }

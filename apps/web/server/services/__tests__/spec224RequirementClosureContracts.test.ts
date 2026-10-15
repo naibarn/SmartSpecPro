@@ -189,6 +189,42 @@ describe("Spec 224 requirement closure compiler", () => {
     expect(graph.admissionGaps).toContain("WORK_PACKAGE_OWNER_MISSING");
   });
 
+  it("preserves both parallel candidates and blocks same-path writers without silent overwrite", () => {
+    const first = requirement(563, "Implement first parallel candidate");
+    const second = requirement(564, "Implement second parallel candidate");
+    const graph = compileRequirementClosureGraph({
+      ...baseInput,
+      requirements: [first, second],
+      planSections: [
+        { id: "section:first", requirementIds: [first.id] },
+        { id: "section:second", requirementIds: [second.id] },
+      ],
+      workPackages: [
+        {
+          id: "wp:first",
+          planSectionId: "section:first",
+          requirementIds: [first.id],
+          dependsOn: [],
+          workspaceRef: "workspace:shared",
+          allowedWriteSet: ["apps/web/server/shared.ts"],
+        },
+        {
+          id: "wp:second",
+          planSectionId: "section:second",
+          requirementIds: [second.id],
+          dependsOn: [],
+          workspaceRef: "workspace:shared",
+          allowedWriteSet: ["apps/web/server/shared.ts"],
+        },
+      ],
+    });
+
+    expect(graph.workPackages.map(item => item.id)).toEqual(["wp:first", "wp:second"]);
+    expect(graph.workPackages[0]?.admissionGaps).toContain("WRITE_SET_OVERLAP:wp:second");
+    expect(graph.workPackages[1]?.admissionGaps).toContain("WRITE_SET_OVERLAP:wp:first");
+    expect(graph.requirements.map(item => item.workPackageIds)).toEqual([["wp:first"], ["wp:second"]]);
+  });
+
   it("derives the changed-path set from complete manifests and fails closed on omitted paths", () => {
     const specPath = "specs/feature/224/spec.md";
     const baselineFiles = [
