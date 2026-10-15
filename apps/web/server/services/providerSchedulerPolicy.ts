@@ -156,8 +156,8 @@ export type FairnessCandidate = {
   createdAt: Date;
 };
 
-export type FairnessSelection = {
-  selected: FairnessCandidate[];
+export type FairnessSelection<T extends FairnessCandidate = FairnessCandidate> = {
+  selected: T[];
   sameUserFallbackUsed: boolean;
 };
 
@@ -166,14 +166,14 @@ export type FairnessSelection = {
  * apply the same ordering while locking rows; this pure function is the
  * contract test and avoids hiding fairness in process memory.
  */
-export function selectFairProviderCandidates(input: {
-  candidates: FairnessCandidate[];
+export function selectFairProviderCandidates<T extends FairnessCandidate>(input: {
+  candidates: T[];
   now?: Date;
   capacity: number;
   competitorExists: boolean;
   lastSelectedUserKey?: string;
   fairnessCooldownMs?: number;
-}): FairnessSelection {
+}): FairnessSelection<T> {
   const now = input.now ?? new Date();
   const capacity = Math.max(0, Math.trunc(input.capacity));
   const eligible = input.candidates
@@ -187,7 +187,7 @@ export function selectFairProviderCandidates(input: {
     );
   if (capacity === 0 || eligible.length === 0) return { selected: [], sameUserFallbackUsed: false };
 
-  const selected: FairnessCandidate[] = [];
+  const selected: T[] = [];
   const usedUsers = new Set<string>();
   const cooldownMs = Math.min(15_000, Math.max(0, input.fairnessCooldownMs ?? 15_000));
   const preferred = input.lastSelectedUserKey;

@@ -120,7 +120,11 @@ export function createSpec224DeveloperModelAdmissionTransport(input: {
         operationKey,
         reason,
         resumeAfter: nextEligibleAt,
-        metadata: { schemaVersion: "spec224.developer-model-wait.v1", runId: input.runId, reservationState: "not_dispatched" },
+        metadata: {
+          schemaVersion: "spec224.developer-model-wait.v1",
+          runId: input.runId,
+          reservationState: operation.dispatched ? "unknown_after_dispatch" : reason === "budget" ? "not_reserved" : "reserved_not_dispatched",
+        },
       });
       operations.delete(operationKey);
     },

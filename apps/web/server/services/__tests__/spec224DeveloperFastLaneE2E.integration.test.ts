@@ -7,7 +7,13 @@ import { createSpec277DisposablePostgres } from "./support/spec277DisposablePost
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
 
 describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () => {
-  const priorEnv = { DATABASE_URL: process.env.DATABASE_URL, PGHOST: process.env.PGHOST, PGPORT: process.env.PGPORT, PGUSER: process.env.PGUSER, PGPASSWORD: process.env.PGPASSWORD };
+  const priorEnv = {
+    DATABASE_URL: process.env.DATABASE_URL, PGHOST: process.env.PGHOST, PGPORT: process.env.PGPORT, PGUSER: process.env.PGUSER, PGPASSWORD: process.env.PGPASSWORD,
+    SPEC224_CODEX_TOKEN_WINDOW_SECONDS: process.env.SPEC224_CODEX_TOKEN_WINDOW_SECONDS,
+    SPEC224_CODEX_MAX_TOKENS_PER_WINDOW: process.env.SPEC224_CODEX_MAX_TOKENS_PER_WINDOW,
+    SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER: process.env.SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER,
+    SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN: process.env.SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN,
+  };
   let fixture: Awaited<ReturnType<typeof createSpec277DisposablePostgres>>;
   let sql: postgres.Sql;
   let closeDb: typeof import("../../db").closeDb;
@@ -39,7 +45,6 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     await fixture?.assertOwned();
     await fixture?.close();
     for (const [key, value] of Object.entries(priorEnv)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
-    for (const key of ["SPEC224_CODEX_TOKEN_WINDOW_SECONDS", "SPEC224_CODEX_MAX_TOKENS_PER_WINDOW", "SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER", "SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN"]) delete process.env[key];
   });
 
   it("creates, claims, dispatches a Python Codex model call, settles usage, and completes the canonical Job", async () => {
