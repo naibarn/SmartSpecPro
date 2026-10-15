@@ -1,0 +1,1916 @@
+{
+  "source_sha": "aae75ee4a18574fa67421a7688f28f7ce8adc715",
+  "source": "PR #403 CI run 37897633316 plus pnpm audit --prod --json at exact current origin/main package manifests/lockfile",
+  "audit_summary": {
+    "info": 0,
+    "low": 9,
+    "moderate": 37,
+    "high": 38,
+    "critical": 1
+  },
+  "advisory_count": 85,
+  "package_count": 28,
+  "advisories": [
+    {
+      "advisory_id": "GHSA-jqcg-44mw-7w3h",
+      "npm_id": null,
+      "package": "proxy-addr",
+      "version": "2.0.7",
+      "severity": "critical",
+      "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+      "affected": ">=1.1.0 <2.0.8",
+      "patched": ">=2.0.8",
+      "recommendation": "Upgrade to version 2.0.8 or later",
+      "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+      "cves": [
+        "CVE-2026-90711"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > swagger-ui-express@5.0.1(express@4.22.2) > express@4.22.2 > proxy-addr@2.0.7"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-m9gg-hp2v-232j",
+      "npm_id": null,
+      "package": "@grpc/grpc-js",
+      "version": "1.14.4",
+      "severity": "high",
+      "title": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized",
+      "affected": ">=1.14.0 <1.14.5",
+      "patched": ">=1.14.5",
+      "recommendation": "Upgrade to version 1.14.5 or later",
+      "url": "https://github.com/advisories/GHSA-m9gg-hp2v-232j",
+      "cves": [
+        "CVE-2026-101916"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > dockerode@5.0.1 > @grpc/grpc-js@1.14.4"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-j95f-988m-3j2f",
+      "npm_id": null,
+      "package": "@tiptap/core",
+      "version": "3.27.3",
+      "severity": "high",
+      "title": "Tiptap: Quadratic ReDoS in block and inline Markdown attribute parsing",
+      "affected": ">=3.7.0 <3.30.5",
+      "patched": ">=3.30.5",
+      "recommendation": "Upgrade to version 3.30.5 or later",
+      "url": "https://github.com/advisories/GHSA-j95f-988m-3j2f",
+      "cves": [],
+      "paths_count_in_lock": 25,
+      "paths_sample": [
+        "apps/web > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/extension-image@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/extension-table-row@3.27.3(@tiptap/extension-table@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)) > @tiptap/extension-table@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/extension-bubble-menu@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/extension-floating-menu@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-blockquote@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-bold@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-code-block@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-3pq3-5fj3-cg6v",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: HTTP/2 adapter bypasses configured DNS lookup and proxy controls",
+      "affected": ">=1.13.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-3pq3-5fj3-cg6v",
+      "cves": [
+        "CVE-2026-101898"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-542g-h47m-68v8",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: Denial of Service via Unhandled 'error' Event in HTTP/2 ClientHttp2Session Initialization",
+      "affected": ">=1.13.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-542g-h47m-68v8",
+      "cves": [
+        "CVE-2026-101901"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-c29m-xwm3-cm6r",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: ReDoS in fromDataURI data: URL parser freezes the Node event loop (DoS)",
+      "affected": ">=1.16.1 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-c29m-xwm3-cm6r",
+      "cves": [
+        "CVE-2026-101903"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-m8m8-qj5v-23w3",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: Node HTTP adapter prototype-pollution gadget allows request socket hijack via inherited createConnection",
+      "affected": ">=1.15.2 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-m8m8-qj5v-23w3",
+      "cves": [
+        "CVE-2026-101905"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-mghh-pgcx-3jjj",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: ReDoS (O(N\u00b2)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
+      "affected": ">=1.15.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-mghh-pgcx-3jjj",
+      "cves": [
+        "CVE-2026-101906"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-r4gj-5m52-g5wh",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: maxRedirects: 0 is not enforced by the fetch adapter, allowing redirect-based SSRF",
+      "affected": ">=1.17.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-r4gj-5m52-g5wh",
+      "cves": [
+        "CVE-2026-101907"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-x97p-jq2g-jp4f",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "high",
+      "title": "Axios: Prototype Pollution Gadget in axios toFormData Options",
+      "affected": ">=1.15.1 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-x97p-jq2g-jp4f",
+      "cves": [
+        "CVE-2026-101909"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-6j4f-fj2g-mc7p",
+      "npm_id": null,
+      "package": "brace-expansion",
+      "version": "2.1.2",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "affected": ">=2.0.0 <2.1.5",
+      "patched": ">=2.1.5",
+      "recommendation": "Upgrade to version 2.1.5 or later",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+      "cves": [
+        "CVE-2026-102276"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > glob@10.5.0 > minimatch@9.0.9 > brace-expansion@2.1.2"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-mh99-v99m-4gvg",
+      "npm_id": null,
+      "package": "brace-expansion",
+      "version": "2.1.2",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+      "affected": ">=2.0.0 <2.1.3",
+      "patched": ">=2.1.3",
+      "recommendation": "Upgrade to version 2.1.3 or later",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "cves": [
+        "CVE-2026-14257"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > glob@10.5.0 > minimatch@9.0.9 > brace-expansion@2.1.2"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-qhr7-859c-m2p7",
+      "npm_id": null,
+      "package": "brace-expansion",
+      "version": "2.1.2",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "affected": ">=2.0.0 <2.1.6",
+      "patched": ">=2.1.6",
+      "recommendation": "Upgrade to version 2.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+      "cves": [
+        "CVE-2026-102278"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > glob@10.5.0 > minimatch@9.0.9 > brace-expansion@2.1.2"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-rgw5-rvv9-x895",
+      "npm_id": null,
+      "package": "brace-expansion",
+      "version": "2.1.2",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+      "affected": ">=2.0.0 <2.1.4",
+      "patched": ">=2.1.4",
+      "recommendation": "Upgrade to version 2.1.4 or later",
+      "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+      "cves": [
+        "CVE-2026-69152"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > glob@10.5.0 > minimatch@9.0.9 > brace-expansion@2.1.2"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-vfj7-8cjw-p6xm",
+      "npm_id": null,
+      "package": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+      "affected": "<=3.0.3",
+      "patched": "<0.0.0",
+      "recommendation": "None",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "cves": [
+        "CVE-2026-93687"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > unplugin@1.0.1 > chokidar@3.6.0 > braces@3.0.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-73wf-gq98-2v4g",
+      "npm_id": null,
+      "package": "browserslist",
+      "version": "4.28.5",
+      "severity": "high",
+      "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "affected": "<=4.28.6",
+      "patched": ">=4.28.7",
+      "recommendation": "Upgrade to version 4.28.7 or later",
+      "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+      "cves": [
+        "CVE-2026-73088"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16) > browserslist@4.28.5",
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > @babel/core@7.29.7 > @babel/helper-compilation-targets@7.29.7 > browserslist@4.28.5",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > browserslist@4.28.5"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-c83g-rgw3-j3cx",
+      "npm_id": null,
+      "package": "browserslist",
+      "version": "4.28.5",
+      "severity": "high",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "affected": "<=4.28.6",
+      "patched": ">=4.28.7",
+      "recommendation": "Upgrade to version 4.28.7 or later",
+      "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+      "cves": [
+        "CVE-2026-73089"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16) > browserslist@4.28.5",
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > @babel/core@7.29.7 > @babel/helper-compilation-targets@7.29.7 > browserslist@4.28.5",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > browserslist@4.28.5"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-5jgf-p345-68v8",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references",
+      "affected": ">=3.1.3 <3.1.6",
+      "patched": ">=3.1.6",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-5jgf-p345-68v8",
+      "cves": [
+        "CVE-2026-75931"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-7p8r-x3mc-p8w7",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via backslash authority introducer",
+      "affected": ">=3.0.0 <3.1.5",
+      "patched": ">=3.1.5",
+      "recommendation": "Upgrade to version 3.1.5 or later",
+      "url": "https://github.com/advisories/GHSA-7p8r-x3mc-p8w7",
+      "cves": [
+        "CVE-2026-18446"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-f65p-4m7j-42xc",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+      "affected": ">=3.0.0 <3.1.6",
+      "patched": ">=3.1.6",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-f65p-4m7j-42xc",
+      "cves": [
+        "CVE-2026-75975"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-fph4-wmhf-6fwf",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding",
+      "affected": ">=3.1.2 <3.1.6",
+      "patched": ">=3.1.6",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-fph4-wmhf-6fwf",
+      "cves": [
+        "CVE-2026-75899"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-jqff-g426-hqxp",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+      "affected": ">=3.0.0 <3.1.6",
+      "patched": ">=3.1.6",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-jqff-g426-hqxp",
+      "cves": [
+        "CVE-2026-76172"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-qw65-cvwx-89v3",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to authority injection via an unvalidated port in serialize",
+      "affected": ">=3.0.0 <3.1.7",
+      "patched": ">=3.1.7",
+      "recommendation": "Upgrade to version 3.1.7 or later",
+      "url": "https://github.com/advisories/GHSA-qw65-cvwx-89v3",
+      "cves": [
+        "CVE-2026-84292"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-v2hh-gcrm-f6hx",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
+      "affected": ">=3.0.0 <=3.1.3",
+      "patched": ">=3.1.4",
+      "recommendation": "Upgrade to version 3.1.4 or later",
+      "url": "https://github.com/advisories/GHSA-v2hh-gcrm-f6hx",
+      "cves": [
+        "CVE-2026-16221"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-2883-xcg3-v3hh",
+      "npm_id": null,
+      "package": "js-yaml",
+      "version": "4.3.0",
+      "severity": "high",
+      "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+      "affected": ">=4.0.0 <4.3.2",
+      "patched": ">=4.3.2",
+      "recommendation": "Upgrade to version 4.3.2 or later",
+      "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+      "cves": [
+        "CVE-2026-84375"
+      ],
+      "paths_count_in_lock": 4,
+      "paths_sample": [
+        "apps/web > @smartspec/skills@file:packages/skills > js-yaml@4.3.0",
+        "apps/web > js-yaml@4.3.0",
+        "packages/skills > js-yaml@4.3.0",
+        "packages/spaas-standard > js-yaml@4.3.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-5p4m-2wfm-xmqj",
+      "npm_id": null,
+      "package": "js-yaml",
+      "version": "4.3.0",
+      "severity": "high",
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
+      "affected": ">=4.0.0 <4.3.1",
+      "patched": ">=4.3.1",
+      "recommendation": "Upgrade to version 4.3.1 or later",
+      "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+      "cves": [],
+      "paths_count_in_lock": 4,
+      "paths_sample": [
+        "apps/web > @smartspec/skills@file:packages/skills > js-yaml@4.3.0",
+        "apps/web > js-yaml@4.3.0",
+        "packages/skills > js-yaml@4.3.0",
+        "packages/spaas-standard > js-yaml@4.3.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-535w-7cp7-47q4",
+      "npm_id": null,
+      "package": "multer",
+      "version": "2.2.0",
+      "severity": "high",
+      "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+      "affected": "<2.3.0",
+      "patched": ">=2.3.0",
+      "recommendation": "Upgrade to version 2.3.0 or later",
+      "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+      "cves": [
+        "CVE-2026-82333"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > multer@2.2.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-qfvm-cv95-jqjf",
+      "npm_id": null,
+      "package": "multer",
+      "version": "2.2.0",
+      "severity": "high",
+      "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+      "affected": "=2.2.0",
+      "patched": ">=2.3.0",
+      "recommendation": "Upgrade to version 2.3.0 or later",
+      "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+      "cves": [
+        "CVE-2026-77037"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > multer@2.2.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-wc9g-mqfw-jrwm",
+      "npm_id": null,
+      "package": "multer",
+      "version": "2.2.0",
+      "severity": "high",
+      "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+      "affected": "<2.3.0",
+      "patched": ">=2.3.0",
+      "recommendation": "Upgrade to version 2.3.0 or later",
+      "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+      "cves": [
+        "CVE-2026-77078"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > multer@2.2.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-28wg-ghj8-5hjv",
+      "npm_id": null,
+      "package": "nanoid",
+      "version": "3.3.15",
+      "severity": "high",
+      "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "affected": "<3.3.16",
+      "patched": ">=3.3.16",
+      "recommendation": "Upgrade to version 3.3.16 or later",
+      "url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv",
+      "cves": [
+        "CVE-2026-67214"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/extension > vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.0) > postcss@8.5.16 > nanoid@3.3.15",
+        "apps/web > sanitize-html@2.17.6 > postcss@8.5.16 > nanoid@3.3.15",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > postcss-modules-values@4.0.0(postcss@8.5.16) > postcss@8.5.16 > nanoid@3.3.15"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-2v37-7h3g-55p8",
+      "npm_id": null,
+      "package": "nanoid",
+      "version": "3.3.15",
+      "severity": "high",
+      "title": "nanoid: custom generators can loop indefinitely when size is zero",
+      "affected": "<3.3.18",
+      "patched": ">=3.3.18",
+      "recommendation": "Upgrade to version 3.3.18 or later",
+      "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8",
+      "cves": [
+        "CVE-2026-67213"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/extension > vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.0) > postcss@8.5.16 > nanoid@3.3.15",
+        "apps/web > sanitize-html@2.17.6 > postcss@8.5.16 > nanoid@3.3.15",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > postcss-modules-values@4.0.0(postcss@8.5.16) > postcss@8.5.16 > nanoid@3.3.15"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-prgh-xp8r-p3m5",
+      "npm_id": null,
+      "package": "nodemailer",
+      "version": "9.1.1",
+      "severity": "high",
+      "title": "Nodemailer addressparser: O(n^2) on comment-joined addresses enables a remote DoS (reachable via mailparser)",
+      "affected": ">=9.1.0 <=10.0.4",
+      "patched": ">=10.0.5",
+      "recommendation": "Upgrade to version 10.0.5 or later",
+      "url": "https://github.com/advisories/GHSA-prgh-xp8r-p3m5",
+      "cves": [
+        "CVE-2026-90776"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > nodemailer@9.1.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-v53p-9fqp-m79j",
+      "npm_id": null,
+      "package": "nodemailer",
+      "version": "9.1.1",
+      "severity": "high",
+      "title": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+      "affected": "<=10.0.5",
+      "patched": ">=10.0.6",
+      "recommendation": "Upgrade to version 10.0.6 or later",
+      "url": "https://github.com/advisories/GHSA-v53p-9fqp-m79j",
+      "cves": [],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > nodemailer@9.1.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-r28c-9q8g-f849",
+      "npm_id": null,
+      "package": "postcss",
+      "version": "8.5.16",
+      "severity": "high",
+      "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "affected": "<=8.5.17",
+      "patched": ">=8.5.18",
+      "recommendation": "Upgrade to version 8.5.18 or later",
+      "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+      "cves": [
+        "CVE-2026-73646"
+      ],
+      "paths_count_in_lock": 20,
+      "paths_sample": [
+        "apps/extension > vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.0) > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > @hyperframes/core@0.7.111 > @hyperframes/lint@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > @hyperframes/core@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-extract-imports@3.1.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-local-by-default@4.2.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-scope@3.2.1(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-values@4.0.0(postcss@8.5.16) > icss-utils@5.1.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-values@4.0.0(postcss@8.5.16) > postcss@8.5.16"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-c8x8-7fp4-3x9w",
+      "npm_id": null,
+      "package": "prosemirror-view",
+      "version": "1.42.1",
+      "severity": "high",
+      "title": "ProseMirror has a XSS vulnerability in prosemirror-view's paste handling",
+      "affected": "<1.42.3",
+      "patched": ">=1.42.3",
+      "recommendation": "Upgrade to version 1.42.3 or later",
+      "url": "https://github.com/advisories/GHSA-c8x8-7fp4-3x9w",
+      "cves": [
+        "CVE-2026-104847"
+      ],
+      "paths_count_in_lock": 6,
+      "paths_sample": [
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-dropcursor@1.8.3 > prosemirror-view@1.42.1",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-gapcursor@1.4.1 > prosemirror-view@1.42.1",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-history@1.5.0 > prosemirror-view@1.42.1",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-tables@1.8.5 > prosemirror-state@1.4.4 > prosemirror-view@1.42.1",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-tables@1.8.5 > prosemirror-view@1.42.1",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3) > @tiptap/pm@3.27.3 > prosemirror-view@1.42.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-wq5f-xc86-pv6w",
+      "npm_id": null,
+      "package": "sharp",
+      "version": "0.35.4",
+      "severity": "high",
+      "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+      "affected": "<0.35.5",
+      "patched": ">=0.35.5",
+      "recommendation": "Upgrade to version 0.35.5 or later",
+      "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+      "cves": [],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        ". > sharp@0.35.4(@types/node@24.13.3)",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > sharp@0.35.4(@types/node@24.13.3)",
+        "apps/web > sharp@0.35.4(@types/node@24.13.3)"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-68fv-2mgg-jv7q",
+      "npm_id": null,
+      "package": "source-map-js",
+      "version": "1.2.1",
+      "severity": "high",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "affected": ">=1.0.0 <1.2.2",
+      "patched": ">=1.2.2",
+      "recommendation": "Upgrade to version 1.2.2 or later",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "cves": [
+        "CVE-2026-93749"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/extension > vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.0) > postcss@8.5.16 > source-map-js@1.2.1",
+        "apps/web > sanitize-html@2.17.6 > postcss@8.5.16 > source-map-js@1.2.1",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > postcss-modules-values@4.0.0(postcss@8.5.16) > postcss@8.5.16 > source-map-js@1.2.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-rfgv-xxqx-mfg5",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "high",
+      "title": "undici vulnerable to Denial of Service via unrequested WebSocket subprotocol",
+      "affected": ">=6.7.0 <6.28.1",
+      "patched": ">=6.28.1",
+      "recommendation": "Upgrade to version 6.28.1 or later",
+      "url": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+      "cves": [
+        "CVE-2026-19534"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-vxpw-j846-p89q",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "high",
+      "title": "undici WebSocket client vulnerable to denial of service via fragment count bypass",
+      "affected": "<6.27.0",
+      "patched": ">=6.27.0",
+      "recommendation": "Upgrade to version 6.27.0 or later",
+      "url": "https://github.com/advisories/GHSA-vxpw-j846-p89q",
+      "cves": [
+        "CVE-2026-12151"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-cp6q-959q-f8rh",
+      "npm_id": null,
+      "package": "@tiptap/core",
+      "version": "3.27.3",
+      "severity": "moderate",
+      "title": "Tiptap: mergeAttributes() turns an own __proto__ key into inherited executable DOM attributes",
+      "affected": ">=2.0.0-alpha.0 <3.30.4",
+      "patched": ">=3.30.4",
+      "recommendation": "Upgrade to version 3.30.4 or later",
+      "url": "https://github.com/advisories/GHSA-cp6q-959q-f8rh",
+      "cves": [],
+      "paths_count_in_lock": 25,
+      "paths_sample": [
+        "apps/web > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/extension-image@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/extension-table-row@3.27.3(@tiptap/extension-table@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)) > @tiptap/extension-table@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/extension-bubble-menu@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/react@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > @tiptap/extension-floating-menu@3.27.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-blockquote@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-bold@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)",
+        "apps/web > @tiptap/starter-kit@3.27.3 > @tiptap/extension-code-block@3.27.3(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3) > @tiptap/core@3.27.3(@tiptap/pm@3.27.3)"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-44g4-m2mj-wpvx",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "moderate",
+      "title": "Axios: CIDR-form NO_PROXY entries are ignored, causing proxy exclusion bypass for internal IP ranges",
+      "affected": ">=1.15.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-44g4-m2mj-wpvx",
+      "cves": [
+        "CVE-2026-101899"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-4hqw-qxg8-jxx2",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "moderate",
+      "title": "Axios: Fetch Adapter Header Injection via Inherited FormData getHeaders",
+      "affected": ">=1.12.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-4hqw-qxg8-jxx2",
+      "cves": [
+        "CVE-2026-101900"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-9fr6-4gfg-395g",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "moderate",
+      "title": "Axios: Prototype-Pollution Gadget in the Default Instance Allows Inherited Object.prototype.method to Override HTTP Method",
+      "affected": ">=1.0.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-9fr6-4gfg-395g",
+      "cves": [
+        "CVE-2026-101902"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-j8rh-479h-cp32",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "moderate",
+      "title": "Axios: Header Injection via Inherited headers After Minimal Interceptor",
+      "affected": ">=1.0.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-j8rh-479h-cp32",
+      "cves": [
+        "CVE-2026-101904"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-vh66-26gq-q6x8",
+      "npm_id": null,
+      "package": "axios",
+      "version": "1.18.1",
+      "severity": "moderate",
+      "title": "Axios: Prototype pollution gadget in fetch adapter can alter outbound requests",
+      "affected": ">=1.7.0 <1.20.0",
+      "patched": ">=1.20.0",
+      "recommendation": "Upgrade to version 1.20.0 or later",
+      "url": "https://github.com/advisories/GHSA-vh66-26gq-q6x8",
+      "cves": [
+        "CVE-2026-101908"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > axios@1.18.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-w5vr-8v7q-w6rv",
+      "npm_id": null,
+      "package": "baseline-browser-mapping",
+      "version": "2.10.43",
+      "severity": "moderate",
+      "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+      "affected": ">=2.0.0 <2.11.0",
+      "patched": ">=2.11.0",
+      "recommendation": "Upgrade to version 2.11.0 or later",
+      "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+      "cves": [
+        "CVE-2026-45819"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > @babel/core@7.29.7 > @babel/helper-compilation-targets@7.29.7 > browserslist@4.28.5 > baseline-browser-mapping@2.10.43",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > browserslist@4.28.5 > baseline-browser-mapping@2.10.43"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-q2hr-2g5m-vwhr",
+      "npm_id": null,
+      "package": "brace-expansion",
+      "version": "2.1.2",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "affected": ">=2.0.0 <2.1.7",
+      "patched": ">=2.1.7",
+      "recommendation": "Upgrade to version 2.1.7 or later",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+      "cves": [
+        "CVE-2026-102277"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > @sentry/vite-plugin@4.9.1 > @sentry/bundler-plugin-core@4.9.1 > glob@10.5.0 > minimatch@9.0.9 > brace-expansion@2.1.2"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-55q2-fjhq-7xh7",
+      "npm_id": null,
+      "package": "dompurify",
+      "version": "3.4.12",
+      "severity": "moderate",
+      "title": "DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS",
+      "affected": "<=3.4.12",
+      "patched": ">=3.4.13",
+      "recommendation": "Upgrade to version 3.4.13 or later",
+      "url": "https://github.com/advisories/GHSA-55q2-fjhq-7xh7",
+      "cves": [],
+      "paths_count_in_lock": 6,
+      "paths_sample": [
+        ". > posthog-js@1.399.2 > dompurify@3.4.12",
+        "apps/web > @types/dompurify@3.2.0 > dompurify@3.4.12",
+        "apps/web > dompurify@3.4.12",
+        "apps/web > posthog-js@1.399.2 > dompurify@3.4.12",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0 > dompurify@3.4.12",
+        "packages/agent-experience > @runtypelabs/persona@4.4.0 > dompurify@3.4.12"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-hrr3-gc8f-f4qj",
+      "npm_id": null,
+      "package": "fast-uri",
+      "version": "3.1.3",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets",
+      "affected": ">=3.0.0 <3.1.8",
+      "patched": ">=3.1.8",
+      "recommendation": "Upgrade to version 3.1.8 or later",
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+      "cves": [
+        "CVE-2026-86472"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > ajv@8.20.0 > fast-uri@3.1.3",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0) > terser-webpack-plugin@5.6.1(esbuild@0.28.1)(lightningcss@1.32.0)(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > schema-utils@4.3.3 > ajv-keywords@5.1.0(ajv@8.20.0) > ajv@8.20.0 > fast-uri@3.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-px8p-9vwx-vf98",
+      "npm_id": null,
+      "package": "fflate",
+      "version": "0.4.8",
+      "severity": "moderate",
+      "title": "fflate unzipSync can enter an infinite loop when parsing malformed ZIP64 archives",
+      "affected": ">=0.4.5 <0.4.9",
+      "patched": ">=0.4.9",
+      "recommendation": "Upgrade to version 0.4.9 or later",
+      "url": "https://github.com/advisories/GHSA-px8p-9vwx-vf98",
+      "cves": [
+        "CVE-2026-45820"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        ". > posthog-js@1.399.2 > fflate@0.4.8",
+        "apps/web > posthog-js@1.399.2 > fflate@0.4.8"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-54fx-42gc-7vw4",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: Algorithmic Complexity DoS in Language Middleware",
+      "affected": ">=4.12.0 <4.12.34",
+      "patched": ">=4.12.34",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "url": "https://github.com/advisories/GHSA-54fx-42gc-7vw4",
+      "cves": [
+        "CVE-2026-71848"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-8j4g-w8fx-2239",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
+      "affected": "<4.12.34",
+      "patched": ">=4.12.34",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "url": "https://github.com/advisories/GHSA-8j4g-w8fx-2239",
+      "cves": [
+        "CVE-2026-69207"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-crvj-82cr-hjcx",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
+      "affected": "<4.13.5",
+      "patched": ">=4.13.5",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "url": "https://github.com/advisories/GHSA-crvj-82cr-hjcx",
+      "cves": [
+        "CVE-2026-84363"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-f23p-vx2j-j53r",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
+      "affected": ">=3.8.0 <4.12.34",
+      "patched": ">=4.12.34",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "url": "https://github.com/advisories/GHSA-f23p-vx2j-j53r",
+      "cves": [
+        "CVE-2026-71850"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-g6gw-c38x-mqfc",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
+      "affected": "<4.13.5",
+      "patched": ">=4.13.5",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "url": "https://github.com/advisories/GHSA-g6gw-c38x-mqfc",
+      "cves": [
+        "CVE-2026-84364"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-gqvv-2mrq-wpjv",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
+      "affected": "<4.13.5",
+      "patched": ">=4.13.5",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "url": "https://github.com/advisories/GHSA-gqvv-2mrq-wpjv",
+      "cves": [
+        "CVE-2026-84365"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-hxh3-vqpv-xpqv",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "moderate",
+      "title": "hono/jsx renders plain strings unescaped in boundary components, leading to XSS",
+      "affected": "<4.13.7",
+      "patched": ">=4.13.7",
+      "recommendation": "Upgrade to version 4.13.7 or later",
+      "url": "https://github.com/advisories/GHSA-hxh3-vqpv-xpqv",
+      "cves": [
+        "CVE-2026-93981"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-253c-mchw-3w2r",
+      "npm_id": null,
+      "package": "markdown-it",
+      "version": "14.3.0",
+      "severity": "moderate",
+      "title": "markdown-it linkify: true has two quadratic paths, so a few hundred KB of markdown blocks the event loop for tens of seconds",
+      "affected": "<14.3.1",
+      "patched": ">=14.3.1",
+      "recommendation": "Upgrade to version 14.3.1 or later",
+      "url": "https://github.com/advisories/GHSA-253c-mchw-3w2r",
+      "cves": [],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > markdown-it@14.3.0",
+        "apps/web > tiptap-markdown@0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3)) > prosemirror-markdown@1.13.5 > markdown-it@14.3.0"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-2v8p-3f2j-5mp7",
+      "npm_id": null,
+      "package": "mermaid",
+      "version": "11.16.0",
+      "severity": "moderate",
+      "title": "Mermaid XY Charts are vulnerable to an infinite loop DoS",
+      "affected": ">=11.0.0-alpha.1 <11.16.1",
+      "patched": ">=11.16.1",
+      "recommendation": "Upgrade to version 11.16.1 or later",
+      "url": "https://github.com/advisories/GHSA-2v8p-3f2j-5mp7",
+      "cves": [
+        "CVE-2026-71436"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > mermaid@11.16.0",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-3rrr-jr9j-h3q3",
+      "npm_id": null,
+      "package": "mermaid",
+      "version": "11.16.0",
+      "severity": "moderate",
+      "title": "Mermaid Architecture diagrams are vulnerable to prototype pollution",
+      "affected": ">=11.5.0 <11.16.1",
+      "patched": ">=11.16.1",
+      "recommendation": "Upgrade to version 11.16.1 or later",
+      "url": "https://github.com/advisories/GHSA-3rrr-jr9j-h3q3",
+      "cves": [
+        "CVE-2026-71437"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > mermaid@11.16.0",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-6x64-9x62-f2gx",
+      "npm_id": null,
+      "package": "mermaid",
+      "version": "11.16.0",
+      "severity": "moderate",
+      "title": "Mermaid allows CSS injection applying to sibling elements of the diagram",
+      "affected": ">=11.0.0-alpha.1 <11.16.1",
+      "patched": ">=11.16.1",
+      "recommendation": "Upgrade to version 11.16.1 or later",
+      "url": "https://github.com/advisories/GHSA-6x64-9x62-f2gx",
+      "cves": [
+        "CVE-2026-50159"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > mermaid@11.16.0",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-rhh3-jpg6-66xh",
+      "npm_id": null,
+      "package": "mermaid",
+      "version": "11.16.0",
+      "severity": "moderate",
+      "title": "Mermaid radar diagrams are vulnerable to DoS",
+      "affected": ">=11.6.0 <11.16.1",
+      "patched": ">=11.16.1",
+      "recommendation": "Upgrade to version 11.16.1 or later",
+      "url": "https://github.com/advisories/GHSA-rhh3-jpg6-66xh",
+      "cves": [
+        "CVE-2026-71439"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > mermaid@11.16.0",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-3pph-fpjx-jg34",
+      "npm_id": null,
+      "package": "multer",
+      "version": "2.2.0",
+      "severity": "moderate",
+      "title": "multer vulnerable to Denial of Service via orphaned disk writes on aborted uploads",
+      "affected": ">=2.2.0 <2.4.0",
+      "patched": ">=2.4.0",
+      "recommendation": "Upgrade to version 2.4.0 or later",
+      "url": "https://github.com/advisories/GHSA-3pph-fpjx-jg34",
+      "cves": [
+        "CVE-2026-88932"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > multer@2.2.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-6vj9-mwq6-2f5v",
+      "npm_id": null,
+      "package": "nodemailer",
+      "version": "9.1.1",
+      "severity": "moderate",
+      "title": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+      "affected": ">=5.0.0 <10.0.2",
+      "patched": ">=10.0.2",
+      "recommendation": "Upgrade to version 10.0.2 or later",
+      "url": "https://github.com/advisories/GHSA-6vj9-mwq6-2f5v",
+      "cves": [],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > nodemailer@9.1.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-8vvx-rff5-p5rq",
+      "npm_id": null,
+      "package": "nodemailer",
+      "version": "9.1.1",
+      "severity": "moderate",
+      "title": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+      "affected": "<10.0.2",
+      "patched": ">=10.0.2",
+      "recommendation": "Upgrade to version 10.0.2 or later",
+      "url": "https://github.com/advisories/GHSA-8vvx-rff5-p5rq",
+      "cves": [],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > nodemailer@9.1.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-g57g-f23g-4646",
+      "npm_id": null,
+      "package": "nodemailer",
+      "version": "9.1.1",
+      "severity": "moderate",
+      "title": "Nodemailer: Quoted local-part can produce malformed envelope recipient through RFC 5322 comment parsing",
+      "affected": ">=9.1.0 <10.0.9",
+      "patched": ">=10.0.9",
+      "recommendation": "Upgrade to version 10.0.9 or later",
+      "url": "https://github.com/advisories/GHSA-g57g-f23g-4646",
+      "cves": [],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > nodemailer@9.1.1"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-fxqj-rqcc-2cmp",
+      "npm_id": null,
+      "package": "postcss",
+      "version": "8.5.16",
+      "severity": "moderate",
+      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "affected": "<=8.5.22",
+      "patched": ">=8.5.23",
+      "recommendation": "Upgrade to version 8.5.23 or later",
+      "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+      "cves": [
+        "CVE-2026-69153"
+      ],
+      "paths_count_in_lock": 20,
+      "paths_sample": [
+        "apps/extension > vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.0) > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > @hyperframes/core@0.7.111 > @hyperframes/lint@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > @hyperframes/core@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > postcss@8.5.16",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-extract-imports@3.1.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-local-by-default@4.2.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-scope@3.2.1(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-values@4.0.0(postcss@8.5.16) > icss-utils@5.1.0(postcss@8.5.16) > postcss@8.5.16",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-values@4.0.0(postcss@8.5.16) > postcss@8.5.16"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-rj75-hqrm-r3gf",
+      "npm_id": null,
+      "package": "postcss-selector-parser",
+      "version": "7.1.4",
+      "severity": "moderate",
+      "title": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+      "affected": "<7.1.6",
+      "patched": ">=7.1.6",
+      "recommendation": "Upgrade to version 7.1.6 or later",
+      "url": "https://github.com/advisories/GHSA-rj75-hqrm-r3gf",
+      "cves": [
+        "CVE-2026-104844"
+      ],
+      "paths_count_in_lock": 6,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > @hyperframes/core@0.7.111 > @hyperframes/lint@0.7.111 > postcss-selector-parser@7.1.4",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > postcss-selector-parser@7.1.4",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-local-by-default@4.2.0(postcss@8.5.16) > postcss-selector-parser@7.1.4",
+        "apps/web > @remotion/bundler@4.0.488(@swc/helpers@0.5.23)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)(postcss@8.5.16)) > postcss-modules-scope@3.2.1(postcss@8.5.16) > postcss-selector-parser@7.1.4",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > postcss-modules-local-by-default@4.2.0(postcss@8.5.16) > postcss-selector-parser@7.1.4",
+        "packages/remotion-render > @remotion/bundler@4.0.496(@swc/helpers@0.5.23)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7) > css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.23))(webpack@5.105.0(esbuild@0.28.1)(lightningcss@1.32.0)) > postcss-modules-scope@3.2.1(postcss@8.5.16) > postcss-selector-parser@7.1.4"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-4mjr-xmp4-gh2g",
+      "npm_id": null,
+      "package": "qs",
+      "version": "6.15.3",
+      "severity": "moderate",
+      "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+      "affected": ">=2.2.5 <6.16.0",
+      "patched": ">=6.16.0",
+      "recommendation": "Upgrade to version 6.16.0 or later",
+      "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+      "cves": [
+        "CVE-2026-82417"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/web > stripe@18.5.0(@types/node@24.13.3) > qs@6.15.3",
+        "apps/web > swagger-ui-express@5.0.1(express@4.22.2) > express@4.22.2 > body-parser@1.20.6 > qs@6.15.3",
+        "apps/web > swagger-ui-express@5.0.1(express@4.22.2) > express@4.22.2 > qs@6.15.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-x5fp-wj9c-mxmx",
+      "npm_id": null,
+      "package": "qs",
+      "version": "6.15.3",
+      "severity": "moderate",
+      "title": "qs array-limit bypass via bracket-key comma parsing",
+      "affected": ">=6.14.2 <=6.15.3",
+      "patched": ">=6.16.0",
+      "recommendation": "Upgrade to version 6.16.0 or later",
+      "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx",
+      "cves": [
+        "CVE-2026-82562"
+      ],
+      "paths_count_in_lock": 3,
+      "paths_sample": [
+        "apps/web > stripe@18.5.0(@types/node@24.13.3) > qs@6.15.3",
+        "apps/web > swagger-ui-express@5.0.1(express@4.22.2) > express@4.22.2 > body-parser@1.20.6 > qs@6.15.3",
+        "apps/web > swagger-ui-express@5.0.1(express@4.22.2) > express@4.22.2 > qs@6.15.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-g8qq-57p8-ggw5",
+      "npm_id": null,
+      "package": "sanitize-html",
+      "version": "2.17.6",
+      "severity": "moderate",
+      "title": "ApostropheCMS: Stored XSS via SVG SMIL URI-list scheme-policy bypass",
+      "affected": ">=1.9.0 <=2.17.6",
+      "patched": ">=2.17.7",
+      "recommendation": "Upgrade to version 2.17.7 or later",
+      "url": "https://github.com/advisories/GHSA-g8qq-57p8-ggw5",
+      "cves": [
+        "CVE-2026-84371"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > sanitize-html@2.17.6"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-hp3w-g68c-fv3c",
+      "npm_id": null,
+      "package": "sprintf-js",
+      "version": "1.1.3",
+      "severity": "moderate",
+      "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+      "affected": "<=1.1.3",
+      "patched": "<0.0.0",
+      "recommendation": "None",
+      "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+      "cves": [
+        "CVE-2026-97058"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > onnxruntime-node@1.21.1 > global-agent@3.0.0 > roarr@2.15.4 > sprintf-js@1.1.3"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-8xcm-r25x-g524",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "moderate",
+      "title": "undici vulnerable to downstream response desynchronization via retry interceptor",
+      "affected": "<6.28.0",
+      "patched": ">=6.28.0",
+      "recommendation": "Upgrade to version 6.28.0 or later",
+      "url": "https://github.com/advisories/GHSA-8xcm-r25x-g524",
+      "cves": [
+        "CVE-2026-16728"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-m8rv-5g2x-5cg5",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "moderate",
+      "title": "undici vulnerable to CRLF Injection via blob-like body 'type' property",
+      "affected": "<6.28.0",
+      "patched": ">=6.28.0",
+      "recommendation": "Upgrade to version 6.28.0 or later",
+      "url": "https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+      "cves": [
+        "CVE-2026-15157"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-p88m-4jfj-68fv",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "moderate",
+      "title": "undici vulnerable to HTTP header injection via Set-Cookie percent-decoding",
+      "affected": "<6.27.0",
+      "patched": ">=6.27.0",
+      "recommendation": "Upgrade to version 6.27.0 or later",
+      "url": "https://github.com/advisories/GHSA-p88m-4jfj-68fv",
+      "cves": [
+        "CVE-2026-9679"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-v3r7-h72x-cjcm",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "moderate",
+      "title": "undici vulnerable to cookie attribute injection via unsanitized domain and unparsed setCookie fields",
+      "affected": "<6.28.0",
+      "patched": ">=6.28.0",
+      "recommendation": "Upgrade to version 6.28.0 or later",
+      "url": "https://github.com/advisories/GHSA-v3r7-h72x-cjcm",
+      "cves": [
+        "CVE-2026-16729"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-f596-whhp-79r4",
+      "npm_id": null,
+      "package": "@grpc/grpc-js",
+      "version": "1.14.4",
+      "severity": "low",
+      "title": "@grpc/grpc-js: The server transmits some error messages thrown by method handlers to the client in status messages",
+      "affected": ">=1.14.0 <1.14.5",
+      "patched": ">=1.14.5",
+      "recommendation": "Upgrade to version 1.14.5 or later",
+      "url": "https://github.com/advisories/GHSA-f596-whhp-79r4",
+      "cves": [
+        "CVE-2026-101915"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > dockerode@5.0.1 > @grpc/grpc-js@1.14.4"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-6688-9rhm-gjv2",
+      "npm_id": null,
+      "package": "dompurify",
+      "version": "3.4.12",
+      "severity": "low",
+      "title": "DOMPurify: IN_PLACE returns a force-removed rawtext root whose text carries attacker markup \u2014 pure HTML reparse executes",
+      "affected": "<=3.4.15",
+      "patched": ">=3.4.16",
+      "recommendation": "Upgrade to version 3.4.16 or later",
+      "url": "https://github.com/advisories/GHSA-6688-9rhm-gjv2",
+      "cves": [],
+      "paths_count_in_lock": 6,
+      "paths_sample": [
+        ". > posthog-js@1.399.2 > dompurify@3.4.12",
+        "apps/web > @types/dompurify@3.2.0 > dompurify@3.4.12",
+        "apps/web > dompurify@3.4.12",
+        "apps/web > posthog-js@1.399.2 > dompurify@3.4.12",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0 > dompurify@3.4.12",
+        "packages/agent-experience > @runtypelabs/persona@4.4.0 > dompurify@3.4.12"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-79qm-7rj5-m7r9",
+      "npm_id": null,
+      "package": "hono",
+      "version": "4.12.29",
+      "severity": "low",
+      "title": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
+      "affected": ">=4.7.0 <4.12.34",
+      "patched": ">=4.12.34",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "url": "https://github.com/advisories/GHSA-79qm-7rj5-m7r9",
+      "cves": [
+        "CVE-2026-71849"
+      ],
+      "paths_count_in_lock": 5,
+      "paths_sample": [
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/engine@0.7.111(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > @hyperframes/studio-server@0.7.111 > hono@4.12.29",
+        "apps/web > @hyperframes/producer@0.7.109(yauzl@3.4.0) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > @hono/node-server@2.1.1(hono@4.12.29) > hono@4.12.29",
+        "apps/web > hyperframes@0.7.109(@types/node@24.13.3)(yauzl@3.4.0) > hono@4.12.29"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-238p-pmpm-9mq7",
+      "npm_id": null,
+      "package": "katex",
+      "version": "0.16.47",
+      "severity": "low",
+      "title": "KaTeX: Existing prototype pollution can bypass trust restrictions",
+      "affected": ">=0.11.0 <0.18.2",
+      "patched": ">=0.18.2",
+      "recommendation": "Upgrade to version 0.18.2 or later",
+      "url": "https://github.com/advisories/GHSA-238p-pmpm-9mq7",
+      "cves": [
+        "CVE-2026-103923"
+      ],
+      "paths_count_in_lock": 4,
+      "paths_sample": [
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > katex@0.16.47",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0 > katex@0.16.47",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > rehype-katex@7.0.1 > katex@0.16.47",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > remark-math@6.0.0 > micromark-extension-math@3.1.0 > katex@0.16.47"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-c4c3-pg64-4m4v",
+      "npm_id": null,
+      "package": "mermaid",
+      "version": "11.16.0",
+      "severity": "low",
+      "title": "Mermaid configuration APIs allow prototype pollution",
+      "affected": ">=11.0.0-alpha.1 <11.16.1",
+      "patched": ">=11.16.1",
+      "recommendation": "Upgrade to version 11.16.1 or later",
+      "url": "https://github.com/advisories/GHSA-c4c3-pg64-4m4v",
+      "cves": [
+        "CVE-2026-71438"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > mermaid@11.16.0",
+        "apps/web > streamdown@1.6.11(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.7) > mermaid@11.16.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-qvfw-j98x-7q72",
+      "npm_id": null,
+      "package": "multer",
+      "version": "2.2.0",
+      "severity": "low",
+      "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+      "affected": "<2.3.0",
+      "patched": ">=2.3.0",
+      "recommendation": "Upgrade to version 2.3.0 or later",
+      "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+      "cves": [
+        "CVE-2026-77063"
+      ],
+      "paths_count_in_lock": 1,
+      "paths_sample": [
+        "apps/web > multer@2.2.0"
+      ],
+      "direct_in_manifest": true,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-35p6-xmwp-9g52",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "low",
+      "title": "undici vulnerable to HTTP response queue poisoning via keep-alive socket reuse",
+      "affected": "<6.27.0",
+      "patched": ">=6.27.0",
+      "recommendation": "Upgrade to version 6.27.0 or later",
+      "url": "https://github.com/advisories/GHSA-35p6-xmwp-9g52",
+      "cves": [
+        "CVE-2026-6733"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-g8m3-5g58-fq7m",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "low",
+      "title": "undici vulnerable to Set-Cookie SameSite attribute downgrade via permissive substring matching",
+      "affected": "<6.27.0",
+      "patched": ">=6.27.0",
+      "recommendation": "Upgrade to version 6.27.0 or later",
+      "url": "https://github.com/advisories/GHSA-g8m3-5g58-fq7m",
+      "cves": [
+        "CVE-2026-11525"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    },
+    {
+      "advisory_id": "GHSA-r53p-7pc4-xj5r",
+      "npm_id": null,
+      "package": "undici",
+      "version": "6.24.1",
+      "severity": "low",
+      "title": "undici vulnerable to downstream response splitting via retry interceptor",
+      "affected": "<6.28.1",
+      "patched": ">=6.28.1",
+      "recommendation": "Upgrade to version 6.28.1 or later",
+      "url": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
+      "cves": [
+        "CVE-2026-18540"
+      ],
+      "paths_count_in_lock": 2,
+      "paths_sample": [
+        "apps/web > discord.js@14.26.5 > @discordjs/ws@1.2.3 > @discordjs/rest@2.6.1 > undici@6.24.1",
+        "apps/web > discord.js@14.26.5 > undici@6.24.1"
+      ],
+      "direct_in_manifest": false,
+      "lock_paths_available": true
+    }
+  ]
+}

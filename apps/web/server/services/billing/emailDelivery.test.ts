@@ -35,6 +35,12 @@ vi.mock("./documentAccess", () => ({
   resolveInvoiceDocumentAccess: mockResolveInvoiceDocumentAccess,
 }));
 
+vi.mock("./runtimeConfig", () => ({
+  getBillingRuntimeConfig: vi.fn(async () => ({
+    BILLING_PUBLIC_URL: "https://billing.example.com",
+  })),
+}));
+
 describe("billing email delivery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
