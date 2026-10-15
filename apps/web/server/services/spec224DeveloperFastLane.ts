@@ -6,6 +6,8 @@ import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB, type DeveloperFa
 export { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
 export type { DeveloperFastLaneRequest } from "./spec224DeveloperFastLaneContract";
 
+const DEVELOPER_FAST_LANE_DEADLINE_MS = 7 * 24 * 60 * 60 * 1_000;
+
 function stableHex(material: string): string {
   return createHash("sha256").update(material).digest("hex").slice(0, 32);
 }
@@ -62,7 +64,7 @@ export async function createDeveloperFastLaneJob(input: {
       executionClass: "long",
       priority: 100,
       input: { developerWorkUnit: { contractVersion: DEVELOPER_FAST_LANE_CONTRACT, runId, workerJobId, tenantId: input.tenantId, actorId: input.actorId, request } },
-      retryPolicy: { maxAttempts: 8, baseDelayMs: 2_000, maxDelayMs: 300_000, jitter: "bounded", deadlineMs: 86_400_000, allowedErrorClasses: ["timeout", "unavailable", "retryable"] },
+      retryPolicy: { maxAttempts: 8, baseDelayMs: 2_000, maxDelayMs: 300_000, jitter: "bounded", deadlineMs: DEVELOPER_FAST_LANE_DEADLINE_MS, deadlineMode: "fixed", allowedErrorClasses: ["timeout", "unavailable", "retryable"] },
       timeoutPolicy: { softTimeoutMs: 300_000, hardTimeoutMs: 8 * 60 * 60_000 },
     },
     createOptions: { runtimeType: "node_job_worker", canonicalJobId: workerJobId },

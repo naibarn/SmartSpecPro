@@ -3519,6 +3519,7 @@ export function createJobControlPlane(
           expectedFencingVersion: lease.fencingVersion,
           values: {
             status: "waiting_external",
+            ...(input.reason === "authorization" ? { statusReason: "WAITING_AUTHORIZATION" } : {}),
             leaseOwnerToken: null,
             leaseExpiresAt: null,
             heartbeatAt: new Date(),
@@ -3539,7 +3540,8 @@ export function createJobControlPlane(
         await repo.insertEvent({
           workerJobId: lease.jobId,
           eventType: input.reason === "budget" ? "WAITING_BUDGET" :
-            input.reason === "provider_capacity" ? "WAITING_CAPACITY" : "WAITING_EXTERNAL",
+            input.reason === "provider_capacity" ? "WAITING_CAPACITY" :
+              input.reason === "authorization" ? "WAITING_AUTHORIZATION" : "WAITING_EXTERNAL",
           attemptId: lease.attemptId,
           eventIdempotencyKey: boundedEventKey(
             "waiting-external",

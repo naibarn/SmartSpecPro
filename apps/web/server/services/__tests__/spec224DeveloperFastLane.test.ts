@@ -29,6 +29,11 @@ describe("SPEC-224 authenticated Developer Fast Lane registration", () => {
     expect(defaultJobExecutorRegistry.resolve(DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT)).toBeDefined();
     expect(POSTGRES_NODE_JOB_TYPES.has(DEVELOPER_FAST_LANE_JOB)).toBe(true);
     expect(input.definition.requiredCapabilities).toBeUndefined();
+    expect(input.definition.retryPolicy).toMatchObject({
+      maxAttempts: 8,
+      deadlineMs: 7 * 24 * 60 * 60 * 1_000,
+      deadlineMode: "fixed",
+    });
   });
 
   it("fails invalid WorkUnit paths and budgets before job creation", async () => {
