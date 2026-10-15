@@ -68,14 +68,22 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
         controlPlane: createJobControlPlane(), executorRegistry, runnerId: `spec224-e2e-${randomUUID()}`, adapter: "test",
       });
       expect(result).toMatchObject({ state: "succeeded", jobId: created.jobId });
-      const reservation = await sql`SELECT "reservationStatus", "usageReceiptJson", "requestedModel", "reasoningEffort", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
+      const reservation = await sql`SELECT "reservationStatus", "usageReceiptJson", "modelSelectionJson", "requestedModel", "reasoningEffort", "threadId", "turnId" FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId} AND "reservationKind" = 'model_call'`;
       expect(reservation).toHaveLength(1);
       expect(reservation[0]).toMatchObject({ reservationStatus: "released", requestedModel: "gpt-6-luna", reasoningEffort: "medium", threadId: "mock-thread-e2e", turnId: "mock-turn-e2e" });
-      expect(reservation[0].usageReceiptJson).toMatchObject({ inputTokens: 31, cachedInputTokens: 4, outputTokens: 9 });
+      expect(reservation[0].usageReceiptJson).toMatchObject({ inputTokens: 31, cachedInputTokens: 4, outputTokens: 9, effectiveModel: "gpt-6-luna" });
+      expect(reservation[0].modelSelectionJson).toMatchObject({ requestedModel: "gpt-6-luna", reasoningEffort: "medium" });
       const events = await sql`SELECT "eventType" FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY "createdAt"`;
       const eventTypes = events.map(event => event.eventType);
       expect(eventTypes).toContain("CODEX_MODEL_TURN_RESERVED");
+      expect(eventTypes).toContain("CODEX_MODEL_TURN_DISPATCHING");
+      expect(eventTypes).toContain("CODEX_MODEL_THREAD_CREATED");
+      expect(eventTypes).toContain("CODEX_MODEL_TURN_STARTED");
       expect(eventTypes).toContain("CODEX_MODEL_USAGE_SETTLED");
+      expect(eventTypes.indexOf("CODEX_MODEL_TURN_RESERVED")).toBeLessThan(eventTypes.indexOf("CODEX_MODEL_TURN_DISPATCHING"));
+      expect(eventTypes.indexOf("CODEX_MODEL_TURN_DISPATCHING")).toBeLessThan(eventTypes.indexOf("CODEX_MODEL_THREAD_CREATED"));
+      expect(eventTypes.indexOf("CODEX_MODEL_THREAD_CREATED")).toBeLessThan(eventTypes.indexOf("CODEX_MODEL_TURN_STARTED"));
+      expect(eventTypes.indexOf("CODEX_MODEL_TURN_STARTED")).toBeLessThan(eventTypes.indexOf("CODEX_MODEL_USAGE_SETTLED"));
       expect(eventTypes.at(-1)).toBe("COMPLETED");
       expect(JSON.stringify(reservation[0])).not.toContain("leaseToken");
     } finally {
