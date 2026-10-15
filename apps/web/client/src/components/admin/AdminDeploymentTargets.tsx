@@ -28,6 +28,7 @@ type DeploymentTarget = {
   containerApplicationRef: string | null;
   enabled: boolean;
   provenance: string;
+  runtimePolicy?: string | null;
 };
 
 type TargetFields = {
@@ -91,8 +92,8 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
           saveCredential.mutate({ ...identity, token: token.trim() });
         }}>
           <p>{text(
-            "This token is encrypted and scoped to this tenant, project, and environment. It is never returned to the browser. Use a token from the dedicated non-production Mini-App Cloudflare account.",
-            "Token นี้จะถูกเข้ารหัสและผูกกับ tenant, project และ environment นี้เท่านั้น ระบบจะไม่ส่ง token กลับไปยัง browser ให้ใช้ token จาก Cloudflare account สำหรับ Mini-App non-production ที่แยกไว้",
+            "This token is encrypted and scoped to this tenant, project, and environment. It is never returned to the browser. The selected target must use isolated Mini-App Workers and storage with scoped permissions; a separate Cloudflare account is optional.",
+            "Token นี้จะถูกเข้ารหัสและผูกกับ tenant, project และ environment นี้เท่านั้น ระบบจะไม่ส่ง token กลับไปยัง browser โดย target ต้องแยก Mini-App Worker และ Storage พร้อม scoped permissions แต่ไม่จำเป็นต้องใช้ Cloudflare account แยก",
           )}</p>
           <Label htmlFor={`deployment-credential-${target.id}`}>{text("Cloudflare API token", "Cloudflare API token")}</Label>
           <Input
@@ -200,6 +201,7 @@ export default function AdminDeploymentTargets() {
   const disableMutation = trpc.infrastructure.disableProviderDeploymentTarget.useMutation({
     onSuccess: refreshTargets,
   });
+  const provisionRuntimeMutation = trpc.infrastructure.provisionMiniAppPreviewRuntime.useMutation({ onSuccess: refreshTargets });
   const text = useText();
   const setNewField = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
     setFields(current => ({ ...current, [key]: event.target.value }));
@@ -209,8 +211,8 @@ export default function AdminDeploymentTargets() {
       <VStack gap={1}>
         <h2>{text("Deployment targets", "Deployment targets")}</h2>
         <p>{text(
-          "Manage Cloudflare targets for preview and staging. This page only records target authority; it does not deploy an app or run migrations.",
-          "จัดการ Cloudflare target สำหรับ preview และ staging หน้านี้บันทึก authority ของ target เท่านั้น ไม่ได้ deploy แอปหรือรัน migration",
+          "Manage isolated Cloudflare preview and staging targets. Provisioning creates a dedicated R2 bucket and an unexposed Mini-App Worker; artifact delivery remains BUILDING until its release path is activated.",
+          "จัดการ Cloudflare target แบบแยกสำหรับ preview และ staging การ provision จะสร้าง R2 bucket และ Mini-App Worker ที่ยังไม่เปิดเผย โดย artifact จะยังเป็น BUILDING จนกว่าเส้นทาง release จะพร้อม",
         )}</p>
         <p>{text("Project ID and App ID are separate identities. The registry stores project/environment scope, not an App ID.", "Project ID และ App ID เป็นคนละ identity โดย registry เก็บ scope ของ project/environment และไม่ได้เก็บ App ID")}
           {" "}{text("Project Wiki package App ID:", "Project Wiki package App ID:")} <code>{PROJECT_WIKI_APP_ID}</code>
@@ -269,6 +271,12 @@ export default function AdminDeploymentTargets() {
               <p>{text("Scope", "ขอบเขต")}: {target.tenantId} / {target.projectId} / {target.environment}</p>
               <p>{text("Provider identity", "Provider identity")}: {target.provider} · {text("Provenance", "หลักฐานที่มา")}: {target.provenance}</p>
               {target.provider === "cloudflare" ? <>
+                <HStack gap={2} wrap="wrap">
+                  <Button variant="outline" disabled={!target.enabled || provisionRuntimeMutation.isPending} onClick={() => provisionRuntimeMutation.mutate({
+                    tenantId: target.tenantId, projectId: target.projectId, environment: target.environment as "preview" | "staging",
+                  })}>{provisionRuntimeMutation.isPending ? text("Provisioning…", "กำลัง provision…") : text("Provision isolated Mini-App runtime", "Provision Mini-App runtime แบบแยก")}</Button>
+                  {target.runtimePolicy?.includes("mini-app-preview-runtime/v1") ? <Badge variant="secondary">{text("Mini-App runtime provisioned · BUILDING", "Provision Mini-App runtime แล้ว · BUILDING")}</Badge> : null}
+                </HStack>
                 <details>
                   <summary>{text("Edit target", "แก้ไข target")}</summary>
                   <TargetEditor target={target} saving={updateMutation.isPending} onSave={changes => updateMutation.mutate({
@@ -340,7 +348,7 @@ export default function AdminDeploymentTargets() {
       ) : null}
 
       {validScope && <Button variant="outline" onClick={() => void refreshTargets()} disabled={targetsQuery.isFetching}>{text("Refresh registry", "รีเฟรช registry")}</Button>}
-      {createMutation.error || updateMutation.error || disableMutation.error ? <p role="alert">{text("The registry rejected the action or exact-admin authority is missing. No target state was assumed.", "registry ปฏิเสธคำสั่งหรือไม่มี exact-admin authority ระบบจะไม่สมมติสถานะ target")}</p> : null}
+      {createMutation.error || updateMutation.error || disableMutation.error || provisionRuntimeMutation.error ? <p role="alert">{text("The registry or Cloudflare rejected the action, or exact-admin authority is missing. Runtime state was not assumed.", "registry หรือ Cloudflare ปฏิเสธคำสั่ง หรือไม่มี exact-admin authority ระบบจะไม่สมมติสถานะ runtime")}</p> : null}
       <Button variant="link" onClick={() => setLocation("/admin/settings?tab=infrastructure")}>{text("Open the existing Cloudflare credential center", "เปิดศูนย์ credential Cloudflare เดิม")}</Button>
     </VStack>
   );
