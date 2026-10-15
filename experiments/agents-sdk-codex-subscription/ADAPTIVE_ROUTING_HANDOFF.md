@@ -40,15 +40,20 @@
   test/review evidence returns the next new call to Luna under a recorded
   de-escalation receipt. Missing Luna/medium ends as `BLOCKED_MODEL_POLICY`;
   account capacity/network failures continue through `WAITING_CAPACITY`.
-- Verification: see P0 routing regression tests in
-  `tests/test_adaptive_routing.py`. Full experiment-suite and SPEC-224 live
-  acceptance remain pending. No existing run/worktree/evidence/receipt was
-  modified.
-- P0 task checkpoint: branch `codex/spec224-luna-policy-20261015`, based on
-  canonical Main `af92f9107dbfb57c86d02327bcbe054d56d2c5ce`; implementation
-  commit `2202eb2395ffd61b850256f7a2ed4e94e8488402`. Next action: open the
-  protected PR and run the repository-required checks, then record the merged
-  Main SHA and queue the live SPEC-224 receipt audit/acceptance.
+- Verification: `python -m unittest discover -s tests -q` passed 97/97;
+  `py_compile` for the four changed Python modules and `git diff --check`
+  passed. PR `progressive_integration_gate` passed; `build-preview` was skipped
+  because no frontend scope changed. Full SPEC-224 live acceptance remains
+  pending. No existing run/worktree/evidence/receipt was modified.
+- P0 task checkpoint: PR [#962](https://github.com/naibarn/SmartSpecPro/pull/962)
+  merged at `96aa726980c14ea4f4b88de30f3b9937e4d1a0ad`, confirmed reachable from
+  `origin/main` at the same SHA. The code checkpoint branch was
+  `codex/spec224-luna-policy-20261015`, based on Main
+  `af92f9107dbfb57c86d02327bcbe054d56d2c5ce`; implementation commit
+  `2202eb2395ffd61b850256f7a2ed4e94e8488402`. Next action: resolve the exact
+  SPEC-224 WorkUnit/Run ID and owner, check active-owner and resume eligibility,
+  then capture a fresh authorized run's selection/usage/thread receipts and
+  Planning→Implement→Test→Repair→Review→Verify evidence.
 
 - Task branch: `codex/adaptive-multi-model-routing-20261014`
 - Base at task start: `origin/main` SHA `5d94eea92a2cd1b6f00460c4550fefcfb6dd2987`
