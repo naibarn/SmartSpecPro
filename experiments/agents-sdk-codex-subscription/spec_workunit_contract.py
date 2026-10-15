@@ -75,6 +75,9 @@ def _developer_authorization_digest(raw: dict[str, Any]) -> str:
         "budget": raw.get("budget"), "expiresAt": raw.get("scopeExpiresAt"),
         "productionAccess": False, "sharedDatabaseWrite": False, "runnerDispatch": False,
     }
+    canonical_binding = raw.get("canonicalJobBinding")
+    if isinstance(canonical_binding, dict):
+        scope["canonicalJobIdentity"] = {key: canonical_binding.get(key) for key in ("jobId", "runId", "tenantId", "actorId")}
     try:
         encoded = json.dumps(scope, sort_keys=True, separators=(",", ":")).encode()
     except (TypeError, ValueError) as exc:
@@ -333,6 +336,14 @@ def load_contract(contract_path: Path, workspace: Path) -> WorkUnitContract:
             raise ContractError("developer task authorization digest binding is invalid")
         if raw.get("authorizationDigest") != _developer_authorization_digest(raw):
             raise ContractError("developer task authorization digest does not match its scoped contract")
+    canonical_binding = raw.get("canonicalJobBinding")
+    if canonical_binding is not None:
+        if (not isinstance(canonical_binding, dict) or
+            not all(isinstance(canonical_binding.get(key), str) and canonical_binding[key] for key in ("jobId", "runId", "tenantId", "attemptId")) or
+            canonical_binding.get("runId") != raw.get("taskId") or
+            type(canonical_binding.get("actorId")) is not int or canonical_binding["actorId"] <= 0 or
+            type(canonical_binding.get("fencingVersion")) is not int or canonical_binding["fencingVersion"] < 1):
+            raise ContractError("canonical Task Control binding is invalid")
         canonical_text = str(raw["requirementText"])
         canonical_digest = str(raw["requirementDigest"])
     else:

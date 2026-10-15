@@ -92,5 +92,8 @@ describe("job canonicalization", () => {
     expect(redactJobPayload({ authEvidenceRef: "runner-auth:sha256:runtime" })).toEqual({
       authEvidenceRef: "runner-auth:sha256:runtime",
     });
+    expect(redactJobPayload({ inputTokens: 40, cachedInputTokens: 10, outputTokens: 8, reservationEstimateTokens: 100, overrunTokens: 0, leaseToken: "private" })).toEqual({
+      inputTokens: 40, cachedInputTokens: 10, outputTokens: 8, reservationEstimateTokens: 100, overrunTokens: 0, leaseToken: "[REDACTED]",
+    });
   });
 });

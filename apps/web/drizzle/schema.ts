@@ -17293,6 +17293,23 @@ export const workerJobProviderReservations = pgTable(
     nextPollAt: timestamp("nextPollAt", { withTimezone: true }),
     pollAttempt: integer("pollAttempt").notNull().default(0),
     providerDeadlineAt: timestamp("providerDeadlineAt", { withTimezone: true }),
+    modelCallId: varchar("modelCallId", { length: 160 }),
+    leaseFencingVersion: integer("leaseFencingVersion"),
+    dispatchState: varchar("dispatchState", { length: 16 }),
+    modelPhase: varchar("modelPhase", { length: 40 }),
+    modelRole: varchar("modelRole", { length: 64 }),
+    requestedModel: varchar("requestedModel", { length: 120 }),
+    reasoningEffort: varchar("reasoningEffort", { length: 24 }),
+    modelSelectionJson: jsonb("modelSelectionJson").$type<Record<string, unknown>>(),
+    threadId: varchar("threadId", { length: 160 }),
+    turnId: varchar("turnId", { length: 160 }),
+    tokenWindowStartedAt: timestamp("tokenWindowStartedAt", { withTimezone: true }),
+    reservedTokens: integer("reservedTokens"),
+    inputTokens: integer("inputTokens"),
+    cachedInputTokens: integer("cachedInputTokens"),
+    outputTokens: integer("outputTokens"),
+    usageState: varchar("usageState", { length: 16 }),
+    usageReceiptJson: jsonb("usageReceiptJson"),
     lastObservedStatus: varchar("lastObservedStatus", { length: 64 }),
     lastObservedAt: timestamp("lastObservedAt", { withTimezone: true }),
     releasedAt: timestamp("releasedAt", { withTimezone: true }),
@@ -17309,14 +17326,16 @@ export const workerJobProviderReservations = pgTable(
     uniqueIndex("worker_job_provider_reservations_operation_unique").on(
       t.operationKey
     ),
-    uniqueIndex("worker_job_provider_reservations_job_attempt_kind_unique").on(
-      t.workerJobId,
-      t.attemptId,
-      t.reservationKind
-    ),
+    uniqueIndex("worker_job_provider_reservations_job_attempt_kind_unique")
+      .on(t.workerJobId, t.attemptId, t.reservationKind)
+      .where(sql`${t.reservationKind} <> 'model_call'`),
     uniqueIndex(
       "worker_job_provider_reservations_job_business_attempt_kind_unique"
-    ).on(t.workerJobId, t.businessAttempt, t.reservationKind),
+    ).on(t.workerJobId, t.businessAttempt, t.reservationKind)
+      .where(sql`${t.reservationKind} <> 'model_call'`),
+    uniqueIndex("worker_job_provider_reservations_model_call_unique")
+      .on(t.workerJobId, t.attemptId, t.modelCallId)
+      .where(sql`${t.modelCallId} IS NOT NULL`),
     index("worker_job_provider_reservations_due_poll_idx").on(
       t.reservationStatus,
       t.nextPollAt
@@ -17333,7 +17352,7 @@ export const workerJobProviderReservations = pgTable(
     ),
     check(
       "worker_job_provider_reservations_kind_check",
-      sql`"reservationKind" IN ('submission', 'running', 'poll')`
+      sql`"reservationKind" IN ('submission', 'running', 'poll', 'model_call')`
     ),
     check(
       "worker_job_provider_reservations_status_check",
@@ -17342,6 +17361,14 @@ export const workerJobProviderReservations = pgTable(
     check(
       "worker_job_provider_reservations_business_attempt_check",
       sql`"businessAttempt" >= 1`
+    ),
+    check(
+      "worker_job_provider_reservations_model_usage_check",
+      sql`("reservationKind" <> 'model_call') OR ("attemptId" IS NOT NULL AND "leaseFencingVersion" > 0 AND "reservedTokens" > 0 AND "modelCallId" IS NOT NULL AND "modelPhase" IS NOT NULL AND "modelRole" IS NOT NULL AND "requestedModel" IS NOT NULL AND "reasoningEffort" IS NOT NULL)`
+    ),
+    check(
+      "worker_job_provider_reservations_usage_counts_check",
+      sql`COALESCE("reservedTokens", 0) >= 0 AND COALESCE("inputTokens", 0) >= 0 AND COALESCE("cachedInputTokens", 0) >= 0 AND COALESCE("outputTokens", 0) >= 0`
     ),
   ]
 );

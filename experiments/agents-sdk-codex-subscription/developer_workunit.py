@@ -106,7 +106,8 @@ def _validate_request(request: dict[str, Any], workspace_root: Path) -> None:
 
 
 def _request_contract(request: dict[str, Any], *, identity: dict[str, str], workspace: Path,
-                      registered: dict[str, Any], task_id: str, scope_expires_at: float) -> dict[str, Any]:
+                      registered: dict[str, Any], task_id: str, scope_expires_at: float,
+                      canonical_binding: dict[str, Any] | None = None) -> dict[str, Any]:
     task = request.get("task")
     allowed = request.get("allowedFiles")
     writable = request.get("writableFiles")
@@ -136,6 +137,8 @@ def _request_contract(request: dict[str, Any], *, identity: dict[str, str], work
         "budget": budget, "expiresAt": scope_expires_at,
         "productionAccess": False, "sharedDatabaseWrite": False, "runnerDispatch": False,
     }
+    if canonical_binding:
+        auth["canonicalJobIdentity"] = {key: canonical_binding[key] for key in ("jobId", "runId", "tenantId", "actorId")}
     authorization_digest = hashlib.sha256(
         json.dumps(auth, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -165,6 +168,8 @@ def _request_contract(request: dict[str, Any], *, identity: dict[str, str], work
         },
         "implementationGuidance": request.get("implementationGuidance"),
     }
+    if canonical_binding:
+        contract["canonicalJobBinding"] = canonical_binding
     return contract
 
 
@@ -183,18 +188,25 @@ def _renew(workspace: Path, contract: dict[str, Any], lease_seconds: int = 300) 
     return registered
 
 
-def _run(contract_path: Path, evidence: Path, *, crash_at: str) -> int:
+def _run(contract_path: Path, evidence: Path, *, crash_at: str, run_id: str | None = None,
+         canonical_admission_fd: int | None = None) -> int:
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     workspace = Path(contract["workspace"]).resolve()
     state_path = evidence / "run-state.json"
-    run_id = json.loads(state_path.read_text(encoding="utf-8")).get("runId") if state_path.is_file() else str(uuid.uuid4())
+    persisted_run_id = json.loads(state_path.read_text(encoding="utf-8")).get("runId") if state_path.is_file() else None
+    run_id = persisted_run_id or run_id or str(uuid.uuid4())
+    if persisted_run_id and run_id != persisted_run_id:
+        raise ContractError("canonical WorkUnit run identity changed during resume")
     command = [sys.executable, str(HERE / "supervise_run.py"), "--workspace", str(workspace),
                "--spec-contract", str(contract_path), "--evidence-dir", str(evidence), "--run-id", run_id,
                "--crash-at", crash_at]
+    if canonical_admission_fd is not None:
+        command += ["--canonical-admission-fd", str(canonical_admission_fd)]
     environment = os.environ.copy()
     environment.pop("OPENAI_API_KEY", None)
     last_renewal = time.monotonic()
-    with subprocess.Popen(command, cwd=HERE, env=environment) as child:
+    with subprocess.Popen(command, cwd=HERE, env=environment,
+                          pass_fds=(canonical_admission_fd,) if canonical_admission_fd is not None else ()) as child:
         while child.poll() is None:
             if time.monotonic() - last_renewal >= 60:
                 _renew(workspace, contract)
@@ -223,9 +235,47 @@ def start(args: argparse.Namespace) -> int:
     subprocess.run(["git", "cat-file", "-e", f"{base_sha}^{{commit}}"], cwd=repo, check=True)
     request = json.loads(args.request.read_text(encoding="utf-8"))
     _validate_request(request, repo)
-    task_id = str(uuid.uuid4())
+    canonical_binding = json.loads(args.canonical_job_binding_file.read_text(encoding="utf-8")) if args.canonical_job_binding_file else None
+    if canonical_binding:
+        expected = {"jobId", "runId", "tenantId", "actorId", "attemptId", "fencingVersion"}
+        if set(canonical_binding) != expected or not all(isinstance(canonical_binding[key], str) and canonical_binding[key] for key in ("jobId", "runId", "tenantId", "attemptId")) or type(canonical_binding["actorId"]) is not int or type(canonical_binding["fencingVersion"]) is not int or canonical_binding["fencingVersion"] < 1:
+            raise ContractError("canonical job binding is invalid")
+    task_id = str(canonical_binding["runId"]) if canonical_binding else str(uuid.uuid4())
     policy = AUTHORITY.load_source_policy(repo, args.policy)
     destination = Path(policy["source_root"]) / "developer-fast-lane" / task_id
+    evidence = Path(args.evidence_root).resolve() / task_id
+    contract_path = evidence / "contract.json"
+    if canonical_binding and contract_path.is_file():
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        if contract.get("canonicalJobBinding", {}).get("jobId") != canonical_binding["jobId"] or contract.get("developerIdentity", {}).get("login") != identity["login"]:
+            raise ContractError("canonical job resume identity or Developer identity changed")
+        claim = AUTHORITY.claim_registered_workspace(
+            repo, args.policy, contract["workspaceId"], task_id=task_id,
+            expected_head_sha=contract["sourceRevision"], developer_login=identity["login"],
+            owner_session_id=_session_id(), owner_pid=os.getpid(), owner_lease_seconds=300,
+        )
+        contract.update({
+            "ownerSessionId": _session_id(), "ownerPid": os.getpid(),
+            "ownerProcessStart": AUTHORITY._process_start(os.getpid()),
+            "ownerFencingVersion": claim["ownerFencingVersion"],
+            "workspaceLeaseExpiresAt": claim["leaseExpiresAt"],
+            "canonicalJobBinding": canonical_binding,
+        })
+        contract["authorizationDigest"] = hashlib.sha256(json.dumps({
+            "developer": contract["developerIdentity"], "taskId": contract["taskId"],
+            "task": contract["requirementText"], "acceptanceCriteria": contract["acceptanceCriteria"],
+            "sourceSha": contract["sourceRevision"], "workspaceId": contract["workspaceId"],
+            "allowedFiles": contract["allowedFiles"], "writableFiles": contract["writableFiles"],
+            "patchableFiles": contract["patchableFiles"], "allowedTools": contract["allowedTools"],
+            "tests": contract["tests"], "browserUat": contract["browserUat"], "budget": contract["budget"],
+            "expiresAt": contract["scopeExpiresAt"], "productionAccess": False,
+            "sharedDatabaseWrite": False, "runnerDispatch": False,
+            "canonicalJobIdentity": {key: canonical_binding[key] for key in ("jobId", "runId", "tenantId", "actorId")},
+        }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        contract["sourceSpecDigest"] = contract["authorizationDigest"]
+        _write_json(contract_path, contract)
+        return _run(contract_path, evidence, crash_at=args.crash_at, run_id=canonical_binding["runId"],
+                    canonical_admission_fd=args.canonical_admission_fd)
     registered = AUTHORITY.create_registered_worktree(
         repo, args.policy, destination, base_sha=base_sha, role="TASK_WORKTREE",
         task_id=task_id, session_id=_session_id(), owner_pid=os.getpid(), owner_lease_seconds=300,
@@ -233,8 +283,8 @@ def start(args: argparse.Namespace) -> int:
     workspace = Path(registered["workspace"]).resolve()
     scope_expires_at = time.time() + args.scope_ttl_seconds
     contract = _request_contract(request, identity=identity, workspace=workspace, registered=registered,
-                                 task_id=task_id, scope_expires_at=scope_expires_at)
-    evidence = Path(args.evidence_root).resolve() / task_id
+                                 task_id=task_id, scope_expires_at=scope_expires_at,
+                                 canonical_binding=canonical_binding)
     evidence.mkdir(parents=True, exist_ok=True, mode=0o700)
     contract_path = evidence / "contract.json"
     _write_json(contract_path, contract)
@@ -247,7 +297,9 @@ def start(args: argparse.Namespace) -> int:
         "allowedTools": contract["allowedTools"], "budget": contract["budget"],
         "scopeExpiresAt": scope_expires_at, "productionAccess": False, "runnerDispatch": False,
     })
-    return _run(contract_path, evidence, crash_at=args.crash_at)
+    return _run(contract_path, evidence, crash_at=args.crash_at,
+                run_id=canonical_binding["runId"] if canonical_binding else None,
+                canonical_admission_fd=args.canonical_admission_fd)
 
 
 def resume(args: argparse.Namespace) -> int:
@@ -287,6 +339,8 @@ def main() -> int:
     new.add_argument("--evidence-root", type=Path, default=Path.home() / ".cache/codex/developer-workunits")
     new.add_argument("--scope-ttl-seconds", type=int, default=8 * 60 * 60)
     new.add_argument("--crash-at", default="")
+    new.add_argument("--canonical-job-binding-file", type=Path)
+    new.add_argument("--canonical-admission-fd", type=int)
     new.set_defaults(handler=start)
     continued = commands.add_parser("resume", help="Fenced claim and durable resume of an expired local task owner")
     continued.add_argument("evidence", type=Path)

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { auditLogger, type AuditEventType } from "../services/auditLogger";
 import { defaultSpec226DevelopmentControlBridge } from "../services/spec226DevelopmentControlBridge";
 import {
@@ -24,6 +24,7 @@ import {
 } from "../services/spec224DevelopmentRunPersistence";
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
 import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
+import { createDeveloperFastLaneJob } from "../services/spec224DeveloperFastLane";
 import { prepareSpec224VisualReferenceInputs } from "../services/spec224VisualReferenceIntake";
 import { analyzeMiniAppVisualReferences } from "../services/miniAppVisualBlueprint";
 import { designPreferencesSchema } from "../../shared/designIntelligence";
@@ -245,6 +246,74 @@ function safeActionPayload(input: z.infer<typeof safeActionInput>): Record<strin
  * dispatch remains gated by the Spec 224 authorization authority.
  */
 export const spec226DevelopmentControlRouter = router({
+  startDeveloperFastLane: adminProcedure
+    .input(z.object({
+      idempotencyKey: z.string().trim().min(16).max(160),
+      developerLogin: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/),
+      sourceRevision: z.string().regex(/^[a-fA-F0-9]{40}$/),
+      task: z.string().trim().min(1).max(12_000),
+      allowedFiles: z.array(z.string().min(1).max(500)).min(1).max(500),
+      writableFiles: z.array(z.string().min(1).max(500)).min(1).max(500),
+      patchableFiles: z.array(z.string().min(1).max(500)).max(500).optional(),
+      tests: z.object({
+        runner: z.enum(["pytest", "vitest"]),
+        cwd: z.string().max(64),
+        paths: z.array(z.string().min(1).max(500)).min(1).max(100),
+        databaseMode: z.enum(["none", "isolated_local"]).optional(),
+      }).strict(),
+      acceptanceCriteria: z.array(z.string().trim().min(1).max(2_000)).min(1).max(80),
+      budget: z.object({
+        implementationMaxTurns: z.number().int().min(1).max(30),
+        planMaxTurns: z.number().int().min(1).max(8),
+        reviewMaxTurns: z.number().int().min(1).max(8),
+        maxAttempts: z.number().int().min(1).max(3).optional(),
+      }).strict().optional(),
+      browserUat: z.record(z.string(), z.unknown()).optional(),
+      implementationGuidance: z.string().max(12_000).optional(),
+      scopeTtlSeconds: z.number().int().min(300).max(86_400).optional(),
+    }).strict())
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const created = await createDeveloperFastLaneJob({
+          ...scope,
+          idempotencyKey: input.idempotencyKey,
+          request: {
+            developerLogin: input.developerLogin,
+            sourceRevision: input.sourceRevision,
+            task: input.task,
+            allowedFiles: input.allowedFiles,
+            writableFiles: input.writableFiles,
+            patchableFiles: input.patchableFiles,
+            tests: input.tests,
+            acceptanceCriteria: input.acceptanceCriteria,
+            budget: input.budget,
+            browserUat: input.browserUat,
+            implementationGuidance: input.implementationGuidance,
+            scopeTtlSeconds: input.scopeTtlSeconds,
+          },
+        });
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { runId: created.runId, jobId: created.jobId, jobType: "developer.fast_lane", accepted: true },
+        });
+        return { runId: created.runId, jobId: created.jobId, created: created.created };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { action: "start_developer_fast_lane", accepted: false, errorCode: errorCode(error) },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
   projectMissionControl: protectedProcedure
     .input(z.object({}).optional())
     .query(async ({ ctx }) => {

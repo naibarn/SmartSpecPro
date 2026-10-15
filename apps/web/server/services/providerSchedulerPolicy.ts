@@ -3,6 +3,34 @@ import { createHash } from "node:crypto";
 export type ProviderClass = "kie_ai" | "wavespeed_ai" | "openrouter";
 export type ProviderKind = "llm" | "media";
 
+/** Internal shared guardrails for Codex Subscription turns. These are local
+ * admission ceilings, not claims about provider/account quota. */
+export type CodexSubscriptionAdmissionLimits = {
+  windowSeconds: number;
+  maxTokensPerWindow: number;
+  maxConcurrentTurnsPerUser: number;
+  maxOutputTokensPerTurn: number;
+};
+
+function boundedIntegerEnv(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new Error(`${name}_INVALID`);
+  }
+  return value;
+}
+
+export function getCodexSubscriptionAdmissionLimits(): CodexSubscriptionAdmissionLimits {
+  return {
+    windowSeconds: boundedIntegerEnv("SPEC224_CODEX_TOKEN_WINDOW_SECONDS", 3_600, 60, 86_400),
+    maxTokensPerWindow: boundedIntegerEnv("SPEC224_CODEX_MAX_TOKENS_PER_WINDOW", 500_000, 1, 2_000_000_000),
+    maxConcurrentTurnsPerUser: boundedIntegerEnv("SPEC224_CODEX_MAX_CONCURRENT_TURNS_PER_USER", 2, 1, 32),
+    maxOutputTokensPerTurn: boundedIntegerEnv("SPEC224_CODEX_MAX_OUTPUT_TOKENS_PER_TURN", 8_192, 1, 131_072),
+  };
+}
+
 export type ProviderSchedulerLimits = {
   submissionWindowSeconds: number;
   submissionWindowMax: number;
@@ -128,8 +156,8 @@ export type FairnessCandidate = {
   createdAt: Date;
 };
 
-export type FairnessSelection = {
-  selected: FairnessCandidate[];
+export type FairnessSelection<T extends FairnessCandidate = FairnessCandidate> = {
+  selected: T[];
   sameUserFallbackUsed: boolean;
 };
 
@@ -138,14 +166,14 @@ export type FairnessSelection = {
  * apply the same ordering while locking rows; this pure function is the
  * contract test and avoids hiding fairness in process memory.
  */
-export function selectFairProviderCandidates(input: {
-  candidates: FairnessCandidate[];
+export function selectFairProviderCandidates<T extends FairnessCandidate>(input: {
+  candidates: T[];
   now?: Date;
   capacity: number;
   competitorExists: boolean;
   lastSelectedUserKey?: string;
   fairnessCooldownMs?: number;
-}): FairnessSelection {
+}): FairnessSelection<T> {
   const now = input.now ?? new Date();
   const capacity = Math.max(0, Math.trunc(input.capacity));
   const eligible = input.candidates
@@ -159,7 +187,7 @@ export function selectFairProviderCandidates(input: {
     );
   if (capacity === 0 || eligible.length === 0) return { selected: [], sameUserFallbackUsed: false };
 
-  const selected: FairnessCandidate[] = [];
+  const selected: T[] = [];
   const usedUsers = new Set<string>();
   const cooldownMs = Math.min(15_000, Math.max(0, input.fairnessCooldownMs ?? 15_000));
   const preferred = input.lastSelectedUserKey;

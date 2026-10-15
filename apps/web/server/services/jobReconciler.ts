@@ -181,7 +181,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const storyboardRunStatus = new Map(storyboardRuns.map(row => [row.id, row.status]));
 
   for (const row of externalWaits) {
-    const wait = (row.progressJson as { externalWait?: { operationKey?: string; providerReference?: string; resumeAfter?: string; metadata?: unknown } } | null)?.externalWait;
+    const wait = (row.progressJson as { externalWait?: { operationKey?: string; providerReference?: string; resumeAfter?: string; reason?: "budget" | "provider_capacity"; metadata?: unknown } } | null)?.externalWait;
     if (!wait?.operationKey) {
       const decision: WaitingExternalDecision = {
         action: "fail_review",
@@ -301,6 +301,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
       : null;
     const decision = classifyWaitingExternal({
       operationKey: wait.operationKey,
+      waitReason: wait.reason,
       runStatus: runId ? storyboardRunStatus.get(runId) ?? null : null,
       providerReference: wait.providerReference ?? null,
       resumeAfter: wait.resumeAfter ?? null,

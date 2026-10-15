@@ -3461,6 +3461,7 @@ export function createJobControlPlane(
         !input.operationKey ||
         input.operationKey.length > 200 ||
         (input.providerReference?.length ?? 0) > 255 ||
+        (input.reason !== undefined && !["budget", "provider_capacity"].includes(input.reason)) ||
         Number.isNaN(Date.parse(input.resumeAfter))
       )
         throw new JobControlPlaneError(
@@ -3488,6 +3489,7 @@ export function createJobControlPlane(
       const safeExternalWait = {
         operationKey: input.operationKey,
         resumeAfter: input.resumeAfter,
+        ...(input.reason ? { reason: input.reason } : {}),
         ...(normalizedProviderReference
           ? { providerReference: normalizedProviderReference }
           : {}),
@@ -3536,7 +3538,8 @@ export function createJobControlPlane(
           );
         await repo.insertEvent({
           workerJobId: lease.jobId,
-          eventType: "WAITING_EXTERNAL",
+          eventType: input.reason === "budget" ? "WAITING_BUDGET" :
+            input.reason === "provider_capacity" ? "WAITING_CAPACITY" : "WAITING_EXTERNAL",
           attemptId: lease.attemptId,
           eventIdempotencyKey: boundedEventKey(
             "waiting-external",

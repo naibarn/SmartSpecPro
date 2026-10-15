@@ -14,10 +14,12 @@ import re
 import signal
 import uuid
 from collections.abc import AsyncIterator, Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from durable_store import DurableRunStore, canonical_json, digest
+from model_admission import CanonicalModelAdmissionTransport, ModelAdmissionDenied, ModelAdmissionWait
 
 from agents.agent_output import AgentOutputSchemaBase
 from agents.handoffs import Handoff
@@ -156,6 +158,8 @@ class CodexSubscriptionModel(Model):
         store: DurableRunStore,
         phase_id: str,
         routing: dict[str, Any] | None = None,
+        admission: CanonicalModelAdmissionTransport | None = None,
+        admission_required: bool = False,
     ) -> None:
         self.codex_cwd = codex_cwd.resolve()
         self.role = role
@@ -163,6 +167,8 @@ class CodexSubscriptionModel(Model):
         self.store = store
         self.phase_id = phase_id
         self.routing = dict(routing) if routing else None
+        self.admission = admission
+        self.admission_required = admission_required
 
     async def get_response(
         self,
@@ -236,6 +242,14 @@ class CodexSubscriptionModel(Model):
             selection = validate_run_model_transition(
                 previous_selection, selection, verified_recovery=verified_recovery,
             )
+        if self.admission is not None and selection is None:
+            if prior:
+                raise ModelAdmissionDenied("durable Model Selection is missing; refusing to change a persisted call binding")
+            from adaptive_routing import ModelProfile, parse_catalog, route_model
+            from openai_codex import Codex
+            with Codex() as codex:
+                catalog = parse_catalog(codex.models())
+            selection = route_model(catalog, ModelProfile.GENERAL, reason="canonical budget admission requires an explicit Luna binding")
         request = {"instruction": instruction, "schema": DISPATCH_SCHEMA}
         if selection is not None:
             request["selection"] = selection
@@ -256,11 +270,85 @@ class CodexSubscriptionModel(Model):
                 "callId": call_id, "profile": selection.get("profile"),
                 "requestedModel": selection.get("requestedModel"),
             })
-        if call["status"] == "completed" and call.get("response_text"):
+        admission_result = None
+        operation_key = None
+        if self.admission_required and self.admission is None:
+            raise ModelAdmissionDenied("canonical Task Control model admission transport is unavailable")
+        if self.admission is not None:
+            selected_model = str((selection or {}).get("requestedModel", "gpt-6-luna"))
+            selected_effort = str((selection or {}).get("reasoningEffort", "medium"))
+            admission_result = self.admission.reserve({
+                "runId": self.store.run_id,
+                "modelCallId": call_id,
+                "phase": self.phase_id,
+                "role": self.role,
+                "requestedModel": selected_model,
+                "reasoningEffort": selected_effort,
+                "promptBytes": len(instruction.encode("utf-8")),
+                "threadId": call.get("thread_id"),
+                "selection": selection,
+            })
+            if admission_result.get("kind") == "waiting_budget":
+                next_eligible = str(admission_result.get("nextEligibleAt", ""))
+                reason = "budget"
+                self.admission.wait(str(admission_result.get("operationKey", call_id)), reason, next_eligible)
+                raise ModelAdmissionWait(reason, next_eligible, str(admission_result.get("operationKey", call_id)))
+            if admission_result.get("kind") == "waiting_capacity":
+                next_eligible = str(admission_result.get("nextEligibleAt", ""))
+                reason = "provider_capacity"
+                self.admission.wait(str(admission_result.get("operationKey", call_id)), reason, next_eligible)
+                raise ModelAdmissionWait(reason, next_eligible, str(admission_result.get("operationKey", call_id)))
+            if admission_result.get("kind") == "denied":
+                raise ModelAdmissionDenied(f"canonical Task Control denied model call: {admission_result.get('reason', 'unknown')}")
+            operation_key = admission_result.get("operationKey")
+            if not isinstance(operation_key, str) or not operation_key:
+                raise ModelAdmissionDenied("canonical Task Control returned no stable operation key")
+            if admission_result.get("kind") == "reconcile_required":
+                canonical_thread = admission_result.get("threadId")
+                canonical_turn = admission_result.get("turnId")
+                if call.get("status") == "completed" and call.get("receipt_json"):
+                    pass
+                elif not isinstance(canonical_thread, str) or not isinstance(canonical_turn, str):
+                    raise ModelAdmissionDenied("Codex turn dispatch is ambiguous; refusing replay without persisted turn identity")
+                else:
+                    call["thread_id"] = canonical_thread
+                    call["turn_id"] = canonical_turn
+        if admission_result and admission_result.get("kind") == "reconcile_required" and call.get("status") == "completed" and call.get("receipt_json"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
+            self.admission.settle(operation_key, self._usage_receipt(receipt))
+        elif admission_result and admission_result.get("kind") == "reserved" and call["status"] == "completed" and call.get("receipt_json"):
+            raw_text = call["response_text"]
+            receipt = json.loads(call["receipt_json"] or "{}")
+            self.admission.settle(operation_key, self._usage_receipt(receipt))
+        elif call["status"] == "completed" and call.get("response_text"):
+            raw_text = call["response_text"]
+            receipt = json.loads(call["receipt_json"] or "{}")
+        if call["status"] == "completed" and call.get("response_text"):
+            pass
         else:
-            raw_text, receipt = self._run_codex_turn(instruction, DISPATCH_SCHEMA, call_id, call, selection=selection)
+            if self.admission is not None and admission_result and admission_result.get("kind") == "reserved":
+                dispatch = self.admission.dispatching(operation_key)
+                if not isinstance(dispatch, dict) or dispatch.get("kind") != "marked":
+                    raise ModelAdmissionDenied("canonical Task Control refused Codex dispatch")
+            try:
+                raw_text, receipt = self._run_codex_turn(
+                    instruction, DISPATCH_SCHEMA, call_id, call, selection=selection,
+                    admission=self.admission if admission_result else None,
+                    operation_key=operation_key,
+                )
+            except BaseException as exc:
+                if self.admission is not None and operation_key and admission_result and admission_result.get("kind") == "reserved":
+                    capacity_evidence = self._provider_capacity_evidence(exc)
+                    if capacity_evidence is not None:
+                        wait = self.admission.provider_capacity(operation_key, capacity_evidence)
+                        if wait.get("kind") == "waiting_capacity":
+                            self.admission.settle(operation_key, None)
+                            next_eligible = str(wait.get("nextEligibleAt", ""))
+                            self.admission.wait(operation_key, "provider_capacity", next_eligible, evidence=wait.get("evidence"))
+                            raise ModelAdmissionWait("provider_capacity", next_eligible, operation_key) from exc
+                    self.admission.settle(operation_key, None)
+                raise
             if selection is not None:
                 receipt["selection"] = selection
             self.store.update_model_call(
@@ -268,6 +356,8 @@ class CodexSubscriptionModel(Model):
                 status="completed", response_text=raw_text,
                 usage_json=canonical_json(receipt.get("usage")), receipt_json=canonical_json(receipt),
             )
+            if self.admission is not None and operation_key:
+                self.admission.settle(operation_key, self._usage_receipt(receipt))
             _maybe_crash(self.store, "model.after_receipt", {"callId": call_id})
         parsed = self._parse_dispatch(raw_text, tools, handoffs, identity=call_id)
         receipt["agentAction"] = "tool_call" if isinstance(parsed, ResponseFunctionToolCall) else "final"
@@ -287,6 +377,28 @@ class CodexSubscriptionModel(Model):
             response_id=receipt["turnId"],
             request_id=receipt["turnId"],
         )
+
+    @staticmethod
+    def _usage_receipt(receipt: dict[str, Any]) -> dict[str, Any] | None:
+        usage = receipt.get("usage")
+        if not isinstance(usage, dict):
+            return None
+        last = usage.get("last") if isinstance(usage.get("last"), dict) else usage
+        try:
+            input_tokens = int(last.get("inputTokens", last.get("input_tokens")))
+            cached_tokens = int(last.get("cachedInputTokens", last.get("cached_input_tokens", 0)))
+            output_tokens = int(last.get("outputTokens", last.get("output_tokens")))
+        except (TypeError, ValueError):
+            return None
+        return {
+            "inputTokens": input_tokens,
+            "cachedInputTokens": cached_tokens,
+            "outputTokens": output_tokens,
+            "threadId": receipt.get("threadId"),
+            "turnId": receipt.get("turnId"),
+            "effectiveModel": receipt.get("effectiveModel"),
+            "observedAt": datetime.now(timezone.utc).isoformat(),
+        }
 
     async def stream_response(
         self, system_instructions: str | None, input: str | list[TResponseInputItem],
@@ -461,6 +573,8 @@ class CodexSubscriptionModel(Model):
     def _run_codex_turn(
         self, instruction: str, output_schema: dict[str, Any], call_id: str, call: dict[str, Any],
         *, selection: dict[str, Any] | None = None,
+        admission: CanonicalModelAdmissionTransport | None = None,
+        operation_key: str | None = None,
     ) -> tuple[str, dict[str, Any]]:
         from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox
 
@@ -471,6 +585,8 @@ class CodexSubscriptionModel(Model):
                     sandbox=Sandbox.read_only, include_turns=True,
                 )
                 existing = thread.read(include_turns=True).thread
+                if admission is not None and operation_key:
+                    self._require_admission_identity(admission.thread_created(operation_key, thread.id), "thread")
                 turns = getattr(existing, "turns", []) or []
                 turn_id = call.get("turn_id")
                 prior = _select_thread_turn(turns, turn_id)
@@ -480,6 +596,8 @@ class CodexSubscriptionModel(Model):
                         prior = _select_turn_after_baseline(turns, call.get("prior_turn_id"))
                     else:
                         prior = _select_thread_turn(turns, None, recover_latest=True)
+                if turn_id is not None and prior is None:
+                    raise RuntimeError("Canonical Codex turn identity is absent from the persisted thread; refusing replay")
                 if prior is not None and turn_id is None:
                     turn_id = prior.id
                     self.store.update_model_call(
@@ -488,6 +606,8 @@ class CodexSubscriptionModel(Model):
                     )
                     call["turn_id"] = turn_id
                     call["status"] = "turn_reconciling"
+                if prior is not None and turn_id is not None and admission is not None and operation_key:
+                    self._require_admission_identity(admission.turn_started(operation_key, thread.id, turn_id), "turn")
                 if prior is not None and str(getattr(prior.status, "value", prior.status)) == "completed":
                     final = next((item.text for item in reversed(prior.items) if getattr(item, "type", None) == "agentMessage" and getattr(getattr(item, "phase", None), "value", getattr(item, "phase", None)) == "finalAnswer"), None)
                     if final is None:
@@ -496,6 +616,8 @@ class CodexSubscriptionModel(Model):
                     receipt = json.loads(call.get("receipt_json") or "{}")
                     receipt.update({"status": "completed_reconciled", "threadId": thread.id, "turnId": prior.id, "usage": usage, "usageRecovery": "UNVERIFIED" if usage is None else "persisted"})
                     return final, receipt
+                if prior is not None and str(getattr(prior.status, "value", prior.status)) not in {"inProgress", "in_progress", "completed"}:
+                    raise RuntimeError("Prior Codex turn failed; refusing to dispatch a duplicate model call")
                 if prior is not None and str(getattr(prior.status, "value", prior.status)) in {"inProgress", "in_progress"}:
                     # The public SDK has no attach-to-existing-turn API. Wait for server-side reconciliation;
                     # never start a duplicate turn while the original may still be running.
@@ -525,6 +647,8 @@ class CodexSubscriptionModel(Model):
                     model=selection.get("requestedModel") if selection else None,
                 )
                 self.store.update_model_call(call_id, event="model.thread.persisted", stable_suffix="thread", status="thread_started", thread_id=thread.id)
+                if admission is not None and operation_key:
+                    self._require_admission_identity(admission.thread_created(operation_key, thread.id), "thread")
             prompt_metrics = None
             if call.get("status") == "thread_reused":
                 instruction, prompt_metrics = self._compact_reused_thread_input(instruction, call)
@@ -543,6 +667,8 @@ class CodexSubscriptionModel(Model):
                 status="turn_running", turn_id=handle.id,
                 turn_attempt=int(call.get("turn_attempt", 0)) + 1,
             )
+            if admission is not None and operation_key:
+                self._require_admission_identity(admission.turn_started(operation_key, thread.id, handle.id), "turn")
             result = handle.run()
         status = getattr(result.status, "value", result.status)
         if status != "completed":
@@ -576,6 +702,37 @@ class CodexSubscriptionModel(Model):
                 receipt["effectiveModel"] = str(getattr(effective_model, "value", effective_model))
                 receipt["effectiveModelStatus"] = "CONFIRMED"
         return result.final_response or "", receipt
+
+    @staticmethod
+    def _require_admission_identity(result: dict[str, Any], identity: str) -> None:
+        if not isinstance(result, dict) or result.get("kind") not in {"recorded", "duplicate"}:
+            raise ModelAdmissionDenied(f"canonical Task Control refused Codex {identity} identity")
+
+    @staticmethod
+    def _provider_capacity_evidence(error: BaseException) -> dict[str, Any] | None:
+        status = getattr(error, "status_code", None) or getattr(error, "http_status", None)
+        if status is None:
+            response = getattr(error, "response", None)
+            status = getattr(response, "status_code", None)
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            return None
+        if status != 429:
+            return None
+        headers = getattr(getattr(error, "response", None), "headers", {}) or {}
+        retry_after: float | None = None
+        for name in ("retry-after", "x-ratelimit-reset-after", "retry-after-ms"):
+            value = headers.get(name) if hasattr(headers, "get") else None
+            if value is None:
+                continue
+            try:
+                retry_after = float(value) / (1000 if name == "retry-after-ms" else 1)
+            except (TypeError, ValueError):
+                retry_after = None
+            if retry_after is not None:
+                break
+        return {"statusCode": 429, **({"retryAfterSeconds": retry_after} if retry_after is not None else {})}
 
     def _compact_reused_thread_input(self, instruction: str, call: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         prior = self.store.connection.execute(
