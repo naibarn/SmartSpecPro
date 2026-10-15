@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 86,
+  "generation": 87,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1342,8 +1342,8 @@
     "integrated": true,
     "integrated_at": "2026-10-15T00:03:00Z",
     "last_source_branch": "codex/spec224-miniapp-preview-provisioning",
-    "last_source_sha": "d9f2a1f8e5f5abbf4f95ce83e335dff266e04a2e",
-    "pending_action": "Open a normal protected code PR from codex/spec224-miniapp-preview-provisioning; run required checks, then continue the remaining Factory Gateway and artifact runtime work in the same functional PR.",
+    "last_source_sha": "baaed99d0e7c76a150949b63d10f1737492eb11d",
+    "pending_action": "Continue the Factory Gateway and artifact runtime implementation on draft PR #961; after scope is complete, refresh origin/main, run focused checks, and use normal protected PR flow.",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/960",
     "source_sha": "f23e25244fa1a429305e8737a68d96bf45405db1"
   },
@@ -2685,7 +2685,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T00:16:43.806266Z",
+  "updated_at": "2026-10-15T00:17:48.613496Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
