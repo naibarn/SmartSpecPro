@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,7 @@ from run_experiment import (
 
 
 class WorkspacePathTests(unittest.TestCase):
+
     def test_accepts_relative_workspace_file(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -97,6 +99,20 @@ class ModelDispatchTests(unittest.TestCase):
         self.assertIn(r"/\d+/", recovered["content"])
         with self.assertRaisesRegex(ValueError, "not valid JSON"):
             CodexSubscriptionModel._recover_write_file_arguments("run_browser_uat", '{"x":"bare " quote"}')
+
+    def test_complete_patch_with_missing_quote_and_brace_preserves_exact_bytes(self):
+        patch_text = "*** Begin Patch\n*** Update File: src/a.ts\n@@\n const value = 1;\n+const bounded = true;\n*** End Patch"
+        expected = {"path": "src/a.ts", "patch": patch_text}
+        raw = json.dumps(expected, separators=(",", ":"))[:-2]
+        self.assertEqual(CodexSubscriptionModel._recover_patch_file_arguments(raw), expected)
+        def patch_file(path: str, patch: str) -> str:
+            """Apply the declared scoped patch."""
+            return path
+        dispatch = json.dumps({"action": "call_tool", "name": "patch_file", "arguments_json": raw, "text": None})
+        item = CodexSubscriptionModel._parse_dispatch(dispatch, [function_tool(patch_file)], [], identity="complete-patch")
+        self.assertEqual(json.loads(item.arguments), expected)
+        with self.assertRaises(ValueError):
+            CodexSubscriptionModel._recover_patch_file_arguments(raw.removesuffix("*** End Patch"))
 
     def test_dispatch_recovers_only_missing_final_brace_for_scoped_patch_file(self):
         import json

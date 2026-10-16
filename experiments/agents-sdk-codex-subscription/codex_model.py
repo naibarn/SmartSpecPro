@@ -703,13 +703,16 @@ class CodexSubscriptionModel(Model):
 
     @staticmethod
     def _recover_patch_file_arguments(raw: str) -> dict[str, Any]:
-        """Close a completed patch_file argument object missing only its final brace.
+        """Close framing after a complete JSON field or explicit patch terminator.
 
-        The inner patch text has already ended at its closing JSON quote. This
-        narrow repair does not change the path or patch bytes; normal Agents SDK
-        schema validation and the scoped patch tool still enforce both.
+        This narrow repair never invents patch text or changes its path/bytes;
+        normal Agents SDK schema validation and the scoped tool enforce both.
         """
         candidate = raw.rstrip()
+        if candidate.endswith("*** End Patch"):
+            # The complete patch terminator is present; only JSON framing is
+            # missing. Close the field/object without inventing any patch text.
+            candidate += '"'
         if not candidate.endswith('"'):
             raise ValueError("Malformed patch_file arguments are not a complete string field")
         try:
