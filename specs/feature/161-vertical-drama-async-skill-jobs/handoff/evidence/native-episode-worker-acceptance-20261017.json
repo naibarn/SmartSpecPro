@@ -1,0 +1,133 @@
+{
+  "workunit_id": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE",
+  "spec_id": "161",
+  "requirement_ids": [
+    "REQ-28722F9489C8",
+    "REQ-F24F12012092"
+  ],
+  "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+  "original_scout_source_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+  "writable_paths": [
+    "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+    "specs/feature/161-vertical-drama-async-skill-jobs/handoff/"
+  ],
+  "runtime": "Existing owner-marked native PostgreSQL Unix-socket-only fixture, canonical worker_jobs/outbox adapter, default registry and consumer; direct bounded Debian acceptance; no production/shared DB/paid providers/retired runtime",
+  "acceptance": [
+    "Actual canonical worker success persisted with domain run/artifact",
+    "Terminal replay before and after owned PG restart produces no new artifact or business attempt",
+    "Fresh Node process reads unchanged durable worker/run/artifact/checksum",
+    "special_tie_in guard produces failed worker and domain status with no artifact"
+  ],
+  "test_command": "RUN_NATIVE_WORKER_POSTGRES_TESTS=true pnpm exec vitest run server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts --maxWorkers=1",
+  "dependency_evidence": [
+    "PR993 failure projection already integrated",
+    "Existing native fixture + worker schema installer are canonical",
+    "normalize_series_input plan_only is deterministic; default provider port contains no paid API call"
+  ],
+  "decisions": [
+    "Take over failed helper using verified GitHub developer ownership claim (fencing version2); preserve its code and prior Jobs",
+    "Use real canonical control-plane persistence rather than initial proposed stub",
+    "No model-policy escalation: helper requested Luna; conductor/helper usage unknown; no new Fast Lane SDK calls or prior model-turn replay",
+    "Database schema fixture derives current columns/defaults/indexes but omits cross-domain FKs; this is not migration acceptance"
+  ],
+  "status": "INDEPENDENTLY_REVIEWED_FOCUSED_TESTS_PASS",
+  "model_usage": {
+    "requested_helper_model": "gpt-6-luna",
+    "effective_helper_model": "UNVERIFIED",
+    "conductor_and_helper_tokens": "UNKNOWN",
+    "new_sdk_model_calls": 0
+  },
+  "remaining": [
+    "Provider-backed stages, billing/settlement/chain-abort and full restart-resume acceptance",
+    "Browser refresh not exercised by this server-side test",
+    "Whole SPEC161 remains open"
+  ],
+  "identities": [
+    {
+      "evidence": "SPEC161_NATIVE_WORKER_SUCCESS",
+      "jobId": "spec161-be358a52-f342-4d93-8",
+      "runId": 1,
+      "artifactId": "1",
+      "checksumSha256": "2139b3029972daefe84bc57f011ee3d5f046cd959858a3aeae003fdbbc91cc3b",
+      "workerStatus": "succeeded",
+      "domainStatus": "succeeded",
+      "replayAfterRestart": "ignored",
+      "workerAttempts": 1,
+      "providerReservations": 0
+    },
+    {
+      "evidence": "SPEC161_NATIVE_WORKER_FAILURE",
+      "jobId": "spec161-21630863-49ee-41cc-a",
+      "runId": 2,
+      "workerStatus": "failed",
+      "domainStatus": "failed",
+      "errors": [
+        {
+          "code": "VD_STORYBOARD_GENERATION_FAILED",
+          "message": "SPECIAL_PIPELINE_ISOLATED: special tie-in episodes use their own standalone 9-shot generation flow",
+          "repairable": true
+        }
+      ],
+      "artifacts": 0
+    }
+  ],
+  "verification": {
+    "profile": "integration",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "RUN_NATIVE_WORKER_POSTGRES_TESTS": "true"
+    },
+    "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "started": 1792177461.662975,
+    "ended": 1792177472.1093602,
+    "exit": 0,
+    "max_rss_kib": 515148
+  },
+  "combined_verification": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "RUN_NATIVE_WORKER_POSTGRES_TESTS": "true"
+    },
+    "profile": "integration",
+    "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "candidate": "new SPEC161 native worker persistence test",
+    "started": 1792177221.2984529,
+    "ended": 1792177235.6896124,
+    "exit": 0,
+    "max_rss_kib": 382796,
+    "resource_before": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         1812024 kB",
+      "MemAvailable:   25052720 kB",
+      "Buffers:         3741900 kB"
+    ]
+  },
+  "tests": "Final native2/2; combined161+268 memory4files23/23",
+  "independent_review": {
+    "agent": "/root/spec268_independent_final_review",
+    "requested_model": "gpt-6-luna",
+    "effective_model": "UNVERIFIED",
+    "outcome": "PASS no blocking findings; final small additional assertions awaiting confirmation",
+    "limits": "No provider/network dispatch spy; providerReservations0 plus deterministic stage/default safe port source inspection do not certify paid generation/billing paths"
+  },
+  "fixture_cleanup": "Successful test teardown closes clients then ownership-checked native cluster cleanup; fixture database deliberately disposable; job/run identities retained here",
+  "file_sha256": "c19ab4996e8618f1fcba3c50c8d252febd90fe25a9af81d74eb183eb34b06886",
+  "fast_gate_repair": "Repository generic-secret regex matched variable comparisons/restoration, not credential values. Replaced manual JWT test-env handling with vi.stubEnv(randomUUID)/unstubAllEnvs; exact candidate rescan passed and2native tests passed. No change pushed before repair."
+}

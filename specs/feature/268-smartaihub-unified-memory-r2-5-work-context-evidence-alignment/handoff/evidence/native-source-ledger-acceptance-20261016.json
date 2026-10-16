@@ -29,7 +29,7 @@
     "Production team-room memory policy remains disabled"
   ],
   "decision": "Use actual SQL acceptance directly; do not mislabel DB-writing tests as Fast Lane databaseMode none or change its admission guard. Original expiry Job and exhausted allowance remain untouched.",
-  "status": "INDEPENDENTLY_VERIFIED_READY_FOR_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "baseline": {
     "command": [
       "pnpm",
@@ -126,5 +126,45 @@
   "file_sha256": {
     "apps/web/server/services/memoryService.ts": "cf3a93311964a25dea899584d1077240b51f07c7215bc14434b7b57bf5b4a10b",
     "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "75fb9bd0e28c7f76514a493ef0259f38ddb26fe82d6275b0e0e09cb8795852da"
+  },
+  "final_source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+  "source_head_sha": "4deef4a1e37daef4dd870e307d5cd33db9d8a866",
+  "pr": 995,
+  "merge_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+  "merge_verified_reachable": true,
+  "head_merge_trees_equal": true,
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "mocked_spec308_browser": "PASS",
+    "build_preview": "SKIPPED"
+  },
+  "post_integration": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "RUN_NATIVE_WORKER_POSTGRES_TESTS": "true"
+    },
+    "profile": "integration",
+    "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "candidate": "new SPEC161 native worker persistence test",
+    "started": 1792177221.2984529,
+    "ended": 1792177235.6896124,
+    "exit": 0,
+    "max_rss_kib": 382796,
+    "resource_before": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         1812024 kB",
+      "MemAvailable:   25052720 kB",
+      "Buffers:         3741900 kB"
+    ]
   }
 }

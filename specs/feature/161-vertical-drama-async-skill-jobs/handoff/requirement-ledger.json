@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 7,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -30,11 +30,11 @@
         "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120"
       ],
       "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120",
-      "blocker": null,
-      "current_relevance": "RELEVANT",
+      "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
-      "final_state": "PARTIAL",
+      "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "final_state": "OPEN",
       "implementation_evidence": [
         {
           "kind": "CANONICAL_SOURCE_INSPECTION",
@@ -48,10 +48,13 @@
           "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
           "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS_SCOPED"
-        }
+        },
+        "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+        "apps/web/server/jobs/unifiedJobConsumer.ts",
+        "apps/web/server/services/jobExecutorRegistry.ts"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Retain verified status projection. Prove real service/provider, DB persistence, restart and billing on approved nonproduction runtime before whole requirement closure.",
+      "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
       "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
       "requirement_id": "REQ-28722F9489C8",
       "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -70,31 +73,38 @@
           "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
           "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS_SCOPED"
-        }
+        },
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
       ],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121"
       ],
       "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+        "apps/web/server/jobs/unifiedJobConsumer.ts",
+        "apps/web/server/services/jobExecutorRegistry.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
       "requirement_digest": "026b45995d545f50fe03801b1210a1e6d2a82d9e0361da9fee6c73c8d1516063",
       "requirement_id": "REQ-F24F12012092",
       "requirement_text": "3. Browser refresh และ worker restart สามารถ resume หรืออ่านผลเดิมได้",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
+      ],
+      "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
     },
     {
       "applicability": "APPLICABLE",
