@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 43,
+  "generation": 44,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -179,6 +179,14 @@
     "last_focused_check": "PR #875 merged as 757a5750f00e916ed84801c6024bebdc814e60f9 on 2026-10-12T09:36:11Z; source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Focused Vitest 6 files / 88 tests passed, progressive_integration_gate SUCCESS, mocked SPEC-308 simulation SUCCESS; build-preview SKIPPED by resource gate. Persistent memory remains disabled; no DB migration applied.",
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
+    "native_acceptance_checkpoint": {
+      "branch": "codex/spec268-native-provenance-20261016",
+      "owned_commit_sha": "afad078bf",
+      "pending_action": "Required GitHub checks then guarded normal merge and canonical SHA verification",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/995",
+      "scope": "Exact project merge predicate plus native acceptance;21focusedtests and independentreview passed",
+      "workunit": "SPEC268_NATIVE_SOURCE_LEDGER_ACCEPTANCE"
+    },
     "owner": "Codex",
     "pilot_final_source_checkpoint": {
       "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
@@ -627,7 +635,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T15:16:52.810936Z",
+  "updated_at": "2026-10-16T15:18:00.539275Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
