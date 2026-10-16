@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 49,
+  "generation": 50,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -188,8 +188,11 @@
       "workunit": "SPEC268_NATIVE_SOURCE_LEDGER_ACCEPTANCE"
     },
     "native_expiry_sql_repair": {
+      "branch": "codex/smartaihub-acceptance-evidence-20261017",
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-expiry-sql-repair-20261017.json",
       "integration_base_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+      "owned_commit_sha": "2d312c6b664f09660301e6c9746d71de9f00f386",
+      "pending_action": "Create protected normal PR containing two independently reviewed WorkUnits, required checks then guarded merge/canonical verification; broader Specs remain OPEN.",
       "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
       "workunit": "SPEC268_NATIVE_EXPIRY_SQL_REPAIR"
@@ -659,7 +662,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T19:21:47.809677Z",
+  "updated_at": "2026-10-16T19:23:10.053740Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
