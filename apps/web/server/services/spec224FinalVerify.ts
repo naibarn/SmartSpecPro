@@ -5,6 +5,7 @@ import {
   type DevelopmentRunPersistenceAdapter,
 } from "./spec224DevelopmentRunPersistence";
 import {
+  Spec224VerificationProvenanceError,
   validateSpec224VerificationProvenance,
   type Spec224VerificationProvenance,
 } from "./spec224VerificationProvenance";
@@ -30,8 +31,7 @@ export type Spec224FinalVerifyInput = {
   finalEvidenceRef: string;
   workspaceConvergenceEvidenceRef: string;
   worktreeRetirementEvidenceRef: string;
-  /** Optional until every canonical caller can provide the live tuple. */
-  provenance?: Spec224VerificationProvenance;
+  provenance: Spec224VerificationProvenance;
 };
 
 export type Spec224FinalVerifyResult =
@@ -129,12 +129,22 @@ export function createSpec224FinalVerifyService(
         throw new Error("RUN_PROJECTION_STALE");
       }
 
-      if (input.provenance) {
-        const persisted = await closure.get(input);
-        validateSpec224VerificationProvenance({
+      const persisted = await closure.get(input);
+      let verificationProvenance: Spec224VerificationProvenance;
+      try {
+        verificationProvenance = validateSpec224VerificationProvenance({
           provenance: input.provenance,
           expectedSpecDigest: persisted.graph.baseline.digest,
-        });
+        }).provenance;
+      } catch (error) {
+        if (!(error instanceof Spec224VerificationProvenanceError)) throw error;
+        if (error.code === "VERIFICATION_PROVENANCE_REQUIRED") {
+          throw new Error("FINAL_VERIFY_PROVENANCE_REQUIRED");
+        }
+        if (error.code === "SPEC_DIGEST_MISMATCH") {
+          throw new Error("FINAL_VERIFY_PROVENANCE_STALE");
+        }
+        throw new Error("FINAL_VERIFY_PROVENANCE_INVALID");
       }
 
       try {
@@ -161,6 +171,7 @@ export function createSpec224FinalVerifyService(
           payload: {
             action: "final_verify_completed",
             finalEvidenceRef,
+            verificationProvenance,
             workspaceConvergenceReceipt: lifecycleEvidence.convergenceReceipt,
             worktreeRetirementReceipt: lifecycleEvidence.retirementReceipt,
             workspaceConvergenceAuthorityJobId: lifecycleEvidence.convergenceAuthorityJobId,

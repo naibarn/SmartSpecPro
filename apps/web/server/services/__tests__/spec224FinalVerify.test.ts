@@ -164,6 +164,14 @@ function verifyInput(overrides: Record<string, unknown> = {}) {
     finalEvidenceRef: "evidence:final-224-r22",
     workspaceConvergenceEvidenceRef: "evidence:workspace-convergence:receipt-224",
     worktreeRetirementEvidenceRef: "evidence:worktree-retirement:receipt-224",
+    provenance: {
+      candidateSha: "a".repeat(64),
+      verifiedBaseSha: "c".repeat(64),
+      specDigest: "b".repeat(64),
+      policySnapshotDigest: "d".repeat(64),
+      verificationProfileVersion: "profile:spec224-v1",
+      evidenceBundleDigest: "e".repeat(64),
+    },
     ...overrides,
   };
 }
@@ -359,7 +367,11 @@ describe("Spec 224 independent persisted Final Verify", () => {
     });
 
     const service = finalVerifyService(adapter);
-    const first = await service.verify(verifyInput({ expectedRevision: 3 }));
+    const firstInput = verifyInput({ expectedRevision: 3 });
+    firstInput.provenance = Object.assign({}, firstInput.provenance, {
+      untrustedClaim: "not-preserved",
+    });
+    const first = await service.verify(firstInput);
     const duplicate = await service.verify(
       verifyInput({ expectedRevision: 4 })
     );
@@ -376,6 +388,16 @@ describe("Spec 224 independent persisted Final Verify", () => {
       },
     });
     expect(first.run.evidenceRefs).toContain("evidence:final-224-r22");
+    if (first.status === "PASS") {
+      expect(first.event?.payload.verificationProvenance).toEqual({
+        candidateSha: "a".repeat(64),
+        verifiedBaseSha: "c".repeat(64),
+        specDigest: "b".repeat(64),
+        policySnapshotDigest: "d".repeat(64),
+        verificationProfileVersion: "profile:spec224-v1",
+        evidenceBundleDigest: "e".repeat(64),
+      });
+    }
     expect(duplicate).toMatchObject({
       status: "PASS",
       outcome: "COMPLETED",
@@ -421,8 +443,29 @@ describe("Spec 224 independent persisted Final Verify", () => {
           },
         })
       )
-    ).rejects.toThrow("SPEC_DIGEST_MISMATCH");
+    ).rejects.toThrow("FINAL_VERIFY_PROVENANCE_STALE");
     expect(adapter.read().run.state).toBe("FINAL_VERIFY");
     expect(adapter.read().revision).toBe(1);
+    expect(adapter.read().events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+  });
+
+  it("rejects missing and malformed provenance without appending completion", async () => {
+    const missingAdapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    await attachGraph(missingAdapter, readyFinalFixture.graph);
+    const missingInput = verifyInput();
+    delete (missingInput as { provenance?: unknown }).provenance;
+    await expect(finalVerifyService(missingAdapter).verify(missingInput)).rejects.toThrow(
+      "FINAL_VERIFY_PROVENANCE_REQUIRED"
+    );
+    expect(missingAdapter.read().events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+
+    const malformedAdapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    await attachGraph(malformedAdapter, readyFinalFixture.graph);
+    await expect(
+      finalVerifyService(malformedAdapter).verify(
+        verifyInput({ provenance: { candidateSha: "not-a-sha" } })
+      )
+    ).rejects.toThrow("FINAL_VERIFY_PROVENANCE_INVALID");
+    expect(malformedAdapter.read().events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
   });
 });

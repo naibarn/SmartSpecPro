@@ -177,6 +177,7 @@ function hasReconciledWorkerJob(
 const CLOSURE_METADATA_KEY = "spec224RequirementClosure";
 const FINAL_VERIFY_PROVENANCE_STALE = "FINAL_VERIFY_PROVENANCE_STALE";
 const FINAL_VERIFY_PROVENANCE_INVALID = "FINAL_VERIFY_PROVENANCE_INVALID";
+const FINAL_VERIFY_PROVENANCE_REQUIRED = "FINAL_VERIFY_PROVENANCE_REQUIRED";
 
 function recoveryDecisionForPhaseFailure(
   run: DevelopmentRun,
@@ -282,26 +283,33 @@ function persistedClosureGraph(run: DevelopmentRun): RequirementClosureGraph {
 function finalVerifyProvenanceErrorCode(
   run: DevelopmentRun,
   output: Record<string, unknown> | null | undefined
-): string | null {
+):
+  | { provenance: Spec224VerificationProvenance; errorCode?: never }
+  | { provenance?: never; errorCode: string } {
   if (
     !output ||
     !Object.prototype.hasOwnProperty.call(output, "verificationProvenance")
   ) {
-    return null;
+    return { errorCode: FINAL_VERIFY_PROVENANCE_REQUIRED };
   }
   try {
     const graph = persistedClosureGraph(run);
-    validateSpec224VerificationProvenance({
+    const validated = validateSpec224VerificationProvenance({
       provenance:
         output.verificationProvenance as Spec224VerificationProvenance,
       expectedSpecDigest: graph.baseline.digest,
     });
-    return null;
+    return { provenance: validated.provenance };
   } catch (error) {
     if (!(error instanceof Spec224VerificationProvenanceError)) throw error;
-    return error.code === "SPEC_DIGEST_MISMATCH"
-      ? FINAL_VERIFY_PROVENANCE_STALE
-      : FINAL_VERIFY_PROVENANCE_INVALID;
+    return {
+      errorCode:
+        error.code === "SPEC_DIGEST_MISMATCH"
+          ? FINAL_VERIFY_PROVENANCE_STALE
+          : error.code === "VERIFICATION_PROVENANCE_REQUIRED"
+            ? FINAL_VERIFY_PROVENANCE_REQUIRED
+            : FINAL_VERIFY_PROVENANCE_INVALID,
+    };
   }
 }
 
@@ -1267,14 +1275,17 @@ export function createDevelopmentRunService(
               };
             }
             let closureErrorCode: string | null = null;
+            let verificationProvenance: Spec224VerificationProvenance | null = null;
             try {
-              const provenanceErrorCode = finalVerifyProvenanceErrorCode(
+              const provenance = finalVerifyProvenanceErrorCode(
                 record.run,
                 job.output
               );
-              if (provenanceErrorCode) {
-                closureErrorCode = provenanceErrorCode;
+              if ("errorCode" in provenance) {
+                closureErrorCode =
+                  provenance.errorCode ?? FINAL_VERIFY_PROVENANCE_REQUIRED;
               } else {
+                verificationProvenance = provenance.provenance;
                 const graph = persistedClosureGraph(record.run);
                 assertRequirementClosureEvidenceBoundToRun(graph, record.run);
                 assertFinalVerifyReady(graph);
@@ -1315,6 +1326,9 @@ export function createDevelopmentRunService(
                 reason: "final_verification_rejected",
               };
             }
+            if (!verificationProvenance) {
+              throw new Error(FINAL_VERIFY_PROVENANCE_REQUIRED);
+            }
             const completed = await applyTransition(tx, record, scope, {
               idempotencyKey: `reconcile:${record.run.workerJobId}:final-verify:completed`,
               nextState: "COMPLETED",
@@ -1325,6 +1339,7 @@ export function createDevelopmentRunService(
                 resultRef: job.resultRef ?? null,
                 workspaceConvergenceReceipt: convergenceReceipt,
                 worktreeRetirementReceipt: retirementReceipt,
+                verificationProvenance,
                 workspaceConvergenceAuthorityJobId: lifecycleEvidence.convergenceAuthorityJobId,
                 worktreeRetirementAuthorityJobId: lifecycleEvidence.retirementAuthorityJobId,
               },
