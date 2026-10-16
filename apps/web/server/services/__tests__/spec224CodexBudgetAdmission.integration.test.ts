@@ -19,6 +19,8 @@ describe("SPEC-224 Codex model-call admission on isolated PostgreSQL", () => {
     client = postgres(fixture.databaseUrl, { max: 8, connect_timeout: 3 });
     await client.unsafe("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     await installSpec277AutoTeamRuntimeSchema(client);
+    await client.unsafe('CREATE TABLE users (id integer PRIMARY KEY, role text, "currentTenantId" text)');
+    await client`INSERT INTO users VALUES (101, 'admin', 'spec224-budget-tenant')`;
     process.env.DATABASE_URL = fixture.databaseUrl;
     delete process.env.PGHOST; delete process.env.PGPORT; delete process.env.PGUSER; delete process.env.PGPASSWORD;
     process.env.SPEC224_CODEX_TOKEN_WINDOW_SECONDS = "3600";
@@ -268,6 +270,33 @@ describe("SPEC-224 Codex model-call admission on isolated PostgreSQL", () => {
     const [row] = await client`SELECT "usageState", "reservationStatus", "reservedTokens", "usageReceiptJson" FROM worker_job_provider_reservations WHERE "operationKey"=${unknown.operationKey}`;
     expect(row).toEqual({ usageState: "unknown", reservationStatus: "unknown", reservedTokens: 2078, usageReceiptJson: null });
     expect(operationKey).not.toBe(unknown.operationKey);
+  });
+
+  it("audits a terminal Job correction with real persisted Admin and final fence without reopening execution", async () => {
+    const { lease, runId, operationKey, correction } = await settledUnderreportedTurn();
+    const { lease: _oldExecutionLease, ...base } = correction;
+    const terminalAuthority = { jobId: lease.jobId, attemptId: lease.attemptId, fencingVersion: lease.fencingVersion, status: "expired" as const };
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority })).toEqual({ kind: "denied", reason: "stale_lease" });
+    await client`UPDATE worker_jobs SET status='expired', "leaseOwnerToken"=NULL, "leaseExpiresAt"=NULL, "finishedAt"=NOW() WHERE id=${lease.jobId}`;
+    const [before] = await client`SELECT * FROM worker_jobs WHERE id=${lease.jobId}`;
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority: { ...terminalAuthority, fencingVersion: 2 } })).toEqual({ kind: "denied", reason: "stale_lease" });
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority: { ...terminalAuthority, attemptId: randomUUID() } })).toEqual({ kind: "denied", reason: "stale_lease" });
+    await client`UPDATE users SET role='user' WHERE id=101`;
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority })).toEqual({ kind: "denied", reason: "authorization" });
+    await client`UPDATE users SET role='admin' WHERE id=101`;
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority })).toMatchObject({ kind: "corrected", chargedTokens: 37055, additionalTokens: 18486 });
+    expect(await repository.correctCodexModelUsage({ ...base, terminalAuthority })).toMatchObject({ kind: "duplicate", chargedTokens: 37055 });
+    const [after] = await client`SELECT * FROM worker_jobs WHERE id=${lease.jobId}`;
+    expect(after).toEqual(before);
+    const events = await client`SELECT "payloadJson" FROM worker_job_events WHERE "workerJobId"=${lease.jobId} AND "eventType"='CODEX_MODEL_USAGE_CORRECTED'`;
+    expect(events).toHaveLength(1);
+    expect(events[0].payloadJson).toMatchObject({ authorityMode: "terminal_admin_accounting_only", jobStatus: "expired", additionalCharge: 18486 });
+    const [projection] = await client`SELECT "inputTokens", "outputTokens", "usageReceiptJson" FROM worker_job_provider_reservations WHERE "operationKey"=${operationKey}`;
+    expect(projection.inputTokens + projection.outputTokens).toBe(37055);
+    expect(projection.usageReceiptJson.actualTotalTokens).toBe(18569);
+    expect(await repository.reserveCodexModelCall({ lease, runId, modelCallId: "terminal-must-not-dispatch", phase: "IMPLEMENT",
+      role: "implementer", requestedModel: "gpt-6-luna", reasoningEffort: "medium", promptBytes: 1 }))
+      .toEqual({ kind: "denied", reason: "stale_lease" });
   });
 
 });

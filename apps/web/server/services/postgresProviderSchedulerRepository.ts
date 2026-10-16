@@ -633,6 +633,10 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
       const now = input.now ?? new Date();
       const auth = input.authorization;
       const usage = input.usage;
+      const identity = input.lease ?? input.terminalAuthority;
+      if (!identity || Boolean(input.lease) === Boolean(input.terminalAuthority)) {
+        return { kind: "denied", reason: "authorization" };
+      }
       if (!auth || !Number.isSafeInteger(auth.actorId) || auth.actorId <= 0 ||
           typeof auth.tenantId !== "string" || !auth.tenantId.trim() ||
           typeof auth.reference !== "string" || !auth.reference.trim() || auth.reference.length > 200 ||
@@ -663,12 +667,28 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           SELECT j.*, a."leaseGeneration", a."leaseTokenHash"
           FROM "worker_jobs" j JOIN "worker_job_attempts" a
             ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
-          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId}
+          WHERE j."id" = ${identity.jobId} AND a."id" = ${identity.attemptId}
           FOR UPDATE OF j, a
         `));
-        if (!job || stringValue(job, "status") !== "running" ||
-            numberValue(job, "fencingVersion") !== input.lease.fencingVersion ||
-            numberValue(job, "leaseGeneration") !== input.lease.fencingVersion ||
+        if (!job || numberValue(job, "fencingVersion") !== identity.fencingVersion ||
+            numberValue(job, "leaseGeneration") !== identity.fencingVersion) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        if (input.terminalAuthority) {
+          // A terminal accounting operation conveys no execution authority.
+          // Check the actual persisted Admin, current Tenant and final fence;
+          // never reopen the Job, manufacture a Lease or dispatch a model.
+          if (!["succeeded", "failed", "cancelled", "expired"].includes(input.terminalAuthority.status) ||
+              job.status !== input.terminalAuthority.status || job.leaseOwnerToken !== null) {
+            return { kind: "denied", reason: "stale_lease" };
+          }
+          const [operator] = rows(await query.execute(sql`
+            SELECT "id", "role", "currentTenantId" FROM "users" WHERE "id" = ${auth.actorId} FOR SHARE
+          `));
+          if (!operator || operator.role !== "admin" || operator.currentTenantId !== auth.tenantId) {
+            return { kind: "denied", reason: "authorization" };
+          }
+        } else if (!input.lease || job.status !== "running" ||
             stringValue(job, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
             stringValue(job, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
             !dateValue(job, "leaseExpiresAt") || dateValue(job, "leaseExpiresAt")! <= now) {
@@ -676,7 +696,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         }
         const run = objectValue(objectValue(job.inputJson)?.developerWorkUnit);
         if (job.jobType !== "developer.fast_lane" || run?.contractVersion !== "developer-fast-lane-v1" ||
-            run.runId !== input.runId || run.workerJobId !== input.lease.jobId ||
+            run.runId !== input.runId || run.workerJobId !== identity.jobId ||
             run.tenantId !== job.tenantId || Number(run.actorId) !== Number(job.requestedByUserId)) {
           return { kind: "denied", reason: "run_binding" };
         }
@@ -687,7 +707,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         await query.execute(sql`SELECT pg_advisory_xact_lock(hashtext('codex_subscription:shared'))`);
         const [reservation] = rows(await query.execute(sql`
           SELECT * FROM "worker_job_provider_reservations"
-          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${input.lease.jobId}
+          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${identity.jobId}
             AND "reservationKind" = 'model_call' AND "providerName" = 'codex_subscription'
           FOR UPDATE
         `));
@@ -703,7 +723,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         const chargedTokens = usage.inputTokens + usage.outputTokens;
         const [priorEvent] = rows(await query.execute(sql`
           SELECT "payloadJson" FROM "worker_job_events"
-          WHERE "workerJobId" = ${input.lease.jobId} AND "eventIdempotencyKey" = ${eventKey}
+          WHERE "workerJobId" = ${identity.jobId} AND "eventIdempotencyKey" = ${eventKey}
         `));
         if (priorEvent) {
           const receipt = objectValue(priorEvent.payloadJson);
@@ -722,7 +742,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
         }
         const additionalTokens = chargedTokens - previousTokens;
         await appendJobEvent(query, {
-          workerJobId: input.lease.jobId, attemptId: input.lease.attemptId,
+          workerJobId: identity.jobId, attemptId: identity.attemptId,
           eventType: "CODEX_MODEL_USAGE_CORRECTED", eventIdempotencyKey: eventKey,
           payloadJson: {
             schemaVersion: "codex-model-usage-correction.v1", requestDigest,
@@ -734,7 +754,8 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
             correctedUsage: usage, previousCharge: previousTokens, chargedTokens, additionalCharge: additionalTokens,
             overrunTokens: Math.max(0, chargedTokens - Number(reservation.reservedTokens)),
             windowStartedAt: dateValue(reservation, "tokenWindowStartedAt")?.toISOString(),
-            fencingVersion: input.lease.fencingVersion, correctedAt: now.toISOString(),
+            authorityMode: input.terminalAuthority ? "terminal_admin_accounting_only" : "execution_lease",
+            jobStatus: job.status, fencingVersion: identity.fencingVersion, correctedAt: now.toISOString(),
           },
         });
         // These columns are the admission projection. The original receipt,
@@ -743,7 +764,7 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           UPDATE "worker_job_provider_reservations"
           SET "inputTokens" = ${usage.inputTokens}, "cachedInputTokens" = ${usage.cachedInputTokens},
               "outputTokens" = ${usage.outputTokens}, "updatedAt" = ${timestampParameter(now)}
-          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${input.lease.jobId}
+          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${identity.jobId}
             AND "reservationKind" = 'model_call'
         `);
         return { kind: "corrected", operationKey: input.operationKey, chargedTokens, additionalTokens };

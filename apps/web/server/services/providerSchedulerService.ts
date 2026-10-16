@@ -63,7 +63,6 @@ export type CodexModelAdmissionRepository = {
 
 /** Server-only operator repair; intentionally not part of the Python admission transport. */
 export type CodexModelUsageCorrectionInput = {
-  lease: LeaseContext;
   runId: string;
   operationKey: string;
   correctionId: string;
@@ -72,7 +71,13 @@ export type CodexModelUsageCorrectionInput = {
   usage: CodexModelUsage;
   authorization: { actorId: number; tenantId: string; reference: string; providerEvidenceSha256: string };
   now?: Date;
-};
+} & (
+  | { lease: LeaseContext; terminalAuthority?: never }
+  | { lease?: never; terminalAuthority: {
+      jobId: string; attemptId: string; fencingVersion: number;
+      status: "succeeded" | "failed" | "cancelled" | "expired";
+    } }
+);
 
 export type CodexModelUsageCorrectionRepository = {
   correctCodexModelUsage(input: CodexModelUsageCorrectionInput): Promise<
