@@ -44,11 +44,11 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
+    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Scoped expiry source merged at38ba04ff(PR992),52 focusedtests plus independentreview andrequiredCI pass. Broad expiry rows remainPARTIAL; originalJob remainsWAITING_AUTHORIZATION hardSDK30. Continue existing source-ledger isolated acceptance when authorizedfixture isready; persistentroommemorydisabled andproductionmigrationseparate.",
+    "next_action": "Scoped expiry implementation independentlyverified and mergedPR992 at38ba04ff; final31memory tests pass on45aee6ae. OriginalJob1b91631e remainsWAITING_AUTHORIZATION at SDK30/3continuation bound; no counterreset/duplicateJob. Next: existing source-ledger isolatedacceptance, then audit otherstores/caches/retention lifecycle under newlycompiled exactscope. Persistentroommemorydisabled; productionmigrationseparate.",
     "next_ready_workunit": "SPEC268_SOURCE_LEDGER_ISOLATED_ACCEPTANCE",
     "reactivation_predicate": "Existing authorization mechanism supports a genuinely valid additional bound, without counter reset or duplicate Job; otherwise preserve original Job and continue independent WorkUnits.",
     "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 35,
+  "generation": 40,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -180,6 +180,16 @@
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
+    "pilot_final_source_checkpoint": {
+      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "functional_prs": [
+        991,
+        992,
+        993
+      ],
+      "whole_spec_complete": false
+    },
     "pilot_pr991_checkpoint": {
       "canonical_job_acceptance": "VERIFIED_COMPLETE",
       "canonical_sha": "b74c302765d0e343869c4c53d724204a77275e78",
@@ -239,9 +249,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
+    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "integrated": true,
-    "integrated_at": "2026-10-12T09:36:11Z"
+    "integrated_at": "2026-10-16T14:43:34Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -337,7 +347,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -362,6 +372,13 @@
             "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
             "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
             "status": "PASS_SCOPED"
+          },
+          {
+            "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+            "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+            "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+            "status": "PASS_SCOPED"
           }
         ],
         "verification_method": "Actual exported-function focusedtests with DB/provider mocks and fakeclock, independentLuna review, CI; repeat other stores/caches/retention lifecycle before whole requirement closure."
@@ -375,7 +392,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -400,6 +417,13 @@
             "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
             "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
             "status": "PASS_SCOPED"
+          },
+          {
+            "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+            "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+            "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+            "status": "PASS_SCOPED"
           }
         ],
         "verification_method": "Actual exported-function focusedtests with DB/provider mocks and fakeclock, independentLuna review, CI; repeat other stores/caches/retention lifecycle before whole requirement closure."
@@ -413,7 +437,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -437,6 +461,13 @@
             "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
             "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
             "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          },
+          {
+            "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+            "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+            "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
             "status": "PASS_SCOPED"
           }
         ],
@@ -539,7 +570,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:33:09.781464Z",
+  "updated_at": "2026-10-16T14:49:24.268768Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
@@ -561,6 +592,25 @@
       }
     ],
     "freshness": "Exact PR source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52 merged as 757a5750f00e916ed84801c6024bebdc814e60f9. Focused Vitest 6 files / 88 tests passed locally; progressive_integration_gate and mocked SPEC-308 browser simulation passed on actual PR head; build-preview skipped. Canonical build on previous Main 2ea4e3905cedce99d7986021e13d6aea69db174a passed with global mascot gate OFF but became stale when Main advanced; no production migration or memory enablement.",
+    "pilot_final_scoped_check": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "evidence_section": "finalVerification",
+      "limits": "Focused mocks/loopback, no fullbuild/typecheck/liveUAT or wholeSPEC closure.",
+      "outcome": "PASS",
+      "profile": "package",
+      "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "spec_subset_tests_passed": 31,
+      "test_files_total": 15,
+      "tests_failed_total": 0,
+      "tests_passed_total": 136
+    },
+    "pilot_postintegration_obligations": {
+      "focused_check": "PASS136/136on45aee6ae",
+      "full_build": "NOT_RUN_NO_RESOURCE_ADMISSION_OR_RELEASE_SCOPE",
+      "full_typecheck": "NOT_RUN_FORBIDDEN_IN_SHARED_SESSION",
+      "live_acceptance": "PENDING_SPEC_SPECIFIC_AUTHORIZED_RUNTIME",
+      "workspace_sync": "DIRTY_PRIMARY_WORK_PRESERVED; noreset/clean/worktree removal"
+    },
     "required_profiles": [
       "quick"
     ],

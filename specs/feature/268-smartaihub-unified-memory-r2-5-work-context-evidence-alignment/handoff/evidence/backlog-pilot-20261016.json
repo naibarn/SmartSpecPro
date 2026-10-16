@@ -1,8 +1,8 @@
 {
-  "observedAt": "2026-10-16T14:18:22.029513+00:00",
+  "observedAt": "2026-10-16T14:47:01.160938+00:00",
   "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-  "finalSourceSha": null,
-  "pilotStatus": "SOURCE302_MERGED_SOURCE268_VERIFIED_READY_CANONICAL268_JOB_OPEN",
+  "finalSourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+  "pilotStatus": "BOUNDED_PILOT_ACCEPTANCE_MET_BACKLOG_REMAINS_OPEN",
   "discovery": "Targeted rg/file reads and Git/GitHub checks; normal shell fallback, no specialized code index available. Primary dirty work preserved.",
   "referencePr": {
     "number": 988,
@@ -29,7 +29,7 @@
       "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
       "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC268_SCOPED_RECALL_EXPIRY.request.json",
       "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
-      "status": "DIRECT_VERIFIED_READY_FOR_PROMOTION_CANONICAL_JOB_OPEN",
+      "status": "SCOPED_VERIFIED_MERGED_CANONICAL_JOB_OPEN",
       "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
       "jobId": "1b91631e1e114bb1eb50c14942245b89",
       "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
@@ -38,7 +38,12 @@
         "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts"
       ],
       "independentReview": "PASS",
-      "focusedTestsPassed": 52
+      "focusedTestsPassed": 52,
+      "finalSourceSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "postIntegrationVerifiedSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "pr": 992,
+      "canonicalJobStatus": "waiting_external",
+      "wholeRequirementClosed": false
     },
     {
       "id": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
@@ -58,7 +63,7 @@
       "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
       "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC302_REJECT_UNKNOWN_BINDING_SOURCE.request.json",
       "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
-      "status": "VERIFIED_COMPLETE_AND_MERGED",
+      "status": "AUTOMATED_VERIFIED_COMPLETE_AND_MERGED",
       "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
       "jobId": "5ae456af45d6d64140f8fe6009be2057",
       "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
@@ -67,7 +72,53 @@
         "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts"
       ],
       "finalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
-      "pr": 991
+      "pr": 991,
+      "postIntegrationVerifiedSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "canonicalJobStatus": "succeeded",
+      "wholeRequirementClosed": false
+    },
+    {
+      "specId": "161",
+      "requirementIds": [
+        "REQ-28722F9489C8"
+      ],
+      "workUnit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
+      "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "writableFiles": [
+        "apps/web/server/services/jobExecutorRegistry.ts",
+        "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts"
+      ],
+      "allowedReadFiles": [
+        "apps/web/server/services/jobExecutorRegistry.ts",
+        "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+        "apps/web/server/services/verticalDramaEpisodePipeline.ts",
+        "apps/web/server/services/__tests__/p213RunnerExecutionRegistration.test.ts"
+      ],
+      "testCommand": "pnpm --dir apps/web exec vitest run server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts --maxWorkers=1",
+      "acceptanceCriteria": [
+        "Registered real episode-stage executor succeeds only after exact owner-scoped runId has persisted status succeeded, for both storyboard and generalized stages.",
+        "Failed, missing, queued, running and cancelled domain results reject with existing DOMAIN_EXECUTION_FAILED behavior; previously finalized failure is never reported success and no extra provider execution is introduced.",
+        "Focused tests invoke actual registered executor; mock only pipeline/provider boundaries, cover success/failure/missing/nonterminal/both stage branches/ownership/lease checks; no DB/provider network calls.",
+        "Only two writable files change, no schema/dependency/retired-runtime or production mutation; scope remains partial SPEC161."
+      ],
+      "dependencyEvidence": "Main b74 verified; executable pipeline swallows failures, registry unconditionalsuccess; no open PR overlaps registry/newtest; no migration/provider dependency. Existing owner-filtered200history lookup fails closed ifexactrunmissing.",
+      "authority": "User authorized remaining canonical requirements and delegated bounded bestpath expansion; SDK authenticated disposabledevelopment admin plus verifiedGitHubadmin; nonproductionFastLane only.",
+      "approvedAt": "2026-10-16T14:29:51.128270+00:00",
+      "modelPolicy": "LUNA_ONLY",
+      "runtime": "Existing worker_jobs/outbox Developer Fast Lane, disposableloopbackcontrolplane, testdatabaseMode none.",
+      "jobId": "342db2bbe556f2e719968622b1a7385e",
+      "runId": "ab191472-9c87-5f87-ad8b-388453aa1c72",
+      "status": "SCOPED_VERIFIED_MERGED_JOB_SUCCEEDED_RUN_READY_FOR_USER_TEST",
+      "workspace": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/ab191472-9c87-5f87-ad8b-388453aa1c72",
+      "runtimeSetup": "Existing root/apps/web node_modules links verified before tests; no install",
+      "originalCanonicalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "finalSourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "pr": 993,
+      "canonicalJobStatus": "succeeded",
+      "canonicalRunStatus": "IMPLEMENTED_READY_FOR_USER_TEST",
+      "wholeRequirementClosed": false,
+      "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-episode-stage-failure-projection-20261016.json",
+      "id": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION"
     }
   ],
   "validationOnly": {
@@ -131,26 +182,37 @@
   "usage": {
     "1b91631e1e114bb1eb50c14942245b89": {
       "calls": 37,
-      "knownSettlements": 37,
+      "knownReleased": 37,
       "inputTokens": 3621153,
       "cachedInputTokens": 3319808,
       "outputTokens": 11570,
-      "actualTotalTokens": 3632723
+      "actualTotalTokens": 3632723,
+      "knownSettlements": 37
     },
     "5ae456af45d6d64140f8fe6009be2057": {
       "calls": 19,
-      "knownSettlements": 19,
+      "knownReleased": 19,
       "inputTokens": 692702,
       "cachedInputTokens": 504192,
       "outputTokens": 3613,
-      "actualTotalTokens": 696315
+      "actualTotalTokens": 696315,
+      "knownSettlements": 19
+    },
+    "342db2bbe556f2e719968622b1a7385e": {
+      "calls": 18,
+      "knownReleased": 18,
+      "inputTokens": 1436007,
+      "cachedInputTokens": 1355136,
+      "outputTokens": 6323,
+      "actualTotalTokens": 1442330,
+      "knownSettlements": 18
     }
   },
   "requestedModel": "gpt-6-luna",
   "reasoningEffort": "medium",
   "providerEffectiveModel": "UNVERIFIED: SDK field null",
   "budgetContinuation": {
-    "status": "PREPARED_NOT_AUTHORIZED",
+    "status": "AUTHORIZED_FINITE_CONTINUATIONS_CONSUMED_WITHOUT_COUNTER_RESET",
     "requestFile": "/tmp/smartaihub-backlog-pilot/owner-budget-request.json",
     "currentTokensPerHour": 500000,
     "requestedTokensPerHour": 2000000,
@@ -158,22 +220,49 @@
     "modelOrScopeExpansion": false
   },
   "classifications": {
-    "161": "Implemented, acceptance tests needed; narrow subset validated; baseline suite repairs pending.",
-    "268": "#875 already integrated. Scoped expiry enforcement missing and eligible. Isolated source-ledger acceptance/migration pending; persistent team-room memory disabled.",
-    "302": "Advisory resolver implemented; invalid source rejection missing and eligible. Durable receipts/shared writes await authorized migration and acceptance.",
-    "304": "Identity/alias/ingress implementation exists; direct authenticated runtime acceptance pending. Hosting/production mutation not authorized."
+    "161": {
+      "verified": "33validationchecks and8failureprojectiontests;4lineworkerfix mergedPR993",
+      "implementedNeedsAcceptance": "Realprovider/service resultpersistence, restart, billing, chainabort; baseline stalequeue/fixture failures remain distinct",
+      "nextEligible": "SPEC161_CANONICAL_WORKER_PERSISTENCE_ACCEPTANCE"
+    },
+    "268": {
+      "verified": "Scopedcurrentrecall expiry andasynchydrationrace fix mergedPR992;31focusedmemorytests",
+      "implementedNeedsAcceptance": "AlreadymergedPR875sourceledger/provenance: isolatedpersistedacceptancepending;3broadexpiryrowsPARTIAL",
+      "blocker": "OriginalSDKJobhardSDK30/3continuationallowanceexhausted, no further validgrant; sourcecheckpointdoesnotneedwait",
+      "nextEligible": "SPEC268_SOURCE_LEDGER_ISOLATED_ACCEPTANCE"
+    },
+    "302": {
+      "verified": "REQ-5FCEBAF7DDBD activePhase1PASS;unknownsourceguardmergedPR991;33tests",
+      "implementedNeedsAcceptance": "Authenticatedidentity/context ingressacceptance",
+      "approvalDependency": "Phase2durablewrite receiptmigration requiresapprovedschemaowner/runtime; no productionauthority",
+      "nextEligible": "SPEC302_AUTHENTICATED_NONPRODUCTION_IDENTITY_ACCEPTANCE"
+    },
+    "304": {
+      "verified": "31identity/ingresstests, stale tenantargumentassertionrepairedPR990; nofullREQclosure",
+      "externalDependency": "Trustededge/routeproducer, replaystore/verifier, directorigin exclusion andapprovednonproductiontarget; currentdefaultHTTP context intentionallynull",
+      "nextEligible": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE"
+    },
+    "inactiveNonCanonical": "specs/quick/161-media-history-gallery-actions indexauthorityNOT_APPLICABLE, lifecycleNOT_A_CANONICAL_SPEC; not executionauthority",
+    "unassessedRemainder": "Unmapped/unassessed ledgerrows are not automatically eligible or authorized by generatedstatus. Compile exactscope/dependencies/budget before execution."
   },
-  "requirementsClosed": [],
+  "requirementsClosed": [
+    {
+      "specId": "302",
+      "requirementId": "REQ-5FCEBAF7DDBD",
+      "sourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "scope": "ActivePhase1 only"
+    }
+  ],
   "gitIntegration": {
-    "status": "CHECKPOINT_PROMOTED_PARTIAL",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/989",
-    "headSha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
-    "canonicalSha": "a293e38662c6f0a662889d3d949e447759514ca5",
-    "mergedAt": "2026-10-16T13:31:21Z",
-    "headAndMergeTreesEqual": true,
-    "requirementsClosed": []
+    "status": "SCOPED_FUNCTIONAL_PROGRESS_IN_MAIN",
+    "latestFunctionalPr": 993,
+    "canonicalSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "headSha": "58e2692f060c8c3862f21d6bcea5cf6992d1b236",
+    "mergedAt": "2026-10-16T14:43:34Z",
+    "treeEquivalenceVerified": true,
+    "reachableFromOriginMain": true
   },
-  "nextAction": "Continue independent direct validation; resume SAME Jobs on approved budget change or default refill. Review/verify/integrate each useful source checkpoint; no replay of settled model turns.",
+  "nextAction": "Pilotminimum met withverifiedvalidationonlyrequirement and3independentscopedfunctionalpatches inMain. Continue nexteligibleacceptancefromcurrentcanonicalhandoff; keep original268Jobwait andwholeSpecgapsaccurate. No automaticproduction, migration, extraquota/model/scope beyondvalidfutureauthorization.",
   "spec304Validation": {
     "profile": "quick",
     "files": 4,
@@ -249,6 +338,11 @@
           "message": "Resuming execution"
         }
       }
+    },
+    {
+      "id": "342db2bbe556f2e719968622b1a7385e",
+      "status": "succeeded",
+      "progressJson": {}
     }
   ],
   "validationOnlyRequirementClosed": {
@@ -260,11 +354,13 @@
   "runtimeRepair": "Task worktrees lacked node_modules links. Reused existing installations in both worktrees; no install, migration or writable source scope expansion. Initial actual test startup failure retained.",
   "spec302SdkContinuationRequest": "/tmp/smartaihub-backlog-pilot/spec302-sdk-continuation-request.json",
   "runtimeBudgetAuthorization": {
-    "reference": "USER_DELEGATED_APPROVAL_20261016_SPEC268_BOUNDED_CAPACITY_CONTINUATION",
-    "temporaryInternalTokenCap": 4000000,
+    "reference": "USER_DELEGATED_APPROVAL_20261016_SPEC161_EPISODE_FAILURE_PROJECTION_BOUNDED",
+    "temporaryInternalTokenCap": 6000000,
     "windowSeconds": 3600,
-    "onlyJob": "1b91631e1e114bb1eb50c14942245b89",
+    "expiresAt": "2026-10-16T15:30:35.874383+00:00",
+    "onlyJob": "342db2bbe556f2e719968622b1a7385e",
     "modelPolicy": "LUNA_ONLY",
+    "providerAccountQuotaChanged": false,
     "productionAccess": false
   },
   "latestFunctionalMerge": {
@@ -306,5 +402,179 @@
     "outcome": "PASS",
     "limits": "Focused mocked/unit/loopback tests only; no provider, production, deployment or broad UAT claim."
   },
-  "helperModelUsage": "UNKNOWN: host tool usage not exposed; excluded from canonical scheduler settlement totals."
+  "helperModelUsage": "UNKNOWN: host tool usage not exposed; excluded from canonical scheduler settlement totals.",
+  "finalVerification": {
+    "startedAt": "2026-10-16T14:44:14.252791+00:00",
+    "finishedAt": "2026-10-16T14:44:23.236857+00:00",
+    "durationSeconds": 8.984,
+    "exitCode": 0,
+    "signal": null,
+    "maxChildRssKiB": 375832,
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+      "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+      "server/services/verticalDramaLlmPolicy.test.ts",
+      "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+      "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "server/services/__tests__/projectResolutionAuthority.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryService.test.ts",
+      "server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts",
+      "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+      "server/services/__tests__/appIdentityRepository.test.ts",
+      "server/routers/appIdentity.test.ts",
+      "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+      "--maxWorkers=1",
+      "--reporter=json",
+      "--outputFile=/tmp/smartaihub-backlog-pilot/final-integrated-focused-tests.json"
+    ],
+    "scopeFiles": 15,
+    "profile": "package",
+    "sourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "toolingRepair": "Initial /usr/bin/time absent(exit127), no tests ran; used Python standard-library resource observation without install.",
+    "passedTests": 136,
+    "failedTests": 0,
+    "testFiles": 15,
+    "resourceObservation": {
+      "observedAt": "2026-10-16T14:43:48.424697+00:00",
+      "memAvailable": "25125488 kB",
+      "profile": "package",
+      "scope": "15 focused web test files; maxWorkers1; no full verification/typecheck/build",
+      "fullLeaseRequired": false
+    },
+    "outcome": "PASS",
+    "verificationLimits": "Focused exported-function/unit/loopback tests with mocked provider/DB boundaries. No full typecheck/build/live UAT/production or schema migration claim."
+  },
+  "canonicalModelAccounting": {
+    "snapshotAt": "2026-10-16T14:33:59.359Z",
+    "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-canonical-model-usage-20261016.jsonl",
+    "evidenceSha256": "459e6886de88e3ace7ed218a18f22074bb00baca609fec7fd762abf78dee9449",
+    "totals": {
+      "calls": 74,
+      "knownReleased": 74,
+      "inputTokens": 5749862,
+      "cachedInputTokens": 5179136,
+      "outputTokens": 21506,
+      "actualTotalTokens": 5771368
+    },
+    "byJob": {
+      "1b91631e1e114bb1eb50c14942245b89": {
+        "calls": 37,
+        "knownReleased": 37,
+        "inputTokens": 3621153,
+        "cachedInputTokens": 3319808,
+        "outputTokens": 11570,
+        "actualTotalTokens": 3632723
+      },
+      "5ae456af45d6d64140f8fe6009be2057": {
+        "calls": 19,
+        "knownReleased": 19,
+        "inputTokens": 692702,
+        "cachedInputTokens": 504192,
+        "outputTokens": 3613,
+        "actualTotalTokens": 696315
+      },
+      "342db2bbe556f2e719968622b1a7385e": {
+        "calls": 18,
+        "knownReleased": 18,
+        "inputTokens": 1436007,
+        "cachedInputTokens": 1355136,
+        "outputTokens": 6323,
+        "actualTotalTokens": 1442330
+      }
+    },
+    "failureEvidence": {
+      "SPEC268_SCOPED_RECALL_EXPIRY": {
+        "runStatus": "WAITING_AUTHORIZATION",
+        "modelCalls": 37,
+        "patchRejections": {
+          "Patch must have Begin Patch and End Patch markers": 2,
+          "Patch context must match exactly once (matched 2); refresh source and retry": 2,
+          "Patch context must match exactly once (matched 3); refresh source and retry": 3
+        },
+        "testExitCodes": [
+          2,
+          2
+        ],
+        "selectionPolicy": "LUNA_ONLY",
+        "modelPolicyChanged": false
+      },
+      "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE": {
+        "runStatus": "VERIFIED_COMPLETE",
+        "modelCalls": 19,
+        "patchRejections": {},
+        "testExitCodes": [
+          1,
+          1,
+          1,
+          0
+        ],
+        "selectionPolicy": "LUNA_ONLY",
+        "modelPolicyChanged": false
+      },
+      "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION": {
+        "runStatus": "IMPLEMENTED_READY_FOR_USER_TEST",
+        "modelCalls": 18,
+        "patchRejections": {
+          "Patch context must match exactly once (matched 18); refresh source and retry": 2
+        },
+        "testExitCodes": [
+          0,
+          0,
+          0
+        ],
+        "selectionPolicy": "LUNA_ONLY",
+        "modelPolicyChanged": false
+      }
+    },
+    "outsideCanonicalSchedulerUsage": "UNKNOWN: conductor and host helper token settlement not exposed; excluded from these Job totals.",
+    "effectiveModel": "UNVERIFIED: provider SDK reportsnull; requestedmodelLuna for all74calls."
+  },
+  "wholeSpecsClosed": [],
+  "evidenceOnlyPromotion": "Pending normal protected PR; source/tests above verified against integrated45aee6ae, not a sourcebranch.",
+  "counts": {
+    "validationOnlyRequirementSetsVerified": 1,
+    "independentlyVerifiedCodingWorkUnitsMerged": 3,
+    "canonicalJobsSucceeded": 2,
+    "canonicalRunsVerifiedComplete": 1,
+    "canonicalJobsWaitingAuthorization": 1,
+    "wholeSpecsComplete": 0
+  },
+  "scopeLimits": [
+    "All four full Specs remain incomplete; scopedWorkUnit closure is distinct from wholeRequirement/Spec closure.",
+    "SPEC268 originalautomatedJob stillwaits; scopedcode independentlyverifiedandmerged.",
+    "SPEC161Jobsucceeded butRunIMPLEMENTED_READY_FOR_USER_TEST/modelcompletefalse preserved; independentfactualreview andred/green tests establishboundedcriteria.",
+    "No production mutation, DBmigration, dependencyinstall, fulltypecheck/build or neworchestrator.",
+    "Canonical74 modelcalls allLuna requested, effectiveSDKmodelnull; reservationsreleasedwithknownusage. Conductor/helperhostusageunexposed andexcluded."
+  ],
+  "helperReviewLifecycle": [
+    {
+      "agent": "/root/spec161_validation_scout",
+      "roles": [
+        "161validation",
+        "302independentreview",
+        "268scopedrepairassistance",
+        "304authorityaudit",
+        "161independentfactualreview"
+      ],
+      "modelRequested": "gpt-6-luna",
+      "status": "COMPLETED_AND_INTERRUPTED_CLOSED",
+      "usageSettlement": "UNKNOWN_HOST_NOT_EXPOSED"
+    },
+    {
+      "agent": "/root/spec268_independent_final_review",
+      "roles": [
+        "independent268finalreview"
+      ],
+      "modelRequested": "gpt-6-luna",
+      "status": "COMPLETED_AND_INTERRUPTED_CLOSED",
+      "usageSettlement": "UNKNOWN_HOST_NOT_EXPOSED"
+    }
+  ]
 }

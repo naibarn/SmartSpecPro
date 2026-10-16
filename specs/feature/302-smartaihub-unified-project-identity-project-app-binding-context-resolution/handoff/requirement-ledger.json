@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -119,7 +119,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
       "final_state": "PASS",
       "implementation_evidence": [
         {
@@ -127,10 +127,17 @@
           "path": "apps/web/server/services/canonicalProjectContextResolver.ts",
           "scope": "Semantic/recent candidates only produce suggestions; active runtime caller uses server/explicit binding; current receipt validator rejects every durable write.",
           "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5"
+        },
+        {
+          "kind": "FINAL_MAIN_NO_SIMILARITY_DURABLE_DESTINATION_REVALIDATION",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-project-authority-validation-20261016.json",
+          "scope": "ActivePhase1,33actualresolver/receipt tests included in final136; guard sourcehashmatchesindependentreview. Futurewriteconsumers mustrevalidate explicitconfirmation/ACL/durablereceiptauthority.",
+          "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+          "status": "PASS"
         }
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Retain regression guard. Revalidate this requirement before any future consumer promotes ranked suggestions into durable project bindings; future flow needs explicit confirmation, current ACL and durable receipt authority.",
+      "next_action": "Retain regression; revalidate before future consumers can promote ranked suggestions to durable destinations.",
       "requirement_digest": "3058f1873ac59b9115b91a64a1cd056e3e819d4621b6d6c9588e24766b0e5ed5",
       "requirement_id": "REQ-5FCEBAF7DDBD",
       "requirement_text": "6. Similarity can retrieve or rank candidates, but MUST NOT alone select a durable project destination.",
@@ -142,6 +149,13 @@
           "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-project-authority-validation-20261016.json",
           "scope": "27 passing resolver/receipt tests; independent Luna review confirms REQ-5FCEBAF7DDBD for currently active Phase1. DB boundary mocked; no migration/live provider claim.",
           "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5"
+        },
+        {
+          "kind": "FINAL_MAIN_NO_SIMILARITY_DURABLE_DESTINATION_REVALIDATION",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-project-authority-validation-20261016.json",
+          "scope": "ActivePhase1,33actualresolver/receipt tests included in final136; guard sourcehashmatchesindependentreview. Futurewriteconsumers mustrevalidate explicitconfirmation/ACL/durablereceiptauthority.",
+          "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+          "status": "PASS"
         }
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."

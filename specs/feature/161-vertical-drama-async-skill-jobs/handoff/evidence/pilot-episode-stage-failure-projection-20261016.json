@@ -10,7 +10,7 @@
   "runId": "ab191472-9c87-5f87-ad8b-388453aa1c72",
   "originalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
   "candidateBaseSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
-  "finalSourceSha": null,
+  "finalSourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
   "files": {
     "apps/web/server/services/jobExecutorRegistry.ts": "5ef58b2f81b601acdfc41498ce06bf1bb71104cc7f375643ba634140fc4809bd",
     "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts": "f776a11add2f0a1676d6112d580329226183fdf45853b153b4caa71ab9bc63aa"
@@ -107,5 +107,62 @@
   },
   "requirementsClosed": [],
   "wholeSpecComplete": false,
-  "sourceCheckpoint": "READY_FOR_PROTECTED_PROMOTION"
+  "sourceCheckpoint": "SCOPED_VERIFIED_AND_MERGED",
+  "merge": {
+    "sourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "pr": 993,
+    "mergedAt": "2026-10-16T14:43:34Z",
+    "headSha": "58e2692f060c8c3862f21d6bcea5cf6992d1b236",
+    "treeEquivalent": true,
+    "reachableFromOriginMain": true
+  },
+  "postIntegrationVerification": {
+    "startedAt": "2026-10-16T14:44:14.252791+00:00",
+    "finishedAt": "2026-10-16T14:44:23.236857+00:00",
+    "durationSeconds": 8.984,
+    "exitCode": 0,
+    "signal": null,
+    "maxChildRssKiB": 375832,
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+      "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+      "server/services/verticalDramaLlmPolicy.test.ts",
+      "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+      "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "server/services/__tests__/projectResolutionAuthority.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryService.test.ts",
+      "server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts",
+      "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+      "server/services/__tests__/appIdentityRepository.test.ts",
+      "server/routers/appIdentity.test.ts",
+      "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+      "--maxWorkers=1",
+      "--reporter=json",
+      "--outputFile=/tmp/smartaihub-backlog-pilot/final-integrated-focused-tests.json"
+    ],
+    "scopeFiles": 15,
+    "profile": "package",
+    "sourceSha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "toolingRepair": "Initial /usr/bin/time absent(exit127), no tests ran; used Python standard-library resource observation without install.",
+    "passedTests": 136,
+    "failedTests": 0,
+    "testFiles": 15,
+    "resourceObservation": {
+      "observedAt": "2026-10-16T14:43:48.424697+00:00",
+      "memAvailable": "25125488 kB",
+      "profile": "package",
+      "scope": "15 focused web test files; maxWorkers1; no full verification/typecheck/build",
+      "fullLeaseRequired": false
+    },
+    "outcome": "PASS",
+    "verificationLimits": "Focused exported-function/unit/loopback tests with mocked provider/DB boundaries. No full typecheck/build/live UAT/production or schema migration claim."
+  },
+  "scopeAuthorization": "Started with requested SPEC161 validation; executable defect discovered and user explicitly subsequently delegated best-path scope expansion. Compiled exact two-file correctness repair via authenticated Fast Lane, not generated status or blanket spec execution. Canonical whole-SPEC continuation remains validation-only."
 }

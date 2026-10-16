@@ -1,5 +1,5 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -7316,7 +7316,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -7340,6 +7340,13 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
           "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
           "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+          "status": "PASS_SCOPED"
+        },
+        {
+          "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+          "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+          "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS_SCOPED"
         }
       ],
@@ -8014,7 +8021,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -8038,6 +8045,13 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
           "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
           "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+          "status": "PASS_SCOPED"
+        },
+        {
+          "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+          "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+          "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS_SCOPED"
         }
       ],
@@ -8074,7 +8088,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -8098,6 +8112,13 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
           "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
           "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+          "status": "PASS_SCOPED"
+        },
+        {
+          "kind": "POST_INTEGRATION_SCOPED_EXPIRY_VERIFICATION",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+          "scope": "31memory tests in final136/15files; fullcross-store/caches/lifecycle requirement remainsPARTIAL.",
+          "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS_SCOPED"
         }
       ],
