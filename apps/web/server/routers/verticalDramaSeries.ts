@@ -5171,9 +5171,16 @@ export async function runGenerateStoryBiblePlanJob(
   }
   type StoryBiblePlanResult = Awaited<ReturnType<typeof generateStoryBible>>;
   const checkpoint = resume?.checkpoint;
-  const checkpointCandidate = parseExpandedStoryBibleCandidate(
+  const parsedCheckpointCandidate = parseExpandedStoryBibleCandidate(
     checkpoint?.planCandidate
   );
+  // Historical automatic fallbacks were persisted as candidates, but they
+  // never represent an accepted provider plan. Re-enter real plan generation
+  // while leaving the durable checkpoint intact until a real candidate exists.
+  const checkpointCandidate =
+    checkpoint?.planModel === "deterministic-plan-fallback"
+      ? null
+      : parsedCheckpointCandidate;
   const persistPlanCheckpoint = async (
     patch: Pick<
       VerticalDramaStoryJobCheckpoint,
@@ -5243,28 +5250,15 @@ export async function runGenerateStoryBiblePlanJob(
       });
     } catch (error) {
       // Credit exhaustion is an admission/entitlement boundary and must still
-      // be surfaced. Provider outages, malformed JSON, and exhausted schema
-      // retries are recoverable here: retain the user's approved inputs and
-      // make a structurally valid plan so the queued deep-draft phase can
-      // complete the season instead of ending the whole job as failed.
+      // be surfaced. Other provider and schema errors also stop this chain:
+      // deep drafting requires an accepted plan, not a synthesized substitute.
       if (error instanceof InsufficientCreditsError) throw error;
       debugError(
         "verticalDramaSeries.storyPlan",
-        "Story plan provider failed; continuing with automatic plan fallback",
+        "Story plan provider failed; stopping automatic deep-draft handoff",
         error
       );
-      result = {
-        expanded: materializeAutomaticStoryPlanFallback(row, bible),
-        creditsUsed: 0,
-        model: "deterministic-plan-fallback",
-        warnings: [
-          {
-            code: "automatic_plan_fallback",
-            message:
-              "ระบบใช้ข้อมูลที่มีอยู่สร้างโครงเรื่องต่อโดยอัตโนมัติ หลังการสร้างแผนจาก provider ไม่สำเร็จ",
-          },
-        ],
-      };
+      throw error;
     }
     await persistPlanCheckpoint({
       planStage: "candidate_ready",

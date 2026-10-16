@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "expected_canonical_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Revalidate existing R5 persisted identity/App/Project memory tests in new owned nonproduction PG; preserve synthetic ingress limitation and disabled room memory. Original expiry SDK Job allowance remains unchanged.",
-    "next_ready_workunit": "SPEC268_EXISTING_R5_PERSISTED_CONTEXT_REVALIDATION",
+    "next_action": "Promote native-confirmed typed expiry SQL/error-classification repair. Existing realSQL R5HTTP acceptance now5/5passes with repair; label synthetic issuer/auth and nonproduction fixture limits.",
+    "next_ready_workunit": "SPEC268_NATIVE_EXPIRY_SQL_REPAIR",
     "reactivation_predicate": "Existing authorization mechanism supports a genuinely valid additional bound, without counter reset or duplicate Job; otherwise preserve original Job and continue independent WorkUnits.",
-    "resume_point": "PR995 merged4073a5c9; canonical reachability and identical head/merge trees verified. Source-ledger native acceptance plus exact project merge repair passed21focusedtests and independent review. Historical mixed rows cannot be safely reattributed. Full SPEC268 remains open.",
+    "resume_point": "PR997 source ownership guard merged054646a7 after main reconciliation/recheckedCI; PR995 exactproject isolation already4073a5c9. RealSQL acceptance found rawDate expiry regression fromPR992; repair typedgt prepared and independently tested10native/unit + existingR5fivecases. Persistentroommemorydisabled; originalexpiryJobunchanged.",
     "waiting_predicate": "Canonical Job awaiting valid additional allowance; current original authorization/continuation cap has been exhausted. Direct source checkpoint is independently verified and can integrate safely."
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 47,
+  "generation": 50,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -186,6 +186,16 @@
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/995",
       "scope": "Exact project merge predicate plus native acceptance;21focusedtests and independentreview passed",
       "workunit": "SPEC268_NATIVE_SOURCE_LEDGER_ACCEPTANCE"
+    },
+    "native_expiry_sql_repair": {
+      "branch": "codex/smartaihub-acceptance-evidence-20261017",
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-expiry-sql-repair-20261017.json",
+      "integration_base_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+      "owned_commit_sha": "2d312c6b664f09660301e6c9746d71de9f00f386",
+      "pending_action": "Create protected normal PR containing two independently reviewed WorkUnits, required checks then guarded merge/canonical verification; broader Specs remain OPEN.",
+      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+      "workunit": "SPEC268_NATIVE_EXPIRY_SQL_REPAIR"
     },
     "owner": "Codex",
     "pilot_final_source_checkpoint": {
@@ -234,6 +244,14 @@
     },
     "pr_head_sha": "c834ddcee771fd5c2c9d230b9689fd2c51e61d52",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
+    "source_conversation_owner_guard": {
+      "canonical_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
+      "pr": 997,
+      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "status": "SCOPED_VERIFIED_AND_MERGED",
+      "workunit": "SPEC268_CONVERSATION_SOURCE_OWNER_GUARD"
+    },
     "source_paths": [
       "apps/web/drizzle/0398_spec268_team_room_entity_memory_sources.sql",
       "apps/web/drizzle/meta/_journal.json",
@@ -257,9 +275,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "canonical_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
     "integrated": true,
-    "integrated_at": "2026-10-16T18:58:10Z"
+    "integrated_at": "2026-10-16T19:20:06Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -352,17 +370,18 @@
           "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8747"
         ],
         "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8747",
-        "blocker": "Source-ledger subset verified locally; full context tuple/App boundaries, historical provenance ambiguity and production gate remain.",
+        "blocker": "Source owner and exact Project subset verified; complete canonical tenant/App tuple and historical data attribution remain open.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "evidence_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/memoryService.ts",
-          "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
+          "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+          "apps/web/server/services/memoryService.ts (source owner guard PR997)"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
+        "next_action": "Preserve owner validation and complete canonical tenant/App context acceptance independently; do not infer tenant authorization from user ownership.",
         "requirement_digest": "1f2472d77b0ed636f982d2496c996d1709eb98e07f5802603fec8895c77ce3c3",
         "requirement_id": "REQ-427F51C6939B",
         "requirement_text": "A record MUST carry enough scope and provenance to reproduce its authorization decision. Missing context dimensions MUST NOT be inferred from a matching user identifier or vector similarity. Cross-scope reads, writes, export, and deletion require explicit policy and auditable authorization.",
@@ -370,7 +389,9 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
-          "https://github.com/naibarn/SmartSpecPro/pull/995"
+          "https://github.com/naibarn/SmartSpecPro/pull/995",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/997"
         ],
         "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
       },
@@ -552,17 +573,18 @@
           "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8769"
         ],
         "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8769",
-        "blocker": "Source-ledger subset verified locally; full context tuple/App boundaries, historical provenance ambiguity and production gate remain.",
+        "blocker": "Source owner and exact Project subset verified; complete canonical tenant/App tuple and historical data attribution remain open.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "evidence_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/memoryService.ts",
-          "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
+          "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+          "apps/web/server/services/memoryService.ts (source owner guard PR997)"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
+        "next_action": "Preserve owner validation and complete canonical tenant/App context acceptance independently; do not infer tenant authorization from user ownership.",
         "requirement_digest": "ecf49966b6a7e24f145a0e18833e5e03abc45eacc1eae40c2f109bc44158473c",
         "requirement_id": "REQ-D4427964FE28",
         "requirement_text": "The runtime MUST validate that every supplied identifier belongs to the authenticated tenant and caller's permitted context. Absent optional fields remain absent; adapters MUST NOT silently substitute legacy `projectId`, `personaId`, `appId`, or a user-only scope as canonical authority. Compatibility adapters may map legacy values only when the mapping is explicit, validated, and recorded with provenance.",
@@ -570,7 +592,9 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
-          "https://github.com/naibarn/SmartSpecPro/pull/995"
+          "https://github.com/naibarn/SmartSpecPro/pull/995",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/997"
         ],
         "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
       }
@@ -638,7 +662,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T19:02:56.820109Z",
+  "updated_at": "2026-10-16T19:23:10.053740Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
@@ -699,6 +723,12 @@
       "quick"
     ],
     "sha": "757a5750f00e916ed84801c6024bebdc814e60f9",
+    "source_conversation_owner_guard": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
+      "outcome": "PASS",
+      "source_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+      "tests": "26focused; source/head/merge equivalence verified"
+    },
     "status": "PARTIAL",
     "task_regressions": []
   }

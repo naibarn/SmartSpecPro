@@ -25,7 +25,7 @@
     "PR995 merged; no active application code ownership overlaps; PR996 handoff edits remain serialized until merge"
   ],
   "decision": "Prove this source ownership defect with real SQL, then require owner-filtered source lookup; retain best-effort persona fallback and existing explicit Project semantics. Do not reattribute historical data or widen canonical App authority.",
-  "status": "INDEPENDENTLY_VERIFIED_READY_FOR_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "job_id": null,
   "run_id": null,
   "new_sdk_calls": 0,
@@ -89,5 +89,17 @@
     "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "27e5b44068899de34537ba6d73e5f8a1a23266709585faa36699a66698805ded"
   },
   "owned_commit_sha": "2440a3fd83584efc4a70d5c4c965ae74ab16de16",
-  "pending_action": "Normal protected PR and required checks, guarded merge, canonical verification; shared manifest/ledger transition serialized after PR996."
+  "pending_action": "Normal protected PR and required checks, guarded merge, canonical verification; shared manifest/ledger transition serialized after PR996.",
+  "pr": 997,
+  "merge_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+  "final_source_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+  "head_sha": "bccc41ece925a38f885335332c96c609d7b04297",
+  "merged_at": "2026-10-16T19:20:06Z",
+  "merge_verified_reachable": true,
+  "head_merge_trees_equal": true,
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "mocked_spec308_browser": "PASS",
+    "build_preview": "SKIPPED"
+  }
 }

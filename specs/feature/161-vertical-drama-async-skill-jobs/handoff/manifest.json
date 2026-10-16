@@ -22,14 +22,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "expected_canonical_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Integrate scoped native worker acceptance via protected PR; retain provider/browser/billing/chain-abort obligations as OPEN.",
-    "next_ready_workunit": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE",
+    "next_action": "Promote owned fail-closed chain fix and expiry SQL repair together after exact fast gate; independently auditable WorkUnits share protected integration only.",
+    "next_ready_workunit": "SPEC161_STORY_PLAN_FAILURE_CHAIN",
     "reactivation_predicate": null,
-    "resume_point": "Read backlog-pilot-20261016 evidence: source 40a5e8d366aaae3d7e3695ffd6c2447116429ef6; 33 bounded validation assertions pass, whole SPEC and all requirement closure remain open.",
+    "resume_point": "PR996 native persistence/restart-readback acceptance merged94cc9b8e; scoped success/failure and terminalreplay proven, requirement rows remainPARTIAL. Next actual functional chain-stop defect identified from canonical criterion8.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 26,
+  "generation": 31,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -91,11 +91,13 @@
     "native_worker_acceptance": {
       "base_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "branch": "codex/spec161-native-worker-acceptance-20261017",
+      "canonical_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
       "intended_pr": "Normal GitHub PR to main; creation follows this durable checkpoint.",
       "owned_commit_sha": "85d969b1e099d305a530476db1be6efa77b29fbe",
       "pending_action": "Create normal protected PR from codex/spec161-native-worker-acceptance-20261017, wait required checks, guarded merge, verify canonical SHA; then persist result.",
-      "status": "FOCUSED_TESTS_PASS_PENDING_PROTECTED_INTEGRATION",
+      "pr": 996,
+      "status": "SCOPED_VERIFIED_AND_MERGED",
       "workunit": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE"
     },
     "pilot_episode_stage_workunit": {
@@ -163,13 +165,22 @@
     },
     "source_paths": [],
     "started": false,
-    "status": "UNKNOWN"
+    "status": "UNKNOWN",
+    "story_plan_failure_chain": {
+      "branch": "codex/smartaihub-acceptance-evidence-20261017",
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
+      "owned_commit_sha": "2d312c6b664f09660301e6c9746d71de9f00f386",
+      "pending_action": "Create protected normal PR containing two independently reviewed WorkUnits, required checks then guarded merge/canonical verification; broader Specs remain OPEN.",
+      "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+      "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+      "workunit": "SPEC161_STORY_PLAN_FAILURE_CHAIN"
+    }
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "canonical_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
     "integrated": true,
-    "integrated_at": "2026-10-16T14:43:34Z"
+    "integrated_at": "2026-10-16T19:11:08Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -249,7 +260,7 @@
         "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
         "final_state": "OPEN",
         "implementation_evidence": [
           {
@@ -290,7 +301,8 @@
             "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
             "status": "PASS_SCOPED"
           },
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/996"
         ],
         "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       },
@@ -368,6 +380,60 @@
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
+      "REQ-4C379A93119A": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143",
+        "blocker": "Plan→deep failure chain repaired; remaining draft/QC/fullstory transitions and no-fallback behavior across all production flows require independent acceptance.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/routers/verticalDramaSeries.ts",
+          "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Merge scoped fail-closed plan chain fix, then reconcile remaining criterion8 transition evidence.",
+        "requirement_digest": "9ec466d2a6e3a823d323ddaad929b91fd4ec233b42c07b0356a715690ef4a93a",
+        "requirement_id": "REQ-4C379A93119A",
+        "requirement_text": "Tests may mock the provider boundary to prove timeout isolation, but production application paths must not use mock or fallback behavior.",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json"
+        ],
+        "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
+      },
+      "REQ-50A4DD25D9C8": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126",
+        "blocker": "Plan→deep failure chain repaired; remaining draft/QC/fullstory transitions and no-fallback behavior across all production flows require independent acceptance.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/routers/verticalDramaSeries.ts",
+          "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Merge scoped fail-closed plan chain fix, then reconcile remaining criterion8 transition evidence.",
+        "requirement_digest": "08a79440597f54c48ebcc08c035677fcba2d936cdf775364a757f2af4e38d66d",
+        "requirement_id": "REQ-50A4DD25D9C8",
+        "requirement_text": "8. chain plan/draft/QC/full story หยุดต่อเมื่อขั้นก่อนหน้าล้มเหลว และแสดง error จริง",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json"
+        ],
+        "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
+      },
       "REQ-F24F12012092": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -377,7 +443,7 @@
         "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
@@ -392,7 +458,8 @@
         "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/996"
         ],
         "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       }
@@ -575,7 +642,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 4,
+    "applicable": 6,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -584,7 +651,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T19:05:16.246989Z",
+  "updated_at": "2026-10-16T19:23:10.044248Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -603,7 +670,8 @@
       "final_candidate_tests": "PASS2/2 after fresh-control-plane restart replay, attemptcount1, providerreservation0 and test-env cleanup repair",
       "outcome": "PASS",
       "profile": "integration",
-      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "source_equivalence": "PR996 head/merge trees equal; final native2/2 plus23combined tests run on source4073a5c9 with exact owned test content; fresh postmerge native check pending later stable checkpoint.",
+      "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
       "tests": "Final native2/2; combined161+268 memory4files23/23",
       "whole_requirement_complete": false
     },
@@ -656,6 +724,16 @@
     "required_profiles": [],
     "sha": null,
     "status": "UNKNOWN",
+    "story_plan_failure_chain": {
+      "candidate_file_sha256": {
+        "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts": "278ad351e55ed33fd7ee26a1f4d156e0f61633f0d77cd89ede00bfe425eacf08",
+        "apps/web/server/routers/verticalDramaSeries.ts": "7de95648a8225d544119a48f70c2a72b68a620a9e18fa4ca899af0799cb2bc32"
+      },
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
+      "outcome": "PASS",
+      "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+      "tests": "76fullfile+9expiry+1native=86combined"
+    },
     "task_regressions": []
   }
 }

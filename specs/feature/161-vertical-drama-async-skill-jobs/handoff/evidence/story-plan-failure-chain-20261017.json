@@ -1,0 +1,94 @@
+{
+  "workunit_id": "SPEC161_STORY_PLAN_FAILURE_CHAIN",
+  "spec_id": "161",
+  "requirement_ids": [
+    "REQ-50A4DD25D9C8",
+    "REQ-4C379A93119A"
+  ],
+  "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+  "writable_paths": [
+    "apps/web/server/routers/verticalDramaSeries.ts",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+    "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json"
+  ],
+  "runtime": "Bounded local provider-boundary mocked acceptance; no paid API, production, shared database, new dependency or retired runtime",
+  "acceptance": [
+    "Original provider/schema failure propagates with no successful checkpoint or deep-draft handoff",
+    "Historical deterministic fallback checkpoint re-enters existing real-provider generation path",
+    "Failed historical retry preserves stored checkpoint history and stops handoff",
+    "Genuine saved provider candidate resumes without repeat provider/charge and success still hands off"
+  ],
+  "decision": "Canonical Oct6 reconstructed approvedSpec explicitly requires stop failed chains/no productionfallback. Remove active fallback call only; retain existing helper and unrelated features. Reuse existing provider, persistence and job paths.",
+  "job_id": null,
+  "run_id": null,
+  "model": {
+    "requested_helper": "gpt-6-luna",
+    "effective": "UNVERIFIED",
+    "actual_conductor_and_helper_usage": "UNKNOWN",
+    "new_sdk_calls": 0
+  },
+  "files_modified": [
+    "apps/web/server/routers/verticalDramaSeries.ts",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+  ],
+  "file_sha256": {
+    "apps/web/server/routers/verticalDramaSeries.ts": "7de95648a8225d544119a48f70c2a72b68a620a9e18fa4ca899af0799cb2bc32",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts": "278ad351e55ed33fd7ee26a1f4d156e0f61633f0d77cd89ede00bfe425eacf08"
+  },
+  "baseline": {
+    "profile": "quick",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "JWT_SECRET": "[REDACTED disposable test-only value]"
+    },
+    "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+    "started": 1792178150.0945938,
+    "ended": 1792178158.1001434,
+    "exit": 0,
+    "max_rss_kib": 407880
+  },
+  "baseline_tests": "73/73pass; oldtest codified forbidden failure\u2192fallback\u2192handoff behavior",
+  "repair_history": [
+    "Initial helper fullsuite failures were caused by test mock response leakage, not baseline; parent baseline73/73green, candidate75tests15fail reproduced. Fixed test response queues without global mockReset.",
+    "Candidate fullfile now76/76 (3new net tests); independent parent combined repair suite86/86 passed."
+  ],
+  "verification": {
+    "profile": "integration",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "JWT_SECRET": "[REDACTED disposable test-only value]",
+      "RUN_NATIVE_MEMORY_EXPIRY_TESTS": "true"
+    },
+    "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+    "candidate": "Story-plan chain + typed expiry/error classifier repairs in owned paths",
+    "started": 1792178349.511654,
+    "ended": 1792178361.1866407,
+    "exit": 0,
+    "max_rss_kib": 467388
+  },
+  "independent_review": {
+    "reviewer": "main conductor, distinct from implementing Luna helper",
+    "result": "PASS source+fullfile; preserves original error identity, real candidate resume, historical checkpoint retry/history and existing helper; no shared mock reset remains"
+  },
+  "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+  "remaining": [
+    "Full draft/QC/fullstory transition acceptance and deployed/provider/browser obligations remain distinct",
+    "No claim of real paid provider execution; only its permitted test boundary is mocked"
+  ]
+}
