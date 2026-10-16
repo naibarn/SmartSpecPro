@@ -1,8 +1,9 @@
-import { and, asc, eq, inArray, isNotNull, lte, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { db, getDb } from "../db";
 import { storyboardSkillRuns, workerJobEvents, workerJobs } from "../../drizzle/schema";
+import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
 import { createJobControlPlane } from "./jobControlPlane";
 import { classifyWaitingExternal, type WaitingExternalDecision } from "./jobReconciliationPolicy";
 import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPublisher";
@@ -133,7 +134,15 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const deadlineCandidates = await db.select({ id: workerJobs.id })
     .from(workerJobs)
     .where(and(
-      inArray(workerJobs.status, ["pending", "queued", "leased", "running", "retry_scheduled"] as any),
+      or(
+        inArray(workerJobs.status, ["pending", "queued", "leased", "running", "retry_scheduled"] as any),
+        // Fast Lane capacity/budget waits still have a finite absolute lifetime.
+        and(
+          eq(workerJobs.status, "waiting_external" as any),
+          eq(workerJobs.jobType, DEVELOPER_FAST_LANE_JOB),
+          eq(workerJobs.contractVersion, DEVELOPER_FAST_LANE_CONTRACT),
+        ),
+      ),
       sql`${workerJobs.retryPolicyJson}->>'deadlineMode' IN ('adaptive', 'fixed')`,
     ))
     .orderBy(asc(workerJobs.createdAt))

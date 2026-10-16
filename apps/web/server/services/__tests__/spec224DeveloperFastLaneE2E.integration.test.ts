@@ -200,6 +200,102 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     for (const [key, value] of Object.entries(priorEnv)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
   });
 
+  it.each([
+    ["python.deadline_test", "python_job_worker", 10],
+    ["media.image_generation", "node_job_worker", 10],
+    ["media.audio_generation", "node_job_worker", 10],
+    ["media.video_render", "node_job_worker", 60],
+    ["notification.deadline_test", "node_job_worker", 10],
+  ] as const)("retains the persisted ordinary family limit for %s", async (jobType, runtimeType, minutes) => {
+    const { createJobControlPlane } = await import("../jobControlPlane");
+    const controlPlane = createJobControlPlane();
+    const created = await controlPlane.create({
+      contractVersion: "feature-186-v1", tenantId: "tenant-deadline-ordinary", requestedByUserId: 22401,
+      jobType, executionClass: "long", input: {}, idempotencyKey: `ordinary-deadline-${randomUUID()}`,
+      retryPolicy: { deadlineMs: 7 * 24 * 60 * 60_000, deadlineMode: "fixed", maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 10, jitter: "none", allowedErrorClasses: [] },
+      timeoutPolicy: { softTimeoutMs: 300_000, hardTimeoutMs: 28_800_000 },
+    }, { runtimeType });
+    const [stored] = await sql`SELECT "createdAt", "retryPolicyJson" FROM worker_jobs WHERE id = ${created.jobId}`;
+    expect(stored.retryPolicyJson).toMatchObject({ deadlineMs: minutes * 60_000, deadlineMode: "fixed" });
+    expect(await controlPlane.expireDeadline(created.jobId, new Date(new Date(stored.createdAt).getTime() + minutes * 60_000))).toBe("expired");
+  });
+
+  it.each(["budget", "provider_capacity"] as const)(
+    "persists the authenticated seven-day deadline and recovers %s waits without model dispatch", async reason => {
+      const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { runJobReconciler }] = await Promise.all([
+        import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobReconciler"),
+      ]);
+      const controlPlane = createJobControlPlane();
+      // External test identity; exercise actual admin middleware, input parsing,
+      // producer, gateway and PostgreSQL persistence. No executor/model is run.
+      const caller = spec226DevelopmentControlRouter.createCaller({ tenantId: "tenant-deadline", user: { id: 22401, role: "admin" } } as any);
+      const request = {
+        idempotencyKey: `deadline-persistence-${reason}-${randomUUID()}`,
+        developerLogin: "developer", sourceRevision: "a".repeat(40), task: "Validate bounded Fast Lane lifecycle",
+        allowedFiles: ["apps/web/server/services/spec224DeveloperFastLane.ts", "apps/web/server/services/__tests__/spec224DeveloperFastLane.test.ts"],
+        writableFiles: ["apps/web/server/services/spec224DeveloperFastLane.ts"],
+        tests: { runner: "vitest" as const, cwd: "apps/web", paths: ["apps/web/server/services/__tests__/spec224DeveloperFastLane.test.ts"], databaseMode: "none" as const },
+        acceptanceCriteria: ["Preserve bounded authority independently of the job deadline"],
+        budget: { implementationMaxTurns: 4, planMaxTurns: 2, reviewMaxTurns: 2, maxAttempts: 2 }, scopeTtlSeconds: 3600,
+      };
+      try {
+        await expect(spec226DevelopmentControlRouter.createCaller({ tenantId: "tenant-deadline", user: null } as any).startDeveloperFastLane(request)).rejects.toMatchObject({ code: "FORBIDDEN" });
+        const created = await caller.startDeveloperFastLane(request);
+        const [stored] = await sql`SELECT * FROM worker_jobs WHERE id = ${created.jobId}`;
+        const sevenDays = 7 * 24 * 60 * 60_000;
+        expect(stored.retryPolicyJson).toMatchObject({ deadlineMs: sevenDays, deadlineMode: "fixed", maxAttempts: 8 });
+        expect(stored.inputJson.developerWorkUnit).toMatchObject({ runId: created.runId, workerJobId: created.jobId, tenantId: "tenant-deadline", actorId: 22401, request: { scopeTtlSeconds: 3600, budget: request.budget } });
+        await expect(caller.startDeveloperFastLane(request)).resolves.toMatchObject({ jobId: created.jobId, runId: created.runId, created: false });
+        const startedAt = new Date(stored.createdAt).getTime();
+        const eligible = new Date(startedAt + 3 * 24 * 60 * 60_000);
+        const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "deadline-test", adapter: "test" });
+        expect(lease).not.toBeNull();
+        await controlPlane.start(lease!);
+        await controlPlane.waitForExternal(lease!, { operationKey: `deadline:${reason}`, reason, resumeAfter: eligible.toISOString() });
+        for (const minutes of [11, 121]) {
+          const now = new Date(startedAt + minutes * 60_000);
+          vi.setSystemTime(now);
+          const reconciled = await runJobReconciler({ now });
+          expect(reconciled.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: `${reason === "budget" ? "budget" : "provider_capacity"}_not_yet_eligible` });
+          const [waiting] = await sql`SELECT status, "leaseOwnerToken" IS NULL AS released, "leaseExpiresAt", "retryPolicyJson" FROM worker_jobs WHERE id = ${created.jobId}`;
+          expect(waiting).toMatchObject({ status: "waiting_external", released: true, leaseExpiresAt: null, retryPolicyJson: { deadlineMs: sevenDays } });
+        }
+        vi.setSystemTime(eligible);
+        const resumed = await runJobReconciler({ now: eligible });
+        expect(resumed.decisions).toContainEqual({ jobId: created.jobId, action: "resume", reasonCode: `${reason === "budget" ? "budget" : "provider_capacity"}_retry_due` });
+        const nextLease = await controlPlane.claim({ jobId: created.jobId, runnerId: "deadline-restart", adapter: "test" });
+        expect(nextLease!.fencingVersion).toBeGreaterThan(lease!.fencingVersion);
+        await expect(controlPlane.start(lease!)).rejects.toBeDefined();
+        await controlPlane.start(nextLease!);
+        // Process loss after restart remains recoverable within the absolute bound.
+        const lostAt = new Date(Date.parse(nextLease!.expiresAt) + 1);
+        vi.setSystemTime(lostAt);
+        expect(await controlPlane.recoverExpiredLease(created.jobId, lostAt)).toBe("recovered");
+        const [retry] = await sql`SELECT status, attempt, "nextRetryAt" FROM worker_jobs WHERE id = ${created.jobId}`;
+        expect(retry.status).toBe("retry_scheduled");
+        vi.setSystemTime(new Date(retry.nextRetryAt));
+        await runJobReconciler({ now: new Date(retry.nextRetryAt) });
+        const recoveredLease = await controlPlane.claim({ jobId: created.jobId, runnerId: "deadline-recovered", adapter: "test" });
+        await controlPlane.start(recoveredLease!);
+        await controlPlane.waitForExternal(recoveredLease!, { operationKey: `deadline:${reason}:past-bound`, reason, resumeAfter: new Date(startedAt + sevenDays + 24 * 60 * 60_000).toISOString() });
+        vi.setSystemTime(new Date(startedAt + sevenDays - 1));
+        await runJobReconciler({ now: new Date() });
+        expect((await sql`SELECT status FROM worker_jobs WHERE id = ${created.jobId}`)[0].status).toBe("waiting_external");
+        vi.setSystemTime(new Date(startedAt + sevenDays));
+        await runJobReconciler({ now: new Date() });
+        const [expired] = await sql`SELECT status, "statusReason", "inputJson", "retryPolicyJson", "leaseOwnerToken" IS NULL AS released FROM worker_jobs WHERE id = ${created.jobId}`;
+        expect(expired).toMatchObject({ status: "expired", statusReason: "job_deadline", released: true, inputJson: stored.inputJson, retryPolicyJson: stored.retryPolicyJson });
+        expect(await controlPlane.resumeExternal(created.jobId, "test", "test", undefined, "cannot-reopen-expired")).toBe(false);
+        expect(await controlPlane.claim({ jobId: created.jobId, runnerId: "test", adapter: "test" })).toBeNull();
+        const [effects] = await sql`SELECT count(*)::int AS count FROM worker_job_provider_reservations WHERE "workerJobId" = ${created.jobId}`;
+        expect(effects.count).toBe(0);
+        const [expiryEvents] = await sql`SELECT count(*)::int AS count FROM worker_job_events WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'EXPIRED'`;
+        expect(expiryEvents.count).toBe(1);
+        process.stdout.write(`FAST_LANE_DEADLINE_PERSISTENCE ${JSON.stringify({ jobId: created.jobId, runId: created.runId, deadlineMs: stored.retryPolicyJson.deadlineMs, waitedMinutes: [11, 121], recoveredAfterDays: 3, terminalAtDays: 7, modelDispatches: 0 })}\n`);
+      } finally { vi.useRealTimers(); }
+    }, 60_000,
+  );
+
   it("creates, claims, dispatches a Python Codex model call, settles usage, and completes the canonical Job", async () => {
     const [{ spec226DevelopmentControlRouter }, { createJobControlPlane }, { createJobExecutorRegistry }, { executeCanonicalJobEnvelope }, { createSpec224DeveloperFastLaneExecutor }, { DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_CONTRACT }] = await Promise.all([
       import("../../routers/spec226DevelopmentControl"), import("../jobControlPlane"), import("../jobExecutorRegistry"), import("../../jobs/unifiedJobConsumer"), import("../spec224DeveloperFastLaneExecutor"), import("../spec224DeveloperFastLaneContract"),
@@ -322,7 +418,8 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
       const originalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));
       const originalReceipt = await fs.readFile(path.join(runDirectory, "authorization-receipt.json"));
       const originalReceiptHash = createHash("sha256").update(originalReceipt).digest("hex");
-      const [waitingJob] = await sql`SELECT status, "progressJson", attempt, "fencingVersion" FROM worker_jobs WHERE id = ${created.jobId}`;
+      const [waitingJob] = await sql`SELECT status, "progressJson", attempt, "fencingVersion", "retryPolicyJson" FROM worker_jobs WHERE id = ${created.jobId}`;
+      expect(waitingJob.retryPolicyJson).toMatchObject({ deadlineMs: 7 * 24 * 60 * 60_000, deadlineMode: "fixed" });
       const wait = waitingJob.progressJson.externalWait;
       expect(waitingJob.status).toBe("waiting_external");
       expect(wait).toMatchObject({ reason: "provider_capacity", metadata: { schemaVersion: "spec224.developer-model-wait.v1" } });

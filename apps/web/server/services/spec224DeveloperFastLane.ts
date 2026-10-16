@@ -1,12 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB, type DeveloperFastLaneRequest } from "./spec224DeveloperFastLaneContract";
+import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_DEADLINE_MS, type DeveloperFastLaneRequest } from "./spec224DeveloperFastLaneContract";
 
 export { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
 export type { DeveloperFastLaneRequest } from "./spec224DeveloperFastLaneContract";
-
-const DEVELOPER_FAST_LANE_DEADLINE_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function stableHex(material: string): string {
   return createHash("sha256").update(material).digest("hex").slice(0, 32);

@@ -1,5 +1,7 @@
 export const DEVELOPER_FAST_LANE_JOB = "developer.fast_lane";
 export const DEVELOPER_FAST_LANE_CONTRACT = "developer-fast-lane-v1";
+/** Absolute job lifecycle bound; model and workspace authorization remain separate. */
+export const DEVELOPER_FAST_LANE_DEADLINE_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export type DeveloperFastLaneRequest = {
   developerLogin: string;

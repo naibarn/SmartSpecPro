@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_WORKER_JOB_DEADLINE_SETTINGS,
+  applyWorkerJobRetryDeadline,
   getEffectiveWorkerJobDeadlineMs,
   inferJobFamily,
   recommendRetryDeadlineMs,
@@ -116,6 +117,45 @@ describe("worker job deadline policy", () => {
       input: {},
       retryPolicy: { deadlineMs: 24 * 60 * 60 * 1000, deadlineMode: "fixed" },
     })).toBe(2 * 60 * 60 * 1000);
+  });
+
+  const fastLane = {
+    jobType: "developer.fast_lane", contractVersion: "developer-fast-lane-v1",
+    runtimeType: "node_job_worker", executionClass: "long", tenantId: "tenant-a", requestedByUserId: 42,
+    input: { developerWorkUnit: { contractVersion: "developer-fast-lane-v1", tenantId: "tenant-a", actorId: 42 } },
+    retryPolicy: { deadlineMs: 7 * 24 * 60 * 60_000, deadlineMode: "fixed" as const },
+  };
+
+  it.each([600_000, 7 * 24 * 60 * 60_000, 30 * 24 * 60 * 60_000])(
+    "preserves explicit Fast Lane bounds consistently without extending existing deadlines (%s)", async requested => {
+      const definition = { ...fastLane, retryPolicy: { ...fastLane.retryPolicy, deadlineMs: requested } };
+      const expected = Math.min(requested, fastLane.retryPolicy.deadlineMs);
+      expect((await applyWorkerJobRetryDeadline(definition, definition.runtimeType)).retryPolicy.deadlineMs).toBe(expected);
+      expect(getEffectiveWorkerJobDeadlineMs(definition)).toBe(expected);
+      expect(withSafeWorkerJobDeadline({ ...definition, inputJson: definition.input, retryPolicyJson: definition.retryPolicy }).retryPolicyJson.deadlineMs).toBe(expected);
+    },
+  );
+
+  it.each([
+    { jobType: "developer.other" }, { contractVersion: "feature-186-v1" },
+    { runtimeType: "python_job_worker" }, { executionClass: "short" },
+    { tenantId: "other-tenant" }, { requestedByUserId: 43 }, { requestedByUserId: undefined },
+    { input: {} }, { input: { developerWorkUnit: { contractVersion: "unsupported", tenantId: "tenant-a", actorId: 42 } } },
+  ])("keeps generic limits for unsupported or unbound contracts (%j)", async override => {
+    const definition = { ...fastLane, ...override };
+    expect((await applyWorkerJobRetryDeadline(definition, definition.runtimeType)).retryPolicy.deadlineMs).toBe(600_000);
+    const genericHardCap = definition.runtimeType === "python_job_worker" ? 60 * 60_000 : 120 * 60_000;
+    expect(getEffectiveWorkerJobDeadlineMs(definition)).toBe(genericHardCap);
+    expect(withSafeWorkerJobDeadline({ ...definition, inputJson: definition.input, retryPolicyJson: definition.retryPolicy }).retryPolicyJson.deadlineMs).toBe(genericHardCap);
+  });
+
+  it("does not extend legacy or adaptive Fast Lane records without an explicit fixed bound", async () => {
+    for (const mode of [undefined, "adaptive"] as const) {
+      const definition = { ...fastLane, retryPolicy: { ...fastLane.retryPolicy, deadlineMode: mode } };
+      expect((await applyWorkerJobRetryDeadline(definition, definition.runtimeType)).retryPolicy.deadlineMs).toBe(600_000);
+      expect(withSafeWorkerJobDeadline({ ...definition, inputJson: definition.input, retryPolicyJson: definition.retryPolicy }).retryPolicyJson.deadlineMs).toBe(600_000);
+      if (mode === undefined) expect(getEffectiveWorkerJobDeadlineMs(definition)).toBe(600_000);
+    }
   });
 
   it("normalizes direct worker_jobs inserts that bypass the canonical create API", () => {
