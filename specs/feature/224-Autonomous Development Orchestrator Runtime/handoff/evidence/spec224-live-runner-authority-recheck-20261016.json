@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "spec224.live-runner-authority-recheck.v1",
+  "observedAt": "2026-10-16T00:12:14Z",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "606563a0a535fdf85512f7654136bb9360e73110",
+  "workUnit": "SPEC224_REAL_RUNNER_ACCEPTANCE",
+  "executionStatus": "WAITING_EXTERNAL_AUTHORITY",
+  "completionEligible": false,
+  "ownership": {
+    "worktree": "/mnt/SmartSpecDev/.tmp/spec224-runner-gate-recheck-20261016-ec72",
+    "branch": "codex/spec224-runner-gate-recheck-20261016-ec72",
+    "workspaceId": "workspace:d2cca504-4dfb-4bf0-8ccb-864a9e71b807",
+    "taskId": "SPEC224_LIVE_RUNNER_AUTHORITY_RECHECK_20261016_EC72"
+  },
+  "readiness": {
+    "installedCli": {
+      "path": "/home/dev/.local/bin/smartaihub-runner",
+      "version": "0.2.23",
+      "binarySha256": "382791c51220a4ddeebac63096ced9444753f25c20e55f5ee09d627c0ea291ed",
+      "contractVersion": "sah-runner-v1",
+      "connectSchemaRevision": "sah-runner-connect-v2",
+      "reportedState": "ready",
+      "toolCount": 11,
+      "readyToolCount": 0,
+      "codexAuth": "unknown",
+      "codexAvailability": "unknown",
+      "codexTrust": "discovered",
+      "codexReasonCodes": ["probe_required"]
+    },
+    "installedService": {
+      "state": "inactive",
+      "enabled": false,
+      "changed": false
+    },
+    "canonicalSourceBehavior": {
+      "source": "apps/runner-app/src/diagnostics.rs::redacted_status,runner_status_state",
+      "readyToolCountDefinition": "count of tools whose trust_state is Ready",
+      "zeroReadyState": "degraded",
+      "contractMinimumVersion": "0.1.0",
+      "interpretation": "Installed CLI output conflicts with current canonical source behavior; the installed binary's source provenance is unavailable. This is a runtime/build identity mismatch, not evidence that Codex authentication or protected dispatch is ready."
+    },
+    "localControlPlaneInventory": {
+      "database": "local development smartspec database; read-only queries",
+      "runnerNodes": {
+        "onlineTrusted": 13,
+        "degradedTrusted": 1,
+        "revoked": 1,
+        "freshHeartbeatWithinFiveMinutes": 0,
+        "unrevokedFreshCapabilitySnapshots": 0
+      },
+      "activeSpec224RecoveryGrants": 0,
+      "workerJobStatuses": {
+        "nonterminal": 0,
+        "terminalRowsObserved": 21698
+      },
+      "pendingOutboxRows": 0,
+      "liveOutboxLeases": 0
+    },
+    "runtimeInputs": {
+      "SPEC224_PROFILE_ID": "absent",
+      "SPEC224_TEST_RUNNER_TOKEN": "absent",
+      "SPEC224_RUNNER_ID": "absent",
+      "SPEC224_DISPATCH_GRANT_ID": "absent"
+    }
+  },
+  "blocker": {
+    "blockerId": "SPEC224-PROTECTED-RUNNER-AUTHORITY-20261016",
+    "affectedWorkUnit": "Real Agents SDK + Codex Subscription + Registered Runner DevelopmentRun",
+    "classification": ["AUTHORITY", "RUNTIME"],
+    "rootCause": "No live registered Runner with a fresh heartbeat and unexpired capability snapshot is available in the inspected non-production control plane, and no active owner-issued SPEC-224 recovery grant exists. The installed local service is inactive and must not be reconfigured by this task.",
+    "evidence": [
+      "smartaihub-runner status: version 0.2.23, readyToolCount 0, Codex probe_required",
+      "read-only runner_nodes and runner_capability_snapshots inventory: 0 fresh heartbeats and 0 unrevoked fresh snapshots",
+      "read-only approval_requests inventory: 0 active spec224RecoveryGrantV1 rows",
+      "python-backend/app/api/approvals.py::issue_spec224_recovery_grant requires authenticated tenant-owner identity and tenant context",
+      "python-backend/app/services/approval_db_service.py::issue_spec224_recovery_grant verifies Tenant.owner_id and persists the approval/audit atomically"
+    ],
+    "authorizedAlternativesEvaluated": [
+      {
+        "path": "Reuse a live registered Runner from the local control plane",
+        "result": "unavailable: no recent heartbeat or unexpired capability snapshot"
+      },
+      {
+        "path": "Reuse an existing active recovery grant",
+        "result": "unavailable: none found in the inspected local development database"
+      },
+      {
+        "path": "Issue a grant through the existing authority endpoint",
+        "result": "requires an authenticated tenant owner; this session has no owner identity or authority to issue it"
+      },
+      {
+        "path": "Use the installed local Runner service or a fixture as live acceptance",
+        "result": "prohibited: service is inactive, readiness is unverified, and fixture evidence cannot establish protected live acceptance"
+      }
+    ],
+    "chosenStrategy": "Keep live dispatch closed; preserve the isolated PostgreSQL run and resume only after an owner-authorized non-production Runner registration, fresh capability binding, and single-run protected-start grant are present.",
+    "estimatedCost": "No provider usage incurred. No new disposable runtime created during this recheck.",
+    "nextExecutableAction": "After the authenticated tenant owner provisions the isolated Runner and issues the existing scoped recovery grant, inject the non-production token through the authorized secret path, revalidate every binding, then execute the registered Runner E2E, real Codex turn, process restart/resume, receipt reconciliation, settlement readback, and Independent Final Verification.",
+    "resumeCondition": "Owner-issued grant and non-production runtime inputs are present; Runner identity is registered with a heartbeat and capability snapshot valid at dispatch; grant binds source SHA 606563a0a535fdf85512f7654136bb9360e73110, exact workspace, one DevelopmentRun/job/attempt, allowed operations, lease/fencing, budget, and expiry/revocation.",
+    "retryBudget": "Do not repeat readiness or dispatch attempts until one of the enumerated prerequisite observations changes. Then perform one fresh readiness/binding check before a single idempotent acceptance dispatch.",
+    "stopCondition": "Stop only the protected live-dispatch path if owner authorization, fresh Runner state, or binding validation is absent; keep SPEC-224 PARTIAL and preserve all other independent work."
+  },
+  "durableAutoResume": {
+    "existingReconciler": "apps/web/server/services/jobReconciler.ts::runJobReconciler calls reconcileDevelopmentLifecycleWaiters",
+    "taskWaitState": "No task-owned nonterminal worker_job, pending outbox row, DevelopmentRun watcher, or current production-registered lifecycle predicate was found for this goal.",
+    "grantEventBinding": "The existing Python grant issuer writes an approval and audit row; no grant-issued event was found that wakes a SPEC-224 waiter.",
+    "automaticContinuationConfigured": false,
+    "resumeHandling": "The next session must re-evaluate the owner-issued grant and Runner snapshot. Do not claim this chat goal will resume itself in the background."
+  },
+  "acceptance": {
+    "realProviderTurn": "NOT_RUN",
+    "protectedRunnerReceipt": "NOT_AVAILABLE",
+    "crashRestartResume": "NOT_RUN_FOR_LIVE_RUNNER",
+    "durableSettlement": "NOT_VERIFIED",
+    "independentFinalVerification": "NOT_RUN",
+    "status": "PARTIAL"
+  },
+  "relatedIntegration": {
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/975",
+    "mergeSha": "606563a0a535fdf85512f7654136bb9360e73110",
+    "progressiveIntegrationGate": "PASS",
+    "mockedSpec308BrowserSimulation": "PASS",
+    "buildPreview": "SKIPPED",
+    "scope": "Disposable PostgreSQL address normalization fix; these results are not Protected Runner acceptance."
+  }
+}
