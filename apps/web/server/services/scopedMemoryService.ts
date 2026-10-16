@@ -39,6 +39,8 @@ export interface SearchOptions {
   keywordWeight?: number;
   vectorWeight?: number;
   embedding?: number[];
+  /** Stable expiry cutoff shared by a prompt-recall operation; defaults to current server time. */
+  activeAt?: Date;
 }
 
 export interface MemorySearchResult {
@@ -149,6 +151,14 @@ function uniqueScopes(scopes: MemoryScope[]): MemoryScope[] {
 
 function getMemoryMetadata(memory: ScopedMemory): Record<string, unknown> {
   return (memory.metadataJson ?? {}) as Record<string, unknown>;
+}
+
+function activeExpiryCondition(evaluationTime: Date): SQL {
+  return or(isNull(scopedMemories.expiresAt), sql`${scopedMemories.expiresAt} > ${evaluationTime}`)!;
+}
+
+function isActiveAt(memory: ScopedMemory, evaluationTime: Date): boolean {
+  return memory.expiresAt == null || memory.expiresAt > evaluationTime;
 }
 
 function isWorkingSummaryMemory(memory: ScopedMemory): boolean {
@@ -286,6 +296,7 @@ export async function listMemories(
   limit = 50,
   contextProjectId?: string | null,
   excludeTeamRoomPromotions = false,
+  activeAt?: Date,
 ): Promise<ScopedMemory[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -300,14 +311,16 @@ export async function listMemories(
   if (excludeTeamRoomPromotions) {
     conditions.push(buildTeamRoomPromotionExclusion());
   }
+  if (activeAt) conditions.push(activeExpiryCondition(activeAt));
 
   try {
-    return await db
+    const memories = await db
       .select()
       .from(scopedMemories)
       .where(and(...conditions))
       .orderBy(desc(scopedMemories.updatedAt), desc(scopedMemories.createdAt))
       .limit(limit);
+    return activeAt ? memories.filter((memory) => isActiveAt(memory, activeAt)) : memories;
   } catch (error) {
     if (isMissingScopedMemoriesTable(error)) {
       return [];
@@ -363,6 +376,7 @@ export async function searchMemories(
 ): Promise<MemorySearchResult[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const evaluationTime = options.activeAt ?? new Date();
 
   const {
     tenantId,
@@ -384,6 +398,7 @@ export async function searchMemories(
     eq(scopedMemories.tenantId, tenantId),
     sql`(${sql.join(ownerConditions, sql` OR `)})`,
   ];
+  if (evaluationTime) scopeConditions.push(activeExpiryCondition(evaluationTime));
   const projectCondition = buildProjectContextCondition(options.projectId);
   if (projectCondition) scopeConditions.push(projectCondition);
   if (options.excludeTeamRoomPromotions) {
@@ -435,9 +450,11 @@ export async function searchMemories(
     throw error;
   }
 
+  const hydrationTime = new Date();
   // Deduplicate by content hash — prefer higher-priority scope
   const seen = new Map<string, MemorySearchResult>();
   for (const row of rows) {
+    if (!isActiveAt(row.memory, hydrationTime)) continue;
     const key = row.memory.title + "|" + row.memory.content.slice(0, 100);
     const existing = seen.get(key);
     const scopePriority = SCOPE_PRIORITY[row.memory.ownerType] ?? 0;
@@ -525,6 +542,7 @@ async function searchStructuredMemories(
 ): Promise<MemorySearchResult[]> {
   const db = await getDb();
   if (!db) return [];
+  const evaluationTime = options.activeAt;
 
   const query = options.query.trim();
   if (!query) return [];
@@ -535,6 +553,7 @@ async function searchStructuredMemories(
     options.projectId,
     options.excludeTeamRoomPromotions,
   );
+  const activeFilter = evaluationTime ? activeExpiryCondition(evaluationTime) : undefined;
   const queryLike = `%${query}%`;
   const projectBoost = options.projectId
     ? sql<number>`CASE WHEN ${scopedMemories.projectId} = ${options.projectId} THEN 1.0 ELSE 0.0 END`
@@ -586,6 +605,7 @@ async function searchStructuredMemories(
       .from(scopedMemories)
       .where(and(
         scopeFilter,
+        ...(activeFilter ? [activeFilter] : []),
         or(
           ilike(scopedMemories.title, queryLike),
           ilike(scopedMemories.content, queryLike),
@@ -611,6 +631,7 @@ async function searchStructuredMemories(
       "structured",
     ))
     .filter((row) => row.score > 0)
+    .filter((row) => !evaluationTime || isActiveAt(row.memory, evaluationTime))
     .sort((a, b) => b.score - a.score);
 }
 
@@ -629,7 +650,10 @@ async function searchGraphMemories(
   const query = options.query.trim();
   const relatedConditions: SQL[] = [];
 
-  const scopeFilter = buildScopeFilter(options.tenantId, options.scopes);
+  const scopeFilter = and(
+    buildScopeFilter(options.tenantId, options.scopes),
+    ...(options.activeAt ? [activeExpiryCondition(options.activeAt)] : []),
+  )!;
   relatedConditions.push(scopeFilter);
   if (options.projectId) {
     relatedConditions.push(eq(scopedMemories.projectId, options.projectId));
@@ -701,6 +725,7 @@ async function searchGraphMemories(
       "graph",
     ))
     .filter((row) => row.score > 0)
+    .filter((row) => !options.activeAt || isActiveAt(row.memory, options.activeAt))
     .sort((a, b) => b.score - a.score);
 }
 
@@ -709,6 +734,7 @@ async function getWorkingSummaryMemories(
   scopes: MemoryScope[],
   projectId: string | null,
   excludeTeamRoomPromotions = false,
+  activeAt?: Date,
 ): Promise<MemorySearchResult[]> {
   const relevantScopes = uniqueScopes(
     scopes.filter((scope) => scope.type === "room" || scope.type === "team" || scope.type === "project"),
@@ -725,6 +751,7 @@ async function getWorkingSummaryMemories(
           16,
           projectId,
           excludeTeamRoomPromotions,
+          activeAt,
         );
       } catch {
         return [];
@@ -771,6 +798,8 @@ export async function getRuleMemories(
     eq(scopedMemories.ownerId, String(userId)),
     eq(scopedMemories.memoryKind, "rule"),
   ];
+  const evaluationTime = new Date();
+  conditions.push(activeExpiryCondition(evaluationTime));
   const projectCondition = buildProjectContextCondition(projectId);
   if (projectCondition) conditions.push(projectCondition);
   if (!isTeamRoomMemoryEnabled()) {
@@ -784,7 +813,8 @@ export async function getRuleMemories(
       .where(and(...conditions))
       .orderBy(desc(scopedMemories.importance), desc(scopedMemories.reinforcementCount), desc(scopedMemories.lastAccessedAt))
       .limit(20);
-    return memories.filter(isTeamRoomMemoryPromptEligible);
+    const hydrationTime = new Date();
+    return memories.filter((memory) => isActiveAt(memory, hydrationTime) && isTeamRoomMemoryPromptEligible(memory));
   } catch (error) {
     if (isMissingScopedMemoriesTable(error)) {
       return [];
@@ -810,6 +840,7 @@ export async function retrieveForPrompt(
   embedding?: number[],
   options?: PromptScopeOptions,
 ): Promise<MemorySearchResult[]> {
+  const evaluationTime = new Date();
   const contextProjectId = options?.projectId ?? null;
   const scopes = filterPromptScopesWithoutTeamRoomMemory(
     buildPromptScopeList({
@@ -837,6 +868,7 @@ export async function retrieveForPrompt(
     query,
     projectId: contextProjectId,
     excludeTeamRoomPromotions: !isTeamRoomMemoryEnabled(),
+    activeAt: evaluationTime,
     topK,
     embedding: effectiveEmbedding ?? undefined,
     keywordWeight: effectiveEmbedding ? 0.45 : 0.65,
@@ -847,6 +879,7 @@ export async function retrieveForPrompt(
     scopes,
     contextProjectId,
     !isTeamRoomMemoryEnabled(),
+    evaluationTime,
   );
 
   const structuredResults = await searchStructuredMemories({
@@ -857,6 +890,7 @@ export async function retrieveForPrompt(
     embedding: effectiveEmbedding ?? undefined,
     projectId: contextProjectId,
     excludeTeamRoomPromotions: !isTeamRoomMemoryEnabled(),
+    activeAt: evaluationTime,
   });
 
   const graphResults = await searchGraphMemories({
@@ -871,6 +905,7 @@ export async function retrieveForPrompt(
     teamId: isTeamRoomMemoryEnabled() ? teamId : null,
     projectId: contextProjectId,
     excludeTeamRoomPromotions: !isTeamRoomMemoryEnabled(),
+    activeAt: evaluationTime,
   });
 
   const merged = new Map<string, MemorySearchResult>();
@@ -914,7 +949,9 @@ export async function retrieveForPrompt(
   structuredResults.forEach(pushResult);
   graphResults.forEach(pushResult);
 
+  const finalHydrationTime = new Date();
   return [...merged.values()]
+    .filter((result) => isActiveAt(result.memory, finalHydrationTime))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 }

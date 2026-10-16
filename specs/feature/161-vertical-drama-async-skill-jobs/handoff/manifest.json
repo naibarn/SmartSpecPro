@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 13,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -89,12 +89,12 @@
     "checkpoint_shas": [],
     "mapping": [],
     "pilot_validation_checkpoint": {
-      "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
-      "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
-      "merge_tree_matches_head": true,
-      "merge_verified": true,
-      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
-      "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+      "focused_tests_passed": 33,
+      "next_action": "Real worker/provider persistence, restart, billing and chain-abort acceptance remain unverified; stale baseline fixtures still need bounded repair.",
+      "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "status": "PARTIAL",
+      "whole_requirements_closed": 0,
+      "workunit": "SPEC161_CANONICAL_ADMISSION_VALIDATION"
     },
     "source_paths": [],
     "started": false,
@@ -473,7 +473,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:33:14.607457Z",
+  "updated_at": "2026-10-16T14:19:10.704121Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -486,6 +486,33 @@
       }
     ],
     "freshness": "UNKNOWN",
+    "pilot_post_pr991_focused": {
+      "commandScope": [
+        "server/routers/appIdentity.test.ts",
+        "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+        "server/services/verticalDramaLlmPolicy.test.ts",
+        "server/services/__tests__/appIdentityRepository.test.ts",
+        "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+        "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+        "server/services/__tests__/projectResolutionAuthority.test.ts",
+        "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts"
+      ],
+      "exitCode": 0,
+      "failed": 0,
+      "files": 11,
+      "finishedAtEpochMs": 1792160254325.1309,
+      "limits": "Focused mocked/unit/loopback tests only; no provider, production, deployment or broad UAT claim.",
+      "outcome": "PASS",
+      "passed": 97,
+      "profile": "quick",
+      "resourceObservation": "Host available24202MiB immediately before check; maxWorkers1; no full verification lease or repository typecheck.",
+      "signal": null,
+      "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "startedAtEpochMs": 1792160248306
+    },
     "required_profiles": [],
     "sha": null,
     "status": "UNKNOWN",

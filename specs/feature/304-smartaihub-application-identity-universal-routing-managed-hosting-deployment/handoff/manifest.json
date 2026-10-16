@@ -47,7 +47,7 @@
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Focused identity/alias/HTTP ingress-memory tests pass31/31 after tenant-bound expectation repair. Real signed ingress producer, direct-origin exclusion, worker fresh authorization and hosted live UAT remain pending. No production mutation authorized.",
+    "next_action": "Retain31 passing focused identity/ingress tests. Obtain a verifiable authorized nonproduction ingress producer/runtime plus replay and direct-origin evidence before opening ingress implementation; do not invent trust from headers or enable production.",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
     "resume_point": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9. R5 persisted positive-path test verifies the server-side test assertion through createContextWithTrustedAppIngress, current DB-backed alias resolution, and authorized persisted Project-memory prompt retrieval; Host/X-Forwarded-Host-only, replay, wrong-App, and cross-tenant cases fail closed. This is synthetic non-production evidence only. Production ingress producer, deployed origin exclusion, and worker-crossing reauthorization remain pending.",
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 27,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -148,6 +148,18 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "pilot_ingress_authority_audit": {
+      "evidence": [
+        "apps/web/server/_core/context.ts",
+        "apps/web/server/services/trustedAppRouteAssertion.ts"
+      ],
+      "finding": "Default HTTP context leaves trustedAppContext null; approved injected authority required. Host headers cannot manufacture authority. Actual producer/replay-store/direct-origin deployment capability is unavailable; synthetic tests do not close this.",
+      "requested_model": "gpt-6-luna",
+      "requirement_id": "REQ-F24EEC954686",
+      "reviewer": "/root/spec161_validation_scout",
+      "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "status": "NO_INDEPENDENT_FUNCTIONAL_SLICE_WITHIN_AUTHORITY"
+    },
     "pilot_validation_checkpoint": {
       "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
       "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
@@ -427,7 +439,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:00:32.880305Z",
+  "updated_at": "2026-10-16T14:19:10.715129Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -510,6 +522,33 @@
       }
     ],
     "freshness": "FRESH",
+    "pilot_post_pr991_focused": {
+      "commandScope": [
+        "server/routers/appIdentity.test.ts",
+        "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+        "server/services/verticalDramaLlmPolicy.test.ts",
+        "server/services/__tests__/appIdentityRepository.test.ts",
+        "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+        "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+        "server/services/__tests__/projectResolutionAuthority.test.ts",
+        "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts"
+      ],
+      "exitCode": 0,
+      "failed": 0,
+      "files": 11,
+      "finishedAtEpochMs": 1792160254325.1309,
+      "limits": "Focused mocked/unit/loopback tests only; no provider, production, deployment or broad UAT claim.",
+      "outcome": "PASS",
+      "passed": 97,
+      "profile": "quick",
+      "resourceObservation": "Host available24202MiB immediately before check; maxWorkers1; no full verification lease or repository typecheck.",
+      "signal": null,
+      "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "startedAtEpochMs": 1792160248306
+    },
     "required_profiles": [],
     "sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
     "status": "PARTIAL",

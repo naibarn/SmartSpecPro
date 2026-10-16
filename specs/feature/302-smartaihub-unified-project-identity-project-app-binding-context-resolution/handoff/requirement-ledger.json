@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -155,19 +155,19 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+      "evidence_sha": "b74c302765d0e343869c4c53d724204a77275e78",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
-          "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+          "kind": "VERIFIED_FAST_LANE_FUNCTIONAL_SLICE",
           "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
-          "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
-          "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+          "scope": "Unknown-source advisory bypass repaired; canonical Job succeeded, independent review/final verify PASS. Whole durable-write/high-impact guarantee remains PARTIAL.",
+          "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
           "status": "PASS_SCOPED"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Unknown source advisory bypass fixed in reviewed checkpoint; verify canonical Job final acceptance after scoped SDK approval. Durable write/Phase2 ambiguity guarantees remain guarded and need separate evidence.",
+      "next_action": "Retain merged own-key source guard regression. Finish current-ACL and durable-write/high-impact authenticated acceptance separately; no whole requirement closure from this advisory resolver slice.",
       "requirement_digest": "865492a68414082ae2c357bc44882559551078d7075d1c042e2af9374c1bcd3a",
       "requirement_id": "REQ-408D3F532E4C",
       "requirement_text": "7. Ambiguous or unresolved project context MUST fail closed for durable shared writes and high-impact actions.",
@@ -175,10 +175,10 @@
       "successor_mapping": [],
       "verification_evidence": [
         {
-          "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+          "kind": "VERIFIED_FAST_LANE_FUNCTIONAL_SLICE",
           "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
-          "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
-          "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+          "scope": "Unknown-source advisory bypass repaired; canonical Job succeeded, independent review/final verify PASS. Whole durable-write/high-impact guarantee remains PARTIAL.",
+          "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
           "status": "PASS_SCOPED"
         }
       ],

@@ -52,11 +52,11 @@
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": "Promote reviewed source guard checkpoint. Canonical Job 5ae456af45d6d64140f8fe6009be2057 remains WAITING_AUTHORIZATION until exact SDK continuation approval. Dependency links repaired; code tests pass. Do not recreate Job or replay settled turns.",
-    "next_ready_workunit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
-    "reactivation_predicate": "Fresh model admission succeeds under existing ceilings after refill, or valid owner-specific admission authorization for these exact two Jobs is received.",
+    "next_action": "Bounded unknown-source rejection WorkUnit is verified and merged by PR991. Continue independent authorized nonproduction identity/context acceptance; durable Phase2 writes and migration remain separately gated.",
+    "next_ready_workunit": "SPEC302_AUTHENTICATED_NONPRODUCTION_IDENTITY_ACCEPTANCE",
+    "reactivation_predicate": null,
     "resume_point": "Phase 1 runtime slice integrated by PR #451 at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Focused tests pass; run direct identity/ingress acceptance independently. Phase 2 durable receipt WorkUnit is specified in orchestra/tasks/smartaihub-marathon-r3-20261010/phase2-durable-project-receipt.md and awaits schema-owner assignment plus explicit migration approval.",
-    "waiting_predicate": "Canonical Job waiting_external reason=budget, all prior model reservations released with known usage. Scope/budget expansion not authorized."
+    "waiting_predicate": null
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 32,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -156,16 +156,16 @@
     ],
     "mapping": [],
     "pilot_source_checkpoint": {
-      "canonical_job_acceptance": "WAITING_AUTHORIZATION_SDK_TURN_BUDGET",
-      "direct_verify": "33 tests + resolver scoped compile pass",
+      "canonical_job_acceptance": "VERIFIED_COMPLETE",
+      "canonical_sha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "direct_verify": "33 resolver/receipt tests + scoped resolver semantic compile pass",
+      "evidence_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
       "independent_review": "PASS",
       "job_id": "5ae456af45d6d64140f8fe6009be2057",
+      "pr": 991,
       "run_id": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
-      "scope": [
-        "apps/web/server/services/canonicalProjectContextResolver.ts",
-        "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts"
-      ],
-      "workunit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE"
+      "status": "PROMOTED_TO_MAIN",
+      "whole_spec_complete": false
     },
     "pilot_validation_checkpoint": {
       "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
@@ -300,19 +300,19 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+        "evidence_sha": "b74c302765d0e343869c4c53d724204a77275e78",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
-            "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+            "kind": "VERIFIED_FAST_LANE_FUNCTIONAL_SLICE",
             "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
-            "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
-            "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+            "scope": "Unknown-source advisory bypass repaired; canonical Job succeeded, independent review/final verify PASS. Whole durable-write/high-impact guarantee remains PARTIAL.",
+            "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
             "status": "PASS_SCOPED"
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Unknown source advisory bypass fixed in reviewed checkpoint; verify canonical Job final acceptance after scoped SDK approval. Durable write/Phase2 ambiguity guarantees remain guarded and need separate evidence.",
+        "next_action": "Retain merged own-key source guard regression. Finish current-ACL and durable-write/high-impact authenticated acceptance separately; no whole requirement closure from this advisory resolver slice.",
         "requirement_digest": "865492a68414082ae2c357bc44882559551078d7075d1c042e2af9374c1bcd3a",
         "requirement_id": "REQ-408D3F532E4C",
         "requirement_text": "7. Ambiguous or unresolved project context MUST fail closed for durable shared writes and high-impact actions.",
@@ -320,10 +320,10 @@
         "successor_mapping": [],
         "verification_evidence": [
           {
-            "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+            "kind": "VERIFIED_FAST_LANE_FUNCTIONAL_SLICE",
             "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
-            "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
-            "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+            "scope": "Unknown-source advisory bypass repaired; canonical Job succeeded, independent review/final verify PASS. Whole durable-write/high-impact guarantee remains PARTIAL.",
+            "source_sha": "b74c302765d0e343869c4c53d724204a77275e78",
             "status": "PASS_SCOPED"
           }
         ],
@@ -534,7 +534,7 @@
     "unresolved": 10
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:03:58.763505Z",
+  "updated_at": "2026-10-16T14:19:10.711119Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -624,6 +624,33 @@
       }
     ],
     "freshness": "PARTIAL",
+    "pilot_post_pr991_focused": {
+      "commandScope": [
+        "server/routers/appIdentity.test.ts",
+        "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+        "server/services/verticalDramaLlmPolicy.test.ts",
+        "server/services/__tests__/appIdentityRepository.test.ts",
+        "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+        "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+        "server/services/__tests__/projectResolutionAuthority.test.ts",
+        "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts"
+      ],
+      "exitCode": 0,
+      "failed": 0,
+      "files": 11,
+      "finishedAtEpochMs": 1792160254325.1309,
+      "limits": "Focused mocked/unit/loopback tests only; no provider, production, deployment or broad UAT claim.",
+      "outcome": "PASS",
+      "passed": 97,
+      "profile": "quick",
+      "resourceObservation": "Host available24202MiB immediately before check; maxWorkers1; no full verification lease or repository typecheck.",
+      "signal": null,
+      "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "startedAtEpochMs": 1792160248306
+    },
     "required_profiles": [],
     "sha": "45c8357329f033d9e9aca8559f3e5c8fd2258b28",
     "status": "PARTIAL",

@@ -1,0 +1,89 @@
+{
+  "schema": "spec224.functional-workunit-evidence.v1",
+  "observedAt": "2026-10-16T14:26:40.699920+00:00",
+  "specId": "268",
+  "requirementIds": [
+    "REQ-5941C106455E",
+    "REQ-8C1A9F209C32",
+    "REQ-B44EAA1A1285"
+  ],
+  "workUnit": "SPEC268_SCOPED_RECALL_EXPIRY",
+  "jobId": "1b91631e1e114bb1eb50c14942245b89",
+  "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
+  "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+  "candidateBaseSha": "b74c302765d0e343869c4c53d724204a77275e78",
+  "finalSourceSha": null,
+  "files": {
+    "apps/web/server/services/scopedMemoryService.ts": "4fb13e1eecd7a198d0bb00b1a379549abf913983f9f84b57a9d3425038be4fe1",
+    "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts": "38efce7968e819323d7a0945155c61ca7e55531c648c66f0351643838c1a45ff"
+  },
+  "behavior": "All ordinary scoped lexical/vector searches and prompt structured/graph/working-summary/rule retrieval exclude expiry at SQL evaluation; fresh final hydration checks reject candidates expiring across async boundaries. Null/future active; equality expired. Management list/get/update/delete preserved, no cleanup or migration.",
+  "directVerification": {
+    "profile": "quick",
+    "exitCode": 0,
+    "signal": null,
+    "files": 4,
+    "passed": 52,
+    "failed": 0,
+    "startedAtEpochMs": 1792160555039,
+    "scope": [
+      "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryService.test.ts",
+      "server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts"
+    ],
+    "command": "pnpm exec vitest run server/services/__tests__/scopedMemoryExpiry.test.ts server/services/__tests__/scopedMemoryService.test.ts server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts server/services/__tests__/canonicalProjectContextResolver.test.ts --maxWorkers=1",
+    "limits": "Real exported service functions; DB/provider boundary mocks and fake clocks. No shared DB/provider/production mutation."
+  },
+  "conductorIndependentReview": {
+    "status": "PASS_AFTER_REPAIR",
+    "findingsRepaired": [
+      "Default search omitted expiry despite current L1 prompt caller; now active by default.",
+      "Rule query crossed expiry before hydration; now fresh post-query cutoff."
+    ],
+    "scope": "Exact two-file cumulative patch, current callsites and existing tenant/project/owner/promotion/team-room policy safeguards."
+  },
+  "assistance": {
+    "agent": "/root/spec161_validation_scout",
+    "requestedModel": "gpt-6-luna",
+    "reason": "Canonical model supplied malformed or ambiguous patch contexts repeatedly. No security/scope rejection bypassed. Same two-file authority, original Job parked during assistance.",
+    "usageAccounting": "Host tool does not expose helper session token settlement; UNKNOWN and excluded from canonical Job usage totals.",
+    "mainConductorReview": "Independent context inspected assistant patch and repaired2 real gaps via Luna sidecar."
+  },
+  "canonicalAcceptance": "WAITING_AUTHORIZATION: aggregate implementation30 turns exhausted before attempt3 final response; original Job not succeeded",
+  "wholeRequirementsClosed": [],
+  "wholeSpecComplete": false,
+  "remaining": "Other storage families/caches/historical policy/expiry sweeper remain beyond this scoped service slice; do not mark general SPEC268 requirements wholly PASS.",
+  "canonicalJobStatus": "waiting_external",
+  "canonicalWait": {
+    "reason": "authorization",
+    "metadata": {
+      "jobId": "1b91631e1e114bb1eb50c14942245b89",
+      "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
+      "reason": "SDK_TURN_BUDGET_EXHAUSTED",
+      "attemptId": "d3e0d2d3-28dc-4d72-a901-bd8550d4a67f",
+      "schemaVersion": "spec224.developer-authorization-wait.v1",
+      "fencingVersion": 6
+    },
+    "resumeAfter": "2026-10-16T15:23:47.381Z",
+    "operationKey": "developer-turn-budget:343227ad-c067-54f6-a35c-ae056fecff14:6"
+  },
+  "independentFinalVerification": {
+    "status": "PASS_SCOPED",
+    "reviewer": "/root/spec268_independent_final_review",
+    "requestedModel": "gpt-6-luna",
+    "sourceHashesMatch": true,
+    "focusedExpiryTestsPassed": 8,
+    "blockingFindings": [],
+    "usageSettlement": "UNKNOWN: host agent tool exposes no tokens; excluded from canonical Job totals"
+  },
+  "integrationStatus": "READY_SAFE_SCOPED_CHECKPOINT",
+  "canonicalModelUsage": {
+    "calls": 37,
+    "knownSettlements": 37,
+    "inputTokens": 3621153,
+    "cachedInputTokens": 3319808,
+    "outputTokens": 11570,
+    "actualTotalTokens": 3632723
+  }
+}

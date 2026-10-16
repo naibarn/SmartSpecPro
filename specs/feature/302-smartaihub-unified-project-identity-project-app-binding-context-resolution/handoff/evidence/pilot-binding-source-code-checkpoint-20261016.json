@@ -24,15 +24,15 @@
     "report": "/tmp/smartaihub-backlog-pilot/spec302-patch-direct-tests.json",
     "limits": "Real service unit tests; DB/provider not involved."
   },
-  "canonicalJobState": "WAITING_AUTHORIZATION_SDK_TURN_BUDGET",
-  "canonicalAcceptance": "NOT_COMPLETED: failed test startup due missing dependency links consumed repair turn budget; links now reused, exact direct21tests pass; existing server continuation authorization requested, not yet received.",
+  "canonicalJobState": "succeeded",
+  "canonicalAcceptance": "VERIFIED_COMPLETE for exact bounded WorkUnit; independent SDK review and final verify PASS, no whole SPEC claim",
   "integrationPolicy": "Safe useful exact reviewed code checkpoint may integrate before canonical Job final acceptance; Job remains open.",
   "requirements": [
     "REQ-408D3F532E4C",
     "REQ-8D8136DAE54F"
   ],
   "wholeRequirementClosed": false,
-  "observedAt": "2026-10-16T14:03:10.773117+00:00",
+  "observedAt": "2026-10-16T14:18:22.029513+00:00",
   "integrationCandidateVerification": {
     "profile": "quick",
     "files": 2,
@@ -44,5 +44,61 @@
       "scope": "Pure resolver source only; no repository typecheck"
     },
     "exactCandidateFilesMatchIndependentReview": true
+  },
+  "canonicalRunState": "VERIFIED_COMPLETE",
+  "finalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+  "merge": {
+    "pr": 991,
+    "headSha": "f55e060af90a03e5de198c800b1e6e91800c0398",
+    "canonicalSha": "b74c302765d0e343869c4c53d724204a77275e78",
+    "mergedAt": "2026-10-16T14:16:06Z",
+    "headAndMergeTreesEqual": true,
+    "canonicalReachabilityVerified": true
+  },
+  "usage": {
+    "calls": 19,
+    "knownSettlements": 19,
+    "inputTokens": 692702,
+    "cachedInputTokens": 504192,
+    "outputTokens": 3613,
+    "actualTotalTokens": 696315
+  },
+  "canonicalReview": {
+    "complete": true,
+    "functionalReadyForUserTest": true,
+    "findings": [],
+    "evidence": [
+      "The cumulative source diff contains the own-key SOURCE_PRECEDENCE guard in bindingMatchesContext, closing the inherited-property fallthrough for unknown, empty, __proto__, constructor, and toString source values.",
+      "Regression cases verify each invalid source alone yields UNRESOLVED with ignoredEvidenceCount=1 and no project or authoritativeSource; a mixed invalid/valid case retains the valid RESOLVED_CONTEXTUAL advisory result and counts the invalid evidence.",
+      "The focused Vitest receipt exited 0: 1 test file passed, 21 tests passed, databaseMode=none. Its changedPaths are empty because sourceBefore and sourceAfter match the already changed cumulative files at this receipt revision; workUnitBaselineChangedPaths confirms both scoped files carry the cumulative changes.",
+      "Existing tests continue to cover source precedence, scope isolation, explicit No Project, ambiguity, and advisory=true/authorizationRequired=true semantics. The acceptance criteria cover the stated normative slice; no uncovered requirement language or evidence gap remains."
+    ]
+  },
+  "canonicalFinalVerify": {
+    "complete": true,
+    "functionalReadyForUserTest": true,
+    "findings": [],
+    "evidence": [
+      "The canonical requirement and acceptance criteria match the reviewed scope: fail closed on unknown binding sources, count ignored evidence, preserve valid advisory resolution, and retain authorizationRequired semantics. No additional normative gap is apparent in the supplied requirement.",
+      "The implementation checks Object.hasOwn(SOURCE_PRECEDENCE, binding.source) before contextual matching, preventing inherited Object.prototype names and unknown or empty values from entering accepted evidence.",
+      "Regressions cover unknown, empty, __proto__, constructor, and toString sources alone, plus mixed invalid and valid evidence. Existing coverage includes precedence, scope isolation, explicit No Project, ambiguity, and advisory authorization requirements.",
+      "The supplied focused Vitest receipt reports exit code 0 with 1 file and 21 tests passing. The initial test attempt failed, but the subsequent recorded run passed against the same revision.",
+      "The source snapshot contains only the two scoped files; no schema, migration, durable receipt, or authorization changes are present."
+    ]
+  },
+  "modelPolicy": "LUNA_ONLY",
+  "requestedModel": "gpt-6-luna",
+  "effectiveModel": "UNVERIFIED: SDK field null",
+  "runtimeRepairs": [
+    "Reused existing node_modules links after actual startup failure; no install or dependency change.",
+    "Existing continuation authorization consumed for exact original Job/source/files, no replay of settled turns."
+  ],
+  "ci": {
+    "progressiveIntegrationGate": "SUCCESS",
+    "browserSimulation": "SUCCESS_ON_RERUN",
+    "initialFailure": "Login onboarding hint visibility after viewport resize;26/27passed; unchanged UI source/test files.",
+    "buildPreview": "SKIPPED",
+    "evidence": "https://github.com/naibarn/SmartSpecPro/actions/runs/38912877568",
+    "limits": "Mocked browser simulation, not live acceptance"
   }
 }

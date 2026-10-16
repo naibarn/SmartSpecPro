@@ -1,8 +1,8 @@
 {
-  "observedAt": "2026-10-16T13:19:10.034388+00:00",
+  "observedAt": "2026-10-16T14:18:22.029513+00:00",
   "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
   "finalSourceSha": null,
-  "pilotStatus": "IN_PROGRESS_NOT_ACCEPTED",
+  "pilotStatus": "SOURCE302_MERGED_SOURCE268_VERIFIED_READY_CANONICAL268_JOB_OPEN",
   "discovery": "Targeted rg/file reads and Git/GitHub checks; normal shell fallback, no specialized code index available. Primary dirty work preserved.",
   "referencePr": {
     "number": 988,
@@ -29,14 +29,16 @@
       "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
       "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC268_SCOPED_RECALL_EXPIRY.request.json",
       "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
-      "status": "WAITING_BUDGET",
+      "status": "DIRECT_VERIFIED_READY_FOR_PROMOTION_CANONICAL_JOB_OPEN",
       "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
       "jobId": "1b91631e1e114bb1eb50c14942245b89",
       "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
       "writableFiles": [
         "apps/web/server/services/scopedMemoryService.ts",
         "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts"
-      ]
+      ],
+      "independentReview": "PASS",
+      "focusedTestsPassed": 52
     },
     {
       "id": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
@@ -56,14 +58,16 @@
       "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
       "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC302_REJECT_UNKNOWN_BINDING_SOURCE.request.json",
       "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
-      "status": "WAITING_BUDGET",
+      "status": "VERIFIED_COMPLETE_AND_MERGED",
       "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
       "jobId": "5ae456af45d6d64140f8fe6009be2057",
       "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
       "writableFiles": [
         "apps/web/server/services/canonicalProjectContextResolver.ts",
         "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts"
-      ]
+      ],
+      "finalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "pr": 991
     }
   ],
   "validationOnly": {
@@ -126,20 +130,20 @@
   },
   "usage": {
     "1b91631e1e114bb1eb50c14942245b89": {
-      "calls": 9,
-      "inputTokens": 452870,
-      "cachedInputTokens": 387328,
-      "outputTokens": 1518,
-      "actualTotalTokens": 454388,
-      "knownSettlements": 9
+      "calls": 37,
+      "knownSettlements": 37,
+      "inputTokens": 3621153,
+      "cachedInputTokens": 3319808,
+      "outputTokens": 11570,
+      "actualTotalTokens": 3632723
     },
     "5ae456af45d6d64140f8fe6009be2057": {
-      "calls": 16,
-      "inputTokens": 594149,
-      "cachedInputTokens": 448384,
-      "outputTokens": 2885,
-      "actualTotalTokens": 597034,
-      "knownSettlements": 16
+      "calls": 19,
+      "knownSettlements": 19,
+      "inputTokens": 692702,
+      "cachedInputTokens": 504192,
+      "outputTokens": 3613,
+      "actualTotalTokens": 696315
     }
   },
   "requestedModel": "gpt-6-luna",
@@ -182,7 +186,8 @@
   },
   "runtimeSetupRepairs": [
     "Local snapshot query initially referred to nonexistent errorJson; fixed only external launcher to select existing columns; Job was not duplicated.",
-    "Initial local executor transport test is denied in development; used registered postgres-direct transport on SAME canonical Job. No auth, runtime or model-policy guard changed."
+    "Initial local executor transport test is denied in development; used registered postgres-direct transport on SAME canonical Job. No auth, runtime or model-policy guard changed.",
+    "External launcher resume key now includes actual externalWait.operationKey, preventing dedupe collision across distinct waits. Existing Job reused; canonical control-plane checks unchanged."
   ],
   "baselineDefects": {
     "268": {
@@ -196,34 +201,53 @@
   },
   "latestJobs": [
     {
-      "jobId": "1b91631e1e114bb1eb50c14942245b89",
+      "id": "1b91631e1e114bb1eb50c14942245b89",
       "status": "waiting_external",
-      "wait": {
-        "reason": "budget",
-        "metadata": {
-          "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
-          "schemaVersion": "spec224.developer-model-wait.v1",
-          "reservationState": "not_reserved"
+      "progressJson": {
+        "stage": "resuming",
+        "progress": 0,
+        "externalWait": {
+          "reason": "authorization",
+          "metadata": {
+            "jobId": "1b91631e1e114bb1eb50c14942245b89",
+            "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
+            "reason": "SDK_TURN_BUDGET_EXHAUSTED",
+            "attemptId": "d3e0d2d3-28dc-4d72-a901-bd8550d4a67f",
+            "schemaVersion": "spec224.developer-authorization-wait.v1",
+            "fencingVersion": 6
+          },
+          "resumeAfter": "2026-10-16T15:23:47.381Z",
+          "operationKey": "developer-turn-budget:343227ad-c067-54f6-a35c-ae056fecff14:6"
         },
-        "resumeAfter": "2026-10-16T15:00:00.000Z",
-        "operationKey": "spec224-codex-turn:d6250b7945f4ddfb52f887b61acdd0fbe8302eda73d11df5b1b5e927b7758af3"
+        "legacyStatus": {
+          "status": "queued",
+          "message": "Resuming execution"
+        }
       }
     },
     {
-      "jobId": "5ae456af45d6d64140f8fe6009be2057",
-      "status": "waiting_external",
-      "wait": {
-        "reason": "authorization",
-        "metadata": {
-          "jobId": "5ae456af45d6d64140f8fe6009be2057",
-          "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
-          "reason": "SDK_TURN_BUDGET_EXHAUSTED",
-          "attemptId": "623b56b6-da76-4b84-a6a6-16d4fec64d0b",
-          "schemaVersion": "spec224.developer-authorization-wait.v1",
-          "fencingVersion": 2
+      "id": "5ae456af45d6d64140f8fe6009be2057",
+      "status": "succeeded",
+      "progressJson": {
+        "stage": "resuming",
+        "progress": 0,
+        "externalWait": {
+          "reason": "authorization",
+          "metadata": {
+            "jobId": "5ae456af45d6d64140f8fe6009be2057",
+            "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+            "reason": "SDK_TURN_BUDGET_EXHAUSTED",
+            "attemptId": "623b56b6-da76-4b84-a6a6-16d4fec64d0b",
+            "schemaVersion": "spec224.developer-authorization-wait.v1",
+            "fencingVersion": 2
+          },
+          "resumeAfter": "2026-10-16T15:01:44.815Z",
+          "operationKey": "developer-turn-budget:ae98ece6-69f1-5e78-a33e-79123e2ed607:2"
         },
-        "resumeAfter": "2026-10-16T15:01:44.815Z",
-        "operationKey": "developer-turn-budget:ae98ece6-69f1-5e78-a33e-79123e2ed607:2"
+        "legacyStatus": {
+          "status": "queued",
+          "message": "Resuming execution"
+        }
       }
     }
   ],
@@ -234,5 +258,53 @@
     "scope": "Active Phase1 only; 27tests + independent review; integrated PR990 b7872a2e"
   },
   "runtimeRepair": "Task worktrees lacked node_modules links. Reused existing installations in both worktrees; no install, migration or writable source scope expansion. Initial actual test startup failure retained.",
-  "spec302SdkContinuationRequest": "/tmp/smartaihub-backlog-pilot/spec302-sdk-continuation-request.json"
+  "spec302SdkContinuationRequest": "/tmp/smartaihub-backlog-pilot/spec302-sdk-continuation-request.json",
+  "runtimeBudgetAuthorization": {
+    "reference": "USER_DELEGATED_APPROVAL_20261016_SPEC268_BOUNDED_CAPACITY_CONTINUATION",
+    "temporaryInternalTokenCap": 4000000,
+    "windowSeconds": 3600,
+    "onlyJob": "1b91631e1e114bb1eb50c14942245b89",
+    "modelPolicy": "LUNA_ONLY",
+    "productionAccess": false
+  },
+  "latestFunctionalMerge": {
+    "status": "PROMOTED_TO_MAIN",
+    "pr": 991,
+    "canonical_sha": "b74c302765d0e343869c4c53d724204a77275e78",
+    "job_id": "5ae456af45d6d64140f8fe6009be2057",
+    "run_id": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+    "canonical_job_acceptance": "VERIFIED_COMPLETE",
+    "independent_review": "PASS",
+    "direct_verify": "33 resolver/receipt tests + scoped resolver semantic compile pass",
+    "evidence_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
+    "whole_spec_complete": false
+  },
+  "postPr991Verification": {
+    "profile": "quick",
+    "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+    "files": 11,
+    "passed": 97,
+    "failed": 0,
+    "startedAtEpochMs": 1792160248306,
+    "finishedAtEpochMs": 1792160254325.1309,
+    "exitCode": 0,
+    "signal": null,
+    "commandScope": [
+      "server/routers/appIdentity.test.ts",
+      "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+      "server/services/verticalDramaLlmPolicy.test.ts",
+      "server/services/__tests__/appIdentityRepository.test.ts",
+      "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+      "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+      "server/services/__tests__/projectResolutionAuthority.test.ts",
+      "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+      "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts"
+    ],
+    "resourceObservation": "Host available24202MiB immediately before check; maxWorkers1; no full verification lease or repository typecheck.",
+    "outcome": "PASS",
+    "limits": "Focused mocked/unit/loopback tests only; no provider, production, deployment or broad UAT claim."
+  },
+  "helperModelUsage": "UNKNOWN: host tool usage not exposed; excluded from canonical scheduler settlement totals."
 }
