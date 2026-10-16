@@ -8,6 +8,7 @@ import {
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
 } from "../../shared/contentProtectionWorker";
 import { RESEARCH_NOTES_SUMMARY_CONTRACT } from "./researchNotesSummaryContract";
+import { DEVELOPER_FAST_LANE_CONTRACT } from "./spec224DeveloperFastLaneContract";
 
 /**
  * Canonical transports carry the envelope unchanged. Keep every contract
@@ -23,6 +24,7 @@ export const CANONICAL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
 const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   ...CANONICAL_JOB_CONTRACT_VERSIONS,
   RESEARCH_NOTES_SUMMARY_CONTRACT,
+  DEVELOPER_FAST_LANE_CONTRACT,
   "mini-app-factory-stage-v1",
 ]);
 
