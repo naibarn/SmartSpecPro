@@ -26,6 +26,7 @@ function validateRequest(request: DeveloperFastLaneRequest): void {
   if (request.tests.databaseMode !== undefined && !["none", "isolated_local"].includes(request.tests.databaseMode)) throw new Error("DEVELOPER_FAST_LANE_DATABASE_SCOPE_INVALID");
   if (!Array.isArray(request.acceptanceCriteria) || request.acceptanceCriteria.length === 0 || request.acceptanceCriteria.length > 80 || request.acceptanceCriteria.some(item => typeof item !== "string" || !item.trim() || item.length > 2_000)) throw new Error("DEVELOPER_FAST_LANE_ACCEPTANCE_INVALID");
   const budget = request.budget ?? { implementationMaxTurns: 12, planMaxTurns: 4, reviewMaxTurns: 4 };
+  if (budget.maxAttempts !== undefined && (!Number.isInteger(budget.maxAttempts) || budget.maxAttempts < 1 || budget.maxAttempts > 3)) throw new Error("DEVELOPER_FAST_LANE_MAX_ATTEMPTS_INVALID");
   for (const [key, max] of [["implementationMaxTurns", 30], ["planMaxTurns", 8], ["reviewMaxTurns", 8]] as const) {
     const value = budget[key];
     if (!Number.isSafeInteger(value) || value < 1 || value > max) throw new Error("DEVELOPER_FAST_LANE_TURN_BUDGET_INVALID");
