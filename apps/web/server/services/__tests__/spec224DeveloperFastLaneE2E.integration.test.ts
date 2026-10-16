@@ -48,13 +48,14 @@ async function prepareGoldenDefaultPathRepository(sourceRoot: string, tempRoot: 
   for (const harnessPath of [
     "experiments/agents-sdk-codex-subscription/developer_workunit.py",
     "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+    "experiments/agents-sdk-codex-subscription/supervise_run.py",
     "experiments/agents-sdk-codex-subscription/codex_model.py",
   ]) {
     await (await import("node:fs/promises")).copyFile(path.join(sourceRoot, harnessPath), path.join(repositoryRoot, harnessPath));
   }
   const policy = `[repository]\nrepository_id = "spec224-golden-${path.basename(tempRoot)}"\nremote = "origin"\ncanonical_ref = "refs/heads/main"\ncanonical_user_workspace = "${path.join(tempRoot, "primary-workspace")}"\nsource_root = "${sourceRootPath}"\nsource_fallback_roots = ["/mnt/SmartSpecDev/.tmp"]\nlease_root = "${path.join(tempRoot, "leases")}"\nbuild_target = "spec224-test"\n`;
   await (await import("node:fs/promises")).writeFile(path.join(repositoryRoot, ".development-repository.toml"), policy);
-  execGit(["add", ".development-repository.toml", workunitPath, "experiments/agents-sdk-codex-subscription/developer_workunit.py", "experiments/agents-sdk-codex-subscription/run_spec_workunit.py", "experiments/agents-sdk-codex-subscription/codex_model.py"]);
+  execGit(["add", ".development-repository.toml", workunitPath, "experiments/agents-sdk-codex-subscription/developer_workunit.py", "experiments/agents-sdk-codex-subscription/run_spec_workunit.py", "experiments/agents-sdk-codex-subscription/supervise_run.py", "experiments/agents-sdk-codex-subscription/codex_model.py"]);
   execGit(["commit", "-m", "Configure isolated golden E2E workspace authority"]);
   const sourceRevision = execGit(["rev-parse", "HEAD"]);
   execFileSync("git", ["--git-dir", originPath, "update-ref", "refs/heads/main", sourceRevision], { stdio: "ignore" });
@@ -358,7 +359,7 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
         allowedFiles: [workunitPath], writableFiles: [workunitPath],
         tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
         acceptanceCriteria: ["The allowlisted focused pytest passes on the pinned source revision."],
-        budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 3600,
+        budget: { implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 2 }, scopeTtlSeconds: 3600,
       });
       const result = await harness.execute(created.jobId, 1);
       expect(result).toMatchObject({ state: "succeeded", jobId: created.jobId });
@@ -388,6 +389,55 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
     }
   }, 240_000);
 
+  it("parks the default process chain on aggregate review exhaustion without retrying models or resetting allowances", async () => {
+    const { runJobReconciler } = await import("../jobReconciler");
+    const fs = await import("node:fs/promises");
+    const harness = await createGoldenFastLaneHarness(process.cwd().replace(/\/apps\/web$/, ""));
+    const workunitPath = "experiments/agents-sdk-codex-subscription/tests/fixtures/golden_default_path/golden_workunit_test.py";
+    try {
+      const created = await harness.createJob({
+        idempotencyKey: `bounded-review-fast-lane-${randomUUID()}`, developerLogin: "developer", sourceRevision: harness.sourceRevision,
+        task: "Verify the seeded behavior within a deliberately single-turn review scope.",
+        allowedFiles: [workunitPath], writableFiles: [workunitPath],
+        tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
+        acceptanceCriteria: ["Review and final verification cannot silently exceed their aggregate authorization."],
+        budget: { maxAttempts: 2, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 300,
+      });
+      const result = await harness.execute(created.jobId, 1);
+      expect(result).toMatchObject({ state: "deferred", jobId: created.jobId });
+      const runDirectory = path.join(harness.evidenceRoot, created.runId);
+      const receiptBytes = await fs.readFile(path.join(runDirectory, "authorization-receipt.json"));
+      const state = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      const recovery = JSON.parse(await fs.readFile(path.join(runDirectory, "recovery-receipt.json"), "utf8"));
+      expect(state).toMatchObject({ status: "WAITING_AUTHORIZATION", boundedTurnBudgetExhausted: { phase: "verification" } });
+      expect(recovery).toMatchObject({ supervisorResult: "DEFERRED_BOUNDED_AUTHORIZATION", processCount: 1, continuationProcessCount: 0 });
+      const [waiting] = await sql`SELECT status, "statusReason", "progressJson", "leaseOwnerToken" IS NULL AS released FROM worker_jobs WHERE id=${created.jobId}`;
+      expect(waiting).toMatchObject({ status: "waiting_external", statusReason: "WAITING_AUTHORIZATION", released: true });
+      const wait = waiting.progressJson.externalWait;
+      expect(wait).toMatchObject({ reason: "authorization", metadata: { reason: "SDK_TURN_BUDGET_EXHAUSTED" } });
+      const count = Number(await fs.readFile(path.join(harness.stateRoot, "turn-dispatch-count"), "utf8"));
+      expect(count).toBe(3); // plan + implementation + review; no verifier dispatch.
+      const reservations = await sql`SELECT "modelCallId", "usageState", "reservationStatus", "inputTokens", "outputTokens" FROM worker_job_provider_reservations WHERE "workerJobId"=${created.jobId} AND "reservationKind"='model_call' ORDER BY "createdAt"`;
+      expect(reservations).toHaveLength(3);
+      expect(reservations.every(row => row.usageState === "known" && row.reservationStatus === "released" && row.inputTokens + row.outputTokens === 26)).toBe(true);
+      const early = await runJobReconciler({ now: new Date(Date.parse(wait.resumeAfter) - 1) });
+      expect(early.decisions).toContainEqual({ jobId: created.jobId, action: "wait", reasonCode: "authorization_not_yet_eligible" });
+      const eligible = new Date(Date.parse(wait.resumeAfter) + 1);
+      await harness.setTime(eligible);
+      await runJobReconciler({ now: eligible });
+      const [queued] = await sql`SELECT attempt FROM worker_jobs WHERE id=${created.jobId}`;
+      const resumed = await harness.execute(created.jobId, queued.attempt);
+      expect(resumed).toMatchObject({ state: "deferred", jobId: created.jobId });
+      expect(Number(await fs.readFile(path.join(harness.stateRoot, "turn-dispatch-count"), "utf8"))).toBe(count);
+      expect(await fs.readFile(path.join(runDirectory, "authorization-receipt.json"))).toEqual(receiptBytes);
+      const after = await sql`SELECT "modelCallId", "usageState", "reservationStatus", "inputTokens", "outputTokens" FROM worker_job_provider_reservations WHERE "workerJobId"=${created.jobId} AND "reservationKind"='model_call' ORDER BY "createdAt"`;
+      expect(after).toEqual(reservations);
+      const finalState = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+      expect(finalState).toMatchObject({ runId: created.runId, workspaceId: state.workspaceId, status: "WAITING_AUTHORIZATION" });
+      expect(finalState.lifecycleEvents.filter((event: { kind: string }) => event.kind === "workunit.sdk_turn.admitted")).toHaveLength(3);
+    } finally { await harness.close(); }
+  }, 120_000);
+
   it("resumes the same default Fast Lane WorkUnit after a three-day capacity wait and source advance", async () => {
     const [{ runJobReconciler }] = await Promise.all([import("../jobReconciler")]);
     const fs = await import("node:fs/promises");
@@ -404,7 +454,7 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
         allowedFiles: [workunitPath], writableFiles: [workunitPath],
         tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
         acceptanceCriteria: ["The allowlisted focused pytest passes on the original pinned source revision."],
-        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 300,
+        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 2 }, scopeTtlSeconds: 300,
       });
       const firstStarted = Date.now();
       const first = await harness.execute(created.jobId, 1);
@@ -499,7 +549,7 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
         allowedFiles: [workunitPath], writableFiles: [workunitPath],
         tests: { runner: "pytest", cwd: ".", paths: [workunitPath] },
         acceptanceCriteria: ["The allowlisted focused pytest passes on the pinned source revision."],
-        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 1 }, scopeTtlSeconds: 3600,
+        budget: { maxAttempts: 3, implementationMaxTurns: 1, planMaxTurns: 1, reviewMaxTurns: 2 }, scopeTtlSeconds: 3600,
       });
       harness.setCrashAt(crashBoundary, true);
       const runDirectory = path.join(harness.evidenceRoot, created.runId);

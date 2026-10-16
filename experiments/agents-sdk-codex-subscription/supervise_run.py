@@ -168,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
         diagnostic_next = False
         prior_status = json.loads(existing_state.read_text(encoding="utf-8")).get("status") if existing_state.is_file() else None
         prior_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
-        if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY"}:
+        if prior_status in {"WAITING_BUDGET", "WAITING_CAPACITY", "WAITING_AUTHORIZATION"}:
             if prior_state.get("canonicalModelAdmissionRequired") and args.canonical_admission_response_fd is None:
                 # The canonical scheduler owns eligibility and lease reacquisition.
                 # A local supervisor must not wake a WorkUnit with a stale lease.
@@ -226,6 +226,16 @@ def main(argv: list[str] | None = None) -> int:
             return 128 + signum
         current_state = json.loads(existing_state.read_text(encoding="utf-8")) if existing_state.is_file() else {}
         current_status = current_state.get("status")
+        if (args.spec_contract and current_status == "WAITING_AUTHORIZATION"
+                and isinstance(current_state.get("boundedTurnBudgetExhausted"), dict) and result.returncode == 75):
+            receipt = write_recovery_receipt(
+                evidence, logs, run_id=run_id, restarts=restarts, started=started,
+                crash_at=args.crash_at, supervisor_result="DEFERRED_BOUNDED_AUTHORIZATION",
+                reason="approved SDK turn/attempt allowance exhausted; return to the canonical executor without local replanning",
+                return_code=75, process_count=process_count, continuation_processes=continuation_processes,
+            )
+            print(json.dumps(receipt, ensure_ascii=False, indent=2))
+            return 75
         if args.spec_contract and current_status in {"WAITING_BUDGET", "WAITING_CAPACITY"} and current_state.get("canonicalModelAdmissionRequired"):
             expected_reason = "budget" if current_status == "WAITING_BUDGET" else "provider_capacity"
             new_canonical_wait = (

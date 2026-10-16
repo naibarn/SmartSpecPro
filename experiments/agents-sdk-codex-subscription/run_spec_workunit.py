@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from agents import Runner, SQLiteSession, set_tracing_disabled
+from agents import Runner, RunHooks, SQLiteSession, set_tracing_disabled
 from agents.exceptions import MaxTurnsExceeded
 from agents.run_state import RunState
 
@@ -56,6 +56,100 @@ class UnproductiveImplementationPhase(RuntimeError):
 
 class NoProgressPhaseError(RuntimeError):
     """MaxTurnsExceeded repeated without a completed turn, receipt, source, or test delta."""
+
+
+class BoundedTurnBudgetExceeded(RuntimeError):
+    """A validated Developer WorkUnit needs additional scoped authorization."""
+
+
+def turn_budget_group(phase: str) -> str:
+    if phase == "planning" or re.fullmatch(r"planning-\d+", phase) or phase == "replanning":
+        return "planning"
+    if phase == "implementation":
+        return "implementation"
+    if phase in {"review", "verification"}:
+        return "review"
+    raise BoundedTurnBudgetExceeded(f"Unrecognized bounded phase: {phase}")
+
+
+class BoundedFastLaneTurns:
+    """Use the existing immutable event journal, counting SDK turns, not tokens/calls.
+
+    Attempt/fencing changes and scope renewals never reset these allowances.
+    Limits come only from the contract already validated by load_contract.
+    """
+    def __init__(self, store: DurableRunStore, contract: WorkUnitContract):
+        self.store = store
+        self.limits = {"planning": contract.plan_max_turns, "implementation": contract.implementation_max_turns,
+                       "review": contract.review_max_turns}
+        self.max_attempts = contract.raw["budget"].get("maxAttempts", 3)
+        if any(type(value) is not int or value < 1 for value in (*self.limits.values(), self.max_attempts)):
+            raise BoundedTurnBudgetExceeded("Validated turn/attempt allowance is missing or invalid")
+        store.event("workunit.turn_budget.bound", {"contractDigest": contract.digest, "limits": self.limits,
+                                                   "maxAttempts": self.max_attempts},
+                    stable_key=f"workunit:turn-budget:{contract.digest}")
+
+    def counts(self) -> dict[str, int]:
+        counts = {}
+        for row in self.store.connection.execute("SELECT phase_id,checkpoint_json FROM phases"):
+            events = self.store.connection.execute(
+                "SELECT payload_json FROM events WHERE kind='workunit.sdk_turn.admitted' AND json_extract(payload_json,'$.phaseId')=?",
+                (row["phase_id"],),
+            ).fetchall()
+            if events:
+                counts[row["phase_id"]] = max(json.loads(event[0])["sdkTurn"] for event in events)
+            else:
+                # Older in-progress runs have no admission journal. A serialized
+                # SDK cursor is conservative evidence; model-call counts are not
+                # interchangeable with SDK turns. Ambiguity must fail closed.
+                checkpoint = json.loads(row["checkpoint_json"]) if row["checkpoint_json"] else {}
+                cursor = checkpoint.get("current_turn")
+                has_calls = self.store.connection.execute("SELECT 1 FROM model_calls WHERE phase_id=? LIMIT 1", (row["phase_id"],)).fetchone()
+                if (checkpoint and (type(cursor) is not int or cursor < 0)) or (has_calls and (type(cursor) is not int or cursor < 1)):
+                    raise BoundedTurnBudgetExceeded("Legacy SDK turn consumption requires reconciliation")
+                counts[row["phase_id"]] = cursor if type(cursor) is int and cursor > 0 else 0
+        return counts
+
+    def allowance(self, phase: str, attempt: int) -> tuple[int, int, int]:
+        group = turn_budget_group(phase)
+        if attempt > self.max_attempts:
+            raise BoundedTurnBudgetExceeded("Authorized WorkUnit attempt allowance exhausted")
+        counts = self.counts()
+        used_elsewhere = sum(counts[row["phase_id"]] for row in self.store.connection.execute("SELECT phase_id,name FROM phases")
+                             if row["phase_id"] != self.store.phase_id(phase, attempt) and turn_budget_group(row["name"]) == group)
+        consumed_here = counts.get(self.store.phase_id(phase, attempt), 0)
+        return self.limits[group] - used_elsewhere, consumed_here, used_elsewhere + consumed_here
+
+    def admit(self, phase: str, attempt: int, sdk_turn: int) -> None:
+        limit, consumed, _ = self.allowance(phase, attempt)
+        if type(sdk_turn) is not int or sdk_turn < 1 or sdk_turn > limit:
+            raise BoundedTurnBudgetExceeded("Authorized aggregate SDK turn allowance exhausted")
+        # A restart may replay the same SDK turn to reconcile its existing model
+        # receipt. It gets no new allowance and the model's own durable identity
+        # prevents provider redispatch. Gaps are ambiguous, never free capacity.
+        if sdk_turn > consumed + 1:
+            raise BoundedTurnBudgetExceeded("SDK turn cursor requires reconciliation")
+        self.store.event("workunit.sdk_turn.admitted", {
+            "phaseId": self.store.phase_id(phase, attempt), "group": turn_budget_group(phase), "sdkTurn": sdk_turn,
+        }, stable_key=f"workunit:sdk-turn:{self.store.phase_id(phase, attempt)}:{sdk_turn}")
+
+
+def bounded_fast_lane_turns(store: DurableRunStore) -> BoundedFastLaneTurns | None:
+    contract = getattr(store, "validated_workunit_contract", None)
+    if contract is None or contract.raw.get("schema") != "agents-sdk-developer-workunit-contract.v1":
+        return None
+    return BoundedFastLaneTurns(store, contract)
+
+
+def park_bounded_turn_budget(store: DurableRunStore, phase: str, attempt: int, detail: str) -> None:
+    store.state.update(status="WAITING_AUTHORIZATION", functionalDeliveryStatus="PARTIAL_CONTINUABLE",
+                       nextAction="authorize_additional_scoped_turn_budget")
+    evidence = {"phaseId": store.phase_id(phase, attempt), "phase": phase, "attempt": attempt, "detail": detail}
+    store.state["boundedTurnBudgetExhausted"] = evidence
+    store.event("workunit.turn_budget.exhausted", evidence,
+                stable_key=f"workunit:turn-budget-exhausted:{hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()}")
+    store.commit_state()
+    raise SystemExit(75)
 
 
 def luna_repair_failure_evidence(store: DurableRunStore, iterations: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -833,6 +927,15 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         from types import SimpleNamespace
         result = json.loads(existing["output_json"])
         return SimpleNamespace(final_output=result["finalOutput"], new_items=[])
+    budget = None
+    try:
+        budget = bounded_fast_lane_turns(store)
+        if budget:
+            limit, consumed, _ = budget.allowance(phase, attempt)
+            if limit < consumed or (limit == consumed and existing is None):
+                raise BoundedTurnBudgetExceeded("Authorized aggregate SDK turn allowance exhausted")
+    except BoundedTurnBudgetExceeded as exc:
+        park_bounded_turn_budget(store, phase, attempt, str(exc))
     if existing and existing.get("status") == "needs_replan":
         raise NoProgressPhaseError(f"{phase} phase already has a durable no-progress diagnosis; use a fresh phase for replanning")
     phase_input = {"input": content, "maxTurns": max_turns}
@@ -855,18 +958,34 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
 
     async def invoke():
         checkpoint = json.loads(phase_row["checkpoint_json"]) if phase_row.get("checkpoint_json") else None
-        # MaxTurnsExceeded marks an SDK segment boundary. Continue the same
-        # RunState, phase and Codex thread with a larger durable allowance.
-        # There is intentionally no mission-level turn stop here.
+        # Independently authorized legacy workflows retain their SDK segment
+        # continuation. Developer Fast Lane instead restores its hard allowance
+        # from the validated contract and the durable SDK turn journal.
         turn_limit = max_turns
-        if checkpoint:
+        if checkpoint and not budget:
             turn_limit = max(max_turns, int(checkpoint.get("max_turns", max_turns)))
+        if budget:
+            turn_limit, _, _ = budget.allowance(phase, attempt)
+            if checkpoint:
+                # MaxTurnsExceeded increments the SDK cursor before rejecting
+                # the next turn. Preserve the raw checkpoint on disk; only the
+                # restored cursor excludes that demonstrably undispatched turn.
+                checkpoint = dict(checkpoint)
+                prior_limit = checkpoint.get("max_turns")
+                if type(prior_limit) is int and checkpoint.get("current_turn", 0) > prior_limit:
+                    checkpoint["current_turn"] = budget.counts().get(phase_id, 0)
+                checkpoint["max_turns"] = turn_limit
         initial_progress = progress_snapshot()
         store.observe_phase_progress(phase_row["phase_id"], initial_progress)
         store.initialize_turn_limit_progress(phase_row["phase_id"], initial_progress)
         run_input = await RunState.from_json(agent, checkpoint) if checkpoint else content
+        class BudgetHooks(RunHooks):
+            async def on_llm_start(self, context, current_agent, system_prompt, input_items):
+                budget.admit(phase, attempt, streamed.current_turn)
+
         while True:
-            streamed = Runner.run_streamed(agent, run_input, max_turns=turn_limit, session=session)
+            options = {"hooks": BudgetHooks()} if budget else {}
+            streamed = Runner.run_streamed(agent, run_input, max_turns=turn_limit, session=session, **options)
             try:
                 async for _ in streamed.stream_events():
                     if store.save_checkpoint(phase_row["phase_id"], streamed.to_state().to_json()):
@@ -876,6 +995,9 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                 progress = progress_snapshot()
                 store.observe_phase_progress(phase_row["phase_id"], progress)
                 no_progress_segments = store.record_no_progress_segment(phase_row["phase_id"], progress)
+                if budget:
+                    store.save_checkpoint(phase_id, state_json)
+                    raise BoundedTurnBudgetExceeded("MaxTurnsExceeded reached the authorized SDK turn boundary")
                 if no_progress_segments >= 1:
                     diagnosis = (
                         "Agents SDK raised MaxTurnsExceeded without a completed tool receipt, allowlisted source change, "
@@ -931,6 +1053,8 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
         import asyncio
         return asyncio.run(invoke())
     except Exception as exc:
+        if isinstance(exc, BoundedTurnBudgetExceeded):
+            park_bounded_turn_budget(store, phase, attempt, str(exc))
         if isinstance(exc, ModelAdmissionWait):
             canonical_scheduler_owned = getattr(store, "model_admission_transport", None) is not None
             if exc.reason == "provider_capacity":
@@ -991,6 +1115,7 @@ def main() -> int:
     store = DurableRunStore(evidence, run_id=args.run_id, initial_state=None if args.resume else state,
                             resume=args.resume, count_restart=args.resume and not args.continuation)
     state = store.state
+    store.validated_workunit_contract = contract
     if args.canonical_admission_response_fd is not None:
         from model_admission import FdCanonicalModelAdmissionTransport
         store.model_admission_transport = FdCanonicalModelAdmissionTransport(
@@ -1110,6 +1235,9 @@ def main() -> int:
     continuing_same_iteration = bool(state.get("iterationInProgress"))
     attempt = int(state.get("developmentIteration", 0)) + (0 if continuing_same_iteration else 1)
     attempt = max(attempt, 1)
+    budget = bounded_fast_lane_turns(store)
+    if budget and attempt > budget.max_attempts:
+        park_bounded_turn_budget(store, "implementation", attempt, "Authorized WorkUnit attempt allowance exhausted")
     if not continuing_same_iteration:
         state.pop("lastReview", None)
         state.pop("verification", None)
