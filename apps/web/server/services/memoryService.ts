@@ -1501,7 +1501,7 @@ export async function upsertEntityMemory(
     throw new Error("Team-room provenance is only valid for team-room entity memory");
   }
 
-  // Check if entity exists
+  // Merge only within the same project scope; global facts remain global.
   const [existing] = await db
     .select()
     .from(entityMemories)
@@ -1510,6 +1510,9 @@ export async function upsertEntityMemory(
         eq(entityMemories.userId, userId),
         eq(entityMemories.entityType, entityType),
         eq(entityMemories.entityName, entityName),
+        resolvedProjectId === null
+          ? isNull(entityMemories.projectId)
+          : eq(entityMemories.projectId, resolvedProjectId),
         or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!,
         resolvedPersonaId === null
           ? isNull(entityMemories.personaId)
@@ -1532,8 +1535,6 @@ export async function upsertEntityMemory(
         reinforcementCount: sql`${entityMemories.reinforcementCount} + 1`,
         lastAccessedAt: new Date(),
         updatedAt: new Date(),
-        // Set projectId if existing memory has none and we now know the project
-        ...(resolvedProjectId && !existing.projectId ? { projectId: resolvedProjectId } : {}),
         ...(existing.personaId !== resolvedPersonaId ? { personaId: resolvedPersonaId } : {}),
         // Provenance is monotonic: merging room-derived facts quarantines the row.
         ...(preserveTeamRoomProvenance ? { source: "team_room" } : {}),
