@@ -7,6 +7,21 @@ import {
 } from "../jobTransportAdapters";
 
 describe("job transport adapters", () => {
+  it("admits only the registered Developer Fast Lane contract on PostgreSQL pull", async () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    const input = { jobType: "developer.fast_lane", executionClass: "long", contractVersion: "developer-fast-lane-v1" };
+    expect(() => assertAdapterSupports(postgres, input)).not.toThrow();
+    expect(cloudflare.supports(input)).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: "developer-fast-lane-v2" })).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: "unsupported" })).toBe(false);
+    const reference = await postgres.publish({
+      jobId: "developer-job", businessAttempt: 1, outboxId: "developer-outbox",
+      dedupeKey: "job:developer-job:attempt:1", contractVersion: input.contractVersion,
+      routingMetadata: {},
+    });
+    expect(reference.adapter).toBe("postgres-pull");
+  });
   it("rejects unsupported contract versions before publish", () => {
     const adapter = new PostgresPullJobTransportAdapter();
     expect(() => assertAdapterSupports(adapter, {

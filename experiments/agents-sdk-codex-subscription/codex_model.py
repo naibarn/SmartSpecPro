@@ -297,6 +297,7 @@ class CodexSubscriptionModel(Model):
                     prior_turn_id=reusable["turn_id"],
                 )
                 call = self.store.get_model_call(call_id) or call
+        call = self._persist_usage_baseline(call_id, call)
         if selection is not None:
             _maybe_crash(self.store, "model.after_selection_persisted", {
                 "callId": call_id, "profile": selection.get("profile"),
@@ -352,11 +353,11 @@ class CodexSubscriptionModel(Model):
         if admission_result and admission_result.get("kind") == "reconcile_required" and call.get("status") == "completed" and call.get("receipt_json"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
-            self.admission.settle(operation_key, self._usage_receipt(receipt), reconcile=True)
+            self._settle_usage(operation_key, receipt, reconcile=True)
         elif admission_result and admission_result.get("kind") == "reserved" and call["status"] == "completed" and call.get("receipt_json"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
-            self.admission.settle(operation_key, self._usage_receipt(receipt))
+            self._settle_usage(operation_key, receipt)
         elif call["status"] == "completed" and call.get("response_text"):
             raw_text = call["response_text"]
             receipt = json.loads(call["receipt_json"] or "{}")
@@ -402,6 +403,14 @@ class CodexSubscriptionModel(Model):
                 raise
             if selection is not None:
                 receipt["selection"] = selection
+            # Retain raw provider totals and the pre-dispatch baseline as evidence.
+            # last is only the last internal response, not the whole Codex turn.
+            persisted_usage = json.loads(call.get("usage_json") or "null")
+            baseline = (persisted_usage or {}).get("turnBaseline") if isinstance(persisted_usage, dict) else None
+            if isinstance(receipt.get("usage"), dict):
+                receipt["usage"].setdefault("turnBaseline", baseline)
+            receipt.setdefault("usageObservedAt", datetime.now(timezone.utc).isoformat())
+            receipt["usageState"] = "known" if self._usage_receipt(receipt) is not None else "unknown"
             self.store.update_model_call(
                 call_id, event="model.call.completed", stable_suffix="completed",
                 status="completed", response_text=raw_text,
@@ -409,8 +418,8 @@ class CodexSubscriptionModel(Model):
             )
             _maybe_crash(self.store, "model.after_receipt_persisted_before_settlement", {"callId": call_id})
             if self.admission is not None and operation_key:
-                self.admission.settle(
-                    operation_key, self._usage_receipt(receipt),
+                self._settle_usage(
+                    operation_key, receipt,
                     reconcile=bool(admission_result and admission_result.get("kind") == "reconcile_required"),
                 )
             _maybe_crash(self.store, "model.after_receipt", {"callId": call_id})
@@ -418,41 +427,105 @@ class CodexSubscriptionModel(Model):
         receipt["agentAction"] = "tool_call" if isinstance(parsed, ResponseFunctionToolCall) else "final"
         if isinstance(parsed, ResponseFunctionToolCall):
             receipt["toolName"] = parsed.name
+        measured = self._usage_receipt(receipt)
         self.on_receipt(receipt)
-        usage = receipt["usage"] or {}
-        last = usage.get("last") or {}
+        measured = measured or {}
         return ModelResponse(
             output=[parsed],
             usage=Usage(
                 requests=1,
-                input_tokens=int(last.get("inputTokens", 0)),
-                output_tokens=int(last.get("outputTokens", 0)),
-                total_tokens=int(last.get("totalTokens", 0)),
+                input_tokens=measured.get("inputTokens", 0),
+                input_tokens_details=InputTokensDetails(cache_write_tokens=0, cached_tokens=measured.get("cachedInputTokens", 0)),
+                output_tokens=measured.get("outputTokens", 0),
+                total_tokens=measured.get("inputTokens", 0) + measured.get("outputTokens", 0),
             ),
             response_id=receipt["turnId"],
             request_id=receipt["turnId"],
         )
+
+    def _settle_usage(self, operation_key: str, receipt: dict[str, Any], *, reconcile: bool = False) -> None:
+        result = self.admission.settle(operation_key, self._usage_receipt(receipt), reconcile=reconcile)
+        if not isinstance(result, dict) or result.get("kind") not in {"settled", "duplicate", "unknown"}:
+            raise ModelAdmissionDenied("canonical Task Control refused usage settlement; accounting reconciliation required")
+
+    @staticmethod
+    def _token_totals(value: Any) -> dict[str, int] | None:
+        if not isinstance(value, dict):
+            return None
+        totals = {name: value.get(name) for name in ("inputTokens", "cachedInputTokens", "outputTokens")}
+        if any(type(count) is not int or count < 0 for count in totals.values()):
+            return None
+        if totals["cachedInputTokens"] > totals["inputTokens"]:
+            return None
+        if "totalTokens" in value and value["totalTokens"] != totals["inputTokens"] + totals["outputTokens"]:
+            return None
+        return totals
+
+    def _persist_usage_baseline(self, call_id: str, call: dict[str, Any]) -> dict[str, Any]:
+        usage = json.loads(call.get("usage_json") or "null")
+        # Never infer a new baseline for an already dispatched or completed call.
+        if call.get("status") not in {"planned", "thread_reused", "provider_capacity_rejected"}:
+            return call
+        if isinstance(usage, dict) and "turnBaseline" in usage:
+            return call
+        baseline = None
+        if not call.get("thread_id") and not call.get("turn_id"):
+            baseline = {"kind": "fresh_thread", "threadId": None, "priorTurnId": None,
+                        "totals": {"inputTokens": 0, "cachedInputTokens": 0, "outputTokens": 0}}
+        elif call.get("status") == "thread_reused" and not call.get("turn_id"):
+            rows = self.store.connection.execute(
+                "SELECT usage_json FROM model_calls WHERE thread_id=? AND turn_id=? AND status='completed' AND call_id<>?",
+                (call["thread_id"], call.get("prior_turn_id"), call_id),
+            ).fetchall()
+            if len(rows) == 1:
+                prior_usage = json.loads(rows[0]["usage_json"] or "null")
+                totals = self._token_totals(prior_usage.get("total")) if isinstance(prior_usage, dict) else None
+                if totals is not None:
+                    baseline = {"kind": "preceding_turn", "threadId": call["thread_id"],
+                                "priorTurnId": call["prior_turn_id"], "totals": totals}
+        self.store.update_model_call(
+            call_id, event="model.usage.baseline.persisted", stable_suffix="usage-baseline",
+            usage_json=canonical_json({"turnBaseline": baseline}),
+        )
+        return self.store.get_model_call(call_id) or call
 
     @staticmethod
     def _usage_receipt(receipt: dict[str, Any]) -> dict[str, Any] | None:
         usage = receipt.get("usage")
         if not isinstance(usage, dict):
             return None
-        last = usage.get("last") if isinstance(usage.get("last"), dict) else usage
-        try:
-            input_tokens = int(last.get("inputTokens", last.get("input_tokens")))
-            cached_tokens = int(last.get("cachedInputTokens", last.get("cached_input_tokens", 0)))
-            output_tokens = int(last.get("outputTokens", last.get("output_tokens")))
-        except (TypeError, ValueError):
+        if "inputTokens" in usage and "last" not in usage and "total" not in usage:
+            # SDK Turn.usage is a per-turn TokenUsageBreakdown, unlike the
+            # ThreadTokenUsage emitted by turn.run(). Validate it independently.
+            delta = CodexSubscriptionModel._token_totals(usage)
+            if delta is None:
+                return None
+        else:
+            baseline = usage.get("turnBaseline")
+            if not isinstance(baseline, dict):
+                return None
+            if baseline.get("kind") == "preceding_turn":
+                if baseline.get("threadId") != receipt.get("threadId") or not baseline.get("priorTurnId") or baseline["priorTurnId"] == receipt.get("turnId"):
+                    return None
+            elif baseline.get("kind") != "fresh_thread":
+                return None
+            before = CodexSubscriptionModel._token_totals(baseline.get("totals"))
+            after = CodexSubscriptionModel._token_totals(usage.get("total"))
+            if before is None or after is None:
+                return None
+            if baseline["kind"] == "fresh_thread" and any(before.values()):
+                return None
+            delta = {name: after[name] - before[name] for name in before}
+            if CodexSubscriptionModel._token_totals(delta) is None:
+                return None
+        if not receipt.get("threadId") or not receipt.get("turnId") or not receipt.get("usageObservedAt"):
             return None
         return {
-            "inputTokens": input_tokens,
-            "cachedInputTokens": cached_tokens,
-            "outputTokens": output_tokens,
-            "threadId": receipt.get("threadId"),
-            "turnId": receipt.get("turnId"),
+            **delta,
+            "threadId": receipt["threadId"], "turnId": receipt["turnId"],
             "effectiveModel": receipt.get("effectiveModel"),
-            "observedAt": datetime.now(timezone.utc).isoformat(),
+            # Stable across settlement replay; never manufacture a new timestamp.
+            "observedAt": receipt["usageObservedAt"],
         }
 
     async def stream_response(
@@ -475,7 +548,7 @@ class CodexSubscriptionModel(Model):
             usage=ResponseUsage(
                 input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
                 total_tokens=usage.total_tokens,
-                input_tokens_details=InputTokensDetails(cache_write_tokens=0, cached_tokens=0),
+                input_tokens_details=usage.input_tokens_details,
                 output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
             ),
         )
@@ -746,6 +819,9 @@ class CodexSubscriptionModel(Model):
         if status != "completed":
             raise RuntimeError(f"Codex subscription turn did not complete: {status}")
         usage = result.usage.model_dump(mode="json", by_alias=True) if result.usage else None
+        persisted_usage = json.loads(call.get("usage_json") or "null")
+        if isinstance(usage, dict):
+            usage["turnBaseline"] = persisted_usage.get("turnBaseline") if isinstance(persisted_usage, dict) else None
         self.store.update_model_call(
             call_id, event="model.turn.persisted", stable_suffix=f"turn:{result.id}",
             status="turn_completed", turn_id=result.id, turn_attempt=int(call.get("turn_attempt", 0)) + 1,
