@@ -52,11 +52,11 @@
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
-    "next_ready_workunit": "SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE",
-    "reactivation_predicate": "Assign the SPEC-302 schema owner, approve the Phase 2 migration contract, and reconcile it against current origin/main; production migration remains separate.",
+    "next_action": "Resume SAME Job 5ae456af45d6d64140f8fe6009be2057 / Run ae98ece6-69f1-5e78-a33e-79123e2ed607 after default budget refill at 2026-10-16T14:00:00Z or explicitly approved trusted admission ceiling change. Current 500000/hour unchanged; owner budget request pending. Keep scope, Luna-only policy, prior threads/turns and canonical job identity immutable. Other SPEC gaps remain as recorded.",
+    "next_ready_workunit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
+    "reactivation_predicate": "Fresh model admission succeeds under existing ceilings after refill, or valid owner-specific admission authorization for these exact two Jobs is received.",
     "resume_point": "Phase 1 runtime slice integrated by PR #451 at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Focused tests pass; run direct identity/ingress acceptance independently. Phase 2 durable receipt WorkUnit is specified in orchestra/tasks/smartaihub-marathon-r3-20261010/phase2-durable-project-receipt.md and awaits schema-owner assignment plus explicit migration approval.",
-    "waiting_predicate": "Assign the SPEC-302 schema owner, approve the Phase 2 migration contract, and reconcile it against current origin/main; production migration remains separate."
+    "waiting_predicate": "Canonical Job waiting_external reason=budget, all prior model reservations released with known usage. Scope/budget expansion not authorized."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 24,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -155,6 +155,16 @@
       "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248"
     ],
     "mapping": [],
+    "pilot_workunit": {
+      "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "id": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
+      "job_id": "5ae456af45d6d64140f8fe6009be2057",
+      "owner": "Codex conductor",
+      "request_file": "/tmp/smartaihub-backlog-pilot/SPEC302_REJECT_UNKNOWN_BINDING_SOURCE.request.json",
+      "run_id": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+      "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "state": "WAITING_BUDGET"
+    },
     "source_paths": [
       "apps/web/server/services/researchNotesService.ts",
       "apps/web/server/services/researchNotesSummaryContract.ts",
@@ -422,7 +432,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T02:54:37.826178Z",
+  "updated_at": "2026-10-16T13:24:58.485522Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -488,6 +498,13 @@
         "scope": "Canonical origin/main 45c8357329f033d9e9aca8559f3e5c8fd2258b28: 4 Vitest files / 75 tests passed for ingress context, App-bound memory runtime, invocation-scoped Project resolution, and replay contract. Focused regression only; no deployed ingress UAT, direct cross-App/Project live acceptance, durable receipt persistence, migration, or production claim.",
         "source_sha": "45c8357329f033d9e9aca8559f3e5c8fd2258b28",
         "status": "PASS"
+      },
+      {
+        "kind": "AUTONOMOUS_BACKLOG_PILOT_CHECKPOINT",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+        "scope": "Invalid source WorkUnit Job 5ae456af45d6d64140f8fe6009be2057 / Run ae98ece6-69f1-5e78-a33e-79123e2ed607; actual Luna planning completed, WAITING_BUDGET, no patch yet.",
+        "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "PARTIAL",

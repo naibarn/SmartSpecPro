@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -25,25 +25,39 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120"
       ],
       "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "CANONICAL_SOURCE_INSPECTION",
+          "path": "apps/web/server/services/feature186VerticalDramaJobAdapter.ts",
+          "scope": "14 focused tests validate canonical admission/payload and admission-failure projection only. Real worker/service effects and persisted result/restart proof absent.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Add fresh canonical interactive/story worker execution and real result persistence acceptance; do not restore retired queue tests.",
       "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
       "requirement_id": "REQ-28722F9489C8",
       "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        {
+          "kind": "QUICK_VITEST_PARTIAL_ACCEPTANCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+          "scope": "14 focused tests validate canonical admission/payload and admission-failure projection only. Real worker/service effects and persisted result/restart proof absent.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+        }
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
@@ -69,47 +83,77 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L122"
       ],
       "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L122",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "READ_ONLY_TYPESCRIPT_AST_BOUNDARY_VALIDATION",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-router-boundary-validation-20261016.json",
+          "scope": "12 initial affected public mutations plus source-analysis adapter use enqueue path before top-level return. Dead legacy bodies after unconditional return are not treated as execution. Existing queued flow coverage, worker runtime and browser proof remain pending.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+          "status": "PARTIAL"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Extend direct executable boundary acceptance to already-queued deep-draft, composition, QC, episode-stage and provider-media routes and verify worker-only gates; do not infer dynamic latency or real provider results from static checks.",
       "requirement_digest": "f7059808f28fd1557ac812348b23ab8a600d00bd7cf30610bafc2acf98d65823",
       "requirement_id": "REQ-32AD56643D4F",
       "requirement_text": "4. ไม่มี public router ที่เรียก LLM service โดยตรงใน flow ที่กำหนด",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        {
+          "kind": "READ_ONLY_TYPESCRIPT_AST_BOUNDARY_VALIDATION",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-router-boundary-validation-20261016.json",
+          "scope": "12 initial affected public mutations plus source-analysis adapter use enqueue path before top-level return. Dead legacy bodies after unconditional return are not treated as execution. Existing queued flow coverage, worker runtime and browser proof remain pending.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+          "status": "PARTIAL"
+        }
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L123"
       ],
       "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L123",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "CANONICAL_SOURCE_INSPECTION",
+          "path": "apps/web/server/services/verticalDramaLlmModelPolicy.ts",
+          "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify selected model crosses submit, canonical job, real worker and provider boundary without substitution.",
       "requirement_digest": "509c473458fc3ee5a19d4bba90401c16045104a53226aa468236d154253acb62",
       "requirement_id": "REQ-34822D26C584",
       "requirement_text": "5. model ที่ user เลือกถูกส่งถึง worker/provider โดยไม่ถูกแทนด้วย model อื่น",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        {
+          "kind": "QUICK_VITEST_PARTIAL_ACCEPTANCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+          "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
+          "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+        }
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {

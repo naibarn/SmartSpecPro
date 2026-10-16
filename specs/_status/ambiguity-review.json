@@ -2877,7 +2877,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "19574e81c1e7247cab1126dd422a2db1617881b4",
+      "canonical_sha": "fe1da0762d715fddc3ec8236c3ac302e0df58834",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -3156,7 +3156,7 @@
       "deployment": "UNKNOWN",
       "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
@@ -92837,7 +92837,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8eefd800eb8a13389dd75bc4bc61547a1262aef4",
+      "canonical_sha": "1fa15ebd72a0801c889f340b0c5fecfccc371511",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -94091,6 +94091,18 @@
         "requirement REQ-4649215EED54 is OPEN",
         "requirement REQ-F216C41FD159 is OPEN",
         "requirement REQ-48AB9224A12B is OPEN",
+        "requirement REQ-DDD2EA5BB7E7 is OPEN",
+        "requirement REQ-14A5DA7A0641 is OPEN",
+        "requirement REQ-5CDFE238FD4B is OPEN",
+        "requirement REQ-95B9D5DDF432 is OPEN",
+        "requirement REQ-C28DF8A2F9AA is OPEN",
+        "requirement REQ-D09BD13A7892 is OPEN",
+        "requirement REQ-A30D460A0255 is OPEN",
+        "requirement REQ-A01391DB8631 is OPEN",
+        "requirement REQ-C55B70CB1BF5 is OPEN",
+        "requirement REQ-DC7031835D42 is OPEN",
+        "requirement REQ-239F4616E882 is OPEN",
+        "requirement REQ-8008288311DD is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -94104,13 +94116,52 @@
       "declared_claims": [
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-local-fast-lane: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-local-fast-lane",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-atomic-continuation: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-atomic-continuation",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-working-ui-acceptance: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-working-ui-acceptance",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
-          "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
+          "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
-          "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
+          "source_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
+          "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
       "declared_relationship_claims": [],
@@ -94119,29 +94170,29 @@
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
-          "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
+          "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
-          "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
+          "source_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
+          "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
+      "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-11T01:58:44.972631Z",
+      "last_reconciled": "2026-10-14T17:08:15.394461Z",
       "lifecycle": "WAITING_APPROVAL",
-      "next_action": "R11 receipt trust is implemented and bounded convergence is integrated, but final completion remains unproven. The registered dirty primary produced one bounded timeout/unknown result; no convergence receipt exists. Genuine authority-issued lifecycle evidence is unavailable because no authorized disposable Runner/PostgreSQL fixture was found. Next: obtain new filesystem/owner evidence before a convergence retry and an owner-authorized fixture Runner/database for genuine acceptance. Keep canonical-delivery-only policy inactive pending SPEC-224 owner/security approval.",
+      "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
         "classification": "TRUE_EXTERNAL",
         "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-        "next_action": "Provide an owner-authorized disposable Runner registration with fresh capability/source/workspace binding and a disposable PostgreSQL database using the supported app schema; then run real guarded integration, independent verification, receipt readback and restart acceptance. Keep protected dispatch DENY until those exact grants are verified.",
+        "next_action": "Provide or discover through the authorized control plane an owner-approved isolated Runner registration and protected dispatch grant with fresh identity/capability/source/workspace/allowed-operations/lease/fencing/expiry binding. Then run Live Agents SDK + Codex subscription acceptance, crash/restart/quota resume, durable receipt settlement and independent final verification. Keep protected dispatch fail-closed until that binding is verified.",
         "owner": "SPEC-224/workspace-authority maintainer",
-        "root_cause": "Read-only inventory of the local shared test database found zero trusted, non-revoked Runner registrations with fresh snapshots and no DevelopmentRun table; there is no authorized disposable Runner/database fixture that can issue genuine lifecycle receipts."
+        "root_cause": "The disposable PostgreSQL prerequisite is now provisioned and migrated, and the existing registered Runner loopback E2E passes. The isolated runtime still lacks an owner-authorized protected dispatch grant bound to an active trusted Runner session and current DevelopmentRun source/workspace. A crash-mode attempt stopped at canonical admission with “protected dispatch is fail-closed until canonical admission commits a durable execution-start”; no authority was created or widened."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -95014,21 +95065,110 @@
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-local-fast-lane: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-local-fast-lane",
+            "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-atomic-continuation: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-atomic-continuation",
+            "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-04-working-ui-acceptance: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-04-working-ui-acceptance",
+            "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "DECLARED_STATUS",
             "confidence": "LOW",
-            "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
+            "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
             "line": 4,
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-            "source_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
-            "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
+            "source_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
+            "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
+            "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
+          },
+          {
+            "digest": "afedb498a2ac2b7d8fe62e0979c7a374d3495df8d7be0fdea5bd72a36bf40547",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-plan.md"
+          },
+          {
+            "digest": "ae9bf51eab0ef320ed100e3cb741f96506878f246e4e14c6d1b0d3ed0a848c4d",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-spec.md"
+          },
+          {
+            "digest": "cb84fd855b9aa6ef7c0edcb15d2116921a21b09de867ebaf5f34eb0f6fdb8baf",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "2c2bbc6c530226a87e47091b4c805d81c691b64f0dcf923c4b7ba56c9ce3c2bd",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "6549cb43db6d155403f1417ecb61a30eac205455e820f380ac70221ee2041b47",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/index.md"
+          },
+          {
+            "digest": "96d1a5937bf9039744011e3b9e8fc6e71c6b9875c634b7ce985dbc867466ef3c",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-01-local-fast-lane.md"
+          },
+          {
+            "digest": "db7730d54ecf4ed483cd85416602ac9b968555aa185cbbe2655d30701924c200",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-02-atomic-continuation.md"
+          },
+          {
+            "digest": "66f1de51a407ad906f74b859bc6c7a1cdf0f30e671d6d02469abfde4be1588cf",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-03-ci-candidate-binding.md"
+          },
+          {
+            "digest": "bcf2fe9a44f0d90f6bbe89c92ec5dd251f48a458848eeee5c9332674f4eb087f",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-04-working-ui-acceptance.md"
           }
         ],
         "implementation_equivalence": "UNASSESSED",
@@ -95037,14 +95177,54 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 1247,
+        "open": 1259,
         "pass": 0,
-        "total": 1247
+        "total": 1259
       },
       "review_priority": "R4_STATUS_CLAIM",
-      "revision": "23",
+      "revision": "24",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-local-fast-lane: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-local-fast-lane",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-atomic-continuation: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-atomic-continuation",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-working-ui-acceptance: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-working-ui-acceptance",
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "value": "checkpointed"
+        }
+      ],
       "slug": "224-Autonomous Development Orchestrator Runtime",
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_id": "224",

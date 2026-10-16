@@ -1,0 +1,200 @@
+{
+  "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+  "profile": "quick",
+  "kind": "READ_ONLY_TYPESCRIPT_AST_BOUNDARY_VALIDATION",
+  "observedAt": "2026-10-16T13:27:47.806Z",
+  "procedures": [
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "previewPromptExpansion",
+      "line": 8545,
+      "calls": [
+        "requireTenantId",
+        "assertPromptExpansionSchemaReady",
+        "getPromptExpansionByIdempotencyKey",
+        "Number",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "generateStoryBible",
+      "line": 14265,
+      "calls": [
+        "requireTenantId",
+        "Number",
+        "Number.isFinite",
+        "loadOwnedSeries",
+        "enqueueVerticalDramaStoryJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "synthesizeGenrePreset",
+      "line": 13891,
+      "calls": [
+        "requireTenantId",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 21,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "proposeSeasonCarryOver",
+      "line": 14175,
+      "calls": [
+        "requireTenantId",
+        "getTenantFeatureFlags",
+        "Number",
+        "Number.isFinite",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "proposeSpecialEditionBrief",
+      "line": 14226,
+      "calls": [
+        "requireTenantId",
+        "getTenantFeatureFlags",
+        "Number",
+        "Number.isFinite",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "requestSourceAnalysis",
+      "line": 8463,
+      "calls": [
+        "requireTenantId",
+        "requestSourceAnalysis"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaSeries.ts",
+      "procedure": "suggestSourceDescription",
+      "line": 8476,
+      "calls": [
+        "requireTenantId",
+        "loadSourcePack",
+        "pack.assets.find",
+        "requestSourceAnalysis",
+        "Boolean"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaCharacters.ts",
+      "procedure": "detectCharacterVariantsNow",
+      "line": 3802,
+      "calls": [
+        "mediaGenerationLimiter.isAllowed",
+        "Math.ceil",
+        "mediaGenerationLimiter.getResetTime",
+        "requireTenantId",
+        "parseId",
+        "loadOwnedSeries",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 17,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaCharacters.ts",
+      "procedure": "analyzeCharacterDuplicates",
+      "line": 4014,
+      "calls": [
+        "mediaGenerationLimiter.isAllowed",
+        "Math.ceil",
+        "mediaGenerationLimiter.getResetTime",
+        "requireTenantId",
+        "parseId",
+        "loadOwnedSeries",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 12,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaLocations.ts",
+      "procedure": "detectLocationsNow",
+      "line": 1810,
+      "calls": [
+        "mediaGenerationLimiter.isAllowed",
+        "Math.ceil",
+        "mediaGenerationLimiter.getResetTime",
+        "requireTenantId",
+        "parseId",
+        "loadOwnedSeries",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 15,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaEpisodes.ts",
+      "procedure": "generateShotStartFramePrompt",
+      "line": 25124,
+      "calls": [
+        "requireTenantId",
+        "parseId",
+        "parseId",
+        "loadOwnedEpisode",
+        "enqueueVerticalDramaShotPromptJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    },
+    {
+      "path": "apps/web/server/routers/verticalDramaEpisodes.ts",
+      "procedure": "generateShotReferenceFramePrompt",
+      "line": 26437,
+      "calls": [
+        "requireTenantId",
+        "parseId",
+        "parseId",
+        "loadOwnedEpisode",
+        "plan?.frames?.find",
+        "enqueueVerticalDramaInteractiveJob"
+      ],
+      "unreachableStatementsAfterReturn": 0,
+      "result": "PASS_DIRECT_CALL_BOUNDARY"
+    }
+  ],
+  "sourceAnalysisAdapter": {
+    "path": "apps/web/server/services/verticalDramaSourceIngestionService.ts",
+    "calls": [
+      "loadSourcePack",
+      "pack.assets.filter",
+      "db\n    .insert(verticalDramaSourceAnalyses)\n    .values({\n      tenantId: owner.tenantId,\n      userId: owner.userId,\n      packId: params.packId,\n      sourceAssetId: params.sourceAssetId,\n      policyVersion,\n      status: \"queued\",\n      attemptCount: 0,\n    })\n    .onConflictDoUpdate({\n      target: [\n        verticalDramaSourceAnalyses.tenantId,\n        verticalDramaSourceAnalyses.sourceAssetId,\n        verticalDramaSourceAnalyses.policyVersion,\n      ],\n      set: { status: \"queued\", errorCode: null, updatedAt: new Date() },\n    })\n    .returning",
+      "db\n    .insert(verticalDramaSourceAnalyses)\n    .values({\n      tenantId: owner.tenantId,\n      userId: owner.userId,\n      packId: params.packId,\n      sourceAssetId: params.sourceAssetId,\n      policyVersion,\n      status: \"queued\",\n      attemptCount: 0,\n    })\n    .onConflictDoUpdate",
+      "db\n    .insert(verticalDramaSourceAnalyses)\n    .values",
+      "db\n    .insert",
+      "db\n    .update(verticalDramaSourceAssets)\n    .set({ analysisStatus: \"queued\", updatedAt: new Date() })\n    .where",
+      "db\n    .update(verticalDramaSourceAssets)\n    .set",
+      "db\n    .update",
+      "and",
+      "eq",
+      "eq",
+      "eq",
+      "isNull",
+      "enqueueVerticalDramaInteractiveJob"
+    ],
+    "result": "PASS_ENQUEUE_BOUNDARY"
+  },
+  "limit": "Direct executable body inspection of 12 initial affected procedures plus one source-analysis adapter. This is static source evidence; does not prove DB/provider latency, all existing queued flows, real worker execution or browser acceptance.",
+  "requirementsClosed": []
+}

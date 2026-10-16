@@ -1,0 +1,182 @@
+{
+  "observedAt": "2026-10-16T13:19:10.034388+00:00",
+  "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+  "finalSourceSha": null,
+  "pilotStatus": "IN_PROGRESS_NOT_ACCEPTED",
+  "discovery": "Targeted rg/file reads and Git/GitHub checks; normal shell fallback, no specialized code index available. Primary dirty work preserved.",
+  "referencePr": {
+    "number": 988,
+    "mergedSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+  },
+  "workUnits": [
+    {
+      "id": "SPEC268_SCOPED_RECALL_EXPIRY",
+      "specId": "268",
+      "requirementIds": [
+        "REQ-5941C106455E",
+        "REQ-8C1A9F209C32",
+        "REQ-B44EAA1A1285"
+      ],
+      "source": "apps/web/server/services/scopedMemoryService.ts",
+      "test": "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "task": "SPEC-268 scoped requirement slice: exclude expired scoped_memories from current-state recall without relying on physical cleanup. Existing expiresAt field is currently ignored in scopedMemoryService. Add a SQL active-expiry predicate (null or strictly later than evaluation time) to lexical/vector, structured, graph, working-summary and rule retrieval, and recheck expiry at prompt hydration/final result assembly to reject candidates that expire while asynchronous retrieval is running. No migration, deletion, sweeper, new dependency or team-room enablement. Keep management CRUD behavior intact. Tests must exercise actual exported retrieval functions with database/provider boundary mocks and fake clocks, checking SQL predicates and expired/boundary/null/future cases including late expiry during async retrieval.",
+      "criteria": [
+        "Every current-state scoped recall path excludes expiresAt <= evaluation time and retains null/future expiry.",
+        "Final prompt assembly rejects a candidate that expires between candidate retrieval and prompt return.",
+        "Focused tests invoke real service functions with mocks limited to DB/provider boundaries; source tests never contact shared DB or provider.",
+        "Tenant/project/owner/promotion exclusion guards and disabled persistent team-room policy stay enforced; no migrations or new dependencies."
+      ],
+      "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC268_SCOPED_RECALL_EXPIRY.request.json",
+      "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
+      "status": "WAITING_BUDGET",
+      "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
+      "jobId": "1b91631e1e114bb1eb50c14942245b89",
+      "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
+      "writableFiles": [
+        "apps/web/server/services/scopedMemoryService.ts",
+        "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
+      "specId": "302",
+      "requirementIds": [
+        "REQ-408D3F532E4C",
+        "REQ-8D8136DAE54F"
+      ],
+      "source": "apps/web/server/services/canonicalProjectContextResolver.ts",
+      "test": "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "task": "SPEC-302 bounded advisory resolver correctness slice: reject unrecognized runtime binding.source values before accepting contextual project evidence. bindingMatchesContext currently falls through its switch for unknown string sources, allowing RESOLVED_CONTEXTUAL for a plausible projectId. Add the smallest strict own-key allowlist or equivalent fail-closed source check. Add regression cases for unknown, empty and Object.prototype property names such as __proto__/constructor/toString, plus mixed valid and invalid bindings. Invalid evidence increments ignoredEvidenceCount and cannot manufacture a project resolution or poison/ambiguate valid evidence. Preserve all known source precedence, scope isolation, explicit No Project and advisory/authorizationRequired semantics. Do not add durable receipts, DB migrations, schema changes or auth authority.",
+      "criteria": [
+        "An unknown/empty/prototype-named source alone yields UNRESOLVED, ignoredEvidenceCount=1, no resolved project or authoritativeSource.",
+        "Mixed valid and invalid evidence retains the valid advisory result; invalid evidence cannot create ambiguity.",
+        "Existing resolver regressions pass and identity selection remains advisory, requiring separate ACL authorization."
+      ],
+      "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "requestFile": "/tmp/smartaihub-backlog-pilot/SPEC302_REJECT_UNKNOWN_BINDING_SOURCE.request.json",
+      "authorizedRuntime": "SPEC-224 Developer Fast Lane; isolated local DB for control plane only; WorkUnit tests databaseMode=none",
+      "status": "WAITING_BUDGET",
+      "dependencyEvidence": "Canonical source inspected; files clean and no open PR ownership overlap on selected files; no schema/protected runtime dependency",
+      "jobId": "5ae456af45d6d64140f8fe6009be2057",
+      "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+      "writableFiles": [
+        "apps/web/server/services/canonicalProjectContextResolver.ts",
+        "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts"
+      ]
+    }
+  ],
+  "validationOnly": {
+    "workUnit": "SPEC161_CANONICAL_ADMISSION_VALIDATION",
+    "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+    "jobId": null,
+    "runId": null,
+    "runtime": "Direct quick read-only tests; no provider/runtime dispatch",
+    "requirementIds": [
+      "REQ-28722F9489C8",
+      "REQ-34822D26C584",
+      "REQ-32AD56643D4F"
+    ],
+    "verifiedSubset": "Canonical episode-stage admission and failed-domain-run handling; JSON normalization, canonical ID and dedupe metadata",
+    "testFiles": [
+      "apps/web/server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+      "apps/web/server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts"
+    ],
+    "passedTests": 14,
+    "wholeRequirementClosed": false,
+    "independentReview": "Luna scout /root/spec161_validation_scout reviewed actual source, tests and logs; count corrected and independently checked.",
+    "gaps": "Real worker/provider effects, result persistence, refresh/restart, model passthrough, billing, router-wide guard, chain abort and completion repair remain unverified.",
+    "baselineFailures": {
+      "oldSevenSuites": {
+        "filesFailed": 7,
+        "testsFailed": 46,
+        "testsPassed": 17
+      },
+      "shotPromptWiring": {
+        "testsPassed": 7,
+        "testsFailed": 1
+      },
+      "cause": "Pre-edit canonical baseline: obsolete queue-string assertions and fixture/import/DB/UI errors. Do not restore retired queue startup."
+    },
+    "additionalModelPolicyValidation": {
+      "files": 3,
+      "passedTests": 19,
+      "command": "pnpm exec vitest run server/services/__tests__/verticalDramaLlmModelPolicy.test.ts server/services/verticalDramaLlmPolicy.test.ts server/services/verticalDramaLlmCallsiteCoverage.test.ts --maxWorkers=1",
+      "durationSeconds": 1.8,
+      "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "scope": "Pinned model selection fail-closed and task/provider reasoning policy; static service callsite marker coverage. Not end-to-end worker/model passthrough."
+    },
+    "boundaryValidation": {
+      "kind": "READ_ONLY_TYPESCRIPT_AST_BOUNDARY_VALIDATION",
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-router-boundary-validation-20261016.json",
+      "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "scope": "12 initial affected public mutations plus source-analysis adapter use enqueue path before top-level return. Dead legacy bodies after unconditional return are not treated as execution. Existing queued flow coverage, worker runtime and browser proof remain pending.",
+      "status": "PARTIAL"
+    }
+  },
+  "focusedBaseline": {
+    "profile": "quick",
+    "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+    "files": 4,
+    "testsPassed": 50,
+    "exit": 0,
+    "durationSeconds": 3.22,
+    "command": "pnpm exec vitest run server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts server/services/__tests__/canonicalProjectContextResolver.test.ts server/services/__tests__/scopedMemoryService.test.ts --maxWorkers=1",
+    "resourceObservation": "Approximately 24 GiB available host memory, 1 worker. Root cgroup paths unavailable. No full checks or OOM claim."
+  },
+  "usage": {
+    "1b91631e1e114bb1eb50c14942245b89": {
+      "calls": 9,
+      "inputTokens": 452870,
+      "cachedInputTokens": 387328,
+      "outputTokens": 1518,
+      "actualTotalTokens": 454388,
+      "knownSettlements": 9
+    },
+    "5ae456af45d6d64140f8fe6009be2057": {
+      "calls": 3,
+      "inputTokens": 126205,
+      "cachedInputTokens": 102144,
+      "outputTokens": 633,
+      "actualTotalTokens": 126838,
+      "knownSettlements": 3
+    }
+  },
+  "requestedModel": "gpt-6-luna",
+  "reasoningEffort": "medium",
+  "providerEffectiveModel": "UNVERIFIED: SDK field null",
+  "budgetContinuation": {
+    "status": "PREPARED_NOT_AUTHORIZED",
+    "requestFile": "/tmp/smartaihub-backlog-pilot/owner-budget-request.json",
+    "currentTokensPerHour": 500000,
+    "requestedTokensPerHour": 2000000,
+    "maxHours": 1,
+    "modelOrScopeExpansion": false
+  },
+  "classifications": {
+    "161": "Implemented, acceptance tests needed; narrow subset validated; baseline suite repairs pending.",
+    "268": "#875 already integrated. Scoped expiry enforcement missing and eligible. Isolated source-ledger acceptance/migration pending; persistent team-room memory disabled.",
+    "302": "Advisory resolver implemented; invalid source rejection missing and eligible. Durable receipts/shared writes await authorized migration and acceptance.",
+    "304": "Identity/alias/ingress implementation exists; direct authenticated runtime acceptance pending. Hosting/production mutation not authorized."
+  },
+  "requirementsClosed": [],
+  "gitIntegration": {
+    "status": "NOT_YET_INTEGRATED",
+    "branch": "codex/smartaihub-backlog-pilot-20261016"
+  },
+  "nextAction": "Continue independent direct validation; resume SAME Jobs on approved budget change or default refill. Review/verify/integrate each useful source checkpoint; no replay of settled model turns.",
+  "spec304Validation": {
+    "profile": "quick",
+    "files": 4,
+    "passedTests": 27,
+    "failedTests": 4,
+    "sourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+    "cause": "appIngressMemoryRuntime.test.ts expects four arguments; current contextBuilder correctly supplies authenticated tenant as fifth. No trusted ingress guard regression demonstrated. Repair test expectation in separate authorized one-file validation WorkUnit.",
+    "command": "pnpm exec vitest run server/services/__tests__/tenantProductIdentityContracts.test.ts server/services/__tests__/appIdentityRepository.test.ts server/routers/appIdentity.test.ts server/services/__tests__/appIngressMemoryRuntime.test.ts --maxWorkers=1 --reporter=json",
+    "resultFile": "/tmp/smartaihub-backlog-pilot/spec304-validation.json"
+  },
+  "runtimeSetupRepairs": [
+    "Local snapshot query initially referred to nonexistent errorJson; fixed only external launcher to select existing columns; Job was not duplicated.",
+    "Initial local executor transport test is denied in development; used registered postgres-direct transport on SAME canonical Job. No auth, runtime or model-policy guard changed."
+  ]
+}
