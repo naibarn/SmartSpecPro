@@ -26,8 +26,8 @@
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Pilot validation33checks plus independent failureprojection8tests verified; functional source mergedPR993. Continue actual nonproduction worker/provider/result persistence, restart, billing and chain-abort acceptance. CanonicalJobsucceeded; original Runreadyforusertest preserved. WholeSPEC and broadrequirement remainPARTIAL.",
-    "next_ready_workunit": "SPEC161_CANONICAL_WORKER_PERSISTENCE_ACCEPTANCE",
+    "next_action": "Integrate scoped native worker acceptance via protected PR; retain provider/browser/billing/chain-abort obligations as OPEN.",
+    "next_ready_workunit": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE",
     "reactivation_predicate": null,
     "resume_point": "Read backlog-pilot-20261016 evidence: source 40a5e8d366aaae3d7e3695ffd6c2447116429ef6; 33 bounded validation assertions pass, whole SPEC and all requirement closure remain open.",
     "waiting_predicate": null
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 21,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -88,6 +88,13 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "native_worker_acceptance": {
+      "base_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "branch": "codex/spec161-native-worker-acceptance-20261017",
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
+      "status": "FOCUSED_TESTS_PASS_PENDING_PROTECTED_INTEGRATION",
+      "workunit": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE"
+    },
     "pilot_episode_stage_workunit": {
       "acceptanceCriteria": [
         "Registered real episode-stage executor succeeds only after exact owner-scoped runId has persisted status succeeded, for both storyboard and generalized stages.",
@@ -236,11 +243,11 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120"
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120",
-        "blocker": null,
-        "current_relevance": "RELEVANT",
+        "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
+        "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
-        "final_state": "PARTIAL",
+        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "final_state": "OPEN",
         "implementation_evidence": [
           {
             "kind": "CANONICAL_SOURCE_INSPECTION",
@@ -254,10 +261,13 @@
             "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
             "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
             "status": "PASS_SCOPED"
-          }
+          },
+          "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+          "apps/web/server/jobs/unifiedJobConsumer.ts",
+          "apps/web/server/services/jobExecutorRegistry.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Retain verified status projection. Prove real service/provider, DB persistence, restart and billing on approved nonproduction runtime before whole requirement closure.",
+        "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
         "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
         "requirement_id": "REQ-28722F9489C8",
         "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -276,9 +286,10 @@
             "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
             "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
             "status": "PASS_SCOPED"
-          }
+          },
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
         ],
-        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+        "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       },
       "REQ-32AD56643D4F": {
         "applicability": "APPLICABLE",
@@ -353,6 +364,34 @@
           }
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-F24F12012092": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L121",
+        "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+          "apps/web/server/jobs/unifiedJobConsumer.ts",
+          "apps/web/server/services/jobExecutorRegistry.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
+        "requirement_digest": "026b45995d545f50fe03801b1210a1e6d2a82d9e0361da9fee6c73c8d1516063",
+        "requirement_id": "REQ-F24F12012092",
+        "requirement_text": "3. Browser refresh และ worker restart สามารถ resume หรืออ่านผลเดิมได้",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json"
+        ],
+        "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       }
     }
   },
@@ -533,7 +572,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 4,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -542,7 +581,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:49:24.261799Z",
+  "updated_at": "2026-10-16T19:04:57.813796Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -555,6 +594,16 @@
       }
     ],
     "freshness": "UNKNOWN",
+    "native_episode_worker": {
+      "candidate_file_sha256": "c19ab4996e8618f1fcba3c50c8d252febd90fe25a9af81d74eb183eb34b06886",
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
+      "final_candidate_tests": "PASS2/2 after fresh-control-plane restart replay, attemptcount1, providerreservation0 and test-env cleanup repair",
+      "outcome": "PASS",
+      "profile": "integration",
+      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "tests": "Final native2/2; combined161+268 memory4files23/23",
+      "whole_requirement_complete": false
+    },
     "pilot_final_scoped_check": {
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
       "evidence_section": "finalVerification",

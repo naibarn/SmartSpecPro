@@ -33,8 +33,8 @@
     {
       "class": "IMPLEMENTATION",
       "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-      "next_action": "Run existing isolated source-ledger integration acceptance with an authorized disposable runtime/schema fixture, then reconcile requirement evidence. Preserve global-only fallback and disabled persistent team-room memory until provenance/isolation acceptance passes. Do not reimplement already integrated PR875 or apply production migrations.",
-      "root_cause": "PR875 implemented durable source ledger and tenant/project/current-membership-filtered reads, integrated757a5750. Its authorized isolated nonproduction persisted acceptance is still pending; legacy conversation provenance remains ambiguous, and persistent team-room memory stays disabled."
+      "next_action": "Preserve disabled persistent team-room policy; complete App context/legacy provenance/production gate separately. Do not recreate missing-fixture blocker.",
+      "root_cause": "Existing source ledger and guarded reads now pass real native PostgreSQL migration0398/rollback/FK/revocation/restart acceptance. Ordinary cross-project merge was reproduced and repaired in PR995. Full App context, legacy provenance ambiguity and rollout boundaries remain."
     },
     {
       "class": "NOT_STARTED",
@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "expected_canonical_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Promote owned project-isolation fix and native acceptance through normal protected Git path, then verify canonical SHA and continue independent authorized work.",
-    "next_ready_workunit": "SPEC268_NATIVE_SOURCE_LEDGER_ACCEPTANCE",
+    "next_action": "Revalidate existing R5 persisted identity/App/Project memory tests in new owned nonproduction PG; preserve synthetic ingress limitation and disabled room memory. Original expiry SDK Job allowance remains unchanged.",
+    "next_ready_workunit": "SPEC268_EXISTING_R5_PERSISTED_CONTEXT_REVALIDATION",
     "reactivation_predicate": "Existing authorization mechanism supports a genuinely valid additional bound, without counter reset or duplicate Job; otherwise preserve original Job and continue independent WorkUnits.",
-    "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
+    "resume_point": "PR995 merged4073a5c9; canonical reachability and identical head/merge trees verified. Source-ledger native acceptance plus exact project merge repair passed21focusedtests and independent review. Historical mixed rows cannot be safely reattributed. Full SPEC268 remains open.",
     "waiting_predicate": "Canonical Job awaiting valid additional allowance; current original authorization/continuation cap has been exhausted. Direct source checkpoint is independently verified and can integrate safely."
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 44,
+  "generation": 47,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -257,9 +257,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "canonical_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
     "integrated": true,
-    "integrated_at": "2026-10-16T14:43:34Z"
+    "integrated_at": "2026-10-16T18:58:10Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -355,21 +355,22 @@
         "blocker": "Source-ledger subset verified locally; full context tuple/App boundaries, historical provenance ambiguity and production gate remain.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/memoryService.ts",
           "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate exact project-scope merge fix; continue complete-context and App boundary acceptance without enabling persistent room memory.",
+        "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
         "requirement_digest": "1f2472d77b0ed636f982d2496c996d1709eb98e07f5802603fec8895c77ce3c3",
         "requirement_id": "REQ-427F51C6939B",
         "requirement_text": "A record MUST carry enough scope and provenance to reproduce its authorization decision. Missing context dimensions MUST NOT be inferred from a matching user identifier or vector similarity. Cross-scope reads, writes, export, and deletion require explicit policy and auditable authorization.",
         "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json"
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/995"
         ],
         "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
       },
@@ -517,7 +518,7 @@
         "blocker": "Source-ledger subset verified locally; full context tuple/App boundaries, historical provenance ambiguity and production gate remain.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/promptComposer.ts (PR #426; merge SHA 1d970c5a3925bf8f8f32516005d2a9be7bb67ae8)",
@@ -528,7 +529,7 @@
           "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate exact project-scope merge fix; continue complete-context and App boundary acceptance without enabling persistent room memory.",
+        "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
         "requirement_digest": "ae9fd8a682a371e0f503342746785ac7d8ca888725481ef7f2aa4618e5123bde",
         "requirement_id": "REQ-CF6F62069953",
         "requirement_text": "An App switch MUST NOT expose another App's private memory. A Project switch MUST NOT expose another Project's private or shared memory. Shared Project memory requires current Project authorization and the policy for the selected memory class. Revocation MUST be rechecked at the read/write boundary, including during a long-lived conversation.",
@@ -540,7 +541,8 @@
           "4 focused Vitest files / 79 tests passed on tree 341200801fce5a69d7a838069d9d6c08a9e95ee1, identical to origin/main 224fa6cd8ce122ee178f3a6040c32269f0f814a0",
           "https://github.com/naibarn/SmartSpecPro/pull/434",
           "https://github.com/naibarn/SmartSpecPro/pull/436",
-          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json"
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/995"
         ],
         "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
       },
@@ -553,21 +555,22 @@
         "blocker": "Source-ledger subset verified locally; full context tuple/App boundaries, historical provenance ambiguity and production gate remain.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+        "evidence_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/memoryService.ts",
           "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate exact project-scope merge fix; continue complete-context and App boundary acceptance without enabling persistent room memory.",
+        "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
         "requirement_digest": "ecf49966b6a7e24f145a0e18833e5e03abc45eacc1eae40c2f109bc44158473c",
         "requirement_id": "REQ-D4427964FE28",
         "requirement_text": "The runtime MUST validate that every supplied identifier belongs to the authenticated tenant and caller's permitted context. Absent optional fields remain absent; adapters MUST NOT silently substitute legacy `projectId`, `personaId`, `appId`, or a user-only scope as canonical authority. Compatibility adapters may map legacy values only when the mapping is explicit, validated, and recorded with provenance.",
         "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json"
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
+          "https://github.com/naibarn/SmartSpecPro/pull/995"
         ],
         "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
       }
@@ -635,7 +638,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T15:18:00.539275Z",
+  "updated_at": "2026-10-16T19:02:56.820109Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
@@ -664,10 +667,13 @@
       },
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
       "independent_review": "PASS",
+      "merge_timestamp_source": "GitHub PR995 mergedAt; supersedes approximate18:58:00 in previous local transition.",
       "outcome": "PASS",
+      "post_integration": "PASS native11+provenance2+persona8 on4073a5c9 (alongside SPEC1612 candidate tests;total23).",
+      "pr": 995,
       "profile": "integration",
       "scope": "Native source ledger, conditional guarded reads and ordinary project merge regression; no production enablement",
-      "source_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "tests": "11native+2provenance+8persona=21passed"
     },
     "pilot_final_scoped_check": {
