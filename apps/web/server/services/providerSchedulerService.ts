@@ -61,6 +61,26 @@ export type CodexModelAdmissionRepository = {
   }): Promise<CodexModelSettlementDecision>;
 };
 
+/** Server-only operator repair; intentionally not part of the Python admission transport. */
+export type CodexModelUsageCorrectionInput = {
+  lease: LeaseContext;
+  runId: string;
+  operationKey: string;
+  correctionId: string;
+  expectedReceiptSha256: string;
+  expectedChargedTokens: number;
+  usage: CodexModelUsage;
+  authorization: { actorId: number; tenantId: string; reference: string; providerEvidenceSha256: string };
+  now?: Date;
+};
+
+export type CodexModelUsageCorrectionRepository = {
+  correctCodexModelUsage(input: CodexModelUsageCorrectionInput): Promise<
+    | { kind: "corrected" | "duplicate"; operationKey: string; chargedTokens: number; additionalTokens: number }
+    | { kind: "denied"; reason: "stale_lease" | "run_binding" | "authorization" | "reservation_missing" | "receipt_conflict" }
+  >;
+};
+
 export type ProviderQueueCandidate = FairnessCandidate & {
   tenantId: string;
   businessAttempt: number;

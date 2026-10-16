@@ -42,14 +42,20 @@ class RateLimit(Exception):
 
 
 class Result:
-    def __init__(self, turn_id: str, text: str, model: str):
+    def __init__(self, turn_id: str, text: str, model: str, thread_id: str):
         self.id = turn_id
         self.status = "completed"
         self.items = []
         self.duration_ms = 1
         self.model = model
+        # turn.run() returns thread cumulative totals plus its last internal
+        # response. Thread.read().turns[].usage is a per-turn breakdown.
+        rows = read_persisted_turns(thread_id)
+        through_current = rows[:next(i for i, row in enumerate(rows) if row["id"] == turn_id) + 1]
+        total = {key: sum(row["usage"][key] for row in through_current)
+                 for key in ("inputTokens", "cachedInputTokens", "outputTokens", "totalTokens")}
         self.usage = types.SimpleNamespace(model_dump=lambda **_kwargs: {
-            "inputTokens": 19, "cachedInputTokens": 3, "outputTokens": 7, "totalTokens": 23,
+            "last": dict(through_current[-1]["usage"]), "total": dict(total),
         })
         self.final_response = text
 
@@ -93,12 +99,12 @@ class Turn:
 
     def _persist(self):
         rows = read_persisted_turns(self.thread_id)
-        usage = {"inputTokens": 19, "cachedInputTokens": 3, "outputTokens": 7, "totalTokens": 23}
+        usage = {"inputTokens": 19, "cachedInputTokens": 3, "outputTokens": 7, "totalTokens": 26}
         rows.append({"id": self.id, "status": "completed", "text": self.text, "usage": usage})
         persisted_turn_path(self.thread_id).write_text(json.dumps(rows))
 
     def run(self):
-        return Result(self.id, self.text, self.model)
+        return Result(self.id, self.text, self.model, self.thread_id)
 
 
 class Thread:
@@ -139,7 +145,7 @@ class Codex:
         if os.environ.get("SPEC224_GOLDEN_429_ONCE"):
             marker = state_dir / "provider-429-issued"
             if not marker.exists():
-                marker.write_text(json.dumps({"atEpochSeconds": real_time()}))
+                marker.write_text(json.dumps({"atEpochSeconds": time.time()}))
                 raise RateLimit(int(os.environ.get("SPEC224_GOLDEN_RETRY_AFTER_SECONDS", "259200")))
         return Thread(self.model)
 
