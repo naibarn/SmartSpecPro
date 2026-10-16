@@ -14,3 +14,5 @@
 {"changes": ["implementation.pilot_validation_checkpoint"], "event_type": "CURRENT_TRANSITION", "generation": 13, "observed_at": "2026-10-16T13:33:14.607457Z", "provenance": "OBSERVED"}
 {"changes": ["implementation.pilot_validation_checkpoint"], "event_type": "CURRENT_TRANSITION", "generation": 14, "observed_at": "2026-10-16T14:18:22.052558Z", "provenance": "OBSERVED"}
 {"changes": ["verification.pilot_post_pr991_focused"], "event_type": "CURRENT_TRANSITION", "generation": 15, "observed_at": "2026-10-16T14:19:10.704121Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.next_ready_workunit", "implementation.pilot_episode_stage_workunit"], "event_type": "CURRENT_TRANSITION", "generation": 16, "observed_at": "2026-10-16T14:33:09.798577Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "implementation.pilot_episode_stage_workunit"], "event_type": "CURRENT_TRANSITION", "generation": 17, "observed_at": "2026-10-16T14:38:21.627453Z", "provenance": "OBSERVED"}

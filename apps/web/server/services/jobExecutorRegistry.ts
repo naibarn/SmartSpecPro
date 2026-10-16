@@ -872,6 +872,10 @@ defaultJobExecutorRegistry.register({
         input.opts as any
       );
     }
+    const episodeRun = (await pipeline.listEpisodeRuns(input.owner as any)).find(
+      run => run.id === input.runId
+    ) ?? null;
+    assertDomainExecutionSucceeded("vertical_drama.episode_stage", episodeRun);
     await reporter.assertActive(lease);
     return {};
   },

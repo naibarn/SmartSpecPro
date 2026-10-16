@@ -1,0 +1,111 @@
+{
+  "schema": "spec224.functional-workunit-evidence.v1",
+  "observedAt": "2026-10-16T14:38:21.626468+00:00",
+  "specId": "161",
+  "requirementIds": [
+    "REQ-28722F9489C8"
+  ],
+  "workUnit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
+  "jobId": "342db2bbe556f2e719968622b1a7385e",
+  "runId": "ab191472-9c87-5f87-ad8b-388453aa1c72",
+  "originalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+  "candidateBaseSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+  "finalSourceSha": null,
+  "files": {
+    "apps/web/server/services/jobExecutorRegistry.ts": "5ef58b2f81b601acdfc41498ce06bf1bb71104cc7f375643ba634140fc4809bd",
+    "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts": "f776a11add2f0a1676d6112d580329226183fdf45853b153b4caa71ab9bc63aa"
+  },
+  "behavior": "After either stage dispatch, read existing owner-filtered episode run history, select exact runId, and assert persisted succeeded before canonical executor returns success; all other statuses or missing fail closed. No new provider execution, schema, dependency, retry policy or authority.",
+  "lookupLimit": "Existing owner-filtered history is bounded200; an exact run outside that result fails closed. No claim of unbounded historical reconciliation.",
+  "canonicalJobStatus": "succeeded",
+  "canonicalRunStatus": "IMPLEMENTED_READY_FOR_USER_TEST",
+  "canonicalModelAcceptance": false,
+  "canonicalReview": {
+    "complete": false,
+    "functionalReadyForUserTest": true,
+    "findings": [
+      "The scoped DEVELOPER-TASK acceptance is substantially covered, but the contract explicitly says this slice does not complete whole SPEC-161; broader SPEC-161 acceptance remains outstanding.",
+      "Test coverage exercises failed, missing, queued, running, and cancelled statuses, both dispatch branches, owner-filtered lookup, exact run ID selection, no extra execution, success projection, and lease guards. The listed tests do not directly assert the DOMAIN_EXECUTION_FAILED behavior for the missing-run case or a stale-swept status, though the implementation fails closed for a missing run and the shared assertion accepts only succeeded.",
+      "The receipt reports the focused Vitest file passed (8 tests) at revision ea4e23825f12e3d27242e482076e788f792033781d0df2b6493320e1aed1bb73. The cumulative diff shows exactly the two writable files changed; pipeline and neighboring registration test hashes are unchanged."
+    ],
+    "evidence": [
+      "The registry awaits either storyboard or generalized stage execution, then calls listEpisodeRuns(owner), selects the row whose id equals input.runId, and passes it to assertDomainExecutionSucceeded before the final lease assertion and returning {}.",
+      "assertDomainExecutionSucceeded defaults to accepting only status succeeded and reports missing when no matching record exists.",
+      "Actual registered-executor tests mock pipeline/provider boundaries and pass: 1 test file, 8 tests, exit code 0; database mode none.",
+      "Cumulative work-unit changed paths are the registry and the new executor test, matching the two-file scope. The pipeline and neighboring registration test are unchanged in sourceAfter hashes."
+    ]
+  },
+  "canonicalFinalVerification": {
+    "complete": false,
+    "functionalReadyForUserTest": true,
+    "findings": [
+      "The bounded executor slice is usable for user testing, but it does not establish full SPEC-161 acceptance; the supplied normative requirement explicitly says this slice is partial.",
+      "The focused tests do not name a stale-swept status case. The implementation accepts only succeeded, so any stale-swept result represented by another status fails closed; direct regression coverage for that status remains a gap."
+    ],
+    "evidence": [
+      "The registered episode-stage executor runs either the storyboard or generalized stage, then reads runs for the supplied owner, selects the exact runId, and applies the shared assertion before returning {}. Missing records fail closed, and the assertion’s default accepted status is succeeded.",
+      "The executor test invokes the actual default registry registration, mocks the pipeline and provider-routing boundaries, and covers successful projection, failed/queued/running/cancelled statuses, a missing exact run despite another succeeded run, both dispatch branches, owner lookup, and lease guards.",
+      "The focused Vitest run passed: 1 file, 8 tests, exit code 0, database mode none.",
+      "The supplied work-unit evidence reports only the registry and focused test file changed; pipeline, schema, and neighboring registration test were unchanged."
+    ]
+  },
+  "canonicalModelUsage": {
+    "inputTokens": 1436007,
+    "cachedInputTokens": 1355136,
+    "outputTokens": 6323,
+    "totalTokens": 1442330,
+    "observedKnownTotalTokens": 1442330,
+    "unknownUsageReceipts": 0
+  },
+  "canonicalTurnTelemetry": {
+    "completedTurns": 18,
+    "unknownOrUnsettledCalls": 0
+  },
+  "independentReview": {
+    "reviewer": "/root/spec161_validation_scout",
+    "requestedModel": "gpt-6-luna",
+    "status": "PASS_SCOPED",
+    "focusedExecutorTestsPassed": 8,
+    "sourceHashesMatch": true,
+    "scope": "Actual registered executor; pipeline/provider mocked; no production or actual provider/persistence claim."
+  },
+  "conductorFinalVerification": {
+    "status": "PASS_SCOPED_REQUIREMENTS",
+    "basis": [
+      "Missing-run test explicitly asserts DOMAIN_EXECUTION_FAILED (newtest59-63), contrary to one modelreview claim.",
+      "Stale-run sweeper persists status=failed (pipeline9513-9536), covered by failed-status regression; stale-swept is not a separate status.",
+      "Whole SPEC161 remains incomplete by design and is not an acceptance failure of the bounded WorkUnit."
+    ],
+    "canonicalRunStateUnmodified": true
+  },
+  "directVerification": {
+    "profile": "quick",
+    "exitCode": 0,
+    "signal": null,
+    "files": 3,
+    "passed": 22,
+    "failed": 0,
+    "startedAtEpochMs": 1792161414427,
+    "scope": [
+      "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+      "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts"
+    ],
+    "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts --maxWorkers=1",
+    "baseline": {
+      "sourceSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "newTestPassed": 1,
+      "newTestFailed": 7,
+      "registryUnmodified": true,
+      "meaning": "Old executor returned{} and never read/asserted persisted status; newtests expose7failures.",
+      "reports": [
+        "/tmp/smartaihub-backlog-pilot/spec161-stage-projection-red.json",
+        "/tmp/smartaihub-backlog-pilot/spec161-stage-projection-final-green.json"
+      ]
+    },
+    "limits": "Pipeline/provider boundary mocks; whole real provider/DB/restart/billing acceptance remains pending."
+  },
+  "requirementsClosed": [],
+  "wholeSpecComplete": false,
+  "sourceCheckpoint": "READY_FOR_PROTECTED_PROMOTION"
+}

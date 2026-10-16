@@ -48,8 +48,8 @@
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Promote scoped expiry implementation with52 focused tests and independent Luna final review PASS. Keep original canonical Job accurately WAITING_AUTHORIZATION at aggregate30 SDK turn cap. Do not reset counters, duplicate Job, exceed continuation allowance or mark broad SPEC268 requirements closed. Continue independent authorized work.",
-    "next_ready_workunit": "SPEC268_SCOPED_RECALL_EXPIRY",
+    "next_action": "Scoped expiry source merged at38ba04ff(PR992),52 focusedtests plus independentreview andrequiredCI pass. Broad expiry rows remainPARTIAL; originalJob remainsWAITING_AUTHORIZATION hardSDK30. Continue existing source-ledger isolated acceptance when authorizedfixture isready; persistentroommemorydisabled andproductionmigrationseparate.",
+    "next_ready_workunit": "SPEC268_SOURCE_LEDGER_ISOLATED_ACCEPTANCE",
     "reactivation_predicate": "Existing authorization mechanism supports a genuinely valid additional bound, without counter reset or duplicate Job; otherwise preserve original Job and continue independent WorkUnits.",
     "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
     "waiting_predicate": "Canonical Job awaiting valid additional allowance; current original authorization/continuation cap has been exhausted. Direct source checkpoint is independently verified and can integrate safely."
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 33,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -201,16 +201,18 @@
       "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
     },
     "pilot_workunit": {
+      "canonical_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
       "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+      "head_sha": "08189b6b9f45179118c8b92a40b227f380a7e639",
       "id": "SPEC268_SCOPED_RECALL_EXPIRY",
       "integration_candidate_base_sha": "b74c302765d0e343869c4c53d724204a77275e78",
       "job_id": "1b91631e1e114bb1eb50c14942245b89",
-      "next_action": "Fast gate, commit and promote independently verified safe two-file source checkpoint; retain original SDK Job wait separately.",
-      "pr": "PENDING_CREATE",
+      "next_action": "Original canonical Job remains atSDK30 allowance; source independently verified and merged. Continue independent SPEC161 failureprojection Job342db2bb.",
+      "pr": 992,
       "run_id": "343227ad-c067-54f6-a35c-ae056fecff14",
       "source_branch": "codex/smartaihub-backlog-expiry-delivery-20261016",
       "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-      "state": "DIRECT_VERIFIED_READY_FOR_PROMOTION_CANONICAL_JOB_OPEN"
+      "state": "SCOPED_IMPLEMENTATION_VERIFIED_AND_MERGED_CANONICAL_JOB_OPEN"
     },
     "pr_head_sha": "c834ddcee771fd5c2c9d230b9689fd2c51e61d52",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
@@ -326,6 +328,120 @@
       "value": "HIGH"
     },
     "requirements": {
+      "REQ-5941C106455E": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3301"
+        ],
+        "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3301",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Retain scoped service expiry regression. Audit other memory stores/caches and effectiveTTL/tombstone/historical policy; complete approved sweeper lifecycle independently. Original automated Job requires valid further allowance; no counterreset/duplicate.",
+        "requirement_digest": "40997da2e727c6e121216fcf771cf2b6854864f942c36776f52accec78261f94",
+        "requirement_id": "REQ-5941C106455E",
+        "requirement_text": "Expired memory MUST become non-retrievable even if physical cleanup is asynchronous.",
+        "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "verification_method": "Actual exported-function focusedtests with DB/provider mocks and fakeclock, independentLuna review, CI; repeat other stores/caches/retention lifecycle before whole requirement closure."
+      },
+      "REQ-8C1A9F209C32": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3654"
+        ],
+        "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3654",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Retain scoped service expiry regression. Audit other memory stores/caches and effectiveTTL/tombstone/historical policy; complete approved sweeper lifecycle independently. Original automated Job requires valid further allowance; no counterreset/duplicate.",
+        "requirement_digest": "f5f8d3d2fab0009d85818345ce0469e2c69c658ed2f2f80ac8401be890a3e666",
+        "requirement_id": "REQ-8C1A9F209C32",
+        "requirement_text": "- an item expired before hydration MUST NOT be injected merely because it appeared in an earlier candidate set;",
+        "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "verification_method": "Actual exported-function focusedtests with DB/provider mocks and fakeclock, independentLuna review, CI; repeat other stores/caches/retention lifecycle before whole requirement closure."
+      },
+      "REQ-B44EAA1A1285": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3657"
+        ],
+        "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L3657",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Retain scoped service expiry regression. Audit other memory stores/caches and effectiveTTL/tombstone/historical policy; complete approved sweeper lifecycle independently. Original automated Job requires valid further allowance; no counterreset/duplicate.",
+        "requirement_digest": "d958d35c479a39ed11a5ec50efdf986f17d345ad1498ae88b8ccd1e2f2e65fd7",
+        "requirement_id": "REQ-B44EAA1A1285",
+        "requirement_text": "- background expiry sweep lag MUST NOT make an expired item logically retrievable;",
+        "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "SCOPED_EXPIRY_FUNCTIONAL_INTEGRATION",
+            "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
+            "scope": "Current scoped service lexical/vector/structured/graph/summary/rule recall and fresh hydration verified; other storage families/caches/lifecycle remain open.",
+            "source_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "verification_method": "Actual exported-function focusedtests with DB/provider mocks and fakeclock, independentLuna review, CI; repeat other stores/caches/retention lifecycle before whole requirement closure."
+      },
       "REQ-CF6F62069953": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -414,7 +530,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 4,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -423,7 +539,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:26:59.703893Z",
+  "updated_at": "2026-10-16T14:33:09.781464Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",

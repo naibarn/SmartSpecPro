@@ -26,8 +26,8 @@
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Continue SPEC161 validation-only acceptance on canonical worker_jobs path. Preserve 14 canonical admission/stage and 19 model-policy passing tests as partial proof; repair stale fixtures/retired queue assertions without restoring retired runtime. Real persistence/restart, billing, full router boundary, chain abort and LLM completion repair remain unverified.",
-    "next_ready_workunit": "SPEC161_IMPLEMENTATION_EVIDENCE_REVIEW",
+    "next_action": "Promote exact scoped failureprojection patch with22 focused tests, independentreview and factual finalverification PASS. CanonicalJobsucceeded; Run remainsIMPLEMENTED_READY_FOR_USER_TEST andmodelcompletefalse ispreserved. Broaderprovider/persistence/restart/billing/chainacceptance remainsopen.",
+    "next_ready_workunit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
     "reactivation_predicate": null,
     "resume_point": "Read backlog-pilot-20261016 evidence: source 40a5e8d366aaae3d7e3695ffd6c2447116429ef6; 33 bounded validation assertions pass, whole SPEC and all requirement closure remain open.",
     "waiting_predicate": null
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 15,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -88,6 +88,49 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "pilot_episode_stage_workunit": {
+      "acceptanceCriteria": [
+        "Registered real episode-stage executor succeeds only after exact owner-scoped runId has persisted status succeeded, for both storyboard and generalized stages.",
+        "Failed, missing, queued, running and cancelled domain results reject with existing DOMAIN_EXECUTION_FAILED behavior; previously finalized failure is never reported success and no extra provider execution is introduced.",
+        "Focused tests invoke actual registered executor; mock only pipeline/provider boundaries, cover success/failure/missing/nonterminal/both stage branches/ownership/lease checks; no DB/provider network calls.",
+        "Only two writable files change, no schema/dependency/retired-runtime or production mutation; scope remains partial SPEC161."
+      ],
+      "allowedReadFiles": [
+        "apps/web/server/services/jobExecutorRegistry.ts",
+        "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+        "apps/web/server/services/verticalDramaEpisodePipeline.ts",
+        "apps/web/server/services/__tests__/p213RunnerExecutionRegistration.test.ts"
+      ],
+      "approvedAt": "2026-10-16T14:29:51.128270+00:00",
+      "authority": "User authorized remaining canonical requirements and delegated bounded bestpath expansion; SDK authenticated disposabledevelopment admin plus verifiedGitHubadmin; nonproductionFastLane only.",
+      "candidate_base_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+      "canonical_job_status": "succeeded",
+      "canonical_run_status": "IMPLEMENTED_READY_FOR_USER_TEST",
+      "dependencyEvidence": "Main b74 verified; executable pipeline swallows failures, registry unconditionalsuccess; no open PR overlaps registry/newtest; no migration/provider dependency. Existing owner-filtered200history lookup fails closed ifexactrunmissing.",
+      "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-episode-stage-failure-projection-20261016.json",
+      "jobId": "342db2bbe556f2e719968622b1a7385e",
+      "modelPolicy": "LUNA_ONLY",
+      "next_action": "Promote exact two-file bounded functional slice; broadSPEC161acceptance remainsopen.",
+      "originalCanonicalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "requirementIds": [
+        "REQ-28722F9489C8"
+      ],
+      "runId": "ab191472-9c87-5f87-ad8b-388453aa1c72",
+      "runtime": "Existing worker_jobs/outbox Developer Fast Lane, disposableloopbackcontrolplane, testdatabaseMode none.",
+      "runtimeSetup": "Existing root/apps/web node_modules links verified before tests; no install",
+      "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "source_branch": "codex/smartaihub-spec161-stage-outcome-20261016",
+      "specId": "161",
+      "status": "SCOPED_VERIFIED_READY_FOR_PROMOTION",
+      "testCommand": "pnpm --dir apps/web exec vitest run server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts --maxWorkers=1",
+      "whole_requirement_complete": false,
+      "workUnit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
+      "workspace": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/ab191472-9c87-5f87-ad8b-388453aa1c72",
+      "writableFiles": [
+        "apps/web/server/services/jobExecutorRegistry.ts",
+        "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts"
+      ]
+    },
     "pilot_validation_checkpoint": {
       "focused_tests_passed": 33,
       "next_action": "Real worker/provider persistence, restart, billing and chain-abort acceptance remain unverified; stale baseline fixtures still need bounded repair.",
@@ -473,7 +516,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:19:10.704121Z",
+  "updated_at": "2026-10-16T14:38:21.627453Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
