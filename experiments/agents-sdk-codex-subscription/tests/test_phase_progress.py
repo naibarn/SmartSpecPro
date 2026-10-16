@@ -413,6 +413,72 @@ with fixture.open_bounded(plan=1) as store:
                 self.assertEqual(effects, ["one-effect"])
                 self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM model_calls").fetchone()[0], 2)
 
+    def test_scoped_server_budget_continuation_preserves_consumption_and_original_budget(self):
+        from datetime import datetime, timezone
+        with self.open_bounded(plan=1) as store:
+            self.invoke(store, "planning")
+        with self.open_bounded(plan=1) as store:
+            raw = store.validated_workunit_contract.raw
+            raw.update(canonicalJobBinding={"jobId": "job", "runId": self.run_id, "tenantId": "tenant", "actorId": 1},
+                       workspaceId="workspace", sourceRevision="a" * 40, originalAuthorizationReceiptSha256="receipt",
+                       scopeExpiresAt=run_spec_workunit.time.time() + 300)
+            authorization = {**raw["canonicalJobBinding"], "workspaceId": "workspace", "sourceRevision": "a" * 40,
+                "originalAuthorizationReceiptSha256": "receipt", "authorizationReference": "owner-grant",
+                "expiresAt": datetime.fromtimestamp(raw["scopeExpiresAt"] + 1, timezone.utc).isoformat(),
+                "budget": {"planMaxTurns": 2, "implementationMaxTurns": 4, "reviewMaxTurns": 2, "maxAttempts": 2}}
+            raw["continuationBudgetAuthorization"] = authorization
+            store.validated_workunit_contract.digest = "new-server-issued-turn-grant"
+            limits = run_spec_workunit.bounded_fast_lane_turns(store)
+            self.assertEqual(limits.allowance("planning", 0), (2, 1, 1))
+            self.assertEqual(raw["budget"], {"maxAttempts": 2})
+            for changed in ({**authorization, "jobId": "other-job"}, {**authorization, "expiresAt": "2000-01-01T00:00:00Z"}):
+                raw["continuationBudgetAuthorization"] = changed
+                with self.assertRaises(run_spec_workunit.BoundedTurnBudgetExceeded):
+                    run_spec_workunit.bounded_fast_lane_turns(store)
+
+    def test_real_sdk_budget_wait_resumes_pending_turn_at_exact_cap_with_same_identity(self):
+        from agents import Agent, function_tool, set_tracing_disabled
+        from codex_model import CodexSubscriptionModel
+        from test_model_admission import FakeAdmission, ModelAdmissionTests
+        set_tracing_disabled(True)
+        effects, dispatches, reserved = [], [], []
+        class Admission(FakeAdmission):
+            def reserve(self, request):
+                reserved.append(request["modelCallId"])
+                if len(reserved) == 2:
+                    return {"kind": "waiting_budget", "operationKey": "pending", "nextEligibleAt": "2030-01-01T00:00:00Z"}
+                return super().reserve(request)
+        admission = Admission()
+        def build_agent(store):
+            @function_tool
+            def progress() -> str:
+                """Record the permitted effect."""
+                effects.append("one")
+                return "done"
+            model = CodexSubscriptionModel(codex_cwd=self.evidence, role="planner", on_receipt=lambda _r: None,
+                store=store, phase_id=store.phase_id("planning"), routing={"profile": "GENERAL"}, admission=admission)
+            def respond(_instruction, _schema, call_id, *_args, **_kwargs):
+                dispatches.append(call_id)
+                action = {"action": "call_tool", "name": "progress", "arguments_json": "{}", "text": None} if len(dispatches) == 1 else {"action": "final", "name": None, "arguments_json": "", "text": "done"}
+                return json.dumps(action), {"threadId": "thread", "turnId": f"turn-{len(dispatches)}",
+                    "usage": {"total": {"inputTokens": 3 * len(dispatches), "cachedInputTokens": 0, "outputTokens": len(dispatches)}}}
+            model._run_codex_turn = respond
+            return Agent(name="Pending SDK test", instructions="Use the tool then finish.", model=model, tools=[progress])
+        with patch.dict(sys.modules, {"openai_codex": ModelAdmissionTests.fake_sdk()}):
+            store = self.open_bounded(plan=2)
+            with self.assertRaises(SystemExit) as stopped:
+                run_spec_workunit.run_phase(store, "planning", 0, build_agent(store), "plan", 2)
+            self.assertEqual(stopped.exception.code, 75)
+            self.assertEqual(effects, ["one"])
+            with self.open_bounded(plan=2) as store:
+                result = run_spec_workunit.run_phase(store, "planning", 0, build_agent(store), "ignored", 2)
+                self.assertEqual(result.final_output, "done")
+                self.assertEqual(effects, ["one"])
+                self.assertEqual(len(dispatches), 2)
+                self.assertEqual(reserved[1], reserved[2])
+                self.assertEqual(run_spec_workunit.bounded_fast_lane_turns(store).counts()[store.phase_id("planning")], 2)
+                self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM model_calls").fetchone()[0], 2)
+
     def test_unknown_legacy_sdk_consumption_never_becomes_free_allowance(self):
         with self.open_bounded() as store:
             phase = store.start_phase("planning", 0, {"input": "old prompt", "maxTurns": 2}, 2)

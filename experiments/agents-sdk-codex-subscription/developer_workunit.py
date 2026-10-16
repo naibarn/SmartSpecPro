@@ -264,7 +264,28 @@ def _validate_continuation_grant(grant: dict[str, Any] | None, *, contract: dict
         max_ttl = int(request.get("scopeTtlSeconds", 8 * 60 * 60))
     except (KeyError, TypeError, ValueError) as exc:
         raise ContractError("WAITING_AUTHORIZATION: continuation grant time bounds are invalid") from exc
-    if not 300 <= max_ttl <= 86_400 or not issued_at > float(contract.get("scopeExpiresAt", 0)) or not issued_at < expires_at <= issued_at + max_ttl:
+    budget_authorization = grant.get("budgetAuthorization")
+    if budget_authorization is not None:
+        expected_authority = {key: expected[key] for key in (
+            "jobId", "runId", "tenantId", "actorId", "workspaceId", "sourceRevision", "originalAuthorizationReceiptSha256",
+        )}
+        if (not isinstance(budget_authorization, dict)
+                or any(budget_authorization.get(key) != value for key, value in expected_authority.items())
+                or not isinstance(budget_authorization.get("authorizationReference"), str)
+                or not budget_authorization["authorizationReference"].strip()):
+            raise ContractError("WAITING_AUTHORIZATION: continuation budget authority does not match the WorkUnit")
+        budget = budget_authorization.get("budget")
+        caps = {"planMaxTurns": 8, "implementationMaxTurns": 30, "reviewMaxTurns": 8, "maxAttempts": 3}
+        if not isinstance(budget, dict) or set(budget) != set(caps) or any(
+                type(budget[key]) is not int or not 1 <= budget[key] <= cap for key, cap in caps.items()):
+            raise ContractError("WAITING_AUTHORIZATION: continuation turn allowance is invalid")
+        try:
+            authorization_expiry = datetime.fromisoformat(str(budget_authorization["expiresAt"])).timestamp()
+        except (KeyError, ValueError, TypeError) as exc:
+            raise ContractError("WAITING_AUTHORIZATION: continuation budget expiry is invalid") from exc
+        if expires_at > authorization_expiry:
+            raise ContractError("WAITING_AUTHORIZATION: continuation exceeds budget authorization expiry")
+    if not 300 <= max_ttl <= 86_400 or (budget_authorization is None and not issued_at > float(contract.get("scopeExpiresAt", 0))) or not issued_at < expires_at <= issued_at + max_ttl:
         raise ContractError("WAITING_AUTHORIZATION: continuation grant exceeds the original bounded scope")
     try:
         receipts = [json.loads(line) for line in continuation_path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -392,6 +413,8 @@ def start(args: argparse.Namespace) -> int:
             contract["originalScopeExpiresAt"] = contract.get("originalScopeExpiresAt", original_receipt["scopeExpiresAt"])
             contract["originalAuthorizationReceiptSha256"] = receipt_digest
             contract["scopeExpiresAt"] = grant["scopeExpiresAtEpoch"]
+            if grant.get("budgetAuthorization") is not None:
+                contract["continuationBudgetAuthorization"] = grant["budgetAuthorization"]
             contract["authorizationDigest"] = hashlib.sha256(json.dumps({
                 "developer": contract["developerIdentity"], "taskId": contract["taskId"],
                 "task": contract["requirementText"], "acceptanceCriteria": contract["acceptanceCriteria"],
@@ -399,6 +422,8 @@ def start(args: argparse.Namespace) -> int:
                 "allowedFiles": contract["allowedFiles"], "writableFiles": contract["writableFiles"],
                 "patchableFiles": contract["patchableFiles"], "allowedTools": contract["allowedTools"],
                 "tests": contract["tests"], "browserUat": contract["browserUat"], "budget": contract["budget"],
+                **({"continuationBudgetAuthorization": contract["continuationBudgetAuthorization"]}
+                   if contract.get("continuationBudgetAuthorization") else {}),
                 "expiresAt": contract["scopeExpiresAt"], "productionAccess": False,
                 "sharedDatabaseWrite": False, "runnerDispatch": False,
                 "canonicalJobIdentity": {key: canonical_binding[key] for key in ("jobId", "runId", "tenantId", "actorId")},
@@ -414,6 +439,7 @@ def start(args: argparse.Namespace) -> int:
                 "originalScopeExpiresAt": prior_expiry, "scopeExpiresAt": grant["scopeExpiresAt"],
                 "claimReceiptId": claim.get("receiptId"), "ownerFencingVersion": claim.get("ownerFencingVersion"),
                 "repositoryPermission": identity["permission"], "issuedAt": grant["issuedAt"],
+                **({"budgetAuthorization": grant["budgetAuthorization"]} if grant.get("budgetAuthorization") else {}),
             }
             with continuation_path.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(continuation_receipt, sort_keys=True) + "\n")
@@ -438,6 +464,8 @@ def start(args: argparse.Namespace) -> int:
             "allowedFiles": contract["allowedFiles"], "writableFiles": contract["writableFiles"],
             "patchableFiles": contract["patchableFiles"], "allowedTools": contract["allowedTools"],
             "tests": contract["tests"], "browserUat": contract["browserUat"], "budget": contract["budget"],
+            **({"continuationBudgetAuthorization": contract["continuationBudgetAuthorization"]}
+               if contract.get("continuationBudgetAuthorization") else {}),
             "expiresAt": contract["scopeExpiresAt"], "productionAccess": False,
             "sharedDatabaseWrite": False, "runnerDispatch": False,
             "canonicalJobIdentity": {key: canonical_binding[key] for key in ("jobId", "runId", "tenantId", "actorId")},

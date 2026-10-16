@@ -124,6 +124,25 @@ class DeveloperWorkUnitProvisioningTests(unittest.TestCase):
             )
             self.assertAlmostEqual(validated["scopeExpiresAtEpoch"], issued + 3600, places=3)
             self.assertEqual(grant["continuationOrdinal"], 1)
+            immutable_receipt = receipt_path.read_bytes()
+            supplemental = {key: grant[key] for key in (
+                "jobId", "runId", "tenantId", "actorId", "workspaceId", "sourceRevision", "originalAuthorizationReceiptSha256",
+            )}
+            supplemental.update(authorizationReference="owner-completion-grant", expiresAt=grant["scopeExpiresAt"],
+                                budget={"maxAttempts": 2, "planMaxTurns": 8, "implementationMaxTurns": 16, "reviewMaxTurns": 8})
+            amended = {**grant, "budgetAuthorization": supplemental}
+            accepted = developer_workunit._validate_continuation_grant(
+                amended, contract=contract, request=request, binding=binding, receipt_digest=receipt_digest,
+                receipt_path=receipt_path, continuation_path=continuation_path)
+            self.assertEqual(accepted["budgetAuthorization"]["budget"]["planMaxTurns"], 8)
+            self.assertEqual(receipt_path.read_bytes(), immutable_receipt)
+            self.assertEqual(contract["budget"], request["budget"])
+            for bad in ({**supplemental, "actorId": 999}, {**supplemental, "budget": {**supplemental["budget"], "planMaxTurns": 9}},
+                        {**supplemental, "expiresAt": grant["issuedAt"]}):
+                with self.assertRaises(ContractError):
+                    developer_workunit._validate_continuation_grant(
+                        {**grant, "budgetAuthorization": bad}, contract=contract, request=request, binding=binding,
+                        receipt_digest=receipt_digest, receipt_path=receipt_path, continuation_path=continuation_path)
 
             receipt_path.write_text(json.dumps({**receipt, "allowedFiles": ["src/other.py"]}), encoding="utf-8")
             with self.assertRaisesRegex(ContractError, "receipt changed|does not match"):

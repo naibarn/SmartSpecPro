@@ -21,6 +21,26 @@ class CodexTurnRecoveryTests(unittest.TestCase):
                           "final_output_schema": None}, separators=(",", ":"))
         )
 
+    def test_reordered_resume_recovers_original_bound_call_and_immutable_request(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from durable_store import DurableRunStore
+        from codex_model import _model_call_for_instruction
+        with tempfile.TemporaryDirectory() as temp, DurableRunStore(Path(temp), run_id=str(uuid.uuid4()), initial_state={"runId": str(uuid.uuid4())}) as store:
+            original = self.instruction([{"role": "user", "content": "goal"}])
+            prefix, body = original.split("Request JSON:\n", 1)
+            restored = prefix + "Request JSON:\n" + json.dumps(json.loads(body), sort_keys=True)
+            store.reserve_model_call("original", "phase", "planner", {"instruction": original})
+            store.update_model_call("original", event="test.bound", stable_suffix="bound", status="thread_reused", thread_id="thread", prior_turn_id="prior-turn")
+            store.reserve_model_call("old-reordered-duplicate", "phase", "planner", {"instruction": restored})
+            identity, prior, _ = _model_call_for_instruction(store, "phase", "planner", restored, "replacement")
+            self.assertEqual(identity, "original")
+            self.assertEqual(json.loads(prior["request_json"])["instruction"], original)
+            changed = self.instruction([{"role": "user", "content": "changed goal"}])
+            self.assertEqual(_model_call_for_instruction(store, "phase", "planner", changed, "new-operation"), ("new-operation", None, None))
+            self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM model_calls").fetchone()[0], 2)
+
     def test_reused_thread_sends_only_new_input_when_persisted_history_is_an_exact_prefix(self):
         previous = [{"role": "user", "content": "goal"}, {"type": "function_call", "call_id": "1"}]
         current = previous + [{"type": "function_call_output", "call_id": "1", "output": "done"}]

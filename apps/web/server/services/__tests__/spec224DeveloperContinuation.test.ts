@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -116,6 +117,34 @@ describe("SPEC-224 bounded continuation grants", () => {
     const fixture = await makeContinuationFixture(now.getTime() / 1000);
     const grant = await issueContinuationGrant({ ...fixture, now, authorize: async () => {} });
     expect(grant?.continuationOrdinal).toBe(1);
+  });
+
+  it("binds explicitly configured additional turns to the same original receipt and scope", async () => {
+    const fixture = await makeContinuationFixture(now.getTime() / 1000 + 1);
+    const receipt = await readFile(path.join(fixture.evidenceDir, "authorization-receipt.json"));
+    const authorization = {
+      jobId: fixture.binding.workerJobId, runId: fixture.binding.runId,
+      tenantId: fixture.binding.tenantId, actorId: fixture.binding.actorId,
+      workspaceId: "workspace-1", sourceRevision: fixture.binding.request.sourceRevision,
+      originalAuthorizationReceiptSha256: createHash("sha256").update(receipt).digest("hex"),
+      authorizationReference: "owner-explicit-completion-authorization", expiresAt: new Date(now.getTime() + 7_200_000).toISOString(),
+      budget: { maxAttempts: 2, planMaxTurns: 8, implementationMaxTurns: 16, reviewMaxTurns: 8 },
+    };
+    const authorize = vi.fn(async () => {});
+    const grant = await issueContinuationGrant({ ...fixture, now, authorize, budgetAuthorization: authorization });
+    expect(authorize).toHaveBeenCalledOnce();
+    expect(grant?.budgetAuthorization).toEqual(authorization);
+    expect(Date.parse(grant!.scopeExpiresAt) - now.getTime()).toBe(3_600_000);
+    expect(await readFile(path.join(fixture.evidenceDir, "authorization-receipt.json"))).toEqual(receipt);
+    for (const invalid of [{ ...authorization, actorId: 999 }, { ...authorization, sourceRevision: "b".repeat(40) },
+      { ...authorization, budget: { ...authorization.budget, planMaxTurns: 9 } },
+      { ...authorization, expiresAt: now.toISOString() }]) {
+      await expect(issueContinuationGrant({ ...fixture, now, authorize, budgetAuthorization: invalid }))
+        .rejects.toThrow("DEVELOPER_CONTINUATION_BUDGET_AUTHORIZATION_INVALID");
+    }
+    await expect(issueContinuationGrant({ ...fixture, now, budgetAuthorization: authorization,
+      authorize: async () => { throw new Error("DEVELOPER_CONTINUATION_PERMISSION_REQUIRED"); } }))
+      .rejects.toThrow("DEVELOPER_CONTINUATION_PERMISSION_REQUIRED");
   });
 
   it("allows multiple continuations only up to the persisted attempt budget", async () => {
