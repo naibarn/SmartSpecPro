@@ -87,5 +87,7 @@
   "file_sha256": {
     "apps/web/server/services/memoryService.ts": "6f53319a698dded0bf3471e347beb213c62b5c63db35df18c44d1178f67de7b0",
     "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "27e5b44068899de34537ba6d73e5f8a1a23266709585faa36699a66698805ded"
-  }
+  },
+  "owned_commit_sha": "2440a3fd83584efc4a70d5c4c965ae74ab16de16",
+  "pending_action": "Normal protected PR and required checks, guarded merge, canonical verification; shared manifest/ledger transition serialized after PR996."
 }
