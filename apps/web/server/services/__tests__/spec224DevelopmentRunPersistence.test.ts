@@ -573,6 +573,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       ],
       workspaceConvergenceReceipt: convergenceReceipt,
       worktreeRetirementReceipt: retirementReceipt,
+      verificationProvenance: finalVerifyProvenance,
     };
   }
 
@@ -1129,6 +1130,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         closureErrorCode: "FINAL_VERIFY_PROVENANCE_STALE",
       },
     });
+    expect(result.run.events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
     expect(duplicate.reason).toBe("worker_job_already_reconciled");
     expect(
       duplicate.run.events.filter(event => event.type === "PHASE_FAILED")
@@ -1165,6 +1167,31 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         closureErrorCode: "FINAL_VERIFY_PROVENANCE_INVALID",
       },
     });
+    expect(result.run.events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+  });
+
+  it("rejects missing terminal provenance without creating RUN_COMPLETED", async () => {
+    const run = finalVerifyRun();
+    const output: Record<string, unknown> = finalVerifyLifecycleOutput(run);
+    delete output.verificationProvenance;
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      { status: "succeeded", output }
+    );
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
+
+    const result = await finalVerifyService(adapter, run).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+
+    expect(result.action).toBe("RECOVER");
+    expect(result.run.events.at(-1)).toMatchObject({
+      type: "PHASE_FAILED",
+      payload: { closureErrorCode: "FINAL_VERIFY_PROVENANCE_REQUIRED" },
+    });
+    expect(result.run.events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
   });
 
   it("completes an eligible terminal provenance tuple and preserves duplicate reconciliation", async () => {
@@ -1175,7 +1202,9 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         status: "succeeded",
         output: {
           ...finalVerifyLifecycleOutput(run),
-          verificationProvenance: finalVerifyProvenance,
+          verificationProvenance: Object.assign({}, finalVerifyProvenance, {
+            untrustedClaim: "not-preserved",
+          }),
         },
       }
     );
@@ -1195,6 +1224,10 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
 
     expect(result.action).toBe("STOP");
     expect(result.run.state).toBe("COMPLETED");
+    expect(
+      result.run.events.find(event => event.type === "RUN_COMPLETED")?.payload
+        .verificationProvenance
+    ).toEqual(finalVerifyProvenance);
     expect(duplicate.reason).toBe("worker_job_already_reconciled");
     expect(
       duplicate.run.events.filter(event => event.type === "RUN_COMPLETED")
