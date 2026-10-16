@@ -75,6 +75,8 @@ def _developer_authorization_digest(raw: dict[str, Any]) -> str:
         "budget": raw.get("budget"), "expiresAt": raw.get("scopeExpiresAt"),
         "productionAccess": False, "sharedDatabaseWrite": False, "runnerDispatch": False,
     }
+    if raw.get("continuationBudgetAuthorization") is not None:
+        scope["continuationBudgetAuthorization"] = raw["continuationBudgetAuthorization"]
     canonical_binding = raw.get("canonicalJobBinding")
     if isinstance(canonical_binding, dict):
         scope["canonicalJobIdentity"] = {key: canonical_binding.get(key) for key in ("jobId", "runId", "tenantId", "actorId")}

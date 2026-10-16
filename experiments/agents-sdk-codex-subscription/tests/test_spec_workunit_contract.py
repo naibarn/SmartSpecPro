@@ -167,7 +167,10 @@ class WorkUnitContractTests(unittest.TestCase):
                           "sharedDatabaseWrite": False, "gateway": False, "provider": "codex-subscription",
                           "isolatedTestDatabase": False},
         })
+        self.contract["canonicalJobBinding"] = {"jobId": "job-test", "runId": "task-test", "tenantId": "tenant-test",
+                                                 "actorId": 1, "attemptId": "attempt-test", "fencingVersion": 1}
         auth_scope = {
+            "canonicalJobIdentity": {key: self.contract["canonicalJobBinding"][key] for key in ("jobId", "runId", "tenantId", "actorId")},
             "developer": identity, "taskId": "task-test", "task": requirement,
             "acceptanceCriteria": self.contract["acceptanceCriteria"], "sourceSha": self.head,
             "workspaceId": "workspace-test", "allowedFiles": self.contract["allowedFiles"],
@@ -199,6 +202,29 @@ class WorkUnitContractTests(unittest.TestCase):
                 pass
         self.assertEqual(parsed.work_unit, "DEV-WU-0123456789AB")
         self.assertEqual(parsed.browser_uat["status"], "configured")
+        original_budget = dict(self.contract["budget"])
+        supplemental = {"authorizationReference": "explicit-owner-continuation",
+                        "budget": {"maxAttempts": 2, "planMaxTurns": 8, "implementationMaxTurns": 16, "reviewMaxTurns": 8}}
+        self.contract["continuationBudgetAuthorization"] = supplemental
+        # Independently reproduce the producer's complete scope hash. The old
+        # loader omitted this field and rejected every real amended continuation.
+        auth_scope["continuationBudgetAuthorization"] = supplemental
+        self.contract["authorizationDigest"] = hashlib.sha256(
+            json.dumps(auth_scope, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        self.contract["sourceSpecDigest"] = self.contract["authorizationDigest"]
+        self.write_contract()
+        with patch.dict(os.environ, {"CODEX_SESSION_ID": "current-session"}), patch(
+            "spec_workunit_contract.verify_github_developer_permission", return_value=identity,
+        ):
+            amended = load_contract(self.contract_path, self.root)
+            self.assertEqual(amended.raw["continuationBudgetAuthorization"], supplemental)
+            self.assertEqual(amended.raw["budget"], original_budget)
+            self.contract["continuationBudgetAuthorization"] = {**supplemental, "authorizationReference": "tampered"}
+            self.write_contract()
+            with self.assertRaisesRegex(ContractError, "authorization digest does not match"):
+                load_contract(self.contract_path, self.root)
+        self.contract["continuationBudgetAuthorization"] = supplemental
+        self.write_contract()
         db = sqlite3.connect(self.registry)
         renewed_expiry = parsed.raw["workspaceLeaseExpiresAt"] + 60
         db.execute(
