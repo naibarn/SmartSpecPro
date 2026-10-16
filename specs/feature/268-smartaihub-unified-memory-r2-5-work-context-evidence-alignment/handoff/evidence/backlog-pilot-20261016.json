@@ -161,8 +161,13 @@
   },
   "requirementsClosed": [],
   "gitIntegration": {
-    "status": "NOT_YET_INTEGRATED",
-    "branch": "codex/smartaihub-backlog-pilot-20261016"
+    "status": "CHECKPOINT_PROMOTED_PARTIAL",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/989",
+    "headSha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
+    "canonicalSha": "a293e38662c6f0a662889d3d949e447759514ca5",
+    "mergedAt": "2026-10-16T13:31:21Z",
+    "headAndMergeTreesEqual": true,
+    "requirementsClosed": []
   },
   "nextAction": "Continue independent direct validation; resume SAME Jobs on approved budget change or default refill. Review/verify/integrate each useful source checkpoint; no replay of settled model turns.",
   "spec304Validation": {
@@ -178,5 +183,15 @@
   "runtimeSetupRepairs": [
     "Local snapshot query initially referred to nonexistent errorJson; fixed only external launcher to select existing columns; Job was not duplicated.",
     "Initial local executor transport test is denied in development; used registered postgres-direct transport on SAME canonical Job. No auth, runtime or model-policy guard changed."
-  ]
+  ],
+  "baselineDefects": {
+    "268": {
+      "scope": "Pure buildScopeFilter SQL predicate compiled from actual service has no expiresAt condition; search/structured/graph/rule/final hydration source inspected.",
+      "proof": "/tmp/smartaihub-backlog-pilot/spec268-original-defect.json"
+    },
+    "302": {
+      "scope": "Actual resolver accepts future_or_forged, empty, __proto__, constructor, toString source values and emits RESOLVED_CONTEXTUAL/project-a.",
+      "proof": "/tmp/smartaihub-backlog-pilot/spec302-original-defect.json"
+    }
+  }
 }

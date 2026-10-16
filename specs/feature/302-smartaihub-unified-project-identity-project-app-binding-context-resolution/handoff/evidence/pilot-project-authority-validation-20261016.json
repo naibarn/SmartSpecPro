@@ -1,0 +1,146 @@
+{
+  "observedAt": "2026-10-16T13:52:39.193294+00:00",
+  "sourceSha": "a293e38662c6f0a662889d3d949e447759514ca5",
+  "originalCodeSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+  "codeTreesUnchanged": "PR989 changes only evidence/handoffs and generated index",
+  "profile": "quick",
+  "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/projectResolutionAuthority.test.ts server/services/__tests__/canonicalProjectContextResolver.test.ts --maxWorkers=1 --reporter=json",
+  "startedAtEpochMs": 1792158317752,
+  "testPassed": 27,
+  "testFailed": 0,
+  "files": [
+    {
+      "path": "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "resolveCanonicalProjectContext prefers explicit user selection when weaker authoritative evidence agrees",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext marks contradictory authoritative project IDs ambiguous regardless of precedence",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext collapses duplicate same-ID evidence deterministically independent of input order",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext returns recent and semantic candidates only as suggestions",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext ranks suggestions by source, descending score, then stable project ID",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext does not select a project for explicit no project",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext does not select a project for no evidence",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext does not select a project for pending scope",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext carries independent request dimensions and rejects mismatched supplied dimensions",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext rejects bindings from a different environment or purpose",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext rejects authoritative canonical project IDs with surrounding whitespace",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext requires tenant and principal context",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext rejects leading or trailing whitespace in required and supplied context dimensions",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext never exposes project IDs from foreign-tenant evidence or candidates",
+          "status": "passed"
+        },
+        {
+          "title": "resolveCanonicalProjectContext keeps conflicting explicit No Project and project bindings ambiguous",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "path": "server/services/__tests__/projectResolutionAuthority.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt issues evidence from a server-owned conversation binding and current project ACL",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt rechecks membership and denies a receipt after ACL revocation",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt fails closed for an unknown membership role",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt rechecks the live conversation binding and denies a Project switch mid-invocation",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt denies cross-App reads when the current Project-App binding is missing or revoked",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt does not treat a client-supplied Project candidate as authority without a trusted App",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt fails closed for foreign tenant and inactive App or Project",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt denies a principal after current tenant membership changes",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt allows only global/pending context when no server-bound Project exists",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt marks a missing or foreign conversation UNRESOLVED instead of inventing NO_PROJECT",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt rejects cloned receipts, scope reuse, and all Phase 1 project writes",
+          "status": "passed"
+        },
+        {
+          "title": "SPEC-302 invocation-scoped ProjectResolutionReceipt does not mutate the shared canonical App identity records",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    "REQ-5FCEBAF7DDBD",
+    "REQ-8D8136DAE54F",
+    "REQ-2F48B40CB174"
+  ],
+  "closure": {
+    "requirementId": "REQ-5FCEBAF7DDBD",
+    "status": "PASS",
+    "scope": "Active Phase1 runtime only; suggestions cannot choose durable destination, all Phase1 writes denied.",
+    "independentReviewer": "/root/spec161_validation_scout (gpt-6-luna medium)",
+    "limits": "No future Phase2 binding flow, similarity retrieval quality, persistent receipts, migration or other requirement closed."
+  },
+  "limits": "Mocked DB boundary, real resolver/receipt logic. No persistence migration, live shared writes, production ingress or browser acceptance."
+}

@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 7,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -111,25 +111,39 @@
       "verification_method": "Execute authorization and revocation checks against disposable PostgreSQL, then repeat authenticated cross-tenant smoke/UAT on a registered non-production runtime."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L29"
       ],
       "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L29",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        {
+          "kind": "CANONICAL_RESOLVER_AND_RECEIPT_SOURCE",
+          "path": "apps/web/server/services/canonicalProjectContextResolver.ts",
+          "scope": "Semantic/recent candidates only produce suggestions; active runtime caller uses server/explicit binding; current receipt validator rejects every durable write.",
+          "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5"
+        }
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Retain regression guard. Revalidate this requirement before any future consumer promotes ranked suggestions into durable project bindings; future flow needs explicit confirmation, current ACL and durable receipt authority.",
       "requirement_digest": "3058f1873ac59b9115b91a64a1cd056e3e819d4621b6d6c9588e24766b0e5ed5",
       "requirement_id": "REQ-5FCEBAF7DDBD",
       "requirement_text": "6. Similarity can retrieve or rank candidates, but MUST NOT alone select a durable project destination.",
       "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        {
+          "kind": "QUICK_VITEST_AND_INDEPENDENT_REVIEW",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-project-authority-validation-20261016.json",
+          "scope": "27 passing resolver/receipt tests; independent Luna review confirms REQ-5FCEBAF7DDBD for currently active Phase1. DB boundary mocked; no migration/live provider claim.",
+          "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5"
+        }
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
