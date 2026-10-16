@@ -63,7 +63,6 @@ async function prepareGoldenDefaultPathRepository(sourceRoot: string, tempRoot: 
 
 async function createGoldenFastLaneHarness(sourceRoot: string) {
   const fs = await import("node:fs/promises");
-  const originalSystemTime = new Date();
   const tempRoot = await fs.mkdtemp("/mnt/SmartSpecDev/.tmp/spec224-golden-harness-");
   const repositoryRoot = sourceRoot;
   const stateRoot = path.join(tempRoot, "mock-codex");
@@ -71,6 +70,8 @@ async function createGoldenFastLaneHarness(sourceRoot: string) {
   const fakeBin = path.join(tempRoot, "bin");
   const clockPath = path.join(tempRoot, "clock-epoch-seconds");
   const initialClock = new Date();
+  // Server lifecycle and Python share the injected clock from fixture creation.
+  vi.setSystemTime(initialClock);
   const prior = Object.fromEntries(["PATH", "PYTHONPATH", "SPEC224_GOLDEN_STATE_DIR", "SPEC224_GOLDEN_CLOCK_FILE", "SPEC224_GOLDEN_429_ONCE", "SPEC224_GOLDEN_RETRY_AFTER_SECONDS"].map(key => [key, process.env[key]]));
   await fs.mkdir(fakeBin, { recursive: true });
   await fs.writeFile(path.join(fakeBin, "gh"), "#!/bin/sh\ncase \"$*\" in\n  *user) echo '{\"login\":\"developer\"}' ;;\n  *permission) echo '{\"permission\":\"write\"}' ;;\n  *) exit 2 ;;\nesac\n", { mode: 0o755 });
@@ -138,7 +139,8 @@ async function createGoldenFastLaneHarness(sourceRoot: string) {
       return revision;
     },
     async close() {
-      vi.setSystemTime(originalSystemTime);
+      // Restore the real clock rather than freezing later tests at fixture start.
+      vi.useRealTimers();
       for (const [key, value] of Object.entries(prior)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
       if (isolated.originServer.exitCode === null && isolated.originServer.signalCode === null) {
         await new Promise<void>(resolve => { isolated.originServer.once("close", () => resolve()); isolated.originServer.kill("SIGTERM"); });

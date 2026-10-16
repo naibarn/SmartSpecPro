@@ -17,6 +17,7 @@ import type {
   ProviderReservation,
   ProviderSchedulerRepository,
   CodexModelAdmissionRepository,
+  CodexModelUsageCorrectionRepository,
   CodexModelCallInput,
   CodexModelUsage,
 } from "./providerSchedulerService";
@@ -116,7 +117,7 @@ function activeReservationStatusSql() {
  * PostgreSQL implementation of the provider scheduler ports. It intentionally
  * uses short row-locked transactions and never performs HTTP inside one.
  */
-export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRepository & ProviderPollRepository & CodexModelAdmissionRepository {
+export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRepository & ProviderPollRepository & CodexModelAdmissionRepository & CodexModelUsageCorrectionRepository {
   return {
     async reserveCodexModelCall(input) {
       const now = input.now ?? new Date();
@@ -580,7 +581,10 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           if (!priorReceipt || stableJson(priorReceipt) !== stableJson(normalizedReceipt)) {
             return { kind: "denied", reason: "receipt_conflict" };
           }
-          return { kind: "duplicate", operationKey: input.operationKey, chargedTokens: usage.inputTokens + usage.outputTokens };
+          // A later audited correction changes the accounting projection, never
+          // this historical receipt. Replay must not refund the correction.
+          return { kind: "duplicate", operationKey: input.operationKey,
+            chargedTokens: Number(reservation.inputTokens) + Number(reservation.outputTokens) };
         }
         const chargedTokens = usage.inputTokens + usage.outputTokens;
         const reservationEstimateTokens = numberValue(reservation, "reservedTokens") ?? 0;
@@ -622,6 +626,127 @@ export function createPostgresProviderSchedulerRepository(): ProviderSchedulerRe
           });
         }
         return { kind: "settled", operationKey: input.operationKey, chargedTokens, overrunTokens };
+      });
+    },
+
+    async correctCodexModelUsage(input) {
+      const now = input.now ?? new Date();
+      const auth = input.authorization;
+      const usage = input.usage;
+      if (!auth || !Number.isSafeInteger(auth.actorId) || auth.actorId <= 0 ||
+          typeof auth.tenantId !== "string" || !auth.tenantId.trim() ||
+          typeof auth.reference !== "string" || !auth.reference.trim() || auth.reference.length > 200 ||
+          !/^[a-f0-9]{64}$/.test(auth.providerEvidenceSha256 ?? "") ||
+          typeof input.expectedReceiptSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.expectedReceiptSha256) ||
+          typeof input.correctionId !== "string" ||
+          !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(input.correctionId)) {
+        return { kind: "denied", reason: "authorization" };
+      }
+      if (!usage || !validNonNegativeInteger(input.expectedChargedTokens) ||
+          !validNonNegativeInteger(usage.inputTokens) || !validNonNegativeInteger(usage.cachedInputTokens) ||
+          !validNonNegativeInteger(usage.outputTokens) || usage.cachedInputTokens > usage.inputTokens ||
+          usage.inputTokens + usage.outputTokens > 2_147_483_647 ||
+          typeof usage.threadId !== "string" || !usage.threadId.trim() || usage.threadId.length > 160 ||
+          typeof usage.turnId !== "string" || !usage.turnId.trim() || usage.turnId.length > 160 ||
+          typeof usage.observedAt !== "string" || !Number.isFinite(Date.parse(usage.observedAt))) {
+        return { kind: "denied", reason: "receipt_conflict" };
+      }
+      const requestDigest = createHash("sha256").update(stableJson({
+        runId: input.runId, operationKey: input.operationKey, correctionId: input.correctionId,
+        expectedReceiptSha256: input.expectedReceiptSha256, expectedChargedTokens: input.expectedChargedTokens,
+        usage, authorization: auth,
+      })).digest("hex");
+      const eventKey = `codex-usage-correction:${createHash("sha256").update(`${input.operationKey}\0${input.correctionId}`).digest("hex")}`;
+      return db.transaction(async tx => {
+        const query = tx as any;
+        const [job] = rows(await query.execute(sql`
+          SELECT j.*, a."leaseGeneration", a."leaseTokenHash"
+          FROM "worker_jobs" j JOIN "worker_job_attempts" a
+            ON a."workerJobId" = j."id" AND a."attempt" = j."attempt"
+          WHERE j."id" = ${input.lease.jobId} AND a."id" = ${input.lease.attemptId}
+          FOR UPDATE OF j, a
+        `));
+        if (!job || stringValue(job, "status") !== "running" ||
+            numberValue(job, "fencingVersion") !== input.lease.fencingVersion ||
+            numberValue(job, "leaseGeneration") !== input.lease.fencingVersion ||
+            stringValue(job, "leaseOwnerToken") !== hashLeaseToken(input.lease.leaseToken) ||
+            stringValue(job, "leaseTokenHash") !== hashLeaseToken(input.lease.leaseToken) ||
+            !dateValue(job, "leaseExpiresAt") || dateValue(job, "leaseExpiresAt")! <= now) {
+          return { kind: "denied", reason: "stale_lease" };
+        }
+        const run = objectValue(objectValue(job.inputJson)?.developerWorkUnit);
+        if (job.jobType !== "developer.fast_lane" || run?.contractVersion !== "developer-fast-lane-v1" ||
+            run.runId !== input.runId || run.workerJobId !== input.lease.jobId ||
+            run.tenantId !== job.tenantId || Number(run.actorId) !== Number(job.requestedByUserId)) {
+          return { kind: "denied", reason: "run_binding" };
+        }
+        if (auth.actorId !== Number(job.requestedByUserId) || auth.tenantId !== job.tenantId) {
+          return { kind: "denied", reason: "authorization" };
+        }
+        // Serialize with shared admission, including reservations by other Jobs.
+        await query.execute(sql`SELECT pg_advisory_xact_lock(hashtext('codex_subscription:shared'))`);
+        const [reservation] = rows(await query.execute(sql`
+          SELECT * FROM "worker_job_provider_reservations"
+          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${input.lease.jobId}
+            AND "reservationKind" = 'model_call' AND "providerName" = 'codex_subscription'
+          FOR UPDATE
+        `));
+        if (!reservation) return { kind: "denied", reason: "reservation_missing" };
+        const originalReceipt = objectValue(reservation.usageReceiptJson);
+        if (reservation.usageState !== "known" || reservation.dispatchState !== "settled" ||
+            reservation.reservationStatus !== "released" || !originalReceipt ||
+            createHash("sha256").update(stableJson(originalReceipt)).digest("hex") !== input.expectedReceiptSha256 ||
+            reservation.threadId !== usage.threadId || reservation.turnId !== usage.turnId ||
+            (usage.effectiveModel ?? null) !== (originalReceipt.effectiveModel ?? null)) {
+          return { kind: "denied", reason: "receipt_conflict" };
+        }
+        const chargedTokens = usage.inputTokens + usage.outputTokens;
+        const [priorEvent] = rows(await query.execute(sql`
+          SELECT "payloadJson" FROM "worker_job_events"
+          WHERE "workerJobId" = ${input.lease.jobId} AND "eventIdempotencyKey" = ${eventKey}
+        `));
+        if (priorEvent) {
+          const receipt = objectValue(priorEvent.payloadJson);
+          if (receipt?.requestDigest !== requestDigest) return { kind: "denied", reason: "receipt_conflict" };
+          return { kind: "duplicate", operationKey: input.operationKey,
+            chargedTokens: Number(reservation.inputTokens) + Number(reservation.outputTokens),
+            additionalTokens: Number(receipt.additionalCharge) };
+        }
+        const previousTokens = Number(reservation.inputTokens) + Number(reservation.outputTokens);
+        // Corrections repair proven omissions only. Unknown usage, refunds and
+        // arbitrary rewrites require their own authority, never this port.
+        if (previousTokens !== input.expectedChargedTokens || chargedTokens <= previousTokens ||
+            usage.inputTokens < Number(reservation.inputTokens) || usage.outputTokens < Number(reservation.outputTokens) ||
+            usage.cachedInputTokens < Number(reservation.cachedInputTokens)) {
+          return { kind: "denied", reason: "receipt_conflict" };
+        }
+        const additionalTokens = chargedTokens - previousTokens;
+        await appendJobEvent(query, {
+          workerJobId: input.lease.jobId, attemptId: input.lease.attemptId,
+          eventType: "CODEX_MODEL_USAGE_CORRECTED", eventIdempotencyKey: eventKey,
+          payloadJson: {
+            schemaVersion: "codex-model-usage-correction.v1", requestDigest,
+            correctionId: input.correctionId, operationKey: input.operationKey, runId: input.runId,
+            modelCallId: reservation.modelCallId, threadId: usage.threadId, turnId: usage.turnId,
+            requestedModel: reservation.requestedModel, role: reservation.modelRole, phase: reservation.modelPhase,
+            originalReceiptSha256: input.expectedReceiptSha256, operator: auth,
+            previousUsage: { inputTokens: reservation.inputTokens, cachedInputTokens: reservation.cachedInputTokens, outputTokens: reservation.outputTokens },
+            correctedUsage: usage, previousCharge: previousTokens, chargedTokens, additionalCharge: additionalTokens,
+            overrunTokens: Math.max(0, chargedTokens - Number(reservation.reservedTokens)),
+            windowStartedAt: dateValue(reservation, "tokenWindowStartedAt")?.toISOString(),
+            fencingVersion: input.lease.fencingVersion, correctedAt: now.toISOString(),
+          },
+        });
+        // These columns are the admission projection. The original receipt,
+        // usage-settled event, identities and token window remain immutable.
+        await query.execute(sql`
+          UPDATE "worker_job_provider_reservations"
+          SET "inputTokens" = ${usage.inputTokens}, "cachedInputTokens" = ${usage.cachedInputTokens},
+              "outputTokens" = ${usage.outputTokens}, "updatedAt" = ${timestampParameter(now)}
+          WHERE "operationKey" = ${input.operationKey} AND "workerJobId" = ${input.lease.jobId}
+            AND "reservationKind" = 'model_call'
+        `);
+        return { kind: "corrected", operationKey: input.operationKey, chargedTokens, additionalTokens };
       });
     },
 
