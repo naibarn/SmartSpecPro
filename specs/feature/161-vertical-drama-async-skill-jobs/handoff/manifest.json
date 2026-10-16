@@ -22,12 +22,12 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Promote exact scoped failureprojection patch with22 focused tests, independentreview and factual finalverification PASS. CanonicalJobsucceeded; Run remainsIMPLEMENTED_READY_FOR_USER_TEST andmodelcompletefalse ispreserved. Broaderprovider/persistence/restart/billing/chainacceptance remainsopen.",
-    "next_ready_workunit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
+    "next_action": "Pilot validation33checks plus independent failureprojection8tests verified; functional source mergedPR993. Continue actual nonproduction worker/provider/result persistence, restart, billing and chain-abort acceptance. CanonicalJobsucceeded; original Runreadyforusertest preserved. WholeSPEC and broadrequirement remainPARTIAL.",
+    "next_ready_workunit": "SPEC161_CANONICAL_WORKER_PERSISTENCE_ACCEPTANCE",
     "reactivation_predicate": null,
     "resume_point": "Read backlog-pilot-20261016 evidence: source 40a5e8d366aaae3d7e3695ffd6c2447116429ef6; 33 bounded validation assertions pass, whole SPEC and all requirement closure remain open.",
     "waiting_predicate": null
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 17,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -106,12 +106,14 @@
       "candidate_base_sha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
       "canonical_job_status": "succeeded",
       "canonical_run_status": "IMPLEMENTED_READY_FOR_USER_TEST",
+      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
       "dependencyEvidence": "Main b74 verified; executable pipeline swallows failures, registry unconditionalsuccess; no open PR overlaps registry/newtest; no migration/provider dependency. Existing owner-filtered200history lookup fails closed ifexactrunmissing.",
       "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-episode-stage-failure-projection-20261016.json",
       "jobId": "342db2bbe556f2e719968622b1a7385e",
       "modelPolicy": "LUNA_ONLY",
-      "next_action": "Promote exact two-file bounded functional slice; broadSPEC161acceptance remainsopen.",
+      "next_action": "Retain worker status projection regression; validate real worker/provider persistence, restart, billing and chain-abort independently.",
       "originalCanonicalSourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "pr": 993,
       "requirementIds": [
         "REQ-28722F9489C8"
       ],
@@ -121,7 +123,7 @@
       "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
       "source_branch": "codex/smartaihub-spec161-stage-outcome-20261016",
       "specId": "161",
-      "status": "SCOPED_VERIFIED_READY_FOR_PROMOTION",
+      "status": "SCOPED_VERIFIED_AND_MERGED",
       "testCommand": "pnpm --dir apps/web exec vitest run server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts --maxWorkers=1",
       "whole_requirement_complete": false,
       "workUnit": "SPEC161_EPISODE_STAGE_FAILURE_PROJECTION",
@@ -130,6 +132,16 @@
         "apps/web/server/services/jobExecutorRegistry.ts",
         "apps/web/server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts"
       ]
+    },
+    "pilot_final_source_checkpoint": {
+      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "functional_prs": [
+        991,
+        992,
+        993
+      ],
+      "whole_spec_complete": false
     },
     "pilot_validation_checkpoint": {
       "focused_tests_passed": 33,
@@ -145,9 +157,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1023ec47a74262f285bd0d8a03f36c2d758d9542",
+    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "integrated": true,
-    "integrated_at": "2026-10-06T12:22:55Z"
+    "integrated_at": "2026-10-16T14:43:34Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -227,7 +239,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+        "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -235,10 +247,17 @@
             "path": "apps/web/server/services/feature186VerticalDramaJobAdapter.ts",
             "scope": "14 focused tests validate canonical admission/payload and admission-failure projection only. Real worker/service effects and persisted result/restart proof absent.",
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+          },
+          {
+            "kind": "SCOPED_EPISODE_STAGE_FAILURE_PROJECTION",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-episode-stage-failure-projection-20261016.json",
+            "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
+            "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+            "status": "PASS_SCOPED"
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Add fresh canonical interactive/story worker execution and real result persistence acceptance; do not restore retired queue tests.",
+        "next_action": "Retain verified status projection. Prove real service/provider, DB persistence, restart and billing on approved nonproduction runtime before whole requirement closure.",
         "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
         "requirement_id": "REQ-28722F9489C8",
         "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -250,6 +269,13 @@
             "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
             "scope": "14 focused tests validate canonical admission/payload and admission-failure projection only. Real worker/service effects and persisted result/restart proof absent.",
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
+          },
+          {
+            "kind": "SCOPED_EPISODE_STAGE_FAILURE_PROJECTION",
+            "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/pilot-episode-stage-failure-projection-20261016.json",
+            "scope": "Canonicalregisteredexecutor failureprojection; actualtests red7/8 beforepatch,green8/8 and final136focusedpass. Realprovider/persistedDB/restart/billing remainoutsideproof.",
+            "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+            "status": "PASS_SCOPED"
           }
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -516,7 +542,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:38:21.627453Z",
+  "updated_at": "2026-10-16T14:49:24.261799Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -529,6 +555,18 @@
       }
     ],
     "freshness": "UNKNOWN",
+    "pilot_final_scoped_check": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "evidence_section": "finalVerification",
+      "limits": "Focused mocks/loopback, no fullbuild/typecheck/liveUAT or wholeSPEC closure.",
+      "outcome": "PASS",
+      "profile": "package",
+      "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "spec_subset_tests_passed": 41,
+      "test_files_total": 15,
+      "tests_failed_total": 0,
+      "tests_passed_total": 136
+    },
     "pilot_post_pr991_focused": {
       "commandScope": [
         "server/routers/appIdentity.test.ts",
@@ -555,6 +593,13 @@
       "signal": null,
       "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
       "startedAtEpochMs": 1792160248306
+    },
+    "pilot_postintegration_obligations": {
+      "focused_check": "PASS136/136on45aee6ae",
+      "full_build": "NOT_RUN_NO_RESOURCE_ADMISSION_OR_RELEASE_SCOPE",
+      "full_typecheck": "NOT_RUN_FORBIDDEN_IN_SHARED_SESSION",
+      "live_acceptance": "PENDING_SPEC_SPECIFIC_AUTHORIZED_RUNTIME",
+      "workspace_sync": "DIRTY_PRIMARY_WORK_PRESERVED; noreset/clean/worktree removal"
     },
     "required_profiles": [],
     "sha": null,

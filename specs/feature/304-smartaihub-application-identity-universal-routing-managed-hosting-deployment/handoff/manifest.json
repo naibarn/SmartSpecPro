@@ -43,11 +43,11 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Retain31 passing focused identity/ingress tests. Obtain a verifiable authorized nonproduction ingress producer/runtime plus replay and direct-origin evidence before opening ingress implementation; do not invent trust from headers or enable production.",
+    "next_action": "Final31identity/ingress tests pass; tenantassertionrepair mergedPR990. No independent approved functional ingressslice found: defaultHTTP trustedAppContext remainsnull until approvedproducer/verifier/replay/directorigin runtime exists. Preservefailclosed Host handling; no productionmutation.",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
     "resume_point": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9. R5 persisted positive-path test verifies the server-side test assertion through createContextWithTrustedAppIngress, current DB-backed alias resolution, and authorized persisted Project-memory prompt retrieval; Host/X-Forwarded-Host-only, replay, wrong-App, and cross-tenant cases fail closed. This is synthetic non-production evidence only. Production ingress producer, deployed origin exclusion, and worker-crossing reauthorization remain pending.",
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 29,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -148,6 +148,16 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "pilot_final_source_checkpoint": {
+      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "functional_prs": [
+        991,
+        992,
+        993
+      ],
+      "whole_spec_complete": false
+    },
     "pilot_ingress_authority_audit": {
       "evidence": [
         "apps/web/server/_core/context.ts",
@@ -182,9 +192,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
     "integrated": true,
-    "integrated_at": "2026-10-10T09:48:45Z"
+    "integrated_at": "2026-10-16T14:43:34Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -439,7 +449,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:19:10.715129Z",
+  "updated_at": "2026-10-16T14:49:24.282659Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -522,6 +532,18 @@
       }
     ],
     "freshness": "FRESH",
+    "pilot_final_scoped_check": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "evidence_section": "finalVerification",
+      "limits": "Focused mocks/loopback, no fullbuild/typecheck/liveUAT or wholeSPEC closure.",
+      "outcome": "PASS",
+      "profile": "package",
+      "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "spec_subset_tests_passed": 31,
+      "test_files_total": 15,
+      "tests_failed_total": 0,
+      "tests_passed_total": 136
+    },
     "pilot_post_pr991_focused": {
       "commandScope": [
         "server/routers/appIdentity.test.ts",
@@ -548,6 +570,13 @@
       "signal": null,
       "sourceSha": "b74c302765d0e343869c4c53d724204a77275e78",
       "startedAtEpochMs": 1792160248306
+    },
+    "pilot_postintegration_obligations": {
+      "focused_check": "PASS136/136on45aee6ae",
+      "full_build": "NOT_RUN_NO_RESOURCE_ADMISSION_OR_RELEASE_SCOPE",
+      "full_typecheck": "NOT_RUN_FORBIDDEN_IN_SHARED_SESSION",
+      "live_acceptance": "PENDING_SPEC_SPECIFIC_AUTHORIZED_RUNTIME",
+      "workspace_sync": "DIRTY_PRIMARY_WORK_PRESERVED; noreset/clean/worktree removal"
     },
     "required_profiles": [],
     "sha": "056922d71912f5bededd06d173a9e57580a9fcb9",

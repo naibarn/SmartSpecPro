@@ -28,3 +28,7 @@
 {"changes": ["implementation.pilot_validation_repair_checkpoint"], "event_type": "CURRENT_TRANSITION", "generation": 27, "observed_at": "2026-10-16T14:00:32.880305Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.next_action", "implementation.pilot_ingress_authority_audit"], "event_type": "CURRENT_TRANSITION", "generation": 28, "observed_at": "2026-10-16T14:18:22.056605Z", "provenance": "OBSERVED"}
 {"changes": ["verification.pilot_post_pr991_focused"], "event_type": "CURRENT_TRANSITION", "generation": 29, "observed_at": "2026-10-16T14:19:10.715129Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.next_ready_workunit", "verification.pilot_final_scoped_check"], "event_type": "CURRENT_TRANSITION", "generation": 30, "observed_at": "2026-10-16T14:47:01.194437Z", "provenance": "OBSERVED"}
+{"changes": ["implementation.pilot_final_source_checkpoint", "verification.pilot_postintegration_obligations"], "event_type": "CURRENT_TRANSITION", "generation": 31, "observed_at": "2026-10-16T14:47:01.215619Z", "provenance": "OBSERVED"}
+{"changes": ["integration.canonical_sha", "integration.integrated", "integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 32, "observed_at": "2026-10-16T14:48:25.238649Z", "provenance": "OBSERVED"}
+{"changes": ["verification.pilot_final_scoped_check"], "event_type": "CURRENT_TRANSITION", "generation": 33, "observed_at": "2026-10-16T14:49:24.282659Z", "provenance": "OBSERVED"}
