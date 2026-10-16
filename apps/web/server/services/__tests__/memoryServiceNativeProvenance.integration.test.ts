@@ -42,6 +42,8 @@ describe("entity memory native PostgreSQL isolation", () => {
     await client.unsafe(`
       CREATE TABLE tenants (id varchar(36) PRIMARY KEY);
       CREATE TABLE users (id integer PRIMARY KEY);
+      CREATE TABLE conversations (id integer PRIMARY KEY, "userId" integer NOT NULL,
+        "tenantId" varchar(36), project_id varchar(100));
       CREATE TABLE assistant_teams (id varchar(36) PRIMARY KEY);
       CREATE TABLE team_rooms (id varchar(36) PRIMARY KEY);
       CREATE TABLE team_runs (id varchar(36) PRIMARY KEY);
@@ -58,7 +60,7 @@ describe("entity memory native PostgreSQL isolation", () => {
         id serial PRIMARY KEY, "userId" integer NOT NULL REFERENCES users(id),
         "personaId" varchar(36), "entityType" entity_type NOT NULL,
         "entityName" varchar(255) NOT NULL, facts json NOT NULL DEFAULT '[]',
-        "sourceConversationId" integer, "projectId" varchar(100), confidence numeric(3,2) DEFAULT 0.8,
+        "sourceConversationId" integer REFERENCES conversations(id), "projectId" varchar(100), confidence numeric(3,2) DEFAULT 0.8,
         "lastAccessedAt" timestamptz DEFAULT now(), importance integer DEFAULT 5,
         source varchar(20) DEFAULT 'auto', "reinforcementCount" integer DEFAULT 1,
         "createdAt" timestamptz NOT NULL DEFAULT now(), "updatedAt" timestamptz NOT NULL DEFAULT now());
@@ -69,6 +71,7 @@ describe("entity memory native PostgreSQL isolation", () => {
     await client.unsafe(`
       INSERT INTO tenants VALUES ('tenant-a'), ('tenant-b');
       INSERT INTO users VALUES (7), (8);
+      INSERT INTO conversations VALUES (11, 7, 'tenant-a', 'project-a'), (22, 8, 'tenant-b', 'project-b');
       INSERT INTO assistant_teams VALUES ('team-a'), ('team-b');
       INSERT INTO team_rooms VALUES ('room-a'), ('room-b');
       INSERT INTO team_runs VALUES ('run-a');
@@ -199,5 +202,24 @@ describe("entity memory native PostgreSQL isolation", () => {
     expect(merged.facts).toEqual(["Uses a weekly release cycle", "Uses a monthly review cycle"]);
     expect((await getEntityMemoriesForContext(7, 100, null, null)).map(row => row.facts))
       .toEqual([["Prefers concise release notes"]]);
+  });
+
+  it("inherits project scope only from the owner's source conversation", async () => {
+    const saved = await upsertEntityMemory(7, "preference", "Release notes",
+      ["Uses a weekly release cycle"], 11, 5, "manual", undefined, null);
+    expect(saved.projectId).toBe("project-a");
+    expect(saved.sourceConversationId).toBe(11);
+  });
+
+  it.each([
+    { conversation: 22, project: undefined },
+    { conversation: 22, project: "project-a" },
+    { conversation: 404, project: undefined },
+    { conversation: 404, project: "project-a" },
+  ])("rejects unavailable source provenance before writing %j", async ({ conversation, project }) => {
+    await expect(upsertEntityMemory(7, "preference", "Release notes",
+      ["Uses a weekly release cycle"], conversation, 5, "manual", project, null))
+      .rejects.toThrow("Source conversation is not available to this user");
+    expect(await client`SELECT id FROM entity_memories`).toHaveLength(0);
   });
 });

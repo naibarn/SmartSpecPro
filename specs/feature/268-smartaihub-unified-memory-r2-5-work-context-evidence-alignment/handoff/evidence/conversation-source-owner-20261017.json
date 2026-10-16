@@ -1,0 +1,93 @@
+{
+  "workunit_id": "SPEC268_CONVERSATION_SOURCE_OWNER_GUARD",
+  "spec_id": "268",
+  "requirement_ids": [
+    "REQ-D4427964FE28",
+    "REQ-427F51C6939B"
+  ],
+  "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+  "writable_paths": [
+    "apps/web/server/services/memoryService.ts",
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+    "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json"
+  ],
+  "runtime": "Existing private owned native PostgreSQL fixture, direct bounded Debian focused acceptance; no production/shared DB/provider/migration",
+  "acceptance": [
+    "Foreign or missing sourceConversationId cannot confer Project identity or persist as provenance",
+    "Explicit Project cannot bypass source conversation ownership",
+    "Owned conversation still supplies existing Project/persona defaults",
+    "Existing native source-ledger/isolation and persona tests pass"
+  ],
+  "test_command": "pnpm exec vitest run server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts server/services/__tests__/memoryPersonaRouting.test.ts --maxWorkers=1",
+  "dependency_evidence": [
+    "Public protected memory.upsertEntityMemory forwards caller-provided sourceConversationId",
+    "Current service resolves by conversation id alone and skips lookup with explicit Project",
+    "PR995 merged; no active application code ownership overlaps; PR996 handoff edits remain serialized until merge"
+  ],
+  "decision": "Prove this source ownership defect with real SQL, then require owner-filtered source lookup; retain best-effort persona fallback and existing explicit Project semantics. Do not reattribute historical data or widen canonical App authority.",
+  "status": "INDEPENDENTLY_VERIFIED_READY_FOR_INTEGRATION",
+  "job_id": null,
+  "run_id": null,
+  "new_sdk_calls": 0,
+  "host_model_usage": "UNKNOWN",
+  "baseline": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "profile": "integration",
+    "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "started": 1792177620.404202,
+    "ended": 1792177625.6919053,
+    "exit": 1,
+    "max_rss_kib": 310188,
+    "fixture": "includes actual sourceConversationId -> conversations FK"
+  },
+  "verification": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "--maxWorkers=1"
+    ],
+    "profile": "integration",
+    "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "started": 1792177680.659802,
+    "ended": 1792177687.1239476,
+    "exit": 0,
+    "max_rss_kib": 308980
+  },
+  "baseline_results": "12pass4fail: both foreign owned-by-user8 sources wrongly accepted; missing sources fail only via real FK with wrong boundary error. Initial fixture without FK also accepted missing sources; that fixture was corrected before source fix.",
+  "fixed_results": "3files26/26 (native16+provenance2+persona8)",
+  "source_branch": "codex/spec268-conversation-source-scope-20261017",
+  "independent_review": {
+    "agent": "/root/spec161_validation_scout",
+    "requested_model": "gpt-6-luna",
+    "effective_model": "UNVERIFIED",
+    "outcome": "PASS no concrete defect; exact file hashes inspected",
+    "limits": "User ownership only, not canonical tenant membership; explicit-project persona inference guard inspected but no direct assertion"
+  },
+  "files_modified": [
+    "apps/web/server/services/memoryService.ts",
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
+  ],
+  "remaining": [
+    "Canonical tenant/App context authorization across all boundaries remains partial",
+    "Existing potentially mixed historical rows are not automatically reattributed",
+    "No production migration, room-memory enablement or provider use authorized"
+  ],
+  "file_sha256": {
+    "apps/web/server/services/memoryService.ts": "6f53319a698dded0bf3471e347beb213c62b5c63db35df18c44d1178f67de7b0",
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "27e5b44068899de34537ba6d73e5f8a1a23266709585faa36699a66698805ded"
+  },
+  "owned_commit_sha": "2440a3fd83584efc4a70d5c4c965ae74ab16de16",
+  "pending_action": "Normal protected PR and required checks, guarded merge, canonical verification; shared manifest/ledger transition serialized after PR996."
+}

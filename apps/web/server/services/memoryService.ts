@@ -1376,29 +1376,35 @@ export async function upsertEntityMemory(
     throw new Error("All facts contained sensitive information and were filtered");
   }
 
-  // Resolve projectId from conversation if not provided
+  // A caller-supplied source must belong to the memory owner, even when the
+  // caller also supplies an explicit project. Only then may it supply defaults.
   let resolvedProjectId = projectId ?? null;
   let resolvedPersonaId = personaId;
-  if (!resolvedProjectId && sourceConversationId) {
-    try {
-      const [conv] = await db
-        .select({ projectId: conversations.projectId, tenantId: conversations.tenantId })
-        .from(conversations)
-        .where(eq(conversations.id, sourceConversationId))
-        .limit(1);
-      resolvedProjectId = conv?.projectId ?? null;
+  if (sourceConversationId != null) {
+    const needsConversationDefaults = !resolvedProjectId;
+    const [conv] = await db
+      .select({ projectId: conversations.projectId, tenantId: conversations.tenantId })
+      .from(conversations)
+      .where(and(
+        eq(conversations.id, sourceConversationId),
+        eq(conversations.userId, userId),
+      ))
+      .limit(1);
+    if (!conv) throw new Error("Source conversation is not available to this user");
+    if (!resolvedProjectId) resolvedProjectId = conv.projectId ?? null;
 
-      if (resolvedPersonaId === undefined) {
+    if (needsConversationDefaults && resolvedPersonaId === undefined) {
+      try {
         const personaContext = await resolveActivePersonaContext({
           db,
           conversationId: sourceConversationId,
           userId,
-          tenantId: conv?.tenantId ?? null,
+          tenantId: conv.tenantId ?? null,
           persistNicknameSelection: false,
         });
         resolvedPersonaId = personaContext.storedPersonaId;
-      }
-    } catch {}
+      } catch {}
+    }
   }
 
   if (resolvedPersonaId === undefined) {
