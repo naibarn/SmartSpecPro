@@ -17,7 +17,7 @@ async function makeContinuationFixture(scopeExpiresAt: number, maxAttempts = 2) 
   const evidenceDir = path.join(evidenceRoot, runId);
   await mkdir(evidenceDir, { recursive: true });
   const binding = {
-    contractVersion: "developer.fast_lane.v1" as const,
+    contractVersion: "developer-fast-lane-v1" as const,
     runId,
     workerJobId: "job-1",
     tenantId: "tenant-1",
@@ -28,7 +28,7 @@ async function makeContinuationFixture(scopeExpiresAt: number, maxAttempts = 2) 
       task: "Continue within the original scope",
       allowedFiles: ["src/main.py"],
       writableFiles: ["src/main.py"],
-      tests: { runner: "pytest", cwd: ".", paths: ["src/main.py"] },
+      tests: { runner: "pytest" as const, cwd: ".", paths: ["src/main.py"] },
       acceptanceCriteria: ["Retain the original source baseline"],
       budget: { maxAttempts, implementationMaxTurns: 2, planMaxTurns: 1, reviewMaxTurns: 1 },
       scopeTtlSeconds: 3600,
