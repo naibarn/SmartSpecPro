@@ -48,11 +48,11 @@
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Source provenance implementation is integrated in PR #875 / Main 757a5750f00e916ed84801c6024bebdc814e60f9. Keep persistent team-room memory disabled. Next SPEC-268 proof: direct non-production source-ledger tenant/project/active-membership isolation acceptance and runtime migration rehearsal under authorized environment; do not migrate production. The independent SPEC-308 canonical build and tenant-route acceptance remains the next priority development outcome.",
-    "next_ready_workunit": "SPEC268_TEAM_ROOM_MEMORY_SOURCE_ISOLATION_ACCEPTANCE",
-    "reactivation_predicate": "Resume source-ledger acceptance when an approved disposable non-production DB/Runner is available; continue independent authorized development without waiting. Do not use production or expired grants.",
+    "next_action": "Resume SAME Job 1b91631e1e114bb1eb50c14942245b89 / Run 343227ad-c067-54f6-a35c-ae056fecff14 after default budget refill at 2026-10-16T14:00:00Z or explicitly approved trusted admission ceiling change. Current 500000/hour unchanged; owner budget request pending. Keep scope, Luna-only policy, prior threads/turns and canonical job identity immutable. Other SPEC gaps remain as recorded.",
+    "next_ready_workunit": "SPEC268_SCOPED_RECALL_EXPIRY",
+    "reactivation_predicate": "Fresh model admission succeeds under existing ceilings after refill, or valid owner-specific admission authorization for these exact two Jobs is received.",
     "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
-    "waiting_predicate": "Only SPEC-268 direct isolated acceptance requiring an approved disposable non-production DB/Runner is waiting; ordinary implementation, focused tests, and other Specs remain executable."
+    "waiting_predicate": "Canonical Job waiting_external reason=budget, all prior model reservations released with known usage. Scope/budget expansion not authorized."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 27,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -180,6 +180,16 @@
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
+    "pilot_workunit": {
+      "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "id": "SPEC268_SCOPED_RECALL_EXPIRY",
+      "job_id": "1b91631e1e114bb1eb50c14942245b89",
+      "owner": "Codex conductor",
+      "request_file": "/tmp/smartaihub-backlog-pilot/SPEC268_SCOPED_RECALL_EXPIRY.request.json",
+      "run_id": "343227ad-c067-54f6-a35c-ae056fecff14",
+      "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+      "state": "WAITING_BUDGET"
+    },
     "pr_head_sha": "c834ddcee771fd5c2c9d230b9689fd2c51e61d52",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
     "source_paths": [
@@ -391,7 +401,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T09:37:41.425276Z",
+  "updated_at": "2026-10-16T13:24:58.476198Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
@@ -403,7 +413,14 @@
       "https://github.com/naibarn/SmartSpecPro/pull/875",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38230513926",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38230513958",
-      "https://github.com/naibarn/SmartSpecPro/commit/757a5750f00e916ed84801c6024bebdc814e60f9"
+      "https://github.com/naibarn/SmartSpecPro/commit/757a5750f00e916ed84801c6024bebdc814e60f9",
+      {
+        "kind": "AUTONOMOUS_BACKLOG_PILOT_CHECKPOINT",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+        "scope": "Expiry recall WorkUnit Job 1b91631e1e114bb1eb50c14942245b89 / Run 343227ad-c067-54f6-a35c-ae056fecff14; actual Luna planning/implementation, WAITING_BUDGET, no patch yet. #875 was already merged.",
+        "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+        "status": "PARTIAL"
+      }
     ],
     "freshness": "Exact PR source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52 merged as 757a5750f00e916ed84801c6024bebdc814e60f9. Focused Vitest 6 files / 88 tests passed locally; progressive_integration_gate and mocked SPEC-308 browser simulation passed on actual PR head; build-preview skipped. Canonical build on previous Main 2ea4e3905cedce99d7986021e13d6aea69db174a passed with global mascot gate OFF but became stale when Main advanced; no production migration or memory enablement.",
     "required_profiles": [
