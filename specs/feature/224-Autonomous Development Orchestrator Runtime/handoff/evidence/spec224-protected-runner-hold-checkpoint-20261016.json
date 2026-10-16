@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "spec224.protected-runner-hold-checkpoint.v1",
+  "observedAt": "2026-10-16T00:40:24Z",
+  "workUnit": "SPEC224_REAL_RUNNER_ACCEPTANCE",
+  "phase": "PRE_DISPATCH_WAITING_EXTERNAL_AUTHORITY",
+  "canonicalSource": {
+    "ref": "refs/heads/main",
+    "sha": "a5a368346942b803ba1c6a2693e51acc141490ef",
+    "verifiedBy": "GitHub main ref and canonical-checkout-sync test source lease"
+  },
+  "ownership": {
+    "worktree": "/mnt/SmartSpecDev/.tmp/spec224-runner-gate-recheck-20261016-ec72",
+    "branch": "codex/spec224-protected-runner-hold-20261016-a5",
+    "headSha": "a5a368346942b803ba1c6a2693e51acc141490ef",
+    "primaryCheckoutModified": false,
+    "ownedPaths": [
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-protected-runner-hold-checkpoint-20261016.json"
+    ]
+  },
+  "acceptanceStatus": {
+    "protectedRunnerLive": "WAITING_EXTERNAL_AUTHORITY",
+    "developerFastLaneLive": "SEPARATE_WORKSTREAM_NOT_ASSESSED",
+    "hostedMiniAppFunctional": "SEPARATE_WORKSTREAM_NOT_ASSESSED",
+    "canonicalSpec224": "COMPLETION_INELIGIBLE"
+  },
+  "latestVerifiedEvidence": {
+    "disposablePostgresPreflight": "23/23 passed; fixture/integration preflight only",
+    "processBoundaryRecovery": "5/5 passed on isolated database; not live Runner",
+    "injectedClockMultiDay": "2 cases passed; not live quota reset",
+    "realAgentsSdkCodexTurn": "NOT_RUN",
+    "protectedRunnerReceipt": "NOT_AVAILABLE",
+    "durableUsageSettlement": "NOT_VERIFIED",
+    "independentFinalVerification": "NOT_RUN",
+    "liveProviderCallsThisCheckpoint": 0
+  },
+  "observations": {
+    "runnerService": {
+      "state": "inactive",
+      "enabled": "not-found",
+      "processRunning": false
+    },
+    "installedRunner": {
+      "version": "0.2.23",
+      "reportedState": "ready",
+      "toolCount": 11,
+      "readyToolCount": 0,
+      "codexTrust": "discovered",
+      "codexAuth": "unknown",
+      "codexAvailability": "unknown",
+      "codexReasonCodes": [
+        "probe_required"
+      ],
+      "binaryProvenance": "unverified"
+    },
+    "localCodexLogin": "logged_in_locally; does not prove Runner adapter authentication or grant",
+    "controlPlane": {
+      "environment": "local development smartspec database; read-only queries",
+      "runnerCounts": {
+        "onlineTrusted": 13,
+        "degradedTrusted": 1,
+        "revoked": 1,
+        "freshHeartbeatsWithinFiveMinutes": 0,
+        "unrevokedUnexpiredCapabilitySnapshots": "not recounted this checkpoint; previous read-only observation at 2026-10-16T00:12:14Z was 0"
+      },
+      "activeSpec224RecoveryGrants": 0,
+      "matchingSpec224WorkerJobsObserved": 0
+    },
+    "resources": {
+      "legacyD385Container": {
+        "name": "spec224-d385-pg",
+        "state": "stopped",
+        "network": "spec224-d385-net",
+        "volume": "spec224-d385-pgdata",
+        "currentRunOwnership": "not established",
+        "usedOrRestarted": false
+      },
+      "otherDisposablePostgres": {
+        "name": "codex-spec224-safe-pg-fca1d657",
+        "workUnit": "spec224-safe-postgres-admission",
+        "used": false
+      }
+    }
+  },
+  "blocker": {
+    "id": "SPEC224-PROTECTED-RUNNER-AUTHORITY-20261016",
+    "classification": [
+      "AUTHORITY",
+      "RUNTIME"
+    ],
+    "rootCause": "No registered non-production Runner has a fresh verified Codex capability snapshot, and no active owner-issued SPEC-224 recovery grant is present in the inspected local development control plane. The installed service is inactive. Local Codex login does not satisfy Runner authentication or protected dispatch authorization.",
+    "doNotRepeatUntil": "A new owner-issued Runner registration/capability snapshot or recovery grant is observable; do not repeat identical readiness probes or dispatch attempts before then."
+  },
+  "singleOwnerActionRequest": {
+    "audience": "authorized non-production Runner owner and authenticated tenant owner",
+    "request": "Using the existing registration/pairing and approval procedures, make one non-production Runner available on profile spec224-recovery-registered-runner-nonprod with a fresh heartbeat and unexpired capability snapshot showing the Codex adapter (codex.v1) trusted, ready, and authenticated; then have the tenant owner issue one existing SPEC-224 recovery grant through the authenticated approvals API for a single DevelopmentRun/job/attempt. Bind it to the exact tenant, Runner identity/session, capability snapshot id/revision, current canonical source SHA and source manifest, workspace, allowed operations, current lease/fencing token, cost/resource budget, expiry and revocation state. Deliver the existing profile/Runner/grant identifiers and short-lived credential only through the approved secret channel; do not paste credentials into chat or widen authorization.",
+    "existingIssuer": "python-backend/app/api/approvals.py::issue_spec224_recovery_grant",
+    "existingProfile": "spec224-recovery-registered-runner-nonprod",
+    "credentialChannel": "approved secret injection only"
+  },
+  "resumePredicate": {
+    "all": [
+      "fetch origin/main and bind the run to its exact current SHA and source tree/digests",
+      "owner-authorized non-production Runner registration is active and its heartbeat is within the configured freshness window",
+      "Runner protocol/version is supported and the capability snapshot is unexpired, unrevoked, tenant-bound, workspace-bound, and reports codex.v1 trusted/ready/authenticated",
+      "existing owner-issued SPEC-224 recovery grant is active, unrevoked, unexpired, and exactly bound to tenant, one DevelopmentRun/job/attempt, Runner/session/snapshot, source/workspace, allowed operations and budget",
+      "dispatch lease and fencing token are current and the approved credential is injected through the secret channel",
+      "no active duplicate attempt exists; reuse the existing SPEC-224 WorkUnit and dispatch once idempotently"
+    ],
+    "then": "Run registered Runner E2E, one real Agents SDK + Codex turn, process crash/restart/resume, receipt reconciliation, usage settlement readback, and Independent Final Verification. Keep fixture and injected-clock evidence separate from live evidence.",
+    "automaticResumeConfigured": false,
+    "resumeRequires": "owner prerequisites to become observable and a new authorized execution session; no background scheduler was found for this goal"
+  },
+  "crossSession": {
+    "revision22": {
+      "pullRequest": 978,
+      "state": "OPEN",
+      "ownership": "Developer Fast Lane / Final Verify Provenance; not modified"
+    },
+    "revision24": {
+      "pullRequest": 961,
+      "state": "OPEN",
+      "ownership": "Mini App Factory; not modified"
+    }
+  },
+  "nextAction": "Wait only for the owner action above. On a changed prerequisite, perform one fresh binding check against the latest canonical SHA and proceed with the single authorized dispatch. Do not repeat readiness scans or treat this checkpoint/PR/fixture evidence as acceptance."
+}
