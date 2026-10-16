@@ -710,6 +710,10 @@ class CodexSubscriptionModel(Model):
         schema validation and the scoped patch tool still enforce both.
         """
         candidate = raw.rstrip()
+        if candidate.endswith("*** End Patch"):
+            # The complete patch terminator is present; only JSON framing is
+            # missing. Close the field/object without inventing any patch text.
+            candidate += '"'
         if not candidate.endswith('"'):
             raise ValueError("Malformed patch_file arguments are not a complete string field")
         try:
