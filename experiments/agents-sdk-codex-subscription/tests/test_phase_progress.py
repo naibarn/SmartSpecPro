@@ -436,6 +436,34 @@ with fixture.open_bounded(plan=1) as store:
                 with self.assertRaises(run_spec_workunit.BoundedTurnBudgetExceeded):
                     run_spec_workunit.bounded_fast_lane_turns(store)
 
+    def test_real_sdk_capacity_wait_before_first_response_preserves_first_credit(self):
+        from agents import Agent, set_tracing_disabled
+        from codex_model import CodexSubscriptionModel
+        from test_model_admission import FakeAdmission, ModelAdmissionTests
+        set_tracing_disabled(True)
+        admission = FakeAdmission({"kind": "waiting_capacity", "operationKey": "first", "nextEligibleAt": "2030-01-01T00:00:00Z"})
+        dispatches = []
+        def agent(store):
+            model = CodexSubscriptionModel(codex_cwd=self.evidence, role="planner", on_receipt=lambda _r: None,
+                store=store, phase_id=store.phase_id("planning"), routing={"profile": "GENERAL"}, admission=admission)
+            def respond(*_args, **_kwargs):
+                dispatches.append("turn-1")
+                return json.dumps({"action": "final", "name": None, "arguments_json": "", "text": "done"}), {
+                    "threadId": "thread", "turnId": "turn-1", "usage": {"total": {"inputTokens": 3, "cachedInputTokens": 0, "outputTokens": 1}}}
+            model._run_codex_turn = respond
+            return Agent(name="First pending SDK", instructions="Finish.", model=model)
+        with patch.dict(sys.modules, {"openai_codex": ModelAdmissionTests.fake_sdk()}):
+            store = self.open_bounded(plan=1)
+            with self.assertRaises(SystemExit):
+                run_spec_workunit.run_phase(store, "planning", 0, agent(store), "plan", 1)
+            self.assertEqual(dispatches, [])
+            admission.decision = {"kind": "reserved", "operationKey": "first"}
+            with self.open_bounded(plan=1) as store:
+                result = run_spec_workunit.run_phase(store, "planning", 0, agent(store), "ignored", 1)
+                self.assertEqual(result.final_output, "done")
+                self.assertEqual(dispatches, ["turn-1"])
+                self.assertEqual(run_spec_workunit.bounded_fast_lane_turns(store).counts()[store.phase_id("planning")], 1)
+
     def test_real_sdk_budget_wait_resumes_pending_turn_at_exact_cap_with_same_identity(self):
         from agents import Agent, function_tool, set_tracing_disabled
         from codex_model import CodexSubscriptionModel

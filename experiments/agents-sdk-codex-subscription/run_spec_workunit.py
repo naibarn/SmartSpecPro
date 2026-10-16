@@ -996,8 +996,10 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                 if type(prior_limit) is int and checkpoint.get("current_turn", 0) > prior_limit:
                     checkpoint["current_turn"] = budget.counts().get(phase_id, 0)
                 responses = checkpoint.get("model_responses")
+                if "model_responses" in checkpoint and responses is None and checkpoint.get("last_model_response") is None:
+                    responses = []  # A capacity/admission error before the first response.
                 step = checkpoint.get("current_step") or {}
-                if (isinstance(responses, list) and step.get("type") == "next_step_run_again"
+                if (isinstance(responses, list) and step.get("type") in {None, "next_step_run_again"}
                         and len(responses) < checkpoint.get("current_turn", 0)):
                     # The SDK increments before calling the adapter. Admission or
                     # reconciliation can interrupt that turn without a response.

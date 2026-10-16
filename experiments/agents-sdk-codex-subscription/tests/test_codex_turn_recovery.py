@@ -40,6 +40,10 @@ class CodexTurnRecoveryTests(unittest.TestCase):
             changed = self.instruction([{"role": "user", "content": "changed goal"}])
             self.assertEqual(_model_call_for_instruction(store, "phase", "planner", changed, "new-operation"), ("new-operation", None, None))
             self.assertEqual(store.connection.execute("SELECT COUNT(*) FROM model_calls").fetchone()[0], 2)
+            store.update_model_call("old-reordered-duplicate", event="test.ambiguous", stable_suffix="bound", status="thread_started", thread_id="other-thread")
+            from model_admission import ModelAdmissionDenied
+            with self.assertRaisesRegex(ModelAdmissionDenied, "multiple provider-bound identities"):
+                _model_call_for_instruction(store, "phase", "planner", restored, "replacement")
 
     def test_reused_thread_sends_only_new_input_when_persisted_history_is_an_exact_prefix(self):
         previous = [{"role": "user", "content": "goal"}, {"type": "function_call", "call_id": "1"}]

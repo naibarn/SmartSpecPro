@@ -155,6 +155,8 @@ def _model_call_for_instruction(store: DurableRunStore, phase_id: str, role: str
     # an unresolved thread. Prefer the original operation with provider evidence;
     # never replace or rewrite either historical selection.
     bound = [row for row in matching if row.get("thread_id") or row.get("turn_id")]
+    if len(bound) > 1:
+        raise ModelAdmissionDenied("Equivalent requests have multiple provider-bound identities; reconciliation required")
     latest = bound[-1] if bound else matching[-1]
     if (latest.get("status") == "provider_capacity_rejected" and
             not latest.get("thread_id") and not latest.get("turn_id")):
