@@ -52,7 +52,7 @@
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": "Resume SAME Job 5ae456af45d6d64140f8fe6009be2057 / Run ae98ece6-69f1-5e78-a33e-79123e2ed607 after default budget refill at 2026-10-16T14:00:00Z or explicitly approved trusted admission ceiling change. Current 500000/hour unchanged; owner budget request pending. Keep scope, Luna-only policy, prior threads/turns and canonical job identity immutable. Other SPEC gaps remain as recorded.",
+    "next_action": "Promote reviewed source guard checkpoint. Canonical Job 5ae456af45d6d64140f8fe6009be2057 remains WAITING_AUTHORIZATION until exact SDK continuation approval. Dependency links repaired; code tests pass. Do not recreate Job or replay settled turns.",
     "next_ready_workunit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
     "reactivation_predicate": "Fresh model admission succeeds under existing ceilings after refill, or valid owner-specific admission authorization for these exact two Jobs is received.",
     "resume_point": "Phase 1 runtime slice integrated by PR #451 at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Focused tests pass; run direct identity/ingress acceptance independently. Phase 2 durable receipt WorkUnit is specified in orchestra/tasks/smartaihub-marathon-r3-20261010/phase2-durable-project-receipt.md and awaits schema-owner assignment plus explicit migration approval.",
@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 29,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -155,6 +155,18 @@
       "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248"
     ],
     "mapping": [],
+    "pilot_source_checkpoint": {
+      "canonical_job_acceptance": "WAITING_AUTHORIZATION_SDK_TURN_BUDGET",
+      "direct_verify": "33 tests + resolver scoped compile pass",
+      "independent_review": "PASS",
+      "job_id": "5ae456af45d6d64140f8fe6009be2057",
+      "run_id": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+      "scope": [
+        "apps/web/server/services/canonicalProjectContextResolver.ts",
+        "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts"
+      ],
+      "workunit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE"
+    },
     "pilot_validation_checkpoint": {
       "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
       "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
@@ -162,6 +174,14 @@
       "merge_verified": true,
       "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
       "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+    },
+    "pilot_validation_repair_checkpoint": {
+      "canonical_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+      "head_sha": "545ff88a49907839ff09fb7c13c34630ca97295e",
+      "merge_tree_matches_head": true,
+      "merge_verified": true,
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/990",
+      "scope": "SPEC304 test assertion repair and validation-only SPEC302 REQ-5FCEBAF7DDBD evidence; functional coding jobs remain open."
     },
     "pilot_workunit": {
       "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
@@ -271,6 +291,44 @@
       "value": "HIGH"
     },
     "requirements": {
+      "REQ-408D3F532E4C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L30"
+        ],
+        "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L30",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+            "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
+            "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
+            "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Unknown source advisory bypass fixed in reviewed checkpoint; verify canonical Job final acceptance after scoped SDK approval. Durable write/Phase2 ambiguity guarantees remain guarded and need separate evidence.",
+        "requirement_digest": "865492a68414082ae2c357bc44882559551078d7075d1c042e2af9374c1bcd3a",
+        "requirement_id": "REQ-408D3F532E4C",
+        "requirement_text": "7. Ambiguous or unresolved project context MUST fail closed for durable shared writes and high-impact actions.",
+        "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+            "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
+            "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
+            "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+            "status": "PASS_SCOPED"
+          }
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
       "REQ-5FCEBAF7DDBD": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -467,7 +525,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 4,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -476,7 +534,7 @@
     "unresolved": 10
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:53:02.932597Z",
+  "updated_at": "2026-10-16T14:03:58.763505Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -555,6 +613,13 @@
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-project-authority-validation-20261016.json",
         "scope": "27 resolver/receipt tests pass on exact canonical code. Independent review confirms similarity cannot select durable destination in active Phase1; other requirements remain separate.",
         "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+        "status": "PASS_SCOPED"
+      },
+      {
+        "kind": "EXACT_LUNA_SOURCE_GUARD_CHECKPOINT",
+        "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
+        "scope": "Exact independently reviewed two-file patch rejects unknown/prototype evidence; 33 resolver/authority tests and one-file semantic compile pass. Canonical Job remains WAITING_AUTHORIZATION; no Job final verify claim.",
+        "source_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
         "status": "PASS_SCOPED"
       }
     ],

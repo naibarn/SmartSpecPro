@@ -190,6 +190,41 @@ describe("resolveCanonicalProjectContext", () => {
     expect(result).not.toHaveProperty("canonicalProjectId");
   });
 
+  it.each(["unknown_source", "", "__proto__", "constructor", "toString"])
+  ("rejects unrecognized source %j", (source) => {
+    const invalidBinding = binding(
+      source as CanonicalProjectBindingEvidence["source"],
+      "invalid-project",
+    );
+    const result = resolveCanonicalProjectContext({ context, bindings: [invalidBinding] });
+
+    expect(result.state).toBe("UNRESOLVED");
+    expect(result.ignoredEvidenceCount).toBe(1);
+    expect(result).not.toHaveProperty("canonicalProjectId");
+    expect(result).not.toHaveProperty("authoritativeSource");
+  });
+
+  it("ignores invalid source evidence without changing a valid advisory resolution", () => {
+    const validBinding = binding("domain_binding", "project-valid");
+    const invalidBinding = binding(
+      "constructor" as CanonicalProjectBindingEvidence["source"],
+      "project-invalid",
+    );
+    const result = resolveCanonicalProjectContext({
+      context,
+      bindings: [invalidBinding, validBinding],
+    });
+
+    expect(result).toMatchObject({
+      state: "RESOLVED_CONTEXTUAL",
+      canonicalProjectId: "project-valid",
+      authoritativeSource: "domain_binding",
+      ignoredEvidenceCount: 1,
+      advisory: true,
+      authorizationRequired: true,
+    });
+  });
+
   it("requires tenant and principal context", () => {
     expect(() => resolveCanonicalProjectContext({
       context: { ...context, tenantId: " " },
