@@ -105,6 +105,12 @@ class ModelDispatchTests(unittest.TestCase):
         expected = {"path": "src/a.ts", "patch": patch_text}
         raw = json.dumps(expected, separators=(",", ":"))[:-2]
         self.assertEqual(CodexSubscriptionModel._recover_patch_file_arguments(raw), expected)
+        def patch_file(path: str, patch: str) -> str:
+            """Apply the declared scoped patch."""
+            return path
+        dispatch = json.dumps({"action": "call_tool", "name": "patch_file", "arguments_json": raw, "text": None})
+        item = CodexSubscriptionModel._parse_dispatch(dispatch, [function_tool(patch_file)], [], identity="complete-patch")
+        self.assertEqual(json.loads(item.arguments), expected)
         with self.assertRaises(ValueError):
             CodexSubscriptionModel._recover_patch_file_arguments(raw.removesuffix("*** End Patch"))
 
