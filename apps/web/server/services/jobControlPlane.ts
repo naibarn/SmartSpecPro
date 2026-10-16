@@ -1234,6 +1234,9 @@ export async function createCanonicalJobInTransaction(input: {
       : input.definition;
   const safeRetryPolicy = withSafeWorkerJobDeadline({
     jobType: normalizedDefinitionBase.jobType,
+    contractVersion: normalizedDefinitionBase.contractVersion,
+    tenantId: normalizedDefinitionBase.tenantId,
+    requestedByUserId: normalizedDefinitionBase.requestedByUserId,
     runtimeType: input.options?.runtimeType ?? "node_job_worker",
     executionClass: normalizedDefinitionBase.executionClass,
     inputJson: normalizedDefinitionBase.input,
@@ -3772,6 +3775,9 @@ export function createJobControlPlane(
         const now = new Date();
         const effectiveDeadlineMs = await getEffectiveWorkerJobDeadlineMs({
           jobType: job.jobType,
+          contractVersion: job.contractVersion,
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
           runtimeType: job.runtimeType,
           executionClass: job.executionClass,
           input: job.inputJson ?? {},
@@ -6919,6 +6925,9 @@ export function createJobControlPlane(
           return "ignored";
         const deadlineMs = await getEffectiveWorkerJobDeadlineMs({
           jobType: job.jobType,
+          contractVersion: job.contractVersion,
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
           runtimeType: job.runtimeType,
           executionClass: job.executionClass,
           input: job.inputJson ?? {},
@@ -6996,6 +7005,9 @@ export function createJobControlPlane(
           return "ignored";
         const effectiveDeadlineMs = await getEffectiveWorkerJobDeadlineMs({
           jobType: job.jobType,
+          contractVersion: job.contractVersion,
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
           runtimeType: job.runtimeType,
           executionClass: job.executionClass,
           input: job.inputJson ?? {},

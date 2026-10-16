@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
+import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB, DEVELOPER_FAST_LANE_DEADLINE_MS } from "./spec224DeveloperFastLaneContract";
 
 export type JobFamily = "python" | "image" | "audio" | "video" | "general";
 export type FamilyDeadlineSetting = { retryMinutes: number; maxMinutes: number };
@@ -288,12 +289,40 @@ export async function getWorkerJobDeadlineDashboard() {
   };
 }
 
-export async function applyWorkerJobRetryDeadline<T extends {
+type DeadlineContractIdentity = {
+  contractVersion?: string;
+  tenantId?: string;
+  requestedByUserId?: number | null;
+};
+
+/** Classification only: gateway authentication and executor scope/lease checks still apply. */
+function isBoundDeveloperFastLane(input: DeadlineContractIdentity & {
+  jobType: string;
+  runtimeType?: string;
+  executionClass?: string;
+  input?: Record<string, unknown>;
+}): boolean {
+  const binding = input.input?.developerWorkUnit as Record<string, unknown> | undefined;
+  return input.jobType === DEVELOPER_FAST_LANE_JOB
+    && input.contractVersion === DEVELOPER_FAST_LANE_CONTRACT
+    && input.runtimeType === "node_job_worker"
+    && input.executionClass === "long"
+    && typeof input.tenantId === "string" && input.tenantId.length > 0
+    && Number.isSafeInteger(input.requestedByUserId) && Number(input.requestedByUserId) > 0
+    && binding?.contractVersion === DEVELOPER_FAST_LANE_CONTRACT
+    && binding.tenantId === input.tenantId
+    && binding.actorId === input.requestedByUserId;
+}
+
+export async function applyWorkerJobRetryDeadline<T extends DeadlineContractIdentity & {
   jobType: string;
   executionClass?: string;
   input: Record<string, unknown>;
   retryPolicy: { deadlineMs: number; deadlineMode?: "adaptive" | "fixed"; [key: string]: unknown };
 }>(definition: T, runtimeType: string): Promise<T> {
+  if (definition.retryPolicy.deadlineMode === "fixed" && isBoundDeveloperFastLane({ ...definition, runtimeType })) {
+    return { ...definition, retryPolicy: { ...definition.retryPolicy, deadlineMs: Math.min(definition.retryPolicy.deadlineMs, DEVELOPER_FAST_LANE_DEADLINE_MS) } };
+  }
   const family = inferJobFamily({ jobType: definition.jobType, runtimeType, executionClass: definition.executionClass, input: definition.input });
   const [settings, metrics] = await Promise.all([getWorkerJobDeadlineSettings(), getWorkerJobDeadlineMetrics()]);
   const metric = metrics.find(row => row.family === family) ?? null;
@@ -313,7 +342,7 @@ export async function applyWorkerJobRetryDeadline<T extends {
 }
 
 /** Resolve the current bounded deadline for legacy jobs that predate deadlineMode. */
-export function getEffectiveWorkerJobDeadlineMs(input: {
+export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity & {
   jobType: string;
   runtimeType?: string;
   executionClass?: string;
@@ -332,13 +361,16 @@ export function getEffectiveWorkerJobDeadlineMs(input: {
     // Give them the current safe starting deadline on the next reconciler pass.
     return Math.min(storedDeadlineMs, DEFAULT_WORKER_JOB_DEADLINE_SETTINGS.families[family].retryMinutes * 60_000);
   }
+  if (input.retryPolicy.deadlineMode === "fixed" && isBoundDeveloperFastLane(input)) {
+    return Math.min(storedDeadlineMs, DEVELOPER_FAST_LANE_DEADLINE_MS);
+  }
   // New adaptive definitions already persist their load-based recommendation;
   // fixed definitions remain bounded by a non-configurable family hard cap.
   return Math.min(storedDeadlineMs, HARD_MAX_DEADLINE_MINUTES[family] * 60_000);
 }
 
 /** Fail-safe deadline normalization for legacy insert paths that bypass CP.create. */
-export function withSafeWorkerJobDeadline<T extends {
+export function withSafeWorkerJobDeadline<T extends DeadlineContractIdentity & {
   jobType: string;
   runtimeType?: string;
   executionClass?: string;
@@ -356,7 +388,9 @@ export function withSafeWorkerJobDeadline<T extends {
   const stored = Number(policy.deadlineMs);
   const hasStored = Number.isFinite(stored) && stored > 0;
   const baselineMs = DEFAULT_WORKER_JOB_DEADLINE_SETTINGS.families[family].retryMinutes * 60_000;
-  const hardMaximumMs = HARD_MAX_DEADLINE_MINUTES[family] * 60_000;
+  const hardMaximumMs = isBoundDeveloperFastLane({ ...values, input: values.inputJson })
+    ? DEVELOPER_FAST_LANE_DEADLINE_MS
+    : HARD_MAX_DEADLINE_MINUTES[family] * 60_000;
   const deadlineMs = policy.deadlineMode === "fixed"
     ? Math.min(hasStored ? stored : baselineMs, hardMaximumMs)
     : Math.min(hasStored ? stored : baselineMs, baselineMs);
