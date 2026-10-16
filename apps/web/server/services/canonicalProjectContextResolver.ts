@@ -169,6 +169,7 @@ function bindingMatchesContext(
   binding: CanonicalProjectBindingEvidence,
   context: CanonicalProjectContextDimensions,
 ): boolean {
+  if (!Object.hasOwn(SOURCE_PRECEDENCE, binding.source)) return false;
   if (binding.tenantId !== context.tenantId) return false;
   for (const name of OPTIONAL_BINDING_DIMENSIONS) {
     const evidenceValue = binding[name];

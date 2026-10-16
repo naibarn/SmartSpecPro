@@ -1,0 +1,48 @@
+{
+  "workUnit": "SPEC302_REJECT_UNKNOWN_BINDING_SOURCE",
+  "jobId": "5ae456af45d6d64140f8fe6009be2057",
+  "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+  "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+  "integrationCandidateBaseSha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+  "files": {
+    "apps/web/server/services/canonicalProjectContextResolver.ts": "2b37d03ddef85756c028234ca622b250ec6aa2ad37b774aea41a7606cc6c1628",
+    "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts": "47a77cc00a54dd357d17a8593b2112303ee584226c753e173c1e103d38be5d95"
+  },
+  "codeBehavior": "Reject invalid runtime binding.source through own-key source allowlist, before project selection. Existing known source selection, advisory output and separate ACL remain.",
+  "independentReview": {
+    "reviewer": "/root/spec161_validation_scout",
+    "requestedModel": "gpt-6-luna",
+    "reasoningEffort": "medium",
+    "status": "PASS",
+    "scope": "Exact source hashes; unknown/prototype source rejection and mixed valid evidence regression; no ACL widening."
+  },
+  "directVerification": {
+    "profile": "quick",
+    "testFiles": 1,
+    "testPassed": 21,
+    "failed": 0,
+    "report": "/tmp/smartaihub-backlog-pilot/spec302-patch-direct-tests.json",
+    "limits": "Real service unit tests; DB/provider not involved."
+  },
+  "canonicalJobState": "WAITING_AUTHORIZATION_SDK_TURN_BUDGET",
+  "canonicalAcceptance": "NOT_COMPLETED: failed test startup due missing dependency links consumed repair turn budget; links now reused, exact direct21tests pass; existing server continuation authorization requested, not yet received.",
+  "integrationPolicy": "Safe useful exact reviewed code checkpoint may integrate before canonical Job final acceptance; Job remains open.",
+  "requirements": [
+    "REQ-408D3F532E4C",
+    "REQ-8D8136DAE54F"
+  ],
+  "wholeRequirementClosed": false,
+  "observedAt": "2026-10-16T14:03:10.773117+00:00",
+  "integrationCandidateVerification": {
+    "profile": "quick",
+    "files": 2,
+    "testPassed": 33,
+    "testFailed": 0,
+    "scopedCompile": {
+      "command": "pnpm --dir apps/web exec tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --types node --skipLibCheck server/services/canonicalProjectContextResolver.ts",
+      "exit": 0,
+      "scope": "Pure resolver source only; no repository typecheck"
+    },
+    "exactCandidateFilesMatchIndependentReview": true
+  }
+}

@@ -134,12 +134,12 @@
       "knownSettlements": 9
     },
     "5ae456af45d6d64140f8fe6009be2057": {
-      "calls": 3,
-      "inputTokens": 126205,
-      "cachedInputTokens": 102144,
-      "outputTokens": 633,
-      "actualTotalTokens": 126838,
-      "knownSettlements": 3
+      "calls": 16,
+      "inputTokens": 594149,
+      "cachedInputTokens": 448384,
+      "outputTokens": 2885,
+      "actualTotalTokens": 597034,
+      "knownSettlements": 16
     }
   },
   "requestedModel": "gpt-6-luna",
@@ -193,5 +193,46 @@
       "scope": "Actual resolver accepts future_or_forged, empty, __proto__, constructor, toString source values and emits RESOLVED_CONTEXTUAL/project-a.",
       "proof": "/tmp/smartaihub-backlog-pilot/spec302-original-defect.json"
     }
-  }
+  },
+  "latestJobs": [
+    {
+      "jobId": "1b91631e1e114bb1eb50c14942245b89",
+      "status": "waiting_external",
+      "wait": {
+        "reason": "budget",
+        "metadata": {
+          "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
+          "schemaVersion": "spec224.developer-model-wait.v1",
+          "reservationState": "not_reserved"
+        },
+        "resumeAfter": "2026-10-16T15:00:00.000Z",
+        "operationKey": "spec224-codex-turn:d6250b7945f4ddfb52f887b61acdd0fbe8302eda73d11df5b1b5e927b7758af3"
+      }
+    },
+    {
+      "jobId": "5ae456af45d6d64140f8fe6009be2057",
+      "status": "waiting_external",
+      "wait": {
+        "reason": "authorization",
+        "metadata": {
+          "jobId": "5ae456af45d6d64140f8fe6009be2057",
+          "runId": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+          "reason": "SDK_TURN_BUDGET_EXHAUSTED",
+          "attemptId": "623b56b6-da76-4b84-a6a6-16d4fec64d0b",
+          "schemaVersion": "spec224.developer-authorization-wait.v1",
+          "fencingVersion": 2
+        },
+        "resumeAfter": "2026-10-16T15:01:44.815Z",
+        "operationKey": "developer-turn-budget:ae98ece6-69f1-5e78-a33e-79123e2ed607:2"
+      }
+    }
+  ],
+  "validationOnlyRequirementClosed": {
+    "specId": "302",
+    "requirementId": "REQ-5FCEBAF7DDBD",
+    "sourceSha": "a293e38662c6f0a662889d3d949e447759514ca5",
+    "scope": "Active Phase1 only; 27tests + independent review; integrated PR990 b7872a2e"
+  },
+  "runtimeRepair": "Task worktrees lacked node_modules links. Reused existing installations in both worktrees; no install, migration or writable source scope expansion. Initial actual test startup failure retained.",
+  "spec302SdkContinuationRequest": "/tmp/smartaihub-backlog-pilot/spec302-sdk-continuation-request.json"
 }

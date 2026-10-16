@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 26,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -155,6 +155,14 @@
       "merge_verified": true,
       "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
       "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+    },
+    "pilot_validation_repair_checkpoint": {
+      "canonical_sha": "b7872a2e74d12f769f6e9bb08242e538799687da",
+      "head_sha": "545ff88a49907839ff09fb7c13c34630ca97295e",
+      "merge_tree_matches_head": true,
+      "merge_verified": true,
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/990",
+      "scope": "SPEC304 test assertion repair and validation-only SPEC302 REQ-5FCEBAF7DDBD evidence; functional coding jobs remain open."
     },
     "source_paths": [],
     "started": false,
@@ -419,7 +427,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:53:31.157777Z",
+  "updated_at": "2026-10-16T14:00:32.880305Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
