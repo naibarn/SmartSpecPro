@@ -127889,8 +127889,8 @@
       "primary_blocker": {
         "class": "IMPLEMENTATION",
         "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-        "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
-        "root_cause": "Team-room entity memory is now scoped to a canonical project with active membership, but durable room-to-project binding and source-level persistent-memory provenance remain unverified. Project reassignment is blocked for new conversation updates; historical conversations may have been retargeted before that guard and messages carry no project scope."
+        "next_action": "Run existing isolated source-ledger integration acceptance with an authorized disposable runtime/schema fixture, then reconcile requirement evidence. Preserve global-only fallback and disabled persistent team-room memory until provenance/isolation acceptance passes. Do not reimplement already integrated PR875 or apply production migrations.",
+        "root_cause": "PR875 implemented durable source ledger and tenant/project/current-membership-filtered reads, integrated757a5750. Its authorized isolated nonproduction persisted acceptance is still pending; legacy conversation provenance remains ambiguous, and persistent team-room memory stays disabled."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",

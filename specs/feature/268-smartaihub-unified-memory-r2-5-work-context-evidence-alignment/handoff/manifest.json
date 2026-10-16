@@ -33,8 +33,8 @@
     {
       "class": "IMPLEMENTATION",
       "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
-      "root_cause": "Team-room entity memory is now scoped to a canonical project with active membership, but durable room-to-project binding and source-level persistent-memory provenance remain unverified. Project reassignment is blocked for new conversation updates; historical conversations may have been retargeted before that guard and messages carry no project scope."
+      "next_action": "Run existing isolated source-ledger integration acceptance with an authorized disposable runtime/schema fixture, then reconcile requirement evidence. Preserve global-only fallback and disabled persistent team-room memory until provenance/isolation acceptance passes. Do not reimplement already integrated PR875 or apply production migrations.",
+      "root_cause": "PR875 implemented durable source ledger and tenant/project/current-membership-filtered reads, integrated757a5750. Its authorized isolated nonproduction persisted acceptance is still pending; legacy conversation provenance remains ambiguous, and persistent team-room memory stays disabled."
     },
     {
       "class": "NOT_STARTED",
@@ -48,11 +48,11 @@
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Resume SAME Job 1b91631e1e114bb1eb50c14942245b89 / Run 343227ad-c067-54f6-a35c-ae056fecff14 after default budget refill at 2026-10-16T14:00:00Z or explicitly approved trusted admission ceiling change. Current 500000/hour unchanged; owner budget request pending. Keep scope, Luna-only policy, prior threads/turns and canonical job identity immutable. Other SPEC gaps remain as recorded.",
+    "next_action": "Promote scoped expiry implementation with52 focused tests and independent Luna final review PASS. Keep original canonical Job accurately WAITING_AUTHORIZATION at aggregate30 SDK turn cap. Do not reset counters, duplicate Job, exceed continuation allowance or mark broad SPEC268 requirements closed. Continue independent authorized work.",
     "next_ready_workunit": "SPEC268_SCOPED_RECALL_EXPIRY",
-    "reactivation_predicate": "Fresh model admission succeeds under existing ceilings after refill, or valid owner-specific admission authorization for these exact two Jobs is received.",
+    "reactivation_predicate": "Existing authorization mechanism supports a genuinely valid additional bound, without counter reset or duplicate Job; otherwise preserve original Job and continue independent WorkUnits.",
     "resume_point": "PR #875 integrated through the protected normal path at Main 757a5750f00e916ed84801c6024bebdc814e60f9 (verified reachable from origin/main), source PR head c834ddcee771fd5c2c9d230b9689fd2c51e61d52. Durable source ledger and tenant/project/current-membership-filtered reads are integrated; local focused tests were 6 files / 88 passed, PR progressive gate and mocked browser simulation passed. No migration has been applied, and persistent team-room memory is still disabled. Continue with authorized isolated non-production acceptance; production migration/cutover remains under SPEC-295 authority.",
-    "waiting_predicate": "Canonical Job waiting_external reason=budget, all prior model reservations released with known usage. Scope/budget expansion not authorized."
+    "waiting_predicate": "Canonical Job awaiting valid additional allowance; current original authorization/continuation cap has been exhausted. Direct source checkpoint is independently verified and can integrate safely."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 29,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -180,6 +180,18 @@
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
+    "pilot_pr991_checkpoint": {
+      "canonical_job_acceptance": "VERIFIED_COMPLETE",
+      "canonical_sha": "b74c302765d0e343869c4c53d724204a77275e78",
+      "direct_verify": "33 resolver/receipt tests + scoped resolver semantic compile pass",
+      "evidence_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/pilot-binding-source-code-checkpoint-20261016.json",
+      "independent_review": "PASS",
+      "job_id": "5ae456af45d6d64140f8fe6009be2057",
+      "pr": 991,
+      "run_id": "ae98ece6-69f1-5e78-a33e-79123e2ed607",
+      "status": "PROMOTED_TO_MAIN",
+      "whole_spec_complete": false
+    },
     "pilot_validation_checkpoint": {
       "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
       "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
@@ -189,14 +201,16 @@
       "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
     },
     "pilot_workunit": {
-      "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
+      "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/pilot-scoped-recall-expiry-20261016.json",
       "id": "SPEC268_SCOPED_RECALL_EXPIRY",
+      "integration_candidate_base_sha": "b74c302765d0e343869c4c53d724204a77275e78",
       "job_id": "1b91631e1e114bb1eb50c14942245b89",
-      "owner": "Codex conductor",
-      "request_file": "/tmp/smartaihub-backlog-pilot/SPEC268_SCOPED_RECALL_EXPIRY.request.json",
+      "next_action": "Fast gate, commit and promote independently verified safe two-file source checkpoint; retain original SDK Job wait separately.",
+      "pr": "PENDING_CREATE",
       "run_id": "343227ad-c067-54f6-a35c-ae056fecff14",
+      "source_branch": "codex/smartaihub-backlog-expiry-delivery-20261016",
       "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-      "state": "WAITING_BUDGET"
+      "state": "DIRECT_VERIFIED_READY_FOR_PROMOTION_CANONICAL_JOB_OPEN"
     },
     "pr_head_sha": "c834ddcee771fd5c2c9d230b9689fd2c51e61d52",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/875",
@@ -409,7 +423,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:33:14.614599Z",
+  "updated_at": "2026-10-16T14:26:59.703893Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
