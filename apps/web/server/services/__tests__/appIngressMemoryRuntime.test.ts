@@ -278,7 +278,8 @@ describe("HTTP request to chat memory context boundary", () => {
         7,
         undefined,
         null,
-        "p1"
+        "p1",
+        "tenant-42"
       );
       expect(
         response.body.messages.some(

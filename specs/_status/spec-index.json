@@ -132512,14 +132512,13 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+      "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
         "requirement REQ-E44287595301 is OPEN",
         "requirement REQ-6B4D8C8FA775 is PARTIAL",
         "requirement REQ-8D8136DAE54F is PARTIAL",
-        "requirement REQ-5FCEBAF7DDBD is OPEN",
         "requirement REQ-408D3F532E4C is OPEN",
         "requirement REQ-4A23D3237DAA is OPEN",
         "requirement REQ-99ECFBC73E36 is OPEN",
@@ -132616,8 +132615,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 11,
-        "pass": 0,
+        "open": 10,
+        "pass": 1,
         "total": 11
       },
       "revision": "0.1",

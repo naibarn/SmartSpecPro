@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -88,6 +88,14 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "pilot_validation_checkpoint": {
+      "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+      "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
+      "merge_tree_matches_head": true,
+      "merge_verified": true,
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
+      "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+    },
     "source_paths": [],
     "started": false,
     "status": "UNKNOWN"
@@ -465,7 +473,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:27:15.231830Z",
+  "updated_at": "2026-10-16T13:33:14.607457Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

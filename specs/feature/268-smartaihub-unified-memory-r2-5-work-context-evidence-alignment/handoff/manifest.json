@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -180,6 +180,14 @@
     "local_commit_sha": "1b1fce1cfc739c4b0cfff82cbc3c820665526b28",
     "mapping": [],
     "owner": "Codex",
+    "pilot_validation_checkpoint": {
+      "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+      "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
+      "merge_tree_matches_head": true,
+      "merge_verified": true,
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
+      "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+    },
     "pilot_workunit": {
       "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
       "id": "SPEC268_SCOPED_RECALL_EXPIRY",
@@ -401,7 +409,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:24:58.476198Z",
+  "updated_at": "2026-10-16T13:33:14.614599Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",

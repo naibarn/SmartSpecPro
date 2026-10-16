@@ -1,0 +1,35 @@
+{
+  "observedAt": "2026-10-16T13:53:31.157032+00:00",
+  "workUnit": "SPEC304_AUTHENTICATED_TENANT_VALIDATION_REPAIR",
+  "originalSourceSha": "a293e38662c6f0a662889d3d949e447759514ca5",
+  "candidatePatchSha256": "282d8bb3a8f3f1de70fa2b4209e637d6775410e321fb5abd7b475cee35ac32b4",
+  "writableFiles": [
+    "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts"
+  ],
+  "runtime": "Direct local focused Vitest; no model/job dispatch for test-only assertion repair",
+  "jobId": null,
+  "runId": null,
+  "acceptance": "All four spoofed Host/forwarded/client-ID scenarios assert that global entity reads receive current authenticated tenant as fifth argument. Actual project memory guards unchanged.",
+  "baseline": {
+    "passed": 27,
+    "failed": 4,
+    "cause": "Stale expected4 args vs actual5 tenant-scoped caller"
+  },
+  "final": {
+    "profile": "quick",
+    "testFiles": 4,
+    "passed": 31,
+    "failed": 0,
+    "startedAtEpochMs": 1792158767226,
+    "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/tenantProductIdentityContracts.test.ts server/services/__tests__/appIdentityRepository.test.ts server/routers/appIdentity.test.ts server/services/__tests__/appIngressMemoryRuntime.test.ts --maxWorkers=1 --reporter=json",
+    "exit": 0
+  },
+  "independentReview": {
+    "status": "PASS",
+    "reviewer": "/root/spec161_validation_scout",
+    "requestedModel": "gpt-6-luna",
+    "scope": "Matches authenticated fixture tenant and actual caller arg5; preserves spoofed/untrusted ingress denials. 4 files31tests pass."
+  },
+  "requirementsClosed": [],
+  "limits": "Test-only repair, loopback HTTP runtime with mocked auth/DB. Not live signed-ingress or deployment acceptance."
+}

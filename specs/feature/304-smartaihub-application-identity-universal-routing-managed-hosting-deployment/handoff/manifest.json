@@ -47,7 +47,7 @@
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Prepare independent one-file appIngressMemoryRuntime.test.ts expectation repair for its current tenant-bound contextBuilder contract, run focused ingress tests and retain trusted ingress/hosting/live acceptance as separate unmet gates. Do not enable App-bound memory or execute production migrations.",
+    "next_action": "Focused identity/alias/HTTP ingress-memory tests pass31/31 after tenant-bound expectation repair. Real signed ingress producer, direct-origin exclusion, worker fresh authorization and hosted live UAT remain pending. No production mutation authorized.",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
     "resume_point": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9. R5 persisted positive-path test verifies the server-side test assertion through createContextWithTrustedAppIngress, current DB-backed alias resolution, and authorized persisted Project-memory prompt retrieval; Host/X-Forwarded-Host-only, replay, wrong-App, and cross-tenant cases fail closed. This is synthetic non-production evidence only. Production ingress producer, deployed origin exclusion, and worker-crossing reauthorization remain pending.",
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 24,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -148,6 +148,14 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
+    "pilot_validation_checkpoint": {
+      "canonical_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+      "head_sha": "d92feb71e8c15b38717945711ab3c10b56186ee0",
+      "merge_tree_matches_head": true,
+      "merge_verified": true,
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/989",
+      "scope": "Bounded validation and existing Job continuation checkpoint; no coding WorkUnit completion."
+    },
     "source_paths": [],
     "started": false,
     "status": "UNKNOWN"
@@ -411,7 +419,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T13:24:58.489229Z",
+  "updated_at": "2026-10-16T13:53:31.157777Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -484,6 +492,13 @@
         "scope": "Identity/alias/router tests pass; ingress-memory baseline 4 failures are stale missing tenant-argument expectations. No hosted/prod acceptance claim.",
         "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "TENANT_BOUND_BASELINE_ASSERTION_REPAIR",
+        "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/handoff/evidence/pilot-tenant-bound-validation-repair-20261016.json",
+        "scope": "31/31 focused tests after single expected-argument repair; no runtime/auth behavior modified.",
+        "source_sha": "a293e38662c6f0a662889d3d949e447759514ca5",
+        "status": "PASS_SCOPED"
       }
     ],
     "freshness": "FRESH",
