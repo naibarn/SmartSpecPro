@@ -80,10 +80,31 @@ class BoundedFastLaneTurns:
     """
     def __init__(self, store: DurableRunStore, contract: WorkUnitContract):
         self.store = store
-        self.limits = {"planning": contract.plan_max_turns, "implementation": contract.implementation_max_turns,
-                       "review": contract.review_max_turns}
-        self.max_attempts = contract.raw["budget"].get("maxAttempts", 3)
-        if any(type(value) is not int or value < 1 for value in (*self.limits.values(), self.max_attempts)):
+        authorization = contract.raw.get("continuationBudgetAuthorization")
+        if authorization:
+            binding = contract.raw.get("canonicalJobBinding") or {}
+            expected = {key: binding.get(key) for key in ("jobId", "runId", "tenantId", "actorId")}
+            expected.update(workspaceId=contract.raw.get("workspaceId"), sourceRevision=contract.raw.get("sourceRevision"),
+                            originalAuthorizationReceiptSha256=contract.raw.get("originalAuthorizationReceiptSha256"))
+            try:
+                expiry = datetime.fromisoformat(authorization["expiresAt"]).timestamp()
+                valid = (all(authorization.get(key) == value and value is not None for key, value in expected.items())
+                         and expiry > time.time() and float(contract.raw["scopeExpiresAt"]) <= expiry
+                         and bool(authorization["authorizationReference"]))
+            except (KeyError, TypeError, ValueError):
+                valid = False
+            if not valid:
+                raise BoundedTurnBudgetExceeded("Scoped continuation budget authority is invalid or expired")
+        effective_budget = authorization["budget"] if authorization else {
+            "planMaxTurns": contract.plan_max_turns, "implementationMaxTurns": contract.implementation_max_turns,
+            "reviewMaxTurns": contract.review_max_turns, "maxAttempts": contract.raw["budget"].get("maxAttempts", 3),
+        }
+        self.limits = {"planning": effective_budget["planMaxTurns"], "implementation": effective_budget["implementationMaxTurns"],
+                       "review": effective_budget["reviewMaxTurns"]}
+        self.max_attempts = effective_budget.get("maxAttempts", 3)
+        if any(type(value) is not int or value < 1 for value in (*self.limits.values(), self.max_attempts)) or (
+                authorization and (self.limits["planning"] > 8 or self.limits["implementation"] > 30
+                                   or self.limits["review"] > 8 or self.max_attempts > 3)):
             raise BoundedTurnBudgetExceeded("Validated turn/attempt allowance is missing or invalid")
         store.event("workunit.turn_budget.bound", {"contractDigest": contract.digest, "limits": self.limits,
                                                    "maxAttempts": self.max_attempts},
@@ -919,6 +940,17 @@ class ScopedRepoTools:
         return self.contract.binding
 
 
+def subscription_usage_summary(receipts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Project the same per-turn usage used by canonical settlement."""
+    from codex_model import CodexSubscriptionModel
+    verified = [CodexSubscriptionModel._usage_receipt(receipt) for receipt in receipts]
+    known = [usage for usage in verified if usage is not None]
+    totals = {key: sum(usage[key] for usage in known) for key in ("inputTokens", "cachedInputTokens", "outputTokens")}
+    unknown = len(verified) - len(known)
+    return {**totals, "totalTokens": None if unknown else totals["inputTokens"] + totals["outputTokens"],
+            "observedKnownTotalTokens": totals["inputTokens"] + totals["outputTokens"], "unknownUsageReceipts": unknown}
+
+
 def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, content: str, max_turns: int,
               progress_probe: Any = None) -> Any:
     phase_id = store.phase_id(phase, attempt)
@@ -974,6 +1006,18 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                 prior_limit = checkpoint.get("max_turns")
                 if type(prior_limit) is int and checkpoint.get("current_turn", 0) > prior_limit:
                     checkpoint["current_turn"] = budget.counts().get(phase_id, 0)
+                responses = checkpoint.get("model_responses")
+                if "model_responses" in checkpoint and responses is None and checkpoint.get("last_model_response") is None:
+                    responses = []  # A capacity/admission error before the first response.
+                step = checkpoint.get("current_step") or {}
+                if (isinstance(responses, list) and step.get("type") in {None, "next_step_run_again"}
+                        and len(responses) < checkpoint.get("current_turn", 0)):
+                    # The SDK increments before calling the adapter. Admission or
+                    # reconciliation can interrupt that turn without a response.
+                    # Resume that same credit; the adapter reconciles its stable
+                    # ModelCallId before any provider dispatch. Raw evidence and
+                    # the durable admitted-turn count remain unchanged.
+                    checkpoint["current_turn"] = len(responses)
                 checkpoint["max_turns"] = turn_limit
         initial_progress = progress_snapshot()
         store.observe_phase_progress(phase_row["phase_id"], initial_progress)
@@ -1043,6 +1087,11 @@ def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, cont
                             "The next durable development iteration must inspect the tool dispatch/schema path and choose a safe alternate implementation approach."
                         )
                 continue
+            except Exception:
+                # A wait/error can happen before the next stream event. Persist
+                # the pending SDK cursor and input before handing off recovery.
+                store.save_checkpoint(phase_id, streamed.to_state().to_json())
+                raise
             break
         output = {"finalOutput": streamed.final_output, "lastResponseId": streamed.last_response_id}
         store.complete_phase(phase_row["phase_id"], output)
@@ -1431,7 +1480,7 @@ def main() -> int:
     state["specCompletionStatus"] = "NOT_CLAIMED"
     state["durationMs"] = round((time.time() - __import__("datetime").datetime.fromisoformat(state["createdAt"]).timestamp()) * 1000)
     state["codexTurnCount"] = len(state.get("modelReceipts", []))
-    state["subscriptionTokenUsage"] = {k:sum(int(((r.get("usage") or {}).get("last") or {}).get(k,0)) for r in state.get("modelReceipts",[])) for k in ("inputTokens","outputTokens","totalTokens","cachedInputTokens")}
+    state["subscriptionTokenUsage"] = subscription_usage_summary(state.get("modelReceipts", []))
     completed_turns = store.connection.execute("SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')").fetchone()[0]
     unknown_turns = store.connection.execute("SELECT COUNT(*) FROM model_calls WHERE status IN ('planned','thread_started','turn_running','turn_reconciling')").fetchone()[0]
     state["modelTurnTelemetry"] = {"completedTurns": int(completed_turns), "unknownOrUnsettledCalls": int(unknown_turns)}

@@ -128,18 +128,36 @@ def _model_call_for_instruction(store: DurableRunStore, phase_id: str, role: str
         "SELECT * FROM model_calls WHERE phase_id=? AND role=? ORDER BY rowid",
         (phase_id, role),
     ).fetchall()
+    def equivalent(left: str, right: str) -> bool:
+        if left == right:
+            return True
+        # RunState restoration can reorder object keys. Preserve the original
+        # operation and request bytes when the complete request is unchanged.
+        try:
+            left_prefix, left_json = left.split("Request JSON:\n", 1)
+            right_prefix, right_json = right.split("Request JSON:\n", 1)
+            return left_prefix == right_prefix and canonical_json(json.loads(left_json)) == canonical_json(json.loads(right_json))
+        except (AttributeError, ValueError, TypeError):
+            return False
+
     matching = []
     for row in rows:
         try:
             request = json.loads(row["request_json"])
         except (TypeError, json.JSONDecodeError):
             continue
-        if request.get("instruction") == instruction:
+        if equivalent(request.get("instruction"), instruction):
             matching.append(dict(row))
     if not matching:
         return base_call_id, None, None
 
-    latest = matching[-1]
+    # An older resume may have created an unbound duplicate before discovering
+    # an unresolved thread. Prefer the original operation with provider evidence;
+    # never replace or rewrite either historical selection.
+    bound = [row for row in matching if row.get("thread_id") or row.get("turn_id")]
+    if len(bound) > 1:
+        raise ModelAdmissionDenied("Equivalent requests have multiple provider-bound identities; reconciliation required")
+    latest = bound[-1] if bound else matching[-1]
     if (latest.get("status") == "provider_capacity_rejected" and
             not latest.get("thread_id") and not latest.get("turn_id")):
         retry_number = len(matching)
@@ -238,6 +256,10 @@ class CodexSubscriptionModel(Model):
         call_id, prior, prior_selection = _model_call_for_instruction(
             self.store, self.phase_id, self.role, instruction, base_call_id,
         )
+        if prior:
+            # reserve_model_call deliberately rejects changed persisted requests.
+            # Reuse the immutable original encoding, not its reordered equivalent.
+            instruction = json.loads(prior["request_json"])["instruction"]
         selection = None
         selection_source = prior or prior_selection
         if selection_source and selection_source.get("selection_json"):

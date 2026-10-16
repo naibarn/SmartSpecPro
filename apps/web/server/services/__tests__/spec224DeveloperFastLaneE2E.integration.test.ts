@@ -502,6 +502,11 @@ describe("SPEC-224 authenticated Developer Fast Lane model admission E2E", () =>
         console.error("GOLDEN_RESUME_FAILURE", JSON.stringify({ error: String(error), recovery, status: runState?.status, blocker: runState?.routingBlocker, processLogs }));
         throw error;
       }
+      if (resumed.state !== "succeeded") {
+        const state = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
+        console.error("GOLDEN_DEFERRED_RECOVERY", JSON.stringify({ status: state.status, budgetExhaustion: state.boundedTurnBudgetExhausted,
+          routingBlocker: state.routingBlocker, waitReason: state.canonicalWaitReason }));
+      }
       expect(resumed).toMatchObject({ state: "succeeded", jobId: created.jobId });
       const finalState = JSON.parse(await fs.readFile(path.join(runDirectory, "run-state.json"), "utf8"));
       const finalContract = JSON.parse(await fs.readFile(path.join(runDirectory, "contract.json"), "utf8"));

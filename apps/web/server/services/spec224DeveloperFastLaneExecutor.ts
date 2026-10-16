@@ -21,6 +21,19 @@ type FastLaneBinding = {
   request: DeveloperFastLaneRequest;
 };
 
+type ContinuationBudgetAuthorization = {
+  jobId: string;
+  runId: string;
+  tenantId: string;
+  actorId: number;
+  workspaceId: string;
+  sourceRevision: string;
+  originalAuthorizationReceiptSha256: string;
+  authorizationReference: string;
+  expiresAt: string;
+  budget: NonNullable<DeveloperFastLaneRequest["budget"]>;
+};
+
 type ContinuationGrant = {
   schema: "spec224.developer-continuation-grant.v1";
   continuationId: string;
@@ -38,6 +51,7 @@ type ContinuationGrant = {
   scopeDigest: string;
   issuedAt: string;
   scopeExpiresAt: string;
+  budgetAuthorization?: ContinuationBudgetAuthorization;
 };
 
 function asObject(value: unknown): Record<string, unknown> | null {
@@ -152,6 +166,7 @@ export async function issueContinuationGrant(input: {
   repositoryRoot: string;
   now: Date;
   authorize: (repositoryRoot: string, developerLogin: string) => Promise<void>;
+  budgetAuthorization?: ContinuationBudgetAuthorization;
 }): Promise<ContinuationGrant | null> {
   const { binding, lease } = input;
   const runId = binding.runId;
@@ -198,7 +213,24 @@ export async function issueContinuationGrant(input: {
     ? rawExpiry * (rawExpiry < 100_000_000_000 ? 1_000 : 1)
     : typeof rawExpiry === "string" ? Date.parse(rawExpiry) : Number.NaN;
   if (!Number.isFinite(parsedExpiry)) throw new Error("DEVELOPER_CONTINUATION_SCOPE_EXPIRY_INVALID");
-  if (parsedExpiry > input.now.getTime()) return null;
+  const budgetAuthorization = input.budgetAuthorization;
+  if (budgetAuthorization) {
+    const matches = budgetAuthorization.jobId === lease.jobId && budgetAuthorization.runId === runId &&
+      budgetAuthorization.tenantId === binding.tenantId && budgetAuthorization.actorId === binding.actorId &&
+      budgetAuthorization.workspaceId === contract.workspaceId && budgetAuthorization.sourceRevision === sourceSha &&
+      budgetAuthorization.originalAuthorizationReceiptSha256 === receiptDigest &&
+      typeof budgetAuthorization.authorizationReference === "string" && budgetAuthorization.authorizationReference.trim().length > 0;
+    const expiry = Date.parse(budgetAuthorization.expiresAt);
+    const budget = budgetAuthorization.budget;
+    if (!matches || !Number.isFinite(expiry) || expiry <= input.now.getTime() || expiry > input.now.getTime() + 86_400_000 ||
+        !budget || !Number.isSafeInteger(budget.maxAttempts) || budget.maxAttempts! < 1 || budget.maxAttempts! > 3 ||
+        !Number.isSafeInteger(budget.planMaxTurns) || budget.planMaxTurns < 1 || budget.planMaxTurns > 8 ||
+        !Number.isSafeInteger(budget.implementationMaxTurns) || budget.implementationMaxTurns < 1 || budget.implementationMaxTurns > 30 ||
+        !Number.isSafeInteger(budget.reviewMaxTurns) || budget.reviewMaxTurns < 1 || budget.reviewMaxTurns > 8) {
+      throw new Error("DEVELOPER_CONTINUATION_BUDGET_AUTHORIZATION_INVALID");
+    }
+  }
+  if (parsedExpiry > input.now.getTime() && (!budgetAuthorization || sameJson(contract.continuationBudgetAuthorization, budgetAuthorization))) return null;
   const priorContinuations = await readFile(path.join(evidenceDir, "continuation-receipts.jsonl"), "utf8").catch(error => {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
     throw error;
@@ -210,7 +242,8 @@ export async function issueContinuationGrant(input: {
   const ttl = Number(request.scopeTtlSeconds ?? 8 * 60 * 60);
   if (!Number.isSafeInteger(ttl) || ttl < 300 || ttl > 86_400) throw new Error("DEVELOPER_CONTINUATION_SCOPE_TTL_INVALID");
   const issuedAt = input.now.toISOString();
-  const scopeExpiresAt = new Date(input.now.getTime() + ttl * 1_000).toISOString();
+  const scopeExpiresAt = new Date(Math.min(input.now.getTime() + ttl * 1_000,
+    budgetAuthorization ? Date.parse(budgetAuthorization.expiresAt) : Number.POSITIVE_INFINITY)).toISOString();
   const grantCore = {
     schema: "spec224.developer-continuation-grant.v1" as const,
     continuationId: sha256(`${lease.jobId}\0${runId}\0${lease.attemptId}\0${lease.fencingVersion}\0${receiptDigest}\0${issuedAt}`).slice(0, 32),
@@ -219,6 +252,7 @@ export async function issueContinuationGrant(input: {
     workspaceId: String(contract.workspaceId), sourceRevision: sourceSha,
     originalAuthorizationReceiptSha256: receiptDigest, scopeDigest: sha256(canonicalJson(requestScope(binding))),
     issuedAt, scopeExpiresAt,
+    ...(budgetAuthorization ? { budgetAuthorization } : {}),
   };
   return grantCore;
 }
@@ -311,6 +345,8 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
   terminateOnInjectedFault?: boolean;
   now?: () => Date;
   authorizeContinuation?: (repositoryRoot: string, developerLogin: string) => Promise<void>;
+  /** Trusted server configuration only; never accepted from model/tool inputs. */
+  continuationBudgetAuthorization?: ContinuationBudgetAuthorization;
 } = {}): JobExecutor {
   const spawnImpl = options.spawnImpl ?? spawn;
   return async ({ context, lease, reporter }) => {
@@ -334,6 +370,7 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
         const grant = await issueContinuationGrant({
           binding, lease, evidenceRoot: path.dirname(evidenceDir), repositoryRoot,
           now: now(), authorize: options.authorizeContinuation ?? verifyContinuationDeveloperPermission,
+          budgetAuthorization: options.continuationBudgetAuthorization,
         });
         if (grant) await writeFile(continuationGrantPath, JSON.stringify(grant), { mode: 0o600 });
       } catch (error) {
