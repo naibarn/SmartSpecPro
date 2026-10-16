@@ -418,6 +418,28 @@ export function createSpec224DeveloperFastLaneExecutor(options: {
     });
     if (heartbeatError) throw Object.assign(new Error("DEVELOPER_FAST_LANE_LEASE_LOST"), { diagnosticCode: "DEVELOPER_FAST_LANE_LEASE_LOST" });
     if (deferred) return { deferred: true };
+    if (exit.code === 75) {
+      const state = await readFile(path.join(evidenceRoot, binding.runId, "run-state.json"), "utf8")
+        .then(value => asObject(JSON.parse(value)), () => null);
+      const exhaustion = asObject(state?.boundedTurnBudgetExhausted);
+      if (state?.runId === binding.runId && state.status === "WAITING_AUTHORIZATION" && exhaustion) {
+        // Python owns SDK turn receipts; the server retains canonical authority.
+        // A stopped invocation never extends the original budget or scope. A
+        // later claim must validate authority and recheck the same durable usage.
+        await reporter.assertActive(lease);
+        await reporter.waitForExternal(lease, {
+          operationKey: `developer-turn-budget:${binding.runId}:${lease.fencingVersion}`,
+          reason: "authorization",
+          resumeAfter: new Date(now().getTime() + 60 * 60_000).toISOString(),
+          metadata: {
+            schemaVersion: "spec224.developer-authorization-wait.v1",
+            runId: binding.runId, jobId: lease.jobId, attemptId: lease.attemptId,
+            fencingVersion: lease.fencingVersion, reason: "SDK_TURN_BUDGET_EXHAUSTED",
+          },
+        });
+        return { deferred: true };
+      }
+    }
     if (exit.code !== 0) throw Object.assign(new Error(`DEVELOPER_FAST_LANE_PROCESS_FAILED:${exit.code ?? exit.signal ?? "unknown"}:${createHash("sha256").update(stderr).digest("hex").slice(0, 16)}${options.includeStderrInFailure ? `:${stderr.slice(-2_000)}` : ""}`), { diagnosticCode: "DEVELOPER_FAST_LANE_PROCESS_FAILED" });
     const statePath = path.join(evidenceRoot, binding.runId, "run-state.json");
     const state = asObject(JSON.parse(await readFile(statePath, "utf8")));
