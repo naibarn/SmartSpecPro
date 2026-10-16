@@ -40,4 +40,34 @@ describe("SPEC-224 authenticated Developer Fast Lane registration", () => {
     await expect(createDeveloperFastLaneJob({ tenantId: "tenant-one", actorId: 42, idempotencyKey: "fast-lane-key-0002", request: { ...request, writableFiles: ["../outside.ts"] } })).rejects.toThrow("DEVELOPER_FAST_LANE_SCOPE_INVALID");
     await expect(createDeveloperFastLaneJob({ tenantId: "tenant-one", actorId: 42, idempotencyKey: "fast-lane-key-0003", request: { ...request, budget: { implementationMaxTurns: 31, planMaxTurns: 4, reviewMaxTurns: 4 } } })).rejects.toThrow("DEVELOPER_FAST_LANE_TURN_BUDGET_INVALID");
   });
+
+  it("rejects invalid maxAttempts before canonical job creation", async () => {
+    createControlPlaneJob.mockClear();
+    for (const maxAttempts of [0, 4, 1.5]) {
+      await expect(createDeveloperFastLaneJob({
+        tenantId: "tenant-one",
+        actorId: 42,
+        idempotencyKey: `fast-lane-invalid-${maxAttempts}`,
+        request: { ...request, budget: { maxAttempts } },
+      })).rejects.toThrow("DEVELOPER_FAST_LANE_MAX_ATTEMPTS_INVALID");
+    }
+    expect(createControlPlaneJob).not.toHaveBeenCalled();
+  });
+
+  it("accepts maxAttempts 1, 2, 3 and omission without changing request behavior", async () => {
+    createControlPlaneJob.mockClear();
+    for (const maxAttempts of [1, 2, 3, undefined]) {
+      const validRequest = maxAttempts === undefined ? request : { ...request, budget: { implementationMaxTurns: 12, planMaxTurns: 4, reviewMaxTurns: 4, maxAttempts } };
+      const result = await createDeveloperFastLaneJob({
+        tenantId: "tenant-one",
+        actorId: 42,
+        idempotencyKey: `fast-lane-valid-${maxAttempts ?? "omitted"}`,
+        request: validRequest,
+      });
+      const input = createControlPlaneJob.mock.calls.at(-1)![0];
+      expect(input.definition.input.developerWorkUnit.request.budget?.maxAttempts).toBe(maxAttempts);
+      expect(result.jobId).toBe(result.workerJobId);
+    }
+    expect(createControlPlaneJob).toHaveBeenCalledTimes(4);
+  });
 });
