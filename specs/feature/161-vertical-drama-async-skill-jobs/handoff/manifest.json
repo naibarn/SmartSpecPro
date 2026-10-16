@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 25,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -92,6 +92,9 @@
       "base_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "branch": "codex/spec161-native-worker-acceptance-20261017",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
+      "intended_pr": "Normal GitHub PR to main; creation follows this durable checkpoint.",
+      "owned_commit_sha": "85d969b1e099d305a530476db1be6efa77b29fbe",
+      "pending_action": "Create normal protected PR from codex/spec161-native-worker-acceptance-20261017, wait required checks, guarded merge, verify canonical SHA; then persist result.",
       "status": "FOCUSED_TESTS_PASS_PENDING_PROTECTED_INTEGRATION",
       "workunit": "SPEC161_NATIVE_EPISODE_WORKER_ACCEPTANCE"
     },
@@ -581,7 +584,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T19:04:57.813796Z",
+  "updated_at": "2026-10-16T19:05:16.246989Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
