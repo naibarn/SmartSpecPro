@@ -12,7 +12,7 @@
   "runId": "343227ad-c067-54f6-a35c-ae056fecff14",
   "originalSourceSha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
   "candidateBaseSha": "b74c302765d0e343869c4c53d724204a77275e78",
-  "finalSourceSha": null,
+  "finalSourceSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
   "files": {
     "apps/web/server/services/scopedMemoryService.ts": "4fb13e1eecd7a198d0bb00b1a379549abf913983f9f84b57a9d3425038be4fe1",
     "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts": "38efce7968e819323d7a0945155c61ca7e55531c648c66f0351643838c1a45ff"
@@ -77,7 +77,7 @@
     "blockingFindings": [],
     "usageSettlement": "UNKNOWN: host agent tool exposes no tokens; excluded from canonical Job totals"
   },
-  "integrationStatus": "READY_SAFE_SCOPED_CHECKPOINT",
+  "integrationStatus": "PROMOTED_TO_MAIN_SCOPED_CODE_VERIFIED_CANONICAL_JOB_OPEN",
   "canonicalModelUsage": {
     "calls": 37,
     "knownSettlements": 37,
@@ -85,5 +85,18 @@
     "cachedInputTokens": 3319808,
     "outputTokens": 11570,
     "actualTotalTokens": 3632723
+  },
+  "merge": {
+    "pr": 992,
+    "headSha": "08189b6b9f45179118c8b92a40b227f380a7e639",
+    "canonicalSha": "38ba04ffffa3273447a5e71cf1b015a1464ff30f",
+    "mergedAt": "2026-10-16T14:32:22Z",
+    "headAndMergeTreesEqual": true,
+    "canonicalReachabilityVerified": true,
+    "requiredChecks": {
+      "progressiveIntegrationGate": "PASS",
+      "mockedBrowserSimulation": "PASS",
+      "buildPreview": "SKIPPED"
+    }
   }
 }
