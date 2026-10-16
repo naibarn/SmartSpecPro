@@ -45,6 +45,19 @@ class PhaseProgressTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_usage_summary_matches_full_turn_settlement_and_preserves_unknown(self):
+        receipt = {"threadId": "thread", "turnId": "turn", "usageObservedAt": "2026-10-16T00:00:00Z",
+            "usage": {"last": {"inputTokens": 18510, "cachedInputTokens": 18176, "outputTokens": 59},
+                      "total": {"inputTokens": 36933, "cachedInputTokens": 18176, "outputTokens": 122},
+                      "turnBaseline": {"kind": "fresh_thread", "totals": {"inputTokens": 0, "cachedInputTokens": 0, "outputTokens": 0}}}}
+        summary = run_spec_workunit.subscription_usage_summary([receipt])
+        self.assertEqual(summary["totalTokens"], 37055)
+        self.assertEqual(summary["cachedInputTokens"], 18176)
+        unknown = run_spec_workunit.subscription_usage_summary([receipt, {"usage": None}])
+        self.assertIsNone(unknown["totalTokens"])
+        self.assertEqual(unknown["observedKnownTotalTokens"], 37055)
+        self.assertEqual(unknown["unknownUsageReceipts"], 1)
+
     def test_many_identical_stream_events_do_not_grow_checkpoint_history(self):
         store = DurableRunStore(self.evidence, run_id=self.run_id, resume=True, count_restart=False)
 

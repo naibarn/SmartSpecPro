@@ -940,6 +940,17 @@ class ScopedRepoTools:
         return self.contract.binding
 
 
+def subscription_usage_summary(receipts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Project the same per-turn usage used by canonical settlement."""
+    from codex_model import CodexSubscriptionModel
+    verified = [CodexSubscriptionModel._usage_receipt(receipt) for receipt in receipts]
+    known = [usage for usage in verified if usage is not None]
+    totals = {key: sum(usage[key] for usage in known) for key in ("inputTokens", "cachedInputTokens", "outputTokens")}
+    unknown = len(verified) - len(known)
+    return {**totals, "totalTokens": None if unknown else totals["inputTokens"] + totals["outputTokens"],
+            "observedKnownTotalTokens": totals["inputTokens"] + totals["outputTokens"], "unknownUsageReceipts": unknown}
+
+
 def run_phase(store: DurableRunStore, phase: str, attempt: int, agent: Any, content: str, max_turns: int,
               progress_probe: Any = None) -> Any:
     phase_id = store.phase_id(phase, attempt)
@@ -1469,7 +1480,7 @@ def main() -> int:
     state["specCompletionStatus"] = "NOT_CLAIMED"
     state["durationMs"] = round((time.time() - __import__("datetime").datetime.fromisoformat(state["createdAt"]).timestamp()) * 1000)
     state["codexTurnCount"] = len(state.get("modelReceipts", []))
-    state["subscriptionTokenUsage"] = {k:sum(int(((r.get("usage") or {}).get("last") or {}).get(k,0)) for r in state.get("modelReceipts",[])) for k in ("inputTokens","outputTokens","totalTokens","cachedInputTokens")}
+    state["subscriptionTokenUsage"] = subscription_usage_summary(state.get("modelReceipts", []))
     completed_turns = store.connection.execute("SELECT COUNT(DISTINCT turn_id) FROM model_calls WHERE turn_id IS NOT NULL AND status IN ('turn_completed','completed')").fetchone()[0]
     unknown_turns = store.connection.execute("SELECT COUNT(*) FROM model_calls WHERE status IN ('planned','thread_started','turn_running','turn_reconciling')").fetchone()[0]
     state["modelTurnTelemetry"] = {"completedTurns": int(completed_turns), "unknownOrUnsettledCalls": int(unknown_turns)}
