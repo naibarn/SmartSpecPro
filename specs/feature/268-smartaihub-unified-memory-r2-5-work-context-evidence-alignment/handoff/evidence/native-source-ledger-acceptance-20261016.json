@@ -1,0 +1,130 @@
+{
+  "workunit_id": "SPEC268_NATIVE_SOURCE_LEDGER_ACCEPTANCE",
+  "spec_id": "268",
+  "requirement_ids": [
+    "REQ-427F51C6939B",
+    "REQ-D4427964FE28",
+    "REQ-CF6F62069953"
+  ],
+  "source_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+  "job_id": null,
+  "run_id": null,
+  "runtime": "Direct bounded Debian acceptance in owner-marked native PostgreSQL fixture; Unix socket only; no production, shared database, paid provider or retired runtime",
+  "writable_paths": [
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+    "apps/web/server/services/memoryService.ts",
+    "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/"
+  ],
+  "test_command": "pnpm exec vitest run server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts --maxWorkers=1",
+  "acceptance": [
+    "Execute existing migration0398 only in new disposable fixture",
+    "Verify real source-ledger FK constraints and transaction rollback",
+    "Verify tenant/project/owner/current membership and legacy quarantine",
+    "Verify persistence after owned database restart",
+    "Prove and minimally repair ordinary entity memory cross-project merging if reproduced"
+  ],
+  "dependency_evidence": [
+    "Existing source-ledger migration0398 and actual Drizzle services are integrated",
+    "Existing spec267NativePostgres owns its cluster and cleanup",
+    "Production team-room memory policy remains disabled"
+  ],
+  "decision": "Use actual SQL acceptance directly; do not mislabel DB-writing tests as Fast Lane databaseMode none or change its admission guard. Original expiry Job and exhausted allowance remain untouched.",
+  "status": "INDEPENDENTLY_VERIFIED_READY_FOR_INTEGRATION",
+  "baseline": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "profile": "integration",
+    "started": 1792163716.2815747,
+    "ended": 1792163721.500876,
+    "exit": 1,
+    "max_rss_kib": 284676,
+    "meminfo": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         1382108 kB",
+      "MemAvailable:   25063872 kB",
+      "Buffers:         3746756 kB"
+    ]
+  },
+  "fixed": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryServicePersona.test.ts",
+      "--maxWorkers=1"
+    ],
+    "profile": "integration",
+    "source_sha": "4a7b44b17ed86412ff2fea09ec78d6c831aca978",
+    "candidate": "owned memoryService project-scope patch plus new native acceptance test",
+    "started": 1792163738.5883977,
+    "ended": 1792163744.134719,
+    "exit": 0,
+    "max_rss_kib": 331096,
+    "resource_before": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         1581868 kB",
+      "MemAvailable:   25261904 kB",
+      "Buffers:         3746280 kB"
+    ]
+  },
+  "persona_regression": {
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "--maxWorkers=1"
+    ],
+    "profile": "quick",
+    "started": 1792163773.0673437,
+    "ended": 1792163774.9054308,
+    "exit": 0,
+    "max_rss_kib": 301076
+  },
+  "test_results": {
+    "baseline": "11 tests:9pass2fail; ordinary cross-project merge and global-to-project promotion reproduced",
+    "fixed": "11 native+2provenance tests passed (2files); nonexistent memoryServicePersona filter selected no test and was corrected by separate actual memoryPersonaRouting run",
+    "persona_regression": "8/8 passed"
+  },
+  "files_modified": [
+    "apps/web/server/services/memoryService.ts",
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
+  ],
+  "independent_review": {
+    "agent": "/root/spec268_independent_final_review",
+    "requested_model": "gpt-6-luna",
+    "effective_model": "UNVERIFIED",
+    "result": "PASS no blocking findings; independent native test11/11 passed",
+    "limits": "Required FK parent tables only, not whole app schema migration"
+  },
+  "decisions": [
+    "Fix exact project/null merge predicate; retain same-scope and persona behavior",
+    "Remove implicit global row project promotion; do not rewrite historic potentially mixed rows without source provenance",
+    "Production policy stays disabled; enabled-read coverage is test-only boundary injection",
+    "No alteration or duplication of original Job1b91631e / Run343227ad"
+  ],
+  "remaining": [
+    "App scope and complete context tuple across all read/write/export/delete boundaries",
+    "Historical mixed or retargeted rows cannot be attributed from name/user alone",
+    "Full production migration/cutover and room-memory enablement not authorized by this acceptance"
+  ],
+  "model_usage": {
+    "new_sdk_calls": 0,
+    "old_74_call_settlement": "Preserved unchanged in pilot-canonical-model-usage-20261016.jsonl",
+    "conductor_and_helper_tokens": "UNKNOWN; no invented totals"
+  },
+  "file_sha256": {
+    "apps/web/server/services/memoryService.ts": "cf3a93311964a25dea899584d1077240b51f07c7215bc14434b7b57bf5b4a10b",
+    "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "75fb9bd0e28c7f76514a493ef0259f38ddb26fe82d6275b0e0e09cb8795852da"
+  }
+}
