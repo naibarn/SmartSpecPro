@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "spec268-native-expiry-sql-repair.v1",
+  "taskId": "spec268-native-expiry-sql-repair-20261017",
+  "requirementIds": [
+    "REQ-5941C106455E",
+    "REQ-8C1A9F209C32",
+    "REQ-B44EAA1A1285"
+  ],
+  "originalExpiryWorkUnitJobId": "1b91631e1e114bb1eb50c14942245b89",
+  "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+  "source": {
+    "baseRef": "origin/main",
+    "baseSha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec268-expiry-native-sql-repair-20261017",
+    "worktreeRole": "TASK_WORKTREE",
+    "branch": "DETACHED",
+    "pinnedSourceSha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+    "workspaceId": "workspace:e025e25e-a5bd-497e-b0f9-1a1716da5f90",
+    "committed": false,
+    "files": [
+      {
+        "path": "apps/web/server/services/scopedMemoryService.ts",
+        "sha256": "b56bf2eba9fbd026f25b5630d0090520a54212a0413576a95e6ce9ae580be03d"
+      },
+      {
+        "path": "apps/web/server/services/__tests__/scopedMemoryExpiry.test.ts",
+        "sha256": "759cf4db68cfd38d565366fa95a4e858a21481bbebcf86773d014fe6ed8f4c45"
+      },
+      {
+        "path": "apps/web/server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+        "sha256": "df7da00d25094da07238639bb55e85cf9537642bead4d62f63b97aa058f4081e"
+      }
+    ]
+  },
+  "repair": {
+    "baselineServiceSha256": "4fb13e1eecd7a198d0bb00b1a379549abf913983f9f84b57a9d3425038be4fe1",
+    "baselineObservation": "Native R5 SQL search failed while binding a Date through a raw SQL interpolation. The query error was then converted to an empty result because the missing-table classifier matched any message containing scoped_memories.",
+    "baselineVerification": {
+      "worktreeRevision": "f11b70f2d1be5b00b502626697f3040ddc40293e",
+      "serviceSha256": "4fb13e1eecd7a198d0bb00b1a379549abf913983f9f84b57a9d3425038be4fe1",
+      "command": "pnpm exec vitest run server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts --maxWorkers=1 --config /tmp/smartaihub-r5-acceptance-20261017/vitest.debug.config.mjs",
+      "result": "FAIL",
+      "tests": "5 failed; actual PostgreSQL search returned no rows after the Date-serialization error was swallowed",
+      "diagnosticLog": "/tmp/smartaihub-r5-acceptance-20261017/vitest.log"
+    },
+    "changes": [
+      "Use Drizzle gt(scopedMemories.expiresAt, evaluationTime), which applies the timestamp column driver mapping.",
+      "Only classify SQLSTATE 42P01 as the optional scoped_memories table when the missing relation is identified; follow Drizzle cause chains and no longer swallow unrelated query errors that mention scoped_memories."
+    ]
+  },
+  "verification": [
+    {
+      "command": "./node_modules/.bin/vitest run server/services/__tests__/scopedMemoryExpiry.test.ts --maxWorkers=1",
+      "environment": "apps/web; Vitest 4.1.11; dependencies resolved through the existing primary checkout node_modules symlink; no database used",
+      "startedAtLocal": "2026-10-17T02:15:47+07:00",
+      "result": "PASS",
+      "tests": "9 passed",
+      "assertions": "Every expiry predicate must carry a serialized ISO timestamp string and no raw Date parameter; each recall family shares the same cutoff. Wrapped Date serializer, SQLSTATE 42501, and missing memory_promotions 42P01 errors propagate; nested scoped_memories 42P01 remains the compatibility fallback."
+    },
+    {
+      "command": "RUN_NATIVE_MEMORY_EXPIRY_TESTS=true ./node_modules/.bin/vitest run server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts --maxWorkers=1",
+      "environment": "apps/web; owner-marked SPEC-267 disposable PostgreSQL cluster; private Unix socket only; actual pgvector extension and scoped-memory tables; no DATABASE_URL/shared database; cluster removed in afterAll",
+      "startedAtLocal": "2026-10-17T02:13:22+07:00",
+      "result": "PASS",
+      "tests": "1 passed",
+      "assertions": "Real SQL list without cutoff retains all four rows; active list, direct search, and prompt retrieval include future-expiring and null-expiry rows while excluding expired and exact-cutoff rows."
+    },
+    {
+      "command": "pnpm exec vitest run server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts --maxWorkers=1",
+      "environment": "apps/web; SMARTAIHUB_R5_PERSISTED_ACCEPTANCE=1; SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1; JWT_SECRET=[REDACTED disposable test-only value]; owner-marked SPEC-277 disposable loopback PostgreSQL fixture `miniapp_r5_test` on ephemeral port 45275; no shared or pilot database; fixture removed",
+      "startedAt": "2026-10-16T19:12:13.142Z",
+      "finishedAt": "2026-10-16T19:12:21.403Z",
+      "result": "PASS",
+      "tests": "5 passed",
+      "exitCode": 0,
+      "serviceSha256": "b56bf2eba9fbd026f25b5630d0090520a54212a0413576a95e6ce9ae580be03d",
+      "cleanup": "fixture.close() completed and owner-marked cluster removed",
+      "log": "/tmp/smartaihub-r5-repair-acceptance-20261017/vitest.log",
+      "runnerEvidence": "/tmp/smartaihub-r5-repair-acceptance-20261017/run-evidence.json"
+    }
+  ],
+  "resourceObservation": {
+    "r5RunnerMemAvailable": "unavailable (runner's /proc metric regex did not match)",
+    "r5RunnerCgroupMemory": "unavailable on this host",
+    "r5RunnerFilesystemTmpAvailableBeforeBytes": 1619390464,
+    "r5RunnerFilesystemTmpAvailableAfterBytes": 1619030016,
+    "otherFocusedRuns": "Per-command memory telemetry was not captured. All checks were single-worker and bounded."
+  },
+  "limits": [
+    "The SPEC-277 acceptance uses a source-led schema projection and intentionally omits foreign-key constraints and RLS; the signed ingress issuer and credentials are synthetic test values. It proves this scoped HTTP/real-SQL path, not deployed production ingress or production readiness.",
+    "Native expiry integration DDL is limited to scoped_memories and memory_promotions, with no application migration execution."
+  ],
+  "model": "Luna (requested by the parent task)",
+  "modelUsage": "Actual model token usage was not available to this repair runner. No model/task-job replay or production job mutation was performed. Original expiry WorkUnit job was not replayed or mutated.",
+  "independentReview": {
+    "reviewer": "main conductor distinct from implementing Luna helper",
+    "result": "PASS typed timestamp binding and genuine missing-table cause handling; parent native+unit10/10 and combined86/86",
+    "evidence": {
+      "profile": "integration",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/scopedMemoryExpiry.test.ts",
+        "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+        "--maxWorkers=1"
+      ],
+      "environment": {
+        "RUN_NATIVE_MEMORY_EXPIRY_TESTS": "true"
+      },
+      "source_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
+      "started": 1792178234.450984,
+      "ended": 1792178239.9022768,
+      "exit": 0,
+      "max_rss_kib": 328152,
+      "resource_before": [
+        "MemTotal:       32444008 kB",
+        "MemFree:         2131740 kB",
+        "MemAvailable:   24087304 kB",
+        "Buffers:         3556200 kB"
+      ]
+    },
+    "combined": {
+      "profile": "integration",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+        "server/services/__tests__/scopedMemoryExpiry.test.ts",
+        "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+        "--maxWorkers=1"
+      ],
+      "environment": {
+        "JWT_SECRET": "[REDACTED disposable test-only value]",
+        "RUN_NATIVE_MEMORY_EXPIRY_TESTS": "true"
+      },
+      "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+      "candidate": "Story-plan chain + typed expiry/error classifier repairs in owned paths",
+      "started": 1792178349.511654,
+      "ended": 1792178361.1866407,
+      "exit": 0,
+      "max_rss_kib": 467388
+    }
+  },
+  "integrationBaseSha": "94cc9b8e877c36f1b6d2ee1140c113943d908877"
+}

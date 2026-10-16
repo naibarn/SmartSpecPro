@@ -61,6 +61,13 @@ function expirySql(predicate: unknown) {
   return new PgDialect().sqlToQuery(predicate as never);
 }
 
+function expiryCutoff(query: ReturnType<typeof expirySql>) {
+  expect(query.params.some((param) => param instanceof Date)).toBe(false);
+  const value = query.params.find((param) =>
+    typeof param === "string" && /^\d{4}-\d{2}-\d{2}T/.test(param) && Number.isFinite(Date.parse(param)));
+  return typeof value === "string" ? new Date(value) : undefined;
+}
+
 describe("scoped memory expiry", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -97,8 +104,9 @@ describe("scoped memory expiry", () => {
       expect(query.sql).toContain('"expiresAt" is null');
       expect(query.sql).toContain('"expiresAt" >');
     }
-    expect(expiryQueries[0].params.filter((value) => value instanceof Date)).toHaveLength(1);
-    expect(expiryQueries.every((query) => query.params.includes(expiryQueries[0].params.find((v) => v instanceof Date)))).toBe(true);
+    const cutoff = expiryCutoff(expiryQueries[0]);
+    expect(cutoff).toBeInstanceOf(Date);
+    expect(expiryQueries.every((query) => expiryCutoff(query)?.getTime() === cutoff?.getTime())).toBe(true);
   });
 
   it("excludes expired and boundary-equal rows in every ranked recall family", async () => {
@@ -192,7 +200,7 @@ describe("scoped memory expiry", () => {
     const query = expirySql(predicates[0]);
     expect(query.sql).toContain('"expiresAt" is null');
     expect(query.sql).toContain('"expiresAt" >');
-    expect(query.params.some((value) => value instanceof Date && value.getTime() === start.getTime())).toBe(true);
+    expect(expiryCutoff(query)?.getTime()).toBe(start.getTime());
   });
 
   it("uses a fresh cutoff when a direct vector result expires during the query", async () => {
@@ -211,7 +219,42 @@ describe("scoped memory expiry", () => {
       embedding: Array(1536).fill(0.1),
     });
     expect(results).toEqual([]);
-    expect(expirySql(predicates[0]).params.some((value) => value instanceof Date && value.getTime() === start.getTime())).toBe(true);
+    expect(expiryCutoff(expirySql(predicates[0]))?.getTime()).toBe(start.getTime());
+  });
+
+  it("only treats the scoped_memories missing-relation SQLSTATE as an optional-table fallback", async () => {
+    const missingRelation = Object.assign(new Error('relation "scoped_memories" does not exist'), {
+      code: "42P01",
+      relation: "scoped_memories",
+    });
+    const wrappedMissingRelation = Object.assign(new Error('Failed query: select from "scoped_memories"'), {
+      cause: missingRelation,
+    });
+    const query: any = {
+      from: vi.fn(() => query),
+      where: vi.fn(() => query),
+      orderBy: vi.fn(() => query),
+      limit: vi.fn().mockRejectedValue(wrappedMissingRelation),
+    };
+    mockGetDb.mockResolvedValue({ select: vi.fn(() => query) });
+
+    await expect(searchMemories({ tenantId: "tenant-1", scopes: [{ type: "agent", id: "assistant-1" }], query: "matching" }))
+      .resolves.toEqual([]);
+
+    const unrelatedErrors = [
+      new TypeError('The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Date'),
+      Object.assign(new Error('permission denied for relation "scoped_memories"'), { code: "42501" }),
+      Object.assign(new Error('relation "memory_promotions" does not exist'), {
+        code: "42P01",
+        relation: "memory_promotions",
+      }),
+    ];
+    for (const cause of unrelatedErrors) {
+      const wrappedQueryError = Object.assign(new Error('Failed query: select from "scoped_memories"'), { cause });
+      query.limit.mockRejectedValue(wrappedQueryError);
+      await expect(searchMemories({ tenantId: "tenant-1", scopes: [{ type: "agent", id: "assistant-1" }], query: "matching" }))
+        .rejects.toBe(wrappedQueryError);
+    }
   });
 
   it("rejects a rule that expires after its stable SQL cutoff but before hydration", async () => {
@@ -223,6 +266,6 @@ describe("scoped memory expiry", () => {
 
     await expect(getRuleMemories("tenant-1", 7)).resolves.toEqual([]);
     const query = expirySql(predicates[0]);
-    expect(query.params.some((value) => value instanceof Date && value.getTime() === start.getTime())).toBe(true);
+    expect(expiryCutoff(query)?.getTime()).toBe(start.getTime());
   });
 });

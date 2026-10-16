@@ -5,7 +5,7 @@
  * visibility rules and priority-based multi-scope retrieval.
  */
 
-import { eq, and, inArray, sql, desc, or, ilike, isNull, type SQL } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, or, ilike, isNull, gt, type SQL } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   scopedMemories,
@@ -106,11 +106,20 @@ export function buildPromptScopeList(params: {
 }
 
 function isMissingScopedMemoriesTable(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const err = error as { code?: string; message?: string };
-  if (err.code === "42P01") return true; // relation does not exist
-  if (typeof err.message === "string" && err.message.includes("scoped_memories")) {
-    return true;
+  const pending: unknown[] = [error];
+  const seen = new Set<object>();
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+    const err = current as { code?: string; message?: string; relation?: string; cause?: unknown };
+    const missingRelationMessage = typeof err.message === "string" &&
+      /relation ["']scoped_memories["'] does not exist/i.test(err.message);
+    if (err.code === "42P01" && (err.relation === "scoped_memories" || missingRelationMessage)) {
+      return true;
+    }
+    // Drizzle and the legacy query layer wrap the original PostgreSQL error.
+    if (err.cause) pending.push(err.cause);
   }
   return false;
 }
@@ -154,7 +163,7 @@ function getMemoryMetadata(memory: ScopedMemory): Record<string, unknown> {
 }
 
 function activeExpiryCondition(evaluationTime: Date): SQL {
-  return or(isNull(scopedMemories.expiresAt), sql`${scopedMemories.expiresAt} > ${evaluationTime}`)!;
+  return or(isNull(scopedMemories.expiresAt), gt(scopedMemories.expiresAt, evaluationTime))!;
 }
 
 function isActiveAt(memory: ScopedMemory, evaluationTime: Date): boolean {

@@ -30,7 +30,7 @@
     "No model-policy escalation: helper requested Luna; conductor/helper usage unknown; no new Fast Lane SDK calls or prior model-turn replay",
     "Database schema fixture derives current columns/defaults/indexes but omits cross-domain FKs; this is not migration acceptance"
   ],
-  "status": "INDEPENDENTLY_REVIEWED_FOCUSED_TESTS_PASS",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "model_usage": {
     "requested_helper_model": "gpt-6-luna",
     "effective_helper_model": "UNVERIFIED",
@@ -124,10 +124,22 @@
     "agent": "/root/spec268_independent_final_review",
     "requested_model": "gpt-6-luna",
     "effective_model": "UNVERIFIED",
-    "outcome": "PASS no blocking findings; final small additional assertions awaiting confirmation",
-    "limits": "No provider/network dispatch spy; providerReservations0 plus deterministic stage/default safe port source inspection do not certify paid generation/billing paths"
+    "outcome": "PASS updated replay/attemptcount/providerreservations reviewed; no substantive issue",
+    "limits": "PG restart and fresh controlPlane replay are within the Vitest OS process. Separate Node child only reads durable state; does not execute a restarted worker. Deterministic stage/default provider port, not paid/provider acceptance."
   },
   "fixture_cleanup": "Successful test teardown closes clients then ownership-checked native cluster cleanup; fixture database deliberately disposable; job/run identities retained here",
   "file_sha256": "c19ab4996e8618f1fcba3c50c8d252febd90fe25a9af81d74eb183eb34b06886",
-  "fast_gate_repair": "Repository generic-secret regex matched variable comparisons/restoration, not credential values. Replaced manual JWT test-env handling with vi.stubEnv(randomUUID)/unstubAllEnvs; exact candidate rescan passed and2native tests passed. No change pushed before repair."
+  "fast_gate_repair": "Repository generic-secret regex matched variable comparisons/restoration, not credential values. Replaced manual JWT test-env handling with vi.stubEnv(randomUUID)/unstubAllEnvs; exact candidate rescan passed and2native tests passed. No change pushed before repair.",
+  "final_source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+  "source_head_sha": "f11b70f2d1be5b00b502626697f3040ddc40293e",
+  "pr": 996,
+  "merge_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+  "merge_verified_reachable": true,
+  "head_merge_trees_equal": true,
+  "merged_at": "2026-10-16T19:11:08Z",
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "mocked_spec308_browser": "PASS",
+    "build_preview": "SKIPPED"
+  }
 }

@@ -671,51 +671,109 @@ describe("runGenerateStoryBiblePlanJob — durable candidate checkpoint", () => 
     expect(progress).toHaveBeenCalledWith(expect.objectContaining({ stage: "candidate_saved" }));
   });
 
-  it("continues automatically with a durable plan fallback after provider/schema failure", async () => {
-    mockGenerateStoryBible.mockRejectedValueOnce(
-      new VdSchemaValidationError("bad plan json", { issues: [] }),
-    );
+  it.each([
+    ["provider failure", new Error("provider unavailable")],
+    ["schema failure", new VdSchemaValidationError("bad plan json", { issues: [] })],
+  ])("stops before checkpoint or handoff on %s", async (_label, error) => {
+    mockGenerateStoryBible.mockRejectedValueOnce(error);
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const persistCheckpointAndWait = vi.fn(async () => undefined);
+
+    await expect(
+      runGenerateStoryBiblePlanJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-failed-1" },
+        vi.fn(),
+        {
+          checkpoint: null,
+          persistCheckpoint: vi.fn(),
+          persistCheckpointAndWait,
+        },
+      ),
+    ).rejects.toBe(error);
+
+    expect(persistCheckpointAndWait).not.toHaveBeenCalled();
+    expect(mockEnqueueVerticalDramaStoryJobHandoff).not.toHaveBeenCalled();
+  });
+
+  it("re-enters provider generation for a historical deterministic fallback checkpoint", async () => {
+    mockGenerateStoryBible.mockResolvedValueOnce({
+      expanded: candidate,
+      creditsUsed: 7,
+      model: "test-model",
+    });
     mockEnqueueVerticalDramaStoryJobHandoff.mockResolvedValueOnce({
-      jobId: "deep-fallback-1",
+      jobId: "deep-recovered-1",
       deduped: false,
     });
     seedPlanDb();
     const persistCheckpointAndWait = vi.fn(async () => undefined);
 
     const result = await runGenerateStoryBiblePlanJob(
-      { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-fallback-1" },
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-legacy-fallback" },
       vi.fn(),
       {
-        checkpoint: null,
+        checkpoint: {
+          draftedItems: [],
+          completedEpisodeNumbers: [],
+          chunkSizesDone: [],
+          planStage: "candidate_ready",
+          planCandidate: candidate,
+          planCreditsUsed: 0,
+          planModel: "deterministic-plan-fallback",
+        },
         persistCheckpoint: vi.fn(),
         persistCheckpointAndWait,
       },
     );
 
-    expect(result).toMatchObject({
-      model: "deterministic-plan-fallback",
-      deepJobId: "deep-fallback-1",
-      creditsUsed: 0,
-    });
+    expect(mockGenerateStoryBible).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ model: "test-model", deepJobId: "deep-recovered-1" });
     expect(persistCheckpointAndWait).toHaveBeenCalledWith(
       expect.objectContaining({
         planStage: "candidate_ready",
-        planModel: "deterministic-plan-fallback",
-        planCandidate: expect.objectContaining({
-          expandedSeasonArc: expect.any(String),
-          refinedCharacters: expect.arrayContaining([
-            expect.objectContaining({ name: "ตัวละครหลัก" }),
-          ]),
-          episodeBreakdown: expect.arrayContaining([
-            expect.objectContaining({
-              episodeNumber: 1,
-              keyBeats: expect.any(Array),
-            }),
-          ]),
-        }),
+        planCandidate: candidate,
+        planModel: "test-model",
+        planCreditsUsed: 7,
       }),
     );
     expect(mockEnqueueVerticalDramaStoryJobHandoff).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a historical fallback checkpoint and stops when its provider retry fails", async () => {
+    const providerError = new Error("provider unavailable during checkpoint recovery");
+    const historicalCheckpoint = {
+      draftedItems: [],
+      completedEpisodeNumbers: [],
+      chunkSizesDone: [],
+      planStage: "candidate_ready" as const,
+      planCandidate: candidate,
+      planCreditsUsed: 0,
+      planModel: "deterministic-plan-fallback",
+    };
+    mockGenerateStoryBible.mockRejectedValueOnce(providerError);
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const persistCheckpointAndWait = vi.fn(async () => undefined);
+
+    await expect(
+      runGenerateStoryBiblePlanJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-legacy-fallback-retry" },
+        vi.fn(),
+        {
+          checkpoint: historicalCheckpoint,
+          persistCheckpoint: vi.fn(),
+          persistCheckpointAndWait,
+        },
+      ),
+    ).rejects.toBe(providerError);
+
+    expect(mockGenerateStoryBible).toHaveBeenCalledTimes(1);
+    expect(persistCheckpointAndWait).not.toHaveBeenCalled();
+    expect(historicalCheckpoint).toMatchObject({
+      planCandidate: candidate,
+      planCreditsUsed: 0,
+      planModel: "deterministic-plan-fallback",
+    });
+    expect(mockEnqueueVerticalDramaStoryJobHandoff).not.toHaveBeenCalled();
   });
 });
 
