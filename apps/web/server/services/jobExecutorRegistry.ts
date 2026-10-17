@@ -272,11 +272,11 @@ class Feature186DomainExecutionError extends Error {
   }
 }
 
-function assertDomainExecutionSucceeded(
+function assertDomainExecutionSucceeded<T extends { status?: unknown; error?: unknown }>(
   jobType: string,
-  record: { status?: unknown; error?: unknown } | null,
+  record: T | null,
   acceptedStatuses: readonly string[] = ["succeeded"]
-): void {
+): asserts record is T {
   const status = typeof record?.status === "string" ? record.status : "missing";
   if (record && acceptedStatuses.includes(status)) return;
   const detail =
@@ -986,29 +986,43 @@ defaultJobExecutorRegistry.register({
     const input = context.input as { jobId?: unknown };
     if (typeof input.jobId !== "string" || !input.jobId)
       throw new Error("VD_STORY_JOB_ID_MISSING");
+    const seriesId = (context.input as { seriesId?: unknown }).seriesId;
+    const userId = context.requestedByUserId;
+    if (
+      typeof context.tenantId !== "string" ||
+      !context.tenantId ||
+      typeof userId !== "number" ||
+      !Number.isSafeInteger(userId) ||
+      !Number.isSafeInteger(seriesId) ||
+      Number(seriesId) < 1
+    ) {
+      throw new Error("VD_STORY_OWNER_CONTEXT_MISSING");
+    }
     const { runVerticalDramaStoryJob } =
       await import("./verticalDramaStoryJobs");
     const { runVerticalDramaStoryJobExecutor } =
       await import("../routers/verticalDramaSeries");
-    const { getVerticalDramaStoryJobStatus } =
-      await import("./verticalDramaStoryJobs");
     await reporter.assertActive(lease);
-    await withLeaseHeartbeat(
+    const record = await withLeaseHeartbeat(
       lease,
       reporter,
       () => runVerticalDramaStoryJob(
         input.jobId,
         runVerticalDramaStoryJobExecutor,
+        undefined,
+        {
+          tenantId: context.tenantId,
+          userId,
+          seriesId: Number(seriesId),
+        },
       ),
     );
-    const domainInput = context.input as any;
-    const record = await getVerticalDramaStoryJobStatus(input.jobId, {
-      tenantId: String(domainInput.tenantId ?? ""),
-      seriesId: Number(domainInput.seriesId),
-    });
-    assertDomainExecutionSucceeded("vertical_drama.story", record);
     await reporter.assertActive(lease);
-    return {};
+    assertDomainExecutionSucceeded("vertical_drama.story", record);
+    const output = record.result && typeof record.result === "object" && !Array.isArray(record.result)
+      ? record.result as Record<string, unknown>
+      : { result: record.result };
+    return { output: omitUndefinedJobPayloadProperties(output) as Record<string, unknown> };
   },
 });
 

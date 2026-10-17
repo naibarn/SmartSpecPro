@@ -15,6 +15,7 @@ vi.mock("../teamRoomMemoryPolicy", async importOriginal => ({
 }));
 
 import { getEntityMemoriesForContext, upsertEntityMemory } from "../memoryService";
+import { getEntityMemories as getChatEntityMemories, upsertEntityMemory as upsertChatEntityMemory } from "../chatService";
 
 describe("entity memory native PostgreSQL isolation", () => {
   let fixture: Awaited<ReturnType<typeof createSpec267NativePostgres>>;
@@ -43,7 +44,7 @@ describe("entity memory native PostgreSQL isolation", () => {
       CREATE TABLE tenants (id varchar(36) PRIMARY KEY);
       CREATE TABLE users (id integer PRIMARY KEY);
       CREATE TABLE conversations (id integer PRIMARY KEY, "userId" integer NOT NULL,
-        "tenantId" varchar(36), project_id varchar(100));
+        "tenantId" varchar(36), project_id varchar(100), "personaId" varchar(36));
       CREATE TABLE assistant_teams (id varchar(36) PRIMARY KEY);
       CREATE TABLE team_rooms (id varchar(36) PRIMARY KEY);
       CREATE TABLE team_runs (id varchar(36) PRIMARY KEY);
@@ -71,7 +72,7 @@ describe("entity memory native PostgreSQL isolation", () => {
     await client.unsafe(`
       INSERT INTO tenants VALUES ('tenant-a'), ('tenant-b');
       INSERT INTO users VALUES (7), (8);
-      INSERT INTO conversations VALUES (11, 7, 'tenant-a', 'project-a'), (22, 8, 'tenant-b', 'project-b');
+      INSERT INTO conversations VALUES (11, 7, 'tenant-a', 'project-a', NULL), (22, 8, 'tenant-b', 'project-b', NULL);
       INSERT INTO assistant_teams VALUES ('team-a'), ('team-b');
       INSERT INTO team_rooms VALUES ('room-a'), ('room-b');
       INSERT INTO team_runs VALUES ('run-a');
@@ -221,5 +222,52 @@ describe("entity memory native PostgreSQL isolation", () => {
       ["Uses a weekly release cycle"], conversation, 5, "manual", project, null))
       .rejects.toThrow("Source conversation is not available to this user");
     expect(await client`SELECT id FROM entity_memories`).toHaveLength(0);
+  });
+
+  it("keeps the separate Chat writer within the exact global/project scope", async () => {
+    const save = (projectId: string | null, fact: string) => upsertChatEntityMemory({
+      userId: 7, entityType: "preference", entityName: "Release notes", facts: [fact], projectId,
+    });
+    const global = await save(null, "Prefers concise release notes");
+    const projectA = await save("project-a", "Uses a weekly release cycle");
+    const projectB = await save("project-b", "Uses a monthly release cycle");
+    const mergedA = await save("project-a", "Uses an editorial checklist");
+    expect(new Set([global.id, projectA.id, projectB.id]).size).toBe(3);
+    expect(mergedA.id).toBe(projectA.id);
+    expect(mergedA.facts).toEqual(["Uses a weekly release cycle", "Uses an editorial checklist"]);
+    expect((await getChatEntityMemories(7, undefined, null, null)).map(row => row.facts))
+      .toEqual([["Prefers concise release notes"]]);
+  });
+
+  it("does not merge Chat writes into quarantined team-room rows", async () => {
+    const room = await saveRoom();
+    const chat = await upsertChatEntityMemory({ userId: 7, entityType: "preference",
+      entityName: "Release notes", facts: ["Uses a weekly release cycle"], projectId: "project-a" });
+    expect(chat.id).not.toBe(room.id);
+    expect(chat.facts).toEqual(["Uses a weekly release cycle"]);
+    expect((await client`SELECT facts FROM entity_memories WHERE id = ${room.id}`)[0].facts)
+      .toEqual(["Prefers concise release notes"]);
+  });
+
+  it.each([undefined, "project-a"])("rejects a foreign Chat source with project %s", async projectId => {
+    await expect(upsertChatEntityMemory({ userId: 7, entityType: "preference",
+      entityName: "Release notes", facts: ["Uses a weekly release cycle"], sourceConversationId: 22, projectId }))
+      .rejects.toThrow("Source conversation is not available to this user");
+    expect(await client`SELECT id FROM entity_memories`).toHaveLength(0);
+  });
+
+  it("preserves Chat project/persona inheritance from an owned source", async () => {
+    const saved = await upsertChatEntityMemory({ userId: 7, entityType: "preference",
+      entityName: "Release notes", facts: ["Uses a weekly release cycle"], sourceConversationId: 11 });
+    expect(saved).toMatchObject({ projectId: "project-a", personaId: null, sourceConversationId: 11 });
+  });
+
+  it("quarantines room facts in the legacy prompt read while keeping management reads", async () => {
+    const global = await upsertChatEntityMemory({ userId: 7, entityType: "preference",
+      entityName: "Release notes", facts: ["Prefers concise release notes"] });
+    await client`INSERT INTO entity_memories ("userId", "entityType", "entityName", source, facts)
+      VALUES (7, 'preference', 'Legacy room facts', 'team_room', '["ROOM_PRIVATE_MARKER"]')`;
+    expect(await getChatEntityMemories(7, undefined, null, null)).toHaveLength(2);
+    expect((await getChatEntityMemories(7, undefined, null, null, true)).map(row => row.id)).toEqual([global.id]);
   });
 });
