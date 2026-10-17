@@ -1,0 +1,2171 @@
+[
+  {
+    "caseId": "b10-001",
+    "query": "What identifier format is generated if the `X-Request-ID` header is missing?",
+    "expectedAnswer": "The middleware generates a UUID, assigns it to the request, and returns it in the `X-Request-ID` response header.",
+    "language": "english",
+    "classes": [
+      "uuid"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/correlationId.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/correlationId.test.ts",
+      "sha256": "f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "lineStart": 40,
+      "lineEnd": 50,
+      "quoteSha256": "e74f600a1039f081a35ea5158482f9f4a8504fb8f3267a587b60cc2c55c206d9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-001"
+      ],
+      "requiredClaims": [
+        "b10-claim-001"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-002",
+    "query": "If the request supplies `X-Request-ID: test-abc-123`, what request ID is retained?",
+    "expectedAnswer": "The request ID remains `test-abc-123`, and the middleware returns that value in the `X-Request-ID` header.",
+    "language": "english",
+    "classes": [
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/correlationId.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/correlationId.test.ts",
+      "sha256": "f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "lineStart": 53,
+      "lineEnd": 53,
+      "quoteSha256": "8a0b323ebdd2c992b16cbeb6afd86e8383e3769326dc13c17c0e9ad5ffc03818",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-002"
+      ],
+      "requiredClaims": [
+        "b10-claim-002"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-003",
+    "query": "How does Vectorize search scope its results when the exact `tenantId` parameter is supplied?",
+    "expectedAnswer": "The search filters results by `tenantId`.",
+    "language": "english",
+    "classes": [
+      "code_config_log",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/vectorize-search.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/vectorize-search.test.ts",
+      "sha256": "491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "lineStart": 83,
+      "lineEnd": 83,
+      "quoteSha256": "70eee4e34bae355adc87f270eb12aef5627cc2a50b4736a1a3c6a23deea03b49",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-003"
+      ],
+      "requiredClaims": [
+        "b10-claim-003"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-004",
+    "query": "Which setting does document reads use to select the Vectorize index?",
+    "expectedAnswer": "Document reads use the persisted Vectorize index setting.",
+    "language": "english",
+    "classes": [
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/vectorize-search.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/vectorize-search.test.ts",
+      "sha256": "491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "lineStart": 116,
+      "lineEnd": 116,
+      "quoteSha256": "adcda1df811c74bbbf4cc5009e490177338f080276ef0dc9217a6377b8ea4a86",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-004"
+      ],
+      "requiredClaims": [
+        "b10-claim-004"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-005",
+    "query": "What scope does `POST /v1/knowledge/library/search` search for the owner?",
+    "expectedAnswer": "It searches only `my_library`, filtered to the owner user ID and tenant.",
+    "language": "english",
+    "classes": [
+      "api_path",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+      "sha256": "22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "lineStart": 157,
+      "lineEnd": 174,
+      "quoteSha256": "a8d6bb0e900dd58235b158657b7d5b60b7b5b9cf85cec6f78dcfa49dfb2a5d37",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-005"
+      ],
+      "requiredClaims": [
+        "b10-claim-005"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-006",
+    "query": "Does `POST /v1/knowledge/library/upload` use the filename `notes.pdf`?",
+    "expectedAnswer": "The test uploads `notes.pdf` to `/v1/knowledge/library/upload`.",
+    "language": "english",
+    "classes": [
+      "filename",
+      "api_path"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+      "sha256": "22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "lineStart": 176,
+      "lineEnd": 201,
+      "quoteSha256": "884ea558656e3f079c6a9b456bf08e8b8ac8e7d3a94c7bb194ecad5a92a5e968",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-006"
+      ],
+      "requiredClaims": [
+        "b10-claim-006"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-007",
+    "query": "For `POST /v1/knowledge/rag/search`, which owner and tenant are billed?",
+    "expectedAnswer": "The charge is recorded for owner user ID 7 and tenant `tenant-1`, with service `rag.semantic_search`.",
+    "language": "english",
+    "classes": [
+      "multi_hop",
+      "api_path",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/publicKnowledgeApi.test.ts",
+      "sha256": "22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "lineStart": 203,
+      "lineEnd": 218,
+      "quoteSha256": "d34ce4c869813cbf49acad24c2e762f7ff94caf51776636d6de78919ff9af5e0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-007"
+      ],
+      "requiredClaims": [
+        "b10-claim-007"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:22f541303c5394d729fdfaa6b0b0854c5ef04bfbb479fbe73121cbc864cdd9e7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-008",
+    "query": "What trust tier is assigned to a normalized tool observation?",
+    "expectedAnswer": "A normalized observation is assigned the `tool_result` tier and untrusted content is not carried through as trusted text.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/contextToolService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/contextToolService.test.ts",
+      "sha256": "55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "lineStart": 10,
+      "lineEnd": 10,
+      "quoteSha256": "bf661a67963e23e1e02d76f073fa95d400d4c44e041e47c39afac7569cee4b23",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-008"
+      ],
+      "requiredClaims": [
+        "b10-claim-008"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-009",
+    "query": "Does the bounded hint retain `Songkran brief.md` while omitting `abc123`?",
+    "expectedAnswer": "The hint retains `Songkran brief.md` and omits the access-token value `abc123`.",
+    "language": "english",
+    "classes": [
+      "filename"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/contextToolService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/contextToolService.test.ts",
+      "sha256": "55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "lineStart": 43,
+      "lineEnd": 72,
+      "quoteSha256": "97fb7edd02fe00f1cf9fbd67c7d9b06f123fbb9d634ffb417ad22a7e46706e42",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-009"
+      ],
+      "requiredClaims": [
+        "b10-claim-009"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-010",
+    "query": "The tool result already includes a context state. Which content source takes precedence?",
+    "expectedAnswer": "The embedded context state takes precedence over the tool result’s ordinary content.",
+    "language": "english",
+    "classes": [
+      "follow_up"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/contextToolService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/contextToolService.test.ts",
+      "sha256": "55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "lineStart": 75,
+      "lineEnd": 92,
+      "quoteSha256": "c872acf0c77cd6d7089cea59ceb41e6aa9b63b4fbc192be4b8c485b60fb99722",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-010"
+      ],
+      "requiredClaims": [
+        "b10-claim-010"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:55315f04a1763acdd707366e5916421017b20e6df7aaa9cab55419516f6ba716",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-011",
+    "query": "When explicit user selection and weaker authoritative evidence agree on `project-a`, which source is selected?",
+    "expectedAnswer": "The resolver selects the explicit user selection and returns `project-a` as the canonical project.",
+    "language": "english",
+    "classes": [
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "sha256": "47a77cc00a54dd357d17a8593b2112303ee584226c753e173c1e103d38be5d95",
+      "lineStart": 57,
+      "lineEnd": 57,
+      "quoteSha256": "2e42e5ab18e1dd46ced99273759bde8bbd0233b9c71d2146ddfe09525139390d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-011"
+      ],
+      "requiredClaims": [
+        "b10-claim-011"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:47a77cc00a54dd357d17a8593b2112303ee584226c753e173c1e103d38be5d95",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-012",
+    "query": "If the explicit selection is `project-explicit` but the domain binding is `project-domain`, what state is returned?",
+    "expectedAnswer": "The state is `AMBIGUOUS`; the result has no canonical project ID or authoritative source.",
+    "language": "english",
+    "classes": [
+      "ambiguous",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/canonicalProjectContextResolver.test.ts",
+      "sha256": "47a77cc00a54dd357d17a8593b2112303ee584226c753e173c1e103d38be5d95",
+      "lineStart": 76,
+      "lineEnd": 87,
+      "quoteSha256": "6c47be7a8fea5c95d15ce1ae18fecce1351b43600afd11a7bc3d2e4a6c523444",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-012"
+      ],
+      "requiredClaims": [
+        "b10-claim-012"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:47a77cc00a54dd357d17a8593b2112303ee584226c753e173c1e103d38be5d95",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-013",
+    "query": "A receipt OCR result has a date but no time. What time is used for the parsed receipt date?",
+    "expectedAnswer": "The missing time defaults to midnight.",
+    "language": "english",
+    "classes": [
+      "ocr"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/financeDocumentExtractionService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/financeDocumentExtractionService.test.ts",
+      "sha256": "206d69e3e6d59db893412157dbf91fd90ea37e5c262ed4f3b03afcb006f69e31",
+      "lineStart": 445,
+      "lineEnd": 445,
+      "quoteSha256": "9cdf0a90694ac5312a6136cbb0bcb63b54647cac0eec892639ca7e4ee109972e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-013"
+      ],
+      "requiredClaims": [
+        "b10-claim-013"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:206d69e3e6d59db893412157dbf91fd90ea37e5c262ed4f3b03afcb006f69e31",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-014",
+    "query": "Where does finance extraction obtain OCR text if the Library metadata does not contain it?",
+    "expectedAnswer": "It re-extracts the text from the original upload.",
+    "language": "english",
+    "classes": [
+      "ocr"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/financeDocumentExtractionService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/financeDocumentExtractionService.test.ts",
+      "sha256": "206d69e3e6d59db893412157dbf91fd90ea37e5c262ed4f3b03afcb006f69e31",
+      "lineStart": 527,
+      "lineEnd": 527,
+      "quoteSha256": "aac751a942d1956cfe07e531e53739ff6c56b8bdf10a09c3c5db0440148decdc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-014"
+      ],
+      "requiredClaims": [
+        "b10-claim-014"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:206d69e3e6d59db893412157dbf91fd90ea37e5c262ed4f3b03afcb006f69e31",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-015",
+    "query": "Does requesting Arabic locale make the `Ayutthaya` alias resolve uniquely?",
+    "expectedAnswer": "No. Alias matching is independent of requested locale, and the result is marked `ambiguous`.",
+    "language": "english",
+    "classes": [
+      "ambiguous",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/geographicSearchService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts",
+      "sha256": "1286cba1a4529c5a49ddca4acd08e3afa8636dc7ceb51a29e21e8620be85f572",
+      "lineStart": 27,
+      "lineEnd": 35,
+      "quoteSha256": "74b6f4b1eb21e4454ba50951ab0b4100904cc4cfec41865d680a67d9c4f5cec9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-015"
+      ],
+      "requiredClaims": [
+        "b10-claim-015"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1286cba1a4529c5a49ddca4acd08e3afa8636dc7ceb51a29e21e8620be85f572",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-016",
+    "query": "What happens when the geographic query contains an invalid jurisdiction or type hint?",
+    "expectedAnswer": "The request is marked invalid and the catalog is not invoked.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/geographicSearchService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/geographicSearchService.test.ts",
+      "sha256": "1286cba1a4529c5a49ddca4acd08e3afa8636dc7ceb51a29e21e8620be85f572",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "6fffeef3e0b18348dc881b0122d6737a33bbbd20bc7a3a0ed71442cfd6b79778",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-016"
+      ],
+      "requiredClaims": [
+        "b10-claim-016"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1286cba1a4529c5a49ddca4acd08e3afa8636dc7ceb51a29e21e8620be85f572",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-017",
+    "query": "Does owner-scoped library reference 42 resolve to the filename `reference.png`?",
+    "expectedAnswer": "The resolved owner-scoped reference returns `reference.png`.",
+    "language": "english",
+    "classes": [
+      "filename",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/mcpDownloadBrokerService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/mcpDownloadBrokerService.test.ts",
+      "sha256": "c2c68448eadf30ebfa56697b98dcd202b41037077cab61e99d5b1977599c2722",
+      "lineStart": 127,
+      "lineEnd": 143,
+      "quoteSha256": "faba33de53187823003608c5676a313fc2844d4c8b3a199b1d9b8c5661dc6f88",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-017"
+      ],
+      "requiredClaims": [
+        "b10-claim-017"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2c68448eadf30ebfa56697b98dcd202b41037077cab61e99d5b1977599c2722",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-018",
+    "query": "As another user, give me a download reference for library item 42. Is that allowed, or does it return `library_file_unavailable`?",
+    "expectedAnswer": "No. The request fails with `library_file_unavailable`, and storage is not streamed.",
+    "language": "english",
+    "classes": [
+      "acl_attack",
+      "error_code"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/mcpDownloadBrokerService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/mcpDownloadBrokerService.test.ts",
+      "sha256": "c2c68448eadf30ebfa56697b98dcd202b41037077cab61e99d5b1977599c2722",
+      "lineStart": 145,
+      "lineEnd": 149,
+      "quoteSha256": "f3851e2481a38dad7005195c3db7747569f39d234044a838ad0eff52b9edca6d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-018"
+      ],
+      "requiredClaims": [
+        "b10-claim-018"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2c68448eadf30ebfa56697b98dcd202b41037077cab61e99d5b1977599c2722",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-019",
+    "query": "What must the credit-context registry provide for each accepted source type?",
+    "expectedAnswer": "It must have an explicit registry entry for every accepted source type.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/creditContextFoundation.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/creditContextFoundation.test.ts",
+      "sha256": "8a4bed0658460145c96c0124fadbbd44bf2c11559398ac085043c34de0bfbe2b",
+      "lineStart": 10,
+      "lineEnd": 10,
+      "quoteSha256": "d26eccdc6a9866d847c10f62713a4d3ecc92a85e98434cc94d4f09f14a2186a1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-019"
+      ],
+      "requiredClaims": [
+        "b10-claim-019"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8a4bed0658460145c96c0124fadbbd44bf2c11559398ac085043c34de0bfbe2b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-020",
+    "query": "Which source types can structured metadata map into credit-context references?",
+    "expectedAnswer": "It maps conversation, skill execution, worker job, and media task identities.",
+    "language": "english",
+    "classes": [
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/creditContextFoundation.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/creditContextFoundation.test.ts",
+      "sha256": "8a4bed0658460145c96c0124fadbbd44bf2c11559398ac085043c34de0bfbe2b",
+      "lineStart": 21,
+      "lineEnd": 26,
+      "quoteSha256": "d7d93eadba4aea53f43618495c348f271b9d38a89e058fa6796d98380122816a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-020"
+      ],
+      "requiredClaims": [
+        "b10-claim-020"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8a4bed0658460145c96c0124fadbbd44bf2c11559398ac085043c34de0bfbe2b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-021",
+    "query": "Is `lifestyle-article-writer` one of the article-writer skill slugs listed by the test?",
+    "expectedAnswer": "The list includes `lifestyle-article-writer` and `parenting-article-writer`.",
+    "language": "english",
+    "classes": [
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/articleWriterSkills.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/articleWriterSkills.test.ts",
+      "sha256": "8fba2e3eb694605599ae37cee95d261f9e47a1534b2b13eddd1093b803e2c90a",
+      "lineStart": 15,
+      "lineEnd": 22,
+      "quoteSha256": "7b98d1d09d3bd4c6d4d438de0d8f047eaca87be1571b1de37fee784a69e6aa85",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-021"
+      ],
+      "requiredClaims": [
+        "b10-claim-021"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8fba2e3eb694605599ae37cee95d261f9e47a1534b2b13eddd1093b803e2c90a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-022",
+    "query": "Which category does the article-writer skill map to?",
+    "expectedAnswer": "It maps to `article_generation`.",
+    "language": "english",
+    "classes": [
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/articleWriterSkills.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/articleWriterSkills.test.ts",
+      "sha256": "8fba2e3eb694605599ae37cee95d261f9e47a1534b2b13eddd1093b803e2c90a",
+      "lineStart": 50,
+      "lineEnd": 50,
+      "quoteSha256": "fc20b4cd01a36eb30b1ce6fd258bba31d2b623093e2b8c048a0247775d3518c8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-022"
+      ],
+      "requiredClaims": [
+        "b10-claim-022"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8fba2e3eb694605599ae37cee95d261f9e47a1534b2b13eddd1093b803e2c90a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-023",
+    "query": "What verification result follows for a correctly signed desktop package envelope?",
+    "expectedAnswer": "Verification is valid and returns reason `verified`.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/packageSigningService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/packageSigningService.test.ts",
+      "sha256": "d2068a304697f102f97fb372a3ccdd8a623395833c641f672f8374171d95a532",
+      "lineStart": 32,
+      "lineEnd": 32,
+      "quoteSha256": "dac63de0634a792e3b4ac4d6831ae872e49ce9062b86c1ca648005b773444bad",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-023"
+      ],
+      "requiredClaims": [
+        "b10-claim-023"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d2068a304697f102f97fb372a3ccdd8a623395833c641f672f8374171d95a532",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-024",
+    "query": "What happens when the package manifest is missing the required `payloadDigest`?",
+    "expectedAnswer": "Signing fails closed and throws an error identifying `payloadDigest`.",
+    "language": "english",
+    "classes": [
+      "code_config_log",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/packageSigningService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/packageSigningService.test.ts",
+      "sha256": "d2068a304697f102f97fb372a3ccdd8a623395833c641f672f8374171d95a532",
+      "lineStart": 53,
+      "lineEnd": 66,
+      "quoteSha256": "e39243d02969066f17cd651470cc3a50cb18c790a3ebd5f4e92f9c2840ca0ffe",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-024"
+      ],
+      "requiredClaims": [
+        "b10-claim-024"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d2068a304697f102f97fb372a3ccdd8a623395833c641f672f8374171d95a532",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-025",
+    "query": "Are legacy unsupported workflow category values retained for built-in skills?",
+    "expectedAnswer": "No. The test verifies that legacy unsupported workflow category values are not kept.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/builtInSkillMetadata.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/builtInSkillMetadata.test.ts",
+      "sha256": "75a08d09b65c510c99f15c28ad03c2daaf07f30461d8aa6b7a61f043545834f3",
+      "lineStart": 26,
+      "lineEnd": 26,
+      "quoteSha256": "2c8621b3539ee1ed21ed698af30e6a8ceaa9e85797ae10f5f868c7ca97aa866e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-025"
+      ],
+      "requiredClaims": [
+        "b10-claim-025"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:75a08d09b65c510c99f15c28ad03c2daaf07f30461d8aa6b7a61f043545834f3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-026",
+    "query": "What metadata remains compatible for built-in SmartAIHub skills?",
+    "expectedAnswer": "Supported categories and compatible execution modes are retained.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/builtInSkillMetadata.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/builtInSkillMetadata.test.ts",
+      "sha256": "75a08d09b65c510c99f15c28ad03c2daaf07f30461d8aa6b7a61f043545834f3",
+      "lineStart": 35,
+      "lineEnd": 35,
+      "quoteSha256": "71b57391fffece23fa607888bad8fc0d32d90918a9651d0bf048a09ebcb9a2bb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-026"
+      ],
+      "requiredClaims": [
+        "b10-claim-026"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:75a08d09b65c510c99f15c28ad03c2daaf07f30461d8aa6b7a61f043545834f3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-027",
+    "query": "How does the Skill Catalog organize skills?",
+    "expectedAnswer": "It groups skills by category.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/skillCatalog.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/skillCatalog.test.ts",
+      "sha256": "c65fc6fbe505ad64262d2bd0442e122e38326f2e6114a98c7edb041705d88655",
+      "lineStart": 137,
+      "lineEnd": 137,
+      "quoteSha256": "962c96d101e00a27b2d6a0b06be0fa1474ef89ca87eb0783aeb320f9a938cf11",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-027"
+      ],
+      "requiredClaims": [
+        "b10-claim-027"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c65fc6fbe505ad64262d2bd0442e122e38326f2e6114a98c7edb041705d88655",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-028",
+    "query": "What is the maximum description length emitted by the Skill Catalog?",
+    "expectedAnswer": "The catalog truncates descriptions to 100 characters.",
+    "language": "english",
+    "classes": [
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/skillCatalog.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/skillCatalog.test.ts",
+      "sha256": "c65fc6fbe505ad64262d2bd0442e122e38326f2e6114a98c7edb041705d88655",
+      "lineStart": 150,
+      "lineEnd": 150,
+      "quoteSha256": "e0868645af8c1540b865f0acd79a2255a44b914d32a1bde7451165740f38c049",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-028"
+      ],
+      "requiredClaims": [
+        "b10-claim-028"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c65fc6fbe505ad64262d2bd0442e122e38326f2e6114a98c7edb041705d88655",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-029",
+    "query": "Where does the registry place the stored `configJson` value?",
+    "expectedAnswer": "It maps `configJson` back onto `SkillDefinition.config`.",
+    "language": "english",
+    "classes": [
+      "code_config_log",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/skillRegistry.configJson.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/skillRegistry.configJson.test.ts",
+      "sha256": "585fa9e693e473a4f1b28d21cda572c89f83e3fa19c93b64d9094f60d09568c8",
+      "lineStart": 56,
+      "lineEnd": 56,
+      "quoteSha256": "48ad7429b12fa7ba5b07c27e6332ad9585992e79ee303f479954093b5061d08c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-029"
+      ],
+      "requiredClaims": [
+        "b10-claim-029"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:585fa9e693e473a4f1b28d21cda572c89f83e3fa19c93b64d9094f60d09568c8",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-030",
+    "query": "What value does SkillDefinition.config receive when the stored column is NULL?",
+    "expectedAnswer": "It remains undefined.",
+    "language": "english",
+    "classes": [
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/skillRegistry.configJson.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/skillRegistry.configJson.test.ts",
+      "sha256": "585fa9e693e473a4f1b28d21cda572c89f83e3fa19c93b64d9094f60d09568c8",
+      "lineStart": 114,
+      "lineEnd": 114,
+      "quoteSha256": "ac4fd79abc19dc4a2f6763d04bba99ad4a6bdac8213277d059a73c76f085bf4d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-030"
+      ],
+      "requiredClaims": [
+        "b10-claim-030"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:585fa9e693e473a4f1b28d21cda572c89f83e3fa19c93b64d9094f60d09568c8",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-031",
+    "query": "What happens to a browser approval if its context-bound checks fail?",
+    "expectedAnswer": "The approval is invalidated.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/browserApprovalPayload.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/browserApprovalPayload.test.ts",
+      "sha256": "4ac179b674341a767bae11ac0bb058f33026b9b4117b3fb6036b26964f97f66a",
+      "lineStart": 49,
+      "lineEnd": 49,
+      "quoteSha256": "3ddb74400f0e42ecb833828f5effee5b5b163e9124ca066737a74d802b728657",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-031"
+      ],
+      "requiredClaims": [
+        "b10-claim-031"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4ac179b674341a767bae11ac0bb058f33026b9b4117b3fb6036b26964f97f66a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-032",
+    "query": "How does browser approval validation behave after observing revocation?",
+    "expectedAnswer": "It fails closed.",
+    "language": "english",
+    "classes": [
+      "deleted_revoked"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/browserApprovalPayload.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/browserApprovalPayload.test.ts",
+      "sha256": "4ac179b674341a767bae11ac0bb058f33026b9b4117b3fb6036b26964f97f66a",
+      "lineStart": 70,
+      "lineEnd": 70,
+      "quoteSha256": "1a0aab340cc65f5885153b9c6f23508ebd1bc71ae64065b4cbda30fb3725bde8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-032"
+      ],
+      "requiredClaims": [
+        "b10-claim-032"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4ac179b674341a767bae11ac0bb058f33026b9b4117b3fb6036b26964f97f66a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-033",
+    "query": "What is the total credit cost for the full vision pipeline?",
+    "expectedAnswer": "The total credit cost is 0.5.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/routers/__tests__/chat.ingestion.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routers/__tests__/chat.ingestion.test.ts",
+      "sha256": "6bc54965870ecb612232fa93793c84d8019ef2972e7c393b19a65ffbf540749f",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "b43f54a6355c5764cca95bb877abbd0b38e2696febe5956391c35d50a85f1e36",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-033"
+      ],
+      "requiredClaims": [
+        "b10-claim-033"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6bc54965870ecb612232fa93793c84d8019ef2972e7c393b19a65ffbf540749f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-034",
+    "query": "Does chat dispatch vision analysis when the user has insufficient credits?",
+    "expectedAnswer": "No. Vision analysis dispatch is skipped when credits are insufficient.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/routers/__tests__/chat.ingestion.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routers/__tests__/chat.ingestion.test.ts",
+      "sha256": "6bc54965870ecb612232fa93793c84d8019ef2972e7c393b19a65ffbf540749f",
+      "lineStart": 88,
+      "lineEnd": 88,
+      "quoteSha256": "d5ab05637b3be5ecbfed502d5a47ec5d658b105f7241a9c337ba5025195fae2f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-034"
+      ],
+      "requiredClaims": [
+        "b10-claim-034"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6bc54965870ecb612232fa93793c84d8019ef2972e7c393b19a65ffbf540749f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-035",
+    "query": "What output format does the finance OCR helper produce?",
+    "expectedAnswer": "It extracts OCR text into structured finance JSON.",
+    "language": "english",
+    "classes": [
+      "ocr",
+      "code_config_log"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/financeService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/financeService.test.ts",
+      "sha256": "9d955bbfb5901c3bb673d5b1f61c64aed86771e2201a2f6fc8986f44e945d2a9",
+      "lineStart": 422,
+      "lineEnd": 422,
+      "quoteSha256": "64cea25cc8219efe3fd43c4de35ca5433f1e5eea2765ada06dfcef7a5dd08cad",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-035"
+      ],
+      "requiredClaims": [
+        "b10-claim-035"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9d955bbfb5901c3bb673d5b1f61c64aed86771e2201a2f6fc8986f44e945d2a9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-036",
+    "query": "ระบบจับคู่ alias ธนาคารไทยของบัญชีต้นทางและปลายทางแยกกันอย่างไร?",
+    "expectedAnswer": "ระบบรู้จำ alias ธนาคารไทยของต้นทางและปลายทางแยกจากกัน",
+    "language": "thai",
+    "classes": [
+      "multi_hop"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/financeService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/financeService.test.ts",
+      "sha256": "9d955bbfb5901c3bb673d5b1f61c64aed86771e2201a2f6fc8986f44e945d2a9",
+      "lineStart": 812,
+      "lineEnd": 822,
+      "quoteSha256": "d05ff5d53294c5dc51dbc33b61ec92c02306cffddd5ad3d52a3d8e542951be7a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-036"
+      ],
+      "requiredClaims": [
+        "b10-claim-036"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9d955bbfb5901c3bb673d5b1f61c64aed86771e2201a2f6fc8986f44e945d2a9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-037",
+    "query": "Can a Developer request inject `tenantId: attacker-tenant` and `actorId: 999` as trusted bindings?",
+    "expectedAnswer": "No. The request payload cannot override tenant or actor bindings.",
+    "language": "english",
+    "classes": [
+      "acl_attack"
+    ],
+    "sourceGroupId": "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
+      "sha256": "c33dc4cc187c4f61aee89e28c7da98a06e7709069457fdc1860fa6df68a27d8b",
+      "lineStart": 122,
+      "lineEnd": 132,
+      "quoteSha256": "d444ba8cdcb9d6f393690f2aade6c27b1fdc8d1d3193ef753eb5cd04a4a2ae04",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-037"
+      ],
+      "requiredClaims": [
+        "b10-claim-037"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c33dc4cc187c4f61aee89e28c7da98a06e7709069457fdc1860fa6df68a27d8b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-038",
+    "query": "Is workspace preparation treated as a read-only query?",
+    "expectedAnswer": "No. Viewing the workspace is a query, while preparation is treated as a mutation.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
+      "sha256": "c33dc4cc187c4f61aee89e28c7da98a06e7709069457fdc1860fa6df68a27d8b",
+      "lineStart": 134,
+      "lineEnd": 134,
+      "quoteSha256": "8d1ff49b2a3591926fe637c995555b5b99faa0eb867e5587b6028f99bc1e37f8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-038"
+      ],
+      "requiredClaims": [
+        "b10-claim-038"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c33dc4cc187c4f61aee89e28c7da98a06e7709069457fdc1860fa6df68a27d8b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-039",
+    "query": "If remote dispatch becomes ambiguous, should a native duplicate be created?",
+    "expectedAnswer": "No. The system does not create a native duplicate after ambiguous remote dispatch.",
+    "language": "english",
+    "classes": [
+      "ambiguous"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/a2aInteropContracts.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/a2aInteropContracts.test.ts",
+      "sha256": "96249f26b0bfa6c3f227c17b8d8c4c6ad3745c715a641484185c725f51e8850f",
+      "lineStart": 89,
+      "lineEnd": 89,
+      "quoteSha256": "31fe41884945c3906d732afc337af8890622013666e221a679c3fbf00e84adaf",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-039"
+      ],
+      "requiredClaims": [
+        "b10-claim-039"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:96249f26b0bfa6c3f227c17b8d8c4c6ad3745c715a641484185c725f51e8850f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-040",
+    "query": "What is the behavior when A2A is required but has not been verified?",
+    "expectedAnswer": "The operation fails closed.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/services/__tests__/a2aInteropContracts.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/a2aInteropContracts.test.ts",
+      "sha256": "96249f26b0bfa6c3f227c17b8d8c4c6ad3745c715a641484185c725f51e8850f",
+      "lineStart": 74,
+      "lineEnd": 74,
+      "quoteSha256": "2f2d7c0a5741c83f25d9b0b3bfa0586d688baf097ba8582212af2071393be4f4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-040"
+      ],
+      "requiredClaims": [
+        "b10-claim-040"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:96249f26b0bfa6c3f227c17b8d8c4c6ad3745c715a641484185c725f51e8850f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-041",
+    "query": "A receipt ACK has been sent. What processing occurs next in the runner sequence?",
+    "expectedAnswer": "Semantic follow-up processing occurs after the receipt ACK.",
+    "language": "english",
+    "classes": [
+      "follow_up"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/runnerControl.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/runnerControl.test.ts",
+      "sha256": "586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+      "lineStart": 266,
+      "lineEnd": 281,
+      "quoteSha256": "d1b3837ccf18a2f10b323514d611079aa138154b4d15b1b03f8308352c21e9ef",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-041"
+      ],
+      "requiredClaims": [
+        "b10-claim-041"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-042",
+    "query": "What exact error code is returned when a runner WebSocket send times out: `runner_websocket_send_timeout`?",
+    "expectedAnswer": "The timeout error code is `runner_websocket_send_timeout`.",
+    "language": "english",
+    "classes": [
+      "error_code",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/runnerControl.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/runnerControl.test.ts",
+      "sha256": "586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+      "lineStart": 261,
+      "lineEnd": 261,
+      "quoteSha256": "8110d509f0ee83c4b075fb0db03f13b92ae5c8a49705e2cff135539327d7f485",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-042"
+      ],
+      "requiredClaims": [
+        "b10-claim-042"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-043",
+    "query": "Does `GET /v1/skills?category=prompt_enhancement` filter the list by category?",
+    "expectedAnswer": "`GET /v1/skills?category=prompt_enhancement` lists skills in that category.",
+    "language": "english",
+    "classes": [
+      "api_path",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/publicSkillsApi.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/publicSkillsApi.test.ts",
+      "sha256": "6d7954d754add68231b1212689b28588a9fd48d41016044556cb0c664d54ea4e",
+      "lineStart": 131,
+      "lineEnd": 136,
+      "quoteSha256": "a0dd968b17a0cd53048c223e468fd43b322431744a9e9515abdd323eb5da72c6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-043"
+      ],
+      "requiredClaims": [
+        "b10-claim-043"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6d7954d754add68231b1212689b28588a9fd48d41016044556cb0c664d54ea4e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-044",
+    "query": "Does `GET /v1/skills?search=video` search the skill list for video?",
+    "expectedAnswer": "`GET /v1/skills?search=video` performs the search.",
+    "language": "english",
+    "classes": [
+      "api_path",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/publicSkillsApi.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/publicSkillsApi.test.ts",
+      "sha256": "6d7954d754add68231b1212689b28588a9fd48d41016044556cb0c664d54ea4e",
+      "lineStart": 138,
+      "lineEnd": 143,
+      "quoteSha256": "efc22d0a1136b593916b9d2ed059cfd3ea6c0c5d07d8407ec258c6cb317ef5f0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-044"
+      ],
+      "requiredClaims": [
+        "b10-claim-044"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6d7954d754add68231b1212689b28588a9fd48d41016044556cb0c664d54ea4e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-045",
+    "query": "Does `POST /api/admin/worker-runtime/runner-artifacts/upload-url` presign a direct runner artifact upload?",
+    "expectedAnswer": "The upload URL is requested from `POST /api/admin/worker-runtime/runner-artifacts/upload-url`.",
+    "language": "english",
+    "classes": [
+      "api_path",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/workerRuntimeReleases.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/workerRuntimeReleases.test.ts",
+      "sha256": "67e186afbd356d12d9a760b6ec6334d68759f23250184f0973fcc78e7b390f02",
+      "lineStart": 226,
+      "lineEnd": 238,
+      "quoteSha256": "1ac83ecc0bf2ccc1eab0282ef2fd75bedf734b05accba0e8b12d6c818f18ef8a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-045"
+      ],
+      "requiredClaims": [
+        "b10-claim-045"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:67e186afbd356d12d9a760b6ec6334d68759f23250184f0973fcc78e7b390f02",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-046",
+    "query": "Is `speaker-aware-runner.exe` the exact filename used for the uploaded runner artifact?",
+    "expectedAnswer": "The runner artifact filename is `speaker-aware-runner.exe`.",
+    "language": "english",
+    "classes": [
+      "filename",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/routes/__tests__/workerRuntimeReleases.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/routes/__tests__/workerRuntimeReleases.test.ts",
+      "sha256": "67e186afbd356d12d9a760b6ec6334d68759f23250184f0973fcc78e7b390f02",
+      "lineStart": 223,
+      "lineEnd": 239,
+      "quoteSha256": "8f545efeb98fa73a526e5b403839dc69d585dde40920761a9ff43073e7bf45ab",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-046"
+      ],
+      "requiredClaims": [
+        "b10-claim-046"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:67e186afbd356d12d9a760b6ec6334d68759f23250184f0973fcc78e7b390f02",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-047",
+    "query": "How does the Forge upload handler process a large archive?",
+    "expectedAnswer": "It streams the upload instead of buffering the whole archive.",
+    "language": "english",
+    "classes": [
+      "semantic_paraphrase"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/storageLargeFileUpload.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/storageLargeFileUpload.test.ts",
+      "sha256": "75510156741a35e899a23cf233cdfc415b016da8719d2274ea7d893baa47c431",
+      "lineStart": 61,
+      "lineEnd": 61,
+      "quoteSha256": "0dd0037e2332be1007b7fa964015ddb59e36a7e2227714f618b32e990ad44dd2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-047"
+      ],
+      "requiredClaims": [
+        "b10-claim-047"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:75510156741a35e899a23cf233cdfc415b016da8719d2274ea7d893baa47c431",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-048",
+    "query": "If the `X-Request-ID` header is an empty string, does middleware keep it or generate a UUID?",
+    "expectedAnswer": "It generates a UUID when the `X-Request-ID` header is empty.",
+    "language": "english",
+    "classes": [
+      "uuid"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/correlationId.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/correlationId.test.ts",
+      "sha256": "f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "lineStart": 75,
+      "lineEnd": 83,
+      "quoteSha256": "c9a69b3d4507bda881eb97711790cce0b0a2dcda84e7d6bd6557698c9aac449d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-048"
+      ],
+      "requiredClaims": [
+        "b10-claim-048"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b10-049",
+    "query": "When the incoming X-Request-ID is `test-xyz-789`, which Sentry tag receives it?",
+    "expectedAnswer": "The Sentry tag key is `request_id`, with value `test-xyz-789`.",
+    "language": "english",
+    "classes": [
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/correlationId.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/correlationId.test.ts",
+      "sha256": "f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "lineStart": 65,
+      "lineEnd": 73,
+      "quoteSha256": "ebfc19eaa94c2db252e09adedf446f12f5ef000af69d42f0c9edf36b249756af",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-049"
+      ],
+      "requiredClaims": [
+        "b10-claim-049"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f447a6283d8b4d4825a75b7b8fba5d0d760f46de56a0a19fbe536738aa6c83c1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b10-050",
+    "query": "Does `topK` set the maximun number of Vectorize search results?",
+    "expectedAnswer": "The `topK` parameter sets the result limit.",
+    "language": "english",
+    "classes": [
+      "typo",
+      "code_config_log",
+      "exact_id"
+    ],
+    "sourceGroupId": "apps/web/server/__tests__/vectorize-search.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/vectorize-search.test.ts",
+      "sha256": "491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "lineStart": 136,
+      "lineEnd": 163,
+      "quoteSha256": "7df320c10e70a9f326631b2e2a4e69ed267d32b96b6ddce44cdbecb091f9ca19",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored test source; test values are development fixtures and contain no tenant production corpus."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-repo-test-candidates-v10"
+    },
+    "reviews": [],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "source-050"
+      ],
+      "requiredClaims": [
+        "b10-claim-050"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:491de0fac06d90f84bbb01e4f3ad40f4e0c9d31bbd3b187aa8c1813c9a1a36d1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  }
+]

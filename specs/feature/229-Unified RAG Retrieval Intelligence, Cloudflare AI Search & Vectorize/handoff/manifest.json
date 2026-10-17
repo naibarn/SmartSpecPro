@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
+    "expected_canonical_sha": "0121b3048ce726d3c24781ed6aac63a0f51fb00f",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "P229.8 candidate corpus now has 410 unique independently agent-reviewed development-only queries; batch08 adds fixture-backed UUID, typo, stale/conflict, no-answer, deleted/revoked, OCR, long-document, and code/config/log cases, bringing all §27 required candidate classes into the corpus. PR #1071 merged at e2852edc753b3b49602d12fe678234f34bab02ee. Post-merge focused tests passed 16/16, candidate CLI validated 360 at merge SHA; 410-candidate state tested at 76bf1084a883a7a9bbc833a5cd2b64ed8e37f680. All 15 release criteria remain NOT_EVALUABLE. Complete independent review for batch09 and continue to 500. Evidence: handoff/evidence/p229-8-gold-candidate-corpus-20261017.json.",
-    "next_ready_workunit": "P229.8_CANDIDATE_CORPUS_BATCH09_REVIEW: independently review the 50 batch09 candidates for exact source/answer support and class correctness, repair findings, then merge accepted rows into the development corpus; continue batch10 to reach 500.",
+    "next_action": "PR #1074 is open from codex/spec229-gold-expansion-5-20261017, head e2da3e003abea12916fa790b99d25e7c764fb5a6, based on canonical main 0121b3048ce726d3c24781ed6aac63a0f51fb00f. Its P229.8 candidate dataset includes 560 unique development-only rows; 560 independently agent-reviewed, 0 human-reviewed/accepted, and 0 release-approved/held out. Exact-head CLI validates all required §27 candidate classes; focused tests pass 2 files/16 tests. Required PR gates and protected integration are pending. Calibration remains NOT_EVALUABLE due missing human-approved held-out cohort and authorized provider observations.",
+    "next_ready_workunit": "P229.8_GOLD_CANDIDATE_CORPUS_PR1074: complete required checks on exact PR head e2da3e003abea12916fa790b99d25e7c764fb5a6 and promote through the protected integration executor only when green; then verify exact canonical main SHA. Calibration remains waiting for human source/use approval and authorized observations.",
     "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
-    "resume_point": "Canonical main through PR #1071 is e2852edc753b3b49602d12fe678234f34bab02ee. On candidate commit 76bf1084a883a7a9bbc833a5cd2b64ed8e37f680, dataset CLI passed: 410/410 independent agent-reviewed development-only candidates across 206 source groups (Thai 106, English 214, mixed 90), all required §27 candidate classes represented; 0 human-reviewed/accepted, 0 release-approved, 0 held-out. Focused tests passed 2 files/16 tests. The 9-case synthetic fixture baseline remains NOT_CERTIFIED and shows intentional negative controls; no retrieval observations/latency/cost exist. Batch09 has 50 candidates awaiting independent review.",
-    "waiting_predicate": "P229.8 release calibration waits for 500 reviewed queries and a source-approved held-out cohort with authorized, complete retrieval observations across the §27 comparison profiles, including latency/cost; agent review never substitutes for human source approval."
+    "resume_point": "Canonical main is 0121b3048ce726d3c24781ed6aac63a0f51fb00f after PR #1072. Candidate branch head e2da3e003abea12916fa790b99d25e7c764fb5a6 has 560 development candidates, all 560 independently agent-reviewed; 0 human review/acceptance, 0 gold accepted, 0 release-approved/held-out. Dataset digest 72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc; all candidate class gaps empty. CLI and focused 2-file/16-test run pass at that SHA; metrics and 15 release criteria are NOT_EVALUABLE with no retrieval observations. PR #1074 required checks are pending.",
+    "waiting_predicate": "P229.8 release calibration remains waiting on human source/use approval for a held-out cohort and authorized retrieval observations covering the §27 profiles, including latency and cost. Agent review cannot substitute for human approval; do not promote weak evidence or migrate consequential consumers before certification."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 61,
+  "generation": 63,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -125,9 +125,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
+    "canonical_sha": "0121b3048ce726d3c24781ed6aac63a0f51fb00f",
     "integrated": true,
-    "integrated_at": "2026-10-17T16:19:41Z"
+    "integrated_at": "2026-10-17T16:37:07Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -278,7 +278,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T16:24:44.792304Z",
+  "updated_at": "2026-10-17T16:42:18.408419Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -292,7 +292,8 @@
       "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
       "handoff/evidence/p229-8-anchors-benchmark-20261017.json",
       "handoff/evidence/p229-8-gold-pipeline-20261017.json",
-      "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json"
+      "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json",
+      "handoff/evidence/p229-8-gold-review-batches-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
