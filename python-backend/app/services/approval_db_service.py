@@ -6,14 +6,15 @@ This service provides persistent storage for approval requests using SQLAlchemy 
 It complements the in-memory ApprovalService for production use cases.
 """
 
-import structlog
 import hashlib
 import json
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import List, Optional
 from uuid import NAMESPACE_URL, uuid4, uuid5
-from sqlalchemy import select, and_, or_, text
+
+import structlog
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.approval import (
@@ -22,9 +23,9 @@ from app.models.approval import (
     ApprovalStatus,
     ApprovalType,
 )
-from app.models.user import User, Role
-from app.models.tenant import Tenant
 from app.models.audit_log import AuditLog
+from app.models.tenant import Tenant
+from app.models.user import Role, User
 
 logger = structlog.get_logger(__name__)
 
@@ -32,6 +33,70 @@ _SPEC224_CANONICAL_UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+
+_CF_STAGING_GRANT_SCHEMA = "cloudflare.staging-deployment-grant.v1"
+_CF_STAGING_TARGET = "smartspec-cloudflare-staging"
+_CF_STAGING_ACTIONS = {"deploy", "rollback"}
+_CF_STAGING_SHA = re.compile(r"^[0-9a-f]{40}$")
+_CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
+
+
+def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
+    """Validate and normalize the single supported Cloudflare staging grant shape."""
+    if not isinstance(value, dict):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_PAYLOAD_INVALID")
+    required = {
+        "schemaVersion", "grantRef", "tenantId", "requesterUserId", "projectId",
+        "executorId", "targetId", "environment", "artifactRef", "sourceSha",
+        "buildDigest", "actions", "rollbackDeploymentId", "rollbackArtifactRef",
+        "rollbackSourceSha", "rollbackBuildDigest", "expiresAt", "revokedAt",
+    }
+    if set(value) != required:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_FIELDS_INVALID")
+    if value["schemaVersion"] != _CF_STAGING_GRANT_SCHEMA:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_SCHEMA_INVALID")
+    if value["targetId"] != _CF_STAGING_TARGET or value["environment"] != "staging":
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_TARGET_INVALID")
+    for field in ("grantRef", "tenantId", "projectId", "executorId", "artifactRef"):
+        if not isinstance(value[field], str) or not value[field].strip() or len(value[field]) > 255:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_FIELD_INVALID")
+    if type(value["requesterUserId"]) is not int or value["requesterUserId"] <= 0:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_REQUESTER_INVALID")
+    for field in ("sourceSha", "rollbackSourceSha"):
+        if not isinstance(value[field], str) or not _CF_STAGING_SHA.fullmatch(value[field]):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_SOURCE_SHA_INVALID")
+    for field in ("buildDigest", "rollbackBuildDigest"):
+        if not isinstance(value[field], str) or not _CF_STAGING_DIGEST.fullmatch(value[field]):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_BUILD_DIGEST_INVALID")
+    if value["artifactRef"] != f"sha256:{value['buildDigest']}" or value["rollbackArtifactRef"] != f"sha256:{value['rollbackBuildDigest']}":
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ARTIFACT_REF_INVALID")
+    if not isinstance(value["actions"], list) or not value["actions"]:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+    if any(not isinstance(action, str) or action not in _CF_STAGING_ACTIONS for action in value["actions"]):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+    if len(set(value["actions"])) != len(value["actions"]):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+    for field in ("rollbackDeploymentId", "rollbackArtifactRef"):
+        if not isinstance(value[field], str) or not value[field].strip() or len(value[field]) > 255:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_ROLLBACK_INVALID")
+    if not isinstance(value["expiresAt"], str):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
+    try:
+        expires_at = datetime.fromisoformat(value["expiresAt"].replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID") from exc
+    if expires_at.tzinfo is None:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
+    if value["revokedAt"] is not None:
+        if not isinstance(value["revokedAt"], str):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_REVOCATION_INVALID")
+        try:
+            revoked_at = datetime.fromisoformat(value["revokedAt"].replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_REVOCATION_INVALID") from exc
+        if revoked_at.tzinfo is None:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_REVOCATION_INVALID")
+    return {**value, "actions": sorted(value["actions"])}
 
 
 def _spec224_recovery_grant_fence_identity(tenant_id: str, grant_id: str) -> str:
@@ -278,6 +343,184 @@ class ApprovalDBService:
         """
         self.db = db_session
         self._logger = logger.bind(service="approval_db")
+
+    async def create_cloudflare_staging_grant_request(
+        self, *, tenant_id: str, requester_id: int, idempotency_key: str, payload: dict,
+    ) -> ApprovalRequest:
+        """Create an admin-authorized, typed Cloudflare staging grant approval."""
+        if not tenant_id or len(tenant_id) > 36:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_TENANT_REQUIRED")
+        if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 160:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_IDEMPOTENCY_KEY_INVALID")
+        role_result = await self.db.execute(select(User.role).where(User.id == requester_id))
+        requester_role = role_result.scalar_one_or_none()
+        if requester_role not in (Role.admin, Role.domain_admin):
+            raise PermissionError("CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
+
+        grant = normalize_cloudflare_staging_grant_payload(payload)
+        if grant["tenantId"] != tenant_id or grant["requesterUserId"] != requester_id:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_REQUEST_BINDING_INVALID")
+        if grant["revokedAt"] is not None:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_INITIAL_REVOCATION_INVALID")
+        expires_at = datetime.fromisoformat(grant["expiresAt"].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if expires_at <= now or expires_at > now + timedelta(days=30):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_EXPIRY_OUT_OF_RANGE")
+
+        correlation_key = "cf-staging-grant:" + hashlib.sha256(
+            f"{tenant_id}:{idempotency_key}".encode("utf-8")
+        ).hexdigest()
+        grant_id = str(uuid5(NAMESPACE_URL, correlation_key))
+        grant = normalize_cloudflare_staging_grant_payload({**grant, "grantRef": grant_id})
+
+        # Serialize idempotent create attempts without introducing a new table/index.
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": correlation_key},
+        )
+        existing = await self.get_request_by_correlation(correlation_key, tenant_id)
+        if existing:
+            existing_payload = existing.payload if isinstance(existing.payload, dict) else {}
+            if (
+                existing.request_type != ApprovalType.DEPLOYMENT
+                or existing.requester_id != requester_id
+                or existing_payload != grant
+            ):
+                raise ValueError("CLOUDFLARE_STAGING_GRANT_IDEMPOTENCY_CONFLICT")
+            return existing
+
+        request = ApprovalRequest(
+            id=grant_id,
+            request_type=ApprovalType.DEPLOYMENT,
+            title="Cloudflare staging deployment grant",
+            description="Admin-authorized grant request for the exact staging Worker target.",
+            tenant_id=tenant_id,
+            project_id=grant["projectId"],
+            requester_id=requester_id,
+            requester_type="user",
+            status=ApprovalStatus.PENDING,
+            payload=grant,
+            extra_data={
+                "approvers": [],
+                "cloudflareStagingGrantIssuerV1": "admin_approval_workflow",
+            },
+            action_digest=hashlib.sha256(
+                json.dumps(grant, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+            correlation_key=correlation_key,
+            risk_level="critical",
+            required_approvers=1,
+            current_approvals=0,
+            expires_at=expires_at.replace(tzinfo=None),
+        )
+        self.db.add(request)
+        self.db.add(AuditLog(
+            user_id=str(requester_id),
+            user_role=str(requester_role.value if hasattr(requester_role, "value") else requester_role),
+            action="cloudflare.staging_grant.requested",
+            resource_type="cloudflare_staging_deployment_grant", resource_id=grant_id,
+            details={
+                "tenantId": tenant_id, "projectId": grant["projectId"],
+                "targetId": _CF_STAGING_TARGET, "environment": "staging",
+                "actionDigest": request.action_digest, "correlationKey": correlation_key,
+            },
+        ))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def revoke_cloudflare_staging_grant(
+        self, *, grant_ref: str, tenant_id: str, actor_id: int, reason: str,
+    ) -> ApprovalRequest:
+        """Revoke an existing staging grant idempotently, retaining an audit record."""
+        if not reason or len(reason.strip()) < 4 or len(reason) > 500:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_REVOCATION_REASON_INVALID")
+        role_result = await self.db.execute(select(User.role).where(User.id == actor_id))
+        if role_result.scalar_one_or_none() not in (Role.admin, Role.domain_admin):
+            raise PermissionError("CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
+        result = await self.db.execute(
+            select(ApprovalRequest).where(
+                ApprovalRequest.id == grant_ref,
+                ApprovalRequest.tenant_id == tenant_id,
+                ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+            ).with_for_update()
+        )
+        request = result.scalar_one_or_none()
+        if request is None:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_NOT_FOUND")
+        extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
+        if extra_data.get("cloudflareStagingGrantIssuerV1") != "admin_approval_workflow":
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_NOT_FOUND")
+        grant = normalize_cloudflare_staging_grant_payload(
+            request.payload if isinstance(request.payload, dict) else {}
+        )
+        if grant["grantRef"] != request.id:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_PERSISTED_BINDING_INVALID")
+        if request.revoked_at is not None:
+            await self.db.commit()
+            return request
+        now = datetime.now(timezone.utc)
+        grant["revokedAt"] = now.isoformat().replace("+00:00", "Z")
+        request.payload = grant
+        request.revoked_at = now.replace(tzinfo=None)
+        self.db.add(AuditLog(
+            user_id=str(actor_id), user_role="admin",
+            action="cloudflare.staging_grant.revoked",
+            resource_type="cloudflare_staging_deployment_grant", resource_id=grant_ref,
+            details={"tenantId": tenant_id, "reason": reason.strip()},
+        ))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def resolve_cloudflare_staging_grant(
+        self, grant_ref: str, *, now: Optional[datetime] = None,
+    ) -> Optional[dict]:
+        """Resolve only an approved, current grant from authoritative persisted approval rows."""
+        result = await self.db.execute(
+            select(ApprovalRequest).where(
+                ApprovalRequest.id == grant_ref,
+                ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+            )
+        )
+        request = result.scalar_one_or_none()
+        if (
+            request is None
+            or request.status != ApprovalStatus.APPROVED
+            or request.revoked_at is not None
+            or request.resolved_at is None
+            or request.current_approvals < request.required_approvers
+        ):
+            return None
+        extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
+        if extra_data.get("cloudflareStagingGrantIssuerV1") != "admin_approval_workflow":
+            return None
+        try:
+            grant = normalize_cloudflare_staging_grant_payload(
+                request.payload if isinstance(request.payload, dict) else {}
+            )
+        except ValueError:
+            return None
+        if (
+            grant["grantRef"] != request.id
+            or grant["tenantId"] != request.tenant_id
+            or grant["projectId"] != request.project_id
+            or grant["requesterUserId"] != request.requester_id
+            or grant["revokedAt"] is not None
+        ):
+            return None
+        expires_at = datetime.fromisoformat(grant["expiresAt"].replace("Z", "+00:00"))
+        issued_at = request.created_at
+        if issued_at is None:
+            return None
+        if issued_at.tzinfo is None:
+            issued_at = issued_at.replace(tzinfo=timezone.utc)
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        if expires_at <= current or expires_at > issued_at + timedelta(days=30):
+            return None
+        return grant
 
     @staticmethod
     def _recovery_grant_scope(value: dict) -> dict:

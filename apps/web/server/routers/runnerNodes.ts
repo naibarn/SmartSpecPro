@@ -1,8 +1,16 @@
-import { and, desc, eq, isNull, or } from "drizzle-orm";
-import { protectedProcedure, router } from "../_core/trpc";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { isRunnerWorkspaceConvergenceState } from "../services/runnerContracts";
 import { runnerNodes } from "../../drizzle/schema";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import {
+  CLOUDFLARE_STAGING_EXECUTOR_CAPABILITY,
+  CLOUDFLARE_STAGING_EXECUTOR_PROFILE,
+  CLOUDFLARE_STAGING_EXECUTOR_TARGET,
+  validateCloudflareStagingExecutorRegistration,
+} from "../services/cloudflareStagingExecutorIdentityService";
 
 function tenantRequired(ctx: {
   tenantId?: unknown;
@@ -144,6 +152,7 @@ export const runnerNodesRouter = router({
       .where(
         and(
           eq(runnerNodes.tenantId, tenantId),
+          ne(runnerNodes.profile, CLOUDFLARE_STAGING_EXECUTOR_PROFILE),
           or(
             isNull(runnerNodes.ownerUserId),
             eq(runnerNodes.ownerUserId, ctx.user.id)
@@ -209,4 +218,74 @@ export const runnerNodesRouter = router({
       }),
     };
   }),
+
+  registerCloudflareStagingExecutor: adminProcedure
+    .input(z.object({
+      tenantId: z.string().trim().min(1).max(36),
+      executorId: z.string().trim().min(1).max(128),
+      publicKey: z.string().trim().min(1).max(4096),
+      expiresAt: z.string().datetime({ offset: true }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let registration: ReturnType<typeof validateCloudflareStagingExecutorRegistration>;
+      try {
+        registration = validateCloudflareStagingExecutorRegistration({
+          executorId: input.executorId,
+          publicKey: input.publicKey,
+          expiresAt: new Date(input.expiresAt),
+        });
+      } catch (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Invalid executor registration" });
+      }
+      const db = getDb();
+      const [created] = await db.insert(runnerNodes).values({
+        runnerId: registration.executorId,
+        tenantId: input.tenantId,
+        ownerUserId: ctx.user.id,
+        nodeKind: "service_executor",
+        profile: CLOUDFLARE_STAGING_EXECUTOR_PROFILE,
+        deviceId: null,
+        displayName: "Cloudflare Staging Deployment Executor",
+        trustState: "trusted",
+        status: "registered",
+        currentSnapshotRevision: `ed25519:${registration.fingerprint.slice(0, 24)}`,
+        currentSnapshotJson: {
+          cloudflareStagingExecutor: {
+            version: 1,
+            publicKey: registration.publicKey,
+            fingerprint: registration.fingerprint,
+            target: CLOUDFLARE_STAGING_EXECUTOR_TARGET,
+            capability: CLOUDFLARE_STAGING_EXECUTOR_CAPABILITY,
+          },
+        },
+        snapshotObservedAt: new Date(),
+        snapshotExpiresAt: registration.expiresAt,
+      }).onConflictDoNothing().returning({ runnerId: runnerNodes.runnerId });
+      if (!created) throw new TRPCError({ code: "CONFLICT", message: "Executor ID is already registered" });
+      return {
+        executorId: registration.executorId,
+        tenantId: input.tenantId,
+        target: CLOUDFLARE_STAGING_EXECUTOR_TARGET,
+        capability: CLOUDFLARE_STAGING_EXECUTOR_CAPABILITY,
+        publicKeyFingerprint: registration.fingerprint,
+        expiresAt: registration.expiresAt.toISOString(),
+      };
+    }),
+
+  revokeCloudflareStagingExecutor: adminProcedure
+    .input(z.object({ executorId: z.string().trim().min(1).max(128) }))
+    .mutation(async ({ input }) => {
+      const now = new Date();
+      const [revoked] = await getDb().update(runnerNodes).set({
+        status: "revoked",
+        trustState: "revoked",
+        revokedAt: now,
+        updatedAt: now,
+      }).where(and(
+        eq(runnerNodes.runnerId, input.executorId),
+        eq(runnerNodes.profile, CLOUDFLARE_STAGING_EXECUTOR_PROFILE),
+        isNull(runnerNodes.revokedAt),
+      )).returning({ runnerId: runnerNodes.runnerId });
+      return { revoked: Boolean(revoked) };
+    }),
 });

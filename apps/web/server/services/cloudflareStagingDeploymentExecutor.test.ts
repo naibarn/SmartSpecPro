@@ -7,7 +7,11 @@ import {
   createCloudflareStagingDeploymentExecutor,
   type CloudflareStagingDeploymentRuntime,
 } from "./cloudflareStagingDeploymentExecutor";
-import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
+import {
+  createJobExecutorRegistry,
+  defaultJobExecutorRegistry,
+} from "./jobExecutorRegistry";
+import { executeCanonicalJobEnvelope } from "../jobs/unifiedJobConsumer";
 
 const sourceSha = "a".repeat(40);
 const buildDigest = "b".repeat(64);
@@ -144,6 +148,84 @@ function invocation(
 }
 
 describe("Cloudflare staging deployment executor", () => {
+  it("completes the canonical worker job envelope through the existing registry and runtime receipt", async () => {
+    const state = runtime();
+    const lease = {
+      jobId: "job-1",
+      attemptId: "attempt-1",
+      runnerId: "runner:staging",
+      fencingVersion: 1,
+      leaseToken: "lease-token",
+      expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+    };
+    const context = {
+      jobId: "job-1",
+      jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+      contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+      tenantId: "tenant-a",
+      requestedByUserId: 41,
+      input: {
+        contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+        action: "deploy",
+        targetId: CLOUDFLARE_STAGING_TARGET_ID,
+        environment: "staging",
+        grantRef: grant.grantRef,
+        artifactRef: artifact.artifactRef,
+        sourceSha,
+        buildDigest,
+      },
+      attempt: 1,
+      status: "queued",
+      executionClass: "long",
+    };
+    const completed: unknown[] = [];
+    const controlPlane = {
+      getContext: vi.fn(async () => context),
+      claim: vi.fn(async () => lease),
+      start: vi.fn(async () => undefined),
+      assertActive: vi.fn(async () => undefined),
+      complete: vi.fn(async (_lease: unknown, result: unknown) => {
+        completed.push(result);
+      }),
+      fail: vi.fn(async () => undefined),
+      rejectUnsupportedDelivery: vi.fn(async () => undefined),
+    };
+    const registry = createJobExecutorRegistry([
+      {
+        jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+        contractVersions: new Set([CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT]),
+        executionClass: "long",
+        executor: createCloudflareStagingDeploymentExecutor(state.dependencies),
+      },
+    ]);
+
+    const result = await executeCanonicalJobEnvelope(
+      {
+        jobId: "job-1",
+        contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+        businessAttempt: 1,
+      },
+      {
+        controlPlane: controlPlane as never,
+        executorRegistry: registry,
+        runnerId: "runner:staging",
+        adapter: "postgres-pull",
+      }
+    );
+
+    expect(result).toMatchObject({ state: "succeeded", jobId: "job-1" });
+    expect(controlPlane.claim).toHaveBeenCalledWith({
+      jobId: "job-1",
+      runnerId: "runner:staging",
+      adapter: "postgres-pull",
+      attemptId: undefined,
+    });
+    expect(state.cloudflare.deploy).toHaveBeenCalledTimes(1);
+    expect(completed).toHaveLength(1);
+    expect(JSON.stringify(completed[0])).toContain('"runtimeVerified":true');
+    expect(JSON.stringify(completed[0])).not.toContain("secret-token-for-test");
+  });
+
   it("registers only on the existing canonical worker job registry and remains closed without runtime authorities", async () => {
     const registration = defaultJobExecutorRegistry.resolve(
       CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
