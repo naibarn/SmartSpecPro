@@ -16,22 +16,25 @@
   ],
   "sections_state": {
     "section-01-ownership-contracts": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Resolve existing owner mapping; amend 277/294/088 and monitor owner; reconcile with shared writer; implement shared read contracts"
+      "next_action": "Review additive owner contracts after canonical merge; preserve unresolved acceptance statuses and finish remaining ownership gaps",
+      "checkpoint_sha": "746eebc5df3a3a8112aa3ac762cbbe8de8c56da7"
     },
     "section-02-goal-usage-projections": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Close source-bound model facets, dedupe/correction/cached/overlap and weighted Goal progress; focused tests are in place, rollups remain open"
+      "next_action": "Implement shared Project/SPEC rollup and cross-surface projection token; add parity tests against current reducers",
+      "checkpoint_sha": "746eebc5df3a3a8112aa3ac762cbbe8de8c56da7"
     },
     "section-03-authenticated-read-api": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Validate owner/admin tenant scope, cursor expiry/current-state semantics, API integration and query bounds; Chat/project aggregation remain open"
+      "next_action": "Add API auth/cursor/snapshot security tests and coherent snapshot boundary; current mutable detail values are explicitly disclosed",
+      "checkpoint_sha": "746eebc5df3a3a8112aa3ac762cbbe8de8c56da7"
     }
   },
   "pre_commit": {
@@ -43,11 +46,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 4,
-  "updated_at": "2026-10-17T00:42:19.032792+00:00",
+  "generation": 7,
+  "updated_at": "2026-10-17T00:43:33.867361+00:00",
   "progress": {
     "active_section": "section-03-authenticated-read-api",
-    "next_action": "Validate owner/admin tenant scope, cursor expiry/current-state semantics, API integration and query bounds; Chat/project aggregation remain open",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017"
+    "next_action": "Add API auth/cursor/snapshot security tests and coherent snapshot boundary; current mutable detail values are explicitly disclosed",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+    "gaps": [
+      "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
+      "Live Runner/API acceptance and responsive browser evidence remain UNKNOWN"
+    ]
   }
 }
