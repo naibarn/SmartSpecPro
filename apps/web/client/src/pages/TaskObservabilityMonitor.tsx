@@ -211,8 +211,8 @@ export default function TaskObservabilityMonitor() {
 
           <Section>
             <VStack gap={2}>
-              <Heading level={3}>Canonical job timeline</Heading>
-              {detail.timeline.length ? detail.timeline.map((event) => <Text key={event.id}>{event.at} · {event.type} · attempt {event.attempt ?? "unknown"} · {event.phase ?? event.reasonCode ?? "no detail recorded"}{event.correction ? ` · usage corrected ${event.correction.previousUsage.inputTokens ?? "Unknown"}/${event.correction.previousUsage.outputTokens ?? "Unknown"} → ${event.correction.correctedUsage.inputTokens ?? "Unknown"}/${event.correction.correctedUsage.outputTokens ?? "Unknown"}; additional ${event.correction.additionalCharge ?? "Unknown"} tokens` : ""}</Text>) : <Text>Timeline unavailable.</Text>}
+              <Heading level={3}>Job and bound Runner session timeline</Heading>
+              {detail.timeline.length ? detail.timeline.map((event) => <Text key={event.id}>{event.at} · {event.type} · attempt {event.attempt ?? "unknown"}{"source" in event && event.source ? ` · ${event.source.kind} ${event.source.reference} · sequence ${event.source.sequence}` : ""} · {event.phase ?? event.reasonCode ?? "no detail recorded"}{event.correction ? ` · usage corrected ${event.correction.previousUsage.inputTokens ?? "Unknown"}/${event.correction.previousUsage.outputTokens ?? "Unknown"} → ${event.correction.correctedUsage.inputTokens ?? "Unknown"}/${event.correction.correctedUsage.outputTokens ?? "Unknown"}; additional ${event.correction.additionalCharge ?? "Unknown"} tokens` : ""}</Text>) : <Text>Timeline unavailable.</Text>}
             </VStack>
           </Section>
           </> : null}

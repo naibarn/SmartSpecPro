@@ -5,6 +5,7 @@ import { db, getDb } from "../db";
 import {
   runnerNodes,
   runnerExecutionSessions,
+  runnerExecutionSessionEvents,
   conversations,
   workerJobEvents,
   workerJobAttempts,
@@ -87,6 +88,27 @@ function asIso(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+export function projectRunnerTimelineEvent(event: {
+  id: string;
+  sessionId: string;
+  eventType: string;
+  sequence: number;
+  createdAt: Date;
+  payloadJson: Record<string, unknown> | null;
+}, attempt: number | null) {
+  const payload = objectValue(event.payloadJson);
+  return {
+    id: `runner-session:${event.id}`,
+    source: { kind: "runner_execution_session_event", reference: event.id, sessionId: event.sessionId, sequence: event.sequence },
+    type: safeText(event.eventType, 100) ?? "runner_session_event",
+    at: event.createdAt.toISOString(),
+    attempt,
+    phase: safeText(payload?.phase ?? payload?.stage ?? payload?.reportedState, 80),
+    reasonCode: safeText(payload?.reasonCode ?? payload?.safeErrorCode, 100),
+    correction: null,
+  };
 }
 
 function modelCallIdentity(jobId: string, attemptId: string | null, callId: string | null, id: string): string {
@@ -258,9 +280,12 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
   const currentAttempt = (await db.select({ runnerId: workerJobAttempts.runnerId, createdAt: workerJobAttempts.createdAt })
     .from(workerJobAttempts).where(and(eq(workerJobAttempts.workerJobId, job.id), eq(workerJobAttempts.attempt, job.attempt)))
     .orderBy(desc(workerJobAttempts.createdAt)).limit(1))[0];
-  const runnerSession = (await db.select({ runnerId: runnerExecutionSessions.runnerId, state: runnerExecutionSessions.state, observedAt: runnerExecutionSessions.observedAt, updatedAt: runnerExecutionSessions.updatedAt })
+  const runnerSession = (await db.select({ sessionId: runnerExecutionSessions.sessionId, workerJobAttempt: runnerExecutionSessions.workerJobAttempt, runnerId: runnerExecutionSessions.runnerId, state: runnerExecutionSessions.state, observedAt: runnerExecutionSessions.observedAt, updatedAt: runnerExecutionSessions.updatedAt })
     .from(runnerExecutionSessions).where(and(eq(runnerExecutionSessions.workerJobId, job.id), eq(runnerExecutionSessions.tenantId, scope.tenantId)))
     .orderBy(desc(runnerExecutionSessions.generation)).limit(1))[0];
+  const runnerSessionEvents = runnerSession ? await db.select({ id: runnerExecutionSessionEvents.id, sessionId: runnerExecutionSessionEvents.sessionId, eventType: runnerExecutionSessionEvents.eventType, sequence: runnerExecutionSessionEvents.sequence, createdAt: runnerExecutionSessionEvents.createdAt, payloadJson: runnerExecutionSessionEvents.payloadJson })
+    .from(runnerExecutionSessionEvents).where(and(eq(runnerExecutionSessionEvents.sessionId, runnerSession.sessionId), eq(runnerExecutionSessionEvents.tenantId, scope.tenantId), ...(snapshotAt ? [lte(runnerExecutionSessionEvents.createdAt, snapshotAt)] : [])))
+    .orderBy(desc(runnerExecutionSessionEvents.sequence)).limit(40) : [];
   const reservations = await db.select().from(workerJobProviderReservations)
     .where(snapshotAt
       ? and(eq(workerJobProviderReservations.workerJobId, job.id), lte(workerJobProviderReservations.createdAt, snapshotAt), lte(workerJobProviderReservations.updatedAt, snapshotAt))
@@ -352,7 +377,7 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     owner: { userId: job.requestedByUserId, tenantId: scope.tenantId },
     operatorAttention: job.operatorReviewRequired ? { required: true, reason: safeText(job.operatorReviewReason, 300) } : { required: false, reason: null },
     recovery: { nextRetryAt: asIso(job.nextRetryAt), retryEligible: job.status === "retry_scheduled" && Boolean(job.nextRetryAt), runnerSessionState: runnerSession?.state ?? null },
-    timeline: timelineRows.reverse().map((event) => {
+    timeline: [...timelineRows.map((event) => {
       const payload = objectValue(event.payloadJson);
       const readTokens = (value: Record<string, unknown> | null) => {
         const read = (field: string) => Number.isSafeInteger(value?.[field]) && Number(value?.[field]) >= 0 ? Number(value?.[field]) : null;
@@ -372,7 +397,8 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
           additionalCharge: Number.isSafeInteger(payload?.additionalCharge) && Number(payload?.additionalCharge) >= 0 ? Number(payload?.additionalCharge) : null,
         } : null,
       };
-    }),
+    }), ...runnerSessionEvents.map((event) => projectRunnerTimelineEvent(event, runnerSession?.workerJobAttempt ?? null))]
+      .sort((left, right) => left.at.localeCompare(right.at) || left.id.localeCompare(right.id)).slice(-40),
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
     runner: runner ? { id: runner.runnerId, displayName: safeText(runner.displayName, 120), status: runner.revokedAt ? "revoked" : runner.status, trustState: runner.trustState, lastSeenAt: asIso(runner.lastSeenAt), freshness: runner.lastSeenAt && Date.now() - runner.lastSeenAt.getTime() < 5 * 60_000 ? "fresh" : "stale" } : { status: "unknown", freshness: "unknown" },
     goal: goalProjection(job),

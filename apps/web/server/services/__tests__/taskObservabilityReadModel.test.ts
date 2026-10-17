@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -40,6 +40,38 @@ function reservation(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("projectRunnerTimelineEvent", () => {
+  it("projects bound recovery facts and excludes raw runner identity payloads", () => {
+    const event = projectRunnerTimelineEvent({
+      id: "runner-event-1",
+      sessionId: "runner-session-1",
+      eventType: "recovery_inventory_observed",
+      sequence: 4,
+      createdAt: new Date("2026-10-17T00:03:00Z"),
+      payloadJson: {
+        reportedState: "suspended",
+        processIdentity: "secret-process-identity",
+        hostIdentity: "private-host-name",
+        bearerToken: "secret-value",
+      },
+    }, 2);
+
+    expect(event).toMatchObject({
+      id: "runner-session:runner-event-1",
+      source: { kind: "runner_execution_session_event", reference: "runner-event-1", sessionId: "runner-session-1", sequence: 4 },
+      type: "recovery_inventory_observed",
+      at: "2026-10-17T00:03:00.000Z",
+      attempt: 2,
+      phase: "suspended",
+      reasonCode: null,
+      correction: null,
+    });
+    expect(JSON.stringify(event)).not.toContain("secret-process-identity");
+    expect(JSON.stringify(event)).not.toContain("private-host-name");
+    expect(JSON.stringify(event)).not.toContain("secret-value");
+  });
+});
 
 describe("aggregateTaskObservability", () => {
   beforeEach(() => {
