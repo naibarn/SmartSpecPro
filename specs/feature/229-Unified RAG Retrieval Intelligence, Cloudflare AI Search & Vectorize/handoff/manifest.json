@@ -166,10 +166,10 @@
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Push codex/spec229-p229-1-retrieval-broker at 13c65c378cad6119263c59e0d1d57c7941deb18a through a normal PR for this safe partial checkpoint; then complete remaining P229.1 contract and consumer gates before starting dependent P1 work.",
+    "next_action": "PR #1003 is open from codex/spec229-p229-1-retrieval-broker; wait for required progressive_integration_gate and SPEC-308 browser simulation checks, then reconcile against the resulting canonical main SHA. P229.1 remains partial: complete the full contract/security and consumer migration before dependent P1 work.",
     "next_ready_workunit": "SPEC229_P229_1_RETRIEVAL_BROKER",
     "reactivation_predicate": null,
-    "resume_point": "Source checkpoint 13c65c378cad6119263c59e0d1d57c7941deb18a based on canonical origin/main 772402cdf89c921e5fdd0e8e00e3143c5e56a7d8. Focused Broker V2 tests 11/11 and Library router import pass (evidence: handoff/evidence/p229-1-broker-focused-20261017.json). Evidence remains local/unintegrated; production verification is not performed. Next close P229.1 shared contract and consumer migration/security gates before dependent P1 work.",
+    "resume_point": "Partial code checkpoint 13c65c378cad6119263c59e0d1d57c7941deb18a; handoff checkpoint 6f412af2ff954ef782293e979058a59da27d4f9c; PR #1003 open, checks pending. Focused tests pass 11/11 and Library router import smoke passes; local dependency tree caveat is recorded in handoff/evidence/p229-1-broker-focused-20261017.json. No production verification or full SPEC acceptance is claimed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -369,7 +369,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T01:01:38.161410Z",
+  "updated_at": "2026-10-17T01:02:33.188812Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json"
