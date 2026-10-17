@@ -70,6 +70,7 @@
     "owner": "Windows workspace owner / SPEC-224 workspace-authority maintainer",
     "local_command_form": "smartaihub-runner workspace add <real-owned-Git-folder> --project-id <actual-project-id> --repository-id github.com/naibarn/SmartSpecPro",
     "preconditions": [
+      "use the same Desktop identity and data root; never enroll a separate CLI Runner or copy its credentials",
       "verify folder Git remote/source SHA and ownership; do not use another session checkout",
       "retain actual generated workspaceId; do not synthesize an ID",
       "bind real task through existing admission; do not write backend registry rows by hand"

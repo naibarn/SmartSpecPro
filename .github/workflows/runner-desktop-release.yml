@@ -97,7 +97,7 @@ jobs:
         env:
           CARGO_BUILD_JOBS: "2"
         run: |
-          foreach ($scope in @('windows_', 'workspace_registry::tests', 'spec224_candidate::tests')) {
+          foreach ($scope in @('windows_', 'workspace_registry::tests', 'spec224_candidate::tests', 'interrupted_command_recovery', 'persisted_receipt_replays')) {
             cargo test --locked --manifest-path apps/runner-app/Cargo.toml --lib $scope -- --test-threads=1
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
