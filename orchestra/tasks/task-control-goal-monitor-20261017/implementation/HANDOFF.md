@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `18`
-- Updated (UTC): `2026-10-17T00:55:08.246714+00:00`
+- State generation: `19`
+- Updated (UTC): `2026-10-17T00:58:38.050146+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-05-agent-monitor-ui`
-- Next action: Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof
+- Active section: `section-06-integration-live-acceptance`
+- Next action: Commit and push the current evidence matrix/handoff through PR #1001, then inspect protected checks on the exact new head; continue independent same-token/API and topology work.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks |
 | section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
 | section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof |
-| section-06-integration-live-acceptance | in_progress | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | — | — | Retry protected CI after next head and repair only failures shown to be task-caused; obtain authorized DB/UAT runner for live read-path evidence |
+| section-06-integration-live-acceptance | in_progress | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | — | — | Commit and push the current evidence matrix/handoff through PR #1001, then inspect protected checks on the exact new head; continue independent same-token/API and topology work. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -32,6 +32,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Stable same-token aggregation across Project/SPEC/Chat and historical revisions is incomplete
 - Required Mocked SPEC-308 browser simulation fails at assistant onboarding hint visibility on sign-in route (run 38988051046)
 - No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance
+- PR #1001 required mocked SPEC-308 browser check failed on old head 75de263; verify new head before attribution or repair.
+- Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.
 
 ## Resume
 

@@ -54,7 +54,7 @@
       "status": "in_progress",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Retry protected CI after next head and repair only failures shown to be task-caused; obtain authorized DB/UAT runner for live read-path evidence"
+      "next_action": "Commit and push the current evidence matrix/handoff through PR #1001, then inspect protected checks on the exact new head; continue independent same-token/API and topology work."
     }
   },
   "pre_commit": {
@@ -66,11 +66,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 18,
-  "updated_at": "2026-10-17T00:55:08.246714+00:00",
+  "generation": 19,
+  "updated_at": "2026-10-17T00:58:38.050146+00:00",
   "progress": {
-    "active_section": "section-05-agent-monitor-ui",
-    "next_action": "Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof",
+    "active_section": "section-06-integration-live-acceptance",
+    "next_action": "Commit and push the current evidence matrix/handoff through PR #1001, then inspect protected checks on the exact new head; continue independent same-token/API and topology work.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -78,7 +78,9 @@
       "No authoritative universal Goal baseline store was found in the current schema/service search",
       "Stable same-token aggregation across Project/SPEC/Chat and historical revisions is incomplete",
       "Required Mocked SPEC-308 browser simulation fails at assistant onboarding hint visibility on sign-in route (run 38988051046)",
-      "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance"
+      "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
+      "PR #1001 required mocked SPEC-308 browser check failed on old head 75de263; verify new head before attribution or repair.",
+      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment."
     ]
   }
 }
