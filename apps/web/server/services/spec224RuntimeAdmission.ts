@@ -37,6 +37,7 @@ export function spec224ProfileRunnerTargetMatches(input: {
 }): boolean {
   if (input.profileId !== SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE.profileId) return true;
   const manifest = asObject(asObject(input.canonicalInputJson)?.manifest);
+  if (manifest?.provider !== "codex" || manifest.runtime !== "local_runner") return false;
   const policy = asObject(manifest?.policyBinding);
   return matchesSpec224WindowsRunnerTarget(asObject(input.capabilitySnapshot), {
     sourceCommit: typeof input.sourceCommit === "string" ? input.sourceCommit : "",
