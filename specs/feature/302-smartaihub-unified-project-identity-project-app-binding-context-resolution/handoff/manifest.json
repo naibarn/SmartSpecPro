@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 41,
+  "generation": 42,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -216,6 +216,15 @@
   "integration": {
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "evidence_checkpoint": {
+      "intended_pr": "Next evidence-only normal PR into main",
+      "next_action": "Push and merge protected evidence-only PR; verify unchanged runtime blobs and reachability",
+      "owned_commit_sha": "32e9f68d7b31b4ff547062f19bab10a37150637d",
+      "source_branch": "codex/smartaihub-final-pilot-evidence-20261017",
+      "source_sha_verified": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "status": "READY_FOR_PROTECTED_PROMOTION",
+      "verification": "295/295 focused tests and5/5 R5; no runtime source changes in evidence checkpoint"
+    },
     "integrated": true,
     "integrated_at": "2026-10-17T00:45:41Z"
   },
@@ -559,7 +568,7 @@
     "unresolved": 10
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:47:33.814245Z",
+  "updated_at": "2026-10-17T00:49:24.279021Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

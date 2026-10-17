@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 50,
+  "generation": 51,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -219,6 +219,15 @@
   "integration": {
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "evidence_checkpoint": {
+      "intended_pr": "Next evidence-only normal PR into main",
+      "next_action": "Push and merge protected evidence-only PR; verify unchanged runtime blobs and reachability",
+      "owned_commit_sha": "32e9f68d7b31b4ff547062f19bab10a37150637d",
+      "source_branch": "codex/smartaihub-final-pilot-evidence-20261017",
+      "source_sha_verified": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "status": "READY_FOR_PROTECTED_PROMOTION",
+      "verification": "295/295 focused tests and5/5 R5; no runtime source changes in evidence checkpoint"
+    },
     "integrated": true,
     "integrated_at": "2026-10-17T00:45:41Z",
     "last_promotion": {
@@ -868,7 +877,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:48:32.672879Z",
+  "updated_at": "2026-10-17T00:49:24.253587Z",
   "verification": {
     "baseline_issues": [],
     "canonical_post_integration_20261017": {

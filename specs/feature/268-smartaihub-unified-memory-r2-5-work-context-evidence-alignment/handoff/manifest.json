@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 62,
+  "generation": 63,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -294,6 +294,15 @@
   "integration": {
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "evidence_checkpoint": {
+      "intended_pr": "Next evidence-only normal PR into main",
+      "next_action": "Push and merge protected evidence-only PR; verify unchanged runtime blobs and reachability",
+      "owned_commit_sha": "32e9f68d7b31b4ff547062f19bab10a37150637d",
+      "source_branch": "codex/smartaihub-final-pilot-evidence-20261017",
+      "source_sha_verified": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "status": "READY_FOR_PROTECTED_PROMOTION",
+      "verification": "295/295 focused tests and5/5 R5; no runtime source changes in evidence checkpoint"
+    },
     "integrated": true,
     "integrated_at": "2026-10-17T00:45:41Z",
     "last_promotion": {
@@ -721,7 +730,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:48:32.684025Z",
+  "updated_at": "2026-10-17T00:49:24.264755Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
