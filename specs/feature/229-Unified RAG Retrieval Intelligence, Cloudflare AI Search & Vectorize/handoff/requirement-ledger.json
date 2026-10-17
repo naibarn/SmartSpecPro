@@ -1,5 +1,5 @@
 {
-  "generation": 7,
+  "generation": 8,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -2255,7 +2255,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "0c872e2cd1344ed618b8668299add58abadbfd1f",
+      "evidence_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/retrievalBroker.ts",
@@ -2269,9 +2269,9 @@
       "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-current-main-verification-20261017.json"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
       ],
-      "verification_method": "Focused failure-injection tests rerun from isolated canonical main SHA 0c872e2cd1344ed618b8668299add58abadbfd1f; 3 files passed, 45 tests passed, 28 existing todo. No production verification claimed."
+      "verification_method": "Focused provider-outage failure injection rerun from isolated canonical main SHA 27bc4368ced4c31d2be9dde9474af170b8c6d039 as part of 7-file retrieval/Library regression verification; 88 tests passed, 28 existing todo. Production verification is not claimed."
     },
     {
       "applicability": "UNASSESSED",
