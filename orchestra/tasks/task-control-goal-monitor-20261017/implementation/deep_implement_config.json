@@ -33,7 +33,7 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Canonical main advanced to 200d9d8f5 after checks; origin/main is now merged locally at 23f84b855. Scoped tests and diff gate remain clean. Push reconciled head, rerun CI, then exact-head promotion.",
+      "next_action": "Canonical main advanced to a98e15e while CI ran; reconciled by merge at HEAD. Promote the refreshed head only after required checks pass, then resume remaining source-bound model/Goal and authorized live acceptance work.",
       "checkpoint_sha": "42339e13689bd1ce26bbfe0dd65e192b52faa106"
     },
     "section-04-task-control-ui": {
@@ -68,11 +68,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 34,
-  "updated_at": "2026-10-17T03:06:57.197419+00:00",
+  "generation": 35,
+  "updated_at": "2026-10-17T03:08:30.271466+00:00",
   "progress": {
     "active_section": "section-03-authenticated-read-api",
-    "next_action": "Canonical main advanced to 200d9d8f5 after checks; origin/main is now merged locally at 23f84b855. Scoped tests and diff gate remain clean. Push reconciled head, rerun CI, then exact-head promotion.",
+    "next_action": "Canonical main advanced to a98e15e while CI ran; reconciled by merge at HEAD. Promote the refreshed head only after required checks pass, then resume remaining source-bound model/Goal and authorized live acceptance work.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
