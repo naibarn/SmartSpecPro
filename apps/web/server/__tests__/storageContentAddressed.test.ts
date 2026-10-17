@@ -65,6 +65,23 @@ describe("storagePutContentAddressedIfAbsent", () => {
     process.env = { ...originalEnv };
   });
 
+  it("requires shared S3 storage for staging artifacts and rejects local fallback", async () => {
+    const { assertSharedImmutableStorageActive, invalidateStorageCache } =
+      await import("../storage");
+    invalidateStorageCache();
+    await expect(assertSharedImmutableStorageActive()).resolves.toBeUndefined();
+
+    delete process.env.R2_ACCESS_KEY;
+    delete process.env.R2_SECRET_KEY;
+    delete process.env.R2_ACCOUNT_ID;
+    delete process.env.R2_BUCKET_NAME;
+    mockLimit.mockResolvedValueOnce([]);
+    invalidateStorageCache();
+    await expect(assertSharedImmutableStorageActive()).rejects.toThrow(
+      "STORAGE_SHARED_CONTENT_STORE_REQUIRED"
+    );
+  });
+
   it("writes by content hash with a conditional create", async () => {
     const bytes = Buffer.from("bundle bytes");
     mockSend.mockResolvedValueOnce({}).mockResolvedValueOnce({

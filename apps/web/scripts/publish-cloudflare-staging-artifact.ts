@@ -1,6 +1,10 @@
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { resolve, relative, sep } from "node:path";
-import { storagePutIfAbsent, storageReadBuffer } from "../server/storage";
+import {
+  assertSharedImmutableStorageActive,
+  storagePutIfAbsent,
+  storageReadBuffer,
+} from "../server/storage";
 import {
   createCanonicalBuildReceiptAuthority,
   createCloudflareStagingArtifactAuthority,
@@ -57,6 +61,7 @@ async function main() {
     console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_untrusted" }));
     return;
   }
+  await assertSharedImmutableStorageActive();
   const workspace = resolve(String(record.isolated_workspace ?? ""));
   const manifestFile = resolve(workspace, "apps/cloudflare/.staging-artifact/bundle-manifest.json");
   const manifestRoot = await realpath(workspace);
