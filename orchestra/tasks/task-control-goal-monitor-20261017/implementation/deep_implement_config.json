@@ -54,7 +54,7 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Push branch codex/task-control-goal-monitor-20261017 and inspect progressive and mocked browser checks on the exact new head; continue source-bound, responsive, and live Runner gaps.",
+      "next_action": "Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation.",
       "checkpoint_sha": "540473640"
     }
   },
@@ -67,11 +67,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 24,
-  "updated_at": "2026-10-17T01:10:27.633508+00:00",
+  "generation": 25,
+  "updated_at": "2026-10-17T01:15:28.790277+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "Push branch codex/task-control-goal-monitor-20261017 and inspect progressive and mocked browser checks on the exact new head; continue source-bound, responsive, and live Runner gaps.",
+    "next_action": "Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -81,7 +81,8 @@
       "Required Mocked SPEC-308 browser simulation fails at assistant onboarding hint visibility on sign-in route (run 38988051046)",
       "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
       "PR #1001 required mocked SPEC-308 browser check failed on old head 75de263; verify new head before attribution or repair.",
-      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment."
+      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.",
+      "PR #1001 promotion was blocked by BASE_REF_STALE after origin/main advanced to 9ec5db2f; the merge and SPEC index regeneration are local pending push and checks."
     ]
   }
 }
