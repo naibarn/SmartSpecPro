@@ -5,8 +5,8 @@ Status: staging deployment blocked by missing verified delegated authority and e
 ## Source and changes
 
 - Canonical source at start: `cb67dc2c3f4801ecc4dd258cc2cf06db1cb5360c` (`origin/main`, 2026-10-17).
-- Credential verification PR: [#1053](https://github.com/naibarn/SmartSpecPro/pull/1053), currently open while revised CI runs.
-- Test correction: the staging-preflight fixture only observes a Cloudflare Worker target. The project-wiki preflight requires a compatible Container target plus independent DB, migration, recovery, and trusted qualification authorities. `PENDING` is the correct fail-closed result; the old expected `PASS` was an invalid fixture, not a runtime regression.
+- Credential verification PR: [#1053](https://github.com/naibarn/SmartSpecPro/pull/1053), merged as `5b51f5a8c569573affd5ad8257cf41396515ae70`.
+- Test correction: the fixture provides the compatible Container target, DB, migration, recovery, and trusted qualification authorities, but its qualification expired on `2026-10-12` while CI ran on `2026-10-17`. `PENDING` was the correct fail-closed behavior. The fixture now expires on `2030-10-12`, preserving the original expected `PASS` for valid evidence.
 - The Cloudflare local-readiness workflow now runs `infrastructure.deploymentTargets.test.ts` so the corrected behavior is exercised by CI.
 
 ## Existing authority inspection
@@ -31,7 +31,9 @@ Resume when the Admin/Control Plane shows the exact staging grant and an authori
 
 ## Verification
 
-- `git diff --check`: passed for the test correction and CI workflow update.
-- Local vitest: not run; this isolated worktree does not have the repository dependencies installed (`vitest` unavailable). The focused test is added to the PR's Cloudflare readiness CI.
-- Revised PR CI: pending on GitHub at the time this handoff was written; earlier jobs had not advanced beyond `actions/checkout`, so this is not yet classifiable as code failure or final infrastructure failure.
+- `git diff --check`: passed for the handoff update.
+- Local vitest was not run because this isolated checkout had no `vitest` installation; the focused test passed in the PR's Cloudflare readiness CI.
+- `Cloudflare local readiness` passed on PR head `9ba99e6f5175a3191d0d7acee5a922e0c3b70e8d`, including the focused preflight test, Wrangler dry-runs, local workerd smoke tests, and runtime contract suite.
+- `Mocked SPEC-308 browser simulation` and `progressive_integration_gate` passed on that head. `build-preview` was skipped by workflow policy.
+- The exact GitHub run evidence is linked from PR #1053.
 - No live token probe, target lookup, Cloudflare deployment, or rollback was attempted.
