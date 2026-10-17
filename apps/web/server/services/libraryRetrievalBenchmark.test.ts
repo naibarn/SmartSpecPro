@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { sha256 } from "./libraryCitationAnchor";
 import { DEVELOPMENT_GOLD_CASES, DEVELOPMENT_OBSERVATIONS } from "./libraryRetrievalBenchmark.fixtures";
 import {
   calculateRetrievalBenchmarkMetrics,
   retrievalBenchmarkGoldCaseSchema,
   SPEC_229_RELEASE_CRITERIA,
+  isCitationValid,
 } from "./libraryRetrievalBenchmark";
 
 describe("Library retrieval development benchmark", () => {
@@ -31,7 +33,9 @@ describe("Library retrieval development benchmark", () => {
       citationAvailability: 0.25,
       freshnessCorrectness: 0.571429,
       authorityCorrectness: 0.857143,
-      aclLeakage: 1,
+      aclLeakage: 2,
+      crossTenantLeakage: 1,
+      unauthorizedEvidenceLeakage: 1,
       unsafePartialOrOutageAnswers: 1,
       staleOrRevokedEvidenceAccepted: 3,
       noAnswerPrecision: 1,
@@ -79,5 +83,53 @@ describe("Library retrieval development benchmark", () => {
     duplicate[1] = { ...duplicate[1], caseId: duplicate[0].caseId };
     expect(() => calculateRetrievalBenchmarkMetrics(DEVELOPMENT_GOLD_CASES, duplicate))
       .toThrow("Benchmark observations must contain each gold caseId exactly once");
+  });
+
+  it("reports cross-tenant and unauthorized evidence leakage independently", () => {
+    const metrics = calculateRetrievalBenchmarkMetrics(
+      DEVELOPMENT_GOLD_CASES,
+      DEVELOPMENT_OBSERVATIONS
+    );
+    expect(metrics.crossTenantLeakage).toBe(1);
+    expect(metrics.unauthorizedEvidenceLeakage).toBe(1);
+    expect(metrics.aclLeakage).toBe(2);
+  });
+
+  it("rejects citations backed by unauthorized, cross-tenant, stale, revoked, or deleted evidence", () => {
+    const markdown = "# Authorized guide\nThe approved amount is 42.";
+    const digest = sha256(markdown);
+    const citation = {
+      evidenceId: "doc-a",
+      revision: "r2",
+      digest,
+      lineStart: 2,
+      lineEnd: 2,
+      quoteHash: sha256("The approved amount is 42."),
+      markdown,
+    };
+    const authorizedEvidence = DEVELOPMENT_OBSERVATIONS[0].evidence[0];
+    expect(isCitationValid(citation, authorizedEvidence)).toBe(true);
+    for (const mutation of [
+      { authorized: false },
+      { tenantId: "tenant-b" },
+      { revision: "r1" },
+      { revoked: true },
+      { deleted: true },
+    ]) {
+      const observations = DEVELOPMENT_OBSERVATIONS.map(row =>
+        row.caseId === "supported-valid-citation"
+          ? {
+              ...row,
+              evidence: [{ ...row.evidence[0], ...mutation }],
+            }
+          : row
+      );
+      expect(
+        calculateRetrievalBenchmarkMetrics(
+          DEVELOPMENT_GOLD_CASES,
+          observations
+        ).citationPrecision
+      ).toBe(0);
+    }
   });
 });

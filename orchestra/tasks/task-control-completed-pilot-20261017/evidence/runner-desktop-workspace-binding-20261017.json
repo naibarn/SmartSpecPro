@@ -1,0 +1,43 @@
+{
+  "workUnit": "RUNNER_DESKTOP_WORKSPACE_BINDING",
+  "spec": "SPEC-224",
+  "sourceBase": "744987eebe320b17f5dcff41fef25720e6325589",
+  "verificationProfile": "package",
+  "commands": [
+    {
+      "command": "cargo test --locked --manifest-path apps/runner-app/Cargo.toml --test desktop_workspace_binding -j 1 -- --test-threads=1",
+      "exit": 0,
+      "passed": 3
+    },
+    {
+      "command": "node --test apps/runner-desktop/tests/workspace-binding.cjs",
+      "exit": 0,
+      "passed": 1,
+      "boundary": "Chromium UI with simulated Tauri bridge; not live acceptance"
+    },
+    {
+      "command": "node --check apps/runner-desktop/ui/app.js",
+      "exit": 0
+    }
+  ],
+  "review": {
+    "agent": "desktop_workspace_binding_scout",
+    "result": "no concrete defects",
+    "actualModelUsage": null
+  },
+  "productionMutation": false,
+  "liveDispatch": false,
+  "liveAcceptance": "BLOCKED",
+  "remaining": [
+    "backend canonical release",
+    "actual Windows workspace/source binding",
+    "profile live certification",
+    "valid lease and recovery grant",
+    "authenticated end-to-end acceptance"
+  ],
+  "resourceObservation": {
+    "scope": "Rust integration jobs=1 and one headless browser; no repository-wide verification",
+    "oomObserved": false
+  },
+  "recordedAt": "2026-10-17T15:35:56.094119+00:00"
+}

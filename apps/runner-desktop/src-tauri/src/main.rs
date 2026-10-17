@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod workspace_view;
+
 use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
     config::RunnerConfig,
@@ -617,8 +619,28 @@ fn stop_runner(state: State<'_, RunnerState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn list_workspaces(state: State<'_, RunnerState>) -> Result<Vec<LocalWorkspaceDetails>, String> {
-    workspace_registry::list_local_details(&state.config)
+fn list_workspaces(state: State<'_, RunnerState>) -> Result<Vec<workspace_view::WorkspaceView>, String> {
+    workspace_view::list(&state.config)
+}
+
+#[tauri::command]
+fn bind_workspace_identity(
+    workspace_id: String,
+    project_id: Option<String>,
+    repository_id: Option<String>,
+    state: State<'_, RunnerState>,
+) -> Result<(), String> {
+    let _lifecycle = state
+        .lifecycle
+        .lock()
+        .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
+    workspace_view::bind(
+        &state.config,
+        state.running.load(Ordering::Acquire),
+        &workspace_id,
+        project_id.as_deref(),
+        repository_id.as_deref(),
+    )
 }
 
 #[tauri::command]
@@ -837,6 +859,7 @@ fn main() {
             start_runner,
             stop_runner,
             list_workspaces,
+            bind_workspace_identity,
             add_workspace,
             remove_workspace,
             set_default_workspace,
