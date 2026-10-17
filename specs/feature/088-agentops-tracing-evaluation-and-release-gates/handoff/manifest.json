@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2"
+    "expected_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62"
   },
   "continuation": {
     "next_action": null,
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-    "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+    "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.380787Z",
+      "last_evidence_at": "2026-10-16T19:32:52.408095Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T20:27:12+07:00"
@@ -101,10 +101,42 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.380787Z"
+    "updated_at": "2026-10-16T19:32:52.408095Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-088-OBS-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L221"
+        ],
+        "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L221",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Map existing AgentOps comparison/read models and add a focused test for verified outcome, requested/effective model, call identity, funding/unit, latency basis and usage coverage.",
+        "requirement_digest": "1dc3c83c3e646c030778b124787d42e365e593956a4221e720f268274407e66d",
+        "requirement_id": "REQ-088-OBS-01",
+        "requirement_text": "- REQ-088-OBS-01: Model/workload comparison MUST cite benchmark/workload and source/contract revision, verified outcome/evidence, call/attempt identity, requested versus provider-confirmed effective model, funding/unit, latency basis and usage coverage. Partial, unknown, normalized-fallback or unverified effective/quota/money evidence MUST remain labeled observational and MUST NOT establish a confirmed best-model or verified cost-per-success claim. Reuse current trace/outcome/receipt sources and SPEC-277/294 read models; this amendment MUST NOT add callers or dependencies on retired Agency/workpacks/workflow runtimes.",
+        "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "GAP_MATRIX",
+            "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
+            "summary": "No verified implementation of the additive source-bound model/workload comparability requirement in this slice."
+          }
+        ],
+        "verification_method": "Inspect current AgentOps trace/comparison surfaces for comparability evidence; no focused comparison acceptance was run in this slice."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +146,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.380787Z",
+    "reconciled_at": "2026-10-16T19:32:52.408095Z",
     "sources": [
       {
-        "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
       },
@@ -129,11 +161,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-        "source_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "source_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "value": "Proposed"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +192,14 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-        "source_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "source_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "value": "Proposed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+        "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
       }
@@ -173,16 +210,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 53,
-    "unresolved": 53
+    "total": 54,
+    "unresolved": 54
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.380787Z",
+  "updated_at": "2026-10-17T01:00:45.548065Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

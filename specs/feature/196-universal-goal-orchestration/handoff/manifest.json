@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -87,7 +87,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b"
+    "expected_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac"
   },
   "continuation": {
     "next_action": null,
@@ -101,7 +101,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -193,7 +193,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -266,13 +266,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/196-universal-goal-orchestration/spec.md",
-    "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+    "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:16.812267Z",
+      "last_evidence_at": "2026-10-17T00:36:15.493352Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -296,10 +296,170 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:16.812267Z"
+    "updated_at": "2026-10-17T00:36:15.493352Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-196-OBS-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6327"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6327",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "CODE_AND_GAP_AUDIT",
+            "paths": [
+              "apps/web/shared/taskGoalProgress.ts",
+              "apps/web/server/services/taskObservabilityReadModel.ts",
+              "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md"
+            ],
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Weighted reducer and UNKNOWN handling implemented; no canonical bound Goal baseline source is connected."
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Connect through an existing authoritative Goal source and prove tenant/digest/revision binding; keep completion unknown until then.",
+        "requirement_digest": "55685026409d0bf2bd8c578b415c25f5fc7c79121b8d8e956ae54087cfbd7971",
+        "requirement_id": "REQ-196-OBS-01",
+        "requirement_text": "- REQ-196-OBS-01: A Goal baseline MUST identify goal, baseline ID/version/digest/source, milestones, deliverables, stable acceptance-criterion IDs, declared nonnegative weights, required/live obligations and WorkUnit/dependency links. Missing, malformed or unbound baseline MUST produce BASELINE_MISSING/UNKNOWN with no invented percentage. Monitoring MUST NOT create a new execution Goal or infer a baseline from commits/tests/tokens.",
+        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "FOCUSED_TESTS",
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Goal/read-model coverage included in 7 focused files, 56 passing tests; source binding remains unverified."
+          }
+        ],
+        "verification_method": "Focused taskGoalProgress and read-model Vitest suites; no live source binding acceptance."
+      },
+      "REQ-196-OBS-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6328"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6328",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "CODE_AND_GAP_AUDIT",
+            "paths": [
+              "apps/web/shared/taskGoalProgress.ts",
+              "apps/web/server/services/taskObservabilityReadModel.ts",
+              "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md"
+            ],
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Weighted reducer and UNKNOWN handling implemented; no canonical bound Goal baseline source is connected."
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Connect through an existing authoritative Goal source and prove tenant/digest/revision binding; keep completion unknown until then.",
+        "requirement_digest": "9d016683db2b85c9cbd68ff7a7255dbeb2b9de600eebdec4be19b8aa2d758921",
+        "requirement_id": "REQ-196-OBS-02",
+        "requirement_text": "- REQ-196-OBS-02: Execution Progress, Work Completion and Verified Goal Completion MUST be separate. Milestone, deliverable and criterion weights compose multiplicatively into each unique criterion's effective goal weight; WorkUnit weights divide their criterion's effective weight. Shared criteria/deliverables and retried WorkUnits MUST count once. Each progress axis MUST remain UNKNOWN until its required evidence covers the declared baseline. Verified percentage MUST use only current baseline/digest-bound, non-invalidated criterion evidence and declared effective weights. Every required criterion, including a zero-weight/live requirement, MUST pass before reporting 100 percent. Optional scope MUST NOT hide a required gap.",
+        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "FOCUSED_TESTS",
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Goal/read-model coverage included in 7 focused files, 56 passing tests; source binding remains unverified."
+          }
+        ],
+        "verification_method": "Focused taskGoalProgress and read-model Vitest suites; no live source binding acceptance."
+      },
+      "REQ-196-OBS-03": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6329"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6329",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "CODE_AND_GAP_AUDIT",
+            "paths": [
+              "apps/web/shared/taskGoalProgress.ts",
+              "apps/web/server/services/taskObservabilityReadModel.ts",
+              "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md"
+            ],
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Weighted reducer and UNKNOWN handling implemented; no canonical bound Goal baseline source is connected."
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Connect through an existing authoritative Goal source and prove tenant/digest/revision binding; keep completion unknown until then.",
+        "requirement_digest": "b8b2b9bed3975c89a34ed2637d576f0b1b1182a70dadae3c1f24acb24769b34a",
+        "requirement_id": "REQ-196-OBS-03",
+        "requirement_text": "- REQ-196-OBS-03: Scope changes MUST create a distinct baseline revision; reopened/regressed work or newer failing evidence MUST reduce completion truthfully. Equal-revision conflicts MUST be UNKNOWN/CONFLICT rather than last-writer wins. Remaining/blocked/unverified scope, evidence coverage, dependency refs, next autonomous action and genuinely human-required blockers MUST be inspectable.",
+        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "FOCUSED_TESTS",
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Goal/read-model coverage included in 7 focused files, 56 passing tests; source binding remains unverified."
+          }
+        ],
+        "verification_method": "Focused taskGoalProgress and read-model Vitest suites; no live source binding acceptance."
+      },
+      "REQ-196-OBS-04": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6330"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6330",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "CODE_AND_GAP_AUDIT",
+            "paths": [
+              "apps/web/shared/taskGoalProgress.ts",
+              "apps/web/server/services/taskObservabilityReadModel.ts",
+              "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md"
+            ],
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Weighted reducer and UNKNOWN handling implemented; no canonical bound Goal baseline source is connected."
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Connect through an existing authoritative Goal source and prove tenant/digest/revision binding; keep completion unknown until then.",
+        "requirement_digest": "293b20271487b9c8d61a43d388becef8bed1d1e45f004a24e90aa59c84fd4b99",
+        "requirement_id": "REQ-196-OBS-04",
+        "requirement_text": "- REQ-196-OBS-04: Fixtures MUST demonstrate weighted progress, shared deliverable dedupe, physical retry/replan identity continuity, missing baseline, wrong digest, stale/reopened/regressed evidence, required live and zero-weight gates. Existing canonical closure graphs MAY be adapted without modifying their execution semantics; undeclared weights MUST remain unknown.",
+        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "FOCUSED_TESTS",
+            "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+            "summary": "Goal/read-model coverage included in 7 focused files, 56 passing tests; source binding remains unverified."
+          }
+        ],
+        "verification_method": "Focused taskGoalProgress and read-model Vitest suites; no live source binding acceptance."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -309,10 +469,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:16.812267Z",
+    "reconciled_at": "2026-10-17T00:36:15.493352Z",
     "sources": [
       {
-        "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -473,11 +633,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-        "source_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "value": "Architecture & Implementation Specification"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -577,14 +742,14 @@
         "excerpt": "**Status:** Architecture & Implementation Specification",
         "line": 4,
         "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-        "source_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "value": "Architecture & Implementation Specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -660,16 +825,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 4,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 203,
-    "unresolved": 203
+    "total": 207,
+    "unresolved": 207
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:16.812267Z",
+  "updated_at": "2026-10-17T01:00:45.472630Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -215,3 +215,7 @@ Without this layer:
 4. The system can compare human baseline and agent baseline for selected workloads.
 5. Drift and repeated failure patterns can be clustered and surfaced to operators.
 6. Operators can see which model, prompt, or policy variant produced the best outcome for a workload family and what to try next.
+
+# 2026-10-17 Additive Evidence Comparability Requirement
+
+- REQ-088-OBS-01: Model/workload comparison MUST cite benchmark/workload and source/contract revision, verified outcome/evidence, call/attempt identity, requested versus provider-confirmed effective model, funding/unit, latency basis and usage coverage. Partial, unknown, normalized-fallback or unverified effective/quota/money evidence MUST remain labeled observational and MUST NOT establish a confirmed best-model or verified cost-per-success claim. Reuse current trace/outcome/receipt sources and SPEC-277/294 read models; this amendment MUST NOT add callers or dependencies on retired Agency/workpacks/workflow runtimes.

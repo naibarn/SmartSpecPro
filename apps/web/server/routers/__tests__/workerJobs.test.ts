@@ -16,6 +16,9 @@ const mockListUserWorkerJobs = vi.fn();
 const mockListUserWorkerTaskGroups = vi.fn();
 const mockGetWorkerJobDashboardSummary = vi.fn();
 const mockRetryUserWorkerJob = vi.fn();
+const mockListTaskObservability = vi.fn();
+const mockGetTaskObservabilityDetail = vi.fn();
+const mockAggregateTaskObservability = vi.fn();
 
 vi.mock("../../services/workerJobMonitorService", () => ({
   USER_WORKER_JOB_STATUSES: [
@@ -45,6 +48,15 @@ vi.mock("../../services/jobControlPlaneMonitor", () => ({
   getCanonicalJobTimeline: vi.fn(),
   getWorkerJobDashboardSummary: (...args: unknown[]) => mockGetWorkerJobDashboardSummary(...args),
   listCanonicalJobs: vi.fn(),
+}));
+
+vi.mock("../../services/taskObservabilityReadModel", () => ({
+  listTaskObservability: (...args: unknown[]) => mockListTaskObservability(...args),
+  getTaskObservabilityDetail: (...args: unknown[]) => mockGetTaskObservabilityDetail(...args),
+  aggregateTaskObservability: (...args: unknown[]) => mockAggregateTaskObservability(...args),
+  TaskObservabilityError: class TaskObservabilityError extends Error {
+    constructor(public readonly code: string) { super(code); }
+  },
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -97,6 +109,55 @@ describe("workerJobsRouter.list — jobType absent (backward compatible)", () =>
       offset: 0,
     });
     expect(result.items).toHaveLength(1);
+  });
+});
+
+describe("workerJobsRouter task observability scope", () => {
+  it("keeps a standard authenticated principal owner-scoped", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const fn = workerJobsRouter.observability as unknown as Function;
+    await fn({ ctx: CTX, input: { projectId: "project-1" } });
+    expect(mockListTaskObservability).toHaveBeenCalledWith({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      cursor: undefined,
+      projectId: "project-1",
+      specId: undefined,
+      conversationId: undefined,
+    });
+  });
+
+  it("grants tenant fleet scope only from the authenticated admin role", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const fn = workerJobsRouter.observability as unknown as Function;
+    await fn({ ctx: { ...CTX, user: { id: 9, role: "admin" } }, input: undefined });
+    expect(mockListTaskObservability).toHaveBeenCalledWith({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: true },
+      cursor: undefined,
+      projectId: undefined,
+      specId: undefined,
+      conversationId: undefined,
+    });
+  });
+
+  it("binds a Chat evidence filter to an explicit conversation ID", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const fn = workerJobsRouter.observability as unknown as Function;
+    await fn({ ctx: CTX, input: { conversationId: 42 } });
+    expect(mockListTaskObservability).toHaveBeenCalledWith(expect.objectContaining({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      conversationId: 42,
+    }));
+  });
+
+  it("requires a bounded project or SPEC aggregate scope from the authenticated principal", async () => {
+    mockAggregateTaskObservability.mockResolvedValueOnce({ scope: "project", observedJobCount: 1 });
+    const fn = workerJobsRouter.observabilityAggregate as unknown as Function;
+    await fn({ ctx: CTX, input: { projectId: "project-1", specId: "SPEC-277" } });
+    expect(mockAggregateTaskObservability).toHaveBeenCalledWith({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      projectId: "project-1",
+      specId: "SPEC-277",
+    });
   });
 });
 

@@ -1,0 +1,88 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections",
+  "target_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+  "state_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/implementation",
+  "git_root": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-ownership-contracts",
+    "section-02-goal-usage-projections",
+    "section-03-authenticated-read-api",
+    "section-04-task-control-ui",
+    "section-05-agent-monitor-ui",
+    "section-06-integration-live-acceptance"
+  ],
+  "sections_state": {
+    "section-01-ownership-contracts": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps.",
+      "checkpoint_sha": "33a8b04f"
+    },
+    "section-02-goal-usage-projections": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Continue source-bound Goal integration and validate corrected usage union against authorized database evidence",
+      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+    },
+    "section-03-authenticated-read-api": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks",
+      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+    },
+    "section-04-task-control-ui": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance",
+      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+    },
+    "section-05-agent-monitor-ui": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps.",
+      "checkpoint_sha": "86f137f58"
+    },
+    "section-06-integration-live-acceptance": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
+      "checkpoint_sha": "35a2eb4f3"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-16T19:31:07.113601+00:00",
+  "generation": 26,
+  "updated_at": "2026-10-17T01:15:37.422460+00:00",
+  "progress": {
+    "active_section": "section-06-integration-live-acceptance",
+    "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+    "gaps": [
+      "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
+      "Live Runner/API acceptance and responsive browser evidence remain UNKNOWN",
+      "No authoritative universal Goal baseline store was found in the current schema/service search",
+      "Stable same-token aggregation across Project/SPEC/Chat and historical revisions is incomplete",
+      "Required Mocked SPEC-308 browser simulation fails at assistant onboarding hint visibility on sign-in route (run 38988051046)",
+      "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
+      "PR #1001 required mocked SPEC-308 browser check failed on old head 75de263; verify new head before attribution or repair.",
+      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.",
+      "PR #1001 promotion was blocked by BASE_REF_STALE after origin/main advanced to 9ec5db2f; the merge and SPEC index regeneration are local pending push and checks."
+    ]
+  }
+}

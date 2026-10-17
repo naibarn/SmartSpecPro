@@ -4043,3 +4043,15 @@ completion is disabled while canonical convergence or required worktree
 retirement is pending. Mission Control may show SPEC-295's compact deployment
 summary and deep-link to its production operations surface; it does not execute
 deployment or migration actions as a substitute authority.
+
+# 2026-10-17 Additive Goal/Model/Usage Projection Aggregation
+
+Consume SPEC-277's task-observability contract and SPEC-196's Goal baseline semantics; retain this SPEC's existing read-model/command-facade boundary. No execution, billing, scheduling or authorization authority moves here.
+
+## Requirements and acceptance criteria
+
+- REQ-294-OBS-01: Task, Project, SPEC and Chat consumers MUST query one deterministic Goal/model/usage reducer with an authorization-scoped projection token, source watermarks, reducer version, observation/generation time, source health and coverage. Same token and authorized filters MUST yield identical facts. Expired/unavailable snapshots MUST return SNAPSHOT_EXPIRED/HISTORY_UNAVAILABLE, never silently current data.
+- REQ-294-OBS-02: Project/SPEC aggregation MUST union stable bound consumption/criterion identities, not sum overlapping session/task/SPEC summary totals. A call shared by two SPECs contributes once to the Project union with explicit shared attribution. Unbound or inaccessible scope MUST NOT be guessed or leaked through counts. Baseline revisions/weights and units/funding/time boundaries MUST remain explicit.
+- REQ-294-OBS-03: Pagination and drilldown MUST preserve the same snapshot and scope, reject mismatched cursor/filter/token, reauthorize after revocation and fail closed across tenants. Late correction/reopen/regression MUST affect a new projection version without rewriting historical answers.
+- REQ-294-OBS-04: Rebuild/replay MUST yield identical totals and unknown/coverage states from existing records. Tests MUST cover duplicate sessions/retries/shared SPECs, late correction, scope changes, current authorization, cursor expiry, and Task/Web/Chat parity. No read-model outage may block job execution.
+- REQ-294-OBS-05: Mission Control MUST display verified Goal progress/remaining scope plus Runner/Agent/job stage/heartbeat/recovery/freshness and model/usage evidence through existing Task Control/Agent Monitor surfaces, including responsive/mobile hierarchy and source-bound comparison. Live verification requirements MUST remain explicitly separate from integration/unit test results.

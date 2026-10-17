@@ -26,12 +26,12 @@
     "disposition.INVALID_OR_UNKNOWN": 130,
     "disposition.SUPERSEDED_PARTIAL": 1,
     "lifecycle.CONTINUATION_REQUIRED": 1,
-    "lifecycle.DISCOVERING": 263,
+    "lifecycle.DISCOVERING": 260,
     "lifecycle.DORMANT_VALID": 2,
     "lifecycle.NOT_A_CANONICAL_SPEC": 157,
-    "lifecycle.PARTIAL_INTEGRATED": 10,
+    "lifecycle.PARTIAL_INTEGRATED": 11,
     "lifecycle.VALIDATING": 1,
-    "lifecycle.VALIDATION_PENDING": 36,
+    "lifecycle.VALIDATION_PENDING": 38,
     "lifecycle.VERIFIED": 2,
     "lifecycle.WAITING_APPROVAL": 1,
     "record_kind.CANONICAL_SPEC": 316,
@@ -33508,6 +33508,7 @@
         "requirement REQ-A10607728022 is OPEN",
         "requirement REQ-70CABFE9FE35 is OPEN",
         "requirement REQ-C43632AE550E is OPEN",
+        "requirement REQ-088-OBS-01 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -33527,7 +33528,7 @@
           "excerpt": "Status: Proposed",
           "line": 5,
           "source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-          "source_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+          "source_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
           "value": "Proposed"
         }
       ],
@@ -33540,17 +33541,17 @@
           "excerpt": "Status: Proposed",
           "line": 5,
           "source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-          "source_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+          "source_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
           "value": "Proposed"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:15.380787Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-16T19:32:52.408095Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates",
       "primary_blocker": null,
@@ -33576,14 +33577,14 @@
             "excerpt": "Status: Proposed",
             "line": 5,
             "source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-            "source_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+            "source_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
             "value": "Proposed"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+            "digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md"
           }
@@ -33594,9 +33595,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 53,
+        "open": 54,
         "pass": 0,
-        "total": 53
+        "total": 54
       },
       "revision": "1.0",
       "root_kind": "CANONICAL",
@@ -71719,6 +71720,10 @@
         "requirement REQ-A269530FA27A is OPEN",
         "requirement REQ-09940950FEA0 is OPEN",
         "requirement REQ-09C51A43D661 is OPEN",
+        "requirement REQ-196-OBS-01 is PARTIAL",
+        "requirement REQ-196-OBS-02 is PARTIAL",
+        "requirement REQ-196-OBS-03 is PARTIAL",
+        "requirement REQ-196-OBS-04 is PARTIAL",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -71816,7 +71821,7 @@
           "excerpt": "**Status:** Architecture & Implementation Specification",
           "line": 4,
           "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-          "source_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+          "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
           "value": "Architecture & Implementation Specification"
         }
       ],
@@ -71829,17 +71834,17 @@
           "excerpt": "**Status:** Architecture & Implementation Specification",
           "line": 4,
           "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-          "source_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+          "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
           "value": "Architecture & Implementation Specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+      "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:16.812267Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-17T00:36:15.493352Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/196-universal-goal-orchestration",
       "primary_blocker": null,
@@ -71943,14 +71948,14 @@
             "excerpt": "**Status:** Architecture & Implementation Specification",
             "line": 4,
             "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-            "source_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+            "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
             "value": "Architecture & Implementation Specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+            "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/196-universal-goal-orchestration/spec.md"
           },
@@ -72026,9 +72031,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 203,
+        "open": 207,
         "pass": 0,
-        "total": 203
+        "total": 207
       },
       "revision": null,
       "root_kind": "CANONICAL",
@@ -98349,7 +98354,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "32c9d397ea13fc5ce25431135f101cccbad3cd12",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -98461,8 +98466,7 @@
         "requirement REQ-CAAB31EB9BD4 is OPEN",
         "requirement REQ-BC16675772E5 is OPEN",
         "requirement REQ-E4DD8F449A5D is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -98534,7 +98538,7 @@
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.934916Z",
-      "lifecycle": "DISCOVERING",
+      "lifecycle": "PARTIAL_INTEGRATED",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "primary_blocker": null,
@@ -124549,6 +124553,15 @@
         "requirement REQ-BDDC1982995F is OPEN",
         "requirement REQ-4380CC3EF8B6 is OPEN",
         "requirement REQ-4EA2EA8B30F2 is OPEN",
+        "requirement REQ-277-OBS-01 is PARTIAL",
+        "requirement REQ-277-OBS-02 is PARTIAL",
+        "requirement REQ-277-OBS-03 is PARTIAL",
+        "requirement REQ-277-OBS-04 is PARTIAL",
+        "requirement REQ-277-OBS-05 is PARTIAL",
+        "requirement REQ-277-OBS-06 is PARTIAL",
+        "requirement REQ-277-OBS-07 is PARTIAL",
+        "requirement REQ-277-OBS-08 is PARTIAL",
+        "requirement REQ-277-OBS-09 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -124563,11 +124576,11 @@
       "declared_relationship_claims": [],
       "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+      "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "PARTIAL",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-11T01:58:46.354041Z",
+      "last_reconciled": "2026-10-16T19:32:51.753317Z",
       "lifecycle": "CONTINUATION_REQUIRED",
       "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
@@ -124590,7 +124603,7 @@
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+            "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
           }
@@ -124601,9 +124614,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 431,
+        "open": 440,
         "pass": 0,
-        "total": 431
+        "total": 440
       },
       "revision": "1.8",
       "root_kind": "CANONICAL",
@@ -130931,6 +130944,11 @@
         "requirement REQ-2E3B7B92D593 is OPEN",
         "requirement REQ-835297DD5101 is OPEN",
         "requirement REQ-C09F23CC6CEF is OPEN",
+        "requirement REQ-294-OBS-01 is PARTIAL",
+        "requirement REQ-294-OBS-02 is PARTIAL",
+        "requirement REQ-294-OBS-03 is PARTIAL",
+        "requirement REQ-294-OBS-04 is PARTIAL",
+        "requirement REQ-294-OBS-05 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -130949,7 +130967,7 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
+          "source_digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
@@ -130962,16 +130980,16 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
+          "source_digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
+      "digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T09:28:58.211822Z",
+      "last_reconciled": "2026-10-16T19:32:52.083076Z",
       "lifecycle": "PARTIAL_INTEGRATED",
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
@@ -130998,14 +131016,14 @@
             "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
             "line": 4,
             "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-            "source_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
+            "source_digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
             "value": "Proposed / Additive implementation-ready specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
+            "digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
           }
@@ -131016,9 +131034,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 492,
+        "open": 497,
         "pass": 0,
-        "total": 492
+        "total": 497
       },
       "revision": "1.7",
       "root_kind": "CANONICAL",

@@ -2,11 +2,11 @@
 # 196 — Feature 196 — SmartAIHub Universal Goal Orchestration
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 203 unresolved of 203
+- Requirements: 0 pass / 207 unresolved of 207
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 8
+- Manifest generation: 11
 
 ## Source-declared status and relationship claims
 
