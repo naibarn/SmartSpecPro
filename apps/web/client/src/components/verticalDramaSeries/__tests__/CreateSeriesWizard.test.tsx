@@ -1391,6 +1391,9 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       isLoading: false,
     });
     mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockDraftQcEstimateQuery.mockReturnValue({ data: undefined, isLoading: false });
+    mockDraftQcStatusQuery.mockReturnValue({ data: undefined, error: undefined });
+    mockDraftWorkspaceStatus = { data: undefined };
   });
 
   function getPremiseTextarea(): HTMLTextAreaElement {
@@ -1439,30 +1442,25 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     expect(textarea.value).toBe(proofOfUsPremise);
   });
 
-  it("shows the AI expansion character count and locks expansion above 5,000 characters", () => {
+  it("allows AI expansion for the full premise field limit", () => {
     renderWizard();
     const textarea = getPremiseTextarea();
     const expandButton = screen.getByRole("button", {
       name: /ขยายโจทย์ด้วย AI/,
     });
 
-    fireEvent.change(textarea, { target: { value: "ก".repeat(5000) } });
+    fireEvent.change(textarea, { target: { value: "ก".repeat(7498) } });
     expect(
-      screen.getByText(/5,000\/5,000 ตัวอักษรสำหรับขยายโจทย์/)
+      screen.getByText(/7,498\/12,000 ตัวอักษรสำหรับขยายโจทย์/)
     ).toBeInTheDocument();
     expect(expandButton).not.toBeDisabled();
 
-    fireEvent.change(textarea, { target: { value: "ก".repeat(5001) } });
+    fireEvent.change(textarea, { target: { value: "ก".repeat(12000) } });
 
     expect(
-      screen.getByText(/5,001\/5,000 ตัวอักษรสำหรับขยายโจทย์/)
+      screen.getByText(/12,000\/12,000 ตัวอักษรสำหรับขยายโจทย์/)
     ).toBeInTheDocument();
-    expect(expandButton).toBeDisabled();
-    expect(
-      screen.getByText(
-        /โจทย์ยาวเกิน 5,000 ตัวอักษร จึงไม่สามารถกดขยายโจทย์ด้วย AI ได้/
-      )
-    ).toHaveAttribute("role", "alert");
+    expect(expandButton).not.toBeDisabled();
   });
 
   it("handleCreate sends userPremise as a top-level field, omitted (undefined) when the textarea is empty", () => {

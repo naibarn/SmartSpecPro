@@ -253,13 +253,13 @@ function getFileIcon(name: string) {
   return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
 
-export function FeedbackButton() {
+export function FeedbackButton({ initiallyOpen = false }: { initiallyOpen?: boolean } = {}) {
   return ASSISTANT_MASCOT_GLOBAL_ALLOW
-    ? <FeedbackButtonFeatureGate />
-    : <FeedbackButtonContent mascotEnabled={false} />;
+    ? <FeedbackButtonFeatureGate initiallyOpen={initiallyOpen} />
+    : <FeedbackButtonContent mascotEnabled={false} initiallyOpen={initiallyOpen} />;
 }
 
-function FeedbackButtonFeatureGate() {
+function FeedbackButtonFeatureGate({ initiallyOpen }: { initiallyOpen: boolean }) {
   const flag = useTenantFeatureFlagStatus("livingMascotDualSurface");
   const enabled = isAssistantMascotEnabled({
     globalAllowed: ASSISTANT_MASCOT_GLOBAL_ALLOW,
@@ -267,10 +267,10 @@ function FeedbackButtonFeatureGate() {
     tenantResolved: flag.isResolved,
     tenantError: flag.isError,
   });
-  return <FeedbackButtonContent mascotEnabled={enabled} />;
+  return <FeedbackButtonContent mascotEnabled={enabled} initiallyOpen={initiallyOpen} />;
 }
 
-function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
+function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled: boolean; initiallyOpen: boolean }) {
   const [location, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const mascotIdentity = user?.id && user.currentTenantId ? assistantMascotStorageKey(user.id, user.currentTenantId) : null;
@@ -281,7 +281,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const { t } = useScopedTranslation("chat");
   const { t: settingsT } = useScopedTranslation("settings");
   const { confirm } = useConfirm();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
   const helpTabRefs = useRef<Partial<Record<HelpPanel, HTMLButtonElement>>>({});
   const [chatConversationId, setChatConversationId] = useState<number | null>(null);
