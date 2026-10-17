@@ -327,6 +327,14 @@ export function UniversalControlPlanePanel({
     new Set()
   );
   const trpcUtils = trpc.useUtils();
+  const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
+    conversationId ? { conversationId } : {},
+    { enabled: Boolean(conversationId), staleTime: 15_000, retry: false }
+  );
+  const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
+  const taskMonitorHref = conversationId
+    ? `/agent-monitor?conversationId=${conversationId}${taskProjectionToken ? `&projectionToken=${encodeURIComponent(taskProjectionToken)}` : ""}`
+    : "";
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
@@ -732,7 +740,7 @@ export function UniversalControlPlanePanel({
           </p>
           {conversationId ? (
             <Link
-              href={`/agent-monitor?conversationId=${conversationId}`}
+              href={taskMonitorHref}
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
             >
               Inspect this Chat’s model, usage, and Runner evidence

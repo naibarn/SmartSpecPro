@@ -149,6 +149,28 @@ describe("workerJobsRouter task observability scope", () => {
     }));
   });
 
+  it("forwards a signed shared projection token without widening authenticated scope", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const fn = workerJobsRouter.observability as unknown as Function;
+    await fn({ ctx: CTX, input: { conversationId: 42, projectionToken: "signed.snapshot" } });
+    expect(mockListTaskObservability).toHaveBeenCalledWith(expect.objectContaining({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      conversationId: 42,
+      projectionToken: "signed.snapshot",
+    }));
+  });
+
+  it("applies the same projection token to authenticated Task Detail", async () => {
+    mockGetTaskObservabilityDetail.mockResolvedValueOnce({ id: "job-1" });
+    const fn = workerJobsRouter.observabilityDetail as unknown as Function;
+    await fn({ ctx: CTX, input: { jobId: "job-1", projectionToken: "signed.snapshot" } });
+    expect(mockGetTaskObservabilityDetail).toHaveBeenCalledWith({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      jobId: "job-1",
+      projectionToken: "signed.snapshot",
+    });
+  });
+
   it("requires a bounded project or SPEC aggregate scope from the authenticated principal", async () => {
     mockAggregateTaskObservability.mockResolvedValueOnce({ scope: "project", observedJobCount: 1 });
     const fn = workerJobsRouter.observabilityAggregate as unknown as Function;

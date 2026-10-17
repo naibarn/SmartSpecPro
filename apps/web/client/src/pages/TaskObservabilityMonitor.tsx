@@ -16,6 +16,7 @@ const metricLabel = (value: number | null): string => value === null ? "Unknown"
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
 
 export default function TaskObservabilityMonitor() {
+  const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get("projectionToken"));
   const [cursor, setCursor] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("");
   const [specFilter, setSpecFilter] = useState("");
@@ -26,6 +27,7 @@ export default function TaskObservabilityMonitor() {
   const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
+    ...(projectionToken ? { projectionToken } : {}),
     ...(conversationId ? { conversationId } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
@@ -34,11 +36,12 @@ export default function TaskObservabilityMonitor() {
   const aggregateQuery = trpc.workerJobs.observabilityAggregate.useQuery({
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
+    ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}),
   }, { enabled: Boolean(projectFilter || specFilter), staleTime: 60_000, retry: false });
   const items = query.data?.items ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
-    { jobId: selected?.id ?? "" },
+    { jobId: selected?.id ?? "", ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}) },
     { enabled: Boolean(selected), staleTime: 15_000, refetchInterval: 15_000, retry: false },
   );
   const detail = detailQuery.data;
@@ -60,7 +63,7 @@ export default function TaskObservabilityMonitor() {
             <TextInput label="SPEC ID" value={specDraft} onChange={setSpecDraft} placeholder="SPEC-###" />
             <Button label="Apply scope" variant="secondary" onClick={() => { setProjectFilter(projectDraft.trim()); setSpecFilter(specDraft.trim()); setCursor(null); setSelectedId(null); }} />
             {filtered ? <Button label="Clear scope" variant="ghost" onClick={() => { setProjectDraft(""); setSpecDraft(""); setProjectFilter(""); setSpecFilter(""); setCursor(null); setSelectedId(null); }} /> : null}
-            <Text type="supporting">Created before {query.data?.snapshot.asOf ?? "loading"} · task and selected detail values are current reads.</Text>
+            <Text type="supporting">Snapshot {query.data?.snapshot.asOf ?? "loading"} · {query.data?.snapshot.consistency ?? "consistency unknown"}; mutable task state can remain live.</Text>
           </HStack>
           {query.error ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
           {query.isLoading ? <Text>Loading owned jobs…</Text> : null}
@@ -81,10 +84,10 @@ export default function TaskObservabilityMonitor() {
             ))}
           </VStack>
           <HStack gap={2} wrap="wrap">
-            <Button label="Refresh snapshot" variant="secondary" onClick={() => { if (cursor) setCursor(null); else void query.refetch(); if (projectFilter || specFilter) void aggregateQuery.refetch(); }} />
+            <Button label="Refresh snapshot" variant="secondary" onClick={() => { setProjectionToken(null); setCursor(null); setSelectedId(null); }} />
             {cursor ? <Button label="Previous page" variant="secondary" onClick={() => { setCursor(null); setSelectedId(null); }} /> : null}
             {query.data?.nextCursor ? <Button label="Next page" variant="secondary" onClick={() => { setCursor(query.data!.nextCursor); setSelectedId(null); }} /> : null}
-            <Text type="supporting">Cursor expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot.</Text>
+            <Text type="supporting">Projection snapshot expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot shared with aggregate and detail reads.</Text>
           </HStack>
         </VStack>
       </Section>

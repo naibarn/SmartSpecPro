@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   summaryQuery: vi.fn(),
+  observabilityQuery: vi.fn(),
   taskGroupsQuery: vi.fn(),
   devicesQuery: vi.fn(),
   runnersQuery: vi.fn(),
@@ -39,6 +40,9 @@ vi.mock("@/lib/trpc", () => ({
       },
     }),
     workerJobs: {
+      observability: {
+        useQuery: (...args: unknown[]) => mocks.observabilityQuery(...args),
+      },
       dashboardSummary: {
         useQuery: (...args: unknown[]) => mocks.summaryQuery(...args),
       },
@@ -128,6 +132,7 @@ const emptyQuery = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.summaryQuery.mockReturnValue(emptyQuery);
+  mocks.observabilityQuery.mockReturnValue(emptyQuery);
   mocks.taskGroupsQuery.mockReturnValue({
     ...emptyQuery,
     data: {
@@ -196,6 +201,16 @@ describe("UniversalControlPlanePanel", () => {
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
     expect(screen.getByText(/ยังไม่เริ่มแก้โค้ดหรือ build\/run/)).toBeTruthy();
+  });
+
+  it("carries the same signed projection snapshot into the Task evidence view", () => {
+    mocks.observabilityQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { snapshot: { projectionToken: "scope-bound.snapshot-token" } },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ }))
+      .toHaveAttribute("href", "/agent-monitor?conversationId=42&projectionToken=scope-bound.snapshot-token");
   });
 
   it("prepares first, then starts prompt development only through the explicit user action", async () => {

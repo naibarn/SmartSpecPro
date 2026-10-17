@@ -60,6 +60,7 @@ function mapObservabilityError(error: unknown): never {
   if (error instanceof TaskObservabilityError) {
     if (error.code === "TASK_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: error.code });
     if (error.code === "SCOPE_REQUIRED") throw new TRPCError({ code: "FORBIDDEN", message: error.code });
+    if (error.code === "SNAPSHOT_EXPIRED") throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.code });
     throw new TRPCError({ code: "BAD_REQUEST", message: error.code });
   }
   throw error;
@@ -121,20 +122,21 @@ export const workerJobsRouter = router({
   observability: protectedProcedure
     .input(z.object({
       cursor: z.string().max(1024).nullable().optional(),
+      projectionToken: z.string().max(1024).optional(),
       projectId: z.string().trim().min(1).max(160).optional(),
       specId: z.string().trim().min(1).max(64).optional(),
       conversationId: z.number().int().positive().optional(),
     }).strict().optional())
     .query(async ({ ctx, input }) => {
       try {
-        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId });
+        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, ...(input?.projectionToken ? { projectionToken: input.projectionToken } : {}), projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId });
       } catch (error) { return mapObservabilityError(error); }
     }),
 
   observabilityDetail: protectedProcedure
-    .input(z.object({ jobId: z.string().trim().min(1).max(36) }).strict())
+    .input(z.object({ jobId: z.string().trim().min(1).max(36), projectionToken: z.string().max(1024).optional() }).strict())
     .query(async ({ ctx, input }) => {
-      try { return await getTaskObservabilityDetail({ scope: requireTaskObservabilityScope(ctx), jobId: input.jobId }); }
+      try { return await getTaskObservabilityDetail({ scope: requireTaskObservabilityScope(ctx), jobId: input.jobId, ...(input.projectionToken ? { projectionToken: input.projectionToken } : {}) }); }
       catch (error) { return mapObservabilityError(error); }
     }),
 
@@ -142,6 +144,7 @@ export const workerJobsRouter = router({
     .input(z.object({
       projectId: z.string().trim().min(1).max(160).optional(),
       specId: z.string().trim().min(1).max(64).optional(),
+      projectionToken: z.string().max(1024).optional(),
     }).strict())
     .query(async ({ ctx, input }) => {
       try { return await aggregateTaskObservability({ scope: requireTaskObservabilityScope(ctx), ...input }); }

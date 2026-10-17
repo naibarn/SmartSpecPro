@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -40,6 +40,25 @@ function reservation(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("shared projection snapshot token", () => {
+  const scope = { tenantId: "tenant-1", userId: 9 };
+  const asOf = "2026-10-17T00:00:00.000Z";
+
+  it("binds one expiring as-of token to the authenticated tenant and user", () => {
+    const token = encodeProjectionSnapshotToken(scope, asOf, Date.now() + 60_000);
+    expect(decodeProjectionSnapshotToken(token, scope)).toMatchObject({ tenantId: "tenant-1", userId: 9, asOf });
+    expect(() => decodeProjectionSnapshotToken(token, { ...scope, tenantId: "tenant-2" }))
+      .toThrowError(expect.objectContaining({ code: "SNAPSHOT_INVALID" }));
+  });
+
+  it("rejects tampered and expired snapshot tokens", () => {
+    const token = encodeProjectionSnapshotToken(scope, asOf, Date.now() + 60_000);
+    expect(() => decodeProjectionSnapshotToken(`${token}x`, scope)).toThrowError(expect.objectContaining({ code: "SNAPSHOT_INVALID" }));
+    const expired = encodeProjectionSnapshotToken(scope, asOf, Date.now() - 1);
+    expect(() => decodeProjectionSnapshotToken(expired, scope)).toThrowError(expect.objectContaining({ code: "SNAPSHOT_EXPIRED" }));
+  });
+});
 
 describe("projectRunnerTimelineEvent", () => {
   it("projects bound recovery facts and excludes raw runner identity payloads", () => {
@@ -178,8 +197,12 @@ describe("aggregateTaskObservability", () => {
     ];
     mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
 
-    const result = await aggregateTaskObservability({ scope: { tenantId: "tenant-1", userId: 9 }, projectId: "project-1", specId: "SPEC-277" });
+    const scope = { tenantId: "tenant-1", userId: 9 };
+    const projectionToken = encodeProjectionSnapshotToken(scope, "2026-10-17T00:03:00.000Z", Date.now() + 60_000);
+    const result = await aggregateTaskObservability({ scope, projectId: "project-1", specId: "SPEC-277", projectionToken });
 
+    expect(result.asOf).toBe("2026-10-17T00:03:00.000Z");
+    expect(result.projectionSnapshot).toMatchObject({ token: projectionToken, asOf: result.asOf });
     expect(result.observedJobCount).toBe(1);
     expect(result.usage.completeTotalTokens).toBe(16);
     expect(result.usage.counts).toMatchObject({ received: 2, unique: 1, corrections: 1, replayed: 1 });
