@@ -1,0 +1,2652 @@
+[
+  {
+    "caseId": "repo-spec-225-title",
+    "query": "In repository Spec 225, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Universal Agent Access, Mobile & Cross-Device Control Plane",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md",
+      "sha256": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "9fd2f4da8d2db3f79ce8a4ddf62c1c2643119b7270fccac032b237423c12d23e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-225-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-226-title",
+    "query": "หัวข้อของ Spec 226 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
+      "sha256": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "50b5f3b29def13967cf2936efd50eb7e5e275583abe6ee9a09745bf9f15775bc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-226-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-228-title",
+    "query": "For Spec 228, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Autonomous Maintenance, Issue & Improvement Management System",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
+      "sha256": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "e0c03e56bdc44875479f25bb02311c952aa79752ad59b47779bbcd8c2a94a407",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-228-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-232-title",
+    "query": "In repository Spec 232, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Zero-Downtime Redis/BullMQ to Cloudflare Migration & Runtime Hardening",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md",
+      "sha256": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "07f75d4d3edb1033fe6784ba3a3a08f69d8d3e97db860ae0f8b5aa0d6e7ddd81",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-232-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-233-title",
+    "query": "หัวข้อของ Spec 233 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+      "sha256": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "f0cf348e8500c074957fe0becb2b77d3be8852b7f75112e53bd417fb8a432199",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-233-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-234-title",
+    "query": "For Spec 234, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Use Case Intelligence and Demand Evolution Upgrade",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md",
+      "sha256": "a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "06290c6b3f5845e411e6bb17528b5569f857a4ffd3f5c293f49e60f82ebcc130",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-234-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a57c7de2f044f4433dbc51ad9558b19a381a983395fb9ab77237e128a171c394",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-235-title",
+    "query": "In repository Spec 235, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Product Evolution to Autonomous Development Integration",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
+      "sha256": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "8dbd0b701ee6364a12d7361bdfabf5604bb5f7775e7db63af667a77f43bbd5a0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-235-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-236-title",
+    "query": "หัวข้อของ Spec 236 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub AI Live Commerce & Project Library Broadcast Engine",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
+      "sha256": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "226cd3cf9a14a8a779330b897fa22a25ec34683f2bbd833e4dd8b78470c36335",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-236-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-237-title",
+    "query": "For Spec 237, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
+      "sha256": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "d01472d8851cee36353c22792e121ca959000a936c90544656ce36cc3520f279",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-237-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-238-title",
+    "query": "In repository Spec 238, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Universal Intelligent Monitoring & Alert Builder",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
+      "sha256": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "f239493add17b781d8de698e43f644e7cd118d7101f39186867ea55adfbb78da",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-238-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-240-title",
+    "query": "หัวข้อของ Spec 240 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "Spec 240 — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
+      "sha256": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
+      "lineStart": 2,
+      "lineEnd": 2,
+      "quoteSha256": "19ff6a1301d83cd31ed1050e68533070d00a5300badd12d529f00c605e72b7bf",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-240-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-242-title",
+    "query": "For Spec 242, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Cloudflare Native Agent & Sandbox Runtime Integration",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
+      "sha256": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "f640d0caa2847f4b237dcc62cb52f2f7a3d600f4cbcacb6fb20f927d123cb661",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-242-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-243-title",
+    "query": "In repository Spec 243, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Managed Cloud Agent & Hosted Harness Integration",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+      "sha256": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "1770345ccfefc4d9d2073e428b54a4204f83919e2a3a84bb038cb50ec81cf07f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-243-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-246-title",
+    "query": "หัวข้อของ Spec 246 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "AI Scientific Discovery Studio",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/246-AI Scientific Discovery Studio/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/246-AI Scientific Discovery Studio/spec.md",
+      "sha256": "e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "1327cea0e8cbad0793ff51785199cdb3d5b4ab989d815ba686521697932ee44a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/246-AI Scientific Discovery Studio/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-246-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e8350223692ca28153e18d3a0f816a06154de5bfd07d52083940346c4017ac86",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-247-title",
+    "query": "For Spec 247, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "Multi-Provider Speech & Voice Gateway",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
+      "sha256": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "32d9d8244e21498c392a413c747557fcdf15ee33badc3f5344fcd97696add12a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-247-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-248-title",
+    "query": "In repository Spec 248, what title is given to the specification?",
+    "expectedAnswer": "Spec 248 — MCP Skills Extension (SEP-2640): Distribution, Interoperability & Governance",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/248-MCP Skills Extension/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/248-MCP Skills Extension/spec.md",
+      "sha256": "a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+      "lineStart": 2,
+      "lineEnd": 2,
+      "quoteSha256": "bf435ff3d650411d37fc298c3f788733d74f567166fc624ccb103efedc4ffb8d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/248-MCP Skills Extension/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-248-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a0de77141b5126e6e1e364b9b1c64244e8d32578e966f0ef03f296973701e284",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-249-title",
+    "query": "หัวข้อของ Spec 249 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Adaptive Multimodal Tutor & Course Foundry",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
+      "sha256": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "4bc1dcaefa49a8e01d806d267e1942669bc45b72053bed3bb687352256a6877b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-249-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-250-title",
+    "query": "For Spec 250, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "Autonomous Development Execution Reliability & Governance Bootstrap",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/250-Development-Reliability/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/250-Development-Reliability/spec.md",
+      "sha256": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "0695a5e6be5958a7aaf2818a284d79a3559eafc9a6cc8038624cc402a4400902",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/250-Development-Reliability/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-250-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-251-title",
+    "query": "In repository Spec 251, what title is given to the specification?",
+    "expectedAnswer": "Creator Workspace & Media Localization",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/251-creator-workspace-media-localization/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/251-creator-workspace-media-localization/spec.md",
+      "sha256": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+      "lineStart": 16,
+      "lineEnd": 16,
+      "quoteSha256": "9ffd1edc3b3d4e2d1139d3fee0eaf66e175c1d1016f89755dcd9a7f630eb1920",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/251-creator-workspace-media-localization/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-251-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-252-title",
+    "query": "หัวข้อของ Spec 252 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub AI Film Studio — Chat-First Director Graph, 3D Previsualization & Character Performance",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
+      "sha256": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "be1a14be7dfede0e0ebb6f930536879aded90ac2220ec2a8cae2ef9c226135f4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-252-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-253-title",
+    "query": "For Spec 253, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Universal Product Command, Media Handoff & Capability Interoperability",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
+      "sha256": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "be8c6d4ce9e34d907190f776450caf0ed65fa1a5d994c841ebe2e4f8e20682c9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-253-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-254-title",
+    "query": "In repository Spec 254, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub AI Film Studio — External Intelligence & Adaptive Execution",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md",
+      "sha256": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "df654d934040291b2d01d2bd84b2c7adf6e30a21a584f891e312f6dc4e33bfdb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-254-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-255-title",
+    "query": "หัวข้อของ Spec 255 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Semantic Media Graph & Incremental Production Contracts",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/255-Semantic-Media-Graph-Incremental-Production/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/255-Semantic-Media-Graph-Incremental-Production/spec.md",
+      "sha256": "b820804fcbb2eeeb5ec7495ef09af2a0ea4dc708d13b199d5a22dff88c600df7",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "d77adc87edc4b595133f5a77b89197a174970ee9ae1f9ebfb70539ede8132c6c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/255-Semantic-Media-Graph-Incremental-Production/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-255-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b820804fcbb2eeeb5ec7495ef09af2a0ea4dc708d13b199d5a22dff88c600df7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-256-title",
+    "query": "For Spec 256, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Skill-First Capability Discovery & Intent Execution",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
+      "sha256": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "f0852b650bc03d5f0a9d50c0950dc0a3c5ddb4563648464ff27a6a3aa3bf4436",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-256-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-257-title",
+    "query": "In repository Spec 257, what title is given to the specification?",
+    "expectedAnswer": "Cloudflare Admin Control Plane and Redis-Free Queue/Cache Readiness",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
+      "sha256": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "f64e0fdc829c653985a9519712f0eba34eb456711da15ea59eb9ac67c344af41",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-257-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-259-title",
+    "query": "หัวข้อของ Spec 259 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub thClaws Hybrid Runtime, Cloud Development Workspace & User-Owned LLM Subscription Interoperability",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop/spec.md",
+      "sha256": "35322113c84b99c3c4a550b8a6e67cee84db8a9958b5fea97943d391d50d7ca2",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "quoteSha256": "3cd5bcdcc9f2064d327951982f1ec01efd808a8a34d791dbc1ad0ae5500b8e94",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-259-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:35322113c84b99c3c4a550b8a6e67cee84db8a9958b5fea97943d391d50d7ca2",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-260-title",
+    "query": "For Spec 260, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub All-Hazards Emergency, Crisis Intelligence & Coordinated Response Platform",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md",
+      "sha256": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "7b50ad7632a39878ddb57f2c22d2bc1d29d89e56fd6ccea08e363caf25ba3f5c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-260-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-261-title",
+    "query": "In repository Spec 261, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Portable AI Application Standard (SPAAS)",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
+      "sha256": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "46eb831cdba068157b2fa50db0b4f0c743576300cd48ae00f7e03899323a3e42",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-261-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-262-title",
+    "query": "หัวข้อของ Spec 262 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Global Geospatial Operational Intelligence, Adaptive Situation Feed & Hydrology Enhancement",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md",
+      "sha256": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "648963f41c8f1a6602bce4b318fcfdca22a5689cdb6ee1323b96cc6af7f42314",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-262-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-263-title",
+    "query": "For Spec 263, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Public Website Experience Modernization",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+      "sha256": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "09b70192ff6e936498db584a07941aaca19332ffd00415a60c71918be9c2f22e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-263-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-264-title",
+    "query": "In repository Spec 264, what title is given to the specification?",
+    "expectedAnswer": "Emergency Hazard Intelligence, Temporal Observation & Impact Coordination Extension",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension/spec.md",
+      "sha256": "34011fa4d9f1fa426ebdbcf05db2a0f8837336d892a8a502e7bbdcdfe8f3970d",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "c84a6c9fca9732bad4aaa630bec54c30cf8e8ecdafb5deef5687c4f01c4ed8d7",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-264-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:34011fa4d9f1fa426ebdbcf05db2a0f8837336d892a8a502e7bbdcdfe8f3970d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-265-title",
+    "query": "หัวข้อของ Spec 265 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Decision Intelligence & Vertical Mini App Platform",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
+      "sha256": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "3d895f55ff71e1b9a911b39822228cdc8d8ced8dcae50f3c565ab8084d7fe115",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-265-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-266-title",
+    "query": "For Spec 266, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Unified Data, Evidence, Knowledge & Spatial Intelligence Fabric",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
+      "sha256": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "a2c43f1682410376055513681db6495bb81c2fb3313780a2c3ff0b6489287359",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-266-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-267-title",
+    "query": "In repository Spec 267, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Cloudflare Production Migration & Durable Execution Control Plane V2",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
+      "sha256": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "7acffdd048ef146a08270ba1a7628bbbd14fb2b6c842e618727049fe2f135941",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-267-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-268-title",
+    "query": "หัวข้อของ Spec 268 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+      "sha256": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "95602ba084206d7dfae3adedc7b09fdc3ba3bd087c10dfc1131d063aec0ebf54",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-268-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-269-title",
+    "query": "For Spec 269, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Primary Assistant, Specialist Assistant Teams & Autonomous Workforce Runtime",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
+      "sha256": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "16a33ae13765f0958a28b8670299ecc07190a26ca0b459a06cf53e4ffc9bc96e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-269-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-270-title",
+    "query": "In repository Spec 270, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Design Intelligence, UI Generation & Provider-Neutral Design Runtime",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
+      "sha256": "ce74e7b5be1c52315a57858dc559e30450416a1cbedf751340ca4f2c6c84c3a9",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "78f9385a01923807ccee0ebb1892490239edb87aeabbb0910c22580fa55926a0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-270-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ce74e7b5be1c52315a57858dc559e30450416a1cbedf751340ca4f2c6c84c3a9",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-271-title",
+    "query": "หัวข้อของ Spec 271 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Portable UAT Acceptance & Execution Platform",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
+      "sha256": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "bec03e7bbe23338098cd6da25ca29de487c645bb779fee3e16638cd9609c221b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-271-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-272-title",
+    "query": "For Spec 272, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Credential Vault, Root-of-Trust & Secure Provider Broker",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
+      "sha256": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "435e0b3b039da4af3f318ba99259336710b7d5c858ae2b0df0c6e65709d67d27",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-272-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-273-title",
+    "query": "In repository Spec 273, what title is given to the specification?",
+    "expectedAnswer": "Portable Mini App Data Architecture, Database Authority, Storage Resolution & Migration Control",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
+      "sha256": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "0d1abe14b5753cfe05a31a9fea3206b5041cbd6729b7754259730c8ba3dc2297",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/273-portable-mini-app-data-architecture/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-273-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-274-title",
+    "query": "หัวข้อของ Spec 274 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "Canonical Executable Artifact Manifest & Lightweight Integrity Contract",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/274-canonical-executable-artifact-manifest/spec.md",
+      "sha256": "8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "quoteSha256": "5728595584a74ec4d766b4850c33084b28bdee0a93f5762f4eaf9b2fb292ae01",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/274-canonical-executable-artifact-manifest/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-274-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8a12a34a99d644b0e956ff00bf05a9e554abc382bc3ecbffe33de291e7d1aba6",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-275-title",
+    "query": "For Spec 275, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Autonomous Execution Learning, Reliability & Continuous Improvement Layer",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/275-autonomous-execution-learning-reliability/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/275-autonomous-execution-learning-reliability/spec.md",
+      "sha256": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+      "lineStart": 16,
+      "lineEnd": 17,
+      "quoteSha256": "0b4410236fa2c91673f8389e6588e46cffdee6fd0df6531140d91758863f6f45",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Corrected after initial review found a truncated title: lines 16-17 now cover the complete YAML title; independent re-review verified answer and source/quote digests."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/275-autonomous-execution-learning-reliability/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-275-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-278-title",
+    "query": "In repository Spec 278, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Durable Runner Execution Sessions & Recovery Fabric",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
+      "sha256": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "329f2a1a8ae1bf983f1dd0acf5d4b53578a0c96c687b23158f29b6c4c5b56c6f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-278-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-279-title",
+    "query": "หัวข้อของ Spec 279 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Universal Command Ingress & Agent Delegation Gateway",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
+      "sha256": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+      "lineStart": 2283,
+      "lineEnd": 2283,
+      "quoteSha256": "6e5f8663ee2003b43d1bc0ec13920ec321a0a55da49bed6b93cf9ba543aa09a6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-279-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-280-title",
+    "query": "For Spec 280, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub Metered Capability Commerce & Creator Economy Runtime",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
+      "sha256": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "9ceb99eca33f984ae13da660f5fa4c212bea82a55c5e23261807e75fff533ccf",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-280-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-281-title",
+    "query": "In repository Spec 281, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Portable Mini App Knowledge Runtime & Wiki RAG",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md",
+      "sha256": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "996afcd0e1e5187d7aa89c2e3c8dc8e0465556d711a176528d31757c6a92fc65",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-281-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-282-title",
+    "query": "หัวข้อของ Spec 282 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Continuous Canonicalization & Durable Work Convergence",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md",
+      "sha256": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "16562951ebc4ae093b1e15850166dd082ce488b875b6c3b979c3bfb10fd1983a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-282-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-283-title",
+    "query": "For Spec 283, ชื่อเรื่องใน source คืออะไร?",
+    "expectedAnswer": "SmartAIHub External Capability Intelligence & Agent Federation",
+    "language": "mixed",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/283-external-capability-intelligence-agent-federation-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/283-external-capability-intelligence-agent-federation-r1-0/spec.md",
+      "sha256": "14b35ad120f15028f8a2d96d6c429f0f20004b87a957b8630b84db3fd636c7a7",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "6856528cc5c99d02fcb1ee231d29e0f78b4e50da399f1d81fc2f825330786ba1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/283-external-capability-intelligence-agent-federation-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-283-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:14b35ad120f15028f8a2d96d6c429f0f20004b87a957b8630b84db3fd636c7a7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-284-title",
+    "query": "In repository Spec 284, what title is given to the specification?",
+    "expectedAnswer": "SmartAIHub Project Evidence Retrieval, Artifact Continuity & Source Preservation Runtime",
+    "language": "english",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md",
+      "sha256": "785d9632b21124befc6ec06aae42aac5aa67dcf36ce9d147a3498b64bca5e762",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "500ca9e60d477923be40451147b94ed3be47f607f2dfe89ffae154c70cb4a502",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-284-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:785d9632b21124befc6ec06aae42aac5aa67dcf36ce9d147a3498b64bca5e762",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "repo-spec-285-title",
+    "query": "หัวข้อของ Spec 285 ระบุชื่อเรื่องว่าอะไร?",
+    "expectedAnswer": "SmartAIHub Built Environment Intelligence & Coordinated Project Workspace",
+    "language": "thai",
+    "classes": [
+      "exact_id",
+      "spec_id",
+      "document_title"
+    ],
+    "sourceGroupId": "specs/feature/285-smartaihub-built-environment-intelligence-coordinated-project-workspace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/285-smartaihub-built-environment-intelligence-coordinated-project-workspace/spec.md",
+      "sha256": "41ca9f8a84ded46a50b0241b68811f4adc7f9b9a1ff3389ea78397f5f77c27da",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "quoteSha256": "f72d6ac879a2b5e9c71183294102591715f9495c75157c9061054db4e3da8fe7",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-title-candidates-v1"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-r2",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified candidate answer and source span against the cited repository SPEC; development fixture only."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/285-smartaihub-built-environment-intelligence-coordinated-project-workspace/spec.md"
+      ],
+      "requiredClaims": [
+        "spec-285-title"
+      ],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:41ca9f8a84ded46a50b0241b68811f4adc7f9b9a1ff3389ea78397f5f77c27da",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  }
+]

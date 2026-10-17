@@ -110,6 +110,7 @@ export function missingRequiredQueryClasses(
 
 export interface GoldDatasetCounts {
   candidateQueries: number;
+  unreviewed: number;
   independentlyReviewed: number;
   machineReviewed: number;
   humanReviewed: number;
@@ -352,6 +353,7 @@ export function countGoldDataset(
   const goldEligible = accepted.filter(isReleaseEvaluationEligible);
   return {
     candidateQueries: candidates.length,
+    unreviewed: candidates.filter(item => item.reviews.length === 0).length,
     independentlyReviewed: candidates.filter(item =>
       item.reviews.some(review => review.reviewerId !== item.generator.id)
     ).length,
