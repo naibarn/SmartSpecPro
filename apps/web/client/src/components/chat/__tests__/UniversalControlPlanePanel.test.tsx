@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   summaryQuery: vi.fn(),
   observabilityQuery: vi.fn(),
+  observabilityDetailQuery: vi.fn(),
   taskGroupsQuery: vi.fn(),
   devicesQuery: vi.fn(),
   runnersQuery: vi.fn(),
@@ -42,6 +43,9 @@ vi.mock("@/lib/trpc", () => ({
     workerJobs: {
       observability: {
         useQuery: (...args: unknown[]) => mocks.observabilityQuery(...args),
+      },
+      observabilityDetail: {
+        useQuery: (...args: unknown[]) => mocks.observabilityDetailQuery(...args),
       },
       dashboardSummary: {
         useQuery: (...args: unknown[]) => mocks.summaryQuery(...args),
@@ -133,6 +137,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.summaryQuery.mockReturnValue(emptyQuery);
   mocks.observabilityQuery.mockReturnValue(emptyQuery);
+  mocks.observabilityDetailQuery.mockReturnValue(emptyQuery);
   mocks.taskGroupsQuery.mockReturnValue({
     ...emptyQuery,
     data: {
@@ -211,6 +216,43 @@ describe("UniversalControlPlanePanel", () => {
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ }))
       .toHaveAttribute("href", "/agent-monitor?conversationId=42&projectionToken=scope-bound.snapshot-token");
+  });
+
+  it("renders the latest Chat task usage with the same signed snapshot and preserves unknown values", () => {
+    const projectionToken = "scope-bound.snapshot-token";
+    mocks.observabilityQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        snapshot: { projectionToken, asOf: "2026-10-17T04:00:00.000Z" },
+        items: [{ id: "job-chat-1" }],
+      },
+    });
+    mocks.observabilityDetailQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        id: "job-chat-1",
+        status: "completed",
+        modelSelection: { uiSessionModel: "session-model", source: "owned_conversation_current_config", asOf: "2026-10-17T03:59:00.000Z" },
+        usage: {
+          receipts: [{ model: { requested: "worker-model", effective: null, helper: null } }],
+          completeTotalTokens: null,
+          knownSubtotalTokens: 400,
+          counts: { unique: 1, missing: 1 },
+          coverage: { status: "PARTIAL", reason: "Linked receipts only; other sources are missing." },
+        },
+        quotaCoverage: { status: "UNKNOWN" },
+      },
+    });
+
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+
+    expect(mocks.observabilityDetailQuery).toHaveBeenCalledWith(
+      { jobId: "job-chat-1", projectionToken },
+      expect.objectContaining({ enabled: true }),
+    );
+    expect(screen.getByText(/UI Session session-model/)).toBeTruthy();
+    expect(screen.getByText(/Worker requested worker-model · Provider effective Unknown \/ unverified/)).toBeTruthy();
+    expect(screen.getByText(/Measured linked tokens Unknown · known subtotal 400 · calls 1 · missing 1 · quota UNKNOWN/)).toBeTruthy();
   });
 
   it("prepares first, then starts prompt development only through the explicit user action", async () => {
