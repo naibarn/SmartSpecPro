@@ -1,0 +1,50 @@
+{
+  "evidence_id": "SPEC229-P2298-GOLD-PIPELINE-POSTMERGE-20261017",
+  "workunit": "P229.8 Gold Dataset Pipeline",
+  "workunit_status": "PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "pr": 1066,
+  "merge_sha": "41be8c787888f0575e691a17ec6cab82a3b4eb08",
+  "canonical_ref": "refs/heads/main",
+  "source_verified": true,
+  "observed_at": "2026-10-17T15:42:40Z",
+  "counts": {
+    "candidate_queries": 10,
+    "independently_reviewed_machine": 10,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "review_accepted_machine": 10,
+    "pending_adjudication": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "development_only": 10
+  },
+  "dataset_sha256": "b9c467c2d4adb206e69f176be3e84648e408c15aa69852c68d59d25dfc04afc1",
+  "test_profile": "quick",
+  "commands": [
+    {
+      "command": "pnpm exec vitest run server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+      "result": "PASS: 2 files, 16 tests"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts",
+      "result": "PASS: DEVELOPMENT_CANDIDATES_NOT_CERTIFIED; all 15 canonical §27 metrics NOT_EVALUABLE"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+      "result": "PASS: 9 synthetic cases; DEVELOPMENT_FIXTURES_NOT_CERTIFIED; crossTenantLeakage=1; unauthorizedEvidenceLeakage=1; aclLeakage=2; citationPrecision=0.5; freshnessCorrectness=0.571429; no latency or cost evidence"
+    },
+    {
+      "command": "python3 -m tools.spec_handoff validate --spec-dir \"specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize\"",
+      "result": "PASS structural validation; completion_eligible=false due unresolved global SPEC requirements"
+    }
+  ],
+  "confidence_intervals": null,
+  "baseline_comparison": null,
+  "production_verified": false,
+  "remaining": [
+    "Only 10 development candidates from one source group; 0 release-approved and 0 held-out cases.",
+    "No authorized retrieval observations or profile-specific runtime latency/cost measurements.",
+    "P229.8 and global SPEC-229 remain incomplete; evidence quality state unchanged."
+  ]
+}
