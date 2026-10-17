@@ -17,6 +17,7 @@ import {
 } from "../../drizzle/schema";
 import { aggregateUsageEvidence, taskUsageEvidenceCallSchema } from "../../shared/taskUsageEvidence";
 import { goalBaselineSchema, projectGoalProgress } from "../../shared/taskGoalProgress";
+import { projectAuthorizedTaskAcceptance } from "./taskObservabilityAcceptance";
 
 const PAGE_SIZE = 25;
 const MAX_JOB_DETAIL = 100;
@@ -402,6 +403,15 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
     runner: runner ? { id: runner.runnerId, displayName: safeText(runner.displayName, 120), status: runner.revokedAt ? "revoked" : runner.status, trustState: runner.trustState, lastSeenAt: asIso(runner.lastSeenAt), freshness: runner.lastSeenAt && Date.now() - runner.lastSeenAt.getTime() < 5 * 60_000 ? "fresh" : "stale" } : { status: "unknown", freshness: "unknown" },
     goal: goalProjection(job),
+    acceptance: projectAuthorizedTaskAcceptance({
+      jobId: job.id,
+      status: job.status,
+      snapshotAt: (snapshotAt ?? new Date()).toISOString(),
+      freshness: snapshotAt && Date.now() - snapshotAt.getTime() >= CURSOR_TTL_MS ? "stale" : "current",
+      calls: [...usageCalls, ...inferenceCalls],
+      runnerSessionId: runnerSession?.sessionId ?? null,
+      reservations: reservations.map((row) => ({ id: row.id, attemptId: row.attemptId, status: row.reservationStatus, observedAt: asIso(row.lastObservedAt) })),
+    }),
     usage: { ...usage, reservations: [
       ...reservations.map((row) => ({ kind: row.reservationKind, status: row.reservationStatus, modelCallId: row.modelCallId, estimateTokens: row.reservedTokens, estimatedCostMicros: null, provider: safeText(row.providerName, 64), observedAt: asIso(row.lastObservedAt) })),
       ...inferenceRows.map((row) => ({ kind: "inference_plan", status: "observed", estimateTokens: null, estimatedCostMicros: row.estimatedCostMicros, parentCostCeilingMicros: row.parentCostCeilingMicros, provider: null, observedAt: row.updatedAt.toISOString() })),
