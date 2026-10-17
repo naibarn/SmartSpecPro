@@ -22,6 +22,7 @@ Source branch: `codex/cloudflare-http-runtime-20261017` (rebased on `origin/main
 - Wrangler local runtime: `/healthz` 200; `/readyz` 503 with disabled/unbound bindings; API/auth and SSE proxy failed closed with 503 while origin bindings were absent; `/socket.io`, unknown paths, and POST `/healthz` returned 501.
 - Origin-attestation helper passed direct Node assertions. Its Vitest file was not run because web dependencies are not installed in this isolated checkout.
 - No PostgreSQL server, restricted staging role, Cloudflare credentials, or browser staging session was available; no database or production credential was accessed.
+- The first PR CI `local-contract` attempt stopped before install because the workflow repeated the pnpm version already pinned by root `packageManager`; the workflow pin was removed so CI uses the integrity-pinned root version. CI rerun is pending.
 
 ## Remaining acceptance work
 
