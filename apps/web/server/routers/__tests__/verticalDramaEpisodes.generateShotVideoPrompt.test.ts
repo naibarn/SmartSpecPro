@@ -3514,7 +3514,7 @@ describe("Enhanced display readiness", () => {
     expect(result).toMatchObject({
       ready: false,
       fallback: "none",
-      reasons: ["ยังไม่มี motion prompt pack ของตอนนี้"],
+      reasons: ["กรุณาเลือกโมเดลวิดีโอก่อนสร้าง Enhanced prompt"],
     });
     expect(mockDb.update).not.toHaveBeenCalled();
     expect(mockDb.insert).not.toHaveBeenCalled();

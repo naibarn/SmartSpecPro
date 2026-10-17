@@ -994,6 +994,7 @@ async function loadEnhancedShotContext(input: {
   shotNumber: number;
   publicUrl?: string | null;
   operation?: "generate" | "apply" | "finalize";
+  targetVideoModelId?: string;
 }): Promise<EnhancedShotContext> {
   const row = await loadOwnedEpisode(input);
   const series = await assertSeriesOwned(
@@ -1002,12 +1003,22 @@ async function loadEnhancedShotContext(input: {
     input.seriesId
   );
   const tenantFlags = await getTenantFeatureFlags(input.tenantId);
-  const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-  if (!pack)
+  const storedPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+  const requestedVideoModelId =
+    storedPack?.selectedVideoModelId?.trim() || input.targetVideoModelId?.trim();
+  if (!requestedVideoModelId)
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "ยังไม่มี motion prompt pack ของตอนนี้",
+      message: "กรุณาเลือกโมเดลวิดีโอก่อนสร้าง Enhanced prompt",
     });
+  const pack: VerticalDramaMotionPromptPack = storedPack ?? {
+    selectedVideoModelId: requestedVideoModelId,
+    durationProfileId:
+      row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+    motionMode: "first_frame_to_video",
+    clips: [],
+    warnings: [],
+  };
   const existingClip = pack.clips.find(
     c =>
       c.sourceShotNumbers?.includes(input.shotNumber) ||
@@ -1708,6 +1719,7 @@ async function executeEnhancedShotVideoPromptJob(input: {
   seriesId: number;
   episodeId: number;
   shotNumber: number;
+  targetVideoModelId?: string;
   jobId?: string;
 }): Promise<VerticalDramaShotVideoPromptJobResult> {
   const tenantId = requireTenantId(input.ctx.tenantId);
@@ -1725,6 +1737,7 @@ async function executeEnhancedShotVideoPromptJob(input: {
     shotNumber: input.shotNumber,
     publicUrl: input.ctx.publicUrl,
     operation: "generate",
+    targetVideoModelId: input.targetVideoModelId,
   });
   throwIfEnhancedBlocked(context.readiness, "generate");
   const estimatedCredits = context.readiness.estimatedCredits ?? 1;
@@ -1799,13 +1812,18 @@ async function executeEnhancedShotVideoPromptJob(input: {
       )
       .for("update")
       .limit(1);
-    const freshPack =
+    const freshStoredPack =
       fresh?.motionPromptPack as VerticalDramaMotionPromptPack | null;
-    if (!freshPack)
+    if (
+      freshStoredPack?.selectedVideoModelId &&
+      freshStoredPack.selectedVideoModelId !== context.targetVideoModel.id
+    ) {
       throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "motion prompt pack changed before Enhanced merge",
+        code: "CONFLICT",
+        message: "Selected video model changed before Enhanced merge",
       });
+    }
+    const freshPack = freshStoredPack ?? context.pack;
     const freshClipIndex = freshPack.clips.findIndex(
       c =>
         c.sourceShotNumbers?.includes(input.shotNumber) ||
@@ -27633,6 +27651,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        targetVideoModelId: z.string().trim().min(1).max(160).optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -27645,12 +27664,13 @@ export const verticalDramaEpisodesRouter = router({
           shotNumber: input.shotNumber,
           publicUrl: ctx.publicUrl,
           operation: "generate",
+          targetVideoModelId: input.targetVideoModelId,
         });
         return context.readiness;
       } catch (error) {
         // This endpoint is a display-only gate. A storyboard can exist before
-        // its approved Start frame or motion pack, so report unavailable
-        // readiness as data instead of surfacing a noisy 412 to the browser.
+        // its approved Start frame or target model selection, so report
+        // unavailable readiness as data instead of surfacing a noisy 412.
         if (
           error instanceof TRPCError &&
           error.code === "PRECONDITION_FAILED"
@@ -27673,6 +27693,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        targetVideoModelId: z.string().trim().min(1).max(160).optional(),
         idempotencyKey,
       })
     )
@@ -27688,6 +27709,7 @@ export const verticalDramaEpisodesRouter = router({
         shotNumber: input.shotNumber,
         publicUrl: ctx.publicUrl,
         operation: "generate",
+        targetVideoModelId: input.targetVideoModelId,
       });
       throwIfEnhancedBlocked(context.readiness, "generate");
       const estimatedCredits = context.readiness.estimatedCredits ?? 1;
@@ -27710,6 +27732,7 @@ export const verticalDramaEpisodesRouter = router({
             seriesId: input.seriesId,
             episodeId: input.episodeId,
             shotNumber: input.shotNumber,
+            targetVideoModelId: input.targetVideoModelId,
             idempotencyKey: buildEnhancedJobKey({
               tenantId,
               userId: String(ctx.user.id),
@@ -27937,6 +27960,7 @@ export const verticalDramaEpisodesRouter = router({
         qualityLoop: z.boolean().optional(),
         idempotencyKey,
         variantId: z.enum(["legacy", "enhanced"]).optional(),
+        targetVideoModelId: z.string().trim().min(1).max(160).optional(),
         workerJobId: z.string().uuid().optional(),
         workerExecutionToken: z.string().uuid().optional(),
       })
@@ -27968,6 +27992,7 @@ export const verticalDramaEpisodesRouter = router({
             seriesId,
             episodeId,
             shotNumber: input.shotNumber,
+            targetVideoModelId: input.targetVideoModelId,
             jobId: input.workerJobId,
           });
         } catch (error) {

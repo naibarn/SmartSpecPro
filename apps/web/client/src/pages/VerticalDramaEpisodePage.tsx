@@ -9071,6 +9071,7 @@ function EpisodeWorkspaceShell({
                 seriesId,
                 episodeId,
                 shotNumber,
+                targetVideoModelId: selectedVideoModelId || undefined,
               }
             );
           return [
@@ -9103,6 +9104,7 @@ function EpisodeWorkspaceShell({
     enhancedReadinessShotNumbers,
     enhancedVideoPromptUiEnabled,
     episodeId,
+    selectedVideoModelId,
     seriesId,
     utils,
   ]);
@@ -9143,6 +9145,7 @@ function EpisodeWorkspaceShell({
             seriesId,
             episodeId,
             shotNumber,
+            targetVideoModelId: selectedVideoModelId || undefined,
           }
         );
       if (!readiness.ready) {
@@ -9154,6 +9157,7 @@ function EpisodeWorkspaceShell({
         seriesId,
         episodeId,
         shotNumber,
+        targetVideoModelId: selectedVideoModelId || undefined,
         idempotencyKey: crypto.randomUUID(),
       });
       for (let attempt = 0; attempt < 720; attempt += 1) {
@@ -9213,6 +9217,7 @@ function EpisodeWorkspaceShell({
               seriesId,
               episodeId,
               shotNumber,
+              targetVideoModelId: selectedVideoModelId || undefined,
             }
           );
         if (!readiness.ready) {

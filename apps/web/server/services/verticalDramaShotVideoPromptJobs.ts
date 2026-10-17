@@ -55,6 +55,8 @@ export interface VerticalDramaShotVideoPromptJobInput {
   attachShotImage?: boolean;
   additionalImageUrls?: string[];
   qualityLoop?: boolean;
+  /** Required only for Enhanced when the episode has no motion prompt pack yet. */
+  targetVideoModelId?: string;
   idempotencyKey?: string;
   /** Additive variant partition; omitted means the existing Legacy job. */
   variantId?: "legacy" | "enhanced";
@@ -496,6 +498,9 @@ function requestFingerprint(
     attachShotImage: input.attachShotImage ?? true,
     additionalImageUrls: input.additionalImageUrls ?? [],
     qualityLoop: input.qualityLoop ?? null,
+    ...(input.targetVideoModelId?.trim()
+      ? { targetVideoModelId: input.targetVideoModelId.trim() }
+      : {}),
     variantId: input.variantId ?? "legacy",
   });
   return createHash("sha256").update(canonical).digest("hex");
