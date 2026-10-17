@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { sha256Hex } from "./artifacts";
+import { CREATE_SERIES_FIELD_LIMITS } from "./createSeriesFieldLimits";
 
 export const PROMPT_EXPANSION_STATUSES = [
   "preview",
@@ -22,8 +23,8 @@ export type PromptExpansionProfile = (typeof PROMPT_EXPANSION_PROFILES)[number];
 /** Maximum length for one scope item returned by the prompt expansion model. */
 export const PROMPT_EXPANSION_SCOPE_ITEM_MAX_LENGTH = 2000;
 
-/** Prompt length supported by the optional AI expansion action in the wizard. */
-export const PROMPT_EXPANSION_PREMISE_LIMIT = 5_000;
+/** Keep AI expansion aligned with the premise field's supported length. */
+export const PROMPT_EXPANSION_PREMISE_LIMIT = CREATE_SERIES_FIELD_LIMITS.userPremise;
 
 export const promptExpansionSourceSchema = z.object({
   url: z.string().url().max(2048),

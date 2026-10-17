@@ -38,11 +38,11 @@ function storyOutput(overrides: Partial<PromptExpansionModelOutput> = {}): Promp
 }
 
 describe("vertical drama prompt expansion strict real-LLM contract", () => {
-  it("accepts exactly 5,000 premise characters and rejects the 5,001st", () => {
+  it("accepts exactly 12,000 premise characters and rejects the 12,001st", () => {
     const atLimit = promptExpansionPreviewSchema.shape.originalPrompt.safeParse("ก".repeat(PROMPT_EXPANSION_PREMISE_LIMIT));
     const overLimit = promptExpansionPreviewSchema.shape.originalPrompt.safeParse("ก".repeat(PROMPT_EXPANSION_PREMISE_LIMIT + 1));
 
-    expect(PROMPT_EXPANSION_PREMISE_LIMIT).toBe(5_000);
+    expect(PROMPT_EXPANSION_PREMISE_LIMIT).toBe(12_000);
     expect(atLimit.success).toBe(true);
     expect(overLimit.success).toBe(false);
   });
