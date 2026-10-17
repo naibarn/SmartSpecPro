@@ -57,6 +57,15 @@ const classCounts: Record<string, number> = {};
 for (const candidate of candidates)
   for (const category of candidate.classes)
     classCounts[category] = (classCounts[category] ?? 0) + 1;
+const languageCounts = Object.fromEntries(
+  ["thai", "english", "mixed"].map(language => [
+    language,
+    candidates.filter(candidate => candidate.language === language).length,
+  ])
+);
+const sourceGroupCount = new Set(
+  candidates.map(candidate => candidate.sourceGroupId)
+).size;
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -369,9 +378,12 @@ process.stdout.write(
       observationsSha256: observationsDigest,
       counts: countGoldDataset(candidates),
       classCounts,
-      requiredClassesMissing: missingRequiredQueryClasses(
+      candidateRequiredClassesMissing: missingRequiredQueryClasses(candidates),
+      heldOutReleaseRequiredClassesMissing: missingRequiredQueryClasses(
         candidates.filter(isHeldOutReleaseEvaluationEligible)
       ),
+      languageCounts,
+      sourceGroupCount,
       deterministicDevelopmentSample: stratifiedSample,
       metrics: evaluated.metrics,
       releaseCriteria: evaluated.releaseCriteria.length
@@ -388,7 +400,7 @@ process.stdout.write(
       baselineComparison,
       caveats: [
         "Machine review is reported separately and never counted as human review.",
-        "Current seeds are development-only and drawn from one specification/handoff source group.",
+        "Repository-backed candidates are development-only unless separately source-approved for release evaluation; their review state does not imply human review or quality certification.",
         "Per-class confidence intervals require at least 30 cases; this is a reporting floor, not a release threshold.",
         "Latency release gates remain not evaluable because the existing observation contract does not distinguish retrieval profiles.",
         "This harness does not run retrieval, generate answers, or use an LLM as an answer judge.",

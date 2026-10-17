@@ -1,0 +1,151 @@
+{
+  "evidence_id": "SPEC229-P2298-CANDIDATE-CORPUS-BATCH01-02-20261017",
+  "workunit": "P229.8 Gold Candidate Corpus Expansion — batches 01 and 02",
+  "workunit_status": "PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "base_canonical_sha": "c3fba91f1a849e39d3dbbf16518834e9c3b0a7f9",
+  "tested_source_sha": "58753a0c7580439625e7ae1de2a21021d4537ced",
+  "canonical_pr_pending": true,
+  "dataset_path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+  "dataset_file_sha256": "08b41035368be6f73df1c5a75cc984313847484bb5daeeeceb3537c4afb6d50a",
+  "dataset_digest_sha256": "6bb279ba2559194af8dc2f80a7b6209c917bbe208bf1564be1b2561537fa1cbf",
+  "counts": {
+    "candidate_queries": 160,
+    "unreviewed": 0,
+    "independently_reviewed": 160,
+    "machine_reviewed": 160,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "review_accepted": 160,
+    "pending_adjudication": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "development_only": 160
+  },
+  "language_counts": {
+    "thai": 41,
+    "english": 38,
+    "mixed": 31
+  },
+  "source_group_count": 100,
+  "class_counts": {
+    "acl_attack": 2,
+    "ambiguous": 1,
+    "api_path": 6,
+    "citation": 1,
+    "code_identifier": 34,
+    "coverage": 1,
+    "document_title": 50,
+    "error_code": 1,
+    "exact_id": 78,
+    "filename": 3,
+    "follow_up": 2,
+    "freshness": 1,
+    "gold_dataset": 1,
+    "handoff_fact": 1,
+    "language": 2,
+    "latency": 2,
+    "machine_readable_error_policy": 1,
+    "multi_hop": 10,
+    "negative_policy_answer": 4,
+    "path": 3,
+    "provenance": 1,
+    "quality_coverage": 1,
+    "quality_gate": 1,
+    "release_threshold": 4,
+    "retrieval": 1,
+    "semantic_paraphrase": 82,
+    "spec_factual": 9,
+    "spec_id": 54,
+    "taxonomy": 1
+  },
+  "review": {
+    "independent_reviewer_id": "candidate_review",
+    "reviewer_type": "agent",
+    "reviewer_version": "independent-agent-review-2026-10-17-batch01-r2-batch02-batch03",
+    "reviewed_batch01": 50,
+    "reviewed_batch02": 50,
+    "batch02_class_revisions": {
+      "b02-223-feature223-runtime-discovery": "removed unsupported filename tag",
+      "b02-220-feature220-quota-denial": "replaced weak error_code tag with machine_readable_error_policy"
+    },
+    "human_reviewed": false,
+    "human_review_required_by_spec229_27": false,
+    "source_coverage_correction_batch01": "repo-spec-275-title was revised to the full title across lines 16-17 and independently accepted.",
+    "reviewed_batch03": 50,
+    "batch03_rewrite": "Independent reviewer rejected first draft due lexical copying; all 50 queries rewritten, then independently accepted with no remaining exceptions."
+  },
+  "baseline": {
+    "kind": "synthetic_negative_control_fixture_baseline",
+    "source_sha": "58753a0c7580439625e7ae1de2a21021d4537ced",
+    "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+    "fixture_cases": 9,
+    "metrics": {
+      "recall_at_20": 1.0,
+      "ndcg_at_10": 1.0,
+      "mrr_at_10": 1.0,
+      "exact_identifier_hit_at_5": 1.0,
+      "thai_recall_at_20": 1.0,
+      "english_recall_at_20": 1.0,
+      "mixed_recall_at_20": 1.0,
+      "citation_precision": 0.5,
+      "freshness_correctness": 0.571429,
+      "cross_tenant_leakage": 1,
+      "unauthorized_evidence_leakage": 1,
+      "acl_leakage": 2,
+      "stale_or_revoked_evidence_accepted": 3,
+      "no_answer_precision": 1.0,
+      "no_answer_recall": 1.0,
+      "p95_latency_ms": null,
+      "mean_cost_micros": null
+    },
+    "release_use": "not a retrieval baseline or certification; synthetic failure fixture only"
+  },
+  "release_criteria": {
+    "crossTenantLeakage": "NOT_EVALUABLE",
+    "unauthorizedEvidenceLeakage": "NOT_EVALUABLE",
+    "exactIdentifierHitAt5": "NOT_EVALUABLE",
+    "overallRecallAt20": "NOT_EVALUABLE",
+    "thaiRecallAt20": "NOT_EVALUABLE",
+    "englishRecallAt20": "NOT_EVALUABLE",
+    "nDCGAt10": "NOT_EVALUABLE",
+    "mrrAt10": "NOT_EVALUABLE",
+    "citationPrecision": "NOT_EVALUABLE",
+    "freshnessCorrectness": "NOT_EVALUABLE",
+    "noAnswerPrecision": "NOT_EVALUABLE",
+    "noAnswerRecall": "NOT_EVALUABLE",
+    "simpleExactKeywordP95Ms": "NOT_EVALUABLE",
+    "hybridRerankP95Ms": "NOT_EVALUABLE",
+    "rewriteHybridRerankP95Ms": "NOT_EVALUABLE"
+  },
+  "confidence_intervals": null,
+  "reason_not_evaluable": "All rows are development-only; no held-out source-approved release cohort and no authorized retrieval observations/profile latency data.",
+  "test_profile": "quick",
+  "commands": [
+    {
+      "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
+      "result": "PASS: 2 files, 16 tests on exact tested_source_sha 58753a0c7580439625e7ae1de2a21021d4537ced"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+      "result": "PASS: schema, source/quote digest, inclusive spans and uniqueness; 160 independently machine-reviewed development candidates on exact tested_source_sha 58753a0c7580439625e7ae1de2a21021d4537ced; all 15 §27 criteria NOT_EVALUABLE"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+      "result": "PASS: 9 synthetic cases, DEVELOPMENT_FIXTURES_NOT_CERTIFIED; negative controls expose expected security/citation/freshness gate failures; latency/cost remain null"
+    }
+  ],
+  "production_verified": false,
+  "remaining": [
+    "At least 340 further independently reviewed candidates are needed to reach 500 review-accepted rows; missing coverage: uuid, typo, stale_conflict, no_answer, deleted_revoked, ocr, long_document, code_config_log.",
+    "No human review has been performed; machine review is reported separately.",
+    "No held-out release-approved dataset or retrieval observations; all 15 release criteria remain NOT_EVALUABLE.",
+    "No retrieval latency or cost observations."
+  ],
+  "release_criteria_count_not_evaluable": 15,
+  "batch_files": {
+    "batch01_sha256": "60cc5ac0cc619c0704c7bc8359700ae258568c1f96dc91062c57f068a0bf7b07",
+    "batch02_sha256": "2c93b62e85b864a30751e8e81379762e964023b065ed6d9a84e028cbd0a4def5",
+    "batch03_sha256": "d1b24d44dc042a699c1edef83e583640db350c967c4e98c278dfbb048e63f6df"
+  }
+}

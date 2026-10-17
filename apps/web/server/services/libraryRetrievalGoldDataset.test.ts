@@ -43,6 +43,7 @@ describe("SPEC-229 gold dataset pipeline", () => {
     const counts = countGoldDataset(P2298_CANDIDATE_SEEDS);
     expect(counts).toMatchObject({
       candidateQueries: 10,
+      unreviewed: 0,
       independentlyReviewed: 10,
       machineReviewed: 10,
       humanReviewed: 0,
@@ -53,6 +54,10 @@ describe("SPEC-229 gold dataset pipeline", () => {
       heldOutReleaseApproved: 0,
       developmentOnly: 10,
     });
+    expect(
+      countGoldDataset([{ ...P2298_CANDIDATE_SEEDS[0], reviews: [] }])
+        .unreviewed
+    ).toBe(1);
   });
 
   it("never evaluates release criteria using only development or calibration rows", () => {
