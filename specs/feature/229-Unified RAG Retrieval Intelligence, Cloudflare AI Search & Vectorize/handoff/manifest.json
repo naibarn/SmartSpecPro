@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "8f74ac3c74fa3719ffbfc1f85e2a8d15a89fa228",
+    "expected_canonical_sha": "a03cfa8fbe050295fdd873cff97bd8e862e0624d",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "PR #1019 carries bounded canonical Markdown hydration and budget-aware early stop through the existing LibraryService ACL boundary. After merge, continue remaining P229.1 consumer/contract requirements; keep P229.2 index profile migration blocked until versioned 1024D index/backfill/shadow-read prerequisites are approved by existing SPEC-229 contract. Do not claim quality certification or production verification.",
+    "next_action": "PR for SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE: integrate fail-closed degraded responses for provider config/search and canonical ACL revalidation exceptions. On merge, verify the exact canonical SHA, rerun focused RetrievalBroker/Library tests, then continue acceptance reconciliation for remaining P229.1 broker security/contract items. Keep broader consumer migration, P229.8 quality certification, production runtime verification, and all P229.2 index changes separate.",
     "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1025 merged at canonical main SHA 8f74ac3c74fa3719ffbfc1f85e2a8d15a89fa228 on 2026-10-17T03:50:41Z. P229.8 partial Library canonical Markdown hydration is integrated; focused tests passed 42, with 28 existing todo. Handoff validates, completion_eligible remains false, and 105 SPEC requirements remain unresolved. Next: SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE. Do not migrate consumers that need sufficient evidence until quality gate is certified; do not switch live 768D profile in place.",
+    "resume_point": "Source checkpoint fadb656fa7a469bb3f1fdf8d291e662c4abf059f on branch codex/spec229-p2291-degraded-fail-closed-20261017. Focused verification: 3 files passed, 45 passed, 28 todo; provider config/search outage responses are explicit no_evidence/degraded with stable non-sensitive reasons; canonical ACL/source hydration exceptions drop candidate and mark partial. Existing tenant-derived identity, ACL recheck, stale revision rejection, SHA-256 provenance, and token budget tests passed. PR/integration pending. Production not verified; P229.1 scope remains open pending post-integration and remaining acceptance reconciliation.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -94,7 +94,8 @@
       "01e6a25700b2631ee994713de41447a1c7e00912",
       "9c9ec911158512f6a77ac0990c1f1a10cdd66b12",
       "da0c0c4296ea897361e6145b911ba90ce2c1f2cb",
-      "e2d910cce266dd1193f69c9b44898f72615cb608"
+      "e2d910cce266dd1193f69c9b44898f72615cb608",
+      "fadb656fa7a469bb3f1fdf8d291e662c4abf059f"
     ],
     "mapping": [],
     "source_paths": [
@@ -102,16 +103,17 @@
       "apps/web/server/routers/library.ts",
       "apps/web/server/services/libraryService.ts",
       "apps/web/server/services/retrievalBroker.test.ts",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-degraded-failure-20261017.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8f74ac3c74fa3719ffbfc1f85e2a8d15a89fa228",
+    "canonical_sha": "a03cfa8fbe050295fdd873cff97bd8e862e0624d",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:50:41Z"
+    "integrated_at": "2026-10-17T06:54:04Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -228,7 +230,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:50:59.582677Z",
+  "updated_at": "2026-10-17T06:55:59.981602Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -236,13 +238,14 @@
       "handoff/evidence/p229-1-broker-contract-20261017.json",
       "handoff/evidence/p229-1-shared-contract-20261017.json",
       "handoff/evidence/p229-1-request-boundary-20261017.json",
-      "handoff/evidence/p229-8-canonical-hydration-20261017.json"
+      "handoff/evidence/p229-8-canonical-hydration-20261017.json",
+      "handoff/evidence/p229-1-degraded-failure-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
       "quick"
     ],
-    "sha": "01e6a25700b2631ee994713de41447a1c7e00912",
+    "sha": "fadb656fa7a469bb3f1fdf8d291e662c4abf059f",
     "status": "UNKNOWN"
   }
 }

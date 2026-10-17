@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
+  "canonicalBaseSha": "a03cfa8fbe050295fdd873cff97bd8e862e0624d",
+  "sourceCommitSha": "fadb656fa7a469bb3f1fdf8d291e662c4abf059f",
+  "sourceBranch": "codex/spec229-p2291-degraded-fail-closed-20261017",
+  "observedAt": "2026-10-17T14:00:00+07:00",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 3,
+      "testsPassed": 45,
+      "todo": 28
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Existing shared checkout node_modules exposed through temporary symlinks in isolated verification worktree",
+    "limitation": "No full TypeScript check per repository RAM policy; no live provider/database runtime verification"
+  },
+  "productionVerified": false,
+  "acceptance": "PARTIAL: provider configuration/search exceptions now return no-evidence degraded responses with stable non-sensitive reasons. Canonical Markdown hydration exceptions drop that candidate and mark partial/degraded. Focused regressions cover failure response secrecy plus existing tenant-derived identity, ACL recheck, stale revision rejection, SHA-256 provenance and bounded context tokens. Consumer migrations, certified evidence quality, live provider outage behavior and production verification remain open."
+}
