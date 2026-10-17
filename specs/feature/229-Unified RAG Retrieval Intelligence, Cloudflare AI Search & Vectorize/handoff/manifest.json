@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
+    "expected_canonical_sha": "e6e4253d75ea0b7c5319420d80d280cda0a66961",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
     "next_action": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE is complete for its scoped Library Broker/security acceptance: canonical hydration/current revision, tenant/ACL boundary, SHA-256 provenance, context token budget, stale evidence rejection, and explicit degraded failure behavior have post-merge evidence. Next phase is P229.2 Direct Vectorize V2, which remains WAITING_AUTHORIZATION_AND_INDEX_PREREQUISITES; do not begin 1024D/index migration until explicit authorization and versioned index/backfill/shadow-read prerequisites are satisfied.",
     "next_ready_workunit": null,
     "reactivation_predicate": "All P229.2 authorization and versioned index/backfill/shadow-read/rollback prerequisites are documented and approved.",
-    "resume_point": "P229.1 scoped acceptance passed on canonical main SHA 3849c5483f773e69e9ade4de332d23815dc8fa4a. PR #1035 merged at 2026-10-17T07:09:06Z; post-merge focused verification passed 3 files, 45 tests, 28 existing todo. Requirement REQ-CAAB31EB9BD4 (provider outage yields explicit degraded/no-evidence state) is PASS with FRESH exact-SHA evidence in handoff/evidence/p229-1-postmerge-20261017.json. Overall SPEC-229 is not complete: 104 requirements remain unresolved/open; P229.8 quality/citations and consumers/runtime verification remain unverified. Resume P229.2 only when the waiting predicate is satisfied.",
+    "resume_point": "P229.1 scoped acceptance passed on canonical main SHA e6e4253d75ea0b7c5319420d80d280cda0a66961. PR #1035 merged at 2026-10-17T07:09:06Z; post-merge focused verification passed 3 files, 45 tests, 28 existing todo. Requirement REQ-CAAB31EB9BD4 (provider outage yields explicit degraded/no-evidence state) is PASS with FRESH exact-SHA evidence in handoff/evidence/p229-1-postmerge-20261017.json. Overall SPEC-229 is not complete: 104 requirements remain unresolved/open; P229.8 quality/citations and consumers/runtime verification remain unverified. Resume P229.2 only when the waiting predicate is satisfied.",
     "waiting_predicate": "P229.2 may reactivate only after explicit authorization for the BGE-M3 1024D Direct Vectorize V2 phase and verified versioned index, backfill, shadow-read, rollback, and acceptance prerequisites. No live 768D profile/index changes or AI Search migration are authorized by this checkpoint."
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 40,
+  "generation": 42,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -113,9 +113,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
+    "canonical_sha": "e6e4253d75ea0b7c5319420d80d280cda0a66961",
     "integrated": true,
-    "integrated_at": "2026-10-17T07:10:00Z"
+    "integrated_at": "2026-10-17T07:15:48Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -140,7 +140,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
+        "evidence_sha": "e6e4253d75ea0b7c5319420d80d280cda0a66961",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/retrievalBroker.ts",
@@ -156,7 +156,7 @@
         "verification_evidence": [
           "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json"
         ],
-        "verification_method": "Focused failure-injection tests for provider configuration and retrieval search exceptions, rerun from isolated canonical main SHA 3849c5483f773e69e9ade4de332d23815dc8fa4a; PR progressive integration and mocked browser required checks passed for the implementation."
+        "verification_method": "Focused failure-injection tests for provider configuration and retrieval search exceptions, rerun from isolated canonical main SHA e6e4253d75ea0b7c5319420d80d280cda0a66961; PR progressive integration and mocked browser required checks passed for the implementation."
       }
     }
   },
@@ -261,7 +261,7 @@
     "unresolved": 104
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T07:13:03.371082Z",
+  "updated_at": "2026-10-17T07:17:34.002110Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -277,7 +277,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
+    "sha": "e6e4253d75ea0b7c5319420d80d280cda0a66961",
     "status": "UNKNOWN"
   }
 }
