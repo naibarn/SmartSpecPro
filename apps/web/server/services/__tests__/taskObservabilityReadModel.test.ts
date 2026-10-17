@@ -186,7 +186,7 @@ describe("aggregateTaskObservability", () => {
     expect(result.resourceEstimates.reservedTokenEstimate).toBe(100);
     expect(result.resourceEstimates.observedReservationCount).toBe(1);
     expect(result.jobSettlementMarkers).toMatchObject({ observedCount: 1, byType: [{ type: "result", count: 1 }], capped: false });
-    expect(result.economicSettlementEvidence).toMatchObject({ observedEventCount: 1, settledCount: 1, reconciliationRequiredCount: 0, capturedProviderAmounts: [{ currency: "USD", capturedMinorUnits: 125 }], capped: false });
+    expect(result.economicSettlementEvidence).toMatchObject({ observedEventCount: 1, settledCount: 1, reconciliationRequiredCount: 0, byClassification: [{ classification: "provider_metered", count: 1 }], capturedProviderAmounts: [{ currency: "USD", capturedMinorUnits: 125 }], capped: false });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "canonical_correction_event", reference: "correction-1", rationale: null });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "worker_job_provider_reservation", reference: "reservation-replay", rationale: null });
   });

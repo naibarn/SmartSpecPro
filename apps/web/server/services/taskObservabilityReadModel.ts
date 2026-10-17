@@ -705,6 +705,7 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
       observedEventCount: economicSettlementsCapped ? null : boundedEconomicSettlements.length,
       settledCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.status === "settled").length,
       reconciliationRequiredCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.status === "reconciliation_required").length,
+      byClassification: economicSettlementsCapped ? null : [...boundedEconomicSettlements.reduce((counts, event) => counts.set(event.classification, (counts.get(event.classification) ?? 0) + 1), new Map<string, number>())].map(([classification, count]) => ({ classification, count })),
       missingProviderCaptureValueCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.classification === "provider_metered" && (event.capturedMinorUnits === null || !event.currency)).length,
       capturedProviderAmounts: economicSettlementsCapped ? null : [...boundedEconomicSettlements.reduce((totals, event) => {
         if (event.classification === "provider_metered" && event.capturedMinorUnits !== null && event.currency) {
