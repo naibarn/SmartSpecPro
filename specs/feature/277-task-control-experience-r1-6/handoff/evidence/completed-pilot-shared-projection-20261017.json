@@ -18,7 +18,7 @@
       "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "99ee2b8d6a24940a4af5ecb4f63fa10b57ff86374f24fda611f982ade7db4381",
       "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx": "31aef282825abe665d4924d64d289bb671d887b60d8223ce4938281bfcefd3cd",
       "apps/web/client/src/pages/TaskObservabilityMonitor.tsx": "b75644089157c8cee4aab99676f12e889d3ddc8d0259864405a4152060960d03",
-      "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts": "83ce8dea5ef0cddfc075c3e31bb60ac83e7048d2fb31bcd4ae7a2204604d3815",
+      "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts": "938f550c1cb2fc32e81f9ad45e76dcecd786139bb675d1468575384119314402",
       "apps/web/server/services/__tests__/completedPilotAcceptance.test.ts": "225208ee57077c3bf3a03f51dfadc6fc5ad977fd2df024e45aa7a39615178337",
       "apps/web/server/services/__tests__/fixtures/completedAutonomousPilot.ts": "a5885427973f557bbb0ceb26613d0770a2ca34dd5b2fa2023dc09e9174d88aeb",
       "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts": "2c57a8a0df2a15922a411e19d85e3ec7a3097d7975e4af548100dbd80b75e16f",
@@ -142,7 +142,7 @@
     }
   ],
   "retained_artifacts": {
-    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.log": "8d53872b890ce318ef014d08815e68366f8cf447bb9a13db43e1a407e3ed1570",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.log": "ee097ea4e3906a339bb2413ae24e98224727c1f2333a25468ea6a4d994889c33",
     "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.resources.json": "b514dbcdeac293b329f07ba78867005c38f9aa82a69de45286458fb8faefd1fb",
     "orchestra/tasks/task-control-completed-pilot-20261017/evidence/browser-results.json": "9db66470c971f4c60ff2d358b25c61db1da2cfe74da9222164e610725b653768",
     "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",

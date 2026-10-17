@@ -103,4 +103,3 @@ describe("completed autonomous pilot evidence fixture", () => {
     expect(digest(usagePath)).toBe(beforeUsage);
   });
 });
-
