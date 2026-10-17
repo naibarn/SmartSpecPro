@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
+    "expected_canonical_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "P229.8 corpus is at 360 independently agent-reviewed development-only candidates across 195 repository source groups. PR #1070 merged at 6c7713705ca826523a4cf73e0781667e789b5fa8; its post-merge exact-SHA focused tests passed 16/16 and candidate validation remained DEVELOPMENT_CANDIDATES_NOT_CERTIFIED. Batch06-07 dataset verification passed at 47418ec2c45eb08577db96b8a80a3c28e93ec921. Continue toward 500 while covering the eight missing §27 classes; do not count agent review as human approval. Evidence: handoff/evidence/p229-8-gold-candidate-corpus-20261017.json. P229.8 remains NOT_EVALUABLE.",
-    "next_ready_workunit": "P229.8_CANDIDATE_CORPUS_BATCH08: generate and independently review 50 candidates with deterministic sampling from permitted synthetic fixtures and repository-owned sources, prioritizing UUID, typo, stale/conflict, no-answer, deleted/revoked, OCR, long-document, and code/config/log coverage; use only source-backed labels and keep development-only provenance.",
-    "reactivation_predicate": "At least 500 unique reviewed queries represent every §27 class and the separate release cohort has source approval, held-out partitioning, full retrieval observations, security/quality metrics and profile-specific latency/cost evidence.",
-    "resume_point": "Canonical main through PR #1070 is 6c7713705ca826523a4cf73e0781667e789b5fa8. The current tested candidate commit 47418ec2c45eb08577db96b8a80a3c28e93ec921 contains 360 unique source-validated, independently agent-reviewed development-only candidates: Thai 103, English 173, mixed 84 across 195 source groups. Focused tests passed 2 files/16 tests; dataset CLI passed, 0 human-reviewed/accepted, 0 release-approved, 0 held-out, all 15 §27 criteria NOT_EVALUABLE. Missing classes: uuid, typo, stale_conflict, no_answer, deleted_revoked, ocr, long_document, code_config_log.",
-    "waiting_predicate": "P229.8 release calibration waits for at least 500 reviewed queries with required class coverage, plus a source-approved held-out cohort and authorized retrieval observations for all comparison profiles including profile-specific latency/cost. Human approval remains separate from agent review."
+    "next_action": "P229.8 candidate corpus now has 410 unique independently agent-reviewed development-only queries; batch08 adds fixture-backed UUID, typo, stale/conflict, no-answer, deleted/revoked, OCR, long-document, and code/config/log cases, bringing all §27 required candidate classes into the corpus. PR #1071 merged at e2852edc753b3b49602d12fe678234f34bab02ee. Post-merge focused tests passed 16/16, candidate CLI validated 360 at merge SHA; 410-candidate state tested at 76bf1084a883a7a9bbc833a5cd2b64ed8e37f680. All 15 release criteria remain NOT_EVALUABLE. Complete independent review for batch09 and continue to 500. Evidence: handoff/evidence/p229-8-gold-candidate-corpus-20261017.json.",
+    "next_ready_workunit": "P229.8_CANDIDATE_CORPUS_BATCH09_REVIEW: independently review the 50 batch09 candidates for exact source/answer support and class correctness, repair findings, then merge accepted rows into the development corpus; continue batch10 to reach 500.",
+    "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
+    "resume_point": "Canonical main through PR #1071 is e2852edc753b3b49602d12fe678234f34bab02ee. On candidate commit 76bf1084a883a7a9bbc833a5cd2b64ed8e37f680, dataset CLI passed: 410/410 independent agent-reviewed development-only candidates across 206 source groups (Thai 106, English 214, mixed 90), all required §27 candidate classes represented; 0 human-reviewed/accepted, 0 release-approved, 0 held-out. Focused tests passed 2 files/16 tests. The 9-case synthetic fixture baseline remains NOT_CERTIFIED and shows intentional negative controls; no retrieval observations/latency/cost exist. Batch09 has 50 candidates awaiting independent review.",
+    "waiting_predicate": "P229.8 release calibration waits for 500 reviewed queries and a source-approved held-out cohort with authorized, complete retrieval observations across the §27 comparison profiles, including latency/cost; agent review never substitutes for human source approval."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 60,
+  "generation": 61,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -125,9 +125,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
+    "canonical_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
     "integrated": true,
-    "integrated_at": "2026-10-17T16:11:37Z"
+    "integrated_at": "2026-10-17T16:19:41Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -278,7 +278,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T16:14:52.949800Z",
+  "updated_at": "2026-10-17T16:24:44.792304Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
