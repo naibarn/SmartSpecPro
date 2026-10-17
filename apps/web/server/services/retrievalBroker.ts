@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   resolveLibraryVectorIndexName,
   searchLibraryItems,
+  type LibraryItemStatus,
   type LibraryActor,
   type LibrarySearchFilters,
   type LibrarySearchResultV1,
@@ -101,24 +102,66 @@ export interface RetrievalResponseV2 {
 }
 
 export interface RetrievalRequestV2 {
-  requestId?: string;
-  query: string;
-  queryClass?: RetrievalQueryClassV2;
-  /** Descriptive only; authorization is always derived from `actor`. */
-  purpose?: string;
-  /** This adapter is deliberately scoped to Library documents. */
-  sourceClasses?: string[];
+  tenantId: string;
+  userId: string;
   projectId?: string | null;
-  evidenceBudget?: {
+  environment: string;
+  requestId: string;
+  purpose: string;
+  queryClass: RetrievalQueryClassV2;
+  query: string;
+  sourceClasses: string[];
+  requiredVisibility?: string[];
+  authorizedAclScopes?: string[];
+  languageHints?: string[];
+  exactIdentifiers?: string[];
+  structuredSelector?: Record<string, unknown>;
+  messages?: Array<{ role: string; content: string }>;
+  mode?: "auto" | "exact" | "keyword" | "semantic" | "hybrid";
+  status?: LibraryItemStatus[];
+  freshnessRequirement?: "current" | "historical_allowed" | {
+    updatedAfter?: string;
+    maxAgeSeconds?: number;
+  };
+  allowRewrite?: boolean;
+  allowMultiQuery?: boolean;
+  allowAgentic?: boolean;
+  requireCitations?: boolean;
+  evidenceBudget: {
     maxCandidates?: number;
     maxEvidence?: number;
     maxContextTokens?: number;
   };
+  consumerRef?: {
+    specId?: number;
+    runId?: string;
+    workflowId?: string;
+    taskId?: string;
+    nodeId?: string;
+  };
+  traceId?: string;
   filters?: LibrarySearchFilters;
 }
 
+type NormalizedRetrievalRequestV2 = Omit<RetrievalRequestV2, "evidenceBudget"> & {
+  evidenceBudget: Required<RetrievalRequestV2["evidenceBudget"]>;
+};
+
 /** Legacy flat budgets remain accepted until existing Library callers migrate. */
-export interface RetrieveLibraryEvidenceV2Input extends RetrievalRequestV2 {
+export type RetrieveLibraryEvidenceV2Input = Omit<
+  RetrievalRequestV2,
+  | "tenantId"
+  | "userId"
+  | "environment"
+  | "requestId"
+  | "purpose"
+  | "queryClass"
+  | "sourceClasses"
+  | "evidenceBudget"
+> & Partial<Pick<
+  RetrievalRequestV2,
+  "requestId" | "purpose" | "queryClass" | "sourceClasses" | "evidenceBudget"
+>> & {
   maxCandidates?: number;
   maxEvidence?: number;
   maxContextTokens?: number;
@@ -136,6 +179,65 @@ const clampInteger = (value: number | undefined, fallback: number, max: number) 
   if (!Number.isFinite(candidate)) return fallback;
   return Math.max(1, Math.min(Math.trunc(candidate), max));
 };
+
+function normalizeRequest(
+  input: RetrieveLibraryEvidenceV2Input,
+  actor: LibraryActor,
+  tenantId: string,
+): { request: NormalizedRetrievalRequestV2; retrievalTraceId: string } {
+  const retrievalTraceId = randomUUID();
+  const maxCandidates = clampInteger(input.evidenceBudget?.maxCandidates ?? input.maxCandidates, 20, 50);
+  const maxEvidence = Math.min(
+    clampInteger(input.evidenceBudget?.maxEvidence ?? input.maxEvidence, 10, 12),
+    maxCandidates,
+  );
+  const maxContextTokens = clampInteger(input.evidenceBudget?.maxContextTokens ?? input.maxContextTokens, 4_000, 32_000);
+
+  return {
+    retrievalTraceId,
+    request: {
+      ...input,
+      tenantId,
+      userId: String(actor.userId),
+      environment: process.env.NODE_ENV || "unknown",
+      requestId: input.requestId?.trim().slice(0, 128) || retrievalTraceId,
+      purpose: input.purpose?.trim().slice(0, 128) || "library.search",
+      queryClass: input.queryClass ?? "HYBRID_SEARCH",
+      sourceClasses: input.sourceClasses ?? ["library_document"],
+      projectId: input.projectId !== undefined ? input.projectId : input.filters?.projectId,
+      evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
+    },
+  };
+}
+
+function getUnsupportedRequestReasons(request: NormalizedRetrievalRequestV2): string[] {
+  const reasons: string[] = [];
+  if (request.sourceClasses.length !== 1 || request.sourceClasses[0] !== "library_document") {
+    reasons.push("UNSUPPORTED_SOURCE_CLASS");
+  }
+  if (request.structuredSelector || request.messages?.length) {
+    reasons.push("UNSUPPORTED_QUERY_SHAPE");
+  }
+  if (request.exactIdentifiers?.length || request.queryClass === "EXACT_IDENTIFIER") {
+    reasons.push("EXACT_IDENTIFIER_LANE_NOT_CERTIFIED");
+  }
+  if (request.requiredVisibility?.length || request.authorizedAclScopes?.length) {
+    reasons.push("CALLER_ACL_SCOPE_NOT_AUTHORIZED");
+  }
+  if (request.languageHints?.length) {
+    reasons.push("LANGUAGE_HINTS_NOT_SUPPORTED_BY_PROVIDER_PROFILE");
+  }
+  if (request.mode && request.mode !== "auto" && request.mode !== "hybrid") {
+    reasons.push("RETRIEVAL_MODE_NOT_SUPPORTED_BY_PROVIDER_PROFILE");
+  }
+  if (request.freshnessRequirement && request.freshnessRequirement !== "current") {
+    reasons.push("FRESHNESS_REQUIREMENT_NOT_SUPPORTED");
+  }
+  if (request.allowRewrite || request.allowMultiQuery || request.allowAgentic || request.requireCitations) {
+    reasons.push("REQUESTED_RETRIEVAL_FEATURE_NOT_CERTIFIED");
+  }
+  return reasons;
+}
 
 function normalizeEvidence(
   result: LibrarySearchResultV1,
@@ -197,39 +299,30 @@ export async function retrieveLibraryEvidenceV2(
   if (query.length > 1_000) {
     throw new TypeError("Retrieval query exceeds the 1000 character limit");
   }
-  const sourceClasses = input.sourceClasses ?? ["library_document"];
-  if (sourceClasses.length !== 1 || sourceClasses[0] !== "library_document") {
+  const { request, retrievalTraceId } = normalizeRequest(input, actor, tenantId);
+  const maxCandidates = request.evidenceBudget.maxCandidates;
+  const maxEvidence = request.evidenceBudget.maxEvidence;
+  const maxContextTokens = request.evidenceBudget.maxContextTokens;
+  const unsupportedReasons = getUnsupportedRequestReasons(request);
+  if (unsupportedReasons.length > 0) {
     return {
-      retrievalTraceId: randomUUID(),
+      retrievalTraceId,
       plan: {
-        requestId: input.requestId?.trim().slice(0, 128) || randomUUID(),
-        purpose: input.purpose?.trim().slice(0, 128) || "library.search",
-        queryClass: input.queryClass ?? "HYBRID_SEARCH",
-        sourceClasses: ["library_document"],
-        evidenceBudget: {
-          maxCandidates: clampInteger(input.evidenceBudget?.maxCandidates ?? input.maxCandidates, 20, 50),
-          maxEvidence: clampInteger(input.evidenceBudget?.maxEvidence ?? input.maxEvidence, 10, 12),
-          maxContextTokens: clampInteger(input.evidenceBudget?.maxContextTokens ?? input.maxContextTokens, 4_000, 32_000),
-        },
+        requestId: request.requestId,
+        purpose: request.purpose,
+        queryClass: request.queryClass,
+        sourceClasses: request.sourceClasses,
+        evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
       },
-      providerProfile: { provider: "not_queried", profileId: "unsupported_source_class" },
+      providerProfile: { provider: "not_queried", profileId: "request_not_supported" },
       evidence: [],
       evidenceQuality: "no_evidence",
       degraded: true,
       partial: false,
-      degradationReasons: ["UNSUPPORTED_SOURCE_CLASS"],
+      degradationReasons: unsupportedReasons,
     };
   }
-  const queryClass = input.queryClass ?? "HYBRID_SEARCH";
-  const maxCandidates = clampInteger(input.evidenceBudget?.maxCandidates ?? input.maxCandidates, 20, 50);
-  const maxEvidence = Math.min(
-    clampInteger(input.evidenceBudget?.maxEvidence ?? input.maxEvidence, 10, 12),
-    maxCandidates,
-  );
-  const maxContextTokens = clampInteger(input.evidenceBudget?.maxContextTokens ?? input.maxContextTokens, 4_000, 32_000);
-  const traceId = randomUUID();
-  const requestId = input.requestId?.trim().slice(0, 128) || traceId;
-  const purpose = input.purpose?.trim().slice(0, 128) || "library.search";
+  const queryClass = request.queryClass;
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
   const provider = resolveVectorProvider("search", providerConfig).provider;
   const profileId = providerConfig.vectorizeKnowledgeIndexName?.trim()
@@ -237,16 +330,16 @@ export async function retrieveLibraryEvidenceV2(
     || resolveLibraryVectorIndexName();
 
   const plan = {
-    requestId,
-    purpose,
+    requestId: request.requestId,
+    purpose: request.purpose,
     queryClass,
-    sourceClasses: ["library_document"],
+    sourceClasses: request.sourceClasses,
     evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
   };
 
   if (provider !== "cloudflare_vectorize") {
     return {
-      retrievalTraceId: traceId,
+      retrievalTraceId,
       plan,
       providerProfile: { provider, profileId: `legacy:${provider}` },
       evidence: [],
@@ -264,7 +357,8 @@ export async function retrieveLibraryEvidenceV2(
       offset: 0,
       filters: {
         ...input.filters,
-        ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+        ...(request.projectId !== undefined ? { projectId: request.projectId } : {}),
+        ...(request.status?.length ? { status: request.status } : {}),
       },
       scope: "all",
       includeRetrievalDiagnostics: true,
@@ -274,7 +368,7 @@ export async function retrieveLibraryEvidenceV2(
   const diagnostics = results.retrievalDiagnostics;
   if (!diagnostics || diagnostics.provider !== "cloudflare_vectorize") {
     return {
-      retrievalTraceId: traceId,
+      retrievalTraceId,
       plan,
       providerProfile: {
         provider: diagnostics?.provider ?? "unknown",
@@ -294,7 +388,7 @@ export async function retrieveLibraryEvidenceV2(
   const documentRag = queryClass === "DOCUMENT_RAG";
 
   return {
-    retrievalTraceId: traceId,
+    retrievalTraceId,
     plan,
     providerProfile: { provider, profileId: diagnostics.profileId ?? profileId },
     evidence,
