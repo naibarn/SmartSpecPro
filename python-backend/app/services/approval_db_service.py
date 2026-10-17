@@ -37,7 +37,7 @@ _SPEC224_CANONICAL_UUID = re.compile(
 _CF_STAGING_GRANT_SCHEMA = "cloudflare.staging-deployment-grant.v1"
 _CF_STAGING_TARGET = "smartspec-cloudflare-staging"
 _CF_STAGING_ACTIONS = {"deploy", "rollback"}
-_CF_STAGING_SHA = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+_CF_STAGING_SHA = re.compile(r"^[0-9a-f]{40}$")
 _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 

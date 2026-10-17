@@ -55,6 +55,8 @@ def test_cloudflare_staging_grant_payload_is_typed_and_closed():
         normalize_cloudflare_staging_grant_payload(_grant_payload(workerJobGrant=True))
     with pytest.raises(ValueError, match="ACTIONS_INVALID"):
         normalize_cloudflare_staging_grant_payload(_grant_payload(actions=["deploy", "production_dns"]))
+    with pytest.raises(ValueError, match="SOURCE_SHA_INVALID"):
+        normalize_cloudflare_staging_grant_payload(_grant_payload(sourceSha="b" * 64))
 
 
 @pytest.mark.unit

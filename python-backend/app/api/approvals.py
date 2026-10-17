@@ -98,12 +98,12 @@ class CloudflareStagingGrantIssue(BaseModel):
     target_id: Literal["smartspec-cloudflare-staging"] = Field(..., alias="targetId")
     environment: Literal["staging"]
     artifact_ref: StrictStr = Field(..., alias="artifactRef", min_length=1, max_length=255)
-    source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+    source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[0-9a-f]{40}$")
     build_digest: StrictStr = Field(..., alias="buildDigest", pattern=r"^[0-9a-f]{64}$")
     actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=2)
     rollback_deployment_id: StrictStr = Field(..., alias="rollbackDeploymentId", min_length=1, max_length=255)
     rollback_artifact_ref: StrictStr = Field(..., alias="rollbackArtifactRef", min_length=1, max_length=255)
-    rollback_source_sha: StrictStr = Field(..., alias="rollbackSourceSha", pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+    rollback_source_sha: StrictStr = Field(..., alias="rollbackSourceSha", pattern=r"^[0-9a-f]{40}$")
     rollback_build_digest: StrictStr = Field(..., alias="rollbackBuildDigest", pattern=r"^[0-9a-f]{64}$")
     expires_at: datetime = Field(..., alias="expiresAt")
 

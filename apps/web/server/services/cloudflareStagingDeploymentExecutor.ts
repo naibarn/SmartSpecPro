@@ -54,12 +54,23 @@ export type CloudflareStagingTarget = Readonly<{
   projectId: string;
 }>;
 
+export type CloudflareStagingExecutorBinding = Parameters<
+  CloudflareStagingDeploymentRuntime["executorIdentity"]
+>[0];
+
 /**
  * Runtime dependencies must be composed from existing server authorities. This
  * module deliberately defines no grant/approval/credential registry of its own.
  */
 export type CloudflareStagingDeploymentRuntime = Readonly<{
-  executorIdentity: () => Promise<{ registered: boolean; executorId: string }>;
+  executorIdentity: (binding: {
+    jobId: string;
+    tenantId: string;
+    target: typeof CLOUDFLARE_STAGING_TARGET_ID;
+    artifactSha256: string;
+    action: "deploy" | "rollback";
+    idempotencyKey: string;
+  }) => Promise<{ registered: boolean; executorId: string }>;
   resolveTarget: (input: {
     tenantId: string;
     projectId: string;
@@ -342,13 +353,11 @@ function assertValidGrant(input: {
 
 /** Canonical worker_jobs executor. The default runtime is intentionally absent and fails closed. */
 export function createCloudflareStagingDeploymentExecutor(
-  runtime?: CloudflareStagingDeploymentRuntime
+  runtime?:
+    | CloudflareStagingDeploymentRuntime
+    | (() => CloudflareStagingDeploymentRuntime | undefined)
 ): JobExecutor {
   return async ({ context, lease, reporter }) => {
-    if (!runtime)
-      throw new CloudflareStagingDeploymentError(
-        "CLOUDFLARE_STAGING_RUNTIME_NOT_CONFIGURED"
-      );
     if (
       context.jobType !== CLOUDFLARE_STAGING_DEPLOYMENT_JOB ||
       context.contractVersion !== CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT
@@ -363,21 +372,43 @@ export function createCloudflareStagingDeploymentExecutor(
       throw new CloudflareStagingDeploymentError(
         "CLOUDFLARE_STAGING_IDEMPOTENCY_REQUIRED"
       );
-
-    const identity = await runtime.executorIdentity();
-    if (!identity.registered || !identity.executorId)
+    const activeRuntime = typeof runtime === "function" ? runtime() : runtime;
+    if (!activeRuntime)
       throw new CloudflareStagingDeploymentError(
-        "CLOUDFLARE_STAGING_EXECUTOR_UNREGISTERED"
+        "CLOUDFLARE_STAGING_RUNTIME_NOT_CONFIGURED"
       );
+
     const [grant, artifact] = await Promise.all([
-      runtime.resolveGrant(job.grantRef),
-      runtime.resolveArtifact(job.artifactRef),
+      activeRuntime.resolveGrant(job.grantRef),
+      activeRuntime.resolveArtifact(job.artifactRef),
     ]);
     if (!grant)
       throw new CloudflareStagingDeploymentError(
         "CLOUDFLARE_STAGING_GRANT_OR_ARTIFACT_MISSING"
       );
-    const target = await runtime.resolveTarget({
+    if (
+      !artifact ||
+      artifact.artifactRef !== job.artifactRef ||
+      artifact.sourceSha.toLowerCase() !== job.sourceSha.toLowerCase() ||
+      artifact.buildDigest.toLowerCase() !== job.buildDigest.toLowerCase()
+    ) {
+      throw new CloudflareStagingDeploymentError(
+        "CLOUDFLARE_STAGING_ARTIFACT_MISMATCH"
+      );
+    }
+    const identity = await activeRuntime.executorIdentity({
+      jobId: context.jobId,
+      tenantId: context.tenantId,
+      target: CLOUDFLARE_STAGING_TARGET_ID,
+      artifactSha256: artifact.buildDigest,
+      action: job.action,
+      idempotencyKey,
+    });
+    if (!identity.registered || !identity.executorId)
+      throw new CloudflareStagingDeploymentError(
+        "CLOUDFLARE_STAGING_EXECUTOR_UNREGISTERED"
+      );
+    const target = await activeRuntime.resolveTarget({
       tenantId: context.tenantId,
       projectId: grant.projectId,
       environment: "staging",
@@ -404,23 +435,23 @@ export function createCloudflareStagingDeploymentExecutor(
       tenantId: context.tenantId,
       requesterUserId: context.requestedByUserId,
       executorId: identity.executorId,
-      now: runtime.now?.() ?? new Date(),
+      now: activeRuntime.now?.() ?? new Date(),
     });
     await reporter.assertActive(lease);
 
-    const credential = await runtime.withCredential({
+    const credential = await activeRuntime.withCredential({
       target,
       operation: async token => {
         try {
           const request =
             job.action === "deploy"
-              ? await runtime.cloudflare.deploy({
+              ? await activeRuntime.cloudflare.deploy({
                   token,
                   target,
                   artifact: artifact!,
                   idempotencyKey,
                 })
-              : await runtime.cloudflare.rollback({
+              : await activeRuntime.cloudflare.rollback({
                   token,
                   target,
                   deploymentId: grant.rollbackDeploymentId,
@@ -463,7 +494,7 @@ export function createCloudflareStagingDeploymentExecutor(
             );
           }
           await reporter.assertActive(lease);
-          const verification = await runtime.cloudflare.verifyRuntime({
+          const verification = await activeRuntime.cloudflare.verifyRuntime({
             token,
             target,
             deploymentId: request.deploymentId,
@@ -481,7 +512,7 @@ export function createCloudflareStagingDeploymentExecutor(
           ) {
             if (job.action === "deploy") {
               try {
-                const rollback = await runtime.cloudflare.rollback({
+                const rollback = await activeRuntime.cloudflare.rollback({
                   token,
                   target,
                   deploymentId: grant.rollbackDeploymentId,
@@ -497,7 +528,7 @@ export function createCloudflareStagingDeploymentExecutor(
                     "CLOUDFLARE_STAGING_ROLLBACK_RECEIPT_MISMATCH"
                   );
                 }
-                const rollbackVerified = await runtime.cloudflare.verifyRuntime(
+                const rollbackVerified = await activeRuntime.cloudflare.verifyRuntime(
                   {
                     token,
                     target,

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
+import { storagePutIfAbsent, storageReadBuffer } from "../storage";
 
 const SOURCE_SHA = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;
@@ -186,12 +187,14 @@ export function createCloudflareStagingArtifactAuthority(input: {
       throw new Error("CLOUDFLARE_BUILD_RECEIPT_UNTRUSTED");
     }
     if (!SOURCE_SHA.test(receipt.sourceSha) || !safePath(bundle.mainModule) ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(bundle.compatibilityDate) ||
-        !Object.hasOwn(bundle.moduleFiles, bundle.mainModule) || Object.keys(bundle.assets).length === 0) {
+        !/^\d{4}-\d{2}-\d{2}$/.test(bundle.compatibilityDate)) {
       throw new Error("CLOUDFLARE_ARTIFACT_BUNDLE_INVALID");
     }
     for (const name of Object.keys(bundle.moduleFiles)) if (!safePath(name)) throw new Error("CLOUDFLARE_ARTIFACT_MODULE_PATH_INVALID");
     for (const name of Object.keys(bundle.assets)) if (!safePath(name)) throw new Error("CLOUDFLARE_ARTIFACT_ASSET_PATH_INVALID");
+    if (!Object.hasOwn(bundle.moduleFiles, bundle.mainModule) || Object.keys(bundle.assets).length === 0) {
+      throw new Error("CLOUDFLARE_ARTIFACT_BUNDLE_INVALID");
+    }
     const buildDigest = sortedFileDigest(bundle.moduleFiles, bundle.assets);
     if (buildDigest !== receipt.cloudflareBundleDigest.toLowerCase()) throw new Error("CLOUDFLARE_ARTIFACT_BUILD_DIGEST_MISMATCH");
 
@@ -258,4 +261,41 @@ export function createCloudflareStagingArtifactAuthority(input: {
   }
 
   return { publish, resolveBundle };
+}
+
+let runtimeAuthority: ReturnType<typeof createCloudflareStagingArtifactAuthority> | null = null;
+
+function getRuntimeAuthority() {
+  if (runtimeAuthority) return runtimeAuthority;
+  const resultsRoot = process.env.SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT?.trim();
+  if (!resultsRoot) return null;
+  runtimeAuthority = createCloudflareStagingArtifactAuthority({
+    storage: {
+      putIfAbsent: async (key, bytes, contentType) =>
+        storagePutIfAbsent(key, Buffer.from(bytes), contentType),
+      readBuffer: key => storageReadBuffer(key),
+    },
+    buildReceipts: createCanonicalBuildReceiptAuthority(resultsRoot),
+  });
+  return runtimeAuthority;
+}
+
+/** Runtime resolvers use only server-owned storage and canonical build receipts. */
+export async function resolveCloudflareStagingBundle(
+  artifactRef: string
+): Promise<CloudflareStagingBundle | null> {
+  return (await getRuntimeAuthority()?.resolveBundle(artifactRef)) ?? null;
+}
+
+export async function resolveCloudflareStagingArtifact(
+  artifactRef: string
+): Promise<PublishedCloudflareStagingArtifact | null> {
+  const bundle = await resolveCloudflareStagingBundle(artifactRef);
+  if (!bundle || artifactRef !== `sha256:${bundle.buildDigest}`) return null;
+  return {
+    artifactRef,
+    sourceSha: bundle.sourceSha,
+    buildDigest: bundle.buildDigest,
+    immutable: true,
+  };
 }
