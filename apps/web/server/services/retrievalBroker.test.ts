@@ -83,6 +83,28 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(mockGetProviderConfig).not.toHaveBeenCalled();
   });
 
+  it("rejects empty normalized queries before provider access", async () => {
+    await expect(
+      retrieveLibraryEvidenceV2({ query: "   " }, actor),
+    ).rejects.toThrow("Retrieval query must not be empty");
+    expect(mockGetProviderConfig).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for source classes outside the Library adapter", async () => {
+    const result = await retrieveLibraryEvidenceV2(
+      { query: "guide", sourceClasses: ["agent_memory"] },
+      actor,
+    );
+    expect(result).toMatchObject({
+      evidence: [],
+      degraded: true,
+      degradationReasons: ["UNSUPPORTED_SOURCE_CLASS"],
+      providerProfile: { provider: "not_queried" },
+      plan: { sourceClasses: ["library_document"] },
+    });
+    expect(mockGetProviderConfig).not.toHaveBeenCalled();
+  });
+
   it("does not mislabel legacy providers as a certified V2 evidence source", async () => {
     mockGetProviderConfig.mockResolvedValue({
       provider: "pgvector",
@@ -136,16 +158,21 @@ describe("retrieveLibraryEvidenceV2", () => {
     const result = await retrieveLibraryEvidenceV2(
       {
         query: " guide ",
-        maxCandidates: 100,
-        maxEvidence: 40,
-        maxContextTokens: 90_000,
+        requestId: "client-request-1",
+        projectId: "project-a",
+        evidenceBudget: { maxCandidates: 100, maxEvidence: 40, maxContextTokens: 90_000 },
       },
       actor,
     );
 
     expect(mockGetProviderConfig).toHaveBeenCalledWith({ tenantId: "tenant-a" });
     expect(mockSearchLibraryItems).toHaveBeenCalledWith(
-      expect.objectContaining({ query: "guide", limit: 50, offset: 0 }),
+      expect.objectContaining({
+        query: "guide",
+        limit: 50,
+        offset: 0,
+        filters: expect.objectContaining({ projectId: "project-a" }),
+      }),
       actor,
     );
     expect(result.plan.evidenceBudget).toEqual({
@@ -153,6 +180,7 @@ describe("retrieveLibraryEvidenceV2", () => {
       maxEvidence: 12,
       maxContextTokens: 32_000,
     });
+    expect(result.plan).toMatchObject({ requestId: "client-request-1", purpose: "library.search", sourceClasses: ["library_document"] });
     expect(result.evidence).toHaveLength(12);
     expect(result.evidence[0]).toMatchObject({
       canonicalRef: {
