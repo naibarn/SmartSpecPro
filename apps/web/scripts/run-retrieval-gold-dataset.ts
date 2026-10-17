@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { P2298_CANDIDATE_SEEDS } from "../server/services/libraryRetrievalGoldCandidateSeeds";
 import {
   countGoldDataset,
   bootstrapMean95,
+  buildGoldDatasetReviewQueue,
   deterministicStratifiedSample,
   evaluateGoldDataset,
   goldDatasetCandidateSchema,
@@ -17,10 +18,13 @@ import {
 } from "../server/services/libraryRetrievalGoldDataset";
 import {
   calculateRetrievalBenchmarkMetrics,
+  RETRIEVAL_BENCHMARK_COMPARISON_PROFILES,
+  RETRIEVAL_BENCHMARK_LATENCY_PROFILES,
   getRetrievalBenchmarkProfile,
   isCitationValid,
   retrievalBenchmarkObservationSchema,
 } from "../server/services/libraryRetrievalBenchmark";
+import { retrievalBenchmarkRunBundleSchema } from "../server/services/libraryRetrievalBenchmarkRunBundle";
 
 // Run development report: pnpm --filter @smartspec/web exec tsx scripts/run-retrieval-gold-dataset.ts
 // Add --dataset-file <json> --observations-file <json> --system-sha <40-or-64-char-sha> for a recorded run.
@@ -36,6 +40,7 @@ const repoRoot = resolve(process.cwd(), "../..");
 const inputFile = argValue("--dataset-file");
 const observationFile = argValue("--observations-file");
 const baselineFile = argValue("--baseline-file");
+const reviewQueueFile = argValue("--review-queue-file");
 const currentSystemSha = argValue("--system-sha") ?? null;
 const candidates = (
   inputFile
@@ -44,19 +49,175 @@ const candidates = (
 ).map((item: unknown) => goldDatasetCandidateSchema.parse(item));
 validateGoldDataset(candidates, repoRoot);
 
-const observations = observationFile
-  ? retrievalBenchmarkObservationSchema
-      .array()
-      .parse(JSON.parse(readFileSync(observationFile, "utf8")))
+const reviewQueue = reviewQueueFile
+  ? buildGoldDatasetReviewQueue(candidates)
+  : null;
+const reviewQueuePath = reviewQueueFile
+  ? resolve(process.cwd(), reviewQueueFile)
+  : null;
+const serializedReviewQueue = reviewQueue
+  ? `${JSON.stringify(reviewQueue, null, 2)}\n`
+  : null;
+if (reviewQueuePath && serializedReviewQueue) {
+  writeFileSync(reviewQueuePath, serializedReviewQueue, { flag: "wx" });
+}
+
+const rawObservations = observationFile
+  ? (JSON.parse(readFileSync(observationFile, "utf8")) as unknown)
   : undefined;
+const observationBundle =
+  rawObservations && !Array.isArray(rawObservations)
+    ? retrievalBenchmarkRunBundleSchema.parse(rawObservations)
+    : undefined;
+const observations = observationBundle
+  ? observationBundle.comparisonRuns[observationBundle.releaseComparisonProfile]
+  : rawObservations === undefined
+    ? undefined
+    : retrievalBenchmarkObservationSchema.array().parse(rawObservations);
+const latencyRuns = observationBundle?.latencyRuns;
 const currentProfile = observations
   ? getRetrievalBenchmarkProfile(observations)
   : null;
-const evaluated = evaluateGoldDataset(candidates, observations);
-const releaseScope = isReleaseCohortReady(evaluated.counts);
+const candidateCounts = countGoldDataset(candidates);
+const releaseScope = isReleaseCohortReady(candidateCounts);
 const evaluationCohort = releaseScope
   ? candidates.filter(isHeldOutReleaseEvaluationEligible)
   : candidates.filter(isReviewAccepted);
+const evaluationIds = new Set(
+  evaluationCohort.map(candidate => candidate.caseId)
+);
+const hasCompleteRun = (run: typeof observations): boolean => {
+  if (!run || run.length !== evaluationIds.size) return false;
+  const ids = new Set(run.map(row => row.caseId));
+  return (
+    ids.size === evaluationIds.size &&
+    [...evaluationIds].every(id => ids.has(id))
+  );
+};
+if (observationBundle) {
+  for (const profile of RETRIEVAL_BENCHMARK_COMPARISON_PROFILES) {
+    const run = observationBundle.comparisonRuns[profile];
+    if (run) getRetrievalBenchmarkProfile(run);
+  }
+  for (const profile of RETRIEVAL_BENCHMARK_LATENCY_PROFILES) {
+    const run = observationBundle.latencyRuns[profile];
+    if (run) getRetrievalBenchmarkProfile(run);
+  }
+}
+const selectedRunComplete = hasCompleteRun(observations);
+const evaluated =
+  observationBundle && !selectedRunComplete
+    ? evaluateGoldDataset(candidates, undefined)
+    : evaluateGoldDataset(candidates, observations, latencyRuns);
+const profileRunStatus = (
+  run: typeof observations,
+  requireLatencyAndCost = false
+) => {
+  if (!run) return "NOT_PROVIDED";
+  if (!hasCompleteRun(run)) return "INCOMPLETE_CASE_COVERAGE";
+  if (
+    requireLatencyAndCost &&
+    run.some(row => row.latencyMs === undefined || row.costMicros === undefined)
+  ) {
+    return "INCOMPLETE_LATENCY_OR_COST";
+  }
+  return "COMPLETE";
+};
+const comparisonRunCoverage = observationBundle
+  ? Object.fromEntries(
+      RETRIEVAL_BENCHMARK_COMPARISON_PROFILES.map(profile => [
+        profile,
+        profileRunStatus(observationBundle.comparisonRuns[profile]),
+      ])
+    )
+  : Object.fromEntries(
+      RETRIEVAL_BENCHMARK_COMPARISON_PROFILES.map(profile => [
+        profile,
+        currentProfile?.comparisonProfile === profile
+          ? profileRunStatus(observations)
+          : "NOT_PROVIDED",
+      ])
+    );
+const latencyRunCoverage = observationBundle
+  ? Object.fromEntries(
+      RETRIEVAL_BENCHMARK_LATENCY_PROFILES.map(profile => [
+        profile,
+        profileRunStatus(observationBundle.latencyRuns[profile]),
+      ])
+    )
+  : Object.fromEntries(
+      RETRIEVAL_BENCHMARK_LATENCY_PROFILES.map(profile => [
+        profile,
+        currentProfile?.latencyProfile === profile
+          ? profileRunStatus(observations, true)
+          : "NOT_PROVIDED",
+      ])
+    );
+const allProfilesComplete = Boolean(
+  observationBundle &&
+  RETRIEVAL_BENCHMARK_COMPARISON_PROFILES.every(
+    profile =>
+      profileRunStatus(observationBundle.comparisonRuns[profile], true) ===
+      "COMPLETE"
+  ) &&
+  RETRIEVAL_BENCHMARK_LATENCY_PROFILES.every(
+    profile =>
+      profileRunStatus(observationBundle.latencyRuns[profile], true) ===
+      "COMPLETE"
+  )
+);
+const certificationReleaseStatus =
+  releaseScope && allProfilesComplete
+    ? evaluated.releaseStatus
+    : "NOT_EVALUABLE";
+const evaluationCases = evaluationCohort.map(item => ({
+  caseId: item.caseId,
+  query: item.query,
+  ...item.benchmarkGold,
+  language: item.language,
+}));
+const comparisonProfileResults = observationBundle
+  ? Object.fromEntries(
+      RETRIEVAL_BENCHMARK_COMPARISON_PROFILES.map(profile => {
+        const run = observationBundle.comparisonRuns[profile];
+        const complete = hasCompleteRun(run);
+        return [
+          profile,
+          {
+            status: profileRunStatus(run, true),
+            metrics: complete
+              ? calculateRetrievalBenchmarkMetrics(evaluationCases, run!)
+              : null,
+          },
+        ];
+      })
+    )
+  : null;
+const latencyProfileResults = observationBundle
+  ? Object.fromEntries(
+      RETRIEVAL_BENCHMARK_LATENCY_PROFILES.map(profile => {
+        const run = observationBundle.latencyRuns[profile];
+        const complete = hasCompleteRun(run);
+        const metrics = complete
+          ? calculateRetrievalBenchmarkMetrics(evaluationCases, run!)
+          : null;
+        return [
+          profile,
+          {
+            status: profileRunStatus(run, true),
+            latencySamples:
+              run?.filter(row => row.latencyMs !== undefined).length ?? 0,
+            costSamples:
+              run?.filter(row => row.costMicros !== undefined).length ?? 0,
+            p50LatencyMs: metrics?.p50LatencyMs ?? null,
+            p95LatencyMs: metrics?.p95LatencyMs ?? null,
+            p99LatencyMs: metrics?.p99LatencyMs ?? null,
+            meanCostMicros: metrics?.meanCostMicros ?? null,
+          },
+        ];
+      })
+    )
+  : null;
 const classCounts: Record<string, number> = {};
 for (const candidate of candidates)
   for (const category of candidate.classes)
@@ -74,9 +235,8 @@ const sourceGroupCount = new Set(
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 const datasetDigest = hash(JSON.stringify(candidates));
-const observationsDigest = observations
-  ? hash(JSON.stringify(observations))
-  : null;
+const observationsDigest =
+  rawObservations !== undefined ? hash(JSON.stringify(rawObservations)) : null;
 const stratifiedSample = deterministicStratifiedSample(candidates, 25).map(
   item => item.caseId
 );
@@ -84,12 +244,16 @@ const leakageRateIntervals = observations
   ? (() => {
       const byId = new Map(observations.map(row => [row.caseId, row]));
       const reviewed = evaluationCohort;
-      const leaked = reviewed.filter(item =>
+      const observedReviewed = reviewed.filter(item => byId.has(item.caseId));
+      const observedNoAnswer = observedReviewed.filter(
+        item => !item.benchmarkGold.supportsAnswer
+      );
+      const leaked = observedReviewed.filter(item =>
         (byId.get(item.caseId)?.evidence ?? []).some(
           evidence => evidence.tenantId !== item.benchmarkGold.tenantId
         )
       );
-      const unauthorized = reviewed.filter(item =>
+      const unauthorized = observedReviewed.filter(item =>
         (byId.get(item.caseId)?.evidence ?? []).some(
           evidence => !evidence.authorized
         )
@@ -158,10 +322,13 @@ const leakageRateIntervals = observations
         scope: releaseScope
           ? "held_out_release_approved"
           : "all_reviewed_exploratory",
-        crossTenantLeakagePerCase95Ci: wilson95(leaked.length, reviewed.length),
+        crossTenantLeakagePerCase95Ci: wilson95(
+          leaked.length,
+          observedReviewed.length
+        ),
         unauthorizedLeakagePerCase95Ci: wilson95(
           unauthorized.length,
-          reviewed.length
+          observedReviewed.length
         ),
         recallAt20Bootstrap95Ci: bootstrapMean95(
           recallValues,
@@ -179,12 +346,13 @@ const leakageRateIntervals = observations
           noAnswerPredictedTruePositive,
           noAnswerPredicted
         ),
-        noAnswerRecallWilson95Ci: wilson95(
-          noAnswerTruePositive,
-          noAnswerCases.length
-        ),
+        noAnswerRecallWilson95Ci:
+          observedNoAnswer.length > 0
+            ? wilson95(noAnswerTruePositive, observedNoAnswer.length)
+            : null,
         sampleCounts: {
           reviewed: reviewed.length,
+          observed: observedReviewed.length,
           recall: recallValues.length,
           citations: citationValues.length,
           freshness: freshnessValues.length,
@@ -210,6 +378,12 @@ const perClassEvaluation = observations
           const subsetObservations = observations.filter(row =>
             subset.some(candidate => candidate.caseId === row.caseId)
           );
+          const observedIds = new Set(
+            subsetObservations.map(row => row.caseId)
+          );
+          const completeObservations =
+            observedIds.size === subset.length &&
+            subset.every(candidate => observedIds.has(candidate.caseId));
           const leaks = new Map(
             subsetObservations.map(row => [
               row.caseId,
@@ -269,7 +443,7 @@ const perClassEvaluation = observations
             ];
           });
           const metrics =
-            subset.length >= 30
+            completeObservations && subset.length >= 30
               ? calculateRetrievalBenchmarkMetrics(
                   subset.map(item => ({
                     caseId: item.caseId,
@@ -284,27 +458,36 @@ const perClassEvaluation = observations
             category,
             {
               sampleSize: subset.length,
+              observedCases: observedIds.size,
               confidenceIntervalStatus:
-                subset.length >= 30
+                completeObservations && subset.length >= 30
                   ? "AVAILABLE"
-                  : "NOT_EVALUABLE_INSUFFICIENT_N",
+                  : subset.length < 30
+                    ? "NOT_EVALUABLE_INSUFFICIENT_N"
+                    : "NOT_EVALUABLE_INCOMPLETE_OBSERVATIONS",
               crossTenantLeakagePerCase95Ci:
-                subset.length >= 30
+                completeObservations && subset.length >= 30
                   ? wilson95(leakageCount, subset.length)
                   : null,
               crossTenantLeakageCases: leakageCount,
-              recallAt20Bootstrap95Ci: bootstrapMean95(
-                recallValues,
-                `${datasetDigest}:${category}:recallAt20`
-              ),
-              citationPrecisionBootstrap95Ci: bootstrapMean95(
-                citationValues,
-                `${datasetDigest}:${category}:citationPrecision`
-              ),
-              freshnessCorrectnessBootstrap95Ci: bootstrapMean95(
-                freshnessValues,
-                `${datasetDigest}:${category}:freshness`
-              ),
+              recallAt20Bootstrap95Ci: completeObservations
+                ? bootstrapMean95(
+                    recallValues,
+                    `${datasetDigest}:${category}:recallAt20`
+                  )
+                : null,
+              citationPrecisionBootstrap95Ci: completeObservations
+                ? bootstrapMean95(
+                    citationValues,
+                    `${datasetDigest}:${category}:citationPrecision`
+                  )
+                : null,
+              freshnessCorrectnessBootstrap95Ci: completeObservations
+                ? bootstrapMean95(
+                    freshnessValues,
+                    `${datasetDigest}:${category}:freshness`
+                  )
+                : null,
               metrics,
             },
           ];
@@ -328,9 +511,10 @@ if (baselineFile) {
     /^[a-f0-9]{40}([a-f0-9]{24})?$/.test(currentSystemSha ?? "") &&
     Array.isArray(baseline.observations) &&
     baseline.observationsSha256 === hash(JSON.stringify(baseline.observations));
-  const baselineObservations = compatible && baseline.observations
-    ? retrievalBenchmarkObservationSchema.array().parse(baseline.observations)
-    : undefined;
+  const baselineObservations =
+    compatible && baseline.observations
+      ? retrievalBenchmarkObservationSchema.array().parse(baseline.observations)
+      : undefined;
   const baselineProfile = baselineObservations
     ? getRetrievalBenchmarkProfile(baselineObservations)
     : null;
@@ -380,28 +564,70 @@ if (baselineFile) {
 process.stdout.write(
   `${JSON.stringify(
     {
-      status: "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
-      canonicalReleaseCriteriaStatus: evaluated.releaseStatus,
+      status:
+        certificationReleaseStatus === "PASS"
+          ? "RELEASE_CRITERIA_PASS_NOT_PRODUCTION_VERIFIED"
+          : certificationReleaseStatus === "FAIL"
+            ? "RELEASE_CRITERIA_FAIL"
+            : "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
+      canonicalReleaseCriteriaStatus: certificationReleaseStatus,
+      selectedComparisonProfileStatus: evaluated.releaseStatus,
       certification:
-        "NOT_CERTIFIED: requires >=500 accepted, release-approved reviewed queries, complete observations and all §27 gates.",
+        certificationReleaseStatus === "PASS"
+          ? "§27 release criteria pass for the named release profile and complete A–H/latency observations; this is not production verification."
+          : "NOT_CERTIFIED: requires >=500 accepted, release-approved held-out queries, complete observations for A–H and all latency profiles, and all §27 gates.",
       datasetSha256: datasetDigest,
       benchmarkVersion: "spec229-benchmark-v1",
       systemSha: currentSystemSha,
       observationsSha256: observationsDigest,
       comparisonProfile: currentProfile?.comparisonProfile ?? null,
       latencyProfile: currentProfile?.latencyProfile ?? null,
+      releaseComparisonProfile:
+        observationBundle?.releaseComparisonProfile ?? null,
+      observationCoverage: {
+        schemaVersion: observationBundle?.schemaVersion ?? "legacy-single-run",
+        comparisonProfiles: comparisonRunCoverage,
+        latencyProfiles: latencyRunCoverage,
+        allProfilesComplete,
+        evaluatedCaseCount: evaluationCohort.length,
+      },
+      comparisonProfileMetrics: comparisonProfileResults,
+      latencyProfileMetrics: latencyProfileResults,
       counts: countGoldDataset(candidates),
       classCounts,
       candidateRequiredClassesMissing: missingRequiredQueryClasses(candidates),
       heldOutReleaseRequiredClassesMissing: missingRequiredQueryClasses(
         candidates.filter(isHeldOutReleaseEvaluationEligible)
       ),
+      humanReviewQueue:
+        reviewQueuePath && serializedReviewQueue
+          ? {
+              path: reviewQueuePath,
+              sha256: hash(serializedReviewQueue),
+              entries: reviewQueue?.entries.length ?? 0,
+              pendingHumanReview:
+                reviewQueue?.entries.filter(
+                  entry => entry.humanReviewStatus === "PENDING_HUMAN_REVIEW"
+                ).length ?? 0,
+              pendingSourceUseApproval:
+                reviewQueue?.entries.filter(
+                  entry =>
+                    entry.sourceUseApprovalStatus ===
+                    "PENDING_OWNER_SOURCE_USE_APPROVAL"
+                ).length ?? 0,
+            }
+          : null,
       languageCounts,
       sourceGroupCount,
       deterministicDevelopmentSample: stratifiedSample,
       metrics: evaluated.metrics,
       releaseCriteria: evaluated.releaseCriteria.length
-        ? evaluated.releaseCriteria
+        ? certificationReleaseStatus === "NOT_EVALUABLE"
+          ? evaluated.releaseCriteria.map(criterion => ({
+              ...criterion,
+              status: "NOT_EVALUABLE" as const,
+            }))
+          : evaluated.releaseCriteria
         : [
             {
               status: "NOT_EVALUABLE",
@@ -416,7 +642,7 @@ process.stdout.write(
         "Machine review is reported separately and never counted as human review.",
         "Repository-backed candidates are development-only unless separately source-approved for release evaluation; their review state does not imply human review or quality certification.",
         "Per-class confidence intervals require at least 30 cases; this is a reporting floor, not a release threshold.",
-        "Each observation file must identify one consistent comparisonProfile; latency criteria are evaluated only when one matching latencyProfile and latency for every cohort row are present.",
+        "Legacy observation arrays remain supported for development reports. Release calibration requires a v1 bundle with complete A–H comparison runs and one complete, latency-tagged run for each of the three §27 latency targets.",
         "This harness does not run retrieval, generate answers, or use an LLM as an answer judge.",
       ],
     },
