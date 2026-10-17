@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -73,6 +73,25 @@ describe("projectRunnerTimelineEvent", () => {
   });
 });
 
+describe("projectJobSettlementMarker", () => {
+  it("shows a durable marker without treating result payload as monetary settlement", () => {
+    const marker = projectJobSettlementMarker({
+      id: "settlement-row-1",
+      attemptId: "attempt-1",
+      settlementType: "result",
+      committedAt: new Date("2026-10-17T00:04:00Z"),
+    });
+    expect(marker).toEqual({
+      source: { kind: "worker_job_settlement", reference: "settlement-row-1" },
+      attemptId: "attempt-1",
+      type: "result",
+      committedAt: "2026-10-17T00:04:00.000Z",
+      monetaryAmount: null,
+      meaning: "durable_marker_only",
+    });
+  });
+});
+
 describe("aggregateTaskObservability", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,6 +114,7 @@ describe("aggregateTaskObservability", () => {
     };
     mocks.rows = [
       [job],
+      [{ id: "settlement-1", workerJobId: "job-1", attemptId: "attempt-1", settlementType: "result", committedAt: new Date("2026-10-17T00:01:30Z") }],
       [reservation(), reservation({ id: "reservation-replay", attemptId: "attempt-2" })],
       [{ workerJobId: "job-1", id: "correction-1", createdAt: new Date("2026-10-17T00:02:00Z"), payloadJson: {
         modelCallId: "call-1", correctedAt: "2026-10-17T00:02:00Z", correctedUsage: { inputTokens: 13, outputTokens: 3, cachedInputTokens: 4 },
@@ -110,6 +130,7 @@ describe("aggregateTaskObservability", () => {
     expect(result.usage.counts).toMatchObject({ received: 2, unique: 1, corrections: 1, replayed: 1 });
     expect(result.resourceEstimates.reservedTokenEstimate).toBe(100);
     expect(result.resourceEstimates.observedReservationCount).toBe(1);
+    expect(result.jobSettlementMarkers).toMatchObject({ observedCount: 1, byType: [{ type: "result", count: 1 }], capped: false });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "canonical_correction_event", reference: "correction-1", rationale: null });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "worker_job_provider_reservation", reference: "reservation-replay", rationale: null });
   });
@@ -123,7 +144,7 @@ describe("aggregateTaskObservability", () => {
       inputJson: { projectId: "project-1" },
       progressJson: {},
     }));
-    mocks.rows = [jobs, [], [], []];
+    mocks.rows = [jobs, [], [], [], []];
     mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
 
     const result = await aggregateTaskObservability({ scope: { tenantId: "tenant-1", userId: 9 }, projectId: "project-1" });

@@ -10,6 +10,7 @@ import {
   workerJobEvents,
   workerJobAttempts,
   workerJobProviderReservations,
+  workerJobSettlements,
   llmInferenceAttempts,
   llmInferencePlans,
   workerJobs,
@@ -108,6 +109,22 @@ export function projectRunnerTimelineEvent(event: {
     phase: safeText(payload?.phase ?? payload?.stage ?? payload?.reportedState, 80),
     reasonCode: safeText(payload?.reasonCode ?? payload?.safeErrorCode, 100),
     correction: null,
+  };
+}
+
+export function projectJobSettlementMarker(row: {
+  id: string;
+  attemptId: string | null;
+  settlementType: string;
+  committedAt: Date;
+}) {
+  return {
+    source: { kind: "worker_job_settlement" as const, reference: row.id },
+    attemptId: row.attemptId,
+    type: safeText(row.settlementType, 64) ?? "unknown",
+    committedAt: row.committedAt.toISOString(),
+    monetaryAmount: null,
+    meaning: "durable_marker_only" as const,
   };
 }
 
@@ -286,6 +303,9 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
   const runnerSessionEvents = runnerSession ? await db.select({ id: runnerExecutionSessionEvents.id, sessionId: runnerExecutionSessionEvents.sessionId, eventType: runnerExecutionSessionEvents.eventType, sequence: runnerExecutionSessionEvents.sequence, createdAt: runnerExecutionSessionEvents.createdAt, payloadJson: runnerExecutionSessionEvents.payloadJson })
     .from(runnerExecutionSessionEvents).where(and(eq(runnerExecutionSessionEvents.sessionId, runnerSession.sessionId), eq(runnerExecutionSessionEvents.tenantId, scope.tenantId), ...(snapshotAt ? [lte(runnerExecutionSessionEvents.createdAt, snapshotAt)] : [])))
     .orderBy(desc(runnerExecutionSessionEvents.sequence)).limit(40) : [];
+  const settlementMarkers = await db.select({ id: workerJobSettlements.id, attemptId: workerJobSettlements.attemptId, settlementType: workerJobSettlements.settlementType, committedAt: workerJobSettlements.committedAt })
+    .from(workerJobSettlements).where(and(eq(workerJobSettlements.workerJobId, job.id), ...(snapshotAt ? [lte(workerJobSettlements.committedAt, snapshotAt)] : [])))
+    .orderBy(workerJobSettlements.committedAt).limit(MAX_JOB_DETAIL);
   const reservations = await db.select().from(workerJobProviderReservations)
     .where(snapshotAt
       ? and(eq(workerJobProviderReservations.workerJobId, job.id), lte(workerJobProviderReservations.createdAt, snapshotAt), lte(workerJobProviderReservations.updatedAt, snapshotAt))
@@ -402,7 +422,7 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
     runner: runner ? { id: runner.runnerId, displayName: safeText(runner.displayName, 120), status: runner.revokedAt ? "revoked" : runner.status, trustState: runner.trustState, lastSeenAt: asIso(runner.lastSeenAt), freshness: runner.lastSeenAt && Date.now() - runner.lastSeenAt.getTime() < 5 * 60_000 ? "fresh" : "stale" } : { status: "unknown", freshness: "unknown" },
     goal: goalProjection(job),
-    usage: { ...usage, reservations: [
+    usage: { ...usage, settlementMarkers: settlementMarkers.map(projectJobSettlementMarker), reservations: [
       ...reservations.map((row) => ({ kind: row.reservationKind, status: row.reservationStatus, modelCallId: row.modelCallId, estimateTokens: row.reservedTokens, estimatedCostMicros: null, provider: safeText(row.providerName, 64), observedAt: asIso(row.lastObservedAt) })),
       ...inferenceRows.map((row) => ({ kind: "inference_plan", status: "observed", estimateTokens: null, estimatedCostMicros: row.estimatedCostMicros, parentCostCeilingMicros: row.parentCostCeilingMicros, provider: null, observedAt: row.updatedAt.toISOString() })),
     ], coverage: { status: "PARTIAL" as const, observedCallSources: ["worker_job_provider_reservations", "llm_inference_attempts"], missingSources: ["unlinked_external_helper_calls", "unlinked_provider_usage", "provider_quota_observations"], reason: "Only usage linked to this canonical job can be counted; absence from linked sources is not evidence of zero usage." } },
@@ -509,6 +529,11 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
   const jobsCapped = jobs.length > MAX_AGGREGATE_JOBS;
   const boundedJobs = jobs.slice(0, MAX_AGGREGATE_JOBS);
   const jobIds = boundedJobs.map((job) => job.id);
+  const settlementMarkerRows = jobIds.length ? await db.select({ id: workerJobSettlements.id, workerJobId: workerJobSettlements.workerJobId, attemptId: workerJobSettlements.attemptId, settlementType: workerJobSettlements.settlementType, committedAt: workerJobSettlements.committedAt })
+    .from(workerJobSettlements).where(and(inArray(workerJobSettlements.workerJobId, jobIds), lte(workerJobSettlements.committedAt, asOf)))
+    .orderBy(workerJobSettlements.committedAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
+  const settlementMarkersCapped = settlementMarkerRows.length > MAX_AGGREGATE_CALLS;
+  const boundedSettlementMarkers = settlementMarkerRows.slice(0, MAX_AGGREGATE_CALLS);
   const reservations = jobIds.length ? await db.select().from(workerJobProviderReservations)
     .where(and(inArray(workerJobProviderReservations.workerJobId, jobIds), lte(workerJobProviderReservations.createdAt, asOf), lte(workerJobProviderReservations.updatedAt, asOf)))
     .orderBy(workerJobProviderReservations.createdAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
@@ -610,6 +635,12 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
       inferenceCostEstimateMicros: boundedInference.reduce((sum, row) => sum + (row.estimatedCostMicros ?? 0), 0),
       missingInferenceCostEstimateCount: boundedInference.filter((row) => row.estimatedCostMicros === null).length,
       capped,
+    },
+    jobSettlementMarkers: {
+      observedCount: settlementMarkersCapped ? null : boundedSettlementMarkers.length,
+      byType: settlementMarkersCapped ? null : [...boundedSettlementMarkers.reduce((counts, row) => counts.set(row.settlementType, (counts.get(row.settlementType) ?? 0) + 1), new Map<string, number>())].map(([type, count]) => ({ type: safeText(type, 64) ?? "unknown", count })),
+      capped: settlementMarkersCapped,
+      meaning: "durable_job_markers_not_monetary_settlements" as const,
     },
     quotaCoverage: { status: "UNKNOWN" as const, reason: "No provider quota observation is linked to this aggregate." },
   };
