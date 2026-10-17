@@ -7,7 +7,7 @@ Source branch: `codex/cloudflare-http-runtime-20261017` (rebased on `origin/main
 
 ## Completed in this checkpoint
 
-- Added an explicit API route manifest. `/healthz` GET/HEAD is Worker-native; API/auth/OAuth/tRPC/upload paths use the existing origin; HTTP paths that require Node state stay origin-owned; WebSocket and unknown routes fail closed.
+- Added an explicit API route manifest. `/healthz` and `/readyz` GET/HEAD are Worker-native (`/readyz` reports Worker bindings/job wiring only); API/auth/OAuth/tRPC/upload paths use the existing origin; HTTP paths that require Node state stay origin-owned; WebSocket and unknown routes fail closed.
 - Wired the manifest into the Cloudflare Worker. It imports no Express app or native background-worker graph.
 - Added a pinned HTTPS origin proxy preserving application headers, streamed request/response bodies, redirects, cookies, CSRF, and auth headers. It replaces caller-controlled forwarded/internal trust headers and validates private origin host configuration.
 - Added origin-side constant-time validation for the Worker attestation header while preserving direct Linux ingress.

@@ -42,8 +42,8 @@ export const API_ROUTE_MANIFEST: readonly ApiRouteManifestEntry[] = [
     path: "/readyz",
     match: "exact",
     methods: ["GET", "HEAD"],
-    classification: "NATIVE_RUNTIME_ONLY",
-    reason: "Readiness checks PostgreSQL-backed application state.",
+    classification: "WORKER_NATIVE",
+    reason: "Reports Cloudflare Worker binding/job readiness only; it does not assert Linux app or PostgreSQL readiness.",
   },
   {
     id: "ops.metrics",

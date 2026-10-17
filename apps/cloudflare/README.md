@@ -76,10 +76,11 @@ origin/token produces a closed 503.
 ## Web/API origin routing
 
 `src/apiRouteManifest.ts` is the explicit HTTP routing inventory. Only
-`GET|HEAD /healthz` is currently Worker-native. Auth/OAuth, tRPC, public APIs,
-and uploads are sent to the existing Linux Express authority. Readiness,
-metrics, and ordinary HTTP streams also remain on that origin. Unknown paths
-and WebSocket upgrade endpoints fail closed when they reach this Worker; keep
+`GET|HEAD /healthz` and `/readyz` are currently Worker-native. `/readyz` reports
+Worker bindings/job wiring only, not Linux app or PostgreSQL readiness.
+Auth/OAuth, tRPC, public APIs, and uploads are sent to the existing Linux
+Express authority. Metrics and ordinary HTTP streams also remain on that
+origin. Unknown paths and WebSocket upgrade endpoints fail closed when they reach this Worker; keep
 `/ws` and `/socket.io` on the Linux ingress until a separately tested WebSocket
 bridge exists. The Worker does not import the Express application or its
 background dependency graph, so it cannot start Linux schedulers or job

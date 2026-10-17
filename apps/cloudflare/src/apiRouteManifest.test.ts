@@ -8,7 +8,10 @@ describe("Cloudflare API route manifest", () => {
       classification: "WORKER_NATIVE",
     });
     expect(classifyApiRoute("HEAD", "/healthz").classification).toBe("WORKER_NATIVE");
-    expect(classifyApiRoute("GET", "/readyz").classification).toBe("NATIVE_RUNTIME_ONLY");
+    expect(classifyApiRoute("GET", "/readyz")).toMatchObject({
+      id: "health.readiness",
+      classification: "WORKER_NATIVE",
+    });
     expect(classifyApiRoute("GET", "/metrics").classification).toBe("NATIVE_RUNTIME_ONLY");
   });
 
