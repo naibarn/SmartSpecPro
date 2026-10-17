@@ -26,7 +26,7 @@ export const retrievalBenchmarkObservationSchema = z.object({
     revision: z.string(),
     digest: z.string().regex(/^[a-f0-9]{64}$/),
     authorityRank: z.number().int().min(0),
-    authorized: z.boolean().optional(),
+    authorized: z.boolean(),
     revoked: z.boolean().default(false),
     deleted: z.boolean().default(false),
   })),
@@ -70,6 +70,8 @@ export interface RetrievalBenchmarkMetrics {
   freshnessCorrectness: number;
   authorityCorrectness: number;
   aclLeakage: number;
+  crossTenantLeakage: number;
+  unauthorizedEvidenceLeakage: number;
   unsafePartialOrOutageAnswers: number;
   staleOrRevokedEvidenceAccepted: number;
   noAnswerPrecision: number | null;
@@ -81,7 +83,7 @@ export interface RetrievalBenchmarkMetrics {
   meanCostMicros: number | null;
 }
 
-function isCitationValid(
+export function isCitationValid(
   citation: RetrievalBenchmarkObservation["citations"][number],
   evidence: RetrievalBenchmarkObservation["evidence"][number] | undefined,
 ): boolean {
@@ -126,6 +128,8 @@ export function calculateRetrievalBenchmarkMetrics(
   let authorityTotal = 0;
   let authorityCorrect = 0;
   let aclLeakage = 0;
+  let crossTenantLeakage = 0;
+  let unauthorizedEvidenceLeakage = 0;
   let unsafePartialOrOutageAnswers = 0;
   let staleAccepted = 0;
   let noAnswerTruePositive = 0;
@@ -174,9 +178,17 @@ export function calculateRetrievalBenchmarkMetrics(
     requiredClaimTotal += gold.requiredClaims.length;
     coveredClaimTotal += gold.requiredClaims.filter(claim => observed.coveredClaims.includes(claim)).length;
     citationsTotal += observed.citations.length;
-    const validCitationCount = observed.citations.filter(citation =>
-      isCitationValid(citation, evidenceById.get(citation.evidenceId)),
-    ).length;
+    const validCitationCount = observed.citations.filter(citation => {
+      const evidence = evidenceById.get(citation.evidenceId);
+      return (
+        isCitationValid(citation, evidence) &&
+        evidence?.authorized === true &&
+        evidence.tenantId === gold.tenantId &&
+        !evidence.revoked &&
+        !evidence.deleted &&
+        (!gold.expectedRevision || evidence.revision === gold.expectedRevision)
+      );
+    }).length;
     citationsValid += validCitationCount;
     if (gold.shouldCite) {
       citationRequiredCases += 1;
@@ -184,7 +196,9 @@ export function calculateRetrievalBenchmarkMetrics(
     }
 
     for (const item of observed.evidence) {
-      if (item.tenantId !== gold.tenantId || item.authorized === false) aclLeakage += 1;
+      if (item.tenantId !== gold.tenantId) crossTenantLeakage += 1;
+      if (!item.authorized) unauthorizedEvidenceLeakage += 1;
+      if (item.tenantId !== gold.tenantId || !item.authorized) aclLeakage += 1;
       if (item.revoked || item.deleted || (gold.expectedRevision && item.revision !== gold.expectedRevision)) {
         staleAccepted += 1;
       }
@@ -243,6 +257,8 @@ export function calculateRetrievalBenchmarkMetrics(
     freshnessCorrectness: safeRatio(freshnessCorrect, freshnessTotal) ?? 1,
     authorityCorrectness: safeRatio(authorityCorrect, authorityTotal) ?? 1,
     aclLeakage,
+    crossTenantLeakage,
+    unauthorizedEvidenceLeakage,
     unsafePartialOrOutageAnswers,
     staleOrRevokedEvidenceAccepted: staleAccepted,
     noAnswerPrecision: safeRatio(noAnswerTruePositive, noAnswerTruePositive + noAnswerFalsePositive),
