@@ -29,6 +29,50 @@ export const HARD_MAX_DEADLINE_MINUTES: Record<JobFamily, number> = {
   general: 120,
 };
 
+/** Story drafts are checkpointed per episode chunk and can legitimately run
+ * for hours. Keep this exception scoped to deep story generation; generic
+ * worker families retain their existing short caps. */
+export const VERTICAL_DRAMA_STORY_MAX_EXECUTION_TIMEOUT_MS = 72 * 60 * 60_000;
+export const VERTICAL_DRAMA_STORY_MAX_DEADLINE_MS = 7 * 24 * 60 * 60_000;
+const VERTICAL_DRAMA_STORY_BASE_DEADLINE_MS = 60 * 60_000;
+const VERTICAL_DRAMA_STORY_PER_EPISODE_DEADLINE_MS = 45 * 60_000;
+
+export function getVerticalDramaStoryExecutionTimeoutMs(
+  jobType: string,
+  input: Record<string, unknown>,
+): number | null {
+  if (jobType !== "vertical_drama.story") return null;
+  const kind = input.kind;
+  if (kind !== "deep_generate" && kind !== "extend") return null;
+
+  const taskInput =
+    input.input && typeof input.input === "object" && !Array.isArray(input.input)
+      ? input.input as Record<string, unknown>
+      : input;
+  const countValue = kind === "extend"
+    ? taskInput.additionalEpisodes ?? taskInput.horizonEpisodes
+    : taskInput.horizonEpisodes ?? taskInput.episodeCount;
+  const episodeCount =
+    typeof countValue === "number" && Number.isSafeInteger(countValue) && countValue > 0
+      ? Math.min(countValue, 1000)
+      : 1;
+  return Math.min(
+    VERTICAL_DRAMA_STORY_MAX_EXECUTION_TIMEOUT_MS,
+    VERTICAL_DRAMA_STORY_BASE_DEADLINE_MS +
+      episodeCount * VERTICAL_DRAMA_STORY_PER_EPISODE_DEADLINE_MS,
+  );
+}
+
+export function getVerticalDramaStoryDeadlineMs(
+  jobType: string,
+  input: Record<string, unknown>,
+): number | null {
+  const executionTimeoutMs = getVerticalDramaStoryExecutionTimeoutMs(jobType, input);
+  return executionTimeoutMs === null
+    ? null
+    : Math.min(VERTICAL_DRAMA_STORY_MAX_DEADLINE_MS, executionTimeoutMs * 3);
+}
+
 const JOB_FAMILIES = ["python", "image", "audio", "video", "general"] as const;
 
 const SETTINGS_CATEGORY = "worker_queue";
@@ -320,6 +364,13 @@ export async function applyWorkerJobRetryDeadline<T extends DeadlineContractIden
   input: Record<string, unknown>;
   retryPolicy: { deadlineMs: number; deadlineMode?: "adaptive" | "fixed"; [key: string]: unknown };
 }>(definition: T, runtimeType: string): Promise<T> {
+  const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(definition.jobType, definition.input);
+  if (storyDeadlineMs !== null) {
+    return {
+      ...definition,
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: storyDeadlineMs, deadlineMode: "fixed" },
+    };
+  }
   if (definition.retryPolicy.deadlineMode === "fixed" && isBoundDeveloperFastLane({ ...definition, runtimeType })) {
     return { ...definition, retryPolicy: { ...definition.retryPolicy, deadlineMs: Math.min(definition.retryPolicy.deadlineMs, DEVELOPER_FAST_LANE_DEADLINE_MS) } };
   }
@@ -350,6 +401,10 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" };
   timeoutSeconds?: number;
 }): number {
+  const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.input);
+  if (storyDeadlineMs !== null) {
+    return Math.min(storyDeadlineMs, VERTICAL_DRAMA_STORY_MAX_DEADLINE_MS);
+  }
   const family = inferJobFamily(input);
   const stored = Number(input.retryPolicy.deadlineMs);
   const storedDeadlineMs = Number.isFinite(stored) && stored > 0
@@ -378,6 +433,17 @@ export function withSafeWorkerJobDeadline<T extends DeadlineContractIdentity & {
   timeoutSeconds?: number;
   retryPolicyJson?: Record<string, unknown>;
 }>(values: T): T {
+  const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(values.jobType, values.inputJson ?? {});
+  if (storyDeadlineMs !== null) {
+    return {
+      ...values,
+      retryPolicyJson: {
+        ...(values.retryPolicyJson ?? {}),
+        deadlineMs: storyDeadlineMs,
+        deadlineMode: "fixed",
+      },
+    };
+  }
   const family = inferJobFamily({
     jobType: values.jobType,
     runtimeType: values.runtimeType,
