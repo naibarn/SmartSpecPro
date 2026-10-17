@@ -1,0 +1,2352 @@
+[
+  {
+    "caseId": "b06-099-1",
+    "query": "For chat and teams, which kind of state should drive continuity by default, and what should support it?",
+    "expectedAnswer": "- Chat must default to session-heavy continuity with project state and durable memory as support.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md",
+      "sha256": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "lineStart": 115,
+      "lineEnd": 115,
+      "quoteSha256": "7858195d10ffbe13946b66e84059886fd4bcfbe4a57c1b7d07b4051ec4bea6ae",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md"
+      ],
+      "requiredClaims": ["feature99-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-099-2",
+    "query": "สำหรับงานในโปรเจกต์ ควรให้ความต่อเนื่องยึดสถานะระดับใดเป็นหลัก?",
+    "expectedAnswer": "- Team must default to project-heavy continuity with session state, work state, and durable memory as support.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md",
+      "sha256": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "lineStart": 116,
+      "lineEnd": 116,
+      "quoteSha256": "a69ff891b5797ede1c9dc2927a90ba16983b4fde37cc966a5fd053a4051740d2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md"
+      ],
+      "requiredClaims": ["feature99-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-126-1",
+    "query": "What exact internal mode name identifies the browser’s WebGPU acceleration path?",
+    "expectedAnswer": "- Internal mode id: `client_webgpu_acceleration`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+      "sha256": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+      "lineStart": 37,
+      "lineEnd": 37,
+      "quoteSha256": "953ea4b5f66685205869aecb6e8ef7007bcb0af067bb33eccf51dbf645c3710c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      ],
+      "requiredClaims": ["feature126-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-126-2",
+    "query": "การตรวจ capability ฝั่ง client ควรเกิดขึ้นโดยไม่ขัดขวาง capture แบบ server อย่างไร?",
+    "expectedAnswer": "2. Detect client capabilities at runtime without blocking normal server capture.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+      "sha256": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+      "lineStart": 63,
+      "lineEnd": 63,
+      "quoteSha256": "91dcc093fadcd21579c110dfe94090b84e8d83a15f5a69e49b6e36ee4e5f0bf2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md"
+      ],
+      "requiredClaims": ["feature126-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-127-1",
+    "query": "What change does the article-to-storyboard spec propose for article pages?",
+    "expectedAnswer": "- article pages become document-like visual pages;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+      "sha256": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+      "lineStart": 42,
+      "lineEnd": 42,
+      "quoteSha256": "0d810ae3c69a7e3d376d6663ae5ed29d845f576b045f1be5169663c49207baef",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/127-article-to-storyboard-video-project/spec.md"
+      ],
+      "requiredClaims": ["feature127-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-127-2",
+    "query": "ข้อความจากบทความอาจฝังอยู่ในส่วนใดของสไลด์หรือภาพนำเสนอ?",
+    "expectedAnswer": "- text is often baked into the slide image or presentation structure;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+      "sha256": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "04c03a7660b551b44b25731752ff397bada75acd8040abaee25f5c50717ae1f8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/127-article-to-storyboard-video-project/spec.md"
+      ],
+      "requiredClaims": ["feature127-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-128-1",
+    "query": "ข้อมูลโปรไฟล์ใดที่กำหนดให้ผู้ใช้มนุษย์ต้องระบุเมื่อล็อกอิน?",
+    "expectedAnswer": "- a required date-of-birth profile attribute for human login users;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/128-age-aware-safety-policy/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/128-age-aware-safety-policy/spec.md",
+      "sha256": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "83ff894e4f8c8c7f7cd70b45c7f3e07aa2d7e46f267a39ad8ba2de3c91fa5ead",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/128-age-aware-safety-policy/spec.md"
+      ],
+      "requiredClaims": ["feature128-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-128-2",
+    "query": "Which delegated or system actors need age suitability resolved without relying on a personal date of birth?",
+    "expectedAnswer": "- an actor/audience resolution layer for API keys, widgets, delegated workers, and internal system users that do not naturally have their own date of birth;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/128-age-aware-safety-policy/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/128-age-aware-safety-policy/spec.md",
+      "sha256": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "a25268e99c712dcf6248a79facc0de38d01428f874340570e98b828ec36e1d68",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/128-age-aware-safety-policy/spec.md"
+      ],
+      "requiredClaims": ["feature128-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-129-1",
+    "query": "In the target v1 connector flow, where does the authorized marketplace data request happen?",
+    "expectedAnswer": "- In the target v1 flow, Shopee marketplace data is fetched inside the OpenAI/ChatGPT connector host, where the Shopee app is connected and authorized by the user.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md",
+      "sha256": "31ab921ffc67421096f4e833cc2fa67f3dc02896559d6702bdc56a84640217d1",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "12bf111b2d1f0b9ce230b6b240ea872a986dc85292244be6a4d618e0cc7fe7f8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md"
+      ],
+      "requiredClaims": ["feature129-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:31ab921ffc67421096f4e833cc2fa67f3dc02896559d6702bdc56a84640217d1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-129-2",
+    "query": "SmartSpecPro สามารถดึงหรือส่งต่อ session ของ marketplace ที่ผู้ใช้เชื่อมไว้อีกฝั่งได้หรือไม่?",
+    "expectedAnswer": "- SmartSpecPro must not assume it can reuse, extract, or proxy the Shopee app session from that host.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md",
+      "sha256": "31ab921ffc67421096f4e833cc2fa67f3dc02896559d6702bdc56a84640217d1",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "3d121bdc4f50de23f86578d4059fb083b3165987106cf689cb93c681b2e77f11",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/spec.md"
+      ],
+      "requiredClaims": ["feature129-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:31ab921ffc67421096f4e833cc2fa67f3dc02896559d6702bdc56a84640217d1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-130-1",
+    "query": "What role does precise routing play in selecting Hybrid Flow?",
+    "expectedAnswer": "- Chat uses precise routing to decide when Hybrid Flow is appropriate.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+      "sha256": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "quoteSha256": "8fd13f971c46339fd930ec4794afb900d693360f57ad3c16a2cfb09fda14d613",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature130-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-130-2",
+    "query": "Can a direct image or video creation command be redirected through Hybrid Flow?",
+    "expectedAnswer": "- Direct skill commands such as `create image:` and `create video:` never route to Hybrid Flow.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+      "sha256": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "lineStart": 26,
+      "lineEnd": 26,
+      "quoteSha256": "e71a0e0f1887ed40144265a950acafab4fb980b69e7a43f270917e53f347afa4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature130-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-131-1",
+    "query": "ผู้ใช้ควรเข้าถึงหน้าฟีเจอร์ Vertical Drama Series ผ่านเมนูใด?",
+    "expectedAnswer": "1. Add a new Dashboard menu for **Vertical Drama Series**.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+      "sha256": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "lineStart": 118,
+      "lineEnd": 118,
+      "quoteSha256": "eb883f5f258d4fff139ad3a9416912fb1e60d7e582e5d4530cc4d7daf3315af5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      ],
+      "requiredClaims": ["feature131-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-131-2",
+    "query": "How many planned episodes should a Vertical Drama Series project support?",
+    "expectedAnswer": "2. Support long-running series projects with 10, 20, 30, and up to 100 planned episodes.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+      "sha256": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "lineStart": 119,
+      "lineEnd": 119,
+      "quoteSha256": "b28749761fc462ad116d7344ad24a409112338c87d0a5ad547d655d9381c2df8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md"
+      ],
+      "requiredClaims": ["feature131-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-132-1",
+    "query": "In which exact router module are the Series API entry points defined?",
+    "expectedAnswer": "- Entry points (tRPC `server/routers/verticalDramaSeries.ts`): `create`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "filename"],
+    "sourceGroupId": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+      "sha256": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "lineStart": 121,
+      "lineEnd": 121,
+      "quoteSha256": "c5ef3c8e27ddc9f738aad08414c95d9f7d79ca643c7b53bdf027818a25c0f762",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      ],
+      "requiredClaims": ["feature132-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-132-2",
+    "query": "ตัวช่วยใดสร้าง memory bundle สำหรับ episode?",
+    "expectedAnswer": "- Series memory: `buildEpisodeMemoryBundle`",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+      "sha256": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "lineStart": 153,
+      "lineEnd": 153,
+      "quoteSha256": "25962aba558b3717ab01fd80af07cf4b02837962817404fcb5aea7b100d75f79",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md"
+      ],
+      "requiredClaims": ["feature132-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-133-1",
+    "query": "Which exact Remotion package dependencies are pinned for rendering?",
+    "expectedAnswer": "- Deps pinned: `remotion`/`@remotion/{bundler,renderer,three,transitions}`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/133-content-video-intelligence-platform/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/133-content-video-intelligence-platform/spec.md",
+      "sha256": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+      "lineStart": 131,
+      "lineEnd": 131,
+      "quoteSha256": "d3304583224ff5444d8ea5fbc019d1cd2d81b9c782ee31d9fc389a5b5b49881c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/133-content-video-intelligence-platform/spec.md"
+      ],
+      "requiredClaims": ["feature133-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-133-2",
+    "query": "Which source module registers the Remotion compositions?",
+    "expectedAnswer": "- Compositions registered in `apps/web/server/remotion/Root.tsx`:",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "filename"],
+    "sourceGroupId": "specs/feature/133-content-video-intelligence-platform/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/133-content-video-intelligence-platform/spec.md",
+      "sha256": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+      "lineStart": 134,
+      "lineEnd": 134,
+      "quoteSha256": "fc4238dc91fdf8eca57f3e144ffd76b5e72b8558a2cb981237d8320d58cf71ef",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/133-content-video-intelligence-platform/spec.md"
+      ],
+      "requiredClaims": ["feature133-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-134-1",
+    "query": "How should the system settle separate portrait prompts into candidate assets?",
+    "expectedAnswer": "3. Settle each task into its candidate asset without accepting client-authored DNA metadata.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/134-character-portrait-candidate-batch/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/134-character-portrait-candidate-batch/spec.md",
+      "sha256": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "5a3578cf8d690100a5d30b5629bc987ed689b1023d3b05cc2c03606954b7c1e4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/134-character-portrait-candidate-batch/spec.md"
+      ],
+      "requiredClaims": ["feature134-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-134-2",
+    "query": "Which provider input restriction applies when different image prompts are submitted?",
+    "expectedAnswer": "- Do not use one provider task with `numImages > 1`; distinct prompts need independent tasks.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/134-character-portrait-candidate-batch/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/134-character-portrait-candidate-batch/spec.md",
+      "sha256": "4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+      "lineStart": 34,
+      "lineEnd": 34,
+      "quoteSha256": "e79ccb502732406526ca8c0b39edf2306e31a5a019a949010d2e04fc0d17ecdb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/134-character-portrait-candidate-batch/spec.md"
+      ],
+      "requiredClaims": ["feature134-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a4bc05770e07c854afec122d26a644f2cdee71d0b85ba9ed3658c4130c2bc03",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-135-1",
+    "query": "Should local and remote rendering paths switch between each other automatically?",
+    "expectedAnswer": "- Neither path replaces the other; no automatic routing between them.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/135-hermes-grok-media-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/135-hermes-grok-media-worker/spec.md",
+      "sha256": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
+      "lineStart": 125,
+      "lineEnd": 125,
+      "quoteSha256": "10d05da16e2aa3f44a0a92e54a070b74ef4e402dea2b6c18535114851e2cc54c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/135-hermes-grok-media-worker/spec.md"
+      ],
+      "requiredClaims": ["feature135-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-135-2",
+    "query": "ใน SmartSpecPro มีการห้ามเก็บรหัสผ่าน Grok ไว้ที่ใดบ้าง?",
+    "expectedAnswer": "- No Grok password fields anywhere in SmartSpecPro.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/135-hermes-grok-media-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/135-hermes-grok-media-worker/spec.md",
+      "sha256": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
+      "lineStart": 142,
+      "lineEnd": 142,
+      "quoteSha256": "50b3bb9cca57e08c851d59cdf008f6032e76b484f5c43fe70abe0edaa14b2eee",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/135-hermes-grok-media-worker/spec.md"
+      ],
+      "requiredClaims": ["feature135-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-136-1",
+    "query": "Which prior feature does Feature 136 cite for Production Director storyboard QA and repair concepts?",
+    "expectedAnswer": "- Feature 117 Production Director Agents SDK Auto Storyboard And Video (QA/repair loop and product-truth QA prior art)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+      "sha256": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "quoteSha256": "32eeb772a885e9e9ce1d669a8e6a83eb04127723d237eb0581f1ec7f0399f972",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md"
+      ],
+      "requiredClaims": ["feature136-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-136-2",
+    "query": "Which feature does Feature 136 cite for the HyperFrames marketplace auto-review and render design?",
+    "expectedAnswer": "- Feature 119 HyperFrames Marketplace Auto Review Render Adapter (auto plan / estimate surface)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+      "sha256": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "quoteSha256": "adafb4945eced386561928c0aa09de5b3c35eeb5c0df0e6ec6e6cb5f38673e2f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md"
+      ],
+      "requiredClaims": ["feature136-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-137-1",
+    "query": "Which feature does Feature 137 cite for its angle-grid and character-quality foundation?",
+    "expectedAnswer": "- Feature 132 Story Character Quality Engine (angle-grid picker, QC scaffolding, character quality machinery)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+      "sha256": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+      "lineStart": 10,
+      "lineEnd": 10,
+      "quoteSha256": "bb138ab14c45850fa8df6ec7aaae1ecb2e6efc4cfac86938cad5e6f23c587e11",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md"
+      ],
+      "requiredClaims": ["feature137-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-137-2",
+    "query": "Which feature does Feature 137 cite as a JSONB persistence precedent?",
+    "expectedAnswer": "- Feature 134 Character Portrait Candidate Batch (portrait candidate generation + JSONB persistence precedent)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+      "sha256": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "quoteSha256": "07129de57bd8b1915ba2ad98877208e169a605dcceabd32862a888e8a4d0bcef",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md"
+      ],
+      "requiredClaims": ["feature137-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-138-1",
+    "query": "Which feature does Feature 138 cite for the shipped quality ledgers used as a foundation?",
+    "expectedAnswer": "- Feature 132 Story Character Quality Engine (quality ledgers F132B — shipped; consistency ledger)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md",
+      "sha256": "c3b41d681349c3445db899d40f1ccb98f3181e6f7a38f1db591b5ffde217151b",
+      "lineStart": 10,
+      "lineEnd": 10,
+      "quoteSha256": "398d931b33efd956a6adda23ec671638ff470105e6ff2a3ff7ee2b86b228e9b5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md"
+      ],
+      "requiredClaims": ["feature138-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c3b41d681349c3445db899d40f1ccb98f3181e6f7a38f1db591b5ffde217151b",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-138-2",
+    "query": "According to Feature 138, how does its scene continuity focus differ from the identity focus of Feature 137?",
+    "expectedAnswer": "- Feature 137 Vertical Drama Identity-Stable I2V Pipeline (sibling spec, same session: face identity. 138 = the WORLD stays the same place; 137 = the PERSON stays the same person. Shared QC skill via request-gated field groups — §10, §12)",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md",
+      "sha256": "c3b41d681349c3445db899d40f1ccb98f3181e6f7a38f1db591b5ffde217151b",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "quoteSha256": "68a1cb84595b4eef93e7d30778dface3081f074d697b49e6d460b12c65d5e068",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/138-vertical-drama-scene-continuity-engine/spec.md"
+      ],
+      "requiredClaims": ["feature138-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c3b41d681349c3445db899d40f1ccb98f3181e6f7a38f1db591b5ffde217151b",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-139-1",
+    "query": "Which video prompt and color-grading work is explicitly outside scope?",
+    "expectedAnswer": "- Keep video prompt shaping and ffmpeg color grading out of scope.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/139-vertical-drama-series-look-lock/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/139-vertical-drama-series-look-lock/spec.md",
+      "sha256": "43c807bb4d31a69f10ef5cec0b0984e34be45c46b6a68ba747c2fe27d63d694c",
+      "lineStart": 32,
+      "lineEnd": 32,
+      "quoteSha256": "6f64707f542084db91837df0e972d9cd7f4ed1c731105935592911023c21033b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/139-vertical-drama-series-look-lock/spec.md"
+      ],
+      "requiredClaims": ["feature139-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:43c807bb4d31a69f10ef5cec0b0984e34be45c46b6a68ba747c2fe27d63d694c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-139-2",
+    "query": "What exact mode identifier copies a captured identity into the effective slot?",
+    "expectedAnswer": "1. `inherit_source`: copy the captured inherited identity into the effective slot;",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/139-vertical-drama-series-look-lock/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/139-vertical-drama-series-look-lock/spec.md",
+      "sha256": "43c807bb4d31a69f10ef5cec0b0984e34be45c46b6a68ba747c2fe27d63d694c",
+      "lineStart": 131,
+      "lineEnd": 131,
+      "quoteSha256": "3432195926c714b0c07b4c8bc360f19f3d99d23581de673d5cd68df2bef47377",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/139-vertical-drama-series-look-lock/spec.md"
+      ],
+      "requiredClaims": ["feature139-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:43c807bb4d31a69f10ef5cec0b0984e34be45c46b6a68ba747c2fe27d63d694c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-140-1",
+    "query": "ไฟล์ skill ใดมีข้อกำหนด shot-grid ที่อ้างถึงในสเปก?",
+    "expectedAnswer": "- **Skill rule** — `skills/vertical-drama-storyboard-shotgrid/skill.md:525-530`:",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "filename", "code_identifier"],
+    "sourceGroupId": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md",
+      "sha256": "0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
+      "lineStart": 71,
+      "lineEnd": 71,
+      "quoteSha256": "ff4be3732b71e1cafe16c8c023d7859bcc85973f9d0f363b57e0e4ea8c659ac3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md"
+      ],
+      "requiredClaims": ["feature140-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-140-2",
+    "query": "Which source module contains the automatic character-roster registration logic?",
+    "expectedAnswer": "- **Auto-registration** — `verticalDramaCharacterRosterAutoRegister.ts:542-565`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "filename", "code_identifier"],
+    "sourceGroupId": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md",
+      "sha256": "0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
+      "lineStart": 77,
+      "lineEnd": 77,
+      "quoteSha256": "27263fa782c034d32b5b0b6d20423293efcd6d89e0baecb5ef09ea0c1e6c67c3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/140-vertical-drama-shot-fact-continuity/spec.md"
+      ],
+      "requiredClaims": ["feature140-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0c4987cd716d2cf438c8bc3b8e62ffb3ab549638fdb92ee6bd9ca6c4f7335722",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-141-1",
+    "query": "How many input tokens did the selected model receive in each review round, according to the analysis?",
+    "expectedAnswer": "- the selected model received approximately 14,000 input tokens per round;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+      "sha256": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "lineStart": 73,
+      "lineEnd": 73,
+      "quoteSha256": "ddf2681c24b195c346d1ab88b79b13a7420e7a71a5cb642e0897887c9973ae39",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md"
+      ],
+      "requiredClaims": ["feature141-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-141-2",
+    "query": "แต่ละรอบที่ไม่ผ่านใช้ output allowance ไปเท่าใดตามตัวเลขในรายงาน?",
+    "expectedAnswer": "- every failed round consumed the full 8,000-token output allowance;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+      "sha256": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "lineStart": 74,
+      "lineEnd": 74,
+      "quoteSha256": "5adf86e1a0444c33d0ea28259884c6d64371fe0fb7e4232e695328ddacebc874",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md"
+      ],
+      "requiredClaims": ["feature141-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-142-1",
+    "query": "Which background worker must be registered for asynchronous video-intelligence stages?",
+    "expectedAnswer": "- Register the `video_intelligence_jobs` BullMQ worker so async stages execute.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md",
+      "sha256": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
+      "lineStart": 117,
+      "lineEnd": 117,
+      "quoteSha256": "21e6cc3bece318aa607526182c01a590393fffa779862c96b8dcea083cac7fc5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md"
+      ],
+      "requiredClaims": ["feature142-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-142-2",
+    "query": "Which review adapter connects this workflow to the quality-review skill?",
+    "expectedAnswer": "- Add the `runReview` adapter that connects `skills/video-project-quality-review`",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md",
+      "sha256": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
+      "lineStart": 118,
+      "lineEnd": 118,
+      "quoteSha256": "9ba96dc2633184eee93b829f3a6e03aa2da98c2956f1a563c88c77a3ec01dbc8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md"
+      ],
+      "requiredClaims": ["feature142-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-143-1",
+    "query": "Which exact Remotion package is documented as installed and already in use?",
+    "expectedAnswer": "4. **`@remotion/transitions` is installed and already used** — `package.json:118`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
+      "sha256": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "lineStart": 50,
+      "lineEnd": 50,
+      "quoteSha256": "6ca154abce88c13bfa6654fef342eb466e776b32b509d4dc83be5edfbf87b49a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      ],
+      "requiredClaims": ["feature143-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-143-2",
+    "query": "ผู้ตรวจควรดูอะไรเพื่อประเมินตำแหน่งซับเทียบกับองค์ประกอบอื่นในภาพ?",
+    "expectedAnswer": "- see where the subtitles sit relative to everything else;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/143-video-studio-layer-timeline-editor/spec.md",
+      "sha256": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "lineStart": 81,
+      "lineEnd": 81,
+      "quoteSha256": "d69761f4faef6502454042cb5b717d34446b31a12cf67807a406b6e6c068cc01",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md"
+      ],
+      "requiredClaims": ["feature143-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-144-1",
+    "query": "What should determine a generated character’s identity and role?",
+    "expectedAnswer": "- story-grounded character identity and role;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+      "sha256": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "93d4b21a208f808d65ad4a5bc4dd583e4c4d8cf21ab405f01165a0c86dd06ba6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md"
+      ],
+      "requiredClaims": ["feature144-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-144-2",
+    "query": "How should a character remain visually readable without a fashion-catalog look?",
+    "expectedAnswer": "- attractive, camera-readable presence without a fashion-model/catalog look;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+      "sha256": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "lineStart": 23,
+      "lineEnd": 23,
+      "quoteSha256": "c3deb3a23596df958f9e9c510f00079226f0da0800a221314018cc003361ee6a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md"
+      ],
+      "requiredClaims": ["feature144-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-145-1",
+    "query": "What kind of Remotion job payload must the Hermes executor refuse to accept?",
+    "expectedAnswer": "- Do not allow Hermes to submit arbitrary `inputJson` for a Remotion job.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/145-hermes-remotion-render-executor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/145-hermes-remotion-render-executor/spec.md",
+      "sha256": "1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
+      "lineStart": 221,
+      "lineEnd": 221,
+      "quoteSha256": "11f7db41e74f6490e54eb45843c03f90b7d3804df8dcb2d9efd6cfd6d576b984",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/145-hermes-remotion-render-executor/spec.md"
+      ],
+      "requiredClaims": ["feature145-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-145-2",
+    "query": "Should implementing this feature remove or rewrite the Tauri Worker App?",
+    "expectedAnswer": "- Do not remove or rewrite the Tauri Worker App.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/145-hermes-remotion-render-executor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/145-hermes-remotion-render-executor/spec.md",
+      "sha256": "1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
+      "lineStart": 224,
+      "lineEnd": 224,
+      "quoteSha256": "f246b47e10bab6b352a6a4587d2eac6124cc7b09892846fa389aea535c5c9000",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/145-hermes-remotion-render-executor/spec.md"
+      ],
+      "requiredClaims": ["feature145-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1781c78e876eb1aaa59d8494d82859f9151ead46e54441d35c21db73e69dc49a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-146-1",
+    "query": "Which two protocol compatibility generations does the server document?",
+    "expectedAnswer": "- modern `2026-07-28` and legacy `2025-11-25` compatibility;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+      "sha256": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+      "lineStart": 68,
+      "lineEnd": 68,
+      "quoteSha256": "31baf4b81109ac27ef1b19c03c17b2b9d021c16370a24f06d625f8dc898bdba2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md"
+      ],
+      "requiredClaims": ["feature146-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-146-2",
+    "query": "What kinds of structured result metadata may accompany MCP tool responses?",
+    "expectedAnswer": "- result metadata, cache hints, tool schemas, annotations, structured results;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+      "sha256": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+      "lineStart": 71,
+      "lineEnd": 71,
+      "quoteSha256": "da9d55110e09b898cc2b9efce77aacbfb4dbfdce8078e8d9434b10baffe8e49b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md"
+      ],
+      "requiredClaims": ["feature146-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-147-1",
+    "query": "ผู้ใช้ต้องตั้งค่า MCP endpoint ใดให้กับ client เพื่อเริ่ม onboarding?",
+    "expectedAnswer": "1. The user adds only `https://smartaihub.app/v1/mcp` to Hermes, Claude, or Codex. No SmartAIHub API key, issuer URL, client ID, or JWKS URL is copied manually.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "api_path"],
+    "sourceGroupId": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md",
+      "sha256": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "quoteSha256": "902562b554ab904c20e208b52b294d6b8187691d0fb354c115dd04bf4b76eded",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      ],
+      "requiredClaims": ["feature147-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-147-2",
+    "query": "What HTTP status is returned for the initial authorization challenge?",
+    "expectedAnswer": "2. The client calls MCP and receives a standards-compliant `401` challenge.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "exact_id"],
+    "sourceGroupId": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md",
+      "sha256": "48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "quoteSha256": "1e544e9091523d5a16ce6958ec6bfc32693f34d70d996c43ce9d56638faf06c1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md"
+      ],
+      "requiredClaims": ["feature147-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:48a9d13a32c0fc5ef503064b4592d356ea174b2055d04ec792674ab57a43b3f4",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-148-1",
+    "query": "Which arbitrary local command runtimes are prohibited from MCP access?",
+    "expectedAnswer": "- arbitrary PowerShell, CMD, Python, or Node execution from MCP;",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md",
+      "sha256": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
+      "lineStart": 84,
+      "lineEnd": 84,
+      "quoteSha256": "c086701d8b4b292fbad7782505a405e74190c69d6b1f36b5e1f0dbc9969602ff",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md"
+      ],
+      "requiredClaims": ["feature148-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-148-2",
+    "query": "What exact process-termination operation is disallowed for arbitrary PIDs?",
+    "expectedAnswer": "- arbitrary process termination such as `killPID(any_pid)`;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md",
+      "sha256": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
+      "lineStart": 86,
+      "lineEnd": 86,
+      "quoteSha256": "b15bc726dd157db4efba198944fc43f673f901ec7e30f94767d91089e6e49d84",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md"
+      ],
+      "requiredClaims": ["feature148-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b06-149-1",
+    "query": "What kinds of character continuity drift should the video prompt QC catch?",
+    "expectedAnswer": "3. A character's identity, face, age, hair, or wardrobe drifts.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md",
+      "sha256": "5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
+      "lineStart": 63,
+      "lineEnd": 63,
+      "quoteSha256": "8a6267fc7cdafb3b4f65d76f690ecd1e97d79639244969906eb778327024beb5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md"
+      ],
+      "requiredClaims": ["feature149-b06-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b06-149-2",
+    "query": "ช็อตที่สร้างขึ้นต้องป้องกันการเพิ่มบุคคลแบบใดที่ไม่ได้อนุมัติ?",
+    "expectedAnswer": "2. Extra people, duplicate people, or unapproved background people appear.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md",
+      "sha256": "5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
+      "lineStart": 62,
+      "lineEnd": 62,
+      "quoteSha256": "3d15c6ac890cb1d3a9f94d5f23b5df9bdf54e416c45595f40859395751fcc630",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v6"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch06-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified after two targeted revision rounds; source hashes/spans, answer support, labels, uniqueness and development-only status passed."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger/spec.md"
+      ],
+      "requiredClaims": ["feature149-b06-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:5b8888ee983be79ceb56a26d78f7ed4ac0ad6f7d5430a1e1fb279c4a44c057f9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  }
+]

@@ -1,9 +1,9 @@
 {
-  "evidence_id": "SPEC229-P2298-CANDIDATE-CORPUS-BATCH04-05-20261017",
-  "workunit": "P229.8 Gold Candidate Corpus Expansion — batches 04 and 05",
+  "evidence_id": "SPEC229-P2298-CANDIDATE-CORPUS-BATCH06-07-20261017",
+  "workunit": "P229.8 Gold Candidate Corpus Expansion — batches 06 and 07",
   "workunit_status": "PASS",
   "p2298_acceptance_status": "NOT_EVALUABLE",
-  "base_canonical_sha": "4c1881967c7fab5833cabc01d71845888eb09ddd",
+  "base_canonical_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
   "previous_pr": {
     "number": 1069,
     "merged_sha": "4c1881967c7fab5833cabc01d71845888eb09ddd",
@@ -17,32 +17,32 @@
       "build-preview"
     ]
   },
-  "tested_source_sha": "41fc6ba352f94fe8a9330f1a7fee28dfd3704fa8",
+  "tested_source_sha": "47418ec2c45eb08577db96b8a80a3c28e93ec921",
   "dataset_path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-  "dataset_file_sha256": "46fe6b774b040ddfca6153540652935046145cf702ada92d9356bbc0434a02e5",
-  "dataset_digest_sha256": "ff34172e2ec2e8ad1b48c7e4b0bf8264f95f73d7915d555b160af151b833c793",
+  "dataset_file_sha256": "fc41348fc0c4f895ee3199a70085719f716813af56456a62d2fe7ea1b1ade0b6",
+  "dataset_digest_sha256": "67fee30ddb4a68f2695e4e0f2abf9cf6f084b0331d3fcab6249f51a728c120c5",
   "counts": {
-    "candidate_queries": 260,
+    "candidate_queries": 360,
     "unreviewed": 0,
-    "independently_reviewed": 260,
-    "machine_reviewed": 260,
+    "independently_reviewed": 360,
+    "machine_reviewed": 360,
     "human_reviewed": 0,
     "human_accepted": 0,
-    "review_accepted": 260,
+    "review_accepted": 360,
     "review_disagreements": 0,
     "adjudicated": 0,
     "accepted_for_gold": 0,
     "pending_adjudication": 0,
     "release_approved": 0,
     "held_out_release_approved": 0,
-    "development_only": 260
+    "development_only": 360
   },
   "language_counts": {
-    "thai": 82,
-    "english": 107,
-    "mixed": 71
+    "thai": 103,
+    "english": 173,
+    "mixed": 84
   },
-  "source_group_count": 150,
+  "source_group_count": 195,
   "class_counts": {
     "quality_coverage": 1,
     "spec_factual": 9,
@@ -56,18 +56,18 @@
     "language": 2,
     "latency": 2,
     "handoff_fact": 1,
-    "exact_id": 86,
-    "spec_id": 62,
+    "exact_id": 110,
+    "spec_id": 77,
     "document_title": 50,
-    "code_identifier": 44,
-    "semantic_paraphrase": 180,
+    "code_identifier": 55,
+    "semantic_paraphrase": 280,
     "retrieval": 1,
     "multi_hop": 10,
     "follow_up": 2,
-    "filename": 7,
+    "filename": 11,
     "path": 3,
     "error_code": 1,
-    "api_path": 6,
+    "api_path": 7,
     "ambiguous": 1,
     "coverage": 1,
     "acl_attack": 2,
@@ -94,6 +94,25 @@
       "revised_initially": 11,
       "rejected": 0,
       "sha256": "6b9887fc802cd64435cf44c70ab3ac41b2e78129fd274a1ca4cfc201ac4334de"
+    },
+    "batch06": {
+      "queries": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-agent-review-2026-10-17-batch06-final",
+      "accepted": 50,
+      "revised_initially": 10,
+      "final_revision": 1,
+      "sha256": "d23497f699d972ad8ac010a85c8180afcdacf6e3bd89df7e4823a9ace8b3a096"
+    },
+    "batch07": {
+      "queries": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-agent-review-2026-10-17-batch07-final",
+      "accepted": 50,
+      "revised_initially": 1,
+      "sha256": "47341a12d0e9cd05266ce84e32bf111e81d673f63a1287341ed09ed151040e1f"
     }
   },
   "candidate_required_classes_missing": [
@@ -158,29 +177,40 @@
   "commands": [
     {
       "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
-      "result": "PASS: 2 files, 16 tests on exact tested_source_sha 41fc6ba352f94fe8a9330f1a7fee28dfd3704fa8"
+      "result": "PASS: 2 files, 16 tests on exact tested_source_sha 47418ec2c45eb08577db96b8a80a3c28e93ec921"
     },
     {
       "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-      "result": "PASS: schema, source/quote digest, inclusive spans and uniqueness; 260 independently machine-reviewed development candidates on exact tested_source_sha; all 15 §27 criteria NOT_EVALUABLE"
-    },
-    {
-      "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
-      "result": "PASS: 9 synthetic negative-control fixtures on canonical merge SHA; DEVELOPMENT_FIXTURES_NOT_CERTIFIED"
+      "result": "PASS: source digests, quote hashes, inclusive spans, uniqueness and reviews; 360 independently machine-reviewed development-only candidates; all 15 §27 criteria NOT_EVALUABLE"
     }
   ],
   "production_verified": false,
   "remaining": [
-    "At least 240 more unique independently reviewed candidate queries are needed to reach 500 review-accepted rows; missing classes: uuid, typo, stale_conflict, no_answer, deleted_revoked, ocr, long_document, code_config_log.",
-    "Human-reviewed: 0; agent review is explicitly not human acceptance.",
-    "No release-approved or held-out cohort; all 15 §27 release criteria remain NOT_EVALUABLE.",
-    "No authorized retrieval observations, confidence intervals, latency by retrieval profile, or cost/query."
+    "At least 140 additional unique independently reviewed queries are needed to reach 500 candidate rows; missing required classes: uuid, typo, stale_conflict, no_answer, deleted_revoked, OCR, long_document, code_config_log.",
+    "Human-reviewed and human-accepted: 0; agent reviews are distinct and not human approval.",
+    "Release-approved and held-out queries: 0; all 15 §27 criteria remain NOT_EVALUABLE.",
+    "No authorized retrieval observations, confidence intervals, profile-specific latency or cost/query."
   ],
   "batch_files": {
     "batch01_sha256": "60cc5ac0cc619c0704c7bc8359700ae258568c1f96dc91062c57f068a0bf7b07",
     "batch02_sha256": "2c93b62e85b864a30751e8e81379762e964023b065ed6d9a84e028cbd0a4def5",
     "batch03_sha256": "d1b24d44dc042a699c1edef83e583640db350c967c4e98c278dfbb048e63f6df",
     "batch04_sha256": "20e90527e735f64d4e05c23d76eb70512eca722563e8a2577d00d590f2d5dc55",
-    "batch05_sha256": "6b9887fc802cd64435cf44c70ab3ac41b2e78129fd274a1ca4cfc201ac4334de"
-  }
+    "batch05_sha256": "6b9887fc802cd64435cf44c70ab3ac41b2e78129fd274a1ca4cfc201ac4334de",
+    "batch06_sha256": "d23497f699d972ad8ac010a85c8180afcdacf6e3bd89df7e4823a9ace8b3a096",
+    "batch07_sha256": "47341a12d0e9cd05266ce84e32bf111e81d673f63a1287341ed09ed151040e1f"
+  },
+  "previous_prs": [
+    {
+      "number": 1069,
+      "merged_sha": "4c1881967c7fab5833cabc01d71845888eb09ddd",
+      "merged_at": "2026-10-17T16:03:03Z"
+    },
+    {
+      "number": 1070,
+      "merged_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
+      "merged_at": "2026-10-17T16:11:37Z"
+    }
+  ],
+  "release_criteria_count_not_evaluable": 15
 }
