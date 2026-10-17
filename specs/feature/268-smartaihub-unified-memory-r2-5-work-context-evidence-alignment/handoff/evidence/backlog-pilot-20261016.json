@@ -966,6 +966,18 @@
       "archive": "/tmp/smartaihub-backlog-pilot/spec268-completed-ignored-20261017.tar.gz",
       "archive_sha256": "00642a20a72f1d6ed22d5c8efc493b4f5baa7466bdb7f8c35dc2a15edae35597",
       "unrelated_workspaces": "Preserved; no cleanup or retirement attempted"
+    },
+    "execution_recovery": {
+      "observed_at": "2026-10-17T00:51:34.569299+00:00",
+      "action": "Restore unrelated PR1001 description after number-assumption mistake",
+      "outcome": "EXACT_PREVIOUS_BODY_RESTORED_AND_VERIFIED",
+      "original_edit_at": "2026-10-17T00:48:22Z",
+      "restored_body_sha256": "d5e5490f13104b07b73c6c2f40af9096e33af44eebd2435ba2035384a6ef6945",
+      "owned_pr": 1002,
+      "branch_and_title_unchanged": true,
+      "root_cause": "Assumed the next PR number instead of using the returned identity; edited unrelated PR description",
+      "repair": "Read exact previous body from GitHub userContentEdits, compared current body before restore, restored and verified exact bytes; subsequent operations bound to actual owned PR1002",
+      "future_action": "Use returned PR number and verify headRefName before mutating any PR metadata"
     }
   }
 }
