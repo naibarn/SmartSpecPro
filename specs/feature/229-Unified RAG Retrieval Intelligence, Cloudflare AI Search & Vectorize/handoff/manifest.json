@@ -166,10 +166,10 @@
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Proceed with P229.1 contract/security gap review and only then the P1 WorkUnits whose prerequisites are met. Keep Library consumers on their existing behavior until the Broker can provide content evidence and certified profiles; benchmark before changing ranking defaults. Do not duplicate existing Drive/OneDrive content-hash skips or context-pack token budgeting.",
-    "next_ready_workunit": "SPEC229_P229_1_REMAINING_SHARED_CONTRACT_COVERAGE",
+    "next_action": "Verify the normalized request contract at the merged SHA, then close remaining P229.1 security/consumer-boundary gaps without migrating callers that cannot yet consume evidence safely. Begin P1 only where prerequisites are met; add benchmark evidence before changing ranking defaults. Existing Drive/OneDrive hash skips and context-pack token budgets are implemented and must not be duplicated.",
+    "next_ready_workunit": "SPEC229_P229_1_CONSUMER_BOUNDARY_REVIEW",
     "reactivation_predicate": null,
-    "resume_point": "PR #1012 (https://github.com/naibarn/SmartSpecPro/pull/1012) merged through protected path at canonical main SHA 200d9d8f585a969f569cd0fac98e04dbd5f5092c on 2026-10-17T03:03:44Z. progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head c4697054dde73d10d28dd224a950a9130195ede4; preview skipped. Focused Broker + Library ACL/router tests passed 39. Production verification and full typecheck not performed. P229.1 remains partial; broader request contract, consumer migration, and P229.8 hydration/quality gates remain open. Evidence: handoff/evidence/p229-1-broker-contract-20261017.json.",
+    "resume_point": "Latest verified main before this WorkUnit is a98e15e68aeec444969f43c4dd536b60a309d5aa (PR #1013 recorded #1012 receipt). Source 0315fba7a3bf94244ec46e360accbbd8fe5724f3 on codex/spec229-p2291-normalized-request broadens the SAH request DTO and normalizes trusted tenant/user/environment, IDs, purpose, scope, project, status and budget; unsupported provider/query features fail closed. Focused Broker, Library ACL and router tests: 40 passed. Production/full typecheck not done; P229.1 remains partial. Evidence: handoff/evidence/p229-1-shared-contract-20261017.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -370,7 +370,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:04:07.903416Z",
+  "updated_at": "2026-10-17T03:07:57.484787Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
