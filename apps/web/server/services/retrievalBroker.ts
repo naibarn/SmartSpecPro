@@ -248,8 +248,10 @@ function normalizeEvidence(
   content: string,
   sourceRevision: string,
   sourceDigest: string,
+  canonicalSourceUri?: string | null,
 ): RetrievalEvidenceV2 {
   const id = String(result.item_id);
+  const sourceUri = normalizeCitationSourceUri(canonicalSourceUri);
   return {
     evidenceId: `library:${tenantId}:${id}:${sourceRevision}:${sourceDigest.slice(0, 12)}`,
     sourceType: "library_item",
@@ -265,6 +267,7 @@ function normalizeEvidence(
     },
     title: result.title,
     text: content,
+    ...(sourceUri ? { sourceUri } : {}),
     retrievalProvider: "cloudflare_vectorize",
     providerProfileId: profileId ?? resolveLibraryVectorIndexName(),
     retrievalMode: "hybrid",
@@ -283,6 +286,28 @@ function normalizeEvidence(
     tombstoned: false,
     domainEligibility: "unknown",
   };
+}
+
+/** Only expose stable HTTP(S) source URLs as citation targets. */
+function normalizeCitationSourceUri(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const uri = new URL(value);
+    if (
+      (uri.protocol !== "https:" && uri.protocol !== "http:")
+      || uri.username
+      || uri.password
+      // Query strings often contain signed credentials or transient state and
+      // cannot be safely treated as stable citation identity.
+      || uri.search
+    ) {
+      return undefined;
+    }
+    uri.hash = "";
+    return uri.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 function truncateTextToTokenBudget(text: string, budget: number): string {
@@ -372,6 +397,7 @@ async function hydrateLibraryEvidence(params: {
       text,
       content.updated_at,
       sourceDigest,
+      content.canonicalSourceUri,
     );
     evidence.push(itemEvidence);
     remainingTokens = Math.max(0, remainingTokens - estimateTokens(text));

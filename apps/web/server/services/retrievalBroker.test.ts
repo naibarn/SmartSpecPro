@@ -65,6 +65,7 @@ beforeEach(() => {
     item_id: 12,
     content: "# Build guide\nCurrent canonical text.",
     updated_at: row.updated_at,
+    canonicalSourceUri: "https://canonical.example.test/build-guide",
   });
   mockGetProviderConfig.mockResolvedValue({
     provider: "cloudflare_vectorize",
@@ -88,6 +89,39 @@ beforeEach(() => {
 });
 
 describe("retrieveLibraryEvidenceV2", () => {
+  it("builds citations from the ACL-checked canonical source rather than provider metadata", async () => {
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence[0]).toMatchObject({
+      sourceUri: "https://canonical.example.test/build-guide",
+      canonicalRef: { kind: "library_item", id: "12" },
+    });
+    expect(result.evidenceQuality).toBe("weak");
+    expect(result.degradationReasons).toContain("QUALITY_GATE_NOT_CERTIFIED");
+  });
+
+  it.each([
+    "javascript:alert(1)",
+    "https://user:password@example.test/doc",
+    "https://example.test/doc?token=secret",
+    "not a url",
+  ])("omits unsafe or unstable canonical citation URI: %s", async (canonicalSourceUri) => {
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12,
+      content: "# Build guide\nCurrent canonical text.",
+      updated_at: row.updated_at,
+      canonicalSourceUri,
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence[0]).not.toHaveProperty("sourceUri");
+    expect(result.evidence[0]).toMatchObject({
+      canonicalRef: { kind: "library_item", id: "12" },
+      provenanceVerified: true,
+    });
+  });
+
   it("rejects missing authenticated identity before provider access", async () => {
     await expect(
       retrieveLibraryEvidenceV2({ query: "guide" }, { userId: 0, tenantId: "" }),
