@@ -314,6 +314,8 @@ export interface LibrarySearchInput {
   itemType?: string;
   sortBy?: "created_at" | "title" | "size_bytes" | "relevance";
   sortOrder?: "asc" | "desc";
+  /** Used only by Retrieval Broker adapters; omitted from public v1 output. */
+  includeRetrievalDiagnostics?: boolean;
 }
 
 export interface UploadLibraryFileInput {
@@ -425,6 +427,12 @@ export interface LibrarySearchResponseV1 {
   offset: number;
   has_more: boolean;
   results: LibrarySearchResultV1[];
+  /** Internal provider attribution for Broker adapters; omitted from legacy responses. */
+  retrievalDiagnostics?: {
+    provider: "pgvector" | "cloudflare_vectorize" | "keyword_fallback";
+    profileId?: string;
+    degraded: boolean;
+  };
 }
 
 const DEFAULT_LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS = 1_500;
@@ -6472,6 +6480,21 @@ export async function searchLibraryItems(
     offset,
     has_more: offset + results.length < total,
     results,
+    ...(input.includeRetrievalDiagnostics
+      ? {
+          retrievalDiagnostics: {
+            provider: pgvectorScores
+              ? "pgvector" as const
+              : cloudflareScores
+                ? "cloudflare_vectorize" as const
+                : "keyword_fallback" as const,
+            ...(cloudflareScores
+              ? { profileId: providerConfig.vectorizeIndexName || resolveLibraryVectorIndexName() }
+              : {}),
+            degraded: !pgvectorScores && !cloudflareScores,
+          },
+        }
+      : {}),
   };
 }
 

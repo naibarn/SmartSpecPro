@@ -59,6 +59,7 @@ import {
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getPrivateVaultPinVersion, validatePrivateVaultAccessToken } from "../services/privateVaultService";
 import { federatedSearch } from "../services/federatedSearch";
+import { retrieveLibraryEvidenceV2 } from "../services/retrievalBroker";
 import {
   archiveLibraryContextPack,
   approveLibraryContextPack,
@@ -372,6 +373,34 @@ function toClientLibraryMutationError(error: unknown): TRPCError | null {
 }
 
 export const libraryRouter = router({
+  searchV2: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().max(1000),
+        queryClass: z.enum(["DOCUMENT_RAG", "HYBRID_SEARCH"]).optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+        maxEvidence: z.number().int().min(1).max(12).optional(),
+        maxContextTokens: z.number().int().min(1).max(32_000).optional(),
+        filters: searchFilterSchema.optional(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+      return retrieveLibraryEvidenceV2(
+        {
+          query: input.query,
+          queryClass: input.queryClass,
+          maxCandidates: input.limit,
+          maxEvidence: input.maxEvidence,
+          maxContextTokens: input.maxContextTokens,
+          filters: input.filters,
+        },
+        actor,
+      );
+    }),
+
   search: protectedProcedure
     .input(
       z.object({
