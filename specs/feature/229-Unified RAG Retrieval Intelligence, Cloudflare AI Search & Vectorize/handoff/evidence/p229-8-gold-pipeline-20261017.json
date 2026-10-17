@@ -2,7 +2,7 @@
   "evidence_id": "SPEC229-P2298-GOLD-DATASET-PIPELINE-20261017",
   "workunit": "P229.8 Gold Dataset Pipeline",
   "outcome": "IMPLEMENTATION_ACCEPTANCE_PASS; P229.8_ACCEPTANCE_NOT_EVALUABLE",
-  "source_sha": "c796222bda1856a29a9b4ad9fbcac086a3d297c9",
+  "source_sha": "6802ce75f1c21dbe6475c8719c45dbce5a4f6aad",
   "canonical_base_sha": "744987eebe320b17f5dcff41fef25720e6325589",
   "observed_at": "2026-10-17T15:35:10Z",
   "dataset_sha256": "b9c467c2d4adb206e69f176be3e84648e408c15aa69852c68d59d25dfc04afc1",
@@ -66,5 +66,7 @@
     "Only 10 candidates are currently present and all belong to one source group; no gold/held-out release case is approved.",
     "No production verification is claimed.",
     "Static repository sources cannot establish runtime ACL, freshness, outage, latency, or cost behavior."
-  ]
+  ],
+  "code_commit_sha": "b58ca9dd6",
+  "verification_sha": "6802ce75f1c21dbe6475c8719c45dbce5a4f6aad"
 }
