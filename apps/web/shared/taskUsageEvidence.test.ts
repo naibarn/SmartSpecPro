@@ -15,6 +15,13 @@ function call(overrides: Record<string, unknown> = {}) {
 }
 
 describe("task usage evidence projection", () => {
+  it("keeps an empty observation set unknown instead of reporting measured zero", () => {
+    const result = aggregateUsageEvidence([]);
+    expect(result.completeTotalTokens).toBeNull();
+    expect(result.knownSubtotalTokens).toBe(0);
+    expect(result.counts.unique).toBe(0);
+  });
+
   it("keeps four model identities separate and requires provider confirmation for effective model", () => {
     const source = call({ model: { uiSession: "session-model", requested: "worker-model", providerConfirmedEffective: null, helper: "helper-model" } });
     expect(projectModelFacets(source)).toEqual({ uiSession: "session-model", requested: "worker-model", effective: null, helper: "helper-model" });
@@ -32,6 +39,13 @@ describe("task usage evidence projection", () => {
     expect(result.completeTotalTokens).toBe(37055);
     expect(result.counts).toMatchObject({ received: 3, unique: 1, known: 1, corrections: 1, replayed: 1 });
     expect(result.receipts[0].tokens.cachedInputTokens).toBe(18176);
+  });
+
+  it("counts a persisted correction even when only the final revision is in the read window", () => {
+    const final = call({ revision: 1, sourceRefs: [{ kind: "canonical_correction_event", reference: "event-1" }] });
+    const result = aggregateUsageEvidence([final, final]);
+    expect(result.counts).toMatchObject({ unique: 1, corrections: 1, replayed: 1 });
+    expect(result.completeTotalTokens).toBe(96);
   });
 
   it("deltas cumulative snapshots only within the same explicit session and epoch", () => {

@@ -18,7 +18,7 @@ import {
   listCanonicalJobs,
 } from "../services/jobControlPlaneMonitor";
 import { getSafeTaskControlSessionProjection } from "../services/runnerExecutionSessionService";
-import { getTaskObservabilityDetail, listTaskObservability, TaskObservabilityError } from "../services/taskObservabilityReadModel";
+import { aggregateTaskObservability, getTaskObservabilityDetail, listTaskObservability, TaskObservabilityError } from "../services/taskObservabilityReadModel";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
@@ -135,6 +135,16 @@ export const workerJobsRouter = router({
     .input(z.object({ jobId: z.string().trim().min(1).max(36) }).strict())
     .query(async ({ ctx, input }) => {
       try { return await getTaskObservabilityDetail({ scope: requireTaskObservabilityScope(ctx), jobId: input.jobId }); }
+      catch (error) { return mapObservabilityError(error); }
+    }),
+
+  observabilityAggregate: protectedProcedure
+    .input(z.object({
+      projectId: z.string().trim().min(1).max(160).optional(),
+      specId: z.string().trim().min(1).max(64).optional(),
+    }).strict())
+    .query(async ({ ctx, input }) => {
+      try { return await aggregateTaskObservability({ scope: requireTaskObservabilityScope(ctx), ...input }); }
       catch (error) { return mapObservabilityError(error); }
     }),
 

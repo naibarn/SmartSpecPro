@@ -19,6 +19,8 @@ import { goalBaselineSchema, projectGoalProgress } from "../../shared/taskGoalPr
 
 const PAGE_SIZE = 25;
 const MAX_JOB_DETAIL = 100;
+const MAX_AGGREGATE_JOBS = 500;
+const MAX_AGGREGATE_CALLS = 10_000;
 const CURSOR_TTL_MS = 10 * 60_000;
 const CURSOR_SECRET = process.env.JWT_SECRET?.trim() ?? "";
 
@@ -196,6 +198,13 @@ function goalProjection(job: typeof workerJobs.$inferSelect) {
   const progress = objectValue(job.progressJson);
   const input = objectValue(job.inputJson);
   const baselineResult = goalBaselineSchema.safeParse(input?.goalBaseline);
+  // Schema validity and a self-declared digest do not bind the baseline to an
+  // authoritative Goal source. No canonical Goal baseline store/dereference
+  // contract currently exists, so this read-only surface must stay UNKNOWN.
+  if (baselineResult.success) {
+    const unknown = projectGoalProgress({ baseline: null, observations: [] });
+    return { ...unknown, reason: "goal_baseline_source_unverified" };
+  }
   const observability = objectValue(progress?.taskObservability);
   const observations = Array.isArray(observability?.goalObservations) ? observability!.goalObservations : [];
   const safeObservations = observations.flatMap((value) => {
@@ -231,7 +240,7 @@ function goalProjection(job: typeof workerJobs.$inferSelect) {
     }];
   });
   try {
-    return projectGoalProgress({ baseline: baselineResult.success ? baselineResult.data : null, observations: safeObservations as never[] });
+    return projectGoalProgress({ baseline: null, observations: safeObservations as never[] });
   } catch (error) {
     const unknown = projectGoalProgress({ baseline: null, observations: [] });
     return { ...unknown, status: "EVIDENCE_CONFLICT" as const, reason: error instanceof Error ? safeText(error.message, 80) : "goal_evidence_invalid" };
@@ -345,6 +354,10 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     recovery: { nextRetryAt: asIso(job.nextRetryAt), retryEligible: job.status === "retry_scheduled" && Boolean(job.nextRetryAt), runnerSessionState: runnerSession?.state ?? null },
     timeline: timelineRows.reverse().map((event) => {
       const payload = objectValue(event.payloadJson);
+      const readTokens = (value: Record<string, unknown> | null) => {
+        const read = (field: string) => Number.isSafeInteger(value?.[field]) && Number(value?.[field]) >= 0 ? Number(value?.[field]) : null;
+        return { inputTokens: read("inputTokens"), cachedInputTokens: read("cachedInputTokens"), outputTokens: read("outputTokens") };
+      };
       return {
         id: event.id,
         type: event.eventType,
@@ -352,6 +365,12 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
         attempt: event.attempt,
         phase: safeText(payload?.phase ?? payload?.stage, 80),
         reasonCode: safeText(payload?.reasonCode ?? payload?.safeErrorCode, 100),
+        correction: event.eventType === "CODEX_MODEL_USAGE_CORRECTED" ? {
+          modelCallId: safeText(payload?.modelCallId, 160),
+          previousUsage: readTokens(objectValue(payload?.previousUsage)),
+          correctedUsage: readTokens(objectValue(payload?.correctedUsage)),
+          additionalCharge: Number.isSafeInteger(payload?.additionalCharge) && Number(payload?.additionalCharge) >= 0 ? Number(payload?.additionalCharge) : null,
+        } : null,
       };
     }),
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
@@ -446,5 +465,126 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
     snapshot: { asOf, expiresAt: new Date((cursor?.exp ?? Date.now() + CURSOR_TTL_MS)).toISOString(), consistency: "created_at_watermark" as const },
     items,
     nextCursor: hasMore && last ? encodeCursor({ v: 1, tenantId: input.scope.tenantId, userId: input.scope.userId, isAdmin: Boolean(input.scope.isAdmin), projectId: input.projectId ?? null, specId: input.specId ?? null, conversationId: input.conversationId ?? null, asOf, beforeAt: last.createdAt.toISOString(), beforeId: last.id, exp: cursor?.exp ?? Date.now() + CURSOR_TTL_MS }) : null,
+  };
+}
+
+/** Bounded Project/SPEC union over canonical job-linked consumption identities. */
+export async function aggregateTaskObservability(input: { scope: Scope; projectId?: string; specId?: string }) {
+  assertScope(input.scope);
+  if (!input.projectId && !input.specId) throw new TaskObservabilityError("SCOPE_REQUIRED");
+  getDb();
+  const asOf = new Date();
+  const jobPredicates = [eq(workerJobs.tenantId, input.scope.tenantId), lte(workerJobs.createdAt, asOf)];
+  if (!input.scope.isAdmin) jobPredicates.push(eq(workerJobs.requestedByUserId, input.scope.userId));
+  if (input.projectId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId') = ${input.projectId}`);
+  if (input.specId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId') = ${input.specId}`);
+  const jobs = await db.select().from(workerJobs).where(and(...jobPredicates))
+    .orderBy(desc(workerJobs.createdAt), desc(workerJobs.id)).limit(MAX_AGGREGATE_JOBS + 1);
+  const jobsCapped = jobs.length > MAX_AGGREGATE_JOBS;
+  const boundedJobs = jobs.slice(0, MAX_AGGREGATE_JOBS);
+  const jobIds = boundedJobs.map((job) => job.id);
+  const reservations = jobIds.length ? await db.select().from(workerJobProviderReservations)
+    .where(and(inArray(workerJobProviderReservations.workerJobId, jobIds), lte(workerJobProviderReservations.createdAt, asOf), lte(workerJobProviderReservations.updatedAt, asOf)))
+    .orderBy(workerJobProviderReservations.createdAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
+  const reservationsCapped = reservations.length > MAX_AGGREGATE_CALLS;
+  const boundedReservations = reservations.slice(0, MAX_AGGREGATE_CALLS);
+  const callIds = boundedReservations.flatMap((row) => row.modelCallId ? [row.modelCallId] : []);
+  const correctionEvents = jobIds.length ? await db.select({ workerJobId: workerJobEvents.workerJobId, id: workerJobEvents.id, payloadJson: workerJobEvents.payloadJson, createdAt: workerJobEvents.createdAt })
+    .from(workerJobEvents).where(and(inArray(workerJobEvents.workerJobId, jobIds), eq(workerJobEvents.eventType, "CODEX_MODEL_USAGE_CORRECTED"), lte(workerJobEvents.createdAt, asOf)))
+    .orderBy(workerJobEvents.createdAt).limit(MAX_AGGREGATE_CALLS) : [];
+  const jobById = new Map(boundedJobs.map((job) => [job.id, job]));
+  const correctionsByJob = new Map<string, Map<string, Record<string, unknown>>>();
+  for (const event of correctionEvents) {
+    const payload = objectValue(event.payloadJson);
+    const modelCallId = safeText(payload?.modelCallId, 160);
+    if (!modelCallId || !callIds.includes(modelCallId)) continue;
+    const jobCorrections = correctionsByJob.get(event.workerJobId) ?? new Map<string, Record<string, unknown>>();
+    jobCorrections.set(modelCallId, { ...payload, correctionEventId: event.id, correctedAt: asIso(event.createdAt) });
+    correctionsByJob.set(event.workerJobId, jobCorrections);
+  }
+  const reservationCalls = boundedReservations.filter((row) => row.reservationKind === "model_call").flatMap((row) => {
+    const job = jobById.get(row.workerJobId);
+    return job ? [reservationEvidence(row, job, correctionsByJob.get(job.id) ?? new Map())] : [];
+  });
+  const inferenceRows = jobIds.length ? await db.select({
+    attemptId: llmInferenceAttempts.attemptId,
+    planId: llmInferenceAttempts.planId,
+    modelProfileId: llmInferenceAttempts.modelProfileId,
+    actualModel: llmInferenceAttempts.actualModel,
+    observedProviderId: llmInferenceAttempts.observedProviderId,
+    observedCredentialOwnerRef: llmInferenceAttempts.observedCredentialOwnerRef,
+    observedDeploymentId: llmInferenceAttempts.observedDeploymentId,
+    observedEndpointSurface: llmInferenceAttempts.observedEndpointSurface,
+    providerId: llmInferenceAttempts.providerId,
+    inputTokens: llmInferenceAttempts.inputTokens,
+    cachedInputTokens: llmInferenceAttempts.cachedInputTokens,
+    outputTokens: llmInferenceAttempts.outputTokens,
+    chargedCostMicros: llmInferenceAttempts.chargedCostMicros,
+    updatedAt: llmInferenceAttempts.updatedAt,
+    workerJobAttemptId: llmInferenceAttempts.workerJobAttemptId,
+    estimatedCostMicros: llmInferencePlans.estimatedCostMicros,
+    parentCostCeilingMicros: llmInferencePlans.parentCostCeilingMicros,
+    workerJobId: llmInferencePlans.workerJobId,
+  }).from(llmInferenceAttempts).innerJoin(llmInferencePlans, eq(llmInferenceAttempts.planId, llmInferencePlans.planId))
+    .where(and(inArray(llmInferencePlans.workerJobId, jobIds), eq(llmInferencePlans.tenantId, input.scope.tenantId), lte(llmInferenceAttempts.createdAt, asOf), lte(llmInferenceAttempts.updatedAt, asOf)))
+    .orderBy(llmInferenceAttempts.createdAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
+  const inferenceCapped = inferenceRows.length > MAX_AGGREGATE_CALLS;
+  const boundedInference = inferenceRows.slice(0, MAX_AGGREGATE_CALLS);
+  const reservationAttemptKeys = new Set(boundedReservations.filter((row) => row.reservationKind === "model_call" && row.attemptId).map((row) => `${row.workerJobId}:${row.attemptId}`));
+  const inferenceCalls = boundedInference.flatMap((row) => {
+    const job = jobById.get(row.workerJobId);
+    return job ? [inferenceEvidence(row, job, null, Boolean(row.workerJobAttemptId && reservationAttemptKeys.has(`${job.id}:${row.workerJobAttemptId}`)))] : [];
+  });
+  const usage = aggregateUsageEvidence([...reservationCalls, ...inferenceCalls]);
+  const capped = jobsCapped || reservationsCapped || inferenceCapped || correctionEvents.length >= MAX_AGGREGATE_CALLS;
+  const estimateGroups = new Map<string, number | null>();
+  const estimateConflicts = new Set<string>();
+  for (const row of boundedReservations) {
+    const identity = row.reservationKind === "model_call" && row.modelCallId
+      ? `${row.workerJobId}:call:${row.modelCallId}`
+      : `${row.workerJobId}:reservation:${row.operationKey}`;
+    if (!estimateGroups.has(identity)) estimateGroups.set(identity, row.reservedTokens);
+    else if (estimateGroups.get(identity) !== row.reservedTokens) estimateConflicts.add(identity);
+  }
+  const estimateUnknownKeys = new Set([
+    ...[...estimateGroups].filter(([, value]) => value === null).map(([key]) => key),
+    ...estimateConflicts,
+  ]);
+  const estimateUnknownCount = estimateUnknownKeys.size;
+  const reservedTokenEstimate = estimateGroups.size === 0 || estimateUnknownCount > 0
+    ? null
+    : [...estimateGroups.values()].reduce<number>((sum, value) => sum + (value ?? 0), 0);
+  return {
+    scope: input.projectId && input.specId ? "project_spec" as const : input.projectId ? "project" as const : "spec" as const,
+    projectId: input.projectId ?? null,
+    specId: input.specId ?? null,
+    scopeBinding: { status: "UNVERIFIED" as const, reason: "Project/SPEC identity is read from existing job metadata; canonical repository ownership is not dereferenced here." },
+    observedJobCount: boundedJobs.length,
+    goalCoverage: {
+      status: "UNKNOWN" as const,
+      baselineCandidateCount: boundedJobs.filter((job) => objectValue(job.inputJson)?.goalBaseline !== undefined).length,
+      reason: "No authoritative Goal baseline source is currently linked to canonical jobs; candidate metadata is not treated as a verified baseline.",
+    },
+    asOf: asOf.toISOString(),
+    consistency: "created_at_watermark_live_state" as const,
+    usage: {
+      ...usage,
+      completeTotalTokens: capped ? null : usage.completeTotalTokens,
+      coverage: {
+        status: capped ? "CAPPED" as const : "PARTIAL" as const,
+        reason: capped ? "Aggregation reached a safety bound; complete totals are withheld." : "Aggregate includes only usage linked to canonical jobs and does not imply coverage of unlinked helper/provider calls.",
+        sources: ["worker_job_provider_reservations", "llm_inference_attempts"],
+        missingSources: ["unlinked_external_helper_calls", "unlinked_provider_usage", "provider_quota_observations"],
+      },
+    },
+    resourceEstimates: {
+      observedReservationCount: estimateGroups.size,
+      reservedTokenEstimate,
+      missingReservationTokenEstimateCount: estimateUnknownCount,
+      inferenceCostEstimateMicros: boundedInference.reduce((sum, row) => sum + (row.estimatedCostMicros ?? 0), 0),
+      missingInferenceCostEstimateCount: boundedInference.filter((row) => row.estimatedCostMicros === null).length,
+      capped,
+    },
+    quotaCoverage: { status: "UNKNOWN" as const, reason: "No provider quota observation is linked to this aggregate." },
   };
 }

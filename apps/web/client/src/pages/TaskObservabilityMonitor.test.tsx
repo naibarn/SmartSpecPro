@@ -3,16 +3,18 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-const { listQuery, detailQuery, runnerQuery } = vi.hoisted(() => ({
+const { listQuery, detailQuery, runnerQuery, aggregateQuery } = vi.hoisted(() => ({
   listQuery: { current: {} as Record<string, unknown> },
   detailQuery: { current: {} as Record<string, unknown> },
   runnerQuery: { current: {} as Record<string, unknown> },
+  aggregateQuery: { current: {} as Record<string, unknown> },
 }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: { workerJobs: {
     observability: { useQuery: () => listQuery.current },
     observabilityDetail: { useQuery: () => detailQuery.current },
+    observabilityAggregate: { useQuery: () => aggregateQuery.current },
   }, runnerNodes: { list: { useQuery: () => runnerQuery.current } } },
 }));
 
@@ -23,6 +25,7 @@ const job = { id: "job-1", jobType: "spec224.development", status: "running", st
 beforeEach(() => {
   listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z" }, nextCursor: null }, isLoading: false, error: null, refetch: vi.fn() };
   runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceIds: [], toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
+  aggregateQuery.current = { data: null, isLoading: false, error: null };
   detailQuery.current = { data: {
     ...job,
     heartbeatFreshness: "unknown",
@@ -34,7 +37,7 @@ beforeEach(() => {
     goal: { status: "BASELINE_MISSING", reason: "trusted_baseline_missing", verifiedGoalCompletion: { percent: null, rawPercent: null }, executionProgress: { percent: null }, implementationCompletion: { percent: null }, workCompletion: { percent: null }, evidenceCoverage: { coveredCriteria: 0, totalCriteria: 0 }, remainingScope: [], blockedScope: [] },
     usage: { counts: { unique: 1, corrections: 1, replayed: 1, missing: 0, conflicts: 0, overlap: 0 }, completeTotalTokens: null, knownSubtotalTokens: 37055, coverageReason: null, coverage: { status: "PARTIAL", reason: "linked only" }, receipts: [{ identity: { scope: "job-1", consumptionId: "job-1:call-1" }, asOf: "2026-10-17T00:01:00Z", model: { uiSession: null, requested: "worker-model", effective: null, helper: null }, selection: { phase: "IMPLEMENT", role: "implementer", effort: "medium", policyProfile: "GENERAL", rationale: null, selectedAt: "2026-10-17T00:00:00Z" }, tokens: { inputTokens: 36933, cachedInputTokens: 18176, outputTokens: 122, totalTokens: 37055, reason: null }, sourceRefs: [{ kind: "canonical_correction_event", reference: "event-1" }] }], reservations: [], settlements: [] },
     quotaCoverage: { status: "UNKNOWN", reason: "No linked quota observation." },
-    timeline: [{ id: "event-1", at: "2026-10-17T00:01:00Z", type: "CODEX_MODEL_USAGE_CORRECTED", attempt: 1, phase: null, reasonCode: null }],
+    timeline: [{ id: "event-1", at: "2026-10-17T00:01:00Z", type: "CODEX_MODEL_USAGE_CORRECTED", attempt: 1, phase: null, reasonCode: null, correction: { modelCallId: "call-1", previousUsage: { inputTokens: 18447, cachedInputTokens: 18176, outputTokens: 122 }, correctedUsage: { inputTokens: 36933, cachedInputTokens: 18176, outputTokens: 122 }, additionalCharge: 18486 } }],
   }, isLoading: false, error: null };
 });
 
@@ -51,6 +54,7 @@ describe("TaskObservabilityMonitor", () => {
     render(<TaskObservabilityMonitor />);
     expect(screen.getByText(/Human attention: human_review_required/)).toBeTruthy();
     expect(screen.getByText(/CODEX_MODEL_USAGE_CORRECTED/)).toBeTruthy();
+    expect(screen.getByText(/usage corrected 18447\/122 → 36933\/122/)).toBeTruthy();
   });
 
   it("shows runner fleet state from the canonical runner read model", () => {
@@ -62,10 +66,19 @@ describe("TaskObservabilityMonitor", () => {
   });
 
   it("applies explicit project and SPEC aggregation filters", () => {
+    aggregateQuery.current = { data: {
+      scope: "project_spec", projectId: "project-2", specId: "SPEC-277", scopeBinding: { status: "UNVERIFIED", reason: "metadata binding" }, observedJobCount: 2,
+      asOf: "2026-10-17T00:00:00Z", consistency: "created_at_watermark_live_state", goalCoverage: { status: "UNKNOWN", baselineCandidateCount: 0, reason: "No trusted goal baselines." },
+      usage: { counts: { unique: 3, corrections: 1, replayed: 0, missing: 1, overlap: 0 }, completeTotalTokens: null, knownSubtotalTokens: 37055, coverage: { reason: "capped/linked coverage", sources: ["worker_job_provider_reservations"], missingSources: ["unlinked helpers"] }, settlements: [] },
+      resourceEstimates: { reservedTokenEstimate: 4000, observedReservationCount: 3, missingReservationTokenEstimateCount: 1, inferenceCostEstimateMicros: 0, missingInferenceCostEstimateCount: 0 },
+      quotaCoverage: { status: "UNKNOWN" },
+    }, isLoading: false, error: null };
     render(<TaskObservabilityMonitor />);
     fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
     fireEvent.change(screen.getByLabelText("SPEC ID"), { target: { value: "SPEC-277" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
     expect(screen.getByText(/Project ID/)).toBeTruthy();
+    expect(screen.getByText(/Project \/ SPEC usage union/)).toBeTruthy();
+    expect(screen.getByText(/Complete linked token total Unknown/)).toBeTruthy();
   });
 });

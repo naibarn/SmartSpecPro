@@ -215,7 +215,6 @@ function comparableCall(call: TaskUsageEvidenceCall): string {
     reservation: call.reservation ?? null,
     settlement: call.settlement ?? null,
     quotaObservation: call.quotaObservation ?? null,
-    sourceRefs: call.sourceRefs,
   });
 }
 
@@ -299,10 +298,17 @@ export function aggregateUsageEvidence(calls: readonly TaskUsageEvidenceCall[]):
     const representative = newest.slice().sort((left, right) => right.asOf.localeCompare(left.asOf))[0];
     const uniqueRevisions = new Set(group.map((call) => call.revision)).size;
     const groupReplayed = group.length - uniqueRevisions;
-    const groupCorrections = Math.max(0, uniqueRevisions - 1);
+    const groupCorrections = Math.max(0, uniqueRevisions - 1, newestRevision > 0 ? 1 : 0);
     replayed += groupReplayed;
     corrections += groupCorrections;
-    selected.push({ call: representative, conflict, replayed: groupReplayed, corrections: groupCorrections });
+    const sourceRefs = newest.flatMap((call) => call.sourceRefs);
+    const uniqueSourceRefs = new Map(sourceRefs.map((source) => [`${source.kind}\u0000${source.reference}\u0000${source.rationale ?? ""}`, source]));
+    selected.push({
+      call: { ...representative, sourceRefs: [...uniqueSourceRefs.values()] },
+      conflict,
+      replayed: groupReplayed,
+      corrections: groupCorrections,
+    });
   }
 
   // Cumulative counters must be observed in chronological order.  A reset
@@ -378,7 +384,7 @@ export function aggregateUsageEvidence(calls: readonly TaskUsageEvidenceCall[]):
       .filter((receipt) => receipt.coverage.relationship === "included_in_parent" && receipt.coverage.parent && receiptKeys.has(identityKey(receipt.coverage.parent)))
       .map((receipt) => identityKey(receipt.identity)),
   );
-  const completeTotalTokens = missing === 0 && conflicts === 0 && overlapReceipts.length === 0 && unresolvedIncludedReceipts.length === 0
+  const completeTotalTokens = receipts.length > 0 && missing === 0 && conflicts === 0 && overlapReceipts.length === 0 && unresolvedIncludedReceipts.length === 0
     ? receipts.reduce((sum, receipt) => sum + (includedKeys.has(identityKey(receipt.identity)) ? 0 : receipt.tokens.totalTokens ?? 0), 0)
     : null;
   const coverageReason = overlapReceipts.length > 0
