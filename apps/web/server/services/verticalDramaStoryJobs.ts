@@ -707,7 +707,7 @@ export async function enqueueVerticalDramaStoryJob(
   await deps.redis.del(recoverablePointerKey(payload.tenantId, payload.seriesId)).catch(() => {});
 
   try {
-    await createFeature186VerticalDramaJob({
+    const canonicalJobId = await createFeature186VerticalDramaJob({
       jobId,
       tenantId: payload.tenantId,
       userId: payload.userId,
@@ -716,6 +716,43 @@ export async function enqueueVerticalDramaStoryJob(
       activeDedupeKey: activePointerKey(payload.tenantId, payload.seriesId),
       payload: record as unknown as Record<string, unknown>,
     });
+    if (canonicalJobId !== jobId) {
+      // The per-series pointer can be released just before the canonical
+      // worker row reaches a terminal state. If control-plane dedupe wins
+      // that race, it returns the still-active canonical job ID. Never expose
+      // the provisional domain ID: it has no worker_jobs row and would later
+      // surface as "Canonical worker job not found".
+      await enqueueWrite(jobId, async () => {
+        const latest = await readRecord(jobId, deps);
+        if (latest?.dispatchId !== dispatchId) return;
+        const serializedRecord = JSON.stringify(latest);
+        if (deps.redis.delIfValue) {
+          await deps.redis.delIfValue(jobRecordKey(jobId), serializedRecord);
+        } else {
+          await deps.redis.del(jobRecordKey(jobId));
+        }
+      });
+      if (deps.redis.delIfValue) {
+        await deps.redis.delIfValue(pointerKey, jobId);
+      } else if ((await deps.redis.get(pointerKey)) === jobId) {
+        await deps.redis.del(pointerKey);
+      }
+      if (deps.redis.setIfAbsent) {
+        await deps.redis.setIfAbsent(
+          pointerKey,
+          canonicalJobId,
+          ACTIVE_POINTER_TTL_SECONDS,
+        );
+      } else if ((await deps.redis.get(pointerKey)) === null) {
+        await deps.redis.set(
+          pointerKey,
+          canonicalJobId,
+          "EX",
+          ACTIVE_POINTER_TTL_SECONDS,
+        );
+      }
+      return { jobId: canonicalJobId, deduped: true };
+    }
   } catch (error) {
     const failedRecord: VerticalDramaStoryJobRecord = {
       ...record,
