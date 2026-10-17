@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 11,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -51,10 +51,16 @@
         },
         "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
         "apps/web/server/jobs/unifiedJobConsumer.ts",
-        "apps/web/server/services/jobExecutorRegistry.ts"
+        "apps/web/server/services/jobExecutorRegistry.ts",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
       "requirement_id": "REQ-28722F9489C8",
       "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -75,7 +81,8 @@
           "status": "PASS_SCOPED"
         },
         "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
-        "https://github.com/naibarn/SmartSpecPro/pull/996"
+        "https://github.com/naibarn/SmartSpecPro/pull/996",
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json"
       ],
       "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
     },
@@ -239,17 +246,24 @@
       "final_state": "OPEN",
       "implementation_evidence": [
         "apps/web/server/routers/verticalDramaSeries.ts",
-        "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+        "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Merge scoped fail-closed plan chain fix, then reconcile remaining criterion8 transition evidence.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "08a79440597f54c48ebcc08c035677fcba2d936cdf775364a757f2af4e38d66d",
       "requirement_id": "REQ-50A4DD25D9C8",
       "requirement_text": "8. chain plan/draft/QC/full story หยุดต่อเมื่อขั้นก่อนหน้าล้มเหลว และแสดง error จริง",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json"
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
       ],
       "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
     },
@@ -310,17 +324,24 @@
       "final_state": "OPEN",
       "implementation_evidence": [
         "apps/web/server/routers/verticalDramaSeries.ts",
-        "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+        "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Merge scoped fail-closed plan chain fix, then reconcile remaining criterion8 transition evidence.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "9ec466d2a6e3a823d323ddaad929b91fd4ec233b42c07b0356a715690ef4a93a",
       "requirement_id": "REQ-4C379A93119A",
       "requirement_text": "Tests may mock the provider boundary to prove timeout isolation, but production application paths must not use mock or fallback behavior.",
       "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json"
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
       ],
       "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
     }

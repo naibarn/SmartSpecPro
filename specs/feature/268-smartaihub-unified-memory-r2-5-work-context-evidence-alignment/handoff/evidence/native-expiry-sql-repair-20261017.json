@@ -7,7 +7,7 @@
     "REQ-B44EAA1A1285"
   ],
   "originalExpiryWorkUnitJobId": "1b91631e1e114bb1eb50c14942245b89",
-  "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "source": {
     "baseRef": "origin/main",
     "baseSha": "4073a5c9cee1d7e83f28449984d56c869c633220",
@@ -145,5 +145,50 @@
       "max_rss_kib": 467388
     }
   },
-  "integrationBaseSha": "94cc9b8e877c36f1b6d2ee1140c113943d908877"
+  "integrationBaseSha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+  "pr": 998,
+  "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+  "merge_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+  "source_head_sha": "445d0ceb9ee94e37a507aebbc41aca581d404c62",
+  "merged_at": "2026-10-16T19:27:44Z",
+  "head_merge_trees_equal": true,
+  "merge_verified_reachable": true,
+  "post_integration": {
+    "profile": "integration",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "JWT_SECRET": "[REDACTED disposable test-only value]",
+      "RUN_NATIVE_MEMORY_EXPIRY_TESTS": "true",
+      "RUN_NATIVE_WORKER_POSTGRES_TESTS": "true"
+    },
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "started": 1792178991.1779888,
+    "ended": 1792179032.429351,
+    "exit": 0,
+    "max_rss_kib": 363996,
+    "resource_before": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         3370996 kB",
+      "MemAvailable:   25077960 kB",
+      "Buffers:         4233448 kB"
+    ]
+  },
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "mocked_spec308_browser": "PASS",
+    "build_preview": "SKIPPED"
+  }
 }

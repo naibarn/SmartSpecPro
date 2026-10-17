@@ -1,0 +1,154 @@
+{
+  "workunit_id": "SPEC161_STORY_WORKER_OUTCOME",
+  "scope": "Narrow native-SQL proof and repair for vertical_drama.story outcome projection",
+  "base_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+  "requirement_ids": [
+    "REQ-28722F9489C8"
+  ],
+  "requirement_scope": "The canonical worker executes the story service and persists success/failure correctly. This does not close SPEC161 or prove provider, billing, browser refresh, or full restart acceptance.",
+  "finding": {
+    "reproduction": "Before the source fix, the actual native PostgreSQL canonical consumer executed the registered story handler and persisted the domain terminal row, then the registry refreshed public status while worker_jobs was still running. That refresh overwrote the just-written terminal projection and assertDomainExecutionSucceeded failed with status=running for success, failure, and missing-domain-row cases.",
+    "repair": "runVerticalDramaStoryJob now checks tenant, user, and series from the canonical job context against the loaded domain record before status writes, execution, assurance work, or notifications. It returns its persisted terminal domain record, null when the row is missing, the owner mismatches, or the durable story-generation fence is lost. The canonical registry evaluates that worker-local outcome after its lease assertion; public getVerticalDramaStoryJobStatus still refreshes from canonical worker_jobs. Canonical success output carries the domain result so later public refreshes retain the result payload."
+  },
+  "source": {
+    "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-story-worker-outcome-20261017",
+    "task_id": "spec161-story-worker-outcome-20261017",
+    "workspace_id": "workspace:f0d3a64e-f138-44fc-8842-7c755af4ff73",
+    "git_state": "Uncommitted changes; detached at base_sha; not committed or pushed.",
+    "files": [
+      {
+        "path": "apps/web/server/services/jobExecutorRegistry.ts",
+        "sha256": "1de97f6df3c87c11ea684e22bd6536d4fd3608cc100126ffffe1da00322ff6ee"
+      },
+      {
+        "path": "apps/web/server/services/verticalDramaStoryJobs.ts",
+        "sha256": "0f009553eed8ff8edae070df2901542ef498b1dc27034c52c48429d5376de569"
+      },
+      {
+        "path": "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
+        "sha256": "c25a9d10a417875d0bc2767c503571859073be0497448a3e594447f8a6189481"
+      }
+    ]
+  },
+  "verification": {
+    "profile": "integration",
+    "command": "RUN_NATIVE_WORKER_POSTGRES_TESTS=true JWT_SECRET=<test-only fixture value redacted> pnpm exec vitest run server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts --maxWorkers=1",
+    "working_directory": "apps/web",
+    "started_at_local": "2026-10-17T07:27:04+07:00",
+    "outcome": "PASS",
+    "exit_code": 0,
+    "tests": "6 passed",
+    "runtime": "Owner-marked private PostgreSQL cluster from the existing SPEC267 native test helper; Unix socket only; actual Drizzle/control-plane repositories and runtime_ephemeral_values SQL. No mocked SQL. Deterministic story executor replaces the router/provider boundary only; notifications are stubbed.",
+    "database_cleanup": "PASS; no spec267-native-pg or spec277-autoteam-pg test cluster directories remained under /tmp after completion.",
+    "resource_observation_after_run": {
+      "memory_available": "23 GiB",
+      "filesystem_available": "1.1 GiB"
+    },
+    "native_cases": [
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_SUCCESS",
+        "job_id": "f68d752d-cbdf-420d-9149-94286f67f9f6",
+        "worker_status": "succeeded",
+        "domain_status": "succeeded",
+        "terminal_replay": "ignored",
+        "executor_calls": 1,
+        "worker_attempts": 1,
+        "provider_reservations": 0,
+        "result_id": "deterministic-test-result"
+      },
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_FAILURE",
+        "job_id": "5c565906-b613-466b-8bad-79e54de3e2e3",
+        "worker_status": "failed",
+        "domain_status": "failed",
+        "error": "SPEC161_STORY_EXECUTOR_FAILURE",
+        "checkpoint_items": 1,
+        "executor_calls": 1,
+        "worker_attempts": 1,
+        "provider_reservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_MISSING_FAIL_CLOSED",
+        "job_id": "spec161-700390a7c33141228c4f",
+        "worker_status": "failed",
+        "executor_calls": 0,
+        "worker_attempts": 1,
+        "provider_reservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_tenant",
+        "job_id": "spec161-171688bc5e8c44b1a76c",
+        "worker_status": "failed",
+        "story_record_status": "queued",
+        "executor_calls": 0,
+        "worker_attempts": 1,
+        "provider_reservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_series",
+        "job_id": "spec161-26814c2ba0214a6d9e01",
+        "worker_status": "failed",
+        "story_record_status": "queued",
+        "executor_calls": 0,
+        "worker_attempts": 1,
+        "provider_reservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_user",
+        "job_id": "spec161-93edc6d3e5c44d36ba01",
+        "worker_status": "failed",
+        "story_record_status": "queued",
+        "executor_calls": 0,
+        "worker_attempts": 1,
+        "provider_reservations": 0
+      }
+    ],
+    "fast_gate": "git diff --check passed; only the two authorized source files and new acceptance test are modified before this evidence file was added.",
+    "additional_test_observation": "A separate run of existing verticalDramaStoryJobs.test.ts is 45 failed/7 passed at this base because its ../../db mock provides getDb but not db, while canonical enqueue now invokes jobControlPlane.db.transaction. No changes were made outside the authorized paths to address that separate fixture issue."
+  },
+  "usage": {
+    "model": "Luna",
+    "model_token_usage": "unknown",
+    "new_sdk_calls": 0,
+    "production_job_mutations": 0,
+    "original_fast_lane_job_id": "342db2bbe556f2e719968622b1a7385e",
+    "original_fast_lane_job_mutated": false,
+    "association": "Historical SPEC161 job only; not used for these bounded native tests; no new SDK job"
+  },
+  "limitations": [
+    "Executor/provider behavior is deterministic at the existing router execution boundary; no paid or external provider was called.",
+    "This is scoped story-worker outcome evidence only. SPEC161 remains open for browser refresh, restart/resume, provider/model passthrough, billing/settlement, chain-abort, and other acceptance obligations.",
+    "No full typecheck, build, migration, production runtime, or retired system was used.",
+    "Registry no longer calls public status while canonical job is running; canonical terminal status remains authoritative for subsequent public reads."
+  ],
+  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "observed_at": "2026-10-17T00:31:54.698702+00:00",
+  "independent_review": {
+    "result": "PASS",
+    "reviewer": "/root",
+    "scope": "Source, acceptance tests and actual native runtime evidence; no production acceptance",
+    "findings_resolved": [
+      "Terminal owner tenant/user/series checked before domain side effects; nullable outcome narrowed"
+    ]
+  },
+  "integration": {
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "source_branch": "codex/spec161-chain-runtime-repair-20261017",
+    "owned_commit_sha": null,
+    "intended_pr": "Next normal protected PR against main",
+    "pending_action": "Commit exact fast-gate-passing owned files, push, required CI, guarded protected merge, verify canonical SHA"
+  },
+  "parent_verification": {
+    "profile": "integration",
+    "log": "/tmp/smartaihub-backlog-pilot/chain-outcome-chat-reviewed.log",
+    "resource_receipt": "/tmp/smartaihub-backlog-pilot/chain-outcome-chat-reviewed.resources.json",
+    "status": "PASS",
+    "tests": "132/132 across 7 files",
+    "source_base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "working_patch": true
+  },
+  "file_sha256": {}
+}

@@ -1330,7 +1330,15 @@ async function assuranceCandidateGate(input: {
     ),
     plan: input.plan,
   });
-  if (input.partial || !report.passed) return false;
+  if (input.partial) return false;
+  const blockingCodes = report.findings
+    .filter(finding => finding.blocking)
+    .map(finding => finding.code);
+  if (blockingCodes.length > 0) {
+    throw new Error(
+      `STORY_GENERATION_FINAL_GATE_FAILED:${blockingCodes.join(",")}`
+    );
+  }
   return true;
 }
 
@@ -3291,41 +3299,17 @@ export async function runGenerateStoryBibleDeepJob(
     if (error instanceof VdSchemaValidationError) {
       debugError(
         "verticalDramaSeries.deepStoryDraft",
-        "Initial deep-draft response failed schema validation; completing from the approved episode plan",
+        "Initial deep-draft response failed schema validation; stopping full-story generation",
         error
       );
     } else {
       debugError(
         "verticalDramaSeries.deepStoryDraft",
-        "Initial deep-draft provider call failed; completing from the approved episode plan",
+        "Initial deep-draft provider call failed; stopping full-story generation",
         error
       );
     }
-    const fallbackSpeaker =
-      resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
-      "พิมพ์ชนก";
-    result = {
-      draftedItems: episodesToDraft.map(episode =>
-        materializeAutomaticCompletionFallback(
-          episode,
-          undefined,
-          fallbackSpeaker
-        )
-      ),
-      chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
-      partial: false,
-      creditsUsed: 0,
-      model: "deterministic-completion-fallback",
-      warnings: episodesToDraft.map(episode => ({
-        episodeNumber: episode.episodeNumber,
-        shotNumber: 0,
-        reason: "automatic_completion_fallback" as const,
-      })),
-      finalOpenThreads: [],
-      missingEpisodes: [],
-      newLocations: [],
-      continuityIssues: [],
-    };
+    throw error;
   }
 
   // `generateStoryBibleDeep` deliberately does not await its checkpoint hook.
@@ -3459,17 +3443,23 @@ export async function runGenerateStoryBibleDeepJob(
             ]),
           ],
           partial: repair.partial,
-          ...(repair.error ? { error: repair.error } : {}),
+          error:
+            repair.partial || repair.error
+              ? repair.error ?? result.error
+              : undefined,
           model: repair.model || result.model,
         };
       } catch (error) {
-        result = {
-          ...result,
-          partial: true,
-          error: error instanceof Error ? error.message : String(error),
-          missingEpisodes: completionReport.missingEpisodeNumbers,
-        };
-        break;
+        await intermediatePersistChain;
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+        debugError(
+          "verticalDramaSeries.deepStoryDraft",
+          "Completion repair failed; preserving the accepted checkpoint and stopping the job",
+          error
+        );
+        throw error;
       }
     }
     if (hasCompletionRepairSignal) {
@@ -3481,67 +3471,17 @@ export async function runGenerateStoryBibleDeepJob(
         })),
       });
       if (finalCompletionReport.missingEpisodeNumbers.length > 0) {
-        const fallbackSpeaker =
-          resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
-          "พิมพ์ชนก";
-        const fallbackEpisodes = new Set(
-          finalCompletionReport.missingEpisodeNumbers
-        );
-        result = {
-          ...result,
-          draftedItems: result.draftedItems
-            .map(item =>
-              fallbackEpisodes.has(item.episodeNumber)
-                ? materializeAutomaticCompletionFallback(
-                    episodesToDraft.find(
-                      planned => planned.episodeNumber === item.episodeNumber
-                    ) ?? {
-                      episodeNumber: item.episodeNumber,
-                      workingTitle: "",
-                      logline: "",
-                    },
-                    item,
-                    fallbackSpeaker
-                  )
-                : item
-            )
-            .concat(
-              episodesToDraft
-                .filter(episode => fallbackEpisodes.has(episode.episodeNumber))
-                .filter(
-                  episode =>
-                    !result.draftedItems.some(
-                      item => item.episodeNumber === episode.episodeNumber
-                    )
-                )
-                .map(episode =>
-                  materializeAutomaticCompletionFallback(
-                    episode,
-                    undefined,
-                    fallbackSpeaker
-                  )
-                )
-            )
-            .sort((a, b) => a.episodeNumber - b.episodeNumber),
-          partial: false,
-          missingEpisodes: [],
-          error: undefined,
-          warnings: [
-            ...result.warnings,
-            ...finalCompletionReport.missingEpisodeNumbers.map(
-              episodeNumber => ({
-                episodeNumber,
-                shotNumber: 0,
-                reason: "automatic_completion_fallback" as const,
-              })
-            ),
-          ],
-        };
-      } else {
-        result.partial = false;
-        result.missingEpisodes = [];
-        result.error = undefined;
+        const errorMessage = result.error
+          ? result.error
+          : `STORY_COMPLETION_REPAIR_EXHAUSTED:missing episodes ${finalCompletionReport.missingEpisodeNumbers.join(",")}`;
+        throw new Error(errorMessage);
       }
+      if (result.partial || result.error) {
+        throw new Error(
+          result.error ?? "STORY_COMPLETION_REPAIR_EXHAUSTED:provider returned a partial result"
+        );
+      }
+      result.missingEpisodes = [];
     }
   }
 
@@ -4537,41 +4477,17 @@ export async function runExtendStoryDraftHorizonJob(
     if (error instanceof VdSchemaValidationError) {
       debugError(
         "verticalDramaSeries.extendStoryDraft",
-        "Initial extension response failed schema validation; completing from the approved episode plan",
+        "Initial extension response failed schema validation; stopping the extension",
         error
       );
     } else {
       debugError(
         "verticalDramaSeries.extendStoryDraft",
-        "Initial extension provider call failed; completing from the approved episode plan",
+        "Initial extension provider call failed; stopping the extension",
         error
       );
     }
-    const fallbackSpeaker =
-      resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
-      "พิมพ์ชนก";
-    result = {
-      draftedItems: episodesToDraft.map(episode =>
-        materializeAutomaticCompletionFallback(
-          episode,
-          undefined,
-          fallbackSpeaker
-        )
-      ),
-      chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
-      partial: false,
-      creditsUsed: 0,
-      model: "deterministic-completion-fallback",
-      warnings: episodesToDraft.map(episode => ({
-        episodeNumber: episode.episodeNumber,
-        shotNumber: 0,
-        reason: "automatic_completion_fallback" as const,
-      })),
-      finalOpenThreads: [],
-      missingEpisodes: [],
-      newLocations: [],
-      continuityIssues: [],
-    };
+    throw error;
   }
 
   await intermediatePersistChain;
@@ -4593,65 +4509,15 @@ export async function runExtendStoryDraftHorizonJob(
       })),
     });
     if (completionReport.missingEpisodeNumbers.length > 0) {
-      const fallbackSpeaker =
-        resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
-        "พิมพ์ชนก";
-      const fallbackEpisodes = new Set(completionReport.missingEpisodeNumbers);
-      result = {
-        ...result,
-        draftedItems: result.draftedItems
-          .map(item =>
-            fallbackEpisodes.has(item.episodeNumber)
-              ? materializeAutomaticCompletionFallback(
-                  episodesToDraft.find(
-                    planned => planned.episodeNumber === item.episodeNumber
-                  ) ?? {
-                    episodeNumber: item.episodeNumber,
-                    workingTitle: "",
-                    logline: "",
-                  },
-                  item,
-                  fallbackSpeaker
-                )
-              : item
-          )
-          .concat(
-            episodesToDraft
-              .filter(episode => fallbackEpisodes.has(episode.episodeNumber))
-              .filter(
-                episode =>
-                  !result.draftedItems.some(
-                    item => item.episodeNumber === episode.episodeNumber
-                  )
-              )
-              .map(episode =>
-                materializeAutomaticCompletionFallback(
-                  episode,
-                  undefined,
-                  fallbackSpeaker
-                )
-              )
-          )
-          .sort((a, b) => a.episodeNumber - b.episodeNumber),
-        partial: false,
-        missingEpisodes: [],
-        error: undefined,
-        warnings: [
-          ...result.warnings,
-          ...completionReport.missingEpisodeNumbers.map(episodeNumber => ({
-            episodeNumber,
-            shotNumber: 0,
-            reason: "automatic_completion_fallback" as const,
-          })),
-        ],
-      };
-    } else if (result.partial) {
-      result = {
-        ...result,
-        partial: false,
-        missingEpisodes: [],
-        error: undefined,
-      };
+      const errorMessage = result.error
+        ? result.error
+        : `STORY_COMPLETION_REPAIR_EXHAUSTED:missing episodes ${completionReport.missingEpisodeNumbers.join(",")}`;
+      throw new Error(errorMessage);
+    }
+    if (result.partial || result.error) {
+      throw new Error(
+        result.error ?? "STORY_COMPLETION_REPAIR_EXHAUSTED:provider returned a partial result"
+      );
     }
   }
 
@@ -5306,14 +5172,19 @@ export async function runGenerateStoryBiblePlanJob(
       report,
       checkpoint: { planCandidate: result.expanded },
     });
-    // Quality findings are retained in the durable report, but must not
-    // strand the automatic plan -> deep-draft handoff behind approval.
-    // System-level failures (missing contract/source) still throw above.
-    if (!report.passed) {
+    // Blocking findings are a failed QC stage: keep the durable report, but
+    // do not persist the plan as accepted or hand off to deep drafting.
+    const blockingCodes = report.findings
+      .filter(finding => finding.blocking)
+      .map(finding => finding.code);
+    if (blockingCodes.length > 0) {
       debugError(
         "verticalDramaSeries.storyPlan",
-        "Story plan assurance reported quality findings; continuing automatically",
+        "Story plan assurance failed its blocking final gate",
         { runId: assuranceRunId }
+      );
+      throw new Error(
+        `STORY_PLAN_FINAL_GATE_FAILED:${blockingCodes.join(",")}`
       );
     }
   }
