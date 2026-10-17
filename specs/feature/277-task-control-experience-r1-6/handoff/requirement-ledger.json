@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -9805,7 +9805,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -9834,10 +9834,16 @@
           "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
           "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
           "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+        },
+        {
+          "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open.",
+      "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
       "requirement_digest": "cfd943f4b21b5db767b04ea0f1bec2d7ccdcfde550a975e9105ad1c46a8f4696",
       "requirement_id": "REQ-277-OBS-05",
       "requirement_text": "- REQ-277-OBS-05: Public projections MUST use bounded allowlisted fields, immutable source refs, identity binding, source/ingest time, watermarks and freshness. Current-state quota/session evidence MUST expire according to source policy; historical measured usage remains historical evidence. Wrong-scope/conflicting identities MUST NOT enter totals. Credentials, lease tokens, raw prompts/selection/provider payloads and secret-bearing rationale MUST NOT be exposed.",
@@ -9880,9 +9886,18 @@
           "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
           "status": "PASS_SCOPED",
           "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+        },
+        {
+          "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "status": "PASS_SCOPED",
+          "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
         }
       ],
-      "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+      "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
     },
     {
       "applicability": "APPLICABLE",
@@ -10028,7 +10043,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10043,10 +10058,16 @@
           ],
           "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
           "summary": "Read-only projection/reducer/UI slice implemented; remaining contract gaps are recorded in the mission gap matrix."
+        },
+        {
+          "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Continue the explicitly listed missing acceptance criteria; keep unknown evidence unknown and final state PARTIAL until source-bound integration and applicable live acceptance pass.",
+      "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
       "requirement_digest": "d1dfaabb10de772858efc144fdae5a1d3146690544bc2b9f0620749afd326b20",
       "requirement_id": "REQ-277-OBS-08",
       "requirement_text": "- REQ-277-OBS-08: Authenticated APIs MUST enforce tenant/principal/current permission on every read and evidence dereference, with bounded pagination, snapshot expiry, replay/dedupe and source health. Monitoring GETs, reconnects and failures MUST invoke no execution/admission/billing/provider/authorization mutation, and MUST NOT become a runtime dependency of SPEC-224.",
@@ -10062,9 +10083,18 @@
           "kind": "GAP_MATRIX",
           "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
           "summary": "Required source binding, projection history/parity and/or live acceptance remain open."
+        },
+        {
+          "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "status": "PASS_SCOPED",
+          "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
         }
       ],
-      "verification_method": "Focused Vitest, scoped esbuild syntax, generated SPEC index check; no live UAT claim."
+      "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
     },
     {
       "applicability": "APPLICABLE",
@@ -10075,7 +10105,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10104,10 +10134,16 @@
           "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
           "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
           "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+        },
+        {
+          "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open.",
+      "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
       "requirement_digest": "509723b2ae3c1d13ccc9b2bb21de16650d370459e3060e8a0730f8bc9399ea3c",
       "requirement_id": "REQ-277-OBS-09",
       "requirement_text": "- REQ-277-OBS-09: Acceptance MUST cover four distinct model facets; replay/correction/cache/parent-overlap adversarial fixtures; weighted goal/live gates; cross-tenant and secret canaries; authenticated API→Web read path; UI controls and responsive evidence; and non-interference with existing execution. Mock/isolated tests MUST NOT be relabeled live Runner acceptance. All required P0/P1/P2 scope remains open until its evidence passes.",
@@ -10150,9 +10186,18 @@
           "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
           "status": "PASS_SCOPED",
           "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+        },
+        {
+          "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+          "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+          "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+          "status": "PASS_SCOPED",
+          "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
         }
       ],
-      "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+      "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
     }
   ],
   "schema_version": 1,

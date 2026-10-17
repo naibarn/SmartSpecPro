@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "expected_canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
     "expected_spec_digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce"
   },
   "continuation": {
     "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 repairs DevelopmentRun phase persistence and Task Control projection across separately admitted worker jobs. Exact synthetic evidence is in specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-developmentrun-phase-restart-20261011.json. No SPEC-277 requirement was promoted to PASS; its callback producer/attempt-correlation review remains the next independent WorkUnit.",
+    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 repairs DevelopmentRun phase persistence and Task Control projection across separately admitted worker jobs. Exact synthetic evidence is in specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-developmentrun-phase-restart-20261011.json. No SPEC-277 requirement was promoted to PASS; its callback producer/attempt-correlation review remains the next independent WorkUnit.",
     "waiting_predicate": "Provider polling, callback evidence safety, and outbox/terminal fencing now have direct native-PostgreSQL evidence. The next independent review is whether any actual producer sends callback attempt metadata. Durable receipt schema/migration waits on identified SPEC-302 owner and explicit authorization. Do not repeat primary workspace convergence while it remains dirty/stale."
   },
   "continuation_assessment": {
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 66,
+  "generation": 68,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
@@ -217,7 +217,8 @@
       "38e73d24dbd6db077565f11fe50942ab35e9010f",
       "47235563d14d6a4c861c04127e77e6dd655283db",
       "1f9cda7857372f0e4369943cb257216658b84d0e",
-      "86a16d13592b7be4063c0ab37044418a8212de7c"
+      "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "f250326711d7d170e575d03b7c358f74891dfecc"
     ],
     "mapping": [
       {
@@ -259,9 +260,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
     "integrated": true,
-    "integrated_at": "2026-10-17T04:03:32Z"
+    "integrated_at": "2026-10-17T07:04:29Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -774,7 +775,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+        "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -803,10 +804,16 @@
             "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+          },
+          {
+            "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
         "requirement_digest": "cfd943f4b21b5db767b04ea0f1bec2d7ccdcfde550a975e9105ad1c46a8f4696",
         "requirement_id": "REQ-277-OBS-05",
         "requirement_text": "- REQ-277-OBS-05: Public projections MUST use bounded allowlisted fields, immutable source refs, identity binding, source/ingest time, watermarks and freshness. Current-state quota/session evidence MUST expire according to source policy; historical measured usage remains historical evidence. Wrong-scope/conflicting identities MUST NOT enter totals. Credentials, lease tokens, raw prompts/selection/provider payloads and secret-bearing rationale MUST NOT be exposed.",
@@ -849,9 +856,18 @@
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
             "status": "PASS_SCOPED",
             "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+          },
+          {
+            "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "status": "PASS_SCOPED",
+            "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
           }
         ],
-        "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+        "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
       },
       "REQ-277-OBS-06": {
         "applicability": "APPLICABLE",
@@ -997,7 +1013,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+        "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -1012,10 +1028,16 @@
             ],
             "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
             "summary": "Read-only projection/reducer/UI slice implemented; remaining contract gaps are recorded in the mission gap matrix."
+          },
+          {
+            "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Continue the explicitly listed missing acceptance criteria; keep unknown evidence unknown and final state PARTIAL until source-bound integration and applicable live acceptance pass.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
         "requirement_digest": "d1dfaabb10de772858efc144fdae5a1d3146690544bc2b9f0620749afd326b20",
         "requirement_id": "REQ-277-OBS-08",
         "requirement_text": "- REQ-277-OBS-08: Authenticated APIs MUST enforce tenant/principal/current permission on every read and evidence dereference, with bounded pagination, snapshot expiry, replay/dedupe and source health. Monitoring GETs, reconnects and failures MUST invoke no execution/admission/billing/provider/authorization mutation, and MUST NOT become a runtime dependency of SPEC-224.",
@@ -1031,9 +1053,18 @@
             "kind": "GAP_MATRIX",
             "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
             "summary": "Required source binding, projection history/parity and/or live acceptance remain open."
+          },
+          {
+            "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "status": "PASS_SCOPED",
+            "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
           }
         ],
-        "verification_method": "Focused Vitest, scoped esbuild syntax, generated SPEC index check; no live UAT claim."
+        "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
       },
       "REQ-277-OBS-09": {
         "applicability": "APPLICABLE",
@@ -1044,7 +1075,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+        "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -1073,10 +1104,16 @@
             "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+          },
+          {
+            "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
         "requirement_digest": "509723b2ae3c1d13ccc9b2bb21de16650d370459e3060e8a0730f8bc9399ea3c",
         "requirement_id": "REQ-277-OBS-09",
         "requirement_text": "- REQ-277-OBS-09: Acceptance MUST cover four distinct model facets; replay/correction/cache/parent-overlap adversarial fixtures; weighted goal/live gates; cross-tenant and secret canaries; authenticated API→Web read path; UI controls and responsive evidence; and non-interference with existing execution. Mock/isolated tests MUST NOT be relabeled live Runner acceptance. All required P0/P1/P2 scope remains open until its evidence passes.",
@@ -1119,9 +1156,18 @@
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
             "status": "PASS_SCOPED",
             "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+          },
+          {
+            "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "status": "PASS_SCOPED",
+            "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
           }
         ],
-        "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+        "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
       },
       "REQ-35AED36D0B63": {
         "applicability": "APPLICABLE",
@@ -1291,7 +1337,7 @@
     "unresolved": 440
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T04:05:36.291280Z",
+  "updated_at": "2026-10-17T07:06:07.325840Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -1518,6 +1564,15 @@
         "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
         "status": "PASS_SCOPED",
         "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+      },
+      {
+        "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+        "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+        "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "status": "PASS_SCOPED",
+        "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
       }
     ],
     "freshness": "PARTIAL",

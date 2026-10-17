@@ -1,0 +1,43 @@
+
+ RUN  v4.1.11 /home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web
+
+stdout | server/services/__tests__/taskObservabilityPostgres.integration.test.ts > Task observability native PostgreSQL read prerequisites (not live auth)
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42622',
+  message: 'identifier "worker_job_provider_reservations_job_business_attempt_kind_unique" will be truncated to "worker_job_provider_reservations_job_business_attempt_kind_uniq"',
+  file: 'scansup.c',
+  line: '99',
+  routine: 'truncate_identifier'
+}
+
+stdout | server/services/__tests__/taskObservabilityPostgres.integration.test.ts
+🌐 i18next is made possible by our own product, Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+
+ ❯ |node| server/services/__tests__/taskObservabilityPostgres.integration.test.ts (6 tests | 1 failed | 5 skipped) 2897ms
+     × reports persisted job activity instead of its creation time while keeping Goal evidence unknown 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| server/services/__tests__/taskObservabilityPostgres.integration.test.ts > Task observability native PostgreSQL read prerequisites (not live auth) > reports persisted job activity instead of its creation time while keeping Goal evidence unknown
+AssertionError: expected '2026-10-17T06:57:34.773Z' to be '2026-10-17T06:58:34.818Z' // Object.is equality
+
+Expected: "2026-10-17T06:58:34.818Z"
+Received: "2026-10-17T06:57:34.773Z"
+
+ ❯ server/services/__tests__/taskObservabilityPostgres.integration.test.ts:139:30
+    137|     await writer`UPDATE worker_jobs SET status='running', "heartbeatAt…
+    138|     const active = await getTaskObservabilityDetail({ scope: owner, jo…
+    139|     expect(active.updatedAt).toBe(heartbeatAt.toISOString());
+       |                              ^
+    140|     expect(active.projectionSnapshot?.consistency).toBe("created_at_wa…
+    141|     expect(active.acceptance.goal.verifiedPercent).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  13:58:31
+   Duration  4.06s (transform 669ms, setup 227ms, import 843ms, tests 2.90s, environment 0ms)

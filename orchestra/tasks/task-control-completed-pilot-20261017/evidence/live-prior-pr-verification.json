@@ -1,0 +1,42 @@
+{
+  "observed_at": "2026-10-17T07:05:32.410579+00:00",
+  "prs": [
+    {
+      "headRefName": "codex/task-control-completed-pilot-fixture-20261017",
+      "mergeCommit": {
+        "oid": "47235563d14d6a4c861c04127e77e6dd655283db"
+      },
+      "mergedAt": "2026-10-17T03:11:10Z",
+      "number": 1014,
+      "state": "MERGED"
+    },
+    {
+      "headRefName": "codex/task-control-stale-snapshot-20261017",
+      "mergeCommit": {
+        "oid": "1f9cda7857372f0e4369943cb257216658b84d0e"
+      },
+      "mergedAt": "2026-10-17T03:40:47Z",
+      "number": 1018,
+      "state": "MERGED"
+    },
+    {
+      "headRefName": "codex/task-control-goal-scope-binding-20261017",
+      "mergeCommit": {
+        "oid": "86a16d13592b7be4063c0ab37044418a8212de7c"
+      },
+      "mergedAt": "2026-10-17T04:03:32Z",
+      "number": 1028,
+      "state": "MERGED"
+    },
+    {
+      "headRefName": "codex/task-control-pilot-final-evidence-20261017",
+      "mergeCommit": {
+        "oid": "70f79ad4c21e3369fadda1e8644891d123015b8a"
+      },
+      "mergedAt": "2026-10-17T04:10:47Z",
+      "number": 1029,
+      "state": "MERGED"
+    }
+  ],
+  "note": "Allmerged canonical ancestors checked; Pilot not rerun"
+}

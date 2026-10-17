@@ -408,5 +408,202 @@
       "total": 82,
       "files": 11
     }
+  },
+  "live_acceptance_continuation": {
+    "workunit_id": "TASK_CONTROL_NATIVE_READ_ACCEPTANCE_PREREQUISITE",
+    "owner": "/root",
+    "workspace_id": "workspace:a7049b12-41ae-4142-b300-6c199de9720d",
+    "source_sha": "4b618cf901df7405009b11f6783dfcd3ebce0187",
+    "spec_ids": [
+      "224",
+      "277",
+      "294"
+    ],
+    "requirement_ids": [
+      "REQ-277-OBS-05",
+      "REQ-277-OBS-08",
+      "REQ-277-OBS-09",
+      "REQ-294-OBS-03",
+      "REQ-294-OBS-05"
+    ],
+    "writable_paths": [
+      "apps/web/server/services/__tests__/taskObservabilityPostgres.integration.test.ts",
+      "apps/web/server/services/__tests__/support/spec277AutoTeamRuntimeSchema.ts",
+      "orchestra/tasks/task-control-completed-pilot-20261017",
+      "apps/web/server/services/taskObservabilityReadModel.ts"
+    ],
+    "acceptance": [
+      "Real SQL owner/tenant filtering and cursor replay/expiry",
+      "Current ownership rechecked on existing signed snapshot",
+      "Postgres-enforced read-only connection proves monitoring makes no writes",
+      "No inherited/shared DB writes; owner-cluster cleanup",
+      "Fixture never counts as authenticated/live Runner acceptance"
+    ],
+    "job_id": null,
+    "run_id": null,
+    "runtime": "direct native owner-marked ephemeral PostgreSQL and scoped tests; no productionDB, migration, model dispatch or authority creation",
+    "dependencies": {
+      "PR961": "OPEN owner retained; previewprovisioning and SPEC224manifest not writable",
+      "RunnerInventory": "0 fresh heartbeats and0 unexpiredcapabilities; read-only evidence",
+      "canonical_Goal_producer": "not found; do not invent store/authority"
+    },
+    "status": "VERIFIED_READY_PREREQUISITES_LIVE_ACCEPTANCE_BLOCKED",
+    "test_command": "pnpm exec vitest run server/services/__tests__/taskObservabilityPostgres.integration.test.ts server/services/__tests__/spec224CodexBudgetAdmission.integration.test.ts --maxWorkers=1",
+    "helper_attempt": {
+      "id": "/root/task_control_pilot_final_review",
+      "requested_model": "Luna",
+      "result": "HOST_USAGE_LIMIT before scout completed",
+      "effective_model": "UNVERIFIED",
+      "usage": "UNKNOWN",
+      "next_action": "Parent continues independently; no model/escalation/quota/Job policy change",
+      "retry": {
+        "changed_capacity_evidence": "Reported13:51reset passed before13:59read-onlyreviewretry; sameagent/defaultmodel",
+        "result": "COMPLETED_NO_MATERIAL_FINDINGS",
+        "usage": "UNKNOWN",
+        "new_sdk_job_dispatch": false
+      }
+    },
+    "regression": {
+      "description": "Canonical worker_jobs has no updatedAt column; Task Detail ignored existing heartbeat/started/finished activity and retained createdAt. A nativeSQL test failed actualcreationtime versus heartbeat. No schema/migration needed.",
+      "red_evidence": "activity-timestamp-red.log",
+      "repair": "Use existing canonical activity timestamps and preserve current-state-watermark semantics. Remove invalid job.updatedAt property access; trusted Goal producer remains absent/Unknown."
+    },
+    "tests": {
+      "passed": 41,
+      "total": 41,
+      "files": 4,
+      "native_sql_cases": 6,
+      "model_admission_cases": 9,
+      "resource": {
+        "profile": "integration",
+        "base_sha": "4b618cf901df7405009b11f6783dfcd3ebce0187",
+        "owned_file_sha256": {
+          "apps/web/server/services/taskObservabilityReadModel.ts": "b54557bc57ec8b425d4c50303adcbbc596a03356e7633d88ce53c25f43268ccc",
+          "apps/web/server/services/__tests__/taskObservabilityPostgres.integration.test.ts": "576e7496da97a2de9f6ddfcf9d9aec93381f31da958f9ed8eb9ee47ceed9df73",
+          "apps/web/server/services/__tests__/support/spec277AutoTeamRuntimeSchema.ts": "27b96f51effe98ed3689c3c9300f152fd2de1b6d0efd70b9e5396c03a4e16af3"
+        },
+        "command": "pnpm exec vitest run server/services/__tests__/taskObservabilityPostgres.integration.test.ts server/services/__tests__/taskObservabilityReadModel.test.ts server/routers/__tests__/workerJobs.test.ts server/services/__tests__/spec224CodexBudgetAdmission.integration.test.ts --maxWorkers=1",
+        "resource_before": "MemAvailable:   25922640 kB",
+        "started_at": 1792220365.412688,
+        "finished_at": 1792220375.8497424,
+        "exit": 0,
+        "signal": null,
+        "max_rss_kib": 375524,
+        "outcome": "PASS",
+        "environment": "owned native PostgreSQL; TEST_ONLY caller scopes/model receipts; no live auth/Runner acceptance or provider dispatch"
+      }
+    },
+    "review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "status": "NO_MATERIAL_FINDINGS",
+      "method": "Read-only actualthreefilediff",
+      "limitation": "updatedAt is latestknown among enumerated persistedactivitytimestamps, not everyfield/event rowrevision; no immutablehistoryclaim",
+      "effective_model": "UNVERIFIED; no providerreceipt"
+    },
+    "branch": "codex/task-control-live-acceptance-20261017",
+    "implementation_commit": "598fba351665e5372a5bf5c6d82cfc9e505ad4d9",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+    "merge_pr": 1036,
+    "blocker_classification": [
+      {
+        "id": "TASK_CONTROL_ACTIVITY_TIMESTAMP",
+        "category": "AUTOMATICALLY_REPAIRABLE",
+        "status": "REPAIRED_PENDING_CANONICAL_VERIFY",
+        "evidence": "nativeRED+41green+independentreview; no schema change"
+      },
+      {
+        "id": "SPEC224_PROTECTED_RUNNER_AUTHORITY",
+        "category": "EXTERNAL_AUTHORITY",
+        "state": "WAITING_EXTERNAL_AUTHORITY",
+        "owner": "Authenticated tenant-owner plus existing Runner/runtime maintainer; no owner-issued grant is available to thissession",
+        "evidence": "read-only currentinventory:15registeredRunner rows,0freshheartbeat,0unexpiredcapability,0requestedprofile,0approvedunrevokedRecoveryApprovalcandidates",
+        "resume_condition": "Existing registration/pairing and owner approval mechanism yields current Runner/capability/profile plus durable protected-start/recovery grant bound to exactsource,tenant,workspace,operations,lease/fence,budget,expiry/revocation. Validate grant canonically before any dispatch.",
+        "safe_alternatives_tried": [
+          "Read-only configuredcontrolplane discovery",
+          "ExistingCLI/profilepresence discovery",
+          "NativeisolatedDB prerequisitetests"
+        ],
+        "prohibited": "No self-pairing, fabricatedgrant, fixtureaslive, expiredgrants or duplicateJobs"
+      },
+      {
+        "id": "TASK_CONTROL_LIVE_AUTHENTICATED_TARGET",
+        "category": "LIVE_RUNTIME",
+        "state": "WAITING_LIVE_RUNTIME",
+        "owner": "Existing deployment/UAT runtime owner",
+        "evidence": "Currentwebhealth200; canonical /trpc/workerJobs.observability returns404NOT_FOUND; sourcecwd is dirtyprimarycheckout. JWT/DBconfigexist but no approvedUATcredential/profile and no currentcanonicalsource servingproof. Sharedhostprod/dev isolationUNVERIFIED.",
+        "resume_condition": "An already-authorized isolated nonproduction target serves the verifiedcanonicalSHA/readroute, with current tenant/principal authentication viaexisting credentialbroker and permission to inspect it. No signingsecret-derived synthetic login counts aslive.",
+        "safe_alternatives_tried": [
+          "Read-only health/currentroute probe",
+          "Source/DB configurationpresence only; secretsnotretained",
+          "PostgreSQL-enforced read-onlyservice verification onprivatefixture"
+        ]
+      },
+      {
+        "id": "TRUSTED_GOAL_AND_HISTORY_SOURCE",
+        "category": "INSUFFICIENT_EVIDENCE",
+        "state": "WAITING_CANONICAL_ARTIFACT",
+        "owner": "Existing Goal/source-contract owners (SPEC196/269), consumed bySPEC277/294",
+        "evidence": "Targeted canonicalNode/Python/schema search finds no linked authoritativeGoal baselineproducer; agentRegistry baselineVersionId is unrelated. Workerjob inputJson is untrusted; mutablewatermark is not immutablehistory.",
+        "resume_condition": "Existing authoritativeversion/digest/scope/principal-bound Goal baseline/evidence and historicalprojection contract are linked. Do not invent a newstore or infer parentcompletion."
+      },
+      {
+        "id": "SPEC302_304_AUTHORIZED_LIVE_DEPENDENCIES",
+        "category": "EXTERNAL_AUTHORITY",
+        "state": "WAITING_EXTERNAL_AUTHORITY",
+        "owner": "Existing schema/migration owner and trustedingress/runtime owner",
+        "evidence": "Canonical302ledger retains phase2durablereceipt authorization;304defaultcontext remainsfailclosed without approvedissuer/directorigin/routeproof. PR961previewprovisioning ownerpreserved.",
+        "resume_condition": "Explicit existing migration/schemaowner authorization foraffectedaction and approvedtrustednonproductioningress target; no productionDB/migration performed."
+      }
+    ],
+    "ready_work_completed": "Timestamprepair and nativeSQL read-prerequisites are the bounded ready scope; fullGoal-source/history/Runner/liveauth acceptance remainsopen.",
+    "scope_limits": [
+      "No originalPilot rerun",
+      "No fullSPEC/project closure",
+      "No SDK or canonicalJobdispatch; hostassistant usageUNKNOWN",
+      "CallerScope/testkeys deterministicfixtures only; no liveauth/grant authority",
+      "Read-onlysharedDB inventory does not establish prod/devisolation or a writable testtarget"
+    ],
+    "integrated_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+    "merged_at": "2026-10-17T07:04:29Z",
+    "next_action": "Resume only after a current authorized nonproduction Runner/target/session and source-bound canonical authority are available; validate before dispatch. Broader source-contract/history gaps remain UNKNOWN, not external-approval claims.",
+    "evidence_metadata_writable_paths": [
+      "specs/feature/277-task-control-experience-r1-6/handoff",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff",
+      "specs/_status/spec-index.json",
+      "specs/_status/reconciliation-report.json",
+      "specs/_status/ambiguity-review.json"
+    ],
+    "ownership_evidence": {
+      "PR961": "OPEN previewprovisioning +SPEC224manifest; untouched",
+      "PR684": "OPEN contains context.ts anddb.ts despiteMCPtitle; untouched",
+      "workspaces": "Only this live task owns an unexpired matching registeredlease; otherdirtywork preserved"
+    },
+    "post_integration": {
+      "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "tests_passed": 41,
+      "test_files": 4,
+      "native_read_cases": 6,
+      "model_admission_cases": 9,
+      "resource": {
+        "profile": "integration",
+        "base_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "owned_file_sha256": {
+          "apps/web/server/services/taskObservabilityReadModel.ts": "b54557bc57ec8b425d4c50303adcbbc596a03356e7633d88ce53c25f43268ccc",
+          "apps/web/server/services/__tests__/taskObservabilityPostgres.integration.test.ts": "576e7496da97a2de9f6ddfcf9d9aec93381f31da958f9ed8eb9ee47ceed9df73",
+          "apps/web/server/services/__tests__/support/spec277AutoTeamRuntimeSchema.ts": "27b96f51effe98ed3689c3c9300f152fd2de1b6d0efd70b9e5396c03a4e16af3"
+        },
+        "command": "pnpm exec vitest run server/services/__tests__/taskObservabilityPostgres.integration.test.ts server/services/__tests__/taskObservabilityReadModel.test.ts server/routers/__tests__/workerJobs.test.ts server/services/__tests__/spec224CodexBudgetAdmission.integration.test.ts --maxWorkers=1",
+        "resource_before": "MemAvailable:   25893400 kB",
+        "started_at": 1792220697.1871707,
+        "finished_at": 1792220707.4220304,
+        "exit": 0,
+        "signal": null,
+        "max_rss_kib": 337780,
+        "outcome": "PASS",
+        "environment": "owned native PostgreSQL; TEST_ONLY caller scopes/model receipts; no live auth/Runner acceptance or provider dispatch"
+      },
+      "owner_cluster_cleanup": "PASS: native-read afterAll asserts ownerroot absent",
+      "full_live_acceptance": false
+    }
   }
 }

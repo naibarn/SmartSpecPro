@@ -1,0 +1,140 @@
+{
+  "observed_at": "2026-10-17T07:02:47.830667+00:00",
+  "source_sha": "0349290ac79505a33a61c92404e532403525fcdc",
+  "canonical_index": "specs/_status/spec-index.json",
+  "queue": "specs/_status/continuation-queue.json",
+  "specs": [
+    {
+      "spec_id": "224",
+      "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
+      "authority_status": "UNRESOLVED",
+      "lifecycle": "WAITING_APPROVAL",
+      "canonical_integration_sha": "1fa15ebd72a0801c889f340b0c5fecfccc371511",
+      "requirement_state_counts": {
+        "OPEN": 1259
+      },
+      "next_workunit": "WAITING_EXTERNAL: owner-authorized isolated protected Runner admission binding and required non-production SPEC-224 runtime profile/token. Technical repairs are integrated at canonical SHA 1fa15ebd72a0801c889f340b0c5fecfccc371511; continuation recovery suite 5/5 and Registered Runner loopback E2E 1/1 passed on code SHA 11a2aa39df31f12d0668fd192da3731a0d29fcbc.",
+      "next_action": "Discover through the authorized control plane an owner-issued isolated Runner registration and SPEC-224 admission/recovery authority, including required non-production runtime profile/token and a durable protected-start grant bound to fresh Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. Then resume Live Agents SDK + Codex subscription turn, process crash/restart, quota wait/resume, durable receipt reconciliation, and independent final verification. Do not create or widen authority in this task. Keep Revision 24 Hosted Mini-App/Gateway acceptance separate.",
+      "blocker_ids": [
+        "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
+        "R11_CANONICAL_WORKSPACE_CONVERGENCE"
+      ]
+    },
+    {
+      "spec_id": "277",
+      "path": "specs/feature/277-task-control-experience-r1-6",
+      "spec_digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
+      "authority_status": "UNRESOLVED",
+      "lifecycle": "CONTINUATION_REQUIRED",
+      "canonical_integration_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "requirement_state_counts": {
+        "OPEN": 431,
+        "PARTIAL": 9
+      },
+      "next_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
+      "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests.",
+      "blocker_ids": []
+    },
+    {
+      "spec_id": "294",
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
+      "spec_digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
+      "authority_status": "UNRESOLVED",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "canonical_integration_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "requirement_state_counts": {
+        "OPEN": 492,
+        "PARTIAL": 5
+      },
+      "next_workunit": "P0_INTERNAL_GAP_CLOSURE",
+      "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
+      "blocker_ids": []
+    },
+    {
+      "spec_id": "088",
+      "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates",
+      "spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
+      "authority_status": "UNRESOLVED",
+      "lifecycle": "VALIDATION_PENDING",
+      "canonical_integration_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "requirement_state_counts": {
+        "OPEN": 53,
+        "PARTIAL": 1
+      },
+      "next_workunit": null,
+      "next_action": null,
+      "blocker_ids": []
+    },
+    {
+      "spec_id": "161",
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
+      "spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "authority_status": "ACTIVE_CANONICAL",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "canonical_integration_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "requirement_state_counts": {
+        "OPEN": 11
+      },
+      "next_workunit": "SPEC161_ALL_FLOW_SUBMIT_LATENCY_ACCEPTANCE",
+      "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+      "blocker_ids": []
+    },
+    {
+      "spec_id": "268",
+      "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+      "spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+      "authority_status": "ACTIVE_CANONICAL",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "canonical_integration_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "requirement_state_counts": {
+        "OPEN": 1101
+      },
+      "next_workunit": "SPEC268_COMPLETE_CONTEXT_TUPLE_ACCEPTANCE",
+      "next_action": "Continue exact canonical tenant/App scope and historical provenance acceptance; trusted ingress/receipt-dependent slices retain grants",
+      "blocker_ids": [
+        "SPEC268_PROJECT_MEMORY_PROVENANCE",
+        "SPEC268_PRODUCTION_MIGRATION"
+      ]
+    },
+    {
+      "spec_id": "302",
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "authority_status": "ACTIVE_CANONICAL",
+      "lifecycle": "VALIDATION_PENDING",
+      "canonical_integration_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "requirement_state_counts": {
+        "OPEN": 7,
+        "PARTIAL": 3,
+        "PASS": 1
+      },
+      "next_workunit": "SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE",
+      "next_action": "Durable receipt writes need explicit migration/schema-owner authorization",
+      "blocker_ids": [
+        "SPEC302_DIRECT_ACCEPTANCE",
+        "SPEC302_DURABLE_RECEIPT_PHASE2",
+        "EXTERNAL_SPEC_LIBRARY_COLLISION_CHECK"
+      ]
+    },
+    {
+      "spec_id": "304",
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "authority_status": "ACTIVE_CANONICAL",
+      "lifecycle": "VALIDATION_PENDING",
+      "canonical_integration_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "requirement_state_counts": {
+        "OPEN": 7,
+        "PARTIAL": 1
+      },
+      "next_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
+      "next_action": "Trusted ingress producer and authorized nonproduction origin/route/browser acceptance; context.ts ownership PR684 preserved",
+      "blocker_ids": [
+        "SPEC304_TRUSTED_INGRESS_ASSERTION",
+        "EXTERNAL_SPEC_LIBRARY_COLLISION_CHECK"
+      ]
+    }
+  ],
+  "scope_note": "No fullSPEC closures inferred; remaining161/268 backlog is independent from this boundedlive-readiness mission. SPEC224manifest owned by openPR961 and preserved."
+}
