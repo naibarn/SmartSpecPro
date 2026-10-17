@@ -1,9 +1,70 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { combineCloudflarePermissionCatalogs, fetchCloudflarePermissionGroups, fetchCloudflareUserPermissionGroups, probeCloudflareServiceCatalog, probeCloudflareZoneServiceCatalog } from "../cloudflareCredentialCenter";
+import { combineCloudflarePermissionCatalogs, fetchCloudflarePermissionGroups, fetchCloudflareUserPermissionGroups, probeCloudflareCredential, probeCloudflareServiceCatalog, probeCloudflareZoneServiceCatalog, verifyCloudflareToken } from "../cloudflareCredentialCenter";
 import { CLOUDFLARE_PROBE_SERVICES, CLOUDFLARE_ZONE_PROBE_SERVICES } from "../../../shared/cloudflareCredentialCatalog";
 
 describe("Cloudflare permission group catalog probe", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("verifies a Cloudflare token without returning token identifiers or secrets", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      result: { id: "token-id-must-not-leak", status: "active" },
+    }), { status: 200 }));
+
+    const result = await verifyCloudflareToken("secret-token", fetchMock);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.cloudflare.com/client/v4/user/tokens/verify",
+      expect.objectContaining({ method: "GET", headers: expect.objectContaining({ Authorization: "Bearer secret-token" }) }),
+    );
+    expect(result).toEqual({ status: "granted", httpStatus: 200 });
+    expect(JSON.stringify(result)).not.toContain("token-id-must-not-leak");
+    expect(JSON.stringify(result)).not.toContain("secret-token");
+  });
+
+  it.each([
+    ["disabled", "invalid_token"],
+    ["expired", "invalid_token"],
+    [undefined, "unavailable"],
+  ] as const)("fails closed when Cloudflare reports token state %s", async (tokenStatus, expected) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      result: tokenStatus ? { status: tokenStatus } : {},
+    }), { status: 200 }));
+    await expect(verifyCloudflareToken("secret-token", fetchMock))
+      .resolves.toEqual({ status: expected, httpStatus: 200 });
+  });
+
+  it("resolves Account and Zone IDs from the saved profile via read-only API calls", async () => {
+    const rows = [
+      { value: JSON.stringify({ audit: { label: "audit", token: "secret-token", updatedAt: "2026-10-17T00:00:00.000Z" } }), isSensitive: false },
+      { value: "account-123", isSensitive: false },
+    ];
+    const db = { select: () => {
+      const query: any = {
+        from: () => query,
+        where: () => query,
+        limit: async () => rows.splice(0, 1),
+      };
+      return query;
+    } } as never;
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const result = url.endsWith("/user/tokens/verify")
+        ? { status: "active" }
+        : url.includes("/zones?name=smartaihub.app")
+          ? [{ id: "zone-123", name: "smartaihub.app" }]
+          : [];
+      return Promise.resolve(new Response(JSON.stringify({ success: true, result }), { status: 200 }));
+    });
+
+    const report = await probeCloudflareCredential(db, "audit", fetchMock);
+
+    expect(report).toMatchObject({ accountId: "account-123", zoneId: "zone-123", error: null });
+    expect(report.checks.find((check) => check.id === "tokenVerification"))
+      .toMatchObject({ status: "granted", httpStatus: 200 });
+    expect(fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+    expect(JSON.stringify(report)).not.toContain("secret-token");
+  });
 
   it("loads and sanitizes the live account permission catalog with a read-only request", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
