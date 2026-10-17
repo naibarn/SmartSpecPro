@@ -5173,5 +5173,2351 @@
       "shouldCite": true,
       "exactIdentifier": true
     }
+  },
+  {
+    "caseId": "b03-160-1-a-skill-first-prompt-expansion-flow",
+    "query": "I have a short story idea. What should the prompt-expansion step give me to review before I use it?",
+    "expectedAnswer": "1. A skill-first prompt-expansion flow that turns a short creator idea into a reviewable structured brief and a ready-to-use prompt.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
+      "sha256": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "lineStart": 13,
+      "lineEnd": 13,
+      "quoteSha256": "ee31970cbf85994a3a2a8b07f3e4fd1c07c2dd0ca65e659ba97e0e4e7e310dbc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md"
+      ],
+      "requiredClaims": ["feature160-1-a-skill-first-prompt-expansion-flow"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-160-2-a-visual-source-planning-flow-that-",
+    "query": "Before drafting an episode, how can a creator plan and attach visual references to the story?",
+    "expectedAnswer": "2. A visual-source planning flow that proposes editable media slots, generates prompts and images on demand, accepts creator-uploaded stills and video footage, and binds approved media to story/episode usage with explicit semantic roles.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md",
+      "sha256": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "quoteSha256": "92fccc1703a01ec5506c3d62812be2b11140531eccd055e6dd3024c0124e4bb9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md"
+      ],
+      "requiredClaims": ["feature160-2-a-visual-source-planning-flow-that-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-161-1-previewpromptexpansion",
+    "query": "For an interactive LLM request, what should the public API do before handing work to the background executor, and what should happen if enqueueing fails?",
+    "expectedAnswer": "1. Public mutation ต้องทำเฉพาะ auth/ownership, input validation, model validation, affordability check และ enqueue แล้วคืน job ID อย่างรวดเร็ว\n2. LLM ต้องถูกเรียกโดย worker/executor เท่านั้น และต้องเป็นการเรียกจริงผ่าน skill/OpenRouter ตาม model ที่ผู้ใช้เลือก\n3. ห้าม fallback จาก async เป็น sync เมื่อ queue/provider มีปัญหา; ต้องรายงานสถานะ failed หรือ enqueue failure อย่างชัดเจน",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+      "sha256": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "lineStart": 30,
+      "lineEnd": 32,
+      "quoteSha256": "8f7a98508d506caf6c9cb6f920a8e9ac7d3d4117c398a3dcb8c626a1fe890768",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md"
+      ],
+      "requiredClaims": ["feature161-1-previewpromptexpansion"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-161-2-generatestorybible",
+    "query": "When may a background LLM job be marked successful, and which user-confirmed or database-only operations can stay outside that job path?",
+    "expectedAnswer": "6. ผลลัพธ์ต้อง persist ก่อนประกาศ job สำเร็จ และต้องโหลดกลับได้หลัง refresh, worker restart หรือ browser disconnect\n7. งานที่เป็น pure DB mutation หรือ user-confirmed destructive action ไม่ต้องถูกเปลี่ยนเป็น LLM job หากไม่มีเหตุผลด้าน timeout",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+      "sha256": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "lineStart": 35,
+      "lineEnd": 36,
+      "quoteSha256": "4546ff03daedec2733fa8c547482b5dd63f233ad9b4e14b4b048ca59609d72fc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md"
+      ],
+      "requiredClaims": ["feature161-2-generatestorybible"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-162-1-inspect-the-source-without-changing",
+    "query": "Can discovering local footage upload the original media to the server, and where does processing happen before a derived result is published?",
+    "expectedAnswer": "The source-footage boundary is explicitly local to the Worker App device. A\nuser-selected Series media folder is a local workspace on the computer where\nthe Worker App is installed; original video/image bytes are never uploaded to\nthe SmartAIHub server or R2 merely because they were discovered. The Worker\ncopies or receives uploads into that local workspace, performs probe, analysis,\ndead-air editing, subject-aware reframing, encoding, and QC locally, and only\nthen uploads a verified derived artifact, manifest, preview, and approved\nanalysis metadata to R2/server storage. `SeriesID` is the project boundary in",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+      "sha256": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "lineStart": 15,
+      "lineEnd": 22,
+      "quoteSha256": "749ff730aafdcaf9a1e7ce7a48bceb35a4b57fd443da16a2c6f3b554d01f2af8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md"
+      ],
+      "requiredClaims": ["feature162-1-inspect-the-source-without-changing"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-162-2-find-technically-and-semantically-u",
+    "query": "When a Worker runs a ComfyUI workflow, which connection protocol is primary, what must be checked before claiming the job, and which responsibilities stay with SmartAIHub?",
+    "expectedAnswer": "For ComfyUI-backed work, the production transport is **MCP-primary**: the\nWorker App acts as a controlled MCP client and invokes the Official\n`comfy-mcp` server, which in turn drives `comfy-cli` and ComfyUI. SmartAIHub\nstill owns job admission, tenant policy, workflow policy, billing, artifact\npublication, and QC. Direct ComfyUI HTTP calls are an internal implementation\ndetail of `comfy-mcp`, not a browser or Worker production contract. A pinned\nMCP tool manifest, capability probe, and versioned compatibility matrix are\nrequired before a Worker may claim a ComfyUI job.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+      "sha256": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "lineStart": 25,
+      "lineEnd": 32,
+      "quoteSha256": "32d8290fa8b69ed7bf81509edeb299fcb803838b4719013b53aa82b325c55e84",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md"
+      ],
+      "requiredClaims": ["feature162-2-find-technically-and-semantically-u"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-163-1-provide-a-clear-sidebar-and-separat",
+    "query": "As Worker App features grow, how should its main navigation present them?",
+    "expectedAnswer": "- Provide a clear Sidebar and separate screens as the Worker App grows.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+      "sha256": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "lineStart": 47,
+      "lineEnd": 47,
+      "quoteSha256": "38fec69602d0820b2fca4fae1c96da710e3b4609321f8a02b67bae0a75b0dfc4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      ],
+      "requiredClaims": ["feature163-1-provide-a-clear-sidebar-and-separat"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-163-2-make-the-selected-series-context-vi",
+    "query": "How should the currently selected Series be represented across Worker App screens?",
+    "expectedAnswer": "- Make the selected Series context visible and consistent across screens.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+      "sha256": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "lineStart": 50,
+      "lineEnd": 50,
+      "quoteSha256": "c1db143b77f7d36148c28407af24bf8e23d001af8c07d95930bba94ca29a34e4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md"
+      ],
+      "requiredClaims": ["feature163-2-make-the-selected-series-context-vi"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-164-1-a-native-windows-macos-folder-picke",
+    "query": "How should a desktop user choose an existing workspace folder or create a new one?",
+    "expectedAnswer": "3. A native Windows/macOS folder picker and explicit New folder action.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+      "sha256": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "ea0c623fc96af35638ada024f49dbee3adccd35bbc698ed48645bba31a5c7be4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md"
+      ],
+      "requiredClaims": ["feature164-1-a-native-windows-macos-folder-picke"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-164-2-active-series-list-detail-behavior-",
+    "query": "Which Series should the default Worker workspace show, and what should its list/detail behavior follow?",
+    "expectedAnswer": "5. Active Series list/detail behavior consistent with the web application;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md",
+      "sha256": "cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
+      "lineStart": 46,
+      "lineEnd": 46,
+      "quoteSha256": "fd4db5b3c17d98d3f0e0b8cf9f72bb018ec69beeb42785c5d644209a749a9ee4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/164-worker-app-ux-localization-and-series-workspace/spec.md"
+      ],
+      "requiredClaims": ["feature164-2-active-series-list-detail-behavior-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cc3ab1ff99c19adb70a66456c7d8db43de0b585d790e6b0cc810ccaa8f1cbdde",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-165-1-comfyui-on-the-same-machine-through",
+    "query": "If ComfyUI runs on the Worker computer, which transport does the spec support?",
+    "expectedAnswer": "- ComfyUI on the same machine through local stdio MCP;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+      "sha256": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "38e9dd6ed854fa583b1d1bf079703315f7538900655b2c71ed600ca051d32170",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/165-worker-comfyui-mcp-control/spec.md"
+      ],
+      "requiredClaims": ["feature165-1-comfyui-on-the-same-machine-through"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-165-2-comfy-mcp",
+    "query": "How can a Worker connect to a self-hosted ComfyUI instance on a different machine or host?",
+    "expectedAnswer": "- self-hosted ComfyUI on LAN or another host through a configured `comfy-mcp`",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+      "sha256": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "eed936d644094e78349684b70604e8106b605f2af6cc04e528be8f2acc570650",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/165-worker-comfyui-mcp-control/spec.md"
+      ],
+      "requiredClaims": ["feature165-2-comfy-mcp"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-166-1-display-a-human-readable-title-or-w",
+    "query": "What information should help a user identify a credit entry in the Credits page?",
+    "expectedAnswer": "5. Display a human-readable title or work label on the user Credits page.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+      "sha256": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
+      "lineStart": 95,
+      "lineEnd": 95,
+      "quoteSha256": "56036a9bb2680f10c8581c053da54f2d99e8c4fdccb02739b14c1dd040ffb485",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
+      ],
+      "requiredClaims": ["feature166-1-display-a-human-readable-title-or-w"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-166-2-do-not-calculate-provider-usd-cost-",
+    "query": "Which provider-cost calculation is explicitly excluded from the first release?",
+    "expectedAnswer": "3. Do not calculate provider USD cost in the first release.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+      "sha256": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
+      "lineStart": 115,
+      "lineEnd": 115,
+      "quoteSha256": "43e74e154e9b81307fa39cb7e3dfbdcfb2515562d88f1fde8bff1c454cdd2666",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
+      ],
+      "requiredClaims": ["feature166-2-do-not-calculate-provider-usd-cost-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-167-1-a-clear-ui-distinction-between-the-",
+    "query": "How should the interface communicate that two generated assets have separate costs?",
+    "expectedAnswer": "3. A clear UI distinction between the two assets and their independent costs.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md",
+      "sha256": "f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
+      "lineStart": 59,
+      "lineEnd": 59,
+      "quoteSha256": "7beaca6bd52a905220dd6a541aee016cb35a0f6f88bd5b943baa1a586283d1e2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md"
+      ],
+      "requiredClaims": ["feature167-1-a-clear-ui-distinction-between-the-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-167-2-do-not-change-the-existing-start-fr",
+    "query": "What compatibility constraint applies to the current start-frame controls?",
+    "expectedAnswer": "1. Do not change the existing start-frame user flow or remove its buttons.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md",
+      "sha256": "f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
+      "lineStart": 86,
+      "lineEnd": 86,
+      "quoteSha256": "b7052f6b12b7e877c160d130aa03eef67698450db27bb2049b07cfe50d360494",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/167-vertical-drama-start-stop-frame-generation/spec.md"
+      ],
+      "requiredClaims": ["feature167-2-do-not-change-the-existing-start-fr"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f44dcf090d1c772b98a6a1f5702666853f1b1e0f38eb613e4c59636f4f8276e9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-168-1-startsec-endsec",
+    "query": "เมื่อวาง AI B-roll ใน timeline ต้องระบุขอบเขตช่วงเวลาใดบ้าง?",
+    "expectedAnswer": "- timeline intent สำหรับวาง AI B-roll ที่ `startSec/endSec`",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+      "sha256": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+      "lineStart": 52,
+      "lineEnd": 52,
+      "quoteSha256": "e0777d8a31388055e9fb509539d988ff60c58f9fad62bfe20d3435e9a9fac5f4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      ],
+      "requiredClaims": ["feature168-1-startsec-endsec"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-168-2-requirement",
+    "query": "ระหว่างงาน AI B-roll ทำงาน ผู้ใช้ควรเห็นสถานะใดเมื่อกำลังวิเคราะห์ พร้อมตรวจสอบ ล้มเหลว หรือต้องลองใหม่?",
+    "expectedAnswer": "- สถานะ `กำลังวิเคราะห์`, `พร้อมตรวจสอบ`, `ล้มเหลว`, `ต้องลองใหม่`",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+      "sha256": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+      "lineStart": 79,
+      "lineEnd": 79,
+      "quoteSha256": "8300d5a977d998e50a4bfd88e6da9a255434f718ca16019d800fc380852059f3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md"
+      ],
+      "requiredClaims": ["feature168-2-requirement"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-169-1-claim-the-job-with-tenant-user-seri",
+    "query": "What identity scope and liveness signal must accompany a Worker job claim?",
+    "expectedAnswer": "1. Claim the job with tenant/user/series scope and heartbeat.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+      "sha256": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+      "lineStart": 139,
+      "lineEnd": 139,
+      "quoteSha256": "dd66de8ef8dfaa518543f4aeb4aa4afd8cb3add985e2c21cf9fc5cd2e3869197",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md"
+      ],
+      "requiredClaims": ["feature169-1-claim-the-job-with-tenant-user-seri"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-169-2-resolve-source-into-an-isolated-wor",
+    "query": "Where should a Worker resolve a job source before processing it?",
+    "expectedAnswer": "2. Resolve source into an isolated work directory.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+      "sha256": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+      "lineStart": 140,
+      "lineEnd": 140,
+      "quoteSha256": "8e0cf379e32bcaba822ab22794253bcaf26b7c517a7c4c84eae6342473ec42f0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md"
+      ],
+      "requiredClaims": ["feature169-2-resolve-source-into-an-isolated-wor"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-170-1-start-or-stop-frames-are-not-genera",
+    "query": "If a user supplies start or stop frames, should the system reinterpret them as video or audio inputs?",
+    "expectedAnswer": "1. Start or stop frames are not generalized into video or audio.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md",
+      "sha256": "7a070024c3fcf1af70488ffd3359db1a93f6838f236293899b128519292d95d0",
+      "lineStart": 111,
+      "lineEnd": 111,
+      "quoteSha256": "ab1e34491ac9baed8eec064420252dde75951d66163d29e058b3018d6a5811e9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md"
+      ],
+      "requiredClaims": ["feature170-1-start-or-stop-frames-are-not-genera"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7a070024c3fcf1af70488ffd3359db1a93f6838f236293899b128519292d95d0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-170-2-do-not-promise-that-every-provider-",
+    "query": "How should the product describe provider support for combinations of selected media?",
+    "expectedAnswer": "3. Do not promise that every provider accepts every combination of media.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md",
+      "sha256": "7a070024c3fcf1af70488ffd3359db1a93f6838f236293899b128519292d95d0",
+      "lineStart": 114,
+      "lineEnd": 114,
+      "quoteSha256": "78f0de095ba9aff42f407bb7e9c4b47f21610ac09566de7aa7aa3720386a5518",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract/spec.md"
+      ],
+      "requiredClaims": ["feature170-2-do-not-promise-that-every-provider-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7a070024c3fcf1af70488ffd3359db1a93f6838f236293899b128519292d95d0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-171-1-add-best-effort-30-day-cleanup-with",
+    "query": "What retention cleanup behavior is specified for forensic records?",
+    "expectedAnswer": "8. Add best-effort 30-day cleanup with bounded batch work and operational logging.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
+      "sha256": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "lineStart": 46,
+      "lineEnd": 46,
+      "quoteSha256": "f08386b4c824d05da62f7b22e55e9a15173519b99ed3e79cad2f07d1bb13fff4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      ],
+      "requiredClaims": ["feature171-1-add-best-effort-30-day-cleanup-with"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-171-2-special-run-events-share-correlatio",
+    "query": "What metadata and ordering guarantees should related special-run events preserve?",
+    "expectedAnswer": "- Special run events share correlation IDs and preserve ordering/sequence.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/171-special-tie-in-forensic-observability/spec.md",
+      "sha256": "b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "lineStart": 54,
+      "lineEnd": 54,
+      "quoteSha256": "c1b9655ad1ff1216b5fb33ccd2d2e969b6cbfd7fccd2e817e8b4f03a9510e698",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/171-special-tie-in-forensic-observability/spec.md"
+      ],
+      "requiredClaims": ["feature171-2-special-run-events-share-correlatio"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b1ef36a7de74d7ed66e1df4c190c5f2c29a156d635d68bbae5b19659cfece9cf",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-172-1-usergroups-ownerid",
+    "query": "ในกลุ่มของผู้ใช้ เจ้าของกลุ่มต้องตรงกับผู้ใช้ที่ลงทะเบียน Worker อย่างไร?",
+    "expectedAnswer": "4. Group ต้องมี `userGroups.ownerId` ตรงกับ `workers.registeredByUserId`",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
+      "sha256": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "lineStart": 154,
+      "lineEnd": 154,
+      "quoteSha256": "e8946b9aee4f55b196b0d56eeea9a60a12356bf5d60e61fb482d6e5f984b2147",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md"
+      ],
+      "requiredClaims": ["feature172-1-usergroups-ownerid"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-172-2-group-members-status-active",
+    "query": "สมาชิกกลุ่มแบบใดจึงถือว่าใช้งานได้ตามเงื่อนไขที่ระบุ?",
+    "expectedAnswer": "5. สมาชิกที่ใช้งานได้ต้องมี `group_members.status = active`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
+      "sha256": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "lineStart": 156,
+      "lineEnd": 156,
+      "quoteSha256": "5fd7f28e8e2ffbbd2499ecdb43d390d3e4256bd8ff9b9a5b52efaa337c1390a1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md"
+      ],
+      "requiredClaims": ["feature172-2-group-members-status-active"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-173-1-prevent-stale-model-reference-conte",
+    "query": "How should the system handle results produced from an outdated model, reference, or context?",
+    "expectedAnswer": "7. Prevent stale model/reference/context results from being applied silently.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+      "sha256": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+      "lineStart": 85,
+      "lineEnd": 85,
+      "quoteSha256": "4a6ce2c010ddd54a37efec74a0acadc2a25a53dacbccd9209760404e7f336bb3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md"
+      ],
+      "requiredClaims": ["feature173-1-prevent-stale-model-reference-conte"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-173-2-do-not-replace-or-refactor-the-exis",
+    "query": "What should this feature leave intact about the existing legacy prompt workflow?",
+    "expectedAnswer": "1. Do not replace or refactor the existing Legacy prompt path in this feature.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+      "sha256": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+      "lineStart": 109,
+      "lineEnd": 109,
+      "quoteSha256": "2bf18c4f3e88882d73204c3ed2a9ced0175849cebf8d732589ff27f7fe3c09c1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md"
+      ],
+      "requiredClaims": ["feature173-2-do-not-replace-or-refactor-the-exis"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-174-1-define-an-important-object-once-for",
+    "query": "How should a recurring physical story object be represented across a series?",
+    "expectedAnswer": "- define an important object once for the series;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+      "sha256": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+      "lineStart": 83,
+      "lineEnd": 83,
+      "quoteSha256": "5e81fa59a1eb5ac4041a122b03c3f7cfcea77622f8c75b2d70cd420ca24f9b5a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/174-vertical-drama-object-reference-catalog/spec.md"
+      ],
+      "requiredClaims": ["feature174-1-define-an-important-object-once-for"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-174-2-describe-what-it-is-and-why-it",
+    "query": "Which narrative context should a catalog entry provide about an object?",
+    "expectedAnswer": "- describe what it is and why it matters in the story;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+      "sha256": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+      "lineStart": 84,
+      "lineEnd": 84,
+      "quoteSha256": "5281ae9b444ec0dee17e4c6eb1a1c6e68bc8bd618f77e985dc39a5cc6f237f97",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/174-vertical-drama-object-reference-catalog/spec.md"
+      ],
+      "requiredClaims": ["feature174-2-describe-what-it-is-and-why-it"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-175-1-native-audio-as-baseline",
+    "query": "Why does the spec prioritize a single-pass audio-and-video generation path over layering audio onto silent output?",
+    "expectedAnswer": "1. **Native Audio as Baseline:** Modern video diffusion and autoregressive models (Gemini Omni, Grok Imagine Video 1.5, MiniMax H3, Seedance 2.0/2.5, Veo 3/3.1) now generate video and audio jointly in a single pass. The system prioritizes Native Audio to minimize generation latency and credits compared to legacy pipelines that generated silent video and layered audio from scratch.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+      "sha256": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "lineStart": 24,
+      "lineEnd": 24,
+      "quoteSha256": "a81610fd4f9350bc321eaaec73c7c416a724a726e2014f54bc27bbd29bf6b075",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      ],
+      "requiredClaims": ["feature175-1-native-audio-as-baseline"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-175-2-shotaudiointent",
+    "query": "What structured audio information should be defined for a shot before its prompt is compiled?",
+    "expectedAnswer": "2. **Structured Intent Always:** Every shot maintains a typed, provider-neutral `ShotAudioIntent` (Dialogue, Delivery Style, Must-Hear Foley, Atmosphere/Room Tone, Creative SFX, Negative Constraints) authored before prompt compilation.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+      "sha256": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "quoteSha256": "b39a385bc9d6d655878491a6791209fbc8bd92cd54af957aae5b0a8b768fa281",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md"
+      ],
+      "requiredClaims": ["feature175-2-shotaudiointent"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-178-1-feature-176-owns-skill-first-semant",
+    "query": "Which feature handles interpreting emotional intent and reviewing rights and timing?",
+    "expectedAnswer": "- Feature 176 owns skill-first semantic emotion interpretation, critique, review, revisions, rights review, and timing epistemics.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md",
+      "sha256": "a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "7aaa933c643b35fc7bf12f2c90818de081d43ca869ae10761575512007b2726c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md"
+      ],
+      "requiredClaims": ["feature178-1-feature-176-owns-skill-first-semant"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-178-2-feature-177-owns-worker-side-asr-ed",
+    "query": "Which feature owns the Worker-side audio transcription/edit map through final mix and publication?",
+    "expectedAnswer": "- Feature 177 owns Worker-side ASR/edit-map, genuine MiniMax Music 3 inference, measured DSP, FFmpeg mix/export, QC, and artifact publication.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md",
+      "sha256": "a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "a77c803dd609f28303c681d4d49ab3899325ed4e76e5c617a3b42aebdb893b05",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/178-vertical-drama-group-native-music3-plan-mix/spec.md"
+      ],
+      "requiredClaims": ["feature178-2-feature-177-owns-worker-side-asr-ed"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a8d739b5a676dbdbc53536a0625139aef00ddb6e53a8ae74bfa95ea36adb7253",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-180-1-scan-an-entire-video-and-report-who",
+    "query": "What speaker and visual-match information should a full-video scan produce?",
+    "expectedAnswer": "1. Scan an entire video and report who appears to speak, when they speak, and which face/person track is the best visual match.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+      "sha256": "4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "402f044243aad74d5cd45c1321c2fcfdfd150bf9f6ade6a5dd65da07c0b5f1be",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md"
+      ],
+      "requiredClaims": ["feature180-1-scan-an-entire-video-and-report-who"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-180-2-let-a-user-name-anonymous-speakers-",
+    "query": "How can users associate detected speakers with names in standalone and Series-based projects?",
+    "expectedAnswer": "2. Let a user name anonymous speakers in a standalone project, or map them to existing Series characters when a Series is selected.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+      "sha256": "4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "quoteSha256": "b83589a0ecb657ba29a5cf59e446bba7c34fc195f2fff98f42cc22f5accd42b2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md"
+      ],
+      "requiredClaims": ["feature180-2-let-a-user-name-anonymous-speakers-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-183-1-a-centralized-explicit-public-route",
+    "query": "How should public-page access be governed, and what should happen when a route is not explicitly recognized?",
+    "expectedAnswer": "1. A centralized explicit public-route policy controls registration, navigation and data access. Route patterns are tested against App.tsx; unknown routes fail closed. Do not use “not /admin” as the policy.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/183-public-site-webmcp/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/183-public-site-webmcp/spec.md",
+      "sha256": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "d794500bce0155d441cd15c484459d8c8d5b74f51dcf31b1796853635d9a72ed",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": ["specs/feature/183-public-site-webmcp/spec.md"],
+      "requiredClaims": ["feature183-1-a-centralized-explicit-public-route"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-183-2-each-page-exposes-an-explicit-publi",
+    "query": "When exposing a page publicly, which content should be included and which logged-in interface details must stay hidden?",
+    "expectedAnswer": "2. Each page exposes an explicit public view model derived from its existing data and presentation. Never scrape document.body: logged-in navigation, tokens, hidden forms and account details are outside the public projection.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/183-public-site-webmcp/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/183-public-site-webmcp/spec.md",
+      "sha256": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "94013e906bfba98fa51e7c8a4c829bf002503e51686ef531d0dd46b2f410948c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": ["specs/feature/183-public-site-webmcp/spec.md"],
+      "requiredClaims": ["feature183-2-each-page-exposes-an-explicit-publi"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-184-1-schemaversion",
+    "query": "Which two revisions should be tracked separately so timeline edits do not stand in for a schema change?",
+    "expectedAnswer": "- แยก `schemaVersion` ออกจาก `timelineVersion` (monotonic revision)",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+      "sha256": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+      "lineStart": 147,
+      "lineEnd": 147,
+      "quoteSha256": "e794386a61f1d7d7ac6e85cc0b86d0996103091de19f0b41047719b3a86f08a9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      ],
+      "requiredClaims": ["feature184-1-schemaversion"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-184-2-api-worker-jobs-jobid-references-ur",
+    "query": "What is the exact API path listed for retrieving a worker job’s reference URLs?",
+    "expectedAnswer": "- `/api/worker-jobs/:jobId/references/urls`",
+    "language": "english",
+    "classes": ["api_path"],
+    "sourceGroupId": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+      "sha256": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+      "lineStart": 299,
+      "lineEnd": 299,
+      "quoteSha256": "d2b4d7129be58e1c88953d0be21d8e675433984a87227dd22f7f1ad36dc85bc9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/184-web-video-editor-headless-worker/spec.md"
+      ],
+      "requiredClaims": ["feature184-2-api-worker-jobs-jobid-references-ur"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-185-1-new-project-by-skill-framework",
+    "query": "In Storyboard Review, what new project-creation option is added while preserving the blank-project path?",
+    "expectedAnswer": "- เพิ่ม `New Project by Skill Framework` บน `storyboard-review` โดยไม่ทำลาย `New Blank Project`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+      "sha256": "a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "ae9ad7ee4be1ba302db40287c4add7e677d4003e1f3fe697f4895c0275703271",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/185-skill-framework-storyboard-project/spec.md"
+      ],
+      "requiredClaims": ["feature185-1-new-project-by-skill-framework"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-185-2-characterkey",
+    "query": "How may a newly generated character’s display name change without changing its stable identity?",
+    "expectedAnswer": "- รองรับชื่ออัตโนมัติสำหรับตัวละครใหม่ แต่ผู้ใช้แก้ชื่อได้เสมอโดยไม่เปลี่ยน immutable `characterKey`",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+      "sha256": "a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "e6f8b1d9f9eb675f373a5a787c3f909dcd07d4d7c3e017616cb149477eea3b1b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/185-skill-framework-storyboard-project/spec.md"
+      ],
+      "requiredClaims": ["feature185-2-characterkey"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-186-1-worker-jobs-id",
+    "query": "Which record supplies the durable job identifier before a message is sent through any execution transport?",
+    "expectedAnswer": "1. **`worker_jobs.id` is the canonical job ID.** It is generated before any transport submission, is immutable and never reused, and is used by the application, adapters, workers, APIs, logs, notifications, billing guards, and Cloudflare integrations.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+      "sha256": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "lineStart": 165,
+      "lineEnd": 165,
+      "quoteSha256": "f9233cc5f8b198f07d146b56b62e95d1ef0fa58b4ebcb9ebda06405855664335",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/186-unified-job-control-plane-adapters/spec.md"
+      ],
+      "requiredClaims": ["feature186-1-worker-jobs-id"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b03-186-2-postgresql-is-the-source-of-truth-r",
+    "query": "Which system remains authoritative when queues and worker platforms report their own execution state?",
+    "expectedAnswer": "2. **PostgreSQL is the source of truth.** Redis lists, BullMQ job records, Celery broker state, Celery result backends, Cloudflare message IDs, workflow instance IDs, and container instance IDs are transport/execution observations only.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+      "sha256": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "lineStart": 166,
+      "lineEnd": 166,
+      "quoteSha256": "918e668a801c52fd27171ba6a5e4c9e2141fd1caed897298c5b02019a7bbb481",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/186-unified-job-control-plane-adapters/spec.md"
+      ],
+      "requiredClaims": ["feature186-2-postgresql-is-the-source-of-truth-r"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-187-1-keep-the-current-mini-server-usable",
+    "query": "During the migration phases, what role should the existing mini server continue to serve for developers?",
+    "expectedAnswer": "1. Keep the current mini server usable as a complete development environment throughout every migration phase.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+      "sha256": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "lineStart": 59,
+      "lineEnd": 59,
+      "quoteSha256": "326cb11a7be142b04b6c40f67437366038b4867947c57faeb22ecd80ae000895",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md"
+      ],
+      "requiredClaims": ["feature187-1-keep-the-current-mini-server-usable"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-187-2-establish-cloudflare-production-ent",
+    "query": "Can the production entrypoint migration require a simultaneous rewrite of all application services?",
+    "expectedAnswer": "2. Establish Cloudflare production entrypoints without requiring a simultaneous rewrite of all Node, Python, worker, or domain services.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+      "sha256": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "lineStart": 60,
+      "lineEnd": 60,
+      "quoteSha256": "c791ef487411b1ec9da31deadc09fa421e0c753eccd570e1fc6e9c68b4b9713c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md"
+      ],
+      "requiredClaims": ["feature187-2-establish-cloudflare-production-ent"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-188-1-feature-186-establishes-the-canonic",
+    "query": "Which feature owns canonical job lifecycle and adapter contracts in the platform cutover sequence?",
+    "expectedAnswer": "0. **Feature 186** establishes the canonical job contract, persistence, lifecycle, adapters, lease/fencing, and recovery evidence.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+      "sha256": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "5e182d7de897a84a3597ec527a184a4bb0e1875c9a04f23693e80b00355dff36",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md"
+      ],
+      "requiredClaims": ["feature188-1-feature-186-establishes-the-canonic"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-188-2-feature-189-establishes-the-authent",
+    "query": "Which feature owns tenant authorization and transfer semantics in that cutover sequence?",
+    "expectedAnswer": "1. **Feature 189** establishes the authenticated tenant/authorization boundary and transfer semantics on that accepted job boundary.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+      "sha256": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "f0dbf10c96247e6f52dbc4b3b7bbde36fb9fc0e6fae9ffe1c7d1c5ccd46726e3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md"
+      ],
+      "requiredClaims": ["feature188-2-feature-189-establishes-the-authent"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-189-1-bind-one-user-account-to-exactly-on",
+    "query": "How many active tenants may be bound to one user account at a time?",
+    "expectedAnswer": "- Bind one user account to exactly one active tenant at a time.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+      "sha256": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+      "lineStart": 26,
+      "lineEnd": 26,
+      "quoteSha256": "55f0d773e783089c00766437389b23b3d7be26dd70aefd1f95605071832cf35f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md"
+      ],
+      "requiredClaims": ["feature189-1-bind-one-user-account-to-exactly-on"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b03-189-2-use-the-current-hostname-for-public",
+    "query": "What may the current hostname be used for in public branding and signup discovery?",
+    "expectedAnswer": "- Use the current hostname for public branding and signup tenant discovery only;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+      "sha256": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "efc92392c51c325d238e30a3a3ce1ed44351448911a6754b10f4ede9c91c0de8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository SPEC documents for development fixtures only; no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "repo-spec-grounded-candidates-v3"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch03",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness and taxonomy after query rewrite; development-only candidate."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md"
+      ],
+      "requiredClaims": ["feature189-2-use-the-current-hostname-for-public"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
   }
 ]
