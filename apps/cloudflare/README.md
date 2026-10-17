@@ -73,6 +73,37 @@ values out of source control. The Worker forwards requests to the canonical
 app auth/service boundary and does not validate session tokens itself. Missing
 origin/token produces a closed 503.
 
+## Static SPA staging configuration
+
+`wrangler.staging.jsonc` is a separate Workers Dev deployment target with no
+custom domain, cron, queue, KV, Hyperdrive, or activation. It serves the Vite
+build from `apps/web/dist/public`; `run_worker_first` reserves API, auth,
+OAuth, upload, internal, health, metrics, WebSocket, and well-known paths for
+the Worker so an API miss cannot be rewritten to `index.html`. All other
+unmatched browser navigation requests use the asset SPA fallback. A failed or
+unconfigured Origin Proxy remains a closed 503. Do not use the production
+template to deploy this staging target.
+
+The copied `_headers` policy leaves the HTML shell revalidatable and gives Vite
+fingerprinted `/assets/*` files a one-year immutable cache. The shell still has
+SmartAIHub's production canonical metadata; client-side tenant SEO is not
+server-rendered into the static HTML. Tenant-specific crawler metadata must
+remain origin-owned until a canonical tenant metadata adapter is designed and
+validated. The local static smoke proves routing and cache headers only; it is
+not live Cloudflare staging or browser authentication acceptance.
+
+Build and run the safe local Workers target with:
+
+```sh
+pnpm --filter @smartspec/web exec vite build --configLoader runner
+pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run
+pnpm dlx wrangler@4.151.1 dev --config apps/cloudflare/wrangler.staging.jsonc --local
+```
+
+Rollback is isolated to the staging Worker: disable/remove its staging Worker
+deployment or revert the staging asset configuration. No production hostname,
+route, activation, database, or job consumer is part of this target.
+
 ## Web/API origin routing
 
 `src/apiRouteManifest.ts` is the explicit HTTP routing inventory. Hono backs
