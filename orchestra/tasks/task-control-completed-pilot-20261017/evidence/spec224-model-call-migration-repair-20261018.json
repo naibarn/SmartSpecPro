@@ -1,0 +1,29 @@
+{
+  "workUnit": "SPEC224_MODEL_CALL_MIGRATION_REPAIR",
+  "spec": "SPEC-224",
+  "owner": "/root",
+  "sourceBase": "9411af2320b00ad88afd8792d8a44a256e81168e",
+  "rootCause": "0403 leaves PostgreSQL auto-named reservationKind_check from0325, so model_call still fails23514",
+  "before": {
+    "passed": 1,
+    "failed": 1,
+    "code": "23514"
+  },
+  "after": {
+    "passed": 12,
+    "failed": 0,
+    "scope": "historical migration replay + existing Codex budget admission integration tests",
+    "environment": "owned disposable PostgreSQL; not live acceptance"
+  },
+  "repair": "forward-only0404 drops only superseded inline CHECK; expanded0403 guard and legacy/model-call uniqueness preserved",
+  "review": "independent read-only review found no blocker",
+  "productionMigrationExecuted": false,
+  "serviceRestartExecuted": false,
+  "deploymentAuthorization": "latest user grants necessary build/restart",
+  "databaseAuthorization": "WAITING_EXTERNAL_AUTHORITY under prior explicit production DB/migration boundary",
+  "profile": "integration",
+  "resource": "one worker; scoped disposable PostgreSQL; no broad build/typecheck",
+  "SDKJob": null,
+  "actualAssistantModelUsage": null,
+  "billingSettlement": "UNKNOWN"
+}
