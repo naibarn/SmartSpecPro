@@ -62,12 +62,12 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     const first = await enqueueVerticalDramaDraftQualityQc(payload, {
       redis,
       persistJobStatus: async () => true,
-      enqueueBullmqJob: async () => undefined,
+      enqueueCanonicalJob: async () => undefined,
     });
     const second = await enqueueVerticalDramaDraftQualityQc(payload, {
       redis,
       persistJobStatus: async () => true,
-      enqueueBullmqJob: async () => undefined,
+      enqueueCanonicalJob: async () => undefined,
     });
     expect(second).toEqual({ runId: first.runId, deduped: true });
     expect(
@@ -135,7 +135,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       {
         redis,
         persistJobStatus: async () => true,
-        enqueueBullmqJob: async () => undefined,
+        enqueueCanonicalJob: async () => undefined,
       }
     );
     expect(
@@ -182,7 +182,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
         },
         {
           redis,
-          enqueueBullmqJob: async () => {
+          enqueueCanonicalJob: async () => {
             throw new Error("worker unavailable");
           },
         }
@@ -193,6 +193,46 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       "vd:draft-qc:active:tenant-a:7:101:session-3"
     );
     expect(pointerRun).toBeNull();
+  });
+
+  it("queues a large Draft by reference instead of exceeding the worker input key limit", async () => {
+    const redis = fakeRedis();
+    const draft = Object.fromEntries(
+      Array.from({ length: 520 }, (_, index) => [`field${index}`, `value${index}`])
+    );
+    let admittedInput: Record<string, unknown> | undefined;
+
+    const { runId } = await enqueueVerticalDramaDraftQualityQc(
+      {
+        tenantId: "tenant-a",
+        userId: 7,
+        seriesId: 101,
+        draftSessionId: "session-large-draft",
+        draftId: "draft-large-draft",
+        draft,
+        immutableConstraints: {},
+        maxImprovementRounds: 0,
+      },
+      {
+        redis,
+        persistJobStatus: async () => true,
+        enqueueCanonicalJob: async input => {
+          admittedInput = input.payload;
+        },
+      }
+    );
+
+    expect(admittedInput).toEqual({ runId, seriesId: 101 });
+    expect(
+      (
+        await getVerticalDramaDraftQualityQcStatus(
+          runId,
+          { tenantId: "tenant-a", userId: 7 },
+          101,
+          { redis }
+        )
+      )?.draft
+    ).toEqual(draft);
   });
 
   it("closes a stale queued run and releases its active pointer", async () => {
@@ -212,7 +252,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       {
         redis,
         now: () => createdAt,
-        enqueueBullmqJob: async () => undefined,
+        enqueueCanonicalJob: async () => undefined,
         persistJobStatus: async () => true,
       }
     );
