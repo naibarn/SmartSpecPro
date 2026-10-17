@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `22`
-- Updated (UTC): `2026-10-17T01:05:44.312732+00:00`
+- State generation: `23`
+- Updated (UTC): `2026-10-17T01:10:23.502735+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-05-agent-monitor-ui`
-- Next action: Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps.
+- Active section: `section-06-integration-live-acceptance`
+- Next action: Commit and push the expanded ownership/usage gap matrix; rerun required checks on its exact head, merge only through protected promotion, and continue remaining live and source-binding gaps.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks |
 | section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
 | section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 86f137f58 | — | Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps. |
-| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 07aadac50 | — | Push branch codex/task-control-goal-monitor-20261017 to PR #1001, inspect required checks on the new head, and continue independent Task/Project/Chat snapshot and Agent topology gaps. |
+| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 07aadac50 | — | Commit and push the expanded ownership/usage gap matrix; rerun required checks on its exact head, merge only through protected promotion, and continue remaining live and source-binding gaps. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
