@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, lte, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, lt, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -407,6 +407,12 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
   }).from(workerJobs).where(and(...predicates)).orderBy(desc(workerJobs.createdAt), desc(workerJobs.id)).limit(PAGE_SIZE + 1);
   const hasMore = rows.length > PAGE_SIZE;
   const page = rows.slice(0, PAGE_SIZE);
+  const pageIds = page.map((job) => job.id);
+  const runnerSessions = pageIds.length ? await db.select({ workerJobId: runnerExecutionSessions.workerJobId, runnerId: runnerExecutionSessions.runnerId, state: runnerExecutionSessions.state, generation: runnerExecutionSessions.generation })
+    .from(runnerExecutionSessions).where(and(inArray(runnerExecutionSessions.workerJobId, pageIds), eq(runnerExecutionSessions.tenantId, input.scope.tenantId)))
+    .orderBy(desc(runnerExecutionSessions.generation)) : [];
+  const runnerByJob = new Map<string, typeof runnerSessions[number]>();
+  for (const session of runnerSessions) if (session.workerJobId && !runnerByJob.has(session.workerJobId)) runnerByJob.set(session.workerJobId, session);
   const items = page.map((job) => {
     const progress = objectValue(job.progressJson);
     const inputMetadata = objectValue(job.inputJson);
@@ -424,6 +430,8 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       heartbeatAt: asIso(job.heartbeatAt),
       createdAt: job.createdAt.toISOString(),
       workerId: job.workerId,
+      runnerId: runnerByJob.get(job.id)?.runnerId ?? null,
+      runnerSessionState: runnerByJob.get(job.id)?.state ?? null,
       projectId,
       specId,
       identityBinding: { status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const, source: development?.projectId || development?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null },

@@ -43,7 +43,16 @@ function requireWorkerJobAuth(ctx: {
   return {
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
-    isAdmin: ctx.user.role === "admin" || ctx.user.role === "system_agent",
+  };
+}
+
+function requireTaskObservabilityScope(ctx: {
+  tenantId?: string | null;
+  user?: { id?: number | null; role?: string | null } | null;
+}) {
+  return {
+    ...requireWorkerJobAuth(ctx),
+    isAdmin: ctx.user?.role === "admin" || ctx.user?.role === "system_agent",
   };
 }
 
@@ -116,16 +125,15 @@ export const workerJobsRouter = router({
       specId: z.string().trim().min(1).max(64).optional(),
     }).strict().optional())
     .query(async ({ ctx, input }) => {
-      const auth = requireWorkerJobAuth(ctx);
       try {
-        return await listTaskObservability({ scope: auth, cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId });
+        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId });
       } catch (error) { return mapObservabilityError(error); }
     }),
 
   observabilityDetail: protectedProcedure
     .input(z.object({ jobId: z.string().trim().min(1).max(36) }).strict())
     .query(async ({ ctx, input }) => {
-      try { return await getTaskObservabilityDetail({ scope: requireWorkerJobAuth(ctx), jobId: input.jobId }); }
+      try { return await getTaskObservabilityDetail({ scope: requireTaskObservabilityScope(ctx), jobId: input.jobId }); }
       catch (error) { return mapObservabilityError(error); }
     }),
 

@@ -18,7 +18,7 @@ vi.mock("@/lib/trpc", () => ({
 
 import TaskObservabilityMonitor from "./TaskObservabilityMonitor";
 
-const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
+const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
 
 beforeEach(() => {
   listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z" }, nextCursor: null }, isLoading: false, error: null, refetch: vi.fn() };
@@ -56,8 +56,9 @@ describe("TaskObservabilityMonitor", () => {
   it("shows runner fleet state from the canonical runner read model", () => {
     render(<TaskObservabilityMonitor />);
     expect(screen.getByText(/Available runner fleet/)).toBeTruthy();
-    expect(screen.getByText(/Runner One/)).toBeTruthy();
+    expect(screen.getAllByText(/Runner One/)).toHaveLength(2);
     expect(screen.getByText(/snapshot expires 2026-10-17T00:10:00Z/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /↳ spec224\.development · running · job-1/ })).toBeTruthy();
   });
 
   it("applies explicit project and SPEC aggregation filters", () => {

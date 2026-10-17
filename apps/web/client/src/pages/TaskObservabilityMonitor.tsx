@@ -93,6 +93,27 @@ export default function TaskObservabilityMonitor() {
               <Text type="supporting">{runner.workspaceIds.length} workspace(s) · {runner.toolCount} tools · {runner.capabilityCount} capabilities</Text>
             </HStack>
           ))}
+          <Heading level={3}>Observed runner to task topology</Heading>
+          {runnerQuery.data?.runners.map((runner) => {
+            const linkedJobs = items.filter((item) => item.runnerId === runner.runnerId);
+            return (
+              <VStack as="article" key={`topology-${runner.runnerId}`} gap={1} padding={2}>
+                <Text>{runner.displayName ?? runner.runnerId} · {runner.displayState}</Text>
+                {linkedJobs.length ? linkedJobs.map((item) => (
+                  <HStack as="article" key={item.id} gap={2} wrap="wrap" padding={2}>
+                    <Button label={`↳ ${item.jobType} · ${item.status} · ${item.id}`} variant="ghost" onClick={() => setSelectedId(item.id)} />
+                    <Text type="supporting">{item.stage ?? "stage unknown"} · attempt {item.attempt}/{item.maxAttempts}</Text>
+                  </HStack>
+                )) : <Text type="supporting">No linked task in this page snapshot.</Text>}
+              </VStack>
+            );
+          })}
+          {items.some((item) => item.runnerId && !runnerQuery.data?.runners.some((runner) => runner.runnerId === item.runnerId)) ? (
+            <VStack gap={1} padding={2}>
+              <Text>Runner observation unavailable</Text>
+              {items.filter((item) => item.runnerId && !runnerQuery.data?.runners.some((runner) => runner.runnerId === item.runnerId)).map((item) => <Text key={`unbound-${item.id}`}>↳ {item.jobType} · {item.status} · runner {item.runnerId} (inventory unverified)</Text>)}
+            </VStack>
+          ) : null}
         </VStack>
       </Section>
 
