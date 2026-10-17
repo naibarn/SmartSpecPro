@@ -46,9 +46,13 @@ async function main() {
     return;
   }
   const artifact = record.cloudflare_staging_artifact;
+  const bundleVerified = artifact?.status === "BUNDLE_READY" ||
+    artifact?.status === "PUBLISHED" ||
+    artifact?.status === "PUBLISH_PENDING" &&
+      ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason);
   if (record.status !== "BUILD_PASSED" || record.source_revision?.toLowerCase() !== sourceSha.toLowerCase() ||
       record.canonical_ref !== "refs/heads/main" || record.canonical_tip_after_build?.toLowerCase() !== sourceSha.toLowerCase() ||
-      artifact?.status !== "BUNDLE_READY" || !/^[a-f0-9]{64}$/i.test(artifact.build_digest ?? "") ||
+      !bundleVerified || !/^[a-f0-9]{64}$/i.test(artifact.build_digest ?? "") ||
       artifact.artifact_ref !== `sha256:${artifact.build_digest.toLowerCase()}`) {
     console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_untrusted" }));
     return;
@@ -125,8 +129,11 @@ async function main() {
 
 main().catch(error => {
   const message = error instanceof Error ? error.message : "unknown";
+  const diagnosticCode = /^[A-Z][A-Z0-9_]{4,99}$/.test(message)
+    ? message
+    : "ARTIFACT_PUBLISH_FAILED";
   const reason = message.startsWith("STORAGE_") || message.startsWith("R2_")
     ? "artifact_storage_unavailable"
     : "artifact_publish_failed";
-  console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason }));
+  console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason, diagnosticCode }));
 });

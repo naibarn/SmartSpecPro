@@ -119,6 +119,15 @@ jobs:
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
         run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+      - name: Install PostgreSQL for disposable control-plane integration test
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y postgresql
+      - name: Exercise staging executor through disposable PostgreSQL
+        run: npm --workspace @smartspec/web run test -- server/services/cloudflareStagingDeploymentPostgres.integration.test.ts
+        env:
+          RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"
+          TMPDIR: /tmp
       - name: Verify local readiness without target credentials
         run: |
           npm --workspace @smartspec/web run verify:cloudflare-local-readiness
