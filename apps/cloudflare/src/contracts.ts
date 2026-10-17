@@ -108,6 +108,8 @@ export type CloudflareEnvironment = {
   AUTH_ORIGIN_PRIVATE_HOST?: string;
   /** Shared Worker-to-origin attestation secret; never exposed to clients. */
   AUTH_ORIGIN_TOKEN?: string;
+  /** Public verification-key set for the stateless content-protection API. */
+  CONTENT_PROTECTION_PUBLIC_KEYS_JSON?: string;
   /** Private, non-recursive platform origin that owns canonical authz and emergency transactions. */
   PLATFORM_EDGE_ORIGIN?: string;
   /** Exact hostname vetted by the deployment pipeline as the private platform origin. */
