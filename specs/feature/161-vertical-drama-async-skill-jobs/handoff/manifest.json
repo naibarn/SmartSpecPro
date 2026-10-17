@@ -22,27 +22,27 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "expected_canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Promote both independently reviewed model repairs through protected PR; run exact merged-SHA bounded suite and refresh validation-only302/304 evidence.",
-    "next_ready_workunit": "SPEC161_FINAL_CANONICAL_ACCEPTANCE",
+    "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+    "next_ready_workunit": "SPEC161_ALL_FLOW_SUBMIT_LATENCY_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR996 native persistence/restart-readback acceptance merged94cc9b8e; scoped success/failure and terminalreplay proven, requirement rows remainPARTIAL. Next actual functional chain-stop defect identified from canonical criterion8.",
+    "resume_point": "PR9995b132da1 and PR10003190569a verified; bounded pilot complete, entire SPEC remains open. Evidence specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
     "waiting_predicate": null
   },
   "continuation_assessment": {
     "confidence": "HIGH",
-    "decision": "VALIDATION_ONLY",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
       "apps/web/server/services/verticalDramaInteractiveJobs.ts",
       "apps/web/server/services/verticalDramaStoryJobs.ts",
       "apps/web/server/__tests__/verticalDramaInteractiveJobsWiring.test.ts"
     ],
-    "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
-    "rationale": "This workunit resolves document authority only. Runtime implementation completeness, requirement-level verification and product acceptance were not re-evaluated and must remain separate from authority closure.",
+    "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+    "rationale": "Verified independent functional slices merged; unresolved normative requirements remain. Pilot acceptance is separate from whole-SPEC completion.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 46,
+  "generation": 50,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -97,14 +97,18 @@
     },
     "lineage_model_passthrough": {
       "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json",
-      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+      "pr": 1000,
+      "status": "SCOPED_VERIFIED_AND_MERGED"
     },
     "mapping": [],
     "model_policy_read_failure": {
       "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json",
-      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+      "pr": 1000,
+      "status": "SCOPED_VERIFIED_AND_MERGED"
     },
     "native_worker_acceptance": {
       "base_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
@@ -182,8 +186,8 @@
       "workunit": "SPEC161_CANONICAL_ADMISSION_VALIDATION"
     },
     "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN",
+    "started": true,
+    "status": "PARTIAL",
     "story_plan_failure_chain": {
       "branch": "codex/smartaihub-acceptance-evidence-20261017",
       "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
@@ -214,28 +218,26 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
     "integrated": true,
-    "integrated_at": "2026-10-17T00:37:48Z",
+    "integrated_at": "2026-10-17T00:45:41Z",
     "last_promotion": {
-      "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
-      "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
-      "pr": 999,
-      "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json",
-      "required_checks": "PASS; preview skipped",
+      "head_sha": "6f3c09d2a93fee4bdf0b1db7c82b4788acff9fc8",
+      "merge_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "pr": 1000,
+      "receipt": "/tmp/smartaihub-backlog-pilot/pr1000-protected-promotion-20261017.json",
       "tree_equivalent": true
     },
     "pending_checkpoint": {
-      "branch": "codex/spec161-lineage-model-passthrough-20261017",
-      "intended_pr": "Next protected normal PR into main",
-      "next_action": "Push, required CI, guarded merge",
-      "owned_commit_sha": "21cff801a47a47bbf6c32d7f2a6d42839242b242",
-      "status": "FAST_GATE_PASSED_PENDING_PROTECTED_PROMOTION",
-      "verification": "46/46; red baseline6 lineage +1 policy; gitleaks/diff-check pass"
+      "head_sha": "6f3c09d2a93fee4bdf0b1db7c82b4788acff9fc8",
+      "merge_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+      "pr": 1000,
+      "status": "MERGED"
     }
   },
   "lifecycle": {
-    "current_state": "VALIDATION_PENDING",
+    "current_state": "PARTIAL_INTEGRATED",
     "previous_state": "DISCOVERING",
     "state_evidence": [
       {
@@ -265,15 +267,15 @@
     },
     "continuation_assessment": {
       "confidence": "HIGH",
-      "decision": "VALIDATION_ONLY",
+      "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
         "apps/web/server/services/verticalDramaInteractiveJobs.ts",
         "apps/web/server/services/verticalDramaStoryJobs.ts",
         "apps/web/server/__tests__/verticalDramaInteractiveJobsWiring.test.ts"
       ],
-      "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
-      "rationale": "This workunit resolves document authority only. Runtime implementation completeness, requirement-level verification and product acceptance were not re-evaluated and must remain separate from authority closure.",
+      "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+      "rationale": "Verified independent functional slices merged; unresolved normative requirements remain. Pilot acceptance is separate from whole-SPEC completion.",
       "residual_requirements": []
     },
     "disposition": {
@@ -287,7 +289,7 @@
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
-      "current_state": "VALIDATION_PENDING",
+      "current_state": "PARTIAL_INTEGRATED",
       "previous_state": "DISCOVERING",
       "state_evidence": [
         {
@@ -309,10 +311,10 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120"
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L120",
-        "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
+        "blocker": "Native worker outcome and failure/QC guards are verified in scoped tests; complete live provider/browser/billing and remaining transition evidence are still required.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
         "final_state": "OPEN",
         "implementation_evidence": [
           {
@@ -339,7 +341,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Verify merged native worker/QC/failure-chain checkpoint; retain separate full provider/browser/billing/restart acceptance obligations.",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
         "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
         "requirement_id": "REQ-28722F9489C8",
         "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -362,7 +364,8 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
           "https://github.com/naibarn/SmartSpecPro/pull/996",
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       },
@@ -373,10 +376,10 @@
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L122",
         "blocker": null,
-        "current_relevance": "RELEVANT",
+        "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-        "final_state": "PARTIAL",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
         "implementation_evidence": [
           {
             "kind": "READ_ONLY_TYPESCRIPT_AST_BOUNDARY_VALIDATION",
@@ -387,7 +390,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Extend direct executable boundary acceptance to already-queued deep-draft, composition, QC, episode-stage and provider-media routes and verify worker-only gates; do not infer dynamic latency or real provider results from static checks.",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
         "requirement_digest": "f7059808f28fd1557ac812348b23ab8a600d00bd7cf30610bafc2acf98d65823",
         "requirement_id": "REQ-32AD56643D4F",
         "requirement_text": "4. ไม่มี public router ที่เรียก LLM service โดยตรงใน flow ที่กำหนด",
@@ -400,7 +403,8 @@
             "scope": "12 initial affected public mutations plus source-analysis adapter use enqueue path before top-level return. Dead legacy bodies after unconditional return are not treated as execution. Existing queued flow coverage, worker runtime and browser proof remain pending.",
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
             "status": "PARTIAL"
-          }
+          },
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -411,9 +415,9 @@
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L123",
         "blocker": null,
-        "current_relevance": "RELEVANT",
+        "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
         "final_state": "OPEN",
         "implementation_evidence": [
           {
@@ -425,7 +429,7 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Verify merged lineage/policy guard; remaining whole-requirement provider and other-flow evidence stays separate.",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
         "requirement_digest": "509c473458fc3ee5a19d4bba90401c16045104a53226aa468236d154253acb62",
         "requirement_id": "REQ-34822D26C584",
         "requirement_text": "5. model ที่ user เลือกถูกส่งถึง worker/provider โดยไม่ถูกแทนด้วย model อื่น",
@@ -439,7 +443,8 @@
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
           },
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -449,10 +454,10 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143"
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L143",
-        "blocker": "Plan→deep failure chain repaired; remaining draft/QC/fullstory transitions and no-fallback behavior across all production flows require independent acceptance.",
+        "blocker": "Native worker outcome and failure/QC guards are verified in scoped tests; complete live provider/browser/billing and remaining transition evidence are still required.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/routers/verticalDramaSeries.ts",
@@ -465,7 +470,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
+        "next_action": "Retain verified plan/deep/extension/worker blocking-QC guards; prove remaining full customer flow and provider behavior independently.",
         "requirement_digest": "9ec466d2a6e3a823d323ddaad929b91fd4ec233b42c07b0356a715690ef4a93a",
         "requirement_id": "REQ-4C379A93119A",
         "requirement_text": "Tests may mock the provider boundary to prove timeout isolation, but production application paths must not use mock or fallback behavior.",
@@ -473,7 +478,8 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
       },
@@ -483,10 +489,10 @@
           "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126"
         ],
         "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L126",
-        "blocker": "Plan→deep failure chain repaired; remaining draft/QC/fullstory transitions and no-fallback behavior across all production flows require independent acceptance.",
+        "blocker": "Native worker outcome and failure/QC guards are verified in scoped tests; complete live provider/browser/billing and remaining transition evidence are still required.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/routers/verticalDramaSeries.ts",
@@ -499,7 +505,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Verify merged native worker/QC/failure-chain checkpoint; retain separate full provider/browser/billing/restart acceptance obligations.",
+        "next_action": "Retain verified plan/deep/extension/worker blocking-QC guards; prove remaining full customer flow and provider behavior independently.",
         "requirement_digest": "08a79440597f54c48ebcc08c035677fcba2d936cdf775364a757f2af4e38d66d",
         "requirement_id": "REQ-50A4DD25D9C8",
         "requirement_text": "8. chain plan/draft/QC/full story หยุดต่อเมื่อขั้นก่อนหน้าล้มเหลว และแสดง error จริง",
@@ -508,9 +514,141 @@
         "verification_evidence": [
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
+      },
+      "REQ-552ADB7044A9": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L127"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L127",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/routers/verticalDramaSeries.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+        "requirement_digest": "d0bc239d51766ce4faffcf9467c8e79917f28f369726a71720feedfb98ad1e40",
+        "requirement_id": "REQ-552ADB7044A9",
+        "requirement_text": "9. full story ที่ขาดบทพูดหรือข้อมูลตอนถูกตรวจพบและ repair อัตโนมัติด้วย LLM จริง",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-98BB34ECF7FB": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L125"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L125",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/services/verticalDramaLlmBilling.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+        "requirement_digest": "1dc0638a3f42eb5741fcca5b4e95d63140a295abe7750d70e8ae638f4e84050d",
+        "requirement_id": "REQ-98BB34ECF7FB",
+        "requirement_text": "7. retry ไม่ทำให้เกิด double billing; run ใหม่เกิดรายการใหม่ตามจริง",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-B67F19FDA439": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L119"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L119",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/services/verticalDramaInteractiveJobs.ts",
+          "apps/web/server/routers/verticalDramaSeries.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+        "requirement_digest": "48e771f1f2dd8e777e0f82254a30412983360abfbd60b00b290f34ab24c57851",
+        "requirement_id": "REQ-B67F19FDA439",
+        "requirement_text": "1. Request submit ของทุก LLM flow ตอบกลับได้เร็วโดยไม่รอ provider ที่จำลองให้ค้างนาน",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-C523BE96231A": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L124"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L124",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/services/verticalDramaLlmBilling.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+        "requirement_digest": "7f62de0a90de42339068487e0d8b017e169e243ae91f669e039c3821355fcd5b",
+        "requirement_id": "REQ-C523BE96231A",
+        "requirement_text": "6. ทุก LLM run มี ledger transaction ที่มี skill slug, ชื่อ skill, model และ trace/run ID ครบ",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-D6B6A1ADCC70": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L128"
+        ],
+        "authority_source": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#L128",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+        "requirement_digest": "30835e08e2ea625b2c044eca806622341bc4a469df73b3692f6c25f793b9e66d",
+        "requirement_id": "REQ-D6B6A1ADCC70",
+        "requirement_text": "10. focused tests, typecheck ที่เกี่ยวข้อง และ `git diff --check` ผ่าน; รายการที่ยังต้องพิสูจน์ด้วย deployment/provider/browser จริงต้องระบุชัดเจน",
+        "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
       "REQ-F24F12012092": {
         "applicability": "APPLICABLE",
@@ -521,7 +659,7 @@
         "blocker": "Deterministic episode-stage worker persistence/restart subset verified. Browser refresh, paid/provider stages, billing/settlement and chain-abort remain outside this test.",
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+        "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
         "final_state": "OPEN",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
@@ -529,7 +667,7 @@
           "apps/web/server/services/jobExecutorRegistry.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate tested native acceptance; select remaining provider-free canonical runtime requirements before considering protected/provider execution.",
+        "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
         "requirement_digest": "026b45995d545f50fe03801b1210a1e6d2a82d9e0361da9fee6c73c8d1516063",
         "requirement_id": "REQ-F24F12012092",
         "requirement_text": "3. Browser refresh และ worker restart สามารถ resume หรืออ่านผลเดิมได้",
@@ -537,7 +675,8 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
-          "https://github.com/naibarn/SmartSpecPro/pull/996"
+          "https://github.com/naibarn/SmartSpecPro/pull/996",
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
         ],
         "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       }
@@ -720,7 +859,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 6,
+    "applicable": 11,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -729,7 +868,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:42:10.431657Z",
+  "updated_at": "2026-10-17T00:48:32.672879Z",
   "verification": {
     "baseline_issues": [],
     "canonical_post_integration_20261017": {
@@ -761,6 +900,14 @@
       "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
       "tests": "Final native2/2; combined161+268 memory4files23/23",
       "whole_requirement_complete": false
+    },
+    "pilot_continuation_20261017": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json#continuedPilot20261017.final_verification",
+      "r5_tests": 5,
+      "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "status": "PASS_SCOPED",
+      "test_files": 26,
+      "tests_passed": 295
     },
     "pilot_final_scoped_check": {
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",

@@ -43,14 +43,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "expected_canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Final31identity/ingress tests pass; tenantassertionrepair mergedPR990. No independent approved functional ingressslice found: defaultHTTP trustedAppContext remainsnull until approvedproducer/verifier/replay/directorigin runtime exists. Preservefailclosed Host handling; no productionmutation.",
+    "next_action": "Trusted ingress producer and authorized nonproduction origin/route/browser acceptance; context.ts ownership PR684 preserved",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
-    "resume_point": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9. R5 persisted positive-path test verifies the server-side test assertion through createContextWithTrustedAppIngress, current DB-backed alias resolution, and authorized persisted Project-memory prompt retrieval; Host/X-Forwarded-Host-only, replay, wrong-App, and cross-tenant cases fail closed. This is synthetic non-production evidence only. Production ingress producer, deployed origin exclusion, and worker-crossing reauthorization remain pending.",
+    "resume_point": "PR9995b132da1 and PR10003190569a verified; bounded pilot complete, entire SPEC remains open. Evidence specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
     "waiting_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence."
   },
   "continuation_assessment": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 33,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -187,14 +187,14 @@
       "scope": "SPEC304 test assertion repair and validation-only SPEC302 REQ-5FCEBAF7DDBD evidence; functional coding jobs remain open."
     },
     "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+    "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
     "integrated": true,
-    "integrated_at": "2026-10-16T14:43:34Z"
+    "integrated_at": "2026-10-17T00:45:41Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -449,7 +449,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-16T14:49:24.282659Z",
+  "updated_at": "2026-10-17T00:47:33.809345Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -532,6 +532,14 @@
       }
     ],
     "freshness": "FRESH",
+    "pilot_continuation_20261017": {
+      "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json#continuedPilot20261017.final_verification",
+      "r5_tests": 5,
+      "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "status": "PASS_SCOPED",
+      "test_files": 26,
+      "tests_passed": 295
+    },
     "pilot_final_scoped_check": {
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
       "evidence_section": "finalVerification",

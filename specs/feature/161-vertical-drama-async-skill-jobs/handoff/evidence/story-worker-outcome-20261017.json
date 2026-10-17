@@ -14,7 +14,7 @@
     "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-story-worker-outcome-20261017",
     "task_id": "spec161-story-worker-outcome-20261017",
     "workspace_id": "workspace:f0d3a64e-f138-44fc-8842-7c755af4ff73",
-    "git_state": "Uncommitted changes; detached at base_sha; not committed or pushed.",
+    "git_state": "Original development snapshot now integrated through protected PR; see integration and final_source_sha",
     "files": [
       {
         "path": "apps/web/server/services/jobExecutorRegistry.ts",
@@ -28,7 +28,12 @@
         "path": "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
         "sha256": "c25a9d10a417875d0bc2767c503571859073be0497448a3e594447f8a6189481"
       }
-    ]
+    ],
+    "final_verification_workspace_registration": {
+      "workspace_id": "workspace:a7049b12-41ae-4142-b300-6c199de9720d",
+      "registered_task_id": "spec161-native-episode-acceptance-20261016",
+      "owner_session": "smartaihub-acceptance-20261017"
+    }
   },
   "verification": {
     "profile": "integration",
@@ -158,9 +163,18 @@
   "file_sha256": {},
   "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
   "post_integration_obligation": {
-    "status": "PENDING",
-    "revision": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "status": "PASS_SCOPED",
+    "revision": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
     "owner": "/root",
-    "next_action": "Run final bounded canonical suite after independent lineage model repair integration; preserve this test-source/tree evidence."
+    "next_action": "Full requirement/provider/browser obligations remain in canonical ledger"
+  },
+  "final_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+  "post_integration_verification": {
+    "status": "PASS_SCOPED",
+    "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "tests_passed": 295,
+    "test_files": 26,
+    "r5_tests": 5,
+    "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json#continuedPilot20261017.final_verification"
   }
 }

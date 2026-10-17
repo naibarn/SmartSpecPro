@@ -1,5 +1,5 @@
 {
-  "generation": 10,
+  "generation": 11,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -119,7 +119,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "evidence_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "final_state": "PASS",
       "implementation_evidence": [
         {
@@ -137,7 +137,7 @@
         }
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Retain regression; revalidate before future consumers can promote ranked suggestions to durable destinations.",
+      "next_action": "Maintain resolver regression coverage; durable writes remain separately gated.",
       "requirement_digest": "3058f1873ac59b9115b91a64a1cd056e3e819d4621b6d6c9588e24766b0e5ed5",
       "requirement_id": "REQ-5FCEBAF7DDBD",
       "requirement_text": "6. Similarity can retrieve or rank candidates, but MUST NOT alone select a durable project destination.",
@@ -156,9 +156,10 @@
           "scope": "ActivePhase1,33actualresolver/receipt tests included in final136; guard sourcehashmatchesindependentreview. Futurewriteconsumers mustrevalidate explicitconfirmation/ACL/durablereceiptauthority.",
           "source_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
           "status": "PASS"
-        }
+        },
+        "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json"
       ],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "Current exact-SHA resolver/project-authority focused tests plus existing durable write-denial contract; similarity remains advisory only. No Phase2 receipt/migration acceptance inferred."
     },
     {
       "applicability": "APPLICABLE",

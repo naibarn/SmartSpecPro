@@ -9,7 +9,7 @@
     "task_id": "spec161-lineage-model-passthrough-20261017",
     "branch": "codex/spec161-lineage-model-passthrough-20261017",
     "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
-    "git_state": "Uncommitted and unpushed. No commit created.",
+    "git_state": "Original development snapshot now integrated through protected PR; see integration and final_source_sha",
     "owned_paths": [
       "apps/web/server/services/verticalDramaSeasonCarryOver.ts",
       "apps/web/server/services/verticalDramaSpecialEdition.ts",
@@ -22,6 +22,11 @@
       "apps/web/server/services/verticalDramaSpecialEdition.ts": "579c617a46a2fcda84519dec7d0b8d703b4fc69c28447f0e6ac2cbac856e97f9",
       "apps/web/server/services/__tests__/verticalDramaSeasonCarryOver.test.ts": "01d2fc6720168b25115a80d5dc86243af9dfc71dccdfe9d4e582175f7625cfbf",
       "apps/web/server/services/__tests__/verticalDramaSpecialEdition.test.ts": "0321615ea21da6b4c8d80f646767cddeefcbae6a6bf2570477f873d02bc85c97"
+    },
+    "final_verification_workspace_registration": {
+      "workspace_id": "workspace:a7049b12-41ae-4142-b300-6c199de9720d",
+      "registered_task_id": "spec161-native-episode-acceptance-20261016",
+      "owner_session": "smartaihub-acceptance-20261017"
     }
   },
   "repair": {
@@ -61,7 +66,7 @@
     "production_job_mutations": 0,
     "original_fast_lane_job_mutated": false
   },
-  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "independent_review": {
     "result": "PASS",
     "reviewer": "/root",
@@ -129,5 +134,30 @@
     "Existing authenticated worker executors loadOwnedSeries and lineageContext before these services",
     "lineageContext already carries canonical parentSeriesId; common model policy supports persisted pin and no-pin resolver callback",
     "No active PR ownership overlap outside this task; PR999 merged5b132da1"
-  ]
+  ],
+  "final_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+  "post_integration_verification": {
+    "status": "PASS_SCOPED",
+    "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "tests_passed": 295,
+    "test_files": 26,
+    "r5_tests": 5,
+    "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json#continuedPilot20261017.final_verification"
+  },
+  "post_integration_obligation": {
+    "status": "PASS_SCOPED",
+    "revision": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "owner": "/root",
+    "next_action": "Full requirement/provider/browser obligations remain in canonical ledger"
+  },
+  "integration": {
+    "pr": 1000,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/1000",
+    "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "head_sha": "6f3c09d2a93fee4bdf0b1db7c82b4788acff9fc8",
+    "merge_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "merged_at": "2026-10-17T00:45:41Z",
+    "merge_tree_matches_head": true,
+    "reachable_from_origin_main": true
+  }
 }

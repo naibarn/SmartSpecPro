@@ -576,5 +576,396 @@
       "status": "COMPLETED_AND_INTERRUPTED_CLOSED",
       "usageSettlement": "UNKNOWN_HOST_NOT_EXPOSED"
     }
-  ]
+  ],
+  "continuedPilot20261017": {
+    "observed_at": "2026-10-17T00:47:33.141486+00:00",
+    "status": "BOUNDED_PILOT_ACCEPTANCE_MET_BACKLOG_REMAINS_OPEN",
+    "original_source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "final_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "workunits": [
+      {
+        "workunit": "SPEC161_STORY_WORKER_OUTCOME",
+        "spec": "161",
+        "requirements": [
+          "REQ-28722F9489C8"
+        ],
+        "pr": 999,
+        "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+        "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json"
+      },
+      {
+        "workunit": "SPEC161_DEEP_DRAFT_FAILURE_CHAIN",
+        "spec": "161",
+        "requirements": [
+          "REQ-50A4DD25D9C8",
+          "REQ-4C379A93119A"
+        ],
+        "pr": 999,
+        "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+        "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
+      },
+      {
+        "workunit": "SPEC161_STORY_WORKER_FINAL_QC",
+        "spec": "161",
+        "requirements": [
+          "REQ-28722F9489C8",
+          "REQ-50A4DD25D9C8"
+        ],
+        "pr": 999,
+        "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+        "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+      },
+      {
+        "workunit": "SPEC161_LINEAGE_MODEL_PASSTHROUGH",
+        "spec": "161",
+        "requirements": [
+          "REQ-34822D26C584"
+        ],
+        "pr": 1000,
+        "merge_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json"
+      },
+      {
+        "workunit": "SPEC161_MODEL_POLICY_READ_FAILURE_FAIL_CLOSED",
+        "spec": "161",
+        "requirements": [
+          "REQ-34822D26C584"
+        ],
+        "pr": 1000,
+        "merge_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "evidence": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json"
+      },
+      {
+        "workunit": "SPEC268_CHAT_ENTITY_MEMORY_SCOPE_GUARDS",
+        "spec": "268",
+        "requirements": [
+          "REQ-CF6F62069953",
+          "REQ-D4427964FE28",
+          "REQ-427F51C6939B"
+        ],
+        "pr": 999,
+        "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+        "evidence": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json"
+      }
+    ],
+    "final_verification": {
+      "status": "PASS_SCOPED",
+      "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "profile": "integration",
+      "tests_passed": 295,
+      "test_files": 26,
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+        "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+        "server/services/verticalDramaLlmPolicy.test.ts",
+        "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+        "server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+        "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+        "server/services/__tests__/projectResolutionAuthority.test.ts",
+        "server/services/__tests__/scopedMemoryExpiry.test.ts",
+        "server/services/__tests__/scopedMemoryService.test.ts",
+        "server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts",
+        "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "server/services/__tests__/appIdentityRepository.test.ts",
+        "server/routers/appIdentity.test.ts",
+        "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+        "server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
+        "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+        "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+        "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+        "server/services/__tests__/personaService.test.ts",
+        "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.skillContent.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEditionPlanner.skillContent.test.ts",
+        "--reporter=json",
+        "--outputFile=/tmp/smartaihub-backlog-pilot/canonical-final-tests.json",
+        "--maxWorkers=1"
+      ],
+      "resource": {
+        "start": "2026-10-17T00:46:05.757106+00:00",
+        "end": "2026-10-17T00:46:38.345757+00:00",
+        "command": [
+          "pnpm",
+          "exec",
+          "vitest",
+          "run",
+          "server/services/__tests__/feature186VerticalDramaJobAdapter.test.ts",
+          "server/services/__tests__/verticalDramaEpisodeStageJobs.test.ts",
+          "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+          "server/services/verticalDramaLlmPolicy.test.ts",
+          "server/services/verticalDramaLlmCallsiteCoverage.test.ts",
+          "server/services/__tests__/verticalDramaEpisodeStageExecutor.test.ts",
+          "server/services/__tests__/canonicalProjectContextResolver.test.ts",
+          "server/services/__tests__/projectResolutionAuthority.test.ts",
+          "server/services/__tests__/scopedMemoryExpiry.test.ts",
+          "server/services/__tests__/scopedMemoryService.test.ts",
+          "server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts",
+          "server/services/__tests__/tenantProductIdentityContracts.test.ts",
+          "server/services/__tests__/appIdentityRepository.test.ts",
+          "server/routers/appIdentity.test.ts",
+          "server/services/__tests__/appIngressMemoryRuntime.test.ts",
+          "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+          "server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
+          "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+          "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+          "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+          "server/services/__tests__/personaService.test.ts",
+          "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+          "server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+          "server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+          "server/services/__tests__/verticalDramaSeasonCarryOver.skillContent.test.ts",
+          "server/services/__tests__/verticalDramaSpecialEditionPlanner.skillContent.test.ts",
+          "--reporter=json",
+          "--outputFile=/tmp/smartaihub-backlog-pilot/canonical-final-tests.json",
+          "--maxWorkers=1"
+        ],
+        "cwd": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web",
+        "exit": 0,
+        "profile": "integration",
+        "resource_observation": [
+          "MemAvailable:   24732980 kB"
+        ],
+        "max_rss_kib": 459884,
+        "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "working_delta": false,
+        "test_secret": "[REDACTED disposable test-only value]"
+      },
+      "tests_json_sha256": "74d6f9fd1d31e47af9304e76e3c97952962df6d99a3dcd1701931ecca622de89",
+      "r5": {
+        "status": "PASS_SCOPED",
+        "tests": 5,
+        "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+        "runtime": "Owned isolated native PostgreSQL, actual SQL + loopback HTTP; synthetic auth/assertion issuer",
+        "limitations": "No deployed trusted-ingress producer, direct-origin/host policy acceptance, durable receipt migration or production authorization",
+        "resource": {
+          "observedAt": "2026-10-17T00:46:47.322Z",
+          "memAvailable": "24334892 kB",
+          "cgroupMemoryCurrent": null,
+          "cgroupMemoryMax": null,
+          "filesystemTmp": {
+            "availableBytes": 1130426368,
+            "totalBytes": 989479915520
+          }
+        },
+        "cleanup": "fixture.close() completed and owner-marked cluster removed"
+      },
+      "limitations": [
+        "No full typecheck/build, paid provider, production migration or deployed/browser acceptance",
+        "Native episode replay uses fresh control-plane instance after PG restart in same test process; child Node process proves durable reads only",
+        "Model/provider/pricing/billing boundary arguments are deterministic; no live provider billing settlement claim"
+      ]
+    },
+    "native_job_run_evidence": [
+      {
+        "evidence": "SPEC161_NATIVE_WORKER_SUCCESS",
+        "jobId": "spec161-9a184890-7821-49f8-a",
+        "runId": 1,
+        "artifactId": "1",
+        "checksumSha256": "2139b3029972daefe84bc57f011ee3d5f046cd959858a3aeae003fdbbc91cc3b",
+        "workerStatus": "succeeded",
+        "domainStatus": "succeeded",
+        "replayAfterRestart": "ignored",
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_NATIVE_WORKER_FAILURE",
+        "jobId": "spec161-20db55e1-7a97-463f-8",
+        "runId": 2,
+        "workerStatus": "failed",
+        "domainStatus": "failed",
+        "errors": [
+          {
+            "code": "VD_STORYBOARD_GENERATION_FAILED",
+            "message": "SPECIAL_PIPELINE_ISOLATED: special tie-in episodes use their own standalone 9-shot generation flow",
+            "repairable": true
+          }
+        ],
+        "artifacts": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_SUCCESS",
+        "jobId": "f4199ee4-57fe-4609-8bfa-08161141b3f9",
+        "workerStatus": "succeeded",
+        "domainStatus": "succeeded",
+        "replay": "ignored",
+        "executorCalls": 1,
+        "workerAttempts": 1,
+        "providerReservations": 0,
+        "resultId": "deterministic-test-result"
+      },
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_FAILURE",
+        "jobId": "7928e43f-23d9-4006-92b6-c23160af091e",
+        "workerStatus": "failed",
+        "domainStatus": "failed",
+        "error": "SPEC161_STORY_EXECUTOR_FAILURE",
+        "checkpointItems": 1,
+        "executorCalls": 1,
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OUTCOME_MISSING_FAIL_CLOSED",
+        "jobId": "spec161-5829882ba13643cd8027",
+        "workerStatus": "failed",
+        "executorCalls": 0,
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_tenant",
+        "jobId": "spec161-40397b85afe4460ba546",
+        "workerStatus": "failed",
+        "storyRecordStatus": "queued",
+        "executorCalls": 0,
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_series",
+        "jobId": "spec161-80c210a91be54080bf78",
+        "workerStatus": "failed",
+        "storyRecordStatus": "queued",
+        "executorCalls": 0,
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_OWNER_REJECTED",
+        "label": "foreign_user",
+        "jobId": "spec161-c809842d563f42b48fa3",
+        "workerStatus": "failed",
+        "storyRecordStatus": "queued",
+        "executorCalls": 0,
+        "workerAttempts": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_QC_BLOCKING_NOT_FINALIZED",
+        "jobId": "e001003f-4721-41ab-933a-95b242a835df",
+        "assuranceRunId": "4ff5fefb-a194-474b-a899-cde55c538580",
+        "workerStatus": "failed",
+        "assuranceStatus": "needs_repair",
+        "finalizationKey": null,
+        "blockingFindingCodes": [
+          "structure.missing_episode"
+        ],
+        "checkpointItems": 1,
+        "executorCalls": 1,
+        "providerReservations": 0
+      },
+      {
+        "evidence": "SPEC161_STORY_QC_ELIGIBLE_FINALIZED",
+        "jobId": "6d0d8738-8b25-4710-bdb9-5680441ce604",
+        "assuranceRunId": "2e5ba452-1ee7-4335-a968-55a93d477c35",
+        "workerStatus": "succeeded",
+        "assuranceStatus": "succeeded",
+        "finalizationKey": "finalize:2e5ba452-1ee7-4335-a968-55a93d477c35",
+        "finalGateEligible": true,
+        "findingCount": 0,
+        "executorCalls": 1,
+        "providerReservations": 0
+      }
+    ],
+    "actual_usage": {
+      "new_sdk_calls": 0,
+      "new_paid_provider_calls": 0,
+      "new_production_mutations": 0,
+      "conductor_helper_tokens": "UNKNOWN; host does not expose actual settlement",
+      "historical_sdk_accounting": "Unchanged historical 74 calls/5,771,368 tokens, 74 knownReleased from existing retained receipt snapshot; requested Luna, effective model UNVERIFIED",
+      "original_jobs": "No original Job authority, counter, continuation grant or Run terminal state rewritten"
+    },
+    "autonomous_repairs": [
+      "Real SQL Date-binding regression was repaired in PR998",
+      "Separate Chat writer bypassed scope/provenance guards",
+      "Canonical story status refresh overwrote terminal worker outcome",
+      "Provider/schema/exhausted repair/blocking QC became synthetic success",
+      "Independent review fixed genuine repair stale-error and test schema import",
+      "Lineage services ignored series model pin",
+      "Unreadable model policy silently switched to automatic model"
+    ],
+    "environment_observations": [
+      "A root-cwd Vitest run used different module resolution; corrected to apps/web config without changing ignored generated artifacts",
+      "Missing disposable signing environment stopped a diagnostic import; generated test-only value supplied",
+      "Existing storyJobs unit fixture has baseline missing db mock export; native real-SQL worker acceptance used instead"
+    ],
+    "whole_specs_complete": false,
+    "next_eligible": {
+      "161": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+      "268": "Continue exact canonical tenant/App scope and historical provenance acceptance; trusted ingress/receipt-dependent slices retain grants",
+      "302": "Durable receipt writes need explicit migration/schema-owner authorization",
+      "304": "Trusted ingress producer and authorized nonproduction origin/route/browser acceptance; context.ts ownership PR684 preserved"
+    },
+    "workspace_convergence": {
+      "status": "DIRTY_WORK_PRESERVED",
+      "receipt": "/tmp/smartaihub-backlog-pilot/final-pilot-workspace-convergence-20261017.json",
+      "canonical_workspace": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+      "next_action": "Primary checkout contains unrelated edits and was preserved; implementation and proof use leased exact-SHA workspace."
+    },
+    "read_only_302_304_audit": {
+      "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+      "reviewer": "/root/spec161_validation_scout",
+      "302": {
+        "requirements": [
+          "REQ-4A23D3237DAA",
+          "REQ-6B4D8C8FA775",
+          "REQ-8D8136DAE54F"
+        ],
+        "evidence": [
+          "smartAiHubRuntimeContext.ts invocation-only receipt and durable write denial",
+          "Canonical handoff requires explicit migration/schema-owner authorization before durable receipt writes"
+        ],
+        "outcome": "No demonstrated migration-free coding defect; direct authenticated nonproduction receipt/CRUD acceptance remains gated"
+      },
+      "304": {
+        "requirements": [
+          "REQ-F24EEC954686",
+          "REQ-8267DE389563"
+        ],
+        "evidence": [
+          "server/_core/index.ts default createContext leaves trusted App context null",
+          "Injected trusted assertion composer exists, but approved edge producer/origin exclusion/host normalization evidence is absent"
+        ],
+        "outcome": "Synthetic R5 SQL/HTTP acceptance is scoped; real trusted ingress producer and migration/route/browser target remain dependencies",
+        "ownership": "Open PR684 owns context.ts; no overlap introduced"
+      }
+    },
+    "agents": [
+      {
+        "id": "/root/spec161_validation_scout",
+        "role": "SPEC161 provider-chain and model-policy implementation; independent302/304 dependency audit",
+        "ownership": "Assigned router/tests and model policy/tests; parent owned integration and ledgers",
+        "proof": "81 router tests,15 policy tests, parent295 final focused tests",
+        "useful": true,
+        "status": "COMPLETED"
+      },
+      {
+        "id": "/root/spec268_independent_final_review",
+        "role": "Native story outcome/QC and lineage model implementation; independent Chat review",
+        "ownership": "Assigned story worker/test and lineage services/tests; parent owned integration and ledgers",
+        "proof": "Native8cases, parent46 model/skill tests, parent295 final focused tests",
+        "useful": true,
+        "status": "COMPLETED"
+      }
+    ],
+    "owned_worktree_retirement": {
+      "workspace_id": "workspace:ebb1776e-3355-47c5-a079-de881d4ab7fb",
+      "status": "RETIRED_AFTER_MERGE_AND_ARCHIVE",
+      "receipt": "/tmp/smartaihub-backlog-pilot/spec268-completed-retirement-applied.json",
+      "archive": "/tmp/smartaihub-backlog-pilot/spec268-completed-ignored-20261017.tar.gz",
+      "archive_sha256": "00642a20a72f1d6ed22d5c8efc493b4f5baa7466bdb7f8c35dc2a15edae35597",
+      "unrelated_workspaces": "Preserved; no cleanup or retirement attempted"
+    }
+  }
 }
