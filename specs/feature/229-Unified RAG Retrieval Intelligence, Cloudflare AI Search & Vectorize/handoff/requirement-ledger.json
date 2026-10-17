@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "dd2ab685352f9b5910c4f70a1c8114cc172cdd8a05d630cd9a7d550e4508cd1b",
       "requirement_id": "REQ-9845A408D8CC",
       "requirement_text": "**Supersedes:** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "a2f40867c2dae150ba38aed2fc5e59ec72fe65709017e685cc0800139ae46294",
       "requirement_id": "REQ-2D8E9CC46A15",
       "requirement_text": "Current source evidence is mixed and must not be collapsed into the post-cutover table below:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "4f9b80ec6c7b3b6dd027b37b23c26360b3ecd3f74e3a07e7e71c692559f746ad",
       "requirement_id": "REQ-E4B1F18C2634",
       "requirement_text": "1. **pgvector MUST NOT remain the production vector database after cutover.**",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "b58e78fdd6f79d023f80b416e7ba063398aecda0884931bb62eee678b8858d50",
       "requirement_id": "REQ-6108EAC9AF4C",
       "requirement_text": "3. **Document RAG MUST use Cloudflare AI Search unless a documented capability or security constraint routes the request to Direct Vectorize.**",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "a3ef25a09a171ad1f2e239d3ef85a7bf98ebd413f9fd4d3467d2ad3742bff773",
       "requirement_id": "REQ-C4A011486BB3",
       "requirement_text": "4. **Direct Vectorize MUST be used for non-document vectors and custom vector workflows that do not fit AI Search.**",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "212e250602302e5cd9572e690295cf867a9433b052bb840084b647e4f53c35f1",
       "requirement_id": "REQ-0CEFF2659947",
       "requirement_text": "5. **All retrieval consumers MUST call the shared Retrieval Broker.**",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "ba4f00f5c21d07214781a756ebf11ce54f1d9c7310236e0837622762b8bad9b4",
       "requirement_id": "REQ-56F321F86C94",
       "requirement_text": "8. **Retrieval quality MUST be certified with a reproducible benchmark before full cutover.**",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "26987e92bb5f35f1d8aa5a03ae21f876fe06a49834a8619563738ce30cc02e48",
       "requirement_id": "REQ-7A811D99672A",
       "requirement_text": "The system MUST:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "d4cf8b5a5fa058d6e10dce68fce6c57a65fb42aa6cf536de5f8e7a5e24b7e1f9",
       "requirement_id": "REQ-3C02E7950448",
       "requirement_text": "- search Thai, English and mixed-language knowledge accurately;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "63f2f53943ae707232f51d2cc60c3c57ba4030ec7097d4770bd8ad12723a0d8c",
       "requirement_id": "REQ-33C330ADD570",
       "requirement_text": "- support semantic, keyword, exact/symbolic and hybrid queries;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "294df336b7718ea8385ee7cdbe628625b4a3e7ceb14cd300c5863923551a07f7",
       "requirement_id": "REQ-ADD5B95A91D4",
       "requirement_text": "- support follow-up questions that require query rewriting;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "9433b374a28ee0ae11f172d8da331d6620b33e98dea033c197afb0ba02be13fc",
       "requirement_id": "REQ-2622278699CD",
       "requirement_text": "- handle code identifiers, UUIDs, error strings, API paths, filenames, model names and spec IDs;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "95c28af9d5bcefc140d1f7c0cf0fbef2201cac19d24f5607fb33805bc02efbe1",
       "requirement_id": "REQ-F7C49FE94FC3",
       "requirement_text": "- rerank initial candidates before context construction;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "8c7ec67540a63719afdc4f6dcccfc408b79b466dde7f3e89a43388751789cc2e",
       "requirement_id": "REQ-7277C46BD2AA",
       "requirement_text": "- preserve source provenance and citation information;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "86066b48a973e6ab3aa2caf795e6fd8bc2d70a2f949ca30175c3b65f9e58e665",
       "requirement_id": "REQ-AAFFA65F2DCF",
       "requirement_text": "- enforce tenant, user, group, project and visibility rules;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "a61900e3a47ba72b3bf82060218da94bd22bcf84e31609e29c92144b1279dd8d",
       "requirement_id": "REQ-DF6D389C7941",
       "requirement_text": "- detect insufficient evidence and avoid fabricating a grounded answer;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "db3c741364add9737905e760165a34c891a17dcb3562872d615396b43d736bbc",
       "requirement_id": "REQ-B719EC14F51D",
       "requirement_text": "- expose the same retrieval capabilities to Chat, Help, Library, workflows, agents, MCP, A2A, external harnesses and development runtimes;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "f76628c3924c0b51d54d7e0302b17c0a373e3f82cbcecf864ffe72eba6937338",
       "requirement_id": "REQ-083E31F1CF37",
       "requirement_text": "- provide an admin quality/operations console;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "f4b2b675760bbd7def85a2ba09fd7ac9bc46c3687d4345d43c257a520bcc3997",
       "requirement_id": "REQ-6813C41103E3",
       "requirement_text": "- support safe migration from pgvector and the existing 768-dimensional Vectorize indexes.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "8ffba6fc956153f1e932f9324e0dd22efe33116a8ae4c76816f5f85d5369ac6b",
       "requirement_id": "REQ-F8066D0839C3",
       "requirement_text": "The system MUST be measurable through:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "9be464b7f8cf472e932a38178ae72abb374ef7bf13b5b43c2827e6230bdabc69",
       "requirement_id": "REQ-9DEDEE957F26",
       "requirement_text": "- Recall@K;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "a5db0f3021ea3def424743a068225dad29fcf11f5b1c65a7465c7e56886b924a",
       "requirement_id": "REQ-BECA95A1D2FC",
       "requirement_text": "- Hit Rate;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "8a8503dfcf4830443ca272c02ef9d50d0eeb00a4c2637a840f23d2397e2f159f",
       "requirement_id": "REQ-2C194963771C",
       "requirement_text": "- MRR;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "8c4e5ba9806d09ca2e7e547662124f29469c586063362d877af955f316670169",
       "requirement_id": "REQ-12BCE998536D",
       "requirement_text": "- nDCG;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "f9cfd2ea1734bc817c691238e6eee6caff09609ef71aeca185e1947ee9e03cc4",
       "requirement_id": "REQ-5F260D817FEB",
       "requirement_text": "- exact-identifier success rate;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "ea50197028b3f5d71a86466d8c86e8120bdfd00adcd88cbed2ab1b127e7e0962",
       "requirement_id": "REQ-58C9FD88C116",
       "requirement_text": "- multilingual/Thai quality;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "d870f47d9908e25516a8221775bbd15cf79c2e2c62d5488bff48cde31578764a",
       "requirement_id": "REQ-56050C85AB08",
       "requirement_text": "- no-answer quality;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "653ef0c109bfb7a03fb2ffa564361992e4e5155f5e1cd154312581a517e00e17",
       "requirement_id": "REQ-BF00C819320E",
       "requirement_text": "- citation correctness;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "719c28b82545ddc34fdb02d8af06f1234e8c044a195036ef4c5f4ff45953cbde",
       "requirement_id": "REQ-CEDD77E37D98",
       "requirement_text": "- freshness correctness;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "a8bfaa842722da413ab3d2090bf848f6a2241fee3e364ba696e0924adfef55a6",
       "requirement_id": "REQ-7D86580CA5DC",
       "requirement_text": "- ACL leakage tests;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "569b34947bc62b68a5b3fcdb2bcc243d67a6bca62e422239c63ac4ee42ae6d46",
       "requirement_id": "REQ-0FF3F8A4D40D",
       "requirement_text": "- latency;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "8bbb13114fe5c674b6b41a0a633708df197ffdf0f428a44fa7829c4714281f7f",
       "requirement_id": "REQ-48996E3F34C8",
       "requirement_text": "- cost per search;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "7e9d72e618ba0a7ef9f94a145ecbf4680fe566da6ae4518d62c1de1e0ac5fd29",
       "requirement_id": "REQ-623E64D4AE86",
       "requirement_text": "- indexing lag;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "fb5a0e157f99d2527ab3cd18f0d898549f9dc56345e1895f317f3cac0510164d",
       "requirement_id": "REQ-A2CA9CED0762",
       "requirement_text": "- provider error rate.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "689d777c3c2c35157b105ba4089df5756688268a9d554037d15c9255e511f7df",
       "requirement_id": "REQ-713DE52E8E2C",
       "requirement_text": "It MUST NOT be the production vector database after final cutover.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "982d5e82aade5ab90ce8535f361d52e37bfae3c5303b65254ce6354d26bd8374",
       "requirement_id": "REQ-0C998AC11E4F",
       "requirement_text": "The architecture MUST NOT assume that one tenant per AI Search instance scales forever.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "da42a612467696ad7647c80203fcf55c0fb5441115e6340708851100e4326b40",
       "requirement_id": "REQ-32130914CFE6",
       "requirement_text": "Tenant isolation is enforced with opaque tenant/ACL metadata filters plus canonical PostgreSQL authorization re-check. Pooled retrieval MUST fail closed when tenant scope cannot be deterministically resolved.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "4e9b5c7c2571a25bb5b194a06532cf08182df6446c0de3e9b116fa1f73ff2395",
       "requirement_id": "REQ-850CDA6FFC4A",
       "requirement_text": "Shard assignment MUST be deterministic by source family or stable hash. A normal request SHOULD remain within:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "1740e1d7854d87047ed08f421923f1e8452fb71010d7332b5443b353f5116149",
       "requirement_id": "REQ-EE5C32EB8325",
       "requirement_text": "Feature code MUST NOT independently derive provider instance names.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "5af11adc874929573eb9921cc6f539494487f1b403d3380ff346173ebb118d4f",
       "requirement_id": "REQ-8A5F8B2A96F1",
       "requirement_text": "Capacity forecasts MUST include ACL projection duplication, version overlap, blue/green reindex overlap, media lifecycle tiers and growth rate.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "d0dea03d0068d70a9067dd970a54e83b1ab3bc55f5373fb5116092565758a46a",
       "requirement_id": "REQ-AD5BB76BED27",
       "requirement_text": "- AI Search MCP endpoint MUST NOT become the authorization boundary;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "4cdfb3e5a472acebb8f8fd7e53d2c4ee004f17d7511e700feb500776fff36c33",
       "requirement_id": "REQ-517136F289B3",
       "requirement_text": "Security metadata MUST come from trusted SmartAIHub/provider metadata, not user-authored front matter.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "5a76c80f369d5e3ab2689d171c395130dacb829a0d622b83d07422c7862697bd",
       "requirement_id": "REQ-A4399414D29E",
       "requirement_text": "Large sources MUST split into deterministic logical projections while preserving:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "41b5a7f15849556620f642119c1373fa8de4cdfa24105bced288d8af4af9a4f1",
       "requirement_id": "REQ-A52929D18BC8",
       "requirement_text": "A source is not fully `index_ready` until every required projection for the active version is ready.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "16e066b0c6569d27cd69112666cc1d6558bf862ae2008d571cfb0875e0deb210",
       "requirement_id": "REQ-5DE85BDCEF74",
       "requirement_text": "Normalization MUST NOT destroy Thai or technical identifiers.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "eb203572922ffd5ee1fbbb96383822be7cff74e75bda13576427cd8315a7eaaf",
       "requirement_id": "REQ-CC29881178FB",
       "requirement_text": "Thai/English/mixed-language normalization MUST have regression tests.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "3f6b13195f2100f921f48b9fd2cb85af17ed047cf2dad535d1f3aa434e56a93b",
       "requirement_id": "REQ-790EE8EBCAB8",
       "requirement_text": "Production MUST use explicit embedding/reranker/rewrite profiles. Do not rely on provider Smart Default for canonical embeddings.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "d2c9459c133531a3b6c065139d63bce16a123b4371e8d2997efd67a9366cb6a9",
       "requirement_id": "REQ-4D57A4E604B1",
       "requirement_text": "3. provision replacement Vectorize index / AI Search instance when required;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "7043c055ed867a7636a2f0bb8249c8483b16d5c69624a4c53dee865621679019",
       "requirement_id": "REQ-35FB784193AA",
       "requirement_text": "Security/scope filters supported by Vectorize MUST be applied before top-K retrieval.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "31e8f132a085c1f8a833e50c51c6319fd8661aa399130cb0a9631da240b2e0e0",
       "requirement_id": "REQ-750070351713",
       "requirement_text": "Configuration validation MUST enforce:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "cac25aa2a3032a08b92ef73db6fd7bb938ad7c1668bbb8c8d7e00b5b0b02538a",
       "requirement_id": "REQ-FF91BE4ED4A9",
       "requirement_text": "- required metadata indexes exist before ingest/backfill that depends on them;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "d7ac2777c9f513c0637e2e0af6720accf24ef7bf0fbecdcd1fd4537151e799d0",
       "requirement_id": "REQ-E5524E2803CA",
       "requirement_text": "Index/profile creation MUST fail before ingest if required security filter indexes are absent.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "5551e7c4f75c9a80a400621008496374e65db85fb1212e3e46c5d7e5db50ee12",
       "requirement_id": "REQ-B80FA5B315C1",
       "requirement_text": "MUST NOT remain the production ranker.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "e22877ff510f6f4400b76138ac79a2702c2aa33f141807fbc927640d4c032aff",
       "requirement_id": "REQ-43D8E34B47CD",
       "requirement_text": "Raw email/name MUST NOT be used as an index scope key.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "6fae3305335384bfa2a049a969db0584b610360652df7e62ddcf6beeb75f61b3",
       "requirement_id": "REQ-89BA3A98A06E",
       "requirement_text": "Filter-critical IDs such as `acl_scope` MUST be deterministic and **<= 64 UTF-8 bytes**, because provider indexed-string filtering only considers the first 64 UTF-8 bytes.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "96e963cc68a0f3fe724901437fce43cc71662c4b58fef0f2dbe95c6804e71470",
       "requirement_id": "REQ-F08980FD0589",
       "requirement_text": "The Broker stores authorization/filter intent as a **provider-neutral filter AST**. `cloudflareAiSearchProvider` and `cloudflareVectorizeProvider` translate that AST to the current provider API syntax. Consumer specs MUST NOT embed Cloudflare filter JSON/operator syntax directly.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "186ceb5747dc95dbe781e4c0098ce48e4fde13bd008d49123807cad6774b38b5",
       "requirement_id": "REQ-0705A0D2DFC5",
       "requirement_text": "All production semantic/document/entity retrieval consumers MUST normalize requests into this contract before provider access.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "21ca63f0b86a5106dbbd90401d06f71f2a4fb70bc7d12531d6cc5cd19e4aab34",
       "requirement_id": "REQ-65BB3FE96899",
       "requirement_text": "Legacy Library/search request forms MAY remain temporarily during migration but MUST normalize into `SAH-RETRIEVAL-2` at the Broker boundary.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1281,9 +1281,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L923"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L897"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L923",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L897",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cd4d30acb32c9330ed2167df29cc778332d82dfff78d049d24b6ee752488b29c",
+      "requirement_id": "REQ-2E4C5B6E0405",
+      "requirement_text": "For Library Markdown citations, the canonical document is the `library_item` identified by `canonicalRef.id`; external `sourceUri` is a source reference and MUST NOT establish a Markdown position. Citation `revision` is the content-addressed immutable value `sha256:<digest>`, where `digest` is SHA-256 over canonical Markdown after converting CRLF and lone CR line endings to LF; all other Unicode code points remain unchanged. `lineStart` and `lineEnd` are 1-based and inclusive over that normalized canonical Markdown, before any context/token-budget truncation. `quoteHash`, when present, is SHA-256 over the normalized text of those complete lines joined with LF. `anchorUri` is an authenticated Document Management route carrying the document identity and anchor contract; it MUST resolve current canonical content and re-check tenant, ACL, revision, digest, and quote hash before returning text or opening the position. Mismatch, deletion, or revoked access fails closed without returning prior content. The UI opens the existing Markdown source editor and selects/scrolls the verified line range.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L929"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L929",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1293,9 +1315,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "3e49947cb21180e31d54d54af5bfbe001b397b120219d76a93c766ad1d59d915",
-      "requirement_id": "REQ-87FBD0739F1C",
+      "requirement_id": "REQ-212810312F0B",
       "requirement_text": "Provider diagnostics are admin/debug-only and MUST NOT expose credentials or unauthorized content.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1303,9 +1325,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L928"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L934"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L928",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L934",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1315,9 +1337,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "aae699adbfb00aac685cf1f7a3ef38cc6c0d2e4649bd147a6975e9d675093316",
-      "requirement_id": "REQ-E6DB1C5F7DB7",
+      "requirement_id": "REQ-024C356A86B1",
       "requirement_text": "- required tenant/source filter failure → **fail closed** for the affected source.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1325,9 +1347,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L932"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L938"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L932",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L938",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1337,9 +1359,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "9d48947b3d00f62dbe67eae501256deac97cbfca6e45bacf81053f207583cdd7",
-      "requirement_id": "REQ-3F0150B2AD2D",
+      "requirement_id": "REQ-3A549E4580EB",
       "requirement_text": "- Cloudflare adapter MAY use provider `return_on_failure` to surface recoverable partial results, but the Broker MUST translate that into explicit `partial/degraded` state; provider defaults never decide SmartAIHub evidence sufficiency.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1347,9 +1369,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L933"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L939"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L933",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L939",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1359,9 +1381,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "94f6fd46a0a2579a2bbbae53cf110d47de7b521f077210b2a562a0645a4a7fe7",
-      "requirement_id": "REQ-EA6525A49392",
+      "requirement_id": "REQ-A4E0CEEBAFA7",
       "requirement_text": "- consequential policy/security/billing/development-finality consumers MUST NOT treat partial/degraded retrieval as complete evidence unless their owning spec explicitly permits it.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1369,9 +1391,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1007"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1015"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1007",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1015",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1381,9 +1403,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "37537f8f549f21e0db0cdc06f34d52f4beb1442ddf3bd53f2f0767c0d875d321",
-      "requirement_id": "REQ-A4FEDF669C4D",
+      "requirement_id": "REQ-C5C9676337A3",
       "requirement_text": "Use when multi-hop evidence remains incomplete after normal retry, several sources/specs must be reconciled, or the user requests broad research.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1391,9 +1413,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1062"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1070"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1062",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1070",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1403,9 +1425,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "9c232c0c562169023bdfa42b20362916fb73b4a7a70493ded9b97d5a8f2cfa40",
-      "requirement_id": "REQ-BA36585BBFEE",
+      "requirement_id": "REQ-F0345433800B",
       "requirement_text": "Index-breaking changes MUST use versioned replacement indexes/instances.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1413,9 +1435,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1090"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1098"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1090",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1098",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1425,9 +1447,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "6c1aeb5ed487748ce60d55ef03c374e689a3de50309a16f6e3350e011e93300c",
-      "requirement_id": "REQ-B156A3318C4B",
+      "requirement_id": "REQ-CA88993089CA",
       "requirement_text": "SmartAIHub MUST NOT keep all media vectors forever.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1435,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1126"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1134"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1126",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1134",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1447,9 +1469,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "917cf349d8c19ca4e35e1bd1f5a5f9561f54cf5831d4e48172410669b3a8192c",
-      "requirement_id": "REQ-8294857DAE8F",
+      "requirement_id": "REQ-E6C151314D8C",
       "requirement_text": "These windows are configurable policy defaults and MUST be validated against real usage.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1457,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1160"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1168"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1160",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1168",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1469,9 +1491,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "01e0ca7ceac49fe3a5d07b0a1bed3c0e19ec64c52b551242767b8afa0465c080",
-      "requirement_id": "REQ-E6C2F0DC6D50",
+      "requirement_id": "REQ-3AC52F08565A",
       "requirement_text": "Default RAG does not scan the entire cold archive. UI MUST expose explicit archive inclusion such as:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1479,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1172"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1180"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1172",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1180",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1491,9 +1513,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "32767c9b586344dbff359e2b1d4aa964723b1d4736a20d2acfa579dfda990c7f",
-      "requirement_id": "REQ-F8B90E920ABF",
+      "requirement_id": "REQ-78A44A5DB30C",
       "requirement_text": "- user selects the asset for an AI task and semantic neighborhood is required;",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1501,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1445"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1453"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1445",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1453",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1513,9 +1535,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2fe79c5633814b75631a1902a387966e57f9d2ed2b26d15406acad9d934ed44e",
-      "requirement_id": "REQ-4B72F55596EE",
+      "requirement_id": "REQ-B2E0482E6934",
       "requirement_text": "Required classes include Thai, English, mixed language, semantic paraphrase, exact IDs, UUID, error code, API path, filename, spec ID, follow-up, ambiguous, typo, multi-hop, stale/conflict, no-answer, ACL attacks, deleted/revoked, OCR, long docs, code/config/log.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1523,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1546"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1554"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1546",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1554",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1535,9 +1557,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "57241c53fd4d4eee54bb76c059532b0f232dfd27c429bca721f0c40c33052271",
-      "requirement_id": "REQ-CBF140F0AF72",
+      "requirement_id": "REQ-2536C441114A",
       "requirement_text": "Dangerous changes MUST explain whether reindex/certification is required.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1545,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1603"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1611"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1603",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1611",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1557,9 +1579,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a553ec0e1f0470f78cfaeddde943d8f9bed44ba4385d7dfae7715e8f683f4094",
-      "requirement_id": "REQ-85530750C480",
+      "requirement_id": "REQ-44B1048A767B",
       "requirement_text": "Manual lifecycle operations are audited and MUST respect canonical retention/hold policy.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1567,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1662"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1670"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1662",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1670",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1579,9 +1601,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c48094f47320c2bbbffdda50fc196b07dfa2e1e8f8504d83642d1785ab281964",
-      "requirement_id": "REQ-A09CCC2263C6",
+      "requirement_id": "REQ-A7002C99CA9B",
       "requirement_text": "- One AI Search shard unavailable → follow `SAH-RETRIEVAL-2` partial-result semantics; missing shard MUST NOT look like “no match”.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1589,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1717"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1725"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1717",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1725",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1601,31 +1623,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "0c1fd2a65998c11e088241e2c5dceb95fdb0a258ffde07b2a526bff2df5a3c17",
-      "requirement_id": "REQ-2F35CD26D71D",
+      "requirement_id": "REQ-5C7F03229845",
       "requirement_text": "Required test families:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1755"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1755",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7c7edacc63028338796c64bc087056335ba425025b1844b211b0671a21cfc08d",
-      "requirement_id": "REQ-E0E9958CE796",
-      "requirement_text": "Golden cases MUST include strong BM25/exact matches with weak vector similarity to prove:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1644,10 +1644,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "21b41c0d1835875e506a3718a53e8181bd1ce2b82047d02156086e42a94fbc17",
-      "requirement_id": "REQ-A4B715C2D8AB",
-      "requirement_text": "Any proposed non-zero threshold must pass regression certification.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "requirement_digest": "7c7edacc63028338796c64bc087056335ba425025b1844b211b0671a21cfc08d",
+      "requirement_id": "REQ-1FBD0D42F247",
+      "requirement_text": "Golden cases MUST include strong BM25/exact matches with weak vector similarity to prove:",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1655,9 +1655,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1892"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1771"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1892",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1771",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "21b41c0d1835875e506a3718a53e8181bd1ce2b82047d02156086e42a94fbc17",
+      "requirement_id": "REQ-53991EDEB080",
+      "requirement_text": "Any proposed non-zero threshold must pass regression certification.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1900"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1900",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1667,9 +1689,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ad0f70ed1608a1b05cacaa033815c0649843339a85e42fe16b5929ae1e2d736e",
-      "requirement_id": "REQ-562FCA16AD95",
+      "requirement_id": "REQ-5BD1DDFF508B",
       "requirement_text": "Every production retrieval bug MUST result in at least one golden query, ACL test, provider contract test or indexing regression test.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1677,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1962"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1970"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1962",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1970",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1689,9 +1711,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "9f641bae3103aec4ec5da22a9be4dedbfbdd9549670b2d3a2c949e4e9e66e874",
-      "requirement_id": "REQ-FE176018E6DD",
+      "requirement_id": "REQ-8B5DF3CE7850",
       "requirement_text": "The implementation MUST code to currently verified provider behavior and keep contract tests for it:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1699,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1989"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1997"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1989",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L1997",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1711,9 +1733,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "6d072b53eda35278dd988d1f2097e7b083b79979cbe7a40cc5f94831994dc287",
-      "requirement_id": "REQ-46644FA11E79",
+      "requirement_id": "REQ-60AF84493D66",
       "requirement_text": "Any future spec that requires RAG/search MUST reference Spec 229 instead of introducing another independent vector/search pipeline.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1721,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2017"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2025"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2017",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2025",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1733,9 +1755,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ab698a60598204d4a0e06c2804f811872eca2c23a7ee9be1ed4ba002a2a995b9",
-      "requirement_id": "REQ-F330598A2091",
+      "requirement_id": "REQ-7138017A7B1D",
       "requirement_text": "1. Specs 221, 222, 224, 227 and 230 SHALL use the shared Spec 229 Retrieval Broker for production semantic/document retrieval after cutover.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1743,9 +1765,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2018"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2026"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2018",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2026",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1755,9 +1777,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "610383f50204208662ca108f8e7813c4c15c58317d83cb8376b9f4bf6659cf70",
-      "requirement_id": "REQ-107A0B2D1620",
+      "requirement_id": "REQ-F91F3AD4E4EC",
       "requirement_text": "2. Those specs MAY own domain-specific query planning, interpretation or decisions, but SHALL NOT create independent production vector stores, hybrid rankers or ACL-bypassing search paths.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1765,9 +1787,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2047"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2055"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2047",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2055",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1777,9 +1799,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "3842a785a305008655e63db4f5d0ad7d5515c6ec3e20433a14e6db8105a80784",
-      "requirement_id": "REQ-EBA4D6E61B5D",
+      "requirement_id": "REQ-9B313B9F0E7C",
       "requirement_text": "All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1787,9 +1809,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2049"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2057"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2049",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2057",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1799,9 +1821,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "4d7d7b26d784d28866621aa2b85fc9c784a3e45a6c22b7bea65c324be5bc7fdf",
-      "requirement_id": "REQ-8B46847961E7",
+      "requirement_id": "REQ-4F46B5127075",
       "requirement_text": "The shared request MUST carry at least:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1809,9 +1831,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2066"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2074"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2066",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2074",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1821,9 +1843,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a1f2138630fcb01239864203907eb6dca135080c0b94b564cc712a51d19e6c06",
-      "requirement_id": "REQ-C23CE43986E7",
+      "requirement_id": "REQ-8DED7F43E90C",
       "requirement_text": "The normalized response MUST carry at least:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1831,9 +1853,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2080"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2088"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2080",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2088",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1843,9 +1865,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "eeb33246cb4d62c9d3e2fbcdc2a00e339227e506a324a2b75e915834f9a00a1c",
-      "requirement_id": "REQ-AB7635B1FCDC",
+      "requirement_id": "REQ-F48DFBE84FC8",
       "requirement_text": "`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1853,9 +1875,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2091"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2099"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2091",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2099",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1865,9 +1887,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "dba881af4b61821acec3b2ced3fff63fa9b0cae59afccae0a527e4994a6b4fe4",
-      "requirement_id": "REQ-4A35D58F39BD",
+      "requirement_id": "REQ-954919A84D6F",
       "requirement_text": "The Broker SHALL distinguish at least:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1875,9 +1897,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2130"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2138"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2130",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2138",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1887,9 +1909,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "3d31fd6e05472de060f5602915bc3b71da77a3f5dd08fd964de8eea7551cf51e",
-      "requirement_id": "REQ-101F1AB26371",
+      "requirement_id": "REQ-40E6872DBE84",
       "requirement_text": "Skill discovery SHALL use a hybrid of deterministic filters and semantic retrieval.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1897,9 +1919,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2147"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2155"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2147",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2155",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1909,9 +1931,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "7f50cd024814f4f8c02a13fadad592f2c2deee2e0380a889965a42f582223fae",
-      "requirement_id": "REQ-DB9DD33B4158",
+      "requirement_id": "REQ-FB78EEBEE5BC",
       "requirement_text": "The Broker SHALL NOT auto-execute or auto-install a Skill.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1919,9 +1941,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2177"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2185"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2177",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2185",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1931,9 +1953,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "b1f925a5b400e4b10f0ac1442d7861f6572309c603f7eb3a188f56a41b08367b",
-      "requirement_id": "REQ-B533A7E063A8",
+      "requirement_id": "REQ-89AE7598590D",
       "requirement_text": "Index text MUST be safe for the provider boundary; secrets and unrestricted implementation internals are excluded by default.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1941,9 +1963,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2203"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2211"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2203",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2211",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1953,9 +1975,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2477cb357305f998a0d3ef76d3c77859eaade4e02ee51dae6b0e2c25633f4281",
-      "requirement_id": "REQ-84275C89E10D",
+      "requirement_id": "REQ-6EAAFEB0DF90",
       "requirement_text": "These signals SHALL remain distinguishable in evidence. Historical popularity/success MUST NOT override tenant scope, lifecycle state, risk policy or explicit negative triggers.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1963,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2207"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2215"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2207",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1975,53 +1997,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "08bef5d1570ee02593f398beb803581f9bd270ca18a611ae4ae0bea9b9ec48c3",
-      "requirement_id": "REQ-3A00C67B84EB",
+      "requirement_id": "REQ-597C619A00F8",
       "requirement_text": "Projection updates SHALL be event/outbox-driven and idempotent. Revoked/deleted/visibility-changed Skills and sources MUST be tombstoned/inactivated promptly.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2209"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2209",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "de7c6d1722bb9e2a70decae5924a426c5de737b147ee62adadc29b4cccf7a424",
-      "requirement_id": "REQ-D4413121E66C",
-      "requirement_text": "Because index propagation can lag, a retrieved candidate that will cause execution MUST be reread/revalidated against authoritative current state before use.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2213"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2213",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "71c4b188acfad23a62e1b5259eaa803910132709b7b384aa9eca4f375639607d",
-      "requirement_id": "REQ-DB96B4582A98",
-      "requirement_text": "Queries containing exact Skill IDs, Spec IDs, UUIDs, file paths, API paths, error codes or version strings SHALL preserve those tokens and use deterministic/exact lookup before or alongside semantic expansion. Query rewriting MUST NOT corrupt exact identifiers.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2040,10 +2018,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "77a02dae3c893e89c7fd32bcbcf8a66e0daa7ae60b3f81cc5834b747b570f01d",
-      "requirement_id": "REQ-5D5C8DCBB2B0",
-      "requirement_text": "Certification SHALL include labeled tests for:",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "requirement_digest": "de7c6d1722bb9e2a70decae5924a426c5de737b147ee62adadc29b4cccf7a424",
+      "requirement_id": "REQ-87F1B409B693",
+      "requirement_text": "Because index propagation can lag, a retrieved candidate that will cause execution MUST be reread/revalidated against authoritative current state before use.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2051,9 +2029,53 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2240"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2221"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2240",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2221",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "71c4b188acfad23a62e1b5259eaa803910132709b7b384aa9eca4f375639607d",
+      "requirement_id": "REQ-C92A0F13D6CE",
+      "requirement_text": "Queries containing exact Skill IDs, Spec IDs, UUIDs, file paths, API paths, error codes or version strings SHALL preserve those tokens and use deterministic/exact lookup before or alongside semantic expansion. Query rewriting MUST NOT corrupt exact identifiers.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2225"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2225",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "77a02dae3c893e89c7fd32bcbcf8a66e0daa7ae60b3f81cc5834b747b570f01d",
+      "requirement_id": "REQ-5DF5C5B19E97",
+      "requirement_text": "Certification SHALL include labeled tests for:",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2248"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2248",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2063,9 +2085,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "e4bc71cd7f13ede41678db19c292bcd1ee9eb17e7f528276d61fda358df0c75a",
-      "requirement_id": "REQ-1C4527BA026C",
+      "requirement_id": "REQ-CB92C069E3C8",
       "requirement_text": "One physical provider may serve multiple logical indexes/instances, but Skill, maintenance, policy, private Library and shared product knowledge SHALL preserve distinct security/source semantics. Cross-domain retrieval MUST be intentional and expressed in `source_classes`; broad default search across everything is prohibited for consequential decisions.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2073,9 +2095,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2250"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2250",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2085,193 +2107,12 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "67c990aadc1760cb4394b6fa15a4ef5e51f41f8c52f17187d8876aa667d9c4b8",
-      "requirement_id": "REQ-5D08A10E5C08",
+      "requirement_id": "REQ-C914B5E27954",
       "requirement_text": "1. Skill semantic search finds an eligible relevant Skill and returns canonical ref/digest.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2251"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2251",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8a96d67b5e71852f712bead7811824e8ef3e77963fd36fc4eabf88935c5b7f6f",
-      "requirement_id": "REQ-A892BB723075",
-      "requirement_text": "2. revoked Skill remains non-executable even during index lag.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2252"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2252",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e020c6b37c310f9b5af4303d44ddd415d2373a3342b212aeb5a171e3607f2175",
-      "requirement_id": "REQ-B9646C995DBB",
-      "requirement_text": "3. wrong-tenant Skill never appears as eligible evidence.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2253"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2253",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "28e534641cf6b0d9bb03b39aa50b1534ef2936c0d804154d3287161123a85fd0",
-      "requirement_id": "REQ-401A4F713EE0",
-      "requirement_text": "4. exact Skill ID is not damaged by query rewriting.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2254"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2254",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2f47b4282b138efd5864ae3daf632fdedcd8c345867fa41acb8d28e35c2c5ec3",
-      "requirement_id": "REQ-93BB5B6D7179",
-      "requirement_text": "5. similar Skill with negative trigger is rejected by downstream resolver.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2255"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2255",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4764f72ee9b6f06839d033e9fabfb6ecd8becc413b26548bc1e6e46e000ffaa3",
-      "requirement_id": "REQ-268874B89403",
-      "requirement_text": "6. repository-local Skill selection rereads the pinned file/digest before materialization.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2256"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2256",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c0f3390a7a6e5ac9debb00622f19606ac14aa06cca47b4f7f2f30f483f502327",
-      "requirement_id": "REQ-49A866C225F8",
-      "requirement_text": "7. Spec 222 effectiveness signal can reorder otherwise eligible candidates but cannot resurrect revoked/incompatible Skills.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2257"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2257",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8ff3c8bf0c2fea0e995babe654222b4e39b09588f3956c92b671e5beb59be4f3",
-      "requirement_id": "REQ-BD74ADA4075B",
-      "requirement_text": "8. Help/Library/Skill/maintenance/policy consumers all use the same Broker contract while retaining domain authority.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "APPLICABLE",
-      "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258"
-      ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258",
-      "blocker": null,
-      "current_relevance": "CURRENT",
-      "evidence_freshness": "FRESH",
-      "evidence_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
-      "final_state": "PASS",
-      "implementation_evidence": [
-        "apps/web/server/services/retrievalBroker.ts",
-        "apps/web/server/services/retrievalBroker.test.ts"
-      ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Reopen only if provider outage handling or its fail-closed evidence contract changes or regresses.",
-      "requirement_digest": "f1bc8404964b0ed68d2874b741434a6b9ebb81b306642e1635882dd25c017501",
-      "requirement_id": "REQ-CAAB31EB9BD4",
-      "requirement_text": "9. provider outage produces explicit degraded/insufficient evidence state.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-      "successor_mapping": [],
-      "verification_evidence": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
-      ],
-      "verification_method": "Focused provider-outage failure injection rerun from isolated canonical main SHA 27bc4368ced4c31d2be9dde9474af170b8c6d039 as part of 7-file retrieval/Library regression verification; 88 tests passed, 28 existing todo. Production verification is not claimed."
     },
     {
       "applicability": "UNASSESSED",
@@ -2287,10 +2128,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0a17acb62bda36ae82600a6397b662fc609bc0de16637b2d8912bfb2a7002a59",
-      "requirement_id": "REQ-BC16675772E5",
-      "requirement_text": "10. deletion/revocation propagates to projections and execution revalidation prevents stale use.",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "requirement_digest": "8a96d67b5e71852f712bead7811824e8ef3e77963fd36fc4eabf88935c5b7f6f",
+      "requirement_id": "REQ-AF0B2BB65815",
+      "requirement_text": "2. revoked Skill remains non-executable even during index lag.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2298,9 +2139,185 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2282"
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2260"
       ],
-      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2282",
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2260",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e020c6b37c310f9b5af4303d44ddd415d2373a3342b212aeb5a171e3607f2175",
+      "requirement_id": "REQ-1D0F0EEEBD52",
+      "requirement_text": "3. wrong-tenant Skill never appears as eligible evidence.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2261"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2261",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "28e534641cf6b0d9bb03b39aa50b1534ef2936c0d804154d3287161123a85fd0",
+      "requirement_id": "REQ-BF208C8C5959",
+      "requirement_text": "4. exact Skill ID is not damaged by query rewriting.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2262"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2262",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2f47b4282b138efd5864ae3daf632fdedcd8c345867fa41acb8d28e35c2c5ec3",
+      "requirement_id": "REQ-122B6E5A49F5",
+      "requirement_text": "5. similar Skill with negative trigger is rejected by downstream resolver.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2263"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2263",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4764f72ee9b6f06839d033e9fabfb6ecd8becc413b26548bc1e6e46e000ffaa3",
+      "requirement_id": "REQ-085CD5EDCD2C",
+      "requirement_text": "6. repository-local Skill selection rereads the pinned file/digest before materialization.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2264"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2264",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c0f3390a7a6e5ac9debb00622f19606ac14aa06cca47b4f7f2f30f483f502327",
+      "requirement_id": "REQ-6AAF84FF4F9C",
+      "requirement_text": "7. Spec 222 effectiveness signal can reorder otherwise eligible candidates but cannot resurrect revoked/incompatible Skills.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2265"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2265",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8ff3c8bf0c2fea0e995babe654222b4e39b09588f3956c92b671e5beb59be4f3",
+      "requirement_id": "REQ-4FF5128B70FD",
+      "requirement_text": "8. Help/Library/Skill/maintenance/policy consumers all use the same Broker contract while retaining domain authority.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2266"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2266",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f1bc8404964b0ed68d2874b741434a6b9ebb81b306642e1635882dd25c017501",
+      "requirement_id": "REQ-D9490320A18F",
+      "requirement_text": "9. provider outage produces explicit degraded/insufficient evidence state.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2267"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2267",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0a17acb62bda36ae82600a6397b662fc609bc0de16637b2d8912bfb2a7002a59",
+      "requirement_id": "REQ-8B502AAA76C4",
+      "requirement_text": "10. deletion/revocation propagates to projections and execution revalidation prevents stale use.",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2290"
+      ],
+      "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2290",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2310,15 +2327,15 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "9e43c3e4289eafd354823c8d83beec41600b4de63bd9db5294839348016d54ac",
-      "requirement_id": "REQ-E4DD8F449A5D",
+      "requirement_id": "REQ-A8432B2ED5AC",
       "requirement_text": "| 14 | Provider model lifecycle | Pinned model profiles and required certified replacement migration. |",
-      "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+      "source_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+  "spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
   "spec_id": "229"
 }

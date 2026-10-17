@@ -1,0 +1,91 @@
+{
+  "workunits": [
+    {
+      "workunit": "SPEC229_P229_8_CITATION_ANCHOR",
+      "status": "PASS",
+      "source_sha": "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
+      "canonical_base_sha": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+      "scope": [
+        "apps/web/server/services/libraryCitationAnchor.ts",
+        "apps/web/server/services/libraryService.ts",
+        "apps/web/server/routers/library.ts",
+        "apps/web/server/services/retrievalBroker.ts",
+        "apps/web/client/src/pages/DocumentManagement.tsx",
+        "apps/web/client/src/components/library/CodeMirrorEditor.tsx"
+      ],
+      "contract": "Anchor binds canonical Library item identity, SHA-256 immutable content revision, normalized canonical Markdown digest, 1-based inclusive line range before token truncation, and quote hash. Resolution repeats tenant/ACL read and validates current digest and quote before returning content; failure is generic and closed. UI opens the existing Document Management Markdown source editor at the verified range. External sourceUri does not establish a position.",
+      "verification": {
+        "profile": "quick",
+        "commands": [
+          "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryCitationAnchor.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/retrievalBroker.test.ts server/routers/library.test.ts client/src/lib/documentManagementUi.test.ts client/src/components/editor/UnifiedDocumentSurface.test.tsx client/src/components/library/DocumentPreviewPanel.test.tsx client/src/components/library/CodeMirrorEditor.citation.test.tsx",
+          "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryService.test.ts -t 'Library Markdown citation resolution'"
+        ],
+        "results": [
+          "PASS: 8 files, 97 passed, 28 existing todo",
+          "PASS: 1 file, 3 passed, 76 unrelated tests skipped"
+        ],
+        "diff_check": "PASS",
+        "syntax_transform": "PASS: esbuild transformed DocumentManagement.tsx, Citation Anchor, Benchmark module, and benchmark CLI"
+      },
+      "security_boundary": "Uses existing protected Library Markdown resolver and Document Management UI. Current tenant, ACL, document and content digest are checked on every anchored fetch. No sourceUrl is used as a positional authority.",
+      "limitations": [
+        "No production runtime or deployment verification is claimed.",
+        "The existing Markdown editor is used for navigation; no new editor or document subsystem is introduced."
+      ]
+    },
+    {
+      "workunit": "SPEC229_P229_8_BENCHMARK_HARNESS",
+      "status": "PASS",
+      "source_sha": "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
+      "canonical_base_sha": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+      "scope": [
+        "apps/web/server/services/libraryRetrievalBenchmark.ts",
+        "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+        "apps/web/server/services/libraryRetrievalBenchmark.test.ts",
+        "apps/web/scripts/run-retrieval-fixture-benchmark.ts"
+      ],
+      "verification": {
+        "profile": "quick",
+        "commands": [
+          "pnpm exec vitest run server/services/libraryRetrievalBenchmark.test.ts",
+          "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts"
+        ],
+        "results": [
+          "PASS: benchmark formulas and safety regressions are covered by the 8-file focused suite (97 passed)",
+          "PASS: reproducible 9-case synthetic fixture report emitted with status DEVELOPMENT_FIXTURES_NOT_CERTIFIED"
+        ],
+        "observed_fixture_metrics": {
+          "evidence_coverage": 0.8,
+          "citation_precision": 0.5,
+          "citation_availability": 0.25,
+          "freshness_correctness": 0.571429,
+          "authority_correctness": 0.857143,
+          "acl_leakage_cases": 1,
+          "unsafe_partial_or_outage_answers": 1,
+          "stale_or_revoked_evidence_accepted": 3
+        },
+        "release_thresholds_modified": false
+      },
+      "dataset_status": "Development synthetic fixtures only. This is not the reviewed 500-query gold dataset, not a live-provider baseline, and not a release calibration or certification receipt.",
+      "limitations": [
+        "Latency and cost remain null until measured against an approved live or recorded retrieval run.",
+        "P229.8 Evidence Quality Gate remains uncertified and evidence remains weak/degraded."
+      ]
+    }
+  ],
+  "scope_status": {
+    "citation_anchor_workunit": "PASS",
+    "benchmark_harness_workunit": "PASS",
+    "p229_8": "INCOMPLETE",
+    "global_spec_229": "INCOMPLETE"
+  },
+  "regressions": {
+    "command": "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryContextPackService.test.ts server/services/__tests__/contextPackBuilder.test.ts server/services/libraryKnowledgeReadService.test.ts server/services/__tests__/financeRetrievalService.test.ts",
+    "result": "PASS: 4 files, 38 passed"
+  },
+  "not_run": [
+    "Full repository typecheck (prohibited in local/shared session by AGENTS.md RAM policy)",
+    "Production runtime verification"
+  ],
+  "next_action": "Merge the protected PR, verify the resulting canonical main SHA, rerun focused checks on that SHA, then prepare the reviewed 500-query gold dataset and Evidence Quality Gate calibration for explicit review. Do not migrate consequential consumers or promote weak evidence before certification."
+}
