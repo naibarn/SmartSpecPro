@@ -1,0 +1,11 @@
+{
+  "profile": "integration",
+  "source_sha": "4b618cf901df7405009b11f6783dfcd3ebce0187",
+  "command": "pnpm exec vitest run server/services/__tests__/spec224CodexBudgetAdmission.integration.test.ts --maxWorkers=1",
+  "resource_before": "MemAvailable:   26350792 kB",
+  "started_at": 1792220084.0188355,
+  "finished_at": 1792220090.242213,
+  "exit": 0,
+  "max_rss_kib": 356432,
+  "environment": "owned native PostgreSQL; test-only authority/model receipts; no provider dispatch; NOT liveacceptance"
+}

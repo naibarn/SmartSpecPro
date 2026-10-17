@@ -1,0 +1,26 @@
+{
+  "observed_at": "2026-10-17T07:01:37.512Z",
+  "classification": "READ_ONLY_LOCAL_CONTROL_PLANE_INVENTORY_NOT_LIVE_ACCEPTANCE",
+  "target_hash": "ecf9dc471c705d645d3e4d01d01de20264f309cf1da34f3d6f005cc0f5ec6bd4",
+  "transactionReadOnly": "on",
+  "runtimeProfiles": {
+    "requested_profile_count": 0
+  },
+  "runner": {
+    "total": 15,
+    "fresh": 0,
+    "unexpired_snapshot": 0
+  },
+  "jobs": [
+    {
+      "status": "queued",
+      "count": 1
+    }
+  ],
+  "activeRecoveryApprovals": {
+    "approved_unrevoked_candidates": 0
+  },
+  "capabilities": {
+    "unexpired": 0
+  }
+}

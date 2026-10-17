@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "expected_canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
     "expected_spec_digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396"
   },
   "continuation": {
     "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open.",
+    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 79,
+  "generation": 81,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
@@ -217,7 +217,8 @@
       "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "47235563d14d6a4c861c04127e77e6dd655283db",
       "1f9cda7857372f0e4369943cb257216658b84d0e",
-      "86a16d13592b7be4063c0ab37044418a8212de7c"
+      "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "f250326711d7d170e575d03b7c358f74891dfecc"
     ],
     "mapping": [],
     "source_paths": [
@@ -260,9 +261,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
     "integrated": true,
-    "integrated_at": "2026-10-17T04:03:32Z"
+    "integrated_at": "2026-10-17T07:04:29Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -646,7 +647,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+        "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -672,10 +673,16 @@
             "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+          },
+          {
+            "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Complete same-snapshot cross-surface Goal/WU projection binding, history/parity and authenticated dereference acceptance; this local fixture does not close Mission Control.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
         "requirement_digest": "b9e45e0e86bb9e8bb8a525557df24be656617252b5c0a26689df1fb49159ae2e",
         "requirement_id": "REQ-294-OBS-03",
         "requirement_text": "- REQ-294-OBS-03: Pagination and drilldown MUST preserve the same snapshot and scope, reject mismatched cursor/filter/token, reauthorize after revocation and fail closed across tenants. Late correction/reopen/regression MUST affect a new projection version without rewriting historical answers.",
@@ -709,9 +716,18 @@
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
             "status": "PASS_SCOPED",
             "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+          },
+          {
+            "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "status": "PASS_SCOPED",
+            "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
           }
         ],
-        "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+        "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
       },
       "REQ-294-OBS-04": {
         "applicability": "APPLICABLE",
@@ -767,7 +783,7 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+        "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -794,10 +810,16 @@
             "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+          },
+          {
+            "kind": "PERSISTED_ACTIVITY_READ_BOUNDARY_REPAIR",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Complete same-snapshot cross-surface Goal/WU projection binding, history/parity and authenticated dereference acceptance; this local fixture does not close Mission Control.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
         "requirement_digest": "4678fa2571fff4dd370e32d63619099309a8d90c0bc68ccfc6c46875ee37aec9",
         "requirement_id": "REQ-294-OBS-05",
         "requirement_text": "- REQ-294-OBS-05: Mission Control MUST display verified Goal progress/remaining scope plus Runner/Agent/job stage/heartbeat/recovery/freshness and model/usage evidence through existing Task Control/Agent Monitor surfaces, including responsive/mobile hierarchy and source-bound comparison. Live verification requirements MUST remain explicitly separate from integration/unit test results.",
@@ -840,9 +862,18 @@
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
             "status": "PASS_SCOPED",
             "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+          },
+          {
+            "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+            "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+            "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+            "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+            "status": "PASS_SCOPED",
+            "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
           }
         ],
-        "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
+        "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
       }
     }
   },
@@ -927,7 +958,7 @@
     "unresolved": 497
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T04:05:36.303866Z",
+  "updated_at": "2026-10-17T07:06:07.349789Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1251,6 +1282,15 @@
         "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
         "status": "PASS_SCOPED",
         "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+      },
+      {
+        "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "kind": "LIVE_READINESS_NATIVE_SQL_PREREQUISITES",
+        "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
+        "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "status": "PASS_SCOPED",
+        "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
       }
     ],
     "freshness": "UNKNOWN",
