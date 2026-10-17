@@ -63,7 +63,11 @@ describe("Cloudflare staging API transport", () => {
         const metadata = JSON.parse(await form.get("metadata")!.text());
         expect(metadata.main_module).toBe("index.js");
         expect(metadata.assets.jwt).toBe("completion-jwt");
-        expect(metadata.bindings).toEqual([{ name: "ASSETS", type: "assets" }]);
+        expect(metadata.bindings).toEqual([
+          { name: "ASSETS", type: "assets" },
+          { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
+          { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
+        ]);
         expect(metadata.annotations["workers/commit_sha"]).toBe(sourceSha);
         expect(metadata.annotations["workers/message"]).toContain(buildDigest);
         return json({ id: versionId });
