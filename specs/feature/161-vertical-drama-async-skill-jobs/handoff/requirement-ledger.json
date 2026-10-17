@@ -1,5 +1,5 @@
 {
-  "generation": 12,
+  "generation": 14,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -164,17 +164,18 @@
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
       "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-      "final_state": "PARTIAL",
+      "final_state": "OPEN",
       "implementation_evidence": [
         {
           "kind": "CANONICAL_SOURCE_INSPECTION",
           "path": "apps/web/server/services/verticalDramaLlmModelPolicy.ts",
           "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
           "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
-        }
+        },
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Verify selected model crosses submit, canonical job, real worker and provider boundary without substitution.",
+      "next_action": "Verify merged lineage/policy guard; remaining whole-requirement provider and other-flow evidence stays separate.",
       "requirement_digest": "509c473458fc3ee5a19d4bba90401c16045104a53226aa468236d154253acb62",
       "requirement_id": "REQ-34822D26C584",
       "requirement_text": "5. model ที่ user เลือกถูกส่งถึง worker/provider โดยไม่ถูกแทนด้วย model อื่น",
@@ -186,7 +187,9 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
           "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
           "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
-        }
+        },
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json",
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json"
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },

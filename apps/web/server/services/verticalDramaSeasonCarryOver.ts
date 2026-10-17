@@ -48,6 +48,7 @@ import {
   resolveStoryBibleModel,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import type { VerticalDramaLineageContext } from "./verticalDramaSeriesLineage";
 import {
@@ -237,7 +238,10 @@ export async function synthesizeSeasonCarryOver(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.lineageContext.parentSeriesId,
+    resolveStoryBibleModel,
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

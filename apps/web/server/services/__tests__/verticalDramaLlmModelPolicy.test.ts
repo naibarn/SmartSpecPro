@@ -168,17 +168,20 @@ describe("resolveVerticalDramaSeriesModel", () => {
     expect(autoFallback).toHaveBeenCalledTimes(1);
   });
 
-  it("never throws and falls back to autoFallback when the DB read itself fails", async () => {
+  it("fails closed with the DB cause when it cannot read whether a user pin exists", async () => {
     hoisted.seriesRows = [{ llmModelPolicy: { defaultModelId: "override-model" } }];
+    const readError = new Error("connection reset");
     vi.mocked(db.select).mockImplementationOnce(() => {
-      throw new Error("connection reset");
+      throw readError;
     });
     const autoFallback = vi.fn().mockResolvedValue("auto-fallback-model");
 
-    const modelId = await resolveVerticalDramaSeriesModel(6, autoFallback);
-
-    expect(modelId).toBe("auto-fallback-model");
-    expect(autoFallback).toHaveBeenCalledTimes(1);
+    await expect(resolveVerticalDramaSeriesModel(6, autoFallback)).rejects.toMatchObject({
+      message: "Could not read the selected Vertical Drama model for series 6",
+      cause: readError,
+    });
+    expect(autoFallback).not.toHaveBeenCalled();
+    expect(mockLoadEnabledLlmModelRows).not.toHaveBeenCalled();
   });
 
   it("fails closed when automatic selection has no routable recommended model", async () => {

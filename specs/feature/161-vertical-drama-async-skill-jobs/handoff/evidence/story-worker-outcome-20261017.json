@@ -124,7 +124,7 @@
     "No full typecheck, build, migration, production runtime, or retired system was used.",
     "Registry no longer calls public status while canonical job is running; canonical terminal status remains authoritative for subsequent public reads."
   ],
-  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "observed_at": "2026-10-17T00:31:54.698702+00:00",
   "independent_review": {
     "result": "PASS",
@@ -135,11 +135,16 @@
     ]
   },
   "integration": {
-    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
-    "source_branch": "codex/spec161-chain-runtime-repair-20261017",
-    "owned_commit_sha": null,
-    "intended_pr": "Next normal protected PR against main",
-    "pending_action": "Commit exact fast-gate-passing owned files, push, required CI, guarded protected merge, verify canonical SHA"
+    "pr": 999,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/999",
+    "source_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+    "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+    "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "merged_at": "2026-10-17T00:37:48Z",
+    "merge_tree_matches_head": true,
+    "reachable_from_origin_main": true,
+    "checks": "progressive_integration_gate, git_lifecycle, Mocked SPEC308 browser simulation PASS; build-preview SKIPPED",
+    "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json"
   },
   "parent_verification": {
     "profile": "integration",
@@ -151,5 +156,11 @@
     "working_patch": true
   },
   "file_sha256": {},
-  "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+  "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
+  "post_integration_obligation": {
+    "status": "PENDING",
+    "revision": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "owner": "/root",
+    "next_action": "Run final bounded canonical suite after independent lineage model repair integration; preserve this test-source/tree evidence."
+  }
 }

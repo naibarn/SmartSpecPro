@@ -25,7 +25,7 @@
     "Preserve legacy empty-facts/PII semantics and public function signatures; no broad delegation to behaviorally different canonical writer"
   ],
   "decision": "Apply additive scope/provenance guards to existing Chat owner and a default-off internal prompt exclusion option; preserve unrelated features and data. No new memory authority/store.",
-  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "job_id": null,
   "run_id": null,
   "new_sdk_calls": 0,
@@ -38,11 +38,16 @@
     "findings_resolved": []
   },
   "integration": {
+    "pr": 999,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/999",
     "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
-    "source_branch": "codex/spec161-chain-runtime-repair-20261017",
-    "owned_commit_sha": null,
-    "intended_pr": "Next normal protected PR against main",
-    "pending_action": "Commit exact fast-gate-passing owned files, push, required CI, guarded protected merge, verify canonical SHA"
+    "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+    "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "merged_at": "2026-10-17T00:37:48Z",
+    "merge_tree_matches_head": true,
+    "reachable_from_origin_main": true,
+    "checks": "progressive_integration_gate, git_lifecycle, Mocked SPEC308 browser simulation PASS; build-preview SKIPPED",
+    "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json"
   },
   "parent_verification": {
     "profile": "integration",
@@ -66,5 +71,11 @@
   "file_sha256": {
     "apps/web/server/services/chatService.ts": "c57b0d75683ecc223e9ba924e34ebebf062ecaf228bb1b850badfd8a2f933ca4",
     "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts": "dc35654d8322614bc188b592819eddf4d5c53c76ed98d61c5645d0c7e7ab20b9"
+  },
+  "post_integration_obligation": {
+    "status": "PENDING",
+    "revision": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "owner": "/root",
+    "next_action": "Run final bounded canonical suite after independent lineage model repair integration; preserve this test-source/tree evidence."
   }
 }

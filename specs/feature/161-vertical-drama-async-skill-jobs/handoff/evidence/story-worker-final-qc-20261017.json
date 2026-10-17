@@ -75,7 +75,7 @@
     "original_fast_lane_job_mutated": false,
     "association": "Historical SPEC161 job untouched; native bounded tests are separate disposable synthetic jobs"
   },
-  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "independent_review": {
     "result": "PASS",
     "reviewer": "/root",
@@ -107,5 +107,23 @@
     "test_secret": "[REDACTED disposable test-only value]",
     "tests": "89/89 across 2 files; native worker8 plus router81",
     "log": "/tmp/smartaihub-backlog-pilot/worker-final-qc-parent-repaired.log"
+  },
+  "integration": {
+    "pr": 999,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/999",
+    "source_sha": null,
+    "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+    "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "merged_at": "2026-10-17T00:37:48Z",
+    "merge_tree_matches_head": true,
+    "reachable_from_origin_main": true,
+    "checks": "progressive_integration_gate, git_lifecycle, Mocked SPEC308 browser simulation PASS; build-preview SKIPPED",
+    "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json"
+  },
+  "post_integration_obligation": {
+    "status": "PENDING",
+    "revision": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "owner": "/root",
+    "next_action": "Run final bounded canonical suite after independent lineage model repair integration; preserve this test-source/tree evidence."
   }
 }
