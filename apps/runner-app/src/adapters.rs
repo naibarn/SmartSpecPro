@@ -2001,6 +2001,14 @@ pub fn build_process_spec(
         "XDG_CONFIG_HOME",
         "CODEX_HOME",
         "CLAUDE_CONFIG_DIR",
+        "SystemRoot",
+        "WINDIR",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "TEMP",
+        "TMP",
+        "PATHEXT",
+        "COMSPEC",
     ] {
         if let Ok(value) = std::env::var(key) {
             environment.push((key.into(), value));

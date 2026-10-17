@@ -22,7 +22,6 @@ import {
   validateRequirementClosureGraph,
   type RequirementClosureGraph,
 } from "./spec224RequirementClosureContracts";
-import { SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE } from "./spec224ExecutionProfile";
 import { verifyLocalSpec224SourceBundle } from "./spec224TrustedSourceAttestation";
 import type { SourceBundleManifest } from "./spec224SourceBundle";
 
@@ -387,7 +386,7 @@ export async function storeVerifiedSpec224Bundle(input: {
     specDigest: manifest.specDigest,
     specSourceDigest: verified.specSourceDigest,
     specBaselineId: verified.specBaselineId,
-    profileVersion: SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version,
+    profileVersion: verified.profileVersion,
     artifactEvidenceDigest: verified.artifactEvidenceDigest,
     files: entries,
   };

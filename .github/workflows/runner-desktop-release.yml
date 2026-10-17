@@ -54,6 +54,10 @@ jobs:
           client/src/features/desktop-releases/__tests__/RunnerReleaseAdminPanel.test.tsx
           server/services/__tests__/runnerReleaseBuildService.test.ts
           server/routes/__tests__/runnerReleases.test.ts
+          server/services/__tests__/spec224ExecutionProfile.test.ts
+          server/services/__tests__/spec224RuntimeAdmission.test.ts
+          server/services/__tests__/spec224TrustedSourceAttestation.test.ts
+          server/services/__tests__/spec224RemoteBundleStorage.test.ts
           --pool=forks --maxWorkers=2
       - name: Build shared Remotion package
         if: inputs.platform == 'checks-only'
@@ -89,6 +93,15 @@ jobs:
           "SAH_RUNNER_BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
           "BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
           cargo install tauri-cli --version 2.10.1 --locked
+      - name: Verify native Windows Runner boundaries (not Live Acceptance)
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: "2"
+        run: |
+          foreach ($scope in @('windows_', 'workspace_registry::tests', 'spec224_candidate::tests', 'interrupted_command_recovery', 'persisted_receipt_replays')) {
+            cargo test --locked --manifest-path apps/runner-app/Cargo.toml --lib $scope -- --test-threads=1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Build unsigned review installer
         working-directory: apps/runner-desktop
         env:

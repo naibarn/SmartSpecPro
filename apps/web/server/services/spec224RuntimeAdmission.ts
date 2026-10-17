@@ -26,6 +26,23 @@ import { validateSpec224RecoveryGrant } from "./spec224RecoveryGrantValidator";
 import { acquireSpec224RecoveryGrantFence } from "./spec224RecoveryGrantFence";
 import { appendJobEvent } from "./jobControlPlane";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
+import { matchesSpec224WindowsRunnerTarget, SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE } from "./spec224ExecutionProfile";
+
+export function spec224ProfileRunnerTargetMatches(input: {
+  profileId: unknown;
+  sourceCommit: unknown;
+  canonicalInputJson: unknown;
+  capabilitySnapshot: unknown;
+  now: number;
+}): boolean {
+  if (input.profileId !== SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE.profileId) return true;
+  const manifest = asObject(asObject(input.canonicalInputJson)?.manifest);
+  const policy = asObject(manifest?.policyBinding);
+  return matchesSpec224WindowsRunnerTarget(asObject(input.capabilitySnapshot), {
+    sourceCommit: typeof input.sourceCommit === "string" ? input.sourceCommit : "",
+    workspaceRef: typeof policy?.workspaceRef === "string" ? policy.workspaceRef : "",
+  }, input.now);
+}
 
 export type Spec224AdmissionDenialReason =
   | "DENIED_NO_ATTESTATION"
@@ -728,7 +745,15 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
         transaction ? capabilityQuery.for("share") : capabilityQuery
       ).limit(1);
       const capabilityJson = asObject(capability?.snapshotJson);
+      const windowsTargetValid = spec224ProfileRunnerTargetMatches({
+        profileId: attestation?.profileId,
+        sourceCommit: attestation?.sourceCommit,
+        canonicalInputJson: job.inputJson,
+        capabilitySnapshot: capabilityJson,
+        now,
+      });
       runnerBindingValid = Boolean(
+        windowsTargetValid &&
         runner &&
         capability &&
         runner.ownerUserId === run.actorId &&

@@ -18,7 +18,7 @@ import {
 } from "./spec224SourceBundle";
 import {
   bindSpec224ExecutionProfileToSource,
-  SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE,
+  getSpec224ExecutionProfileTemplate,
 } from "./spec224ExecutionProfile";
 import {
   validateRequirementClosureGraph,
@@ -364,6 +364,7 @@ async function sourceIdentityFromBundle(
   specSourceDigest: string;
   specBaselineId: string;
   profileDigest: string;
+  profileVersion: number;
   artifactEvidenceDigest: string;
 }> {
   if (!manifestHasCompleteClosure(manifest)) {
@@ -439,7 +440,7 @@ async function sourceIdentityFromBundle(
     ].join("\n")
   ).slice(0, 40)}`;
   const profile = bindSpec224ExecutionProfileToSource(
-    SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE,
+    getSpec224ExecutionProfileTemplate(manifest.profileId),
     sourceCommit,
     sourceTree
   );
@@ -479,6 +480,7 @@ async function sourceIdentityFromBundle(
     specSourceDigest,
     specBaselineId,
     profileDigest: profile.profileDigest,
+    profileVersion: profile.version,
     artifactEvidenceDigest,
   };
 }
@@ -495,6 +497,7 @@ export async function verifyLocalSpec224SourceBundle(
   specSourceDigest: string;
   specBaselineId: string;
   profileDigest: string;
+  profileVersion: number;
   artifactEvidenceDigest: string;
 }> {
   assertLocalAttestationEnvironment();
@@ -693,7 +696,7 @@ export async function issueLocalSpec224SourceAttestation(input: {
       specSourceDigest: verified.specSourceDigest,
       specBaselineId: verified.specBaselineId,
       profileId: manifest.profileId,
-      profileVersion: SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version,
+      profileVersion: verified.profileVersion,
       profileDigest: verified.profileDigest,
       bundleDigest: manifest.bundleDigest,
       artifactEvidenceDigest: verified.artifactEvidenceDigest,
