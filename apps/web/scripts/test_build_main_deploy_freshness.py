@@ -268,6 +268,33 @@ class ReleaseIntegrityTests(unittest.TestCase):
         self.assertNotEqual(plugin_result.returncode, 0)
         self.assertIn("Production build target blocked", plugin_result.stderr)
 
+    def test_build_guard_fails_closed_when_service_target_cannot_be_read(self):
+        checkout = self.root / "unknown-target/apps/web"
+        scripts = checkout / "scripts"
+        scripts.mkdir(parents=True)
+        shutil.copy2(SCRIPT.with_name("guard-live-build-target.sh"), scripts / "guard-live-build-target.sh")
+        shutil.copy2(SCRIPT.with_name("live-build-target-guard.mjs"), scripts / "live-build-target-guard.mjs")
+        (checkout / "dist/public").mkdir(parents=True)
+        fake_bin = self.root / "unknown-target-bin"
+        fake_bin.mkdir()
+        systemctl = fake_bin / "systemctl"
+        systemctl.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        systemctl.chmod(0o755)
+        environment = os.environ.copy()
+        environment["PATH"] = f"{fake_bin}:{environment['PATH']}"
+        environment.pop("GITHUB_ACTIONS", None)
+        environment.pop("CI", None)
+        result = subprocess.run(
+            ["bash", str(scripts / "guard-live-build-target.sh")],
+            cwd=checkout,
+            text=True,
+            capture_output=True,
+            env=environment,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("cannot be verified", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

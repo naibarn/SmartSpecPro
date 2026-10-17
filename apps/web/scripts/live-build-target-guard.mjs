@@ -28,10 +28,14 @@ export function guardLiveBuildTarget(webRoot, outputDirectory) {
       ["show", "smartspec-web.service", "--property=WorkingDirectory", "--value"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000 },
     ).trim();
-  } catch {
-    return;
+  } catch (error) {
+    if (process.env.GITHUB_ACTIONS === "true" && process.env.CI === "true") return;
+    throw new Error("Production build target cannot be verified because systemctl is unavailable", { cause: error });
   }
-  if (!serviceRoot) return;
+  if (!serviceRoot) {
+    if (process.env.GITHUB_ACTIONS === "true" && process.env.CI === "true") return;
+    throw new Error("Production build target cannot be verified because the service WorkingDirectory is unavailable");
+  }
 
   const liveDist = resolvedPath(path.join(serviceRoot, "dist"));
   const output = resolvedPath(path.resolve(webRoot, outputDirectory));
