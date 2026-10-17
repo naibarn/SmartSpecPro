@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   createCloudflareStagingArtifactAuthority,
+  isCloudflareStagingArtifactPathAllowed,
   type CloudflareStagingArtifactStorage,
   type CloudflareStagingBuildReceipt,
 } from "./cloudflareStagingArtifactAuthority";
@@ -59,6 +60,21 @@ const bundle = {
 };
 
 describe("Cloudflare staging artifact authority", () => {
+  it("allows release assets from the approved public source tree and rejects other paths", () => {
+    expect(isCloudflareStagingArtifactPathAllowed(
+      "/build/apps/web/client/public/releases/current.json",
+      ["/build/apps/web/dist/public", "/build/apps/web/client/public"],
+    )).toBe(true);
+    expect(isCloudflareStagingArtifactPathAllowed(
+      "/build/apps/web/private/secret.json",
+      ["/build/apps/web/dist/public", "/build/apps/web/client/public"],
+    )).toBe(false);
+    expect(isCloudflareStagingArtifactPathAllowed(
+      "/build/apps/web/client/public",
+      ["/build/apps/web/client/public"],
+    )).toBe(false);
+  });
+
   it("publishes immutable content-addressed modules/assets and resolves only by digest", async () => {
     const { authority, objects } = fixture();
     const published = await authority.publish({ receipt, bundle });

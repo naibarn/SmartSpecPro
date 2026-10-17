@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import type { CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
 import { storagePutIfAbsent, storageReadBuffer } from "../storage";
 
@@ -99,6 +99,14 @@ export type PublishedCloudflareStagingArtifact = Readonly<{
 
 function sha256(bytes: Uint8Array) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+export function isCloudflareStagingArtifactPathAllowed(path: string, allowedRoots: readonly string[]) {
+  const candidate = resolve(path);
+  return allowedRoots.some(root => {
+    const relation = relative(resolve(root), candidate);
+    return Boolean(relation) && relation !== ".." && !relation.startsWith(`..${sep}`);
+  });
 }
 
 function safePath(value: string) {

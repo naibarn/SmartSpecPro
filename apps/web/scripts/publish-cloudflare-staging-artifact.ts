@@ -1,9 +1,10 @@
-import { readFile, realpath } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import { resolve, relative, sep } from "node:path";
 import { storagePutIfAbsent, storageReadBuffer } from "../server/storage";
 import {
   createCanonicalBuildReceiptAuthority,
   createCloudflareStagingArtifactAuthority,
+  isCloudflareStagingArtifactPathAllowed,
   type CloudflareStagingBuildReceipt,
 } from "../server/services/cloudflareStagingArtifactAuthority";
 
@@ -68,7 +69,14 @@ async function main() {
   const assets: Record<string, { contentType: string; bytes: Uint8Array }> = {};
   const moduleRoot = resolve(workspace, "apps/cloudflare/.staging-artifact/modules");
   const assetRoot = resolve(workspace, "apps/web/dist/public");
-  async function loadFiles(entries: any[], base: string, destination: typeof modules) {
+  const publicSourcePath = resolve(workspace, "apps/web/client/public");
+  const publicSourceStat = await lstat(publicSourcePath);
+  if (!publicSourceStat.isDirectory() || publicSourceStat.isSymbolicLink()) {
+    throw new Error("ARTIFACT_PUBLIC_SOURCE_INVALID");
+  }
+  const publicSourceRoot = await realpath(publicSourcePath);
+  assertInside(publicSourceRoot, manifestRoot);
+  async function loadFiles(entries: any[], base: string, destination: typeof modules, allowedRoots = [base]) {
     for (const entry of entries) {
       const name = entry?.name;
       if (!safeRelative(name) || !/^[a-f0-9]{64}$/i.test(entry.sha256 ?? "") || !Number.isSafeInteger(entry.size) || entry.size < 1) {
@@ -77,14 +85,16 @@ async function main() {
       const path = resolve(base, name);
       assertInside(path, base);
       const resolvedPath = await realpath(path);
-      assertInside(resolvedPath, await realpath(base));
+      if (!isCloudflareStagingArtifactPathAllowed(resolvedPath, allowedRoots)) {
+        throw new Error("ARTIFACT_RESOLVED_PATH_DENIED");
+      }
       const bytes = await readFile(resolvedPath);
       if (bytes.byteLength !== entry.size) throw new Error("ARTIFACT_FILE_SIZE_MISMATCH");
       destination[name] = { contentType: contentType(entry.contentType), bytes };
     }
   }
   await loadFiles(manifest.moduleFiles, moduleRoot, modules);
-  await loadFiles(manifest.assets, assetRoot, assets);
+  await loadFiles(manifest.assets, assetRoot, assets, [await realpath(assetRoot), publicSourceRoot]);
   const receipt: CloudflareStagingBuildReceipt = {
     buildId,
     status: "BUILD_PASSED",
