@@ -100,7 +100,30 @@ describe("retrieveLibraryEvidenceV2", () => {
       degraded: true,
       degradationReasons: ["UNSUPPORTED_SOURCE_CLASS"],
       providerProfile: { provider: "not_queried" },
-      plan: { sourceClasses: ["library_document"] },
+      plan: { sourceClasses: ["agent_memory"] },
+    });
+    expect(mockGetProviderConfig).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for query modes and freshness features not certified by this profile", async () => {
+    const result = await retrieveLibraryEvidenceV2(
+      {
+        query: "guide",
+        mode: "exact",
+        exactIdentifiers: ["SPEC-229"],
+        freshnessRequirement: "historical_allowed",
+      },
+      actor,
+    );
+    expect(result).toMatchObject({
+      evidence: [],
+      degraded: true,
+      degradationReasons: [
+        "EXACT_IDENTIFIER_LANE_NOT_CERTIFIED",
+        "RETRIEVAL_MODE_NOT_SUPPORTED_BY_PROVIDER_PROFILE",
+        "FRESHNESS_REQUIREMENT_NOT_SUPPORTED",
+      ],
+      providerProfile: { provider: "not_queried" },
     });
     expect(mockGetProviderConfig).not.toHaveBeenCalled();
   });
@@ -160,6 +183,7 @@ describe("retrieveLibraryEvidenceV2", () => {
         query: " guide ",
         requestId: "client-request-1",
         projectId: "project-a",
+        status: ["ready"],
         evidenceBudget: { maxCandidates: 100, maxEvidence: 40, maxContextTokens: 90_000 },
       },
       actor,
@@ -171,7 +195,7 @@ describe("retrieveLibraryEvidenceV2", () => {
         query: "guide",
         limit: 50,
         offset: 0,
-        filters: expect.objectContaining({ projectId: "project-a" }),
+        filters: expect.objectContaining({ projectId: "project-a", status: ["ready"] }),
       }),
       actor,
     );
