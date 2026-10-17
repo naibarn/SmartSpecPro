@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_RETRIEVAL_BROKER",
+  "canonicalBaseSha": "772402cdf89c921e5fdd0e8e00e3143c5e56a7d8",
+  "sourceCommitSha": "c42d25ed2b6a583a9a471ae3c11332621e53a11d",
+  "sourceBranch": "codex/spec229-p229-1-retrieval-broker",
+  "observedAt": "2026-10-17T01:06:11Z",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 2,
+      "testsPassed": 11
+    },
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec tsx -e import('./server/routers/library.ts')",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Temporary symlink to existing shared checkout apps/web/node_modules; canonical workspace has no installed node_modules",
+    "limitation": "Package dependency tree is not proven identical to canonical main lockfile; CI/package verification remains pending"
+  },
+  "productionVerified": false,
+  "acceptance": "PARTIAL: focused Broker adapter/security and Library compatibility checks pass; P229.1 consumer migration, full SAH-RETRIEVAL-2 coverage, content hydration/quality gate and post-integration checks remain open"
+}

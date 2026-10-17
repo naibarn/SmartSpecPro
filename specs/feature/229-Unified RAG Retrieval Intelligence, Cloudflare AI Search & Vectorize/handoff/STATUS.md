@@ -2,11 +2,11 @@
 # 229 — Spec 229 — Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize V2
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `WORKING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 105 unresolved of 105
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 9
+- Manifest generation: 14
 
 ## Source-declared status and relationship claims
 
