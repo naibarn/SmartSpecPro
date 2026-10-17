@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1cba46b81ed7b5a72399b581e578996784d16cd1",
+    "expected_canonical_sha": "e2d910cce266dd1193f69c9b44898f72615cb608",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
     "next_action": "PR #1019 carries bounded canonical Markdown hydration and budget-aware early stop through the existing LibraryService ACL boundary. After merge, continue remaining P229.1 consumer/contract requirements; keep P229.2 index profile migration blocked until versioned 1024D index/backfill/shadow-read prerequisites are approved by existing SPEC-229 contract. Do not claim quality certification or production verification.",
     "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1019 (https://github.com/naibarn/SmartSpecPro/pull/1019), head 9c9ec911158512f6a77ac0990c1f1a10cdd66b12, includes source implementation 01e6a25700b2631ee994713de41447a1c7e00912 and focused evidence p229-8-canonical-hydration-20261017.json. Base canonical main was 1cba46b81ed7b5a72399b581e578996784d16cd1. Pending progressive integration gate/merge. Focused retrieval/Library ACL/router tests: 42 passed, 28 todo. Evidence quality remains weak/degraded; no production verification, full typecheck, or benchmark claimed.",
+    "resume_point": "PR #1019 merged at canonical main SHA e2d910cce266dd1193f69c9b44898f72615cb608 on 2026-10-17T03:34:02Z. It adds ACL-checked canonical Library Markdown hydration, stale revision rejection, SHA-256 source provenance, and budget-aware early stop through existing services. Focused tests: 3 files, 42 passed, 28 todo; progressive gate and SPEC-308 mocked browser simulation passed. Quality gate remains uncertified; no production verification/full typecheck/benchmark claimed. Next: complete remaining P229.1 consumer and contract requirements. P229.2 remains gated on versioned 1024D profile/index/backfill/shadow-read prerequisites.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 27,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -92,7 +92,9 @@
       "13c65c378cad6119263c59e0d1d57c7941deb18a",
       "c42d25ed2b6a583a9a471ae3c11332621e53a11d",
       "01e6a25700b2631ee994713de41447a1c7e00912",
-      "9c9ec911158512f6a77ac0990c1f1a10cdd66b12"
+      "9c9ec911158512f6a77ac0990c1f1a10cdd66b12",
+      "da0c0c4296ea897361e6145b911ba90ce2c1f2cb",
+      "e2d910cce266dd1193f69c9b44898f72615cb608"
     ],
     "mapping": [],
     "source_paths": [
@@ -107,9 +109,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1cba46b81ed7b5a72399b581e578996784d16cd1",
+    "canonical_sha": "e2d910cce266dd1193f69c9b44898f72615cb608",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:25:43Z"
+    "integrated_at": "2026-10-17T03:34:02Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -226,7 +228,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:29:02.394367Z",
+  "updated_at": "2026-10-17T03:34:24.582360Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
