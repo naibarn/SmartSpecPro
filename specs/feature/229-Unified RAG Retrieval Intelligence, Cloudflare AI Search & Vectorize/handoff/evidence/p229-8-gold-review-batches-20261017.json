@@ -4,7 +4,7 @@
   "workunit_status": "PASS",
   "p2298_acceptance_status": "NOT_EVALUABLE",
   "base_canonical_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
-  "source_code_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+  "source_code_sha": "45aacd57db00cf138a9873aadfa81ed71dec219f",
   "dataset_path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
   "dataset_file_sha256": "f1f1b98b05903ac3fb2210c41550a9a71209e4fccae79ff0faf69c5afc19cd47",
   "dataset_digest_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
@@ -128,8 +128,8 @@
     "production_tenant_data_used": false
   },
   "benchmark_harness_run": {
-    "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json --system-sha f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
-    "system_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+    "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json --system-sha 45aacd57db00cf138a9873aadfa81ed71dec219f",
+    "system_sha": "45aacd57db00cf138a9873aadfa81ed71dec219f",
     "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
     "metrics": null,
     "release_criteria": [
@@ -267,11 +267,14 @@
       "p99LatencyMs": null,
       "meanCostMicros": null
     },
-    "interpretation": "Synthetic negative-control fixture regression only; not retrieved by a production provider, not a benchmark baseline, and not release calibration."
+    "interpretation": "Synthetic negative-control fixture regression only; not retrieved by a production provider, not a benchmark baseline, and not release calibration.",
+    "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+    "source_sha": "45aacd57db00cf138a9873aadfa81ed71dec219f"
   },
   "focused_tests": {
     "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
-    "result": "PASS: 2 files, 16 tests"
+    "result": "PASS: 2 files, 16 tests",
+    "source_sha": "45aacd57db00cf138a9873aadfa81ed71dec219f"
   },
   "acceptance": {
     "candidate_pipeline_workunit": "PASS",
