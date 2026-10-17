@@ -4912,9 +4912,18 @@
     {
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
+      "priority": "P1",
+      "rationale": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
+      "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
+      "spec_id": "161"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "priority": "P1",
-      "rationale": "Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.",
+      "rationale": "Continue exact canonical tenant/App scope and historical provenance acceptance; trusted ingress/receipt-dependent slices retain grants",
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "spec_id": "268"
     },
@@ -4962,15 +4971,6 @@
       "rationale": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
-    },
-    {
-      "confidence": "HIGH",
-      "decision": "VALIDATION_ONLY",
-      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-      "priority": "P2",
-      "rationale": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
-      "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
-      "spec_id": "161"
     },
     {
       "confidence": "LOW",

@@ -32,8 +32,13 @@ vi.mock("../creditService", () => ({
   calculateCreditsForLLM: mockCalculateCreditsForLLM,
 }));
 
-const { mockExecuteWithFallback } = vi.hoisted(() => ({
+const { mockExecuteWithFallback, mockResolveStoryBibleModel } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
+  mockResolveStoryBibleModel: vi.fn(async () => "gpt-x"),
+}));
+
+const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(),
 }));
 
 const { mockLoadVerticalDramaGenerationSettings } = vi.hoisted(() => ({
@@ -54,13 +59,17 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+}));
+
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible"
   );
   return {
     ...actual,
-    resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
+    resolveStoryBibleModel: mockResolveStoryBibleModel,
   };
 });
 
@@ -175,6 +184,9 @@ beforeEach(() => {
   mockHasEnoughCredits.mockResolvedValue(true);
   mockCalculateCreditsForLLM.mockReturnValue(2);
   mockLoadVerticalDramaGenerationSettings.mockResolvedValue({});
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
 });
 
 describe("synthesizeSpecialEditionBrief — real skill.md loader (no fs/skillFiles mocks)", () => {
@@ -272,6 +284,75 @@ describe("synthesizeSpecialEditionBrief — real skill.md loader (no fs/skillFil
       userId: 1,
     });
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the parent series pin unchanged to the provider and billing", async () => {
+    mockLlmResponse(VALID_LLM_DRAFT);
+    mockResolveVerticalDramaSeriesModel.mockResolvedValueOnce("parent-series-model");
+
+    const result = await synthesizeSpecialEditionBrief({
+      userId: 1,
+      tenantId: "tenant-1",
+      locale: "th",
+      targetEpisodeCount: 1,
+      storyFunctionChoice: "tie_in_solution",
+      source: { marketplaceProductName: "Riverside Cafe" },
+      lineageContext: lineageContext(),
+    });
+
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(16, expect.any(Function));
+    expect(mockResolveStoryBibleModel).not.toHaveBeenCalled();
+    expect(mockExecuteWithFallback.mock.calls[0][0].model).toBe("parent-series-model");
+    expect(mockCalculateCreditsForLLM).toHaveBeenCalledWith(100, 50, "parent-series-model");
+    expect(mockDeductCredits).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({ model: "parent-series-model", llmModel: "parent-series-model" }),
+    }));
+    expect(result.model).toBe("parent-series-model");
+  });
+
+  it("uses the story-bible automatic model only when the series policy resolver requests fallback", async () => {
+    mockLlmResponse(VALID_LLM_DRAFT);
+    mockResolveVerticalDramaSeriesModel.mockImplementationOnce(
+      async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+    );
+
+    const result = await synthesizeSpecialEditionBrief({
+      userId: 1,
+      locale: "th",
+      targetEpisodeCount: 1,
+      storyFunctionChoice: "review",
+      source: {},
+      lineageContext: lineageContext(),
+    });
+
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(16, expect.any(Function));
+    expect(mockResolveStoryBibleModel).toHaveBeenCalledTimes(1);
+    expect(mockExecuteWithFallback.mock.calls[0][0].model).toBe("gpt-x");
+    expect(mockCalculateCreditsForLLM).toHaveBeenCalledWith(100, 50, "gpt-x");
+    expect(mockDeductCredits).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({ model: "gpt-x", llmModel: "gpt-x" }),
+    }));
+    expect(result.model).toBe("gpt-x");
+  });
+
+  it("does not call the provider or charge credits when a pinned series model is unavailable", async () => {
+    mockResolveVerticalDramaSeriesModel.mockRejectedValueOnce(
+      new Error("Selected Vertical Drama model is unavailable: removed-model"),
+    );
+
+    await expect(synthesizeSpecialEditionBrief({
+      userId: 1,
+      locale: "th",
+      targetEpisodeCount: 1,
+      storyFunctionChoice: "review",
+      source: {},
+      lineageContext: lineageContext(),
+    })).rejects.toThrow("removed-model");
+
+    expect(mockResolveStoryBibleModel).not.toHaveBeenCalled();
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    expect(mockCalculateCreditsForLLM).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("throws a schema-validation error when the model returns more than 2 episodeBriefs", async () => {

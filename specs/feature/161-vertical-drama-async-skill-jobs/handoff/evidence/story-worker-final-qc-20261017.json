@@ -9,7 +9,7 @@
     "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-story-worker-outcome-20261017",
     "task_id": "spec161-story-worker-outcome-20261017",
     "base_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
-    "git_state": "Uncommitted; no commit or push.",
+    "git_state": "Original development snapshot now integrated through protected PR; see integration and final_source_sha",
     "owned_paths": [
       "apps/web/server/services/verticalDramaStoryJobs.ts",
       "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
@@ -20,7 +20,12 @@
       "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts": "eae2942d645994615189beddabfdb1b831df52915867e89188280006677323d2"
     },
     "note": "The service/test files also contain the previously assigned SPEC161 outcome/owner repair; the hashes identify their complete current contents, not only the additive QC delta.",
-    "parent_candidate_base_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958"
+    "parent_candidate_base_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958",
+    "final_verification_workspace_registration": {
+      "workspace_id": "workspace:a7049b12-41ae-4142-b300-6c199de9720d",
+      "registered_task_id": "spec161-native-episode-acceptance-20261016",
+      "owner_session": "smartaihub-acceptance-20261017"
+    }
   },
   "repair": {
     "behavior": "After storing the QC report, the worker transitions a nonpartial run to needs_repair and returns STORY_GENERATION_BLOCKING_FINDINGS when any report finding is blocking or finalGateEligible is false. It does not invoke finalization. A report with no blocking findings and finalGateEligible true continues through existing finalization.",
@@ -75,7 +80,7 @@
     "original_fast_lane_job_mutated": false,
     "association": "Historical SPEC161 job untouched; native bounded tests are separate disposable synthetic jobs"
   },
-  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "independent_review": {
     "result": "PASS",
     "reviewer": "/root",
@@ -107,5 +112,32 @@
     "test_secret": "[REDACTED disposable test-only value]",
     "tests": "89/89 across 2 files; native worker8 plus router81",
     "log": "/tmp/smartaihub-backlog-pilot/worker-final-qc-parent-repaired.log"
+  },
+  "integration": {
+    "pr": 999,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/999",
+    "source_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958",
+    "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+    "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "merged_at": "2026-10-17T00:37:48Z",
+    "merge_tree_matches_head": true,
+    "reachable_from_origin_main": true,
+    "checks": "progressive_integration_gate, git_lifecycle, Mocked SPEC308 browser simulation PASS; build-preview SKIPPED",
+    "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json"
+  },
+  "post_integration_obligation": {
+    "status": "PASS_SCOPED",
+    "revision": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "owner": "/root",
+    "next_action": "Full requirement/provider/browser obligations remain in canonical ledger"
+  },
+  "final_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+  "post_integration_verification": {
+    "status": "PASS_SCOPED",
+    "source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "tests_passed": 295,
+    "test_files": 26,
+    "r5_tests": 5,
+    "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json#continuedPilot20261017.final_verification"
   }
 }

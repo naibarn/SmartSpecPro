@@ -2,8 +2,8 @@
 # 161 — Vertical Drama Async Skill Jobs and Timeout Resilience
 
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
-- Lifecycle: `VALIDATION_PENDING`
-- Continuation: `VALIDATION_ONLY` (HIGH)
+- Lifecycle: `PARTIAL_INTEGRATED`
+- Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 11 unresolved of 11
-- Next action: Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.
-- Manifest generation: 39
+- Next action: Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory
+- Manifest generation: 51

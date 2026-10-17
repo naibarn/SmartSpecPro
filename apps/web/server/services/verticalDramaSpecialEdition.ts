@@ -60,6 +60,7 @@ import {
   resolveStoryBibleModel,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import type { VerticalDramaLineageContext } from "./verticalDramaSeriesLineage";
 // TYPE-ONLY import (erased at compile time, no runtime module access) — a
@@ -264,7 +265,10 @@ export async function synthesizeSpecialEditionBrief(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.lineageContext.parentSeriesId,
+    resolveStoryBibleModel,
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
