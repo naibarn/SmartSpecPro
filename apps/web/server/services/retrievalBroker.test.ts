@@ -83,6 +83,13 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(mockGetProviderConfig).not.toHaveBeenCalled();
   });
 
+  it("rejects empty normalized queries before provider access", async () => {
+    await expect(
+      retrieveLibraryEvidenceV2({ query: "   " }, actor),
+    ).rejects.toThrow("Retrieval query must not be empty");
+    expect(mockGetProviderConfig).not.toHaveBeenCalled();
+  });
+
   it("does not mislabel legacy providers as a certified V2 evidence source", async () => {
     mockGetProviderConfig.mockResolvedValue({
       provider: "pgvector",
@@ -153,6 +160,7 @@ describe("retrieveLibraryEvidenceV2", () => {
       maxEvidence: 12,
       maxContextTokens: 32_000,
     });
+    expect(result.plan).toMatchObject({ requestId: result.retrievalTraceId, purpose: "library.search" });
     expect(result.evidence).toHaveLength(12);
     expect(result.evidence[0]).toMatchObject({
       canonicalRef: {

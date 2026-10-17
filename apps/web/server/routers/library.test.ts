@@ -23,6 +23,7 @@ const {
   mockGetDb,
   mockValidateLibraryUploadMetadata,
   mockStoragePresignPut,
+  mockRetrieveLibraryEvidenceV2,
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
@@ -45,6 +46,7 @@ const {
   mockAuditLog: vi.fn(),
   mockValidateLibraryUploadMetadata: vi.fn(),
   mockStoragePresignPut: vi.fn(),
+  mockRetrieveLibraryEvidenceV2: vi.fn(),
   mockGetDb: vi.fn().mockResolvedValue({
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -94,6 +96,10 @@ vi.mock("../services/libraryService", () => ({
       this.currentUpdatedAt = currentUpdatedAt;
     }
   },
+}));
+
+vi.mock("../services/retrievalBroker", () => ({
+  retrieveLibraryEvidenceV2: mockRetrieveLibraryEvidenceV2,
 }));
 
 vi.mock("../services/auditLogger", () => ({
@@ -382,6 +388,28 @@ describe("libraryRouter.search", () => {
           recentDays: 7,
         }),
       }),
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
+    );
+  });
+});
+
+describe("libraryRouter.searchV2", () => {
+  it("derives tenant and user scope from authenticated context", async () => {
+    mockRetrieveLibraryEvidenceV2.mockResolvedValue({
+      retrievalTraceId: "trace-1",
+      evidence: [],
+    });
+    const fn = libraryRouter.searchV2 as Function;
+    await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: { query: "launch", queryClass: "DOCUMENT_RAG" },
+    });
+
+    expect(mockRetrieveLibraryEvidenceV2).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "launch", queryClass: "DOCUMENT_RAG" }),
       expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });

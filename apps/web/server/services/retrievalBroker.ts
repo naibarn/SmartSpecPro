@@ -78,6 +78,8 @@ export interface RetrievalEvidenceV2 {
 export interface RetrievalResponseV2 {
   retrievalTraceId: string;
   plan: {
+    requestId: string;
+    purpose: string;
     queryClass: RetrievalQueryClassV2;
     sourceClasses: string[];
     evidenceBudget: {
@@ -101,6 +103,8 @@ export interface RetrievalResponseV2 {
 export interface RetrieveLibraryEvidenceV2Input {
   query: string;
   queryClass?: RetrievalQueryClassV2;
+  /** Descriptive only; authorization is always derived from `actor`. */
+  purpose?: string;
   filters?: LibrarySearchFilters;
   maxCandidates?: number;
   maxEvidence?: number;
@@ -171,6 +175,9 @@ export async function retrieveLibraryEvidenceV2(
   }
 
   const query = input.query.trim();
+  if (!query) {
+    throw new TypeError("Retrieval query must not be empty");
+  }
   const queryClass = input.queryClass ?? "HYBRID_SEARCH";
   const maxCandidates = clampInteger(input.maxCandidates, 20, 50);
   const maxEvidence = Math.min(
@@ -179,6 +186,7 @@ export async function retrieveLibraryEvidenceV2(
   );
   const maxContextTokens = clampInteger(input.maxContextTokens, 4_000, 32_000);
   const traceId = randomUUID();
+  const purpose = input.purpose?.trim().slice(0, 128) || "library.search";
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
   const provider = resolveVectorProvider("search", providerConfig).provider;
   const profileId = providerConfig.vectorizeKnowledgeIndexName?.trim()
@@ -186,6 +194,8 @@ export async function retrieveLibraryEvidenceV2(
     || resolveLibraryVectorIndexName();
 
   const plan = {
+    requestId: traceId,
+    purpose,
     queryClass,
     sourceClasses: ["library_item"],
     evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
