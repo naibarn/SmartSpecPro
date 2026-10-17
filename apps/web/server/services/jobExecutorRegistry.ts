@@ -810,23 +810,29 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),
   executor: async ({ context, reporter, lease }) => {
-    const input = context.input as { runId?: unknown };
-    if (typeof input.runId !== "string" || !input.runId)
-      throw new Error("VD_DRAFT_QC_RUN_ID_MISSING");
+    const input = context.input as { runId?: unknown; seriesId?: unknown };
+    if (
+      typeof input.runId !== "string" ||
+      !input.runId ||
+      !Number.isSafeInteger(input.seriesId) ||
+      Number(input.seriesId) <= 0 ||
+      !Number.isSafeInteger(context.requestedByUserId) ||
+      Number(context.requestedByUserId) <= 0
+    )
+      throw new Error("VD_DRAFT_QC_JOB_INPUT_INVALID");
     const { runVerticalDramaDraftQualityQcJob } =
       await import("./verticalDramaDraftQualityQcJobs");
     const { getVerticalDramaDraftQualityQcStatus } =
       await import("./verticalDramaDraftQualityQcJobs");
     await reporter.assertActive(lease);
     await runVerticalDramaDraftQualityQcJob(input.runId);
-    const domainInput = context.input as any;
     const record = await getVerticalDramaDraftQualityQcStatus(
       input.runId,
       {
-      tenantId: String(domainInput.tenantId ?? ""),
-      userId: Number(domainInput.userId),
+        tenantId: context.tenantId,
+        userId: Number(context.requestedByUserId),
       },
-      Number(domainInput.seriesId)
+      Number(input.seriesId)
     );
     assertDomainExecutionSucceeded("vertical_drama.draft_quality_qc", record);
     await reporter.assertActive(lease);

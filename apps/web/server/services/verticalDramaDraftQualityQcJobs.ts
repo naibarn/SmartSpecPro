@@ -127,7 +127,9 @@ interface JobDependencies {
   includeHistory?: boolean;
   redis?: DraftQualityQcRedisAdapter;
   now?: () => number;
-  enqueueBullmqJob?: (runId: string) => Promise<void>;
+  enqueueCanonicalJob?: (
+    input: Parameters<typeof createFeature186VerticalDramaJob>[0]
+  ) => Promise<unknown>;
   persistVersion?: PersistVerticalDramaDraftVersion;
   persistJobStatus?: (
     draftId: string,
@@ -490,9 +492,9 @@ export async function enqueueVerticalDramaDraftQualityQc(
   };
   await writeRecord(record, dependencies);
   try {
-    // Persist the run id before admitting the paid job to BullMQ. Otherwise a
-    // fast worker can finish QC and have its terminal status overwritten by a
-    // late `ready_for_qc` update from the router.
+    // Persist the run id before admitting the paid job. Otherwise a fast
+    // worker can finish QC and have its terminal status overwritten by a late
+    // `ready_for_qc` update from the router.
     const persisted = await (
       dependencies.persistJobStatus ?? updateVerticalDramaDraftJob
     )(payload.draftId, payload, {
@@ -504,15 +506,20 @@ export async function enqueueVerticalDramaDraftQualityQc(
     if (!persisted) {
       throw new Error("Draft ledger not found or not owned by this Series");
     }
-    await createFeature186VerticalDramaJob({
-      jobId: runId,
-      tenantId: payload.tenantId,
-      userId: payload.userId,
-      jobType: "vertical_drama.draft_quality_qc",
-      executionClass: "long",
-      activeDedupeKey: activeKey,
-      payload: record as unknown as Record<string, unknown>,
-    });
+    await (dependencies.enqueueCanonicalJob ?? createFeature186VerticalDramaJob)(
+      {
+        jobId: runId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.draft_quality_qc",
+        executionClass: "long",
+        activeDedupeKey: activeKey,
+        // The QC candidate itself is already stored in the durable, owner-scoped
+        // QC record above. Worker job inputs have a bounded key count, so pass
+        // only the reference and let the executor load that record by runId.
+        payload: { runId, seriesId },
+      }
+    );
   } catch (error) {
     // Do not leave the wizard polling a job that was never admitted to a
     // worker. The creator gets a retryable, actionable terminal state and the
