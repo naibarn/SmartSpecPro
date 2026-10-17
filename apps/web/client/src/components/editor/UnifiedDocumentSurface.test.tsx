@@ -88,14 +88,17 @@ vi.mock("./SourceModePanel", () => ({
     value,
     onChange,
     visible,
+    citationAnchor,
   }: {
     value: string;
     onChange: (v: string) => void;
     visible: boolean;
+    citationAnchor?: { lineStart: number; lineEnd: number };
   }) => (
     <div
       data-testid="source-panel"
       style={{ display: visible ? undefined : "none" }}
+      data-citation-lines={citationAnchor ? `${citationAnchor.lineStart}-${citationAnchor.lineEnd}` : undefined}
     >
       <textarea
         data-testid="source-textarea"
@@ -117,6 +120,25 @@ vi.mock("./TiptapMarkdownBridge", () => ({
 
 
 describe("UnifiedDocumentSurface — Mode Switching", () => {
+  it("opens a validated citation directly in source mode at its canonical line range", () => {
+    render(
+      <UnifiedDocumentSurface
+        documentId={42}
+        initialContent="# Header\nRelevant source line\nFooter"
+        citationAnchor={{
+          documentId: 42,
+          revision: `sha256:${"a".repeat(64)}`,
+          digest: "a".repeat(64),
+          lineStart: 2,
+          lineEnd: 2,
+          quoteHash: "b".repeat(64),
+        }}
+      />,
+    );
+    expect(screen.getByTestId("source-panel").style.display).not.toBe("none");
+    expect(screen.getByTestId("source-panel").dataset.citationLines).toBe("2-2");
+  });
+
   it("renders in View mode by default (editable: false)", () => {
     render(<UnifiedDocumentSurface initialContent="# Hello" />);
     const editor = screen.getByTestId("tiptap-editor");

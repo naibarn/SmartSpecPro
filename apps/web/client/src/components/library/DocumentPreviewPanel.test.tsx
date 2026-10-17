@@ -87,8 +87,8 @@ vi.mock("./ShareDialog", () => ({
 }));
 
 vi.mock("../editor/UnifiedDocumentSurface", () => ({
-  default: ({ surfaceHeaderActions, editorHeaderActions }: { surfaceHeaderActions?: any; editorHeaderActions?: any }) => (
-    <div data-testid="unified-document-surface">
+  default: ({ surfaceHeaderActions, editorHeaderActions, citationAnchor }: { surfaceHeaderActions?: any; editorHeaderActions?: any; citationAnchor?: { lineStart: number; lineEnd: number } }) => (
+    <div data-testid="unified-document-surface" data-citation-anchor={citationAnchor ? `${citationAnchor.lineStart}-${citationAnchor.lineEnd}` : undefined}>
       {surfaceHeaderActions}
       {editorHeaderActions}
     </div>
@@ -255,5 +255,35 @@ describe("DocumentPreviewPanel media previews", () => {
       knowledgeVaultFixture.inspector.backlinks[0].libraryItemId,
       knowledgeVaultFixture.inspector.backlinks[0].title,
     );
+  });
+});
+
+describe("DocumentPreviewPanel citation anchors", () => {
+  it("passes only the validated canonical line range to the existing document surface", () => {
+    render(
+      <DocumentPreviewPanel
+        item={{
+          id: 42,
+          title: "Canonical guide",
+          source_url: "https://example.test/original-source",
+          status: "ready",
+          item_type: "document",
+          metadata: {},
+        } as any}
+        previewType="markdown"
+        markdownValue="# Header\nEvidence line"
+        documentId={42}
+        citationAnchor={{
+          documentId: 42,
+          revision: `sha256:${"a".repeat(64)}`,
+          digest: "a".repeat(64),
+          lineStart: 2,
+          lineEnd: 2,
+          quoteHash: "b".repeat(64),
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("unified-document-surface").dataset.citationAnchor).toBe("2-2");
   });
 });

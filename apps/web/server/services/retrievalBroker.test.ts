@@ -94,10 +94,53 @@ describe("retrieveLibraryEvidenceV2", () => {
 
     expect(result.evidence[0]).toMatchObject({
       sourceUri: "https://canonical.example.test/build-guide",
-      canonicalRef: { kind: "library_item", id: "12" },
+      canonicalRef: {
+        kind: "library_item",
+        id: "12",
+        revision: row.updated_at,
+        digest: result.evidence[0].sourceDigest,
+      },
+      citation: {
+        lineStart: 1,
+        lineEnd: 1,
+        revision: `sha256:${result.evidence[0].sourceDigest}`,
+        digest: result.evidence[0].sourceDigest,
+        anchorUri: expect.stringMatching(/^\/document-management\?/),
+      },
     });
     expect(result.evidenceQuality).toBe("weak");
     expect(result.degradationReasons).toContain("QUALITY_GATE_NOT_CERTIFIED");
+  });
+
+  it("anchors against full canonical Markdown before enforcing the context token budget", async () => {
+    const content = `${Array.from({ length: 100 }, (_, index) => `General note ${index + 1}`).join("\n")}\nThe unique integrity token is XYZ123.`;
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12,
+      content,
+      updated_at: row.updated_at,
+      canonicalSourceUri: "https://canonical.example.test/long-guide",
+    });
+    const result = await retrieveLibraryEvidenceV2({
+      query: "integrity token XYZ123",
+      evidenceBudget: { maxCandidates: 20, maxEvidence: 1, maxContextTokens: 30 },
+    }, actor);
+
+    expect(result.evidence[0]?.citation).toMatchObject({ lineStart: 101, lineEnd: 101 });
+    expect(result.evidence[0]?.text).not.toContain("XYZ123");
+    expect(result.evidenceQuality).toBe("weak");
+  });
+
+  it("does not invent a source-location anchor for an unsupported semantic match", async () => {
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12,
+      content: "# Guide\nCurrent canonical text.",
+      updated_at: row.updated_at,
+      canonicalSourceUri: "https://canonical.example.test/build-guide",
+    });
+    const result = await retrieveLibraryEvidenceV2({ query: "cryptographic unrelated" }, actor);
+
+    expect(result.evidence[0]).not.toHaveProperty("citation");
+    expect(result.evidenceQuality).toBe("weak");
   });
 
   it.each([

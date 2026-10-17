@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { DocumentCitationAnchor } from "@/lib/documentManagementUi";
 
 export type { JSONContent } from "@tiptap/core";
 
@@ -37,4 +38,5 @@ export interface UnifiedDocumentSurfaceProps {
   editorLibraryScope?: "all" | "my_library" | "private_vault";
   viewZoom?: number;
   onOpenWikiLink?: (reference: string) => void;
+  citationAnchor?: DocumentCitationAnchor;
 }

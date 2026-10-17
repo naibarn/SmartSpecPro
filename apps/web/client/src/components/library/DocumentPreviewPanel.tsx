@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
+import type { DocumentCitationAnchor, DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
@@ -71,6 +71,7 @@ interface DocumentPreviewPanelProps {
     rawReference: string;
   }>;
   onOpenKnowledgeItem?: (itemId: number, title: string) => void;
+  citationAnchor?: DocumentCitationAnchor;
 }
 
 export default function DocumentPreviewPanel({
@@ -98,6 +99,7 @@ export default function DocumentPreviewPanel({
   onOpenWikiLink,
   knowledgeBacklinks = [],
   onOpenKnowledgeItem,
+  citationAnchor,
 }: DocumentPreviewPanelProps) {
   const { t } = useScopedTranslation("common");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -641,6 +643,7 @@ export default function DocumentPreviewPanel({
                 editorUploadMetadata={editorUploadMetadata}
                 editorLibraryScope={isPrivateVaultItem ? "private_vault" : "all"}
                 onOpenWikiLink={onOpenWikiLink}
+                citationAnchor={citationAnchor}
               />
             </Suspense>
           </div>

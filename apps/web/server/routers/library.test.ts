@@ -653,6 +653,34 @@ describe("libraryRouter.getMarkdownContent", () => {
       expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
   });
+
+  it("revalidates citation identity and fails closed when canonical revision resolution fails", async () => {
+    mockGetLibraryMarkdownContent.mockResolvedValueOnce(null);
+    const citationAnchor = {
+      documentId: 5,
+      revision: `sha256:${"a".repeat(64)}`,
+      digest: "a".repeat(64),
+      lineStart: 1,
+      lineEnd: 1,
+      quoteHash: "b".repeat(64),
+    };
+    const fn = libraryRouter.getMarkdownContent as Function;
+
+    await expect(fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: 44 },
+        tenantId: null,
+      },
+      input: { id: 5, citationAnchor },
+    })).rejects.toThrow("Library item not found");
+
+    expect(mockGetLibraryMarkdownContent).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({ userId: 9, tenantId: "44" }),
+      undefined,
+      citationAnchor,
+    );
+  });
 });
 
 describe("libraryRouter.getItem", () => {
