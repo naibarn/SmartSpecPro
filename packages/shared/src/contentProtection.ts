@@ -133,3 +133,32 @@ export function resolveEffectiveWatermarkChoice(
   }
   return { choice: "off", source: "disabled_by_user" };
 }
+
+export type PublicEvidenceVerificationKeys = {
+  format: "sah-evidence-keys-v1";
+  keys: Array<{ keyId: string; algorithm: string; publicKey: string; validFrom: string; retiredAt?: string }>;
+};
+
+/** Parse the public verification-key contract shared by Express and Workers. */
+export function getPublicEvidenceVerificationKeys(raw: string | undefined): PublicEvidenceVerificationKeys {
+  if (!raw) return { format: "sah-evidence-keys-v1", keys: [] };
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return { format: "sah-evidence-keys-v1", keys: [] };
+    const keys = parsed.flatMap(item => {
+      if (!item || typeof item !== "object") return [];
+      const value = item as Record<string, unknown>;
+      if (typeof value.keyId !== "string" || typeof value.algorithm !== "string" || typeof value.publicKey !== "string" || typeof value.validFrom !== "string") return [];
+      return [{
+        keyId: value.keyId.slice(0, 160),
+        algorithm: value.algorithm.slice(0, 80),
+        publicKey: value.publicKey.slice(0, 4096),
+        validFrom: value.validFrom.slice(0, 64),
+        ...(typeof value.retiredAt === "string" ? { retiredAt: value.retiredAt.slice(0, 64) } : {}),
+      }];
+    });
+    return { format: "sah-evidence-keys-v1", keys };
+  } catch {
+    return { format: "sah-evidence-keys-v1", keys: [] };
+  }
+}

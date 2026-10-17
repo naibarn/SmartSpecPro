@@ -7,6 +7,7 @@ import { sendApiError } from "../middleware/publicApiHeaders";
 import { contentProtectionAssets, contentProtectionCases, contentEvidencePackages, contentExternalReviewLinks } from "../../drizzle/schema";
 import { getContentProtectionOverview, safeAssetView } from "../routers/contentProtection";
 import { storageStreamFile } from "../storage";
+import { getPublicEvidenceVerificationKeys } from "@smartspec/shared/src/contentProtection";
 
 type RequestAuth = {
   ok: true;
@@ -46,31 +47,8 @@ function fail(res: Response, status: number, code: string, message: string): voi
   sendApiError(res, status, code, message);
 }
 
-export function publicEvidenceVerificationKeys(): {
-  format: "sah-evidence-keys-v1";
-  keys: Array<{ keyId: string; algorithm: string; publicKey: string; validFrom: string; retiredAt?: string }>;
-} {
-  const raw = process.env.CONTENT_PROTECTION_PUBLIC_KEYS_JSON;
-  if (!raw) return { format: "sah-evidence-keys-v1", keys: [] };
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return { format: "sah-evidence-keys-v1", keys: [] };
-    const keys = parsed.flatMap(item => {
-      if (!item || typeof item !== "object") return [];
-      const value = item as Record<string, unknown>;
-      if (typeof value.keyId !== "string" || typeof value.algorithm !== "string" || typeof value.publicKey !== "string" || typeof value.validFrom !== "string") return [];
-      return [{
-        keyId: value.keyId.slice(0, 160),
-        algorithm: value.algorithm.slice(0, 80),
-        publicKey: value.publicKey.slice(0, 4096),
-        validFrom: value.validFrom.slice(0, 64),
-        ...(typeof value.retiredAt === "string" ? { retiredAt: value.retiredAt.slice(0, 64) } : {}),
-      }];
-    });
-    return { format: "sah-evidence-keys-v1", keys };
-  } catch {
-    return { format: "sah-evidence-keys-v1", keys: [] };
-  }
+export function publicEvidenceVerificationKeys(): ReturnType<typeof getPublicEvidenceVerificationKeys> {
+  return getPublicEvidenceVerificationKeys(process.env.CONTENT_PROTECTION_PUBLIC_KEYS_JSON);
 }
 
 export function registerContentProtectionRoutes(app: Express): void {

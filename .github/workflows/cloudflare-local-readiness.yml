@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "apps/cloudflare/**"
+      - "apps/web/server/**"
+      - "packages/shared/src/contentProtection.ts"
+      - "scripts/guards/**"
       - "apps/web/server/services/cloudflareJobAdapters.ts"
       - "apps/web/scripts/verify-cloudflare-*.ts"
       - "ops/feature-187/**"
@@ -12,6 +15,9 @@ on:
   pull_request:
     paths:
       - "apps/cloudflare/**"
+      - "apps/web/server/**"
+      - "packages/shared/src/contentProtection.ts"
+      - "scripts/guards/**"
       - "apps/web/server/services/cloudflareJobAdapters.ts"
       - "apps/web/scripts/verify-cloudflare-*.ts"
       - "ops/feature-187/**"
@@ -26,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -34,12 +42,39 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Test Express route architecture guard
+        run: node --test scripts/guards/express-route-architecture.test.mjs
+      - name: Enforce Hono-first Express route policy
+        env:
+          GUARD_BASE: ${{ github.event.pull_request.base.ref && format('origin/{0}', github.event.pull_request.base.ref) || github.event.before }}
+        run: node scripts/guards/express-route-architecture.mjs --base="$GUARD_BASE"
       - name: Compile Cloudflare runtime package
         run: npm --workspace @smartspec/cloudflare-runtime run check
+      - name: Bundle Cloudflare Worker with Wrangler
+        run: pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-worker-build
+      - name: Smoke test Cloudflare Worker in local workerd
+        run: |
+          set -euo pipefail
+          pnpm dlx wrangler@4.151.1 dev --config apps/cloudflare/wrangler.jsonc --local --port 8799 > "$RUNNER_TEMP/wrangler-hono.log" 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8799/healthz >/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          test "$ready" = "true"
+          curl -fsS http://127.0.0.1:8799/.well-known/smartaihub-evidence-keys.json | jq -e '.format == "sah-evidence-keys-v1" and .keys == []'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -I http://127.0.0.1:8799/.well-known/smartaihub-evidence-keys.json)" = "200"
+          etag=$(curl -sSI http://127.0.0.1:8799/.well-known/smartaihub-evidence-keys.json | awk 'tolower($1) == "etag:" { gsub("\r", ""); print $2 }')
+          test -n "$etag"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -H "If-None-Match: $etag" http://127.0.0.1:8799/.well-known/smartaihub-evidence-keys.json)" = "304"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8799/api/auth/session)" = "503"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8799/native-unknown)" = "501"
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
-        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Verify local readiness without target credentials
         run: |
           npm --workspace @smartspec/web run verify:cloudflare-local-readiness

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { API_ROUTE_MANIFEST, classifyApiRoute } from "./apiRouteManifest";
 
 describe("Cloudflare API route manifest", () => {
-  it("allows only the dependency-free liveness route to run natively", () => {
+  it("marks health and the stateless public-key API as Worker-native", () => {
     expect(classifyApiRoute("GET", "/healthz")).toMatchObject({
       id: "health.liveness",
       classification: "WORKER_NATIVE",
@@ -10,6 +10,10 @@ describe("Cloudflare API route manifest", () => {
     expect(classifyApiRoute("HEAD", "/healthz").classification).toBe("WORKER_NATIVE");
     expect(classifyApiRoute("GET", "/readyz")).toMatchObject({
       id: "health.readiness",
+      classification: "WORKER_NATIVE",
+    });
+    expect(classifyApiRoute("GET", "/.well-known/smartaihub-evidence-keys.json")).toMatchObject({
+      id: "content-protection.public-keys",
       classification: "WORKER_NATIVE",
     });
     expect(classifyApiRoute("GET", "/metrics").classification).toBe("NATIVE_RUNTIME_ONLY");

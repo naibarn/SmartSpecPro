@@ -140,6 +140,17 @@ describe("Cloudflare local runtime contracts", () => {
     expect((await worker.fetch(new Request("https://runtime.invalid/unknown"), env)).status).toBe(501);
   });
 
+  it("executes the manifest's business API route in Hono without origin configuration", async () => {
+    const worker = createCloudflareWorker();
+    const response = await worker.fetch(
+      new Request("https://runtime.invalid/.well-known/smartaihub-evidence-keys.json"),
+      { CONTENT_PROTECTION_PUBLIC_KEYS_JSON: "[]" },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(await response.json()).toEqual({ format: "sah-evidence-keys-v1", keys: [] });
+  });
+
   it("does not claim readiness when the canonical job handler is not wired", async () => {
     const env = {
       CLOUDFLARE_ACTIVATION: "enabled",

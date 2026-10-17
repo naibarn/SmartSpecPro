@@ -9,7 +9,8 @@
     "test": "vitest run src"
   },
   "dependencies": {
-    "@smartspec/shared": "file:../../packages/shared"
+    "@smartspec/shared": "file:../../packages/shared",
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "typescript": "5.9.3",
