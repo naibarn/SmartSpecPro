@@ -155,8 +155,13 @@ describe("Windows profile binding at canonical admission", () => {
       workspaces: [{ workspaceId: "ws-owned", gitHead: source, dirty: false, projectId: "TEST_ONLY", repositoryId: "TEST_ONLY" }],
     };
     const input = { profileId: "spec224-recovery-windows-x64-codex-nonprod", sourceCommit: source,
-      canonicalInputJson: { manifest: { policyBinding: { workspaceRef: "ws-owned" } } }, capabilitySnapshot: capability, now };
+      canonicalInputJson: { manifest: { provider: "codex", runtime: "local_runner", policyBinding: { workspaceRef: "ws-owned" } } }, capabilitySnapshot: capability, now };
     expect(spec224ProfileRunnerTargetMatches(input)).toBe(true);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, canonicalInputJson: { manifest: {
+      ...input.canonicalInputJson.manifest, provider: "claude_code" } } })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, canonicalInputJson: { manifest: {
+      ...input.canonicalInputJson.manifest, runtime: "remote_worker" } } })).toBe(false);
+
     expect(spec224ProfileRunnerTargetMatches({ ...input, canonicalInputJson: { workspaceRef: "ws-owned" } })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, sourceCommit: "b".repeat(40) })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: { ...capability,
