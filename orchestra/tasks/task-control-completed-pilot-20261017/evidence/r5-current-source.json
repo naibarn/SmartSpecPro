@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "r5-native-acceptance-run.v1",
+  "sourceSha": "47235563d14d6a4c861c04127e77e6dd655283db",
+  "exactCommand": "pnpm exec vitest run server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts --maxWorkers=1",
+  "environmentNames": [
+    "DATABASE_URL",
+    "JWT_SECRET",
+    "SMARTAIHUB_R5_PERSISTED_ACCEPTANCE",
+    "SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED"
+  ],
+  "safeEnvironmentValues": {
+    "DATABASE_URL": "temporary owner-marked native loopback fixture; no password",
+    "JWT_SECRET": "test-only placeholder; value omitted",
+    "SMARTAIHUB_R5_PERSISTED_ACCEPTANCE": "1",
+    "SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED": "1"
+  },
+  "startedAt": "2026-10-17T03:14:20.986Z",
+  "finishedAt": "2026-10-17T03:14:29.113Z",
+  "resourceBefore": {
+    "observedAt": "2026-10-17T03:14:20.987Z",
+    "memAvailable": "25826468 kB",
+    "cgroupMemoryCurrent": null,
+    "cgroupMemoryMax": null,
+    "filesystemTmp": null
+  },
+  "resourceAfter": {
+    "observedAt": "2026-10-17T03:14:29.112Z",
+    "memAvailable": "25978528 kB",
+    "cgroupMemoryCurrent": null,
+    "cgroupMemoryMax": null,
+    "filesystemTmp": {
+      "availableBytes": 46066499584,
+      "totalBytes": 989479915520
+    }
+  },
+  "runtimeIdentity": {
+    "root": "/mnt/SmartSpecDev/.tmp/spec277-autoteam-pg-0OiO6m",
+    "data": "/mnt/SmartSpecDev/.tmp/spec277-autoteam-pg-0OiO6m/data",
+    "port": 38241,
+    "database": "miniapp_r5_test",
+    "username": "spec277_autoteam_test",
+    "loopbackOnly": true,
+    "ownerMarker": "/mnt/SmartSpecDev/.tmp/spec277-autoteam-pg-0OiO6m/owner.json"
+  },
+  "postgresTools": "helper-selected installed PostgreSQL; loopback-only ephemeral port; Unix socket owned by fixture",
+  "vectorExtensionFilePresent": true,
+  "exitCode": 0,
+  "setupError": null,
+  "cleanupError": null,
+  "cleanupStatus": "fixture.close() completed and owner-marked cluster removed",
+  "evidenceFiles": [
+    "OWNER.json",
+    "schema-projection.json",
+    "vitest.log",
+    "run-evidence.json"
+  ]
+}

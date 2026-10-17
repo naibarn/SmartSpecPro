@@ -1,0 +1,11 @@
+{
+  "headRefName": "codex/task-control-completed-pilot-fixture-20261017",
+  "headRefOid": "0eefe4ce7d1276c904940c1d58aaa9cca1ed2776",
+  "mergeCommit": {
+    "oid": "47235563d14d6a4c861c04127e77e6dd655283db"
+  },
+  "mergedAt": "2026-10-17T03:11:10Z",
+  "number": 1014,
+  "state": "MERGED",
+  "url": "https://github.com/naibarn/SmartSpecPro/pull/1014"
+}
