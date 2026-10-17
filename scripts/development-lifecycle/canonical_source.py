@@ -301,6 +301,91 @@ def _artifact_manifest(root: Path) -> dict[str, Any] | None:
     }
 
 
+def _cloudflare_staging_bundle(root: Path, source_revision: str) -> dict[str, Any] | None:
+    """Verify the canonical staging bundle manifest and every referenced build byte."""
+    root = root.resolve()
+    manifest_path = root / "apps/cloudflare/.staging-artifact/bundle-manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(manifest, dict) or manifest.get("format") != "cloudflare-staging-build-bundle-v1":
+        return None
+    if manifest.get("sourceSha") != source_revision:
+        return None
+    modules, assets = manifest.get("moduleFiles"), manifest.get("assets")
+    if not isinstance(modules, list) or not modules or not isinstance(assets, list) or not assets:
+        return None
+    main_module = manifest.get("mainModule")
+    compatibility_date = manifest.get("compatibilityDate")
+    if not isinstance(main_module, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,512}", main_module):
+        return None
+    if not isinstance(compatibility_date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", compatibility_date):
+        return None
+    module_candidate = root / "apps/cloudflare/.staging-artifact/modules"
+    asset_candidate = root / "apps/web/dist/public"
+    if module_candidate.is_symlink() or asset_candidate.is_symlink():
+        return None
+    module_root = module_candidate.resolve()
+    asset_root = asset_candidate.resolve()
+    try:
+        module_root.relative_to(root)
+        asset_root.relative_to(root)
+    except ValueError:
+        return None
+    canonical_entries: list[tuple[str, str, int]] = []
+    names: set[str] = set()
+    try:
+        for group, entries, base in (("modules", modules, module_root), ("public", assets, asset_root)):
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    return None
+                name = entry.get("name")
+                if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,512}", name):
+                    return None
+                if any(part in ("", ".", "..") for part in name.split("/")) or name.startswith("/") or "\\" in name:
+                    return None
+                canonical_name = f"{group}/{name}"
+                if canonical_name in names:
+                    return None
+                names.add(canonical_name)
+                candidate = base / name
+                if any(parent.is_symlink() for parent in candidate.parents if parent != base.parent):
+                    return None
+                path = candidate.resolve(strict=True)
+                path.relative_to(base)
+                if path.is_symlink() or not path.is_file():
+                    return None
+                file_hash = hashlib.sha256()
+                with path.open("rb") as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                        file_hash.update(chunk)
+                digest = file_hash.hexdigest()
+                size = path.stat().st_size
+                if entry.get("sha256") != digest or entry.get("size") != size:
+                    return None
+                canonical_entries.append((canonical_name, digest, size))
+    except (OSError, ValueError):
+        return None
+    if f"modules/{main_module}" not in names or not any(name.startswith("public/") for name in names):
+        return None
+    canonical_entries.sort(key=lambda row: row[0])
+    digest_manifest = "\n".join(f"{name}\0{digest}\0{size}" for name, digest, size in canonical_entries)
+    build_digest = hashlib.sha256(digest_manifest.encode()).hexdigest()
+    if manifest.get("buildDigest") != build_digest:
+        return None
+    return {
+        "status": "BUNDLE_READY",
+        "source_sha": source_revision,
+        "build_digest": build_digest,
+        "artifact_ref": f"sha256:{build_digest}",
+        "main_module": main_module,
+        "compatibility_date": compatibility_date,
+        "module_count": len(modules),
+        "asset_count": len(assets),
+    }
+
+
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
@@ -684,6 +769,11 @@ def build_canonical(
         completed_at = time.time()
         artifact_root = Path(str(lease["isolated_workspace"])) / "apps/web/dist"
         artifact_manifest = _artifact_manifest(artifact_root) if exit_code == 0 else None
+        cloudflare_bundle = (
+            _cloudflare_staging_bundle(Path(str(lease["isolated_workspace"])), str(lease["source_revision"]))
+            if exit_code == 0 and lease["canonical_ref"] == "refs/heads/main"
+            else None
+        )
         latest_tip = remote_canonical_tip(repo, policy)
         resource_blocked = exit_code == 137 or termination_signal == "SIGKILL"
         if resource_blocked:
@@ -719,6 +809,7 @@ def build_canonical(
             "started_at": started_at,
             "completed_at": completed_at,
             "artifact": artifact_manifest,
+            "cloudflare_staging_artifact": cloudflare_bundle or {"status": "PUBLISH_PENDING", "reason": "canonical_staging_bundle_unavailable"},
             "isolated_workspace": lease["isolated_workspace"],
             "primary_workspace_sync": primary_workspace_sync,
         }
@@ -728,6 +819,51 @@ def build_canonical(
         result_path = result_dir / f"{lease['source_revision']}-{uuid.uuid4()}.json"
         result["result_file"] = str(result_path)
         _write_json_atomic(result_path, result)
+        if status == "BUILD_PASSED" and cloudflare_bundle:
+            publish_command = [
+                "pnpm", "--filter", "@smartspec/web", "exec", "tsx",
+                "scripts/publish-cloudflare-staging-artifact.ts",
+                "--source-sha", str(lease["source_revision"]),
+                "--build-id", result_path.stem,
+            ]
+            publisher_environment = os.environ.copy()
+            publisher_environment["SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT"] = str(result_dir.resolve())
+            try:
+                publication = subprocess.run(
+                    publish_command,
+                    cwd=str(lease["isolated_workspace"]),
+                    text=True,
+                    capture_output=True,
+                    env=publisher_environment,
+                    timeout=180,
+                )
+                parsed = None
+                for line in reversed(publication.stdout.splitlines()):
+                    try:
+                        parsed = json.loads(line)
+                        break
+                    except ValueError:
+                        continue
+                if (
+                    publication.returncode == 0
+                    and isinstance(parsed, dict)
+                    and parsed.get("status") == "PUBLISHED"
+                    and parsed.get("sourceSha") == lease["source_revision"]
+                    and parsed.get("buildDigest") == cloudflare_bundle["build_digest"]
+                    and parsed.get("artifactRef") == cloudflare_bundle["artifact_ref"]
+                ):
+                    result["cloudflare_staging_artifact"].update({
+                        "status": "PUBLISHED",
+                        "artifact_ref": parsed.get("artifactRef"),
+                    })
+                else:
+                    result["cloudflare_staging_artifact"].update({
+                        "status": "PUBLISH_PENDING",
+                        "reason": parsed.get("reason") if isinstance(parsed, dict) else "publisher_unavailable",
+                    })
+            except (OSError, subprocess.TimeoutExpired):
+                result["cloudflare_staging_artifact"].update({"status": "PUBLISH_PENDING", "reason": "publisher_unavailable"})
+            _write_json_atomic(result_path, result)
         if primary_workspace_sync["status"].startswith("BLOCKED"):
             print(
                 f"[canonical-build] primary workspace was left unchanged: {primary_workspace_sync['status']}",

@@ -71,6 +71,8 @@ jobs:
         run: pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-staging-build
       - name: Guard staging config isolation
         run: node --test apps/cloudflare/wrangler.staging.config.test.mjs
+      - name: Test canonical staging artifact packager
+        run: node --test apps/cloudflare/scripts/package-staging-artifact.test.mjs
       - name: Smoke test Cloudflare Worker in local workerd
         run: |
           set -euo pipefail
@@ -116,7 +118,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
-        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Verify local readiness without target credentials
         run: |
           npm --workspace @smartspec/web run verify:cloudflare-local-readiness

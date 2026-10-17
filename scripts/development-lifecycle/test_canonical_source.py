@@ -337,6 +337,45 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(manifest["source_revision"], self.revision)
         self.assertEqual(manifest["status"], "BUILD_PASSED")
 
+    def test_cloudflare_bundle_manifest_is_source_bound_and_rehashes_all_files(self) -> None:
+        from canonical_source import _cloudflare_staging_bundle
+
+        workspace = self.root / "bundle-workspace"
+        modules = workspace / "apps/cloudflare/.staging-artifact/modules"
+        assets = workspace / "apps/web/dist/public"
+        modules.mkdir(parents=True)
+        assets.mkdir(parents=True)
+        module_bytes = b"export default {};"
+        asset_bytes = b"<html>spa</html>"
+        (modules / "index.js").write_bytes(module_bytes)
+        (assets / "index.html").write_bytes(asset_bytes)
+        module_digest = hashlib.sha256(module_bytes).hexdigest()
+        asset_digest = hashlib.sha256(asset_bytes).hexdigest()
+        entries = [
+            ("modules/index.js", module_digest, len(module_bytes)),
+            ("public/index.html", asset_digest, len(asset_bytes)),
+        ]
+        build_digest = hashlib.sha256("\n".join(f"{name}\0{digest}\0{size}" for name, digest, size in entries).encode()).hexdigest()
+        manifest = {
+            "format": "cloudflare-staging-build-bundle-v1",
+            "sourceSha": self.revision,
+            "buildDigest": build_digest,
+            "mainModule": "index.js",
+            "compatibilityDate": "2026-10-17",
+            "moduleFiles": [{"name": "index.js", "sha256": module_digest, "size": len(module_bytes)}],
+            "assets": [{"name": "index.html", "sha256": asset_digest, "size": len(asset_bytes)}],
+        }
+        manifest_path = workspace / "apps/cloudflare/.staging-artifact/bundle-manifest.json"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        observed = _cloudflare_staging_bundle(workspace, self.revision)
+        self.assertEqual(observed["status"], "BUNDLE_READY")
+        self.assertEqual(observed["build_digest"], build_digest)
+        self.assertIsNone(_cloudflare_staging_bundle(workspace, "f" * 40))
+
+        (assets / "index.html").write_bytes(b"changed")
+        self.assertIsNone(_cloudflare_staging_bundle(workspace, self.revision))
+
     def test_central_build_uses_repository_policy_build_target(self) -> None:
         from canonical_source import build_canonical
 
