@@ -1712,9 +1712,26 @@ export async function runVerticalDramaStoryJob(
             errorCode: assuranceError,
             expectedFenceToken: assuranceFenceToken,
           });
+        } else if (
+          report.findings.some((finding) => finding.blocking) ||
+          !report.finalGateEligible
+        ) {
+          // Persist the candidate and its QC report for repair, but do not
+          // finalize a run whose acceptance contract says it is ineligible.
+          assuranceAccepted = false;
+          assuranceError = "STORY_GENERATION_BLOCKING_FINDINGS";
+          await transitionStoryGenerationRun({
+            tenantId: record.tenantId,
+            runId: assuranceRunId,
+            to: "needs_repair",
+            stage: "validation",
+            checkpoint: currentCheckpoint,
+            errorCode: assuranceError,
+            expectedFenceToken: assuranceFenceToken,
+          });
         } else {
           // The story executor already performed structural/semantic repair.
-          // Assurance findings are retained for observability, while a
+          // Nonblocking findings are retained for observability, while an eligible
           // complete candidate is finalized automatically with no approval
           // click or second user workflow.
           const finalized = await finalizeStoryGeneration(

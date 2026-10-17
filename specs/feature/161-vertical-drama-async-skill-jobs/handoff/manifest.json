@@ -26,8 +26,8 @@
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Merge verified scoped guards/outcome/failure-chain checkpoint through normal protected path; continue worker final QC and bounded canonical validation. Whole Specs remain open.",
-    "next_ready_workunit": "SPEC161_STORY_WORKER_FINAL_QC",
+    "next_action": "Promote PR999 including independently verified worker-QC guard; run bounded acceptance against exact merged canonical SHA; refresh remaining scope and blockers.",
+    "next_ready_workunit": "SPEC161_REMAINING_ACCEPTANCE_RECONCILIATION",
     "reactivation_predicate": null,
     "resume_point": "PR996 native persistence/restart-readback acceptance merged94cc9b8e; scoped success/failure and terminalreplay proven, requirement rows remainPARTIAL. Next actual functional chain-stop defect identified from canonical criterion8.",
     "waiting_predicate": null
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 37,
+  "generation": 39,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -182,6 +182,12 @@
       "source_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
       "status": "SCOPED_VERIFIED_AND_MERGED",
       "workunit": "SPEC161_STORY_PLAN_FAILURE_CHAIN"
+    },
+    "story_worker_final_qc": {
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/999",
+      "source_base_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958",
+      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
     },
     "story_worker_outcome": {
       "base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
@@ -309,7 +315,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
+        "next_action": "Verify merged native worker/QC/failure-chain checkpoint; retain separate full provider/browser/billing/restart acceptance obligations.",
         "requirement_digest": "d7079d1d2b0b6cf9fff2ff1ef8524b66b23e40a03f5c64038b0d138bc80a01f3",
         "requirement_id": "REQ-28722F9489C8",
         "requirement_text": "2. Worker เรียก service/skill จริงและ persist ผลสำเร็จ/ล้มเหลวอย่างถูกต้อง",
@@ -331,7 +337,8 @@
           },
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/native-episode-worker-acceptance-20261017.json",
           "https://github.com/naibarn/SmartSpecPro/pull/996",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json",
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
         ],
         "verification_method": "Actual canonical adapter/control-plane/registry/consumer over isolated native PostgreSQL; success/failure/artifact persistence, terminal replay before+after restart, fresh Node readback;2native tests plus21memory regressions pass."
       },
@@ -465,7 +472,7 @@
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
+        "next_action": "Verify merged native worker/QC/failure-chain checkpoint; retain separate full provider/browser/billing/restart acceptance obligations.",
         "requirement_digest": "08a79440597f54c48ebcc08c035677fcba2d936cdf775364a757f2af4e38d66d",
         "requirement_id": "REQ-50A4DD25D9C8",
         "requirement_text": "8. chain plan/draft/QC/full story หยุดต่อเมื่อขั้นก่อนหน้าล้มเหลว และแสดง error จริง",
@@ -473,7 +480,8 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-plan-failure-chain-20261017.json",
-          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
         ],
         "verification_method": "Provider boundary only mocked; full owned router suite76/76, parent combined expiry/chain86/86. Provider/schema errors preserve original identity and stop checkpoint/handoff; genuine resume avoids duplicate provider/charge."
       },
@@ -694,7 +702,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:32:09.318664Z",
+  "updated_at": "2026-10-17T00:33:55.092444Z",
   "verification": {
     "baseline_issues": [],
     "canonical_post_integration_20261017": {

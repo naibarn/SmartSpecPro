@@ -1,0 +1,111 @@
+{
+  "workunit_id": "SPEC161_STORY_WORKER_FINAL_QC",
+  "requirement_ids": [
+    "REQ-28722F9489C8",
+    "REQ-50A4DD25D9C8"
+  ],
+  "scope": "Prevent the canonical story worker from finalizing a nonpartial candidate with blocking QC findings; retain the report and checkpoint for repair.",
+  "source": {
+    "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-story-worker-outcome-20261017",
+    "task_id": "spec161-story-worker-outcome-20261017",
+    "base_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+    "git_state": "Uncommitted; no commit or push.",
+    "owned_paths": [
+      "apps/web/server/services/verticalDramaStoryJobs.ts",
+      "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
+      "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+    ],
+    "full_current_file_sha256": {
+      "apps/web/server/services/verticalDramaStoryJobs.ts": "f84eb4438db19230178e23366a9d7b5c49828b5915227613ad243065146b4b2b",
+      "apps/web/server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts": "eae2942d645994615189beddabfdb1b831df52915867e89188280006677323d2"
+    },
+    "note": "The service/test files also contain the previously assigned SPEC161 outcome/owner repair; the hashes identify their complete current contents, not only the additive QC delta.",
+    "parent_candidate_base_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958"
+  },
+  "repair": {
+    "behavior": "After storing the QC report, the worker transitions a nonpartial run to needs_repair and returns STORY_GENERATION_BLOCKING_FINDINGS when any report finding is blocking or finalGateEligible is false. It does not invoke finalization. A report with no blocking findings and finalGateEligible true continues through existing finalization.",
+    "durability": "The validation report and current checkpoint are persisted before the needs_repair transition; the canonical worker outcome becomes failed with the specific QC reason retained in its projection."
+  },
+  "verification": {
+    "profile": "integration",
+    "command": "RUN_NATIVE_WORKER_POSTGRES_TESTS=true pnpm exec vitest run server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts --maxWorkers=1",
+    "working_directory": "apps/web",
+    "started_at_local": "2026-10-17T07:31:52+07:00",
+    "outcome": "PASS",
+    "exit_code": 0,
+    "tests": "8 passed",
+    "runtime": "Owner-marked private PostgreSQL loopback/Unix-socket fixture; actual Drizzle assurance repository, canonical worker control plane, and runtime_ephemeral_values. Fixture table columns/defaults/indexes derive from canonical verticalDramaStoryGenerationRuns Drizzle metadata; cross-domain foreign keys are intentionally omitted. The story executor is deterministic at the existing router boundary; no SQL is mocked and no provider is called.",
+    "qc_blocking_case": {
+      "job_id": "fe8e74d0-e98b-45b4-8f65-01102767bd71",
+      "assurance_run_id": "c9ea5c57-d3c4-48e5-bc3c-9a7ffa444b6d",
+      "worker_status": "failed",
+      "assurance_status": "needs_repair",
+      "error_code": "STORY_GENERATION_BLOCKING_FINDINGS",
+      "blocking_finding_codes": [
+        "structure.missing_episode"
+      ],
+      "finalization_key": null,
+      "checkpoint_items_retained": 1,
+      "provider_reservations": 0
+    },
+    "qc_eligible_case": {
+      "job_id": "02ff4dba-1370-47f2-a984-ffb848847625",
+      "assurance_run_id": "4f5833c1-5f0c-4607-a026-2a6dd12d6b47",
+      "worker_status": "succeeded",
+      "assurance_status": "succeeded",
+      "final_gate_eligible": true,
+      "finding_count": 0,
+      "finalization_key": "finalize:4f5833c1-5f0c-4607-a026-2a6dd12d6b47",
+      "provider_reservations": 0
+    },
+    "cleanup": "PASS; the fixture helper closed its owner-marked cluster and no spec267-native-pg/spec277-autoteam-pg directories remained under /tmp.",
+    "fast_gate": "git diff --check passed."
+  },
+  "limits": [
+    "The current validator emits blocking findings or an empty eligible report; it does not presently generate an advisory-only finding. The worker gate tests both blocker rejection and eligible finalization, and its predicate permits nonblocking findings when finalGateEligible remains true.",
+    "This is bounded native worker/QC evidence, not full SPEC161 acceptance. No migrations, production runtime, paid provider, full typecheck/build, or retired systems were used.",
+    "Best-effort system-failure reporting during the expected QC rejection logs missing feedback_tickets/users.email in the intentionally minimal fixture; these reports are swallowed and the worker/QC assertions pass."
+  ],
+  "usage": {
+    "model": "Luna",
+    "model_token_usage": "unknown",
+    "new_sdk_calls": 0,
+    "production_job_mutations": 0,
+    "original_fast_lane_job_id": "342db2bbe556f2e719968622b1a7385e",
+    "original_fast_lane_job_mutated": false,
+    "association": "Historical SPEC161 job untouched; native bounded tests are separate disposable synthetic jobs"
+  },
+  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "independent_review": {
+    "result": "PASS",
+    "reviewer": "/root",
+    "resolved_findings": [
+      "Correct relative canonical schema import before compile; clarify removed fallback behavior in source comments"
+    ]
+  },
+  "parent_verification": {
+    "start": "2026-10-17T00:33:23.555738+00:00",
+    "end": "2026-10-17T00:33:35.643271+00:00",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/spec161StoryWorkerOutcome.integration.test.ts",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "--maxWorkers=1"
+    ],
+    "cwd": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web",
+    "exit": 0,
+    "profile": "integration",
+    "resource_observation": [
+      "MemAvailable:   25073068 kB"
+    ],
+    "max_rss_kib": 399744,
+    "source_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958",
+    "working_delta": true,
+    "test_secret": "[REDACTED disposable test-only value]",
+    "tests": "89/89 across 2 files; native worker8 plus router81",
+    "log": "/tmp/smartaihub-backlog-pilot/worker-final-qc-parent-repaired.log"
+  }
+}

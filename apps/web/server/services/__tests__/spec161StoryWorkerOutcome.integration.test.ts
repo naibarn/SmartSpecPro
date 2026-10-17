@@ -1,6 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
+import { eq, is, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { getTableConfig, PgDialect, type PgTable } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { verticalDramaStoryGenerationRuns } from "../../../drizzle/schema";
 import { createSpec267NativePostgres } from "./support/spec267NativePostgres";
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
 
@@ -18,6 +21,7 @@ suite("SPEC-161 vertical drama story worker outcome projection", () => {
   const tenantId = randomUUID();
   const userId = 161017;
   const seriesId = 161017;
+  const dialect = new PgDialect();
 
   beforeAll(async () => {
     vi.doMock("../../db", () => ({
@@ -44,6 +48,7 @@ suite("SPEC-161 vertical drama story worker outcome projection", () => {
     database.current = drizzle(client);
     vi.stubEnv("JWT_SECRET", randomUUID());
     await installSpec277AutoTeamRuntimeSchema(client);
+    await installStoryAssuranceTable(client);
     await client.unsafe(`CREATE TABLE users (id integer PRIMARY KEY)`);
     await client.unsafe(`CREATE TABLE tenant_data_transfer_plans ("tenantId" varchar(36), "sourceUserId" integer, "operationId" varchar(36))`);
     await client.unsafe(`CREATE TABLE tenant_identity_actions (id varchar(36) PRIMARY KEY, "userId" integer, "sourceTenantId" varchar(36), phase varchar(40))`);
@@ -67,14 +72,65 @@ suite("SPEC-161 vertical drama story worker outcome projection", () => {
     vi.resetModules();
   }, 20_000);
 
-  async function enqueueStoryJob() {
+  async function enqueueStoryJob(runId?: string) {
     const { enqueueVerticalDramaStoryJob } = await import("../verticalDramaStoryJobs");
     return enqueueVerticalDramaStoryJob({
       tenantId,
       userId,
       seriesId,
       kind: "improve_script",
-      input: { episodeId: 1 },
+      input: { episodeId: 1, ...(runId ? { runId } : {}) },
+    });
+  }
+
+  async function installStoryAssuranceTable(nativeClient: NonNullable<typeof client>) {
+    const table = getTableConfig(verticalDramaStoryGenerationRuns as PgTable);
+    const quote = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const literal = (value: unknown) => `'${String(value).replaceAll("'", "''")}'`;
+    const columns = table.columns.map((column) => {
+      let definition = `${quote(column.name)} ${column.getSQLType()}`;
+      if (column.primary) definition += " PRIMARY KEY";
+      if (column.notNull) definition += " NOT NULL";
+      if (column.default !== undefined) {
+        if (is(column.default, SQL)) {
+          const expression = dialect.sqlToQuery(column.default);
+          if (expression.params.length) throw new Error("SPEC161_SCHEMA_DEFAULT_HAS_PARAMETERS");
+          definition += ` DEFAULT ${expression.sql}`;
+        } else {
+          definition += ` DEFAULT ${literal(column.mapToDriverValue(column.default))}`;
+        }
+      }
+      return definition;
+    });
+    // This acceptance projection derives columns/defaults/indexes from the
+    // canonical Drizzle table. It intentionally omits cross-domain FKs.
+    await nativeClient.unsafe(`CREATE TABLE ${quote(table.name)} (${columns.join(", ")})`);
+    for (const index of table.indexes) {
+      const config = index.config;
+      const names = config.columns.map((column) => {
+        if (is(column, SQL)) throw new Error("SPEC161_SCHEMA_EXPRESSION_INDEX_UNSUPPORTED");
+        return quote(column.name);
+      });
+      const predicate = config.where ? dialect.sqlToQuery(config.where) : null;
+      if (predicate?.params.length) throw new Error("SPEC161_SCHEMA_INDEX_HAS_PARAMETERS");
+      await nativeClient.unsafe(`CREATE ${config.unique ? "UNIQUE " : ""}INDEX ${quote(config.name)} ON ${quote(table.name)} (${names.join(", ")})${predicate ? ` WHERE ${predicate.sql}` : ""}`);
+    }
+  }
+
+  async function createAssuranceRun(targetEpisodes: number[]) {
+    const { admitStoryGenerationRun } = await import("../verticalDramaStoryGenerationRuntime");
+    return admitStoryGenerationRun({
+      tenantId,
+      userId,
+      seriesId,
+      taskKind: "deep_generate",
+      runKey: `spec161-qc-${randomUUID()}`,
+      idempotencyKey: `spec161-qc-${randomUUID()}`,
+      sourceRevision: "spec161-native-fixture",
+      sourcePayload: null,
+      targetEpisodes,
+      objective: "Native worker QC acceptance",
+      mode: "standard",
     });
   }
 
@@ -243,5 +299,74 @@ suite("SPEC-161 vertical drama story worker outcome projection", () => {
       userId: userId + 1,
       seriesId,
     });
+  }, 30_000);
+
+  it("retains a blocking QC report and checkpoint without finalizing the story run", async () => {
+    const assurance = await createAssuranceRun([1, 2]);
+    const output = [{ episodeNumber: 1, text: "candidate episode" }];
+    storyExecutor.calls = 0;
+    storyExecutor.execute = async (_input, _progress, resume) => {
+      await resume.persistCheckpointAndWait({
+        draftedItems: output,
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 0,
+        updatedAt: new Date().toISOString(),
+      });
+      return { improvedItems: output, partial: false };
+    };
+    const { jobId } = await enqueueStoryJob(assurance.runId);
+
+    await expect(execute(jobId)).rejects.toThrow("STORY_GENERATION_BLOCKING_FINDINGS");
+
+    const [persistedRun] = await database.current.select().from(verticalDramaStoryGenerationRuns)
+      .where(eq(verticalDramaStoryGenerationRuns.runId, assurance.runId));
+    expect(persistedRun.status).toBe("needs_repair");
+    expect(persistedRun.errorCode).toBe("STORY_GENERATION_BLOCKING_FINDINGS");
+    expect(persistedRun.finalizationKey).toBeNull();
+    expect(persistedRun.checkpointJson).toMatchObject({ draftedItems: output, completedEpisodeNumbers: [1] });
+    expect(persistedRun.validationReportJson).toMatchObject({
+      finalGateEligible: false,
+      findings: [expect.objectContaining({ code: "structure.missing_episode", blocking: true })],
+    });
+    expect((await controlPlane.getStatus(jobId))?.status).toBe("failed");
+    const domain = await (await import("../verticalDramaStoryJobs")).getVerticalDramaStoryJobStatus(jobId, { tenantId, seriesId });
+    expect(domain?.status).toBe("failed");
+    expect(domain?.error).toContain("STORY_GENERATION_BLOCKING_FINDINGS");
+    expect(domain?.checkpoint).toMatchObject({ draftedItems: output });
+    expect(storyExecutor.calls).toBe(1);
+    await expectNoProviderReservation(jobId);
+    process.stdout.write(`${JSON.stringify({ evidence: "SPEC161_STORY_QC_BLOCKING_NOT_FINALIZED", jobId,
+      assuranceRunId: assurance.runId, workerStatus: (await controlPlane.getStatus(jobId))?.status,
+      assuranceStatus: persistedRun.status, finalizationKey: persistedRun.finalizationKey,
+      blockingFindingCodes: (persistedRun.validationReportJson as any).findings.filter((finding: any) => finding.blocking).map((finding: any) => finding.code),
+      checkpointItems: (persistedRun.checkpointJson as any).draftedItems.length,
+      executorCalls: storyExecutor.calls, providerReservations: 0 })}\n`);
+  }, 30_000);
+
+  it("allows a complete QC-eligible candidate through finalization", async () => {
+    const assurance = await createAssuranceRun([1]);
+    const output = [{ episodeNumber: 1, text: "complete candidate episode" }];
+    storyExecutor.calls = 0;
+    storyExecutor.execute = async () => ({ improvedItems: output, partial: false });
+    const { jobId } = await enqueueStoryJob(assurance.runId);
+
+    const result = await execute(jobId);
+
+    const [persistedRun] = await database.current.select().from(verticalDramaStoryGenerationRuns)
+      .where(eq(verticalDramaStoryGenerationRuns.runId, assurance.runId));
+    expect(result).toMatchObject({ state: "succeeded", jobId });
+    expect(persistedRun.status).toBe("succeeded");
+    expect(persistedRun.finalizationKey).toBe(`finalize:${assurance.runId}`);
+    expect(persistedRun.validationReportJson).toMatchObject({ finalGateEligible: true, findings: [] });
+    expect((await controlPlane.getStatus(jobId))?.status).toBe("succeeded");
+    expect(storyExecutor.calls).toBe(1);
+    await expectNoProviderReservation(jobId);
+    process.stdout.write(`${JSON.stringify({ evidence: "SPEC161_STORY_QC_ELIGIBLE_FINALIZED", jobId,
+      assuranceRunId: assurance.runId, workerStatus: (await controlPlane.getStatus(jobId))?.status,
+      assuranceStatus: persistedRun.status, finalizationKey: persistedRun.finalizationKey,
+      finalGateEligible: (persistedRun.validationReportJson as any).finalGateEligible,
+      findingCount: (persistedRun.validationReportJson as any).findings.length,
+      executorCalls: storyExecutor.calls, providerReservations: 0 })}\n`);
   }, 30_000);
 });

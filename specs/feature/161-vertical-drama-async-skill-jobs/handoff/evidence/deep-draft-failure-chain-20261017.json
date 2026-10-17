@@ -34,7 +34,7 @@
     "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
   ],
   "file_sha256": {
-    "apps/web/server/routers/verticalDramaSeries.ts": "b5e45d4acaef2ef245458fb1aaa0197d893bcf3aa019fa13cd6a7cf02e459e68",
+    "apps/web/server/routers/verticalDramaSeries.ts": "1bc823ba22943ec94cd013d9837275a716715221578e2345e6b5a7b28c71a0d9",
     "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts": "53a45023d6b488a1540e9e50702c458e5079e1f10f13ba83489974b842dd69b2"
   },
   "baseline": {
@@ -95,5 +95,6 @@
     "tests": "132/132 across 7 files",
     "source_base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
     "working_patch": true
-  }
+  },
+  "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
 }

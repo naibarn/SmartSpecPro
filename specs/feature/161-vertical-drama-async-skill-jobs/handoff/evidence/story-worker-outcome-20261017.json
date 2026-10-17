@@ -150,5 +150,6 @@
     "source_base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
     "working_patch": true
   },
-  "file_sha256": {}
+  "file_sha256": {},
+  "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
 }

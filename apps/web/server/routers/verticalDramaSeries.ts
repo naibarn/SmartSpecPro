@@ -3321,8 +3321,8 @@ export async function runGenerateStoryBibleDeepJob(
   // successful story result until every requested episode has the complete
   // shot/dialogue contract. Repair only the failing episodes, charge each
   // distinct pass through generateStoryBibleDeep. If a provider still cannot
-  // return a valid episode after the bounded retries, the final deterministic
-  // completion fallback keeps the job automatic and visibly warns the user.
+  // return a valid episode after the bounded retries, stop with its real error
+  // and retain the accepted checkpoint for recovery.
   if (!params.repairContinuityOnly) {
     const targetEpisodeNumbers = episodesToDraft.map(
       item => item.episodeNumber
