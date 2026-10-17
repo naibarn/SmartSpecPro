@@ -28,6 +28,8 @@ describe("Spec 224 execution profile", () => {
       workspacePaths: "windows-native", processContainment: "windows-job-object",
     });
     expect(profile.entrypoints.rust).toEqual([]);
+    expect(profile.storageClass).toBe("restricted-object-store");
+    expect(profile.environment.some(item => item.name === "SPEC224_TEST_RUNNER_TOKEN")).toBe(false);
     expect(profile.externalArtifacts.some(path => path.includes("resolve-linux-x86_64-runtime"))).toBe(false);
     expect(profile.requiredRunnerCapabilities).toEqual(["agent.external_task"]);
     expect(profile).not.toHaveProperty("certified");

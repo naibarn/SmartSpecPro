@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateSpec224RuntimeAdmission } from "../spec224RuntimeAdmission";
+import { evaluateSpec224RuntimeAdmission, spec224ProfileRunnerTargetMatches } from "../spec224RuntimeAdmission";
 
 const current = {
   tenantId: "tenant-1",
@@ -138,5 +138,32 @@ describe("Spec 224 runtime admission decision", () => {
         },
       })
     ).toEqual({ decision: "DENY", reason: "DENIED_REMOTE_TRUST_REQUIRED" });
+  });
+});
+
+
+describe("Windows profile binding at canonical admission", () => {
+  it("uses the canonical manifest policy workspace, rejects wrong target, and preserves legacy admission gates", () => {
+    const source = "a".repeat(40);
+    const now = Date.parse("2026-10-17T12:00:00Z");
+    const capability = {
+      platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc" },
+      runnerVersion: "0.2.31", observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z",
+      toolInventory: [{ adapterId: "codex.v1", installState: "installed", configurationState: "configured",
+        authState: "authenticated", healthState: "healthy", trustState: "ready", availabilityState: "available",
+        authorizationEvidenceRef: "TEST_ONLY" }],
+      workspaces: [{ workspaceId: "ws-owned", gitHead: source, dirty: false, projectId: "TEST_ONLY", repositoryId: "TEST_ONLY" }],
+    };
+    const input = { profileId: "spec224-recovery-windows-x64-codex-nonprod", sourceCommit: source,
+      canonicalInputJson: { manifest: { policyBinding: { workspaceRef: "ws-owned" } } }, capabilitySnapshot: capability, now };
+    expect(spec224ProfileRunnerTargetMatches(input)).toBe(true);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, canonicalInputJson: { workspaceRef: "ws-owned" } })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, sourceCommit: "b".repeat(40) })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: { ...capability,
+      platform: { ...capability.platform, os: "linux" } } })).toBe(false);
+    // This predicate adds only a Windows target constraint; it does not replace
+    // legacy grant/lease/Runner binding checks with a new platform policy.
+    expect(spec224ProfileRunnerTargetMatches({ ...input, profileId: "spec224-recovery-registered-runner-nonprod",
+      canonicalInputJson: null, capabilitySnapshot: null })).toBe(true);
   });
 });

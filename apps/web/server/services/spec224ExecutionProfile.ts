@@ -293,6 +293,8 @@ export const SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE = createSpec224ExecutionProf
   externalArtifacts: RECOVERY_RUNNER_PROFILE_INPUT.externalArtifacts.filter(
     artifact => !artifact.startsWith("apps/runner-app/Cargo.lock:"),
   ),
+  storageClass: "restricted-object-store",
+  environment: RECOVERY_RUNNER_PROFILE_INPUT.environment.filter(item => item.name !== "SPEC224_TEST_RUNNER_TOKEN"),
   networkRequirements: [
     "authenticated Runner WSS to the approved control-plane origin",
     "Codex subscription/provider access through the approved local CLI profile",

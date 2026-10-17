@@ -647,6 +647,12 @@
     "authority_preparation": "evidence/spec224-windows-authority-preparation-20261017.json",
     "live_acceptance": "NOT_ACCEPTED",
     "new_jobs": 0,
-    "next_action": "protectively integrate, native Windows CI/build from canonical SHA, then deployment/workspace/certification/grant predicates"
+    "next_action": "protectively integrate, native Windows CI/build from canonical SHA, then deployment/workspace/certification/grant predicates",
+    "requirement_ids": [
+      "REQ-A8A526233757",
+      "REQ-DC4114455549"
+    ],
+    "requirement_coverage": "PARTIAL supporting engineering evidence only; no ledger closure",
+    "scoped_web_tests_passed": 41
   }
 }

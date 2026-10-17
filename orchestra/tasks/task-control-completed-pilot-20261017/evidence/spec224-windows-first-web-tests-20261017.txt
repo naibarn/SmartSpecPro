@@ -3,6 +3,6 @@
 
 
  Test Files  4 passed (4)
-      Tests  40 passed (40)
-   Start at  19:28:35
-   Duration  3.71s (transform 1.47s, setup 466ms, import 2.85s, tests 53ms, environment 0ms)
+      Tests  41 passed (41)
+   Start at  19:30:23
+   Duration  3.82s (transform 1.51s, setup 492ms, import 2.91s, tests 55ms, environment 0ms)

@@ -20,22 +20,24 @@
     "apps/runner-app/src/lib.rs": "fa54d4c03fad249e492b758e28453339036d55079666fb56536b21de17956190",
     "apps/runner-app/src/process.rs": "0e6d2120abf29555a6f1da64930ed5a97283cd40fc5421105527c343e0d42ffb",
     "apps/runner-desktop/src-tauri/Cargo.lock": "8ad015aebc9ecead49556e51af9bce83951ed781012418629b8d344bd8fad572",
-    "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts": "93475391d11840c8c9cd938c50f5232daefc33efdf16feb2cd83cd3dade234f3",
+    "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts": "f41a3c15a4fd43bd2b2b4e99b92b3bad6b367936952d99c9f6aa8fd83e5dfadb",
     "apps/web/server/services/__tests__/spec224RemoteBundleStorage.test.ts": "94361a8eecdf2395624700483ecd9a2ca98c89fe44c23ee2dc9c100681d23ba2",
-    "apps/web/server/services/spec224ExecutionProfile.ts": "16f988f81d0ac43f477398f060bde30b407f5ba57677735dc202113a8c2bee0a",
+    "apps/web/server/services/spec224ExecutionProfile.ts": "129f2af7162f94d5def3f8c80e92201e0724db7cc6df395974a0f5282ede8950",
     "apps/web/server/services/spec224RemoteBundleStorage.ts": "2a5ad301d7f589ed5f8950ee44afa16b5602b29d20de318b930b3357fb44678b",
     "apps/web/server/services/spec224TrustedSourceAttestation.ts": "b47951fefb544829551466727aeeea3a1344ec210247502686e80f6bccebe858",
     "apps/runner-app/src/windows_process.rs": "1682940fcefcb5487fdca2e08d0fd3285bdd4ddd9f3f70176b847d413ed90fee",
-    "apps/web/server/services/spec224RuntimeAdmission.ts": "e1c7b521d41f84c6613fc473fc3ab4f8133255c2350454f3170696379564c5f4"
+    "apps/web/server/services/spec224RuntimeAdmission.ts": "c672a235e23024fb92f1beaa7962625d6f2a2c8a8c651dd66573833e22dd400f",
+    "apps/web/server/services/__tests__/spec224RuntimeAdmission.test.ts": "a9e2328f597ef98b489364d7c806139f372bfa1ffce665495355d8868ee7fcc9"
   },
   "checks": {
     "profile_attestation_storage": {
       "profile": "quick",
-      "passed": 40,
+      "passed": 41,
       "failed": 0,
       "command": "pnpm exec vitest run server/services/__tests__/spec224ExecutionProfile.test.ts server/services/__tests__/spec224TrustedSourceAttestation.test.ts server/services/__tests__/spec224RemoteBundleStorage.test.ts --maxWorkers=1 server/services/__tests__/spec224RuntimeAdmission.test.ts",
       "DATABASE_URL": "ABSENT",
-      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED"
+      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED",
+      "source_snapshot": "final owned profile/admission source hashes in this evidence"
     },
     "runner_library": {
       "profile": "package",
@@ -56,7 +58,8 @@
     "effective_model": "UNVERIFIED",
     "result": "NO_ADDITIONAL_MATERIAL_FINDINGS",
     "false_positive_retracted": "Rust fs::rename already replaces existing Windows files; candidate/registry unchanged",
-    "reference": "https://doc.rust-lang.org/std/fs/fn.rename.html"
+    "reference": "https://doc.rust-lang.org/std/fs/fn.rename.html",
+    "admission_followup": "No material finding; policy.workspaceRef mapping non-circular. Review coverage caveat addressed by testing canonical-admission helper mapping and preserving legacy profile behavior."
   },
   "live_certification": "NOT_CERTIFIED",
   "production_writes": 0,
