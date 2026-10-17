@@ -59,6 +59,9 @@ importers:
       '@smartspec/shared':
         specifier: file:../../packages/shared
         version: link:../../packages/shared
+      hono:
+        specifier: ^4.13.13
+        version: 4.13.13
     devDependencies:
       typescript:
         specifier: 5.9.3
@@ -6530,6 +6533,10 @@ packages:
 
   hono@4.12.29:
     resolution: {integrity: sha512-1hNiRjawYrLq/4m3DQQjPGFg0VZkk4RjQJDff/excI6Dm9BiL75qxGrd7/c6YOxPdq6AscP3LiXhQ6fKFC1Waw==}
+    engines: {node: '>=16.9.0'}
+
+  hono@4.13.13:
+    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -15282,6 +15289,8 @@ snapshots:
   hls.js@1.6.16: {}
 
   hono@4.12.29: {}
+
+  hono@4.13.13: {}
 
   html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
