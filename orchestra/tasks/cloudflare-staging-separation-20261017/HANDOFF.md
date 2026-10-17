@@ -37,4 +37,11 @@ The first branch push had no previous commit (`github.event.before` was all zero
 - No explicitly disposable PostgreSQL database or restricted test role was available. Local PostgreSQL listening on loopback was not used. No Hyperdrive/Drizzle prepared query, transaction, or pool integration proof was run.
 - No production route/DNS, tenant records, credentials, database schema/location, SPEC-224, job ownership, activation, or consumer state changed.
 
-Next action: refresh latest `origin/main`, run the fast integration gate, open the protected PR, then record required CI. Obtain approved staging Worker/auth origin credentials, tenant test identities, a restricted disposable DB role, and browser E2E access before claiming staging readiness.
+Next action: obtain approved staging Worker/auth origin access, two staging tenant identities, restricted disposable PostgreSQL role, and browser E2E access. Then deploy only the isolated staging Worker and run the live acceptance matrix before considering any app-domain routing.
+
+## Integration receipt
+
+- PR [#1049](https://github.com/naibarn/SmartSpecPro/pull/1049) merged at `2026-10-17T08:33:53Z` as `14a41020c8ba9e25309ca0cc8da48663542735d3`; verified reachable from `origin/main`.
+- Required PR checks on implementation SHA `6f1c735d7e5c585c040382311f1bd93d6d2b102d`: Mocked SPEC-308 passed, Cloudflare `local-contract` passed (including Vite/Worker/static assets/workerd), and progressive integration gate passed. The duplicate push-trigger local-contract also passed. `build-preview` was skipped by workflow policy.
+- The first CI attempt exposed two workflow issues: branch-creation push supplied an all-zero `before` SHA to the Express architecture guard, and clean CI needed the generated Remotion schema package before Vite. Repairs were included in `6f1c735` and all required PR checks passed on that SHA.
+- Latest integrated source at receipt: `14a41020c8ba9e25309ca0cc8da48663542735d3`. Live staging, browser auth, tenant record clone, and restricted disposable DB proof remain open and are not implied by CI.
