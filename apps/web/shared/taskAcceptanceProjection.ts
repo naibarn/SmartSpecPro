@@ -308,3 +308,25 @@ export function compareTaskAcceptanceEvidence(
     latencyDeltaMs: reasons.length === 0 ? right.latencyMs! - left.latencyMs! : null,
   };
 }
+
+/** A cached read may age, but a clock observation can never upgrade stale evidence. */
+export function observeTaskAcceptanceSnapshot(
+  projection: TaskAcceptanceProjection,
+  observedAt: number,
+  maxAgeMs = 10 * 60_000,
+): TaskAcceptanceProjection {
+  if (projection.sdkUsage.freshness !== "current") return projection;
+  const sourceTime = projection.sdkUsage.asOf === null ? Number.NaN : Date.parse(projection.sdkUsage.asOf);
+  const validClock = Number.isFinite(observedAt) && Number.isFinite(sourceTime) &&
+    Number.isFinite(maxAgeMs) && maxAgeMs > 0 && sourceTime <= observedAt + 30_000;
+  if (validClock && observedAt - sourceTime <= maxAgeMs) return projection;
+  return {
+    ...projection,
+    sdkUsage: {
+      ...projection.sdkUsage,
+      current: null,
+      freshness: validClock ? "stale" : "unknown",
+      freshnessReason: validClock ? "snapshot_expired" : "snapshot_clock_unverified",
+    },
+  };
+}
