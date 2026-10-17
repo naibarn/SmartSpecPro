@@ -2731,6 +2731,13 @@
       "when": 1792065600001,
       "tag": "0403_spec224_codex_model_call_admission",
       "breakpoints": true
+    },
+    {
+      "idx": 404,
+      "version": "7",
+      "when": 1792278000000,
+      "tag": "0404_spec224_legacy_reservation_kind_guard",
+      "breakpoints": true
     }
   ]
 }
