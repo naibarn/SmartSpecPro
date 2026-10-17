@@ -5,148 +5,7 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "222",
-        "relation_text": "superseded",
-        "requirement_ids": [],
-        "source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L10206",
-        "source_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-        "successor_spec_id": "222"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "230",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L2222",
-        "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-        "successor_spec_id": "230"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "244",
-        "relation_text": "superseded",
-        "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L1521",
-        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
-        "successor_spec_id": "244"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "244",
-        "relation_text": "superseded",
-        "requirement_ids": [],
-        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md#L931",
-        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
-        "successor_spec_id": "244"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "245",
-        "relation_text": "supersede",
-        "requirement_ids": [
-          "R1",
-          "R4",
-          "R5",
-          "R5-01",
-          "R5-15"
-        ],
-        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3094",
-        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-        "successor_spec_id": "245"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "276",
-        "relation_text": "replacement",
-        "requirement_ids": [
-          "R2"
-        ],
-        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L10",
-        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
-        "successor_spec_id": "276"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "281",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1710",
-        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
-        "successor_spec_id": "281"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "284",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md#L111",
-        "source_digest": "b54cdedb2260c5a481e928112c186294370381fbd73a23e006b22f7fda995647",
-        "successor_spec_id": "284"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
@@ -162,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
+    "expected_canonical_sha": "1cba46b81ed7b5a72399b581e578996784d16cd1",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Complete remaining P229.1 broker contract and security requirements, then proceed through P229.2–P229.8 only when provider/index, evidence, benchmark, and migration prerequisites are met. Existing content-hash incremental indexing and context token budgeting are implemented; AST/code retrieval is a confirmed gap but defer until core evidence contract and baseline evaluation are ready.",
+    "next_action": "PR #1019 carries bounded canonical Markdown hydration and budget-aware early stop through the existing LibraryService ACL boundary. After merge, continue remaining P229.1 consumer/contract requirements; keep P229.2 index profile migration blocked until versioned 1024D index/backfill/shadow-read prerequisites are approved by existing SPEC-229 contract. Do not claim quality certification or production verification.",
     "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1016 (https://github.com/naibarn/SmartSpecPro/pull/1016) recorded PR #1015 integration at canonical main SHA e80fc4f9e78204c8e57c23ed3fafbff8d4672bea on 2026-10-17T03:20:28Z. PR #1015 merged normalized SAH request DTO, trusted actor-derived tenant/user, strict route input, bounded budgets, and fail-closed unsupported features. Focused Broker/Library ACL/router tests: 40 passed; progressive gate and browser simulation passed for head 5f0fa01d20dd8dabda15bb94003a8dff93a4474c. No production verification/full typecheck. Requirements remain open; do not mark full P229.1 or Spec completion.",
+    "resume_point": "PR #1019 (https://github.com/naibarn/SmartSpecPro/pull/1019), head 9c9ec911158512f6a77ac0990c1f1a10cdd66b12, includes source implementation 01e6a25700b2631ee994713de41447a1c7e00912 and focused evidence p229-8-canonical-hydration-20261017.json. Base canonical main was 1cba46b81ed7b5a72399b581e578996784d16cd1. Pending progressive integration gate/merge. Focused retrieval/Library ACL/router tests: 42 passed, 28 todo. Evidence quality remains weak/degraded; no production verification, full typecheck, or benchmark claimed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 23,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.934916Z",
+      "last_evidence_at": "2026-10-17T03:28:26.658969Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -231,23 +90,26 @@
   "implementation": {
     "checkpoint_shas": [
       "13c65c378cad6119263c59e0d1d57c7941deb18a",
-      "c42d25ed2b6a583a9a471ae3c11332621e53a11d"
+      "c42d25ed2b6a583a9a471ae3c11332621e53a11d",
+      "01e6a25700b2631ee994713de41447a1c7e00912",
+      "9c9ec911158512f6a77ac0990c1f1a10cdd66b12"
     ],
     "mapping": [],
     "source_paths": [
       "apps/web/server/services/retrievalBroker.ts",
       "apps/web/server/routers/library.ts",
       "apps/web/server/services/libraryService.ts",
-      "apps/web/server/services/retrievalBroker.test.ts"
+      "apps/web/server/services/retrievalBroker.test.ts",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
+    "canonical_sha": "1cba46b81ed7b5a72399b581e578996784d16cd1",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:20:28Z"
+    "integrated_at": "2026-10-17T03:25:43Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -271,7 +133,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.934916Z",
+    "reconciled_at": "2026-10-17T03:28:26.658969Z",
     "sources": [
       {
         "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -297,11 +159,8 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 12,
         "relation": "SUPERSEDES",
-        "scope_signal": "SCOPE_UNSPECIFIED",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
         "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-        "target_ambiguous": true,
-        "target_candidates": [],
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
@@ -316,7 +175,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -338,11 +197,8 @@
         "excerpt": "**Supersedes:** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker c",
         "line": 12,
         "relation": "SUPERSEDES",
-        "scope_signal": "SCOPE_UNSPECIFIED",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
         "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
-        "target_ambiguous": true,
-        "target_candidates": [],
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
@@ -358,7 +214,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -370,20 +226,21 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:20:54.118820Z",
+  "updated_at": "2026-10-17T03:29:02.394367Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
       "handoff/evidence/p229-1-broker-boundary-20261017.json",
       "handoff/evidence/p229-1-broker-contract-20261017.json",
       "handoff/evidence/p229-1-shared-contract-20261017.json",
-      "handoff/evidence/p229-1-request-boundary-20261017.json"
+      "handoff/evidence/p229-1-request-boundary-20261017.json",
+      "handoff/evidence/p229-8-canonical-hydration-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
       "quick"
     ],
-    "sha": null,
+    "sha": "01e6a25700b2631ee994713de41447a1c7e00912",
     "status": "UNKNOWN"
   }
 }
