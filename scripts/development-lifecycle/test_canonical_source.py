@@ -22,6 +22,15 @@ def command(*args: str, cwd: Path | None = None) -> str:
 
 
 class CanonicalSourceTests(unittest.TestCase):
+    def test_staging_wrangler_bundle_uses_packager_output_directory(self) -> None:
+        web_builder = SCRIPT.parent / "build_web.sh"
+        source = web_builder.read_text(encoding="utf-8")
+        self.assertIn(
+            'WRANGLER_OUTDIR="$REPO_ROOT/apps/cloudflare/.staging-artifact/wrangler"',
+            source,
+        )
+        self.assertIn('--outdir "$WRANGLER_OUTDIR"', source)
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
