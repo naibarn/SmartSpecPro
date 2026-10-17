@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0c872e2cd1344ed618b8668299add58abadbfd1f",
+    "expected_canonical_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "SPEC229_P229_8_CANONICAL_CITATION_URI passed focused acceptance on source commit 5c93ee55389153f076e199d039bdcf05fa9ab919 and has evidence at handoff/evidence/p229-8-canonical-citation-uri-20261017.json. P229.8 remains incomplete: source-location anchors and a calibrated Evidence Quality Gate are not available, so evidence remains weak. Do not migrate consequential consumers to treat this as sufficient. P229.2 remains WAITING_EXPLICIT_AUTHORIZATION_AND_INDEX_PREREQUISITES; continue only an independently ready P229.8 contract slice after checking dependencies.",
+    "next_action": "PR #1042 merged as 27bc4368ced4c31d2be9dde9474af170b8c6d039. Post-merge focused retrieval verification passed 3 broker/library test files (50 passed, 28 existing todo) and 4 adjacent Library Markdown consumer files (38 passed); evidence is handoff/evidence/p229-postmerge-retrieval-verification-20261017.json. SPEC229_P229_8_CANONICAL_CITATION_URI passed focused acceptance; P229.8 remains incomplete because source-location anchors and a calibrated Evidence Quality Gate are absent, so evidence remains weak and consequential consumer migration must wait. P229.2 remains WAITING_EXPLICIT_AUTHORIZATION_AND_INDEX_PREREQUISITES. No further next WorkUnit is ready until these evidence/provider dependencies are resolved.",
     "next_ready_workunit": null,
     "reactivation_predicate": "All P229.2 authorization and versioned index/backfill/shadow-read/rollback prerequisites are documented and approved.",
-    "resume_point": "P229.1 passed acceptance on canonical main. The P229.8 canonical citation URI slice is implemented and focused-tested on source SHA 5c93ee55389153f076e199d039bdcf05fa9ab919; its evidence is recorded in handoff/evidence/p229-8-canonical-citation-uri-20261017.json. P229.8 citation anchors and calibrated quality gate remain open; all evidence stays weak. P229.2 is still authorization-gated. Overall SPEC-229 remains incomplete with 104 unresolved requirements.",
+    "resume_point": "P229.1 remains accepted and its current exact-SHA regression suite passed on canonical main 27bc4368ced4c31d2be9dde9474af170b8c6d039. P229.8 canonical citation URI slice merged via PR #1042 and post-merge focused verification passed. Citation location anchors and quality calibration remain open; current evidence stays weak. P229.2 remains gated on explicit authorization and approved versioned index/backfill/shadow-read/rollback prerequisites. Global SPEC-229 remains incomplete with 104 unresolved requirements.",
     "waiting_predicate": "P229.2 may reactivate only after explicit authorization for the BGE-M3 1024D Direct Vectorize V2 phase and verified versioned index, backfill, shadow-read, rollback, and acceptance prerequisites. No live 768D profile/index changes or AI Search migration are authorized by this checkpoint."
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 45,
+  "generation": 47,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -108,16 +108,18 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-degraded-failure-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-citation-uri-20261017.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-citation-uri-20261017.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-current-main-verification-20261017.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0c872e2cd1344ed618b8668299add58abadbfd1f",
+    "canonical_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
     "integrated": true,
-    "integrated_at": "2026-10-17T07:37:25Z"
+    "integrated_at": "2026-10-17T07:57:22Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -142,7 +144,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "0c872e2cd1344ed618b8668299add58abadbfd1f",
+        "evidence_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/retrievalBroker.ts",
@@ -156,9 +158,9 @@
         "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-current-main-verification-20261017.json"
+          "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
         ],
-        "verification_method": "Focused failure-injection tests rerun from isolated canonical main SHA 0c872e2cd1344ed618b8668299add58abadbfd1f; 3 files passed, 45 tests passed, 28 existing todo. No production verification claimed."
+        "verification_method": "Focused provider-outage failure injection rerun from isolated canonical main SHA 27bc4368ced4c31d2be9dde9474af170b8c6d039 as part of 7-file retrieval/Library regression verification; 88 tests passed, 28 existing todo. Production verification is not claimed."
       }
     }
   },
@@ -263,7 +265,7 @@
     "unresolved": 104
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T07:53:13.568096Z",
+  "updated_at": "2026-10-17T07:59:05.482280Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -273,13 +275,14 @@
       "handoff/evidence/p229-1-request-boundary-20261017.json",
       "handoff/evidence/p229-8-canonical-hydration-20261017.json",
       "handoff/evidence/p229-1-degraded-failure-20261017.json",
-      "handoff/evidence/p229-1-postmerge-20261017.json"
+      "handoff/evidence/p229-1-postmerge-20261017.json",
+      "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
     ],
-    "freshness": "UNKNOWN",
+    "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e6e4253d75ea0b7c5319420d80d280cda0a66961",
-    "status": "UNKNOWN"
+    "sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
+    "status": "PASS"
   }
 }
