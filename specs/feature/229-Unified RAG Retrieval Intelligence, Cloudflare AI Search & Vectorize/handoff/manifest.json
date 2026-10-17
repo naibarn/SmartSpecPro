@@ -166,10 +166,10 @@
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Push codex/spec229-p229-1-retrieval-broker at 13c65c378cad6119263c59e0d1d57c7941deb18a through a normal PR for this safe partial checkpoint; then complete remaining P229.1 contract and consumer gates before starting dependent P1 work.",
+    "next_ready_workunit": "SPEC229_P229_1_RETRIEVAL_BROKER",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Source checkpoint 13c65c378cad6119263c59e0d1d57c7941deb18a based on canonical origin/main 772402cdf89c921e5fdd0e8e00e3143c5e56a7d8. Focused Broker V2 tests 11/11 and Library router import pass (evidence: handoff/evidence/p229-1-broker-focused-20261017.json). Evidence remains local/unintegrated; production verification is not performed. Next close P229.1 shared contract and consumer migration/security gates before dependent P1 work.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -229,11 +229,18 @@
     "title": "Spec 229 — Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize V2"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "13c65c378cad6119263c59e0d1d57c7941deb18a"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/services/retrievalBroker.ts",
+      "apps/web/server/routers/library.ts",
+      "apps/web/server/services/libraryService.ts",
+      "apps/web/server/services/retrievalBroker.test.ts"
+    ],
+    "started": true,
+    "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": null,
@@ -242,10 +249,18 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
+    "current_state": "WORKING",
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:17.934916Z"
+  },
+  "manual_decisions": {
+    "lifecycle": {
+      "current_state": "WORKING",
+      "previous_state": null,
+      "state_evidence": [],
+      "updated_at": "2026-10-06T03:28:17.934916Z"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -354,14 +369,16 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.934916Z",
+  "updated_at": "2026-10-17T01:01:38.161410Z",
   "verification": {
-    "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      "handoff/evidence/p229-1-broker-focused-20261017.json"
+    ],
     "freshness": "UNKNOWN",
-    "required_profiles": [],
+    "required_profiles": [
+      "quick"
+    ],
     "sha": null,
-    "status": "UNKNOWN",
-    "task_regressions": []
+    "status": "UNKNOWN"
   }
 }
