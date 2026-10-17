@@ -26,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { WorkerJobMonitorCard } from "@/components/admin/WorkerJobMonitorCard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
-import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import {
   DashboardSectionHeader,
   DashboardStatCard,
@@ -1162,11 +1161,7 @@ export default function Dashboard() {
   };
 
   const sidebarQuickActionIds = [
-    "emergency",
     "chat",
-    "emergency-command",
-    "emergency-federation",
-    "emergency-privacy",
     "finance",
     "finance-reports",
     "media-studio",
@@ -2085,7 +2080,6 @@ export default function Dashboard() {
             <WorkerJobMonitorCard />
           ) : null}
 
-          <EmergencyPublicEntry variant="dashboard" />
           {renderQuickActionsSection(0.08)}
           {renderDashboardActivitySection(0.12)}
 

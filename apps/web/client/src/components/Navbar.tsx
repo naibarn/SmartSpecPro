@@ -8,13 +8,12 @@ import { useState, useEffect, useId, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, ChevronDown, Zap, ShieldAlert } from "lucide-react";
+import { Menu, X, Sparkles, ChevronDown, Zap } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
 import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
-import { getSpec260PagePath } from "@smartspec/shared/src/emergencyRouteManifest";
 
 interface NavLink {
   href: string;
@@ -52,7 +51,6 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
   const tenantLogoUrl = isSmartAIHubSite
     ? ""
     : tenant?.websiteLogoUrl || tenant?.logoUrl || "";
-  const emergencyHref = getSpec260PagePath("public.overview");
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   const closeMobileMenu = ({ restoreFocus = false } = {}) => {
@@ -66,7 +64,6 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
 
   const platformNavItems: NavItem[] = [
     { href: "/", label: t("navbar.home") },
-    { href: emergencyHref, label: t("navbar.emergency") },
     { href: "/features", label: t("navbar.features") },
     { href: "/pricing", label: t("navbar.pricing") },
     { href: "/gallery", label: t("navbar.gallery") },
@@ -277,16 +274,13 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                 >
                   <motion.span
                     className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                      item.href === emergencyHref
-                        ? "bg-red-600 px-2.5 py-2 text-white shadow-md shadow-red-600/25 hover:bg-red-700"
-                        : location === item.href
+                      location === item.href
                           ? `px-2.5 py-2 ${platformActiveText} bg-primary/10`
                           : "px-2.5 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                     whileHover={reduceMotion ? undefined : { scale: 1.02 }}
                     whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                   >
-                    {item.href === emergencyHref && <ShieldAlert className="h-4 w-4" aria-hidden="true" />}
                     {item.label}
                   </motion.span>
                 </Link>
@@ -359,9 +353,7 @@ export function Navbar({ embedded = false }: { embedded?: boolean }) {
                   <motion.div
                     className={cn(
                       "block rounded-xl px-4 py-3 text-base font-medium leading-snug transition-colors",
-                      link.href === emergencyHref
-                        ? "bg-red-600 font-semibold text-white hover:bg-red-700"
-                        : location === link.href
+                      location === link.href
                           ? `bg-primary/10 ${platformActiveText}`
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}

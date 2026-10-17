@@ -8,7 +8,6 @@ import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { Seo } from "@/components/Seo";
 import { SafeHtml } from "@/components/ui/SafeHtml";
 import type { TenantPageData } from "@/hooks/useTenantPage";
@@ -282,11 +281,9 @@ function TenantSection({
 export default function TenantHomePage({
   page,
   canonicalPath = "/",
-  showEmergencyEntry = true,
 }: {
   page: TenantPageData;
   canonicalPath?: string;
-  showEmergencyEntry?: boolean;
 }) {
   const sections = page.sections?.length
     ? page.sections
@@ -324,7 +321,6 @@ export default function TenantHomePage({
       />
       <Navbar />
       <main>
-        {showEmergencyEntry && <EmergencyPublicEntry variant="home" />}
         {sections.length ? (
           sections.map((section, index) => (
             <TenantSection

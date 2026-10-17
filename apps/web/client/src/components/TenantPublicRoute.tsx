@@ -37,7 +37,6 @@ export function TenantPublicRoute({ pageKey, children }: TenantPublicRouteProps)
       <TenantHomePage
         page={page}
         canonicalPath={canonicalPath}
-        showEmergencyEntry={resolvedPageKey === "home"}
       />
     );
   }
