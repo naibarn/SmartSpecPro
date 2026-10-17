@@ -1,0 +1,2338 @@
+[
+  {
+    "caseId": "b08-001",
+    "query": "In the synthetic authorized guide, what approved amount is stated?",
+    "expectedAnswer": "42; the fixture text states that the approved amount is 42.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 8,
+      "lineEnd": 8,
+      "quoteSha256": "4f9a13973920fbbb74923d7e50437cf79bcec30ee302e1d9c83d42376867687f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": ["doc-a"],
+      "requiredClaims": ["b08-claim-001"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-002",
+    "query": "วันเปิดตัวที่ยังไม่ประกาศคือวันไหน?",
+    "expectedAnswer": "No supported answer: this fixture marks the launch-date query unsupported and supplies no evidence.",
+    "language": "thai",
+    "classes": ["no_answer"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "quoteSha256": "dd2262fefe0eed5e720c650328449b3c181726d0cb7b771c8bf887385d2800a1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-003",
+    "query": "tenant-b มีรายละเอียดบัญชีส่วนตัวอะไรที่ tenant-a ขอได้?",
+    "expectedAnswer": "No. The gold case is scoped to tenant-a and the only observation is private evidence from tenant-b.",
+    "language": "mixed",
+    "classes": ["no_answer", "acl_attack"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 15,
+      "lineEnd": 27,
+      "quoteSha256": "97b9a2222af9a9a936468aa44b4537a4cfa1953a53407ee4efbe894825e10d41",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-004",
+    "query": "What is the current SPEC-229 policy revision?",
+    "expectedAnswer": "No supported current answer: the expected revision is r2 while the only observed evidence is r1.",
+    "language": "english",
+    "classes": ["stale_conflict", "no_answer"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 16,
+      "lineEnd": 28,
+      "quoteSha256": "fdd345407aa7a6e1b2d89bb3327ab96d55644de0b65132ece2c8c9cec69c3e8d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-005",
+    "query": "เอกสารนโยบายที่ถูก revoked ระบุแนวทางอะไร?",
+    "expectedAnswer": "No supported answer: the fixture marks the document revoked and the gold case unsupported.",
+    "language": "mixed",
+    "classes": ["deleted_revoked", "no_answer"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 17,
+      "lineEnd": 29,
+      "quoteSha256": "dea092ec663b449f2db3a5045d87cff473efd8c8fec44016a4b33c1957d94a1b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-006",
+    "query": "เอกสารแนวทางที่ถูกลบระบุอะไรไว้?",
+    "expectedAnswer": "No supported answer: the fixture marks the document deleted and the gold case unsupported.",
+    "language": "thai",
+    "classes": ["deleted_revoked", "no_answer"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 18,
+      "lineEnd": 30,
+      "quoteSha256": "09038aee51d6a0f7fe4067cb8e443a8e09d4b30095f7f72bdaad1ef66d0f45f5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-007",
+    "query": "หลักฐานที่มีครอบคลุม claim-a และ claim-b ครบหรือไม่ และผ่าน minimum authority rank 3 หรือเปล่า?",
+    "expectedAnswer": "No. Only claim-a is observed; the source has authority rank 1, is unauthorized, and the case requires rank 3.",
+    "language": "mixed",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 19,
+      "lineEnd": 31,
+      "quoteSha256": "2624f3eb21f81034f209b68b556229e09bfc1344ace6439c18cfcc282aa1feae",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts"
+      ],
+      "requiredClaims": ["b08-claim-007"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-008",
+    "query": "ค่า digest ของ citation ตรงกับ digest ของ evidence หรือไม่?",
+    "expectedAnswer": "No. The citation uses a different SHA-256 digest from the evidence.",
+    "language": "thai",
+    "classes": ["stale_conflict", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 20,
+      "lineEnd": 32,
+      "quoteSha256": "0099476e66ea1d8f43364bf9b17c3cbebf07a1209339a6be83bcc4c6e6c11693",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts"
+      ],
+      "requiredClaims": ["b08-claim-008"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-009",
+    "query": "เมื่อ provider outage มีคำตอบที่รองรับสำหรับคำถามเรื่อง provider unavailable หรือไม่?",
+    "expectedAnswer": "No supported answer: the fixture expects no answer when the provider is in outage state.",
+    "language": "mixed",
+    "classes": ["no_answer", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "sha256": "4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "lineStart": 21,
+      "lineEnd": 33,
+      "quoteSha256": "d2ee113f8406d994ff3fe3bce06123aa793057d629d9280d4352184f6808253e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": false,
+      "requiredEvidenceIds": [],
+      "requiredClaims": [],
+      "minimumAuthorityRank": 0,
+      "expectedRevision": "sha256:4ae969fd3a8183b1380b9fed2c1a591854014bb93b57eb9b18dee06bc970ece2",
+      "shouldCite": false,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-010",
+    "query": "In the generated long-guide test fixture, how many notes precede the unique token and at which line is its anchor expected?",
+    "expectedAnswer": "There are 100 general notes before the token, and the test expects its citation at line 101.",
+    "language": "english",
+    "classes": ["long_document", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 115,
+      "lineEnd": 130,
+      "quoteSha256": "28f4868165272cd2ff3abe760cfcf6807b72f6a58f720fac0d005691a708ce13",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-010"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-011",
+    "query": "For an unrelated semantic match with no source support, does the broker attach a citation?",
+    "expectedAnswer": "No. The fixture expects no citation and weak evidence quality.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 133,
+      "lineEnd": 143,
+      "quoteSha256": "6d5b6b0bdadbd048bfdcd74b2ba6d5e093935db67d9163534f02bf183e909952",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-011"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-012",
+    "query": "What does `PROVIDER_CONFIGURATION_UNAVAILABLE` indicate in the synthetic broker test?",
+    "expectedAnswer": "Provider configuration is unavailable; the broker returns no evidence, marks the result degraded, and does not mark it partial.",
+    "language": "english",
+    "classes": ["code_config_log", "error_code", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 247,
+      "lineEnd": 254,
+      "quoteSha256": "3686540912d97a609d1512cd0f3509df7ae45b8544f4464db7ac5fdbafd263ea",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-012"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-013",
+    "query": "What does `RETRIEVAL_PROVIDER_UNAVAILABLE` indicate when provider search is unavailble?",
+    "expectedAnswer": "Provider search is unavailable; the broker returns no evidence with no_evidence quality, degraded=true and partial=false.",
+    "language": "english",
+    "classes": ["code_config_log", "error_code", "exact_id", "typo"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 262,
+      "lineEnd": 269,
+      "quoteSha256": "7042d358465e5e7eeb7770d2b7c7b376de7471bcb5a4509ae98ca79998753f0f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-013"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-014",
+    "query": "What happens when the provider silently falls back to keyword matching?",
+    "expectedAnswer": "The broker returns no evidence, marks the result degraded, and reports RETRIEVAL_PROVIDER_FALLBACK_OR_DIAGNOSTICS_UNAVAILABLE.",
+    "language": "english",
+    "classes": ["code_config_log", "error_code"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 272,
+      "lineEnd": 281,
+      "quoteSha256": "b55515ca461f2061d8ecae9a8a5b372255a1f174dcf6087db91778e5a5548656",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-014"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-015",
+    "query": "What happens when the canonnical revision changes after vector search?",
+    "expectedAnswer": "The evidence is dropped; the result is no-evidence, degraded and partial, with STALE_EVIDENCE_DROPPED.",
+    "language": "english",
+    "classes": ["stale_conflict", "code_config_log", "error_code", "typo"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 284,
+      "lineEnd": 300,
+      "quoteSha256": "ee1ccd6bfe733f7ac6e7b3a1e46d36eb2951c330032ca4289607044826f8aaa9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-015"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-016",
+    "query": "What does hydration return when the canonical ACL recheck finds the source unavailable?",
+    "expectedAnswer": "It drops the evidence and reports ACL_OR_SOURCE_REVOKED_AFTER_SEARCH with a partial result.",
+    "language": "english",
+    "classes": ["deleted_revoked", "code_config_log", "error_code"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 302,
+      "lineEnd": 310,
+      "quoteSha256": "3dff9af909b6a65fd4116c4a85e1bc3a5923df3e752ac700d0e9c9e0651e5e2d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-016"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-017",
+    "query": "What does `CANONICAL_SOURCE_REVALIDATION_FAILED` indicate in this test?",
+    "expectedAnswer": "Canonical source revalidation failed; the broker returns no evidence, marks the result degraded and partial, and omits private details.",
+    "language": "english",
+    "classes": ["code_config_log", "error_code", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 312,
+      "lineEnd": 322,
+      "quoteSha256": "9e6f7cf79880aa79e1d02514ac2f04fb7fdcd2a9a8f778e9edd6d4d34475af51",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-017"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-018",
+    "query": "Before provider access, what happens if the authenticated identity is missing?",
+    "expectedAnswer": "The request is rejected with RetrievalAuthorizationError and provider configuration is not queried.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 168,
+      "lineEnd": 172,
+      "quoteSha256": "b5a6b552dc0fcc7be505f26ed95a4540e196a42a1c67cd5f3a7890a0339631ff",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-018"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-019",
+    "query": "What error is returned for an emtpy normalized retrieval query?",
+    "expectedAnswer": "Retrieval query must not be empty.",
+    "language": "english",
+    "classes": ["typo", "code_config_log", "error_code"],
+    "sourceGroupId": "apps/web/server/services/retrievalBroker.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/retrievalBroker.test.ts",
+      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "lineStart": 175,
+      "lineEnd": 180,
+      "quoteSha256": "ef4f534e07f21c6dc02d0ae123fc57ec149d2c5ded885435d3ab3228fee934b6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/retrievalBroker.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-019"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-020",
+    "query": "How does the anchor test normlize CRLF and lone carriage returns?",
+    "expectedAnswer": "Both CRLF and lone carriage returns are normalized to LF.",
+    "language": "english",
+    "classes": ["code_config_log", "typo"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "quoteSha256": "6893bf8bc920c3c58ade4e80d2612682740096a7568706ab222ad7b18605592f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-020"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-021",
+    "query": "In the approved-payment-terms fixture, which 1-based source line is anchored?",
+    "expectedAnswer": "Line 3, inclusive.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "5b57a8e0147185d4dc173a1382811383d38aec4ac01508fa1b79cb374754db6b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-021"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-022",
+    "query": "Which normalized Markdown text is used to calculate the anchor digest?",
+    "expectedAnswer": "The digest covers the full normalized Markdown: the Policy heading, blank line, approved-payment sentence, and Internal footer.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "c0bfe54517f8b2195cf14706292fb34cfbc7ee241e30a938ddcfa0291bb140b2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-022"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-023",
+    "query": "Does verification succeed when the anchor is checked against the unchanged normalized Markdown?",
+    "expectedAnswer": "Yes; the fixture expects verification to return true.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "f12a89e25c7f667e67f8539c7e482130f3d0418bb0643c3063741389a90355e1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-023"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-024",
+    "query": "Does unsupported query text create a citation anchor when canonical text has no matching support?",
+    "expectedAnswer": "No. The fixture expects createLibraryCitationAnchor to return null.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 25,
+      "lineEnd": 30,
+      "quoteSha256": "314a85be99b847cdfad42b64fea0276efbc48210c4dc2fd6d092cc4ec49e5339",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-024"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-025",
+    "query": "Which internal route carries the encoded citation, and is sourceUrl used?",
+    "expectedAnswer": "The route is under /document-management; the encoded anchor is in the cite parameter and sourceUrl is absent.",
+    "language": "english",
+    "classes": ["api_path", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryCitationAnchor.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "sha256": "edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "lineStart": 41,
+      "lineEnd": 44,
+      "quoteSha256": "f503f2364cbe333e14f627ee2c8ffa9d73e043c572c5d6c77517f747c1f92833",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryCitationAnchor.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-025"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:edb236ee80c02f3d9de79a166c7648bed18e13d740caa4677068735607fe6785",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-026",
+    "query": "Without an explicit OCR or real-world-vision request, what does the image-upload fixture use?",
+    "expectedAnswer": "It makes no fetch call and returns image_metadata_only with metadata_only search quality.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 79,
+      "lineEnd": 93,
+      "quoteSha256": "02be333e524386dbd230b69c361ffba389c242ca99073c7191c3b3c6567f9750",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-026"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-027",
+    "query": "When image OCR is explicitly requested, what synthetic extracted text and search quality are expected?",
+    "expectedAnswer": "The test returns “White modern house with pool” with full_text search quality.",
+    "language": "english",
+    "classes": ["ocr"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 96,
+      "lineEnd": 127,
+      "quoteSha256": "0a0490b084ae429951dc0a4166c76a0e6c6a00f926b899374ac9129685ef283e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-027"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-028",
+    "query": "With `analysis_profile=document_ocr`, which capture intent is forwarded for the image fixture?",
+    "expectedAnswer": "transfer_slip",
+    "language": "english",
+    "classes": ["ocr", "code_config_log", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 120,
+      "lineEnd": 133,
+      "quoteSha256": "26e7057ea076a2624f3f5486ab644280c0110c642b65191387a1021ccbbd8707",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-028"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-029",
+    "query": "mock transfer-slip parser ใช้ extractor และ analysis_profile ค่าใด?",
+    "expectedAnswer": "The extractor is image_unified_llm_parser and the analysis profile is finance_payin_llm_parser.",
+    "language": "mixed",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 136,
+      "lineEnd": 171,
+      "quoteSha256": "f39e6b2e93bc031475401b9aa2881319696dbd7b8954986cd2b3436133cfb8a6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-029"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-030",
+    "query": "scanned PDF fixture ใช้ OCR profile ใด และ search quality เป็นอะไร?",
+    "expectedAnswer": "The profile is document_ocr; the extractor is pdf_document_ocr and search quality is full_text.",
+    "language": "mixed",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 209,
+      "lineEnd": 249,
+      "quoteSha256": "1dc259dd578b1142462971b52feacd574c67c67169e9079dd6b8d13f503e6836",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-030"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-031",
+    "query": "What does `/api/internal/library/extract-text` receive in the scanned-PDF test?",
+    "expectedAnswer": "It receives the scanned-PDF text-extraction request with analysis_profile=document_ocr and capture_intent=transfer_slip.",
+    "language": "english",
+    "classes": ["ocr", "api_path", "code_config_log", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 239,
+      "lineEnd": 247,
+      "quoteSha256": "510b4b949abce0dde6ac131a27bc3f11ff42c6a6926a25bf41d054d3f8b71ee1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-031"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-032",
+    "query": "What role does `landingai_ade` have in the scanned-PDF OCR result metadata?",
+    "expectedAnswer": "It is the OCR provider value recorded in the PDF result metadata.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/libraryUploadPipeline.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryUploadPipeline.test.ts",
+      "sha256": "86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "lineStart": 250,
+      "lineEnd": 254,
+      "quoteSha256": "b77f68ff3cca778f60376f2909cbb479c6e121f169aa89f9e73c8cc2fe21b5d0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryUploadPipeline.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-032"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:86cb4ca2f5de2e147aa9f7375beb5d4f15031a8a11a3102a76fd230eb23d53d3",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-033",
+    "query": "How many credits per image unit does the Typhoon OCR fixture charge?",
+    "expectedAnswer": "5 credits per image unit.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+      "sha256": "c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "lineStart": 30,
+      "lineEnd": 35,
+      "quoteSha256": "da92f9502af8baed5e625dfe89eccd8df43437fb94de31637a7a55400f3cbdb3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/documentOcrSettings.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-033"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-034",
+    "query": "What PDF OCR rate is configured for Google AI Vision in the fixture?",
+    "expectedAnswer": "8 credits per PDF page.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+      "sha256": "c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "lineStart": 37,
+      "lineEnd": 41,
+      "quoteSha256": "b602cf062c89fd56446d4213a4f38c6420ad51e0e9b9709546f90697aba67514",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/documentOcrSettings.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-034"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-035",
+    "query": "When providerId is the legacy OCR alias for a PDF, what per-unit rate does the fixture expect?",
+    "expectedAnswer": "1 credit per PDF page from the legacy bucket.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+      "sha256": "c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "lineStart": 44,
+      "lineEnd": 49,
+      "quoteSha256": "6722c1933208a4898b054b0903347067fabfe25c708664b1f307cd3bbbc2fa7c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/documentOcrSettings.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-035"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-036",
+    "query": "If provider billing rates are absent, what rate does the fixture use for LandingAI ADE PDF processing?",
+    "expectedAnswer": "It falls back to creditsPerPage, which is 2 credits per page in the fixture.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/documentOcrSettings.test.ts",
+      "sha256": "c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "lineStart": 58,
+      "lineEnd": 65,
+      "quoteSha256": "eeb5f6deb6d26f834a3181739432a7eb4aa2dd8a2dee0c6941d0bded154c89f3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/documentOcrSettings.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-036"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c2030e08a9c4a4c6c2920609d5b85bda8570559bffc016c776574879deac36ac",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-037",
+    "query": "What external limiter status does the Typhoon OCR fixture report?",
+    "expectedAnswer": "typhoon_ocr_1_5 is externally managed; the fixture reports limit 20 per 60 seconds and current use 7.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts",
+      "sha256": "68cc8e4c6f9009d6534144f88c44304eae9d3a87b76542247a3e08a7aa116367",
+      "lineStart": 25,
+      "lineEnd": 41,
+      "quoteSha256": "55f7129a617b9f36bb504d6a6040e4094e235e312f9bc07da1a4ffb58836c9d2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-037"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:68cc8e4c6f9009d6534144f88c44304eae9d3a87b76542247a3e08a7aa116367",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-038",
+    "query": "How many Typhoon OCR requests remain in the synthetic 60-second window?",
+    "expectedAnswer": "13 requests remain out of a limit of 20, with 7 currently used.",
+    "language": "english",
+    "classes": ["ocr", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts",
+      "sha256": "68cc8e4c6f9009d6534144f88c44304eae9d3a87b76542247a3e08a7aa116367",
+      "lineStart": 31,
+      "lineEnd": 38,
+      "quoteSha256": "04882a2088084e546cb3f51b788b55a68325e52f98f04e85b5a306ad114f02c3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/llmRateLimiter.documentOcr.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-038"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:68cc8e4c6f9009d6534144f88c44304eae9d3a87b76542247a3e08a7aa116367",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-039",
+    "query": "For UUID 123e4567-e89b-42d3-a456-426614174000, which field does the runner-session fixture assign it to?",
+    "expectedAnswer": "workerJobId",
+    "language": "english",
+    "classes": ["uuid", "exact_id", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts",
+      "sha256": "ad2864cf14e305c4fa92357dabf12a784374b05a5094d37a338860963612c281",
+      "lineStart": 30,
+      "lineEnd": 35,
+      "quoteSha256": "98bccbb20866e2fa01d502be3bfebdadcd02eb52cffe629dabddd0e212bdac39",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-039"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ad2864cf14e305c4fa92357dabf12a784374b05a5094d37a338860963612c281",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-040",
+    "query": "In the process identity object, what field carries UUID 123e4567-e89b-42d3-a456-426614174000?",
+    "expectedAnswer": "hostBootId",
+    "language": "english",
+    "classes": ["uuid", "exact_id", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts",
+      "sha256": "ad2864cf14e305c4fa92357dabf12a784374b05a5094d37a338860963612c281",
+      "lineStart": 42,
+      "lineEnd": 46,
+      "quoteSha256": "5703cb28095ac35e3a6a67572a94a348e9b078fcd69a89f6419e31b19fca4bfc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/__tests__/runnerExecutionSessionContracts.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-040"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ad2864cf14e305c4fa92357dabf12a784374b05a5094d37a338860963612c281",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-041",
+    "query": "What field receives tenant UUID `a1b2c3d4-e5f6-7890-abcd-ef0123456789` in the API-key validation fixture?",
+    "expectedAnswer": "tenantId",
+    "language": "english",
+    "classes": ["uuid", "exact_id", "code_config_log"],
+    "sourceGroupId": "apps/web/server/__tests__/authExtension.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/__tests__/authExtension.test.ts",
+      "sha256": "796ef4dc4fd075086659bf42e9eed25c629745bf9e71df9854391a20178fe37d",
+      "lineStart": 103,
+      "lineEnd": 109,
+      "quoteSha256": "b53dba73bc81c13bf314bc7fbafb52cb6360dcc0421c3b03834dac0f25a2d754",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/__tests__/authExtension.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-041"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:796ef4dc4fd075086659bf42e9eed25c629745bf9e71df9854391a20178fe37d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-042",
+    "query": "For entity `library:88`, which operation and source are set in its deletion-job payload?",
+    "expectedAnswer": "operation=delete, entityId=library:88, source=library.delete",
+    "language": "english",
+    "classes": ["code_config_log", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/libraryIndexJobContract.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryIndexJobContract.test.ts",
+      "sha256": "d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "lineStart": 28,
+      "lineEnd": 41,
+      "quoteSha256": "ce2f98eed2fbc51dc28bfd62ad2141e5898d5ed1055bb32061500cdca6a133c1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryIndexJobContract.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-042"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-043",
+    "query": "Do identical library index inputs produce the same retry dedupe key?",
+    "expectedAnswer": "Yes; the test asserts that both generated dedupe keys are equal.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryIndexJobContract.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryIndexJobContract.test.ts",
+      "sha256": "d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "lineStart": 44,
+      "lineEnd": 61,
+      "quoteSha256": "bc704fdb34748810f0e91dee838bc2ef99f77fff055ac8237a715833d8d6a34b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryIndexJobContract.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-043"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-044",
+    "query": "When the configured enqueue lag threshold is 15 minutes, is a current lag of 16 minutes throttled?",
+    "expectedAnswer": "Yes. The fixture expects throttling at 16 minutes and no throttling at 8 minutes.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryIndexJobContract.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryIndexJobContract.test.ts",
+      "sha256": "d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "lineStart": 95,
+      "lineEnd": 111,
+      "quoteSha256": "0d06374f07bffa916e9885fc617183c5d4d8fe4687abd228ecf8a614033a4a3e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryIndexJobContract.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-044"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:d9bfb03bc8c4bd7d0acd427fd87744244b6c8759973fc732ddeca9050f698547",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-045",
+    "query": "What happens when a Markdown save uses expectedUpdatedAt that differs from the current row?",
+    "expectedAnswer": "The save rejects with LibraryMarkdownVersionConflictError.",
+    "language": "english",
+    "classes": ["stale_conflict", "code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+      "sha256": "ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "lineStart": 226,
+      "lineEnd": 268,
+      "quoteSha256": "fc69fa39f351c006947108f69cc421c66d79564d50b1aa8840b16857e3e14e04",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryDocumentManagementService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-045"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-046",
+    "query": "What content type is assigned to the saved Markdown chunk?",
+    "expectedAnswer": "markdown_source",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+      "sha256": "ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "lineStart": 271,
+      "lineEnd": 369,
+      "quoteSha256": "24cba6148a36888f6011b6b6f2feed9fde0352f147377daab6dbac3071f00e67",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryDocumentManagementService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-046"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-047",
+    "query": "What reason and field key are placed in mocked knowledge-refresh metadata for a Markdown save?",
+    "expectedAnswer": "reason=markdown_save and fieldKeys=[content]",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/libraryDocumentManagementService.test.ts",
+      "sha256": "ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "lineStart": 372,
+      "lineEnd": 405,
+      "quoteSha256": "6e6c9dbfc25fe9fcd353f84974bb4fb3f5391f9b51b3304558fae7b4d2b304dc",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/libraryDocumentManagementService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-047"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ec20115b25597489ad68650bf9edc1578c205e670ec99e31deaff30eff4af75f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-048",
+    "query": "In the tenant/ACL visibility fixture, which item IDs remain visible to the requesting user?",
+    "expectedAnswer": "Items 11 and 12 are visible; private item 10 is excluded.",
+    "language": "english",
+    "classes": ["acl_attack"],
+    "sourceGroupId": "apps/web/server/services/librarySearchService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/librarySearchService.test.ts",
+      "sha256": "ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "lineStart": 195,
+      "lineEnd": 277,
+      "quoteSha256": "4df0f661069036ea9a465a4606943d23f7c70b011cad63f30529a715ecc89130",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/librarySearchService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-048"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b08-049",
+    "query": "With `tenantId: \"56\"`, what Vectorize type filter is attached to the search?",
+    "expectedAnswer": "{ tenantId: \"56\", type: \"library_chunk\" }",
+    "language": "english",
+    "classes": ["code_config_log", "exact_id"],
+    "sourceGroupId": "apps/web/server/services/librarySearchService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/librarySearchService.test.ts",
+      "sha256": "ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "lineStart": 495,
+      "lineEnd": 507,
+      "quoteSha256": "4f8337e2e08e3b961013cfedf1a20120958e64f1d2dfb32a32e3e68386a3477d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/librarySearchService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-049"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b08-050",
+    "query": "In the Cloudflare provider fixture, which item is returned and what vector score is asserted?",
+    "expectedAnswer": "Item 2 is returned with vector_score 0.94.",
+    "language": "english",
+    "classes": ["code_config_log"],
+    "sourceGroupId": "apps/web/server/services/librarySearchService.test.ts",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "apps/web/server/services/librarySearchService.test.ts",
+      "sha256": "ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "lineStart": 444,
+      "lineEnd": 508,
+      "quoteSha256": "ee20728f73af00cb59d7e7d5da92313717f90199d93deba301b76909970795d8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "p2298-synthetic-source-candidates-v8"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch08-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "apps/web/server/services/librarySearchService.test.ts"
+      ],
+      "requiredClaims": ["b08-claim-050"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ad1d114a62be65746dfb7c158b8a7a98d500d5f4e5aef995cadcdf50106f0d4c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  }
+]
