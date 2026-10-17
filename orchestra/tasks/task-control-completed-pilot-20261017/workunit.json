@@ -620,6 +620,7 @@
       "apps/runner-desktop/README.md",
       "apps/runner-desktop/src-tauri/src/main.rs",
       "apps/runner-desktop/ui/app.js",
+      "apps/web/server/routes/__tests__/runnerControl.test.ts",
       "apps/web/server/routes/runnerControl.ts",
       "apps/web/server/services/__tests__/runnerGateway.test.ts",
       "apps/web/server/services/runnerGateway.ts"
@@ -627,11 +628,11 @@
     "next_action": "Protected integration, then build exact integrated SHA using existing Windows review workflow; actual device installation/runtime and protected acceptance remain separate",
     "live_acceptance": "NOT_ACCEPTED",
     "new_jobs": 0,
-    "implementation_sha": "7919c19ce22b9e751c87735dcf9dea58e1f79de3",
+    "implementation_sha": "97a265b1fab4d747aa809a6424acc8a69554c2d7",
     "reconciled_base": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
     "checks": {
       "runner_library": "193/193 PASS",
-      "web": "43/43 PASS",
+      "web": "44/44 PASS",
       "native_windows": "PENDING"
     }
   }

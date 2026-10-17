@@ -4,14 +4,15 @@
   "owner": "/root",
   "source_base": "e25f5bc80771dd07c74ee9bc14a41b304fd5bf4d",
   "reconciled_base": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
-  "implementation_sha": "7919c19ce22b9e751c87735dcf9dea58e1f79de3",
+  "implementation_sha": "97a265b1fab4d747aa809a6424acc8a69554c2d7",
   "root_causes": [
     "Browser approval wrote online/lastSeen and retained a different or old session snapshot before any device heartbeat",
     "Global default runner/device IDs collided across Linux CLI and Windows Desktop; their active sessions and machine/device keys differ",
     "Desktop real-task verification only updated local UI, not backend capability publication",
     "Real Codex authenticated readiness reference was gated on deterministic certification mode",
     "Desktop packaging did not propagate installer version into the Runner library",
-    "Live web Runner-related source files match ccd4cd11; deployed workerJobs.ts has no observability procedure"
+    "Live web Runner-related source files match ccd4cd11; deployed workerJobs.ts has no observability procedure",
+    "Session capability_ready and status only recognized browser, excluding an independently ready Codex adapter"
   ],
   "corrections": [
     "Expired Linux enrollment is not evidence about the current Windows enrollment",
@@ -45,7 +46,7 @@
     },
     "web": {
       "profile": "quick",
-      "source_base": "e25f5bc80771dd07c74ee9bc14a41b304fd5bf4d",
+      "source_revision": "97a265b1fab4d747aa809a6424acc8a69554c2d7",
       "command": [
         "pnpm",
         "exec",
@@ -55,12 +56,15 @@
         "server/routes/__tests__/runnerControl.test.ts",
         "--maxWorkers=1"
       ],
-      "start_epoch": 1792225019.7453392,
-      "end_epoch": 1792225024.0469494,
+      "start_epoch": 1792225504.480395,
+      "end_epoch": 1792225508.8774886,
       "exit": 0,
-      "max_rss_kib": 352164,
+      "max_rss_kib": 350104,
       "DATABASE_URL": "ABSENT",
-      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED"
+      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED",
+      "passed": 44,
+      "failed": 0,
+      "result": "PASS"
     },
     "syntax": {
       "node_check": "PASS",
@@ -72,7 +76,8 @@
       "requested_model": "gpt-6-luna",
       "effective_model": "UNVERIFIED",
       "result": "NO_MATERIAL_FINDINGS",
-      "finding_repaired": "Post-pairing sync failure no longer mislabels successful pairing as failed"
+      "finding_repaired": "Post-pairing sync failure no longer mislabels successful pairing as failed",
+      "followup": "No material finding in Codex-only capability-ready route/test delta; parent verified committed UI catch directly"
     },
     "native_windows_installer": {
       "state": "PENDING",
@@ -105,7 +110,7 @@
     ]
   },
   "artifacts_sha256": {
-    "runner-readiness-web-tests-20261017.txt": "64bbf16708a475153fb3d59a98ad34ec4e9d1d1ceae93e589cef06f00f23ada3",
+    "runner-readiness-web-tests-20261017.txt": "82afdbd03dc0c58fc0d541160fa046047c3299da558d96a898dd148d28346593",
     "runner-readiness-lib-tests-20261017.txt": "a0a7990b7fe33b47c6f6518f0a8cbed17ecb9fd9172c1c343e29ad4d0424a224"
   },
   "live_acceptance": "NOT_ACCEPTED",
@@ -122,5 +127,22 @@
     "Install/update and observe the current Windows device through an available authorized access channel",
     "Fresh authenticated capability publication, owned workspace and selected WorkUnit lease",
     "Existing protected Recovery Grant and exact live target serving source before SPEC-224 dispatch"
-  ]
+  ],
+  "initial_implementation_sha": "7919c19ce22b9e751c87735dcf9dea58e1f79de3",
+  "repaired_verification_setup_failures": [
+    "Initial test invocation lacked disposable JWT_SECRET; rerun used private random TEST_ONLY key and no DATABASE_URL",
+    "First new Rust fixture selected the first catalog entry (Claude), not Codex; corrected fixture to select tool_id codex"
+  ],
+  "source_files_sha256": {
+    ".github/workflows/runner-desktop-release.yml": "233de144ecd791509316dceb822f80d799d47226682cbae26a07208fd8ea0a57",
+    "apps/runner-app/src/config.rs": "f68728e0482b4fe295c8bca2d4213fa21656cf0adc1aea385cfddde757f8d655",
+    "apps/runner-app/src/diagnostics.rs": "79ca150ac1f6df8a8d6a1d6d4d250988102fb0ecfa7288401df6ada84a655a56",
+    "apps/runner-desktop/README.md": "73b30b867fa0b4c6bc07f63946565d3a969e11bb01baf3eb21c94e9f1f226285",
+    "apps/runner-desktop/src-tauri/src/main.rs": "383fb1222d6c5689b6b94c0dac6e7b15cc9a4a941425730e127bf49632a4deb6",
+    "apps/runner-desktop/ui/app.js": "2a1436b131efe13b0b5453fdf5f8295be21e292405bf656a363780174ae1ad66",
+    "apps/web/server/routes/__tests__/runnerControl.test.ts": "586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+    "apps/web/server/routes/runnerControl.ts": "10a5682adf6c3dac1aa20ec0456474020212e110f306ba9bfa72b6f0098c45d0",
+    "apps/web/server/services/__tests__/runnerGateway.test.ts": "7647e3bed74d28250caaf796ab644075fe60222c8883239eb0269de5981768c2",
+    "apps/web/server/services/runnerGateway.ts": "b650435eacb46d8e12f641d8b2024c19faacacf814600df9a231ff38e4dbf081"
+  }
 }
