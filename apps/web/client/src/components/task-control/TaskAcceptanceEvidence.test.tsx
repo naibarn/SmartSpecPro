@@ -1,12 +1,12 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { projectTaskAcceptance } from "@shared/taskAcceptanceProjection";
 import { buildCompletedPilotAcceptanceFixture } from "../../../../server/services/__tests__/fixtures/completedPilotAcceptance";
 import { TaskAcceptanceEvidence } from "./TaskAcceptanceEvidence";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("completed pilot acceptance evidence surface", () => {
   it("separates pilot, parent, tests, stale usage, release and simulated authentication", () => {
@@ -66,4 +66,20 @@ describe("completed pilot acceptance evidence surface", () => {
     expect(screen.queryByText(/Verified Goal: 100%/)).toBeNull();
     expect(screen.getByText(/verified scope incomplete/)).toBeTruthy();
   });
+});
+
+
+it("ages a mounted snapshot to stale when no refreshed data arrives", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-17T03:00:00Z"));
+  const { input } = buildCompletedPilotAcceptanceFixture();
+  const projection = projectTaskAcceptance({ ...input, sdkUsage: { ...input.sdkUsage, asOf: new Date().toISOString(), freshness: "current" } });
+  render(<TaskAcceptanceEvidence projection={projection} />);
+  expect(screen.getByText(/SDK current-snapshot linked total: 5,771,368 tokens · snapshot current/)).toBeTruthy();
+  act(() => vi.advanceTimersByTime(630_000));
+  expect(screen.getByText(/SDK current-snapshot linked total: Unknown tokens · snapshot stale/)).toBeTruthy();
+  expect(screen.getByText(/SDK retained receipt total: 5,771,368 tokens/)).toBeTruthy();
+  vi.setSystemTime(new Date("2026-10-17T03:00:00Z"));
+  act(() => vi.advanceTimersByTime(30_000));
+  expect(screen.getByText(/SDK current-snapshot linked total: Unknown tokens · snapshot stale/)).toBeTruthy();
 });
