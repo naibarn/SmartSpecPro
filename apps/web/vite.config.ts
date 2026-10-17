@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import path from "path";
 import { defineConfig } from "vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { liveBuildTargetGuardPlugin } from "./scripts/live-build-target-guard.mjs";
 
 function stripAstryxPropertyRegistrationWarnings() {
   return {
@@ -28,6 +29,7 @@ const reactDomPath = path.dirname(require.resolve("react-dom/package.json"));
 
 export default defineConfig(() => {
   const plugins = [
+    liveBuildTargetGuardPlugin(import.meta.dirname),
     stripAstryxPropertyRegistrationWarnings(),
     react(),
     tailwindcss(),

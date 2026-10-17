@@ -13,6 +13,8 @@ export const RETIRED_ROUTE_PREFIXES = [
   "/workpacks",
   "/docker",
   "/docker-redirect",
+  "/disaster",
+  "/dashboard/emergency",
 ] as const;
 
 export function isRetiredRoute(pathname: string): boolean {

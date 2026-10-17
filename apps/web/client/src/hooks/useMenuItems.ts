@@ -139,7 +139,7 @@ export function getResolvedMenuItems(
     typeof i18next.exists === "function"
       ? i18next.exists.bind(i18next)
       : () => false;
-  return items.map(item => {
+  return items.filter(item => !item.id.startsWith("emergency")).map(item => {
     const navKey = `nav:sidebar.${item.id}`;
     const translatedLabel = exists(navKey) ? i18next.t(navKey) : item.label;
     return {

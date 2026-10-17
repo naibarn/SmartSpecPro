@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import EmergencyPublicEntry from "@/components/emergency/EmergencyPublicEntry";
 import { PublicHomeExperience } from "@/components/publicUi";
 import { Seo } from "@/components/Seo";
 import { useTenant } from "@/contexts/TenantContext";
@@ -187,7 +186,6 @@ export default function Home() {
               },
             ],
           }}
-          supportingFeature={<EmergencyPublicEntry variant="home" />}
         />
       </main>
 

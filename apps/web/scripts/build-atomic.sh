@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Atomic production build for apps/web.
+# Atomic local build for apps/web. Live production publication is owned by
+# build-main-deploy.py and must use its origin/main provenance + deploy lock.
 #
 # Problem: `npm run build` runs `vite build` with `emptyOutDir: true`, which
 # WIPES the live `dist/public` directory (including the widget subtree built
@@ -17,7 +18,7 @@
 # not invalidate open fds). New requests either see the fully-old tree or the
 # fully-new tree — never a half-built one.
 #
-# This script is the default `npm run build` entry point. The direct Vite
+# This script is the default local `npm run build` entry point. The direct Vite
 # command remains available as `npm run build:unsafe` for local-only work where
 # no server is serving dist/public.
 #
@@ -99,6 +100,8 @@ fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."   # apps/web
 WEB_DIR="$(pwd)"
+bash "${WEB_DIR}/scripts/guard-live-build-target.sh"
+
 PUBLIC_DIR="${WEB_DIR}/client/public"
 RELEASES_DIR="${PUBLIC_DIR}/releases"
 MIN_FREE_KB=$((5 * 1024 * 1024))
