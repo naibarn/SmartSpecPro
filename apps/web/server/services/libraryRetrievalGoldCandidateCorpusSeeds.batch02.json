@@ -4,11 +4,7 @@
     "query": "Which shared contract identifiers does Feature 195 list?",
     "expectedAnswer": "SAH-EXEC-1, SAH-CAP-1, SAH-RUNNER-1, SAH-CONTEXT-1, and SAH-ASSET-1 are listed; Feature 195 owns durable worker_jobs execution truth.",
     "language": "english",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/195-unified-async-job-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -43,9 +39,7 @@
       "requiredEvidenceIds": [
         "specs/feature/195-unified-async-job-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature195-shared-contract-identifiers"
-      ],
+      "requiredClaims": ["feature195-shared-contract-identifiers"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
       "shouldCite": true,
@@ -57,11 +51,7 @@
     "query": "ตาราง outbox ที่เอกสาร Feature 195 ระบุเป็นตาราง canonical ชื่ออะไร?",
     "expectedAnswer": "ชื่อ table คือ worker_job_outbox และเอกสารระบุว่าไม่อนุญาตให้สร้าง outbox table ที่สอง.",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/195-unified-async-job-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -96,9 +86,7 @@
       "requiredEvidenceIds": [
         "specs/feature/195-unified-async-job-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature195-outbox-table"
-      ],
+      "requiredClaims": ["feature195-outbox-table"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:b8f818885d5be9d624e5a1155021fd818475937fee3627bf9f9871802ae250fc",
       "shouldCite": true,
@@ -110,10 +98,7 @@
     "query": "In Spec 197, which error-related field appears immediately before idempotency_key?",
     "expectedAnswer": "error_code ตามด้วย error_message ก่อน idempotency_key.",
     "language": "mixed",
-    "classes": [
-      "code_identifier",
-      "exact_id"
-    ],
+    "classes": ["code_identifier", "exact_id"],
     "sourceGroupId": "specs/feature/197-runner-adaptive-execution-fabric/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -148,9 +133,7 @@
       "requiredEvidenceIds": [
         "specs/feature/197-runner-adaptive-execution-fabric/spec.md"
       ],
-      "requiredClaims": [
-        "feature197-error-code-field"
-      ],
+      "requiredClaims": ["feature197-error-code-field"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
       "shouldCite": true,
@@ -162,11 +145,7 @@
     "query": "Spec 198 เสนอให้ ingest corpus ใดเป็น authoritative source ชนิด HELP?",
     "expectedAnswer": "เอกสารระบุให้ ingest corpus Help ภาษาอังกฤษและไทยที่มีอยู่เข้า unified Retrieval Broker เป็น authoritative HELP source.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "retrieval",
-      "language"
-    ],
+    "classes": ["semantic_paraphrase", "retrieval", "language"],
     "sourceGroupId": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -201,9 +180,7 @@
       "requiredEvidenceIds": [
         "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
       ],
-      "requiredClaims": [
-        "feature198-help-corpus"
-      ],
+      "requiredClaims": ["feature198-help-corpus"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
       "shouldCite": true,
@@ -215,11 +192,7 @@
     "query": "According to the documented vector baseline in Spec 198, what scalability gap remains in rag_query?",
     "expectedAnswer": "The snapshot says rag_query may load up to 10,000 chunks and compute embedding/vector operations in request memory instead of using persistent vector retrieval directly.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "code_identifier",
-      "exact_id"
-    ],
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
     "sourceGroupId": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -254,9 +227,7 @@
       "requiredEvidenceIds": [
         "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
       ],
-      "requiredClaims": [
-        "feature198-rag-query-gap"
-      ],
+      "requiredClaims": ["feature198-rag-query-gap"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc",
       "shouldCite": true,
@@ -268,11 +239,7 @@
     "query": "Following the Spec 199 routing chain, after capability resolution what receives the MCP capability before the approved external server?",
     "expectedAnswer": "The MCP capability is routed through the Spec 199 External MCP Gateway, then to the approved External MCP Server.",
     "language": "mixed",
-    "classes": [
-      "multi_hop",
-      "follow_up",
-      "spec_id"
-    ],
+    "classes": ["multi_hop", "follow_up", "spec_id"],
     "sourceGroupId": "specs/feature/199-external-mcp-gateway-upstream-management/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -307,9 +274,7 @@
       "requiredEvidenceIds": [
         "specs/feature/199-external-mcp-gateway-upstream-management/spec.md"
       ],
-      "requiredClaims": [
-        "feature199-mcp-routing-chain"
-      ],
+      "requiredClaims": ["feature199-mcp-routing-chain"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
       "shouldCite": true,
@@ -321,10 +286,7 @@
     "query": "ตาม invariant ใน Spec 199 อะไรเก็บ durable execution state และอะไรใช้ส่ง realtime command/event?",
     "expectedAnswer": "worker_jobs / worker_job_events เป็น durable global execution state/history; Runner Control Channel เป็น realtime command, ACK, progress และ event transport.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "multi_hop"
-    ],
+    "classes": ["semantic_paraphrase", "multi_hop"],
     "sourceGroupId": "specs/feature/199-external-mcp-gateway-upstream-management/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -359,9 +321,7 @@
       "requiredEvidenceIds": [
         "specs/feature/199-external-mcp-gateway-upstream-management/spec.md"
       ],
-      "requiredClaims": [
-        "feature199-durable-vs-realtime"
-      ],
+      "requiredClaims": ["feature199-durable-vs-realtime"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
       "shouldCite": true,
@@ -373,10 +333,7 @@
     "query": "Does Spec 199 treat a Runner disconnect as execution failure?",
     "expectedAnswer": "No. The spec says disconnect is not equivalent to execution failure; realtime events can be buffered/replayed/reconciled while durable job state remains authoritative.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "negative_policy_answer"
-    ],
+    "classes": ["semantic_paraphrase", "negative_policy_answer"],
     "sourceGroupId": "specs/feature/199-external-mcp-gateway-upstream-management/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -411,9 +368,7 @@
       "requiredEvidenceIds": [
         "specs/feature/199-external-mcp-gateway-upstream-management/spec.md"
       ],
-      "requiredClaims": [
-        "feature199-disconnect-semantics"
-      ],
+      "requiredClaims": ["feature199-disconnect-semantics"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:2c98b861736fe69226a9d3f2f2d8e7028fdf107a6ce94343b0c713eb76b91ff9",
       "shouldCite": true,
@@ -425,11 +380,7 @@
     "query": "ถ้า planId และ workflowRunId ใช้จัดกลุ่ม open jobs ไม่ได้ Spec 200 ให้ fallback อย่างไร?",
     "expectedAnswer": "ใช้ isolated single-job group; ลำดับคือ valid planId ก่อน, แล้ว workflowRunId, จากนั้นแยกเป็นกลุ่มงานเดียว และ metadata ผิดรูปต้องไม่รวมงานที่ไม่เกี่ยวข้อง.",
     "language": "thai",
-    "classes": [
-      "multi_hop",
-      "semantic_paraphrase",
-      "exact_id"
-    ],
+    "classes": ["multi_hop", "semantic_paraphrase", "exact_id"],
     "sourceGroupId": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -464,9 +415,7 @@
       "requiredEvidenceIds": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature200-grouping-precedence"
-      ],
+      "requiredClaims": ["feature200-grouping-precedence"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "shouldCite": true,
@@ -478,11 +427,7 @@
     "query": "What metadata key does Spec 200 allow for predecessor dependency lookup, and what scope checks still apply?",
     "expectedAnswer": "Only dependsOnJobIds metadata is allowed; lookup must use the same tenant and requesting-user predicates, bounded continuation, and safe projection.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "multi_hop"
-    ],
+    "classes": ["exact_id", "code_identifier", "multi_hop"],
     "sourceGroupId": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -517,9 +462,7 @@
       "requiredEvidenceIds": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature200-dependency-lookup"
-      ],
+      "requiredClaims": ["feature200-dependency-lookup"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "shouldCite": true,
@@ -531,11 +474,7 @@
     "query": "เมื่อ source scan ถึงเพดานแล้ว Spec 200 กำหนดให้ pagination เปิดเผยข้อมูลอะไร?",
     "expectedAnswer": "การ scan จำกัด 500 open jobs และต้องเปิดเผย truncation; pagination ต้องมี hasMore/nextOffset และ UI ต้องบอก source cap.",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "semantic_paraphrase",
-      "follow_up"
-    ],
+    "classes": ["exact_id", "semantic_paraphrase", "follow_up"],
     "sourceGroupId": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -570,9 +509,7 @@
       "requiredEvidenceIds": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature200-bounded-pagination"
-      ],
+      "requiredClaims": ["feature200-bounded-pagination"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "shouldCite": true,
@@ -584,11 +521,7 @@
     "query": "What code path and release trigger does Spec 205 name for the Runner app?",
     "expectedAnswer": "The suggested code path is apps/runner-app; release is through GitHub Actions workflow_dispatch only, with no automatic build or release on push/PR.",
     "language": "english",
-    "classes": [
-      "filename",
-      "path",
-      "exact_id"
-    ],
+    "classes": ["filename", "path", "exact_id"],
     "sourceGroupId": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -623,9 +556,7 @@
       "requiredEvidenceIds": [
         "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       ],
-      "requiredClaims": [
-        "feature205-runner-release-path"
-      ],
+      "requiredClaims": ["feature205-runner-release-path"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
       "shouldCite": true,
@@ -637,10 +568,7 @@
     "query": "Runner runtime ตาม Spec 205 ต้องพึ่ง webview หรือ Tauri UI เพื่อ execute งานหรือไม่?",
     "expectedAnswer": "ไม่ต้อง; initial product เป็น headless Rust binary, อาจมี local CLI, แต่ต้องไม่ require webview/Tauri UI; runner-core ใช้กับ Cloudflare Container entrypoint ได้.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "negative_policy_answer"
-    ],
+    "classes": ["semantic_paraphrase", "negative_policy_answer"],
     "sourceGroupId": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -675,9 +603,7 @@
       "requiredEvidenceIds": [
         "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       ],
-      "requiredClaims": [
-        "feature205-headless-runner"
-      ],
+      "requiredClaims": ["feature205-headless-runner"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
       "shouldCite": true,
@@ -689,12 +615,7 @@
     "query": "In Spec 206, what existing file is the Feature 200 contract boundary, and which durable job type must initially be preserved?",
     "expectedAnswer": "apps/web/server/services/agentControlPlaneContracts.ts is the existing contract boundary; preserve jobType external_agent_task initially.",
     "language": "mixed",
-    "classes": [
-      "filename",
-      "path",
-      "code_identifier",
-      "exact_id"
-    ],
+    "classes": ["filename", "path", "code_identifier", "exact_id"],
     "sourceGroupId": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -729,9 +650,7 @@
       "requiredEvidenceIds": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
       ],
-      "requiredClaims": [
-        "feature206-contract-boundary"
-      ],
+      "requiredClaims": ["feature206-contract-boundary"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "shouldCite": true,
@@ -743,10 +662,7 @@
     "query": "Spec 206 กำหนดเงื่อนไขอะไรให้ A2A dispatch ตอนเรียก createControlPlaneJob?",
     "expectedAnswer": "ต้องส่ง authenticated server context และห้ามรับ tenant, actor, queue, runner หรือ adapter identity จาก remote request.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "code_identifier"],
     "sourceGroupId": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -781,9 +697,7 @@
       "requiredEvidenceIds": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
       ],
-      "requiredClaims": [
-        "feature206-dispatch-authority"
-      ],
+      "requiredClaims": ["feature206-dispatch-authority"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "shouldCite": true,
@@ -795,10 +709,7 @@
     "query": "Which three browser execution target identifiers does Spec 208 explicitly name?",
     "expectedAnswer": "LOCAL_EXISTING_BROWSER, LOCAL_MANAGED_BROWSER, and CLOUD_BROWSER.",
     "language": "english",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -833,9 +744,7 @@
       "requiredEvidenceIds": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       ],
-      "requiredClaims": [
-        "feature208-browser-targets"
-      ],
+      "requiredClaims": ["feature208-browser-targets"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
       "shouldCite": true,
@@ -847,11 +756,7 @@
     "query": "What does Spec 208 assign to ComputerUseModelAdapter, and which two provider response identifiers are explicitly named?",
     "expectedAnswer": "ComputerUseModelAdapter is the provider-protocol boundary for native CUA responses; the spec names computer_call and tool_use.",
     "language": "mixed",
-    "classes": [
-      "code_identifier",
-      "semantic_paraphrase",
-      "multi_hop"
-    ],
+    "classes": ["code_identifier", "semantic_paraphrase", "multi_hop"],
     "sourceGroupId": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -886,9 +791,7 @@
       "requiredEvidenceIds": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       ],
-      "requiredClaims": [
-        "feature208-model-adapter"
-      ],
+      "requiredClaims": ["feature208-model-adapter"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
       "shouldCite": true,
@@ -900,10 +803,7 @@
     "query": "Spec 210 ระบุ route string สำหรับ Orca/native execution อะไรบ้าง?",
     "expectedAnswer": "a2a, orca, native_direct, generic_pty.",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -938,9 +838,7 @@
       "requiredEvidenceIds": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
       ],
-      "requiredClaims": [
-        "feature210-route-identifiers"
-      ],
+      "requiredClaims": ["feature210-route-identifiers"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "shouldCite": true,
@@ -952,10 +850,7 @@
     "query": "According to the implementation status recorded in Spec 210, is the Orca production route enabled?",
     "expectedAnswer": "No. The spec records the production route as disabled until probe, command, session, security, migration, and certification gates pass.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "negative_policy_answer"
-    ],
+    "classes": ["semantic_paraphrase", "negative_policy_answer"],
     "sourceGroupId": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -990,9 +885,7 @@
       "requiredEvidenceIds": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md"
       ],
-      "requiredClaims": [
-        "feature210-orca-route-status"
-      ],
+      "requiredClaims": ["feature210-orca-route-status"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "shouldCite": true,
@@ -1004,11 +897,7 @@
     "query": "What exact identifier does Spec 212 assign to an unknown executable node type?",
     "expectedAnswer": "HALLUCINATED_NODE.",
     "language": "mixed",
-    "classes": [
-      "error_code",
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["error_code", "exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1043,9 +932,7 @@
       "requiredEvidenceIds": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md"
       ],
-      "requiredClaims": [
-        "feature212-unknown-node-error"
-      ],
+      "requiredClaims": ["feature212-unknown-node-error"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "shouldCite": true,
@@ -1057,11 +944,7 @@
     "query": "ใน taxonomy ของ Spec 214 typeId data.retrieval มีหน้าที่เชิงความหมายอะไร?",
     "expectedAnswer": "ใช้ retrieve/search/rank context หรือ assets พร้อม provenance เช่น Library, vector, keyword, hybrid, web-search และ rerank.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/214-node-type-contract-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1096,9 +979,7 @@
       "requiredEvidenceIds": [
         "specs/feature/214-node-type-contract-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature214-retrieval-type"
-      ],
+      "requiredClaims": ["feature214-retrieval-type"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "shouldCite": true,
@@ -1110,11 +991,7 @@
     "query": "How does Spec 214 distinguish flow.router from flow.join?",
     "expectedAnswer": "flow.router chooses one or more outgoing routes deterministically; flow.join synchronizes concurrent execution branches.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/214-node-type-contract-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1149,9 +1026,7 @@
       "requiredEvidenceIds": [
         "specs/feature/214-node-type-contract-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature214-router-vs-join"
-      ],
+      "requiredClaims": ["feature214-router-vs-join"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "shouldCite": true,
@@ -1163,10 +1038,7 @@
     "query": "Which canonical type in Spec 214 produces typed verification or evaluation evidence?",
     "expectedAnswer": "quality.verifier.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/214-node-type-contract-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1201,9 +1073,7 @@
       "requiredEvidenceIds": [
         "specs/feature/214-node-type-contract-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature214-verifier-type"
-      ],
+      "requiredClaims": ["feature214-verifier-type"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "shouldCite": true,
@@ -1215,10 +1085,7 @@
     "query": "NodeTypeManifest ใน Spec 214 ระบุ schemaVersion เป็นค่าใด?",
     "expectedAnswer": "\"4\".",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/214-node-type-contract-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1253,9 +1120,7 @@
       "requiredEvidenceIds": [
         "specs/feature/214-node-type-contract-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature214-manifest-version"
-      ],
+      "requiredClaims": ["feature214-manifest-version"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "shouldCite": true,
@@ -1267,10 +1132,7 @@
     "query": "Which specification owns the physical durable worker-job source of truth in Spec 214’s ownership table?",
     "expectedAnswer": "Feature 195 owns the physical durable worker job source of truth; worker_jobs remains canonical.",
     "language": "english",
-    "classes": [
-      "spec_id",
-      "semantic_paraphrase"
-    ],
+    "classes": ["spec_id", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/214-node-type-contract-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1305,9 +1167,7 @@
       "requiredEvidenceIds": [
         "specs/feature/214-node-type-contract-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature214-job-ownership"
-      ],
+      "requiredClaims": ["feature214-job-ownership"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "shouldCite": true,
@@ -1319,10 +1179,7 @@
     "query": "What schemaVersion does the Spec 215 WorkflowDefinition interface declare?",
     "expectedAnswer": "\"2\".",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1357,9 +1214,7 @@
       "requiredEvidenceIds": [
         "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature215-schema-version"
-      ],
+      "requiredClaims": ["feature215-schema-version"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "shouldCite": true,
@@ -1371,11 +1226,7 @@
     "query": "ค่าความลับใน workflow bindings ถูกจัดเก็บเป็น raw value หรือ reference ตาม Spec 215?",
     "expectedAnswer": "จัดเก็บเป็น secretRef เท่านั้น ไม่ persist secret value; runtime binding ที่มีผลต่อ reproducibility ต้องอยู่ใน replay envelope.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "multi_hop",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "multi_hop", "code_identifier"],
     "sourceGroupId": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1410,9 +1261,7 @@
       "requiredEvidenceIds": [
         "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature215-secret-binding"
-      ],
+      "requiredClaims": ["feature215-secret-binding"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "shouldCite": true,
@@ -1424,10 +1273,7 @@
     "query": "Does the Spec 215 execution model require a dedicated flow.parallel node for static fan-out?",
     "expectedAnswer": "No. Static parallel branches are represented by multiple enabled outgoing branches plus optional ConcurrencyScope; no flow.parallel Node Type exists.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "code_identifier"],
     "sourceGroupId": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1462,9 +1308,7 @@
       "requiredEvidenceIds": [
         "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md"
       ],
-      "requiredClaims": [
-        "feature215-no-parallel-node"
-      ],
+      "requiredClaims": ["feature215-no-parallel-node"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "shouldCite": true,
@@ -1476,10 +1320,7 @@
     "query": "What API path does Spec 216 list for running a Mini App?",
     "expectedAnswer": "POST /mini-apps/{miniAppId}:run.",
     "language": "mixed",
-    "classes": [
-      "api_path",
-      "exact_id"
-    ],
+    "classes": ["api_path", "exact_id"],
     "sourceGroupId": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1514,9 +1355,7 @@
       "requiredEvidenceIds": [
         "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
       ],
-      "requiredClaims": [
-        "feature216-run-endpoint"
-      ],
+      "requiredClaims": ["feature216-run-endpoint"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
       "shouldCite": true,
@@ -1528,11 +1367,7 @@
     "query": "Spec 216 ระบุ endpoint naming เป็น path แบบตายตัวหรือให้ทำตาม convention ได้?",
     "expectedAnswer": "เอกสารระบุว่า exact endpoint naming อาจเป็นไปตาม SmartAIHub API conventions แต่ทุก operation ต้อง resolve ไปยัง canonical services และ identities.",
     "language": "thai",
-    "classes": [
-      "ambiguous",
-      "api_path",
-      "semantic_paraphrase"
-    ],
+    "classes": ["ambiguous", "api_path", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1567,9 +1402,7 @@
       "requiredEvidenceIds": [
         "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md"
       ],
-      "requiredClaims": [
-        "feature216-endpoint-naming"
-      ],
+      "requiredClaims": ["feature216-endpoint-naming"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
       "shouldCite": true,
@@ -1581,11 +1414,7 @@
     "query": "What repository option does Spec 218 recommend as the default creator/SME Git path?",
     "expectedAnswer": "SMARTAIHUB_MANAGED_GIT using private repositories in a platform-controlled organization or equivalent service.",
     "language": "english",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/218-ai-product-development-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1620,9 +1449,7 @@
       "requiredEvidenceIds": [
         "specs/feature/218-ai-product-development-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature218-default-git-option"
-      ],
+      "requiredClaims": ["feature218-default-git-option"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
       "shouldCite": true,
@@ -1634,10 +1461,7 @@
     "query": "Coding harnesses สามารถ push เข้า protected main โดยตรงตาม default policy ของ Spec 218 หรือไม่ และต้องตรวจอะไรเมื่อ base เปลี่ยน?",
     "expectedAnswer": "ไม่ได้; ต้องตรวจ stale-base/rebase conflicts ก่อน merge หาก base branch เปลี่ยนระหว่าง job.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "multi_hop"
-    ],
+    "classes": ["semantic_paraphrase", "multi_hop"],
     "sourceGroupId": "specs/feature/218-ai-product-development-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1672,9 +1496,7 @@
       "requiredEvidenceIds": [
         "specs/feature/218-ai-product-development-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature218-protected-branch"
-      ],
+      "requiredClaims": ["feature218-protected-branch"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
       "shouldCite": true,
@@ -1686,11 +1508,7 @@
     "query": "Which target repository path does Spec 218 record for itself?",
     "expectedAnswer": "specs/feature/218-ai-product-development-control-plane/spec.md.",
     "language": "mixed",
-    "classes": [
-      "filename",
-      "path",
-      "spec_id"
-    ],
+    "classes": ["filename", "path", "spec_id"],
     "sourceGroupId": "specs/feature/218-ai-product-development-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1725,9 +1543,7 @@
       "requiredEvidenceIds": [
         "specs/feature/218-ai-product-development-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature218-source-path"
-      ],
+      "requiredClaims": ["feature218-source-path"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
       "shouldCite": true,
@@ -1739,10 +1555,7 @@
     "query": "Which categories does Spec 219 include in runtime health checks?",
     "expectedAnswer": "Deployment state, route reachability, application health endpoint, capability gateway reachability, auth/session checks, error rate, latency, resource saturation, and recent crash/restart indicators.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "coverage"
-    ],
+    "classes": ["semantic_paraphrase", "coverage"],
     "sourceGroupId": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1777,9 +1590,7 @@
       "requiredEvidenceIds": [
         "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
       ],
-      "requiredClaims": [
-        "feature219-health-checks"
-      ],
+      "requiredClaims": ["feature219-health-checks"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
       "shouldCite": true,
@@ -1791,10 +1602,7 @@
     "query": "Spec 220 อนุญาต protocol exposure ภายนอกแบบใด และ internal runtime call ยังต้องผ่าน semantics อะไร?",
     "expectedAnswer": "External exposure อาจใช้ REST/API/MCP; internal RPC/service bindings ก็ต้องผ่าน authorization/policy semantics เดียวกัน.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "multi_hop"
-    ],
+    "classes": ["semantic_paraphrase", "multi_hop"],
     "sourceGroupId": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1829,9 +1637,7 @@
       "requiredEvidenceIds": [
         "specs/feature/220-tenant-data-capability-security-gateway/spec.md"
       ],
-      "requiredClaims": [
-        "feature220-protocol-boundary"
-      ],
+      "requiredClaims": ["feature220-protocol-boundary"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
       "shouldCite": true,
@@ -1843,11 +1649,7 @@
     "query": "Can an API caller establish tenantId or role simply by including those values in its request?",
     "expectedAnswer": "No. The caller must not be trusted to self-declare tenantId or role without cryptographic/platform validation.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "acl_attack",
-      "exact_id"
-    ],
+    "classes": ["semantic_paraphrase", "acl_attack", "exact_id"],
     "sourceGroupId": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1882,9 +1684,7 @@
       "requiredEvidenceIds": [
         "specs/feature/220-tenant-data-capability-security-gateway/spec.md"
       ],
-      "requiredClaims": [
-        "feature220-tenant-identity"
-      ],
+      "requiredClaims": ["feature220-tenant-identity"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
       "shouldCite": true,
@@ -1896,11 +1696,7 @@
     "query": "What restriction does Spec 220 impose on SafeQuery?",
     "expectedAnswer": "It must be schema-aware and must not be raw SQL.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1935,9 +1731,7 @@
       "requiredEvidenceIds": [
         "specs/feature/220-tenant-data-capability-security-gateway/spec.md"
       ],
-      "requiredClaims": [
-        "feature220-safe-query"
-      ],
+      "requiredClaims": ["feature220-safe-query"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
       "shouldCite": true,
@@ -1949,10 +1743,7 @@
     "query": "เงื่อนไขอะไรทำให้ cross-tenant retrieval ยอมรับได้ตาม Spec 220?",
     "expectedAnswer": "ต้องมี explicit shared/public corpus semantics; หากไม่มี semantics ดังกล่าว cross-tenant retrieval ต้องเป็นไปไม่ได้.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "acl_attack"
-    ],
+    "classes": ["semantic_paraphrase", "acl_attack"],
     "sourceGroupId": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -1987,9 +1778,7 @@
       "requiredEvidenceIds": [
         "specs/feature/220-tenant-data-capability-security-gateway/spec.md"
       ],
-      "requiredClaims": [
-        "feature220-cross-tenant"
-      ],
+      "requiredClaims": ["feature220-cross-tenant"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
       "shouldCite": true,
@@ -2001,10 +1790,7 @@
     "query": "What should a quota denial return according to Spec 220?",
     "expectedAnswer": "Stable machine-readable error codes.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "machine_readable_error_policy"
-    ],
+    "classes": ["semantic_paraphrase", "machine_readable_error_policy"],
     "sourceGroupId": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2039,9 +1825,7 @@
       "requiredEvidenceIds": [
         "specs/feature/220-tenant-data-capability-security-gateway/spec.md"
       ],
-      "requiredClaims": [
-        "feature220-quota-denial"
-      ],
+      "requiredClaims": ["feature220-quota-denial"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f",
       "shouldCite": true,
@@ -2053,11 +1837,7 @@
     "query": "Which six evaluation result states must the Spec 221 UI distinguish?",
     "expectedAnswer": "PASS, FAIL, INCONCLUSIVE, ERROR, TIMEOUT, and NOT_RUN; infrastructure failure must not count as model/Skill failure.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2092,9 +1872,7 @@
       "requiredEvidenceIds": [
         "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
       ],
-      "requiredClaims": [
-        "feature221-evaluation-states"
-      ],
+      "requiredClaims": ["feature221-evaluation-states"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
       "shouldCite": true,
@@ -2106,11 +1884,7 @@
     "query": "สถานะ QUARANTINED และ REVOKED ถูกล้างด้วย lifecycle progression ปกติได้หรือไม่?",
     "expectedAnswer": "ไม่ได้; การ restore ต้องมี explicitly authorized remediation/review transition พร้อม fresh evidence.",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "semantic_paraphrase",
-      "freshness"
-    ],
+    "classes": ["exact_id", "semantic_paraphrase", "freshness"],
     "sourceGroupId": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2145,9 +1919,7 @@
       "requiredEvidenceIds": [
         "specs/feature/221-smartaihub-skill-engineering-framework/spec.md"
       ],
-      "requiredClaims": [
-        "feature221-security-state"
-      ],
+      "requiredClaims": ["feature221-security-state"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055",
       "shouldCite": true,
@@ -2159,10 +1931,7 @@
     "query": "Which GET endpoint does Spec 222 provide for retrieving a learning trace by ID?",
     "expectedAnswer": "GET /v1/learning/traces/{id}.",
     "language": "english",
-    "classes": [
-      "api_path",
-      "exact_id"
-    ],
+    "classes": ["api_path", "exact_id"],
     "sourceGroupId": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2197,9 +1966,7 @@
       "requiredEvidenceIds": [
         "specs/feature/222-smartaihub-agentic-development-fabric/spec.md"
       ],
-      "requiredClaims": [
-        "feature222-trace-endpoint"
-      ],
+      "requiredClaims": ["feature222-trace-endpoint"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
       "shouldCite": true,
@@ -2211,10 +1978,7 @@
     "query": "What endpoint pair does Spec 222 list for creating and reading a learning replay?",
     "expectedAnswer": "POST /v1/learning/replays and GET /v1/learning/replays/{id}.",
     "language": "mixed",
-    "classes": [
-      "api_path",
-      "multi_hop"
-    ],
+    "classes": ["api_path", "multi_hop"],
     "sourceGroupId": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2249,9 +2013,7 @@
       "requiredEvidenceIds": [
         "specs/feature/222-smartaihub-agentic-development-fabric/spec.md"
       ],
-      "requiredClaims": [
-        "feature222-replay-endpoints"
-      ],
+      "requiredClaims": ["feature222-replay-endpoints"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
       "shouldCite": true,
@@ -2263,11 +2025,7 @@
     "query": "ZCode adapter ของ Spec 223 ระบุ dependency ทาง retrieval และ context/harness bootstrap ว่าอยู่ใน Spec ใด?",
     "expectedAnswer": "Spec 229 เป็น retrieval authority และ Spec 230 เป็น harness context/bootstrap dependency.",
     "language": "thai",
-    "classes": [
-      "multi_hop",
-      "spec_id",
-      "semantic_paraphrase"
-    ],
+    "classes": ["multi_hop", "spec_id", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/223-zcode-external-harness-adapter/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2302,9 +2060,7 @@
       "requiredEvidenceIds": [
         "specs/feature/223-zcode-external-harness-adapter/spec.md"
       ],
-      "requiredClaims": [
-        "feature223-dependency-owners"
-      ],
+      "requiredClaims": ["feature223-dependency-owners"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
       "shouldCite": true,
@@ -2316,10 +2072,7 @@
     "query": "What must the ZCode adapter discover at runtime instead of hard-coding?",
     "expectedAnswer": "It must discover actual capability at runtime and must not hard-code current internal URLs or private RPC shapes without a versioned compatibility profile.",
     "language": "english",
-    "classes": [
-      "semantic_paraphrase",
-      "api_path"
-    ],
+    "classes": ["semantic_paraphrase", "api_path"],
     "sourceGroupId": "specs/feature/223-zcode-external-harness-adapter/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2354,9 +2107,7 @@
       "requiredEvidenceIds": [
         "specs/feature/223-zcode-external-harness-adapter/spec.md"
       ],
-      "requiredClaims": [
-        "feature223-runtime-discovery"
-      ],
+      "requiredClaims": ["feature223-runtime-discovery"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
       "shouldCite": true,
@@ -2368,10 +2119,7 @@
     "query": "What object should a paid or potentially paid execution begin with under Spec 207?",
     "expectedAnswer": "An EconomicIntent.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/207-agentic-economic-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2406,9 +2154,7 @@
       "requiredEvidenceIds": [
         "specs/feature/207-agentic-economic-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature207-economic-intent"
-      ],
+      "requiredClaims": ["feature207-economic-intent"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
       "shouldCite": true,
@@ -2420,11 +2166,7 @@
     "query": "Product Shell modules ต้อง hard-code หรือ render ตาม definition และ entitlement ตาม Spec 217?",
     "expectedAnswer": "ห้าม hard-code modules; ต้อง render จาก ProductShellDefinition + entitlements.",
     "language": "thai",
-    "classes": [
-      "semantic_paraphrase",
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["semantic_paraphrase", "exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2459,9 +2201,7 @@
       "requiredEvidenceIds": [
         "specs/feature/217-ai-product-white-label-tenant-platform/spec.md"
       ],
-      "requiredClaims": [
-        "feature217-shell-rendering"
-      ],
+      "requiredClaims": ["feature217-shell-rendering"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
       "shouldCite": true,
@@ -2473,10 +2213,7 @@
     "query": "What deployment-level hard limit does Spec 204 require for every runtime type?",
     "expectedAnswer": "A Cloudflare deployment-level max_instances hard limit; application soft limits must not exceed it.",
     "language": "english",
-    "classes": [
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2511,9 +2248,7 @@
       "requiredEvidenceIds": [
         "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature204-instance-limit"
-      ],
+      "requiredClaims": ["feature204-instance-limit"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
       "shouldCite": true,
@@ -2525,10 +2260,7 @@
     "query": "What memory and disk sizes does Spec 204 list for lite and basic container types?",
     "expectedAnswer": "lite: 256 MiB memory and 2 GB disk; basic: 1 GiB memory and 4 GB disk.",
     "language": "mixed",
-    "classes": [
-      "exact_id",
-      "code_identifier"
-    ],
+    "classes": ["exact_id", "code_identifier"],
     "sourceGroupId": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2563,9 +2295,7 @@
       "requiredEvidenceIds": [
         "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       ],
-      "requiredClaims": [
-        "feature204-container-sizing"
-      ],
+      "requiredClaims": ["feature204-container-sizing"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
       "shouldCite": true,
@@ -2577,11 +2307,7 @@
     "query": "watermarkImages หรือ finalRender.watermarkIncluded พิสูจน์ invisible ownership watermark ได้หรือไม่?",
     "expectedAnswer": "ไม่ได้; เป็น visible image overlay เท่านั้น และต้องไม่รายงานว่าเป็น invisible ownership watermark, self-verifiable codeword หรือ completed Spec-201 protection record.",
     "language": "thai",
-    "classes": [
-      "exact_id",
-      "code_identifier",
-      "semantic_paraphrase"
-    ],
+    "classes": ["exact_id", "code_identifier", "semantic_paraphrase"],
     "sourceGroupId": "specs/feature/201-content-provenance-copyright-protection/spec.md",
     "split": "development",
     "useApproval": "development_only",
@@ -2616,9 +2342,7 @@
       "requiredEvidenceIds": [
         "specs/feature/201-content-provenance-copyright-protection/spec.md"
       ],
-      "requiredClaims": [
-        "feature201-watermark-limitation"
-      ],
+      "requiredClaims": ["feature201-watermark-limitation"],
       "minimumAuthorityRank": 1,
       "expectedRevision": "sha256:e1655cbf0acfd476dfe1f9026ffbc30f0cc3002129ca7a3de8d361e098f93a2a",
       "shouldCite": true,

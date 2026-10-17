@@ -55,9 +55,8 @@ describe("SPEC-229 gold dataset pipeline", () => {
       developmentOnly: 10,
     });
     expect(
-      countGoldDataset([
-        { ...P2298_CANDIDATE_SEEDS[0], reviews: [] },
-      ]).unreviewed
+      countGoldDataset([{ ...P2298_CANDIDATE_SEEDS[0], reviews: [] }])
+        .unreviewed
     ).toBe(1);
   });
 
