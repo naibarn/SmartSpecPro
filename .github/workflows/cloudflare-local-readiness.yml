@@ -51,11 +51,18 @@ jobs:
       - name: Enforce Hono-first Express route policy
         env:
           GUARD_BASE: ${{ github.event.pull_request.base.ref && format('origin/{0}', github.event.pull_request.base.ref) || github.event.before }}
-        run: node scripts/guards/express-route-architecture.mjs --base="$GUARD_BASE"
+        run: |
+          guard_base="$GUARD_BASE"
+          if ! git cat-file -e "${guard_base}^{commit}" 2>/dev/null; then
+            guard_base=origin/main
+          fi
+          node scripts/guards/express-route-architecture.mjs --base="$guard_base"
       - name: Compile Cloudflare runtime package
         run: npm --workspace @smartspec/cloudflare-runtime run check
       - name: Bundle Cloudflare Worker with Wrangler
         run: pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-worker-build
+      - name: Build shared Remotion schema package
+        run: pnpm --filter @smartspec/remotion-render run build
       - name: Build Vite SPA for staging assets
         run: pnpm --filter @smartspec/web exec vite build --configLoader runner
         env:
