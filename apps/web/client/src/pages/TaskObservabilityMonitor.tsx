@@ -9,6 +9,8 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { trpc } from "@/lib/trpc";
+import { TaskAcceptanceEvidence } from "@/components/task-control/TaskAcceptanceEvidence";
+import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
 
 const metricLabel = (value: number | null): string => value === null ? "Unknown" : `${value.toFixed(1)}%`;
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
@@ -172,7 +174,7 @@ export default function TaskObservabilityMonitor() {
               <Heading level={3}>Goal progress</Heading>
               {detail.goal.status !== "PROJECTED" ? <Text>Unknown · {detail.goal.reason ?? "goal baseline or evidence is unavailable"}.</Text> : (
                 <VStack gap={2}>
-                  <ProgressBar label="Verified goal completion" value={detail.goal.verifiedGoalCompletion.percent ?? 0} hasValueLabel formatValueLabel={() => metricLabel(detail.goal.verifiedGoalCompletion.percent)} variant={detail.goal.verifiedGoalCompletion.percent === 100 ? "success" : "accent"} />
+                  <ProgressBar label="Verified goal completion" value={detail.goal.verifiedGoalCompletion.percent ?? 0} hasValueLabel formatValueLabel={() => formatVerifiedPercentLabel(detail.goal)} variant={detail.goal.verifiedGoalCompletion.percent === 100 ? "success" : "accent"} />
                   <HStack gap={3} wrap="wrap">
                     <Text>Execution {metricLabel(detail.goal.executionProgress.percent)}</Text>
                     <Text>Implementation {metricLabel(detail.goal.implementationCompletion.percent)}</Text>
@@ -185,6 +187,8 @@ export default function TaskObservabilityMonitor() {
               )}
             </VStack>
           </Section>
+
+          {detail.acceptance ? <TaskAcceptanceEvidence key={detail.id} projection={detail.acceptance} /> : null}
 
           <Section>
             <VStack gap={3}>

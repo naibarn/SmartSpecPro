@@ -1,0 +1,103 @@
+{
+  "workunit_id": "TASK_CONTROL_COMPLETED_PILOT_SHARED_PROJECTION",
+  "spec_ids": [
+    "277",
+    "294",
+    "088"
+  ],
+  "requirement_ids": [
+    "REQ-277-OBS-01",
+    "REQ-277-OBS-03",
+    "REQ-277-OBS-04",
+    "REQ-277-OBS-05",
+    "REQ-277-OBS-07",
+    "REQ-277-OBS-09",
+    "REQ-294-OBS-02",
+    "REQ-294-OBS-05",
+    "REQ-088-OBS-01"
+  ],
+  "owner": "/root",
+  "workspace_id": "workspace:a7049b12-41ae-4142-b300-6c199de9720d",
+  "registered_workspace_task": "spec161-native-episode-acceptance-20261016",
+  "job_id": null,
+  "run_id": null,
+  "runtime": "authorized nonproduction direct scoped implementation; Luna helpers; no SDK dispatch or immutable job authority changed",
+  "original_source_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4",
+  "status": "FAST_GATE_PASSED_READY_FOR_PROTECTED_INTEGRATION",
+  "acceptance": [
+    "Seven requested distinctions",
+    "Actual retained pilot fixture with six coding WorkUnits plus validation-only evidence",
+    "Graph drilldown preserving missing run/attempt bindings",
+    "Replay/missing/stale accounting and comparability regressions",
+    "Existing protected task detail adapter + read-only Monitor component"
+  ],
+  "test_commands": [
+    "pnpm exec vitest run <owned shared/API/UI test files> --maxWorkers=1 (apps/web)",
+    "isolated Chromium actual component at 1440/768/390px; simulated auth"
+  ],
+  "dependency_evidence": [
+    "PR1001 owner merged shared baseline; extension runs after original job tenant/owner scope check",
+    "No canonical trusted Goal baseline producer linked: runtime Goal remains Unknown, fixture is TEST_ONLY",
+    "Original SPEC161/268/302/304 remain open; no migration/production work performed"
+  ],
+  "pending": [
+    "Protected integration",
+    "Exact merged-source verification",
+    "Canonical SPEC277/294/088 ledger evidence append"
+  ],
+  "model_usage": {
+    "historical_sdk_calls": 74,
+    "historical_sdk_total_tokens": 5771368,
+    "new_sdk_calls": 0,
+    "assistant_usage": "UNKNOWN",
+    "goal_counter_snapshot": "STALE; not SDK evidence",
+    "billing_settlement": "UNKNOWN",
+    "current_goal_tool_observation": {
+      "status": "usageLimited",
+      "tokensUsed": 187249,
+      "timeUsedSeconds": 848,
+      "classification": "frozen Goal counter; not current assistant usage or SDK billing evidence"
+    }
+  },
+  "writable_paths": [
+    "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx",
+    "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx",
+    "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+    "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts",
+    "apps/web/server/services/__tests__/completedPilotAcceptance.test.ts",
+    "apps/web/server/services/__tests__/fixtures/completedAutonomousPilot.ts",
+    "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts",
+    "apps/web/server/services/__tests__/taskObservabilityAcceptance.test.ts",
+    "apps/web/server/services/__tests__/taskObservabilityReadModel.test.ts",
+    "apps/web/server/services/taskObservabilityAcceptance.ts",
+    "apps/web/server/services/taskObservabilityReadModel.ts",
+    "apps/web/shared/taskAcceptanceProjection.test.ts",
+    "apps/web/shared/taskAcceptanceProjection.ts",
+    "orchestra/tasks/task-control-completed-pilot-20261017",
+    "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json"
+  ],
+  "source_file_sha256": {
+    "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "99ee2b8d6a24940a4af5ecb4f63fa10b57ff86374f24fda611f982ade7db4381",
+    "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx": "31aef282825abe665d4924d64d289bb671d887b60d8223ce4938281bfcefd3cd",
+    "apps/web/client/src/pages/TaskObservabilityMonitor.tsx": "b75644089157c8cee4aab99676f12e889d3ddc8d0259864405a4152060960d03",
+    "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts": "938f550c1cb2fc32e81f9ad45e76dcecd786139bb675d1468575384119314402",
+    "apps/web/server/services/__tests__/completedPilotAcceptance.test.ts": "225208ee57077c3bf3a03f51dfadc6fc5ad977fd2df024e45aa7a39615178337",
+    "apps/web/server/services/__tests__/fixtures/completedAutonomousPilot.ts": "a5885427973f557bbb0ceb26613d0770a2ca34dd5b2fa2023dc09e9174d88aeb",
+    "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts": "2c57a8a0df2a15922a411e19d85e3ec7a3097d7975e4af548100dbd80b75e16f",
+    "apps/web/server/services/__tests__/taskObservabilityAcceptance.test.ts": "582f9302cd5eae9890f3100742381acb9929a7f65c987a48b8a1b9638cb25885",
+    "apps/web/server/services/__tests__/taskObservabilityReadModel.test.ts": "df706d277a411f42424edc4543b44ee3f15bc0261d2c376674567baed1589ddb",
+    "apps/web/server/services/taskObservabilityAcceptance.ts": "d3c585a46fcc04d0382b962336c1e937c84307f6bfa7be1b64092e5ce37a2266",
+    "apps/web/server/services/taskObservabilityReadModel.ts": "77f03b36ae242882239b8262e364f80d88da7d7d4711c942ed7d7c6038d7a40e",
+    "apps/web/shared/taskAcceptanceProjection.test.ts": "e64e49fff7fd1ff9040354083f0e0683dc9bbb039b5319bb656e01248b183ceb",
+    "apps/web/shared/taskAcceptanceProjection.ts": "eb54600bdc6d1053f17cef7d227d24a964f1ef79e82778a42b4677f9db7f12ac"
+  },
+  "test_results": {
+    "focused": "76/76 PASS in 11 files",
+    "browser": "3/3 viewports PASS: 1440/768/390, actual component fixture drilldown, zero page errors/overflow",
+    "scoped_strict_compile": "PASS shared projection + authorized adapter only",
+    "syntax": "13 owned TS/TSX files PASS esbuild transforms",
+    "independent_review": "credential source-reference redaction repaired + regression; malformed comparator evidence repaired + regression"
+  },
+  "candidate_base_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+  "branch": "codex/task-control-completed-pilot-fixture-20261017"
+}
