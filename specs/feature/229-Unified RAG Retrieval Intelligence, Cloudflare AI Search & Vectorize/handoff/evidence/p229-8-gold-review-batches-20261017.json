@@ -1,0 +1,292 @@
+{
+  "evidence_id": "SPEC229-P2298-GOLD-CANDIDATE-EXPANSION-20261017",
+  "workunit": "P229.8 Gold Dataset Candidate Pipeline Expansion — batches09-11",
+  "workunit_status": "PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "base_canonical_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+  "source_code_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+  "dataset_path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+  "dataset_file_sha256": "f1f1b98b05903ac3fb2210c41550a9a71209e4fccae79ff0faf69c5afc19cd47",
+  "dataset_digest_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+  "counts": {
+    "candidateQueries": 560,
+    "unreviewed": 0,
+    "independentlyReviewed": 560,
+    "machineReviewed": 560,
+    "humanReviewed": 0,
+    "humanAccepted": 0,
+    "reviewAccepted": 560,
+    "reviewDisagreements": 0,
+    "adjudicated": 0,
+    "acceptedForGold": 0,
+    "pendingAdjudication": 0,
+    "releaseApproved": 0,
+    "heldOutReleaseApproved": 0,
+    "developmentOnly": 560
+  },
+  "language_counts": {
+    "thai": 114,
+    "english": 355,
+    "mixed": 91
+  },
+  "class_counts": {
+    "quality_coverage": 1,
+    "spec_factual": 9,
+    "citation": 1,
+    "provenance": 1,
+    "negative_policy_answer": 4,
+    "quality_gate": 1,
+    "gold_dataset": 1,
+    "taxonomy": 1,
+    "release_threshold": 4,
+    "language": 2,
+    "latency": 2,
+    "handoff_fact": 1,
+    "exact_id": 142,
+    "spec_id": 78,
+    "document_title": 50,
+    "code_identifier": 55,
+    "semantic_paraphrase": 355,
+    "retrieval": 1,
+    "multi_hop": 13,
+    "follow_up": 4,
+    "filename": 15,
+    "path": 3,
+    "error_code": 11,
+    "api_path": 15,
+    "ambiguous": 4,
+    "coverage": 1,
+    "acl_attack": 27,
+    "machine_readable_error_policy": 1,
+    "freshness": 1,
+    "no_answer": 6,
+    "stale_conflict": 8,
+    "deleted_revoked": 5,
+    "code_config_log": 68,
+    "long_document": 2,
+    "typo": 5,
+    "ocr": 16,
+    "uuid": 5
+  },
+  "source_group_count": 276,
+  "candidate_required_classes_missing": [],
+  "batch_provenance": [
+    {
+      "batch": "09",
+      "path": "apps/web/server/services/libraryRetrievalGoldCandidateCorpusSeeds.batch09.json",
+      "sha256": "7fb14a41e7fc2932c90cab3273f1129dd748a2b051be76698113694b3653272d",
+      "candidates": 50,
+      "agent_review_accepted": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-machine-review-2026-10-17-batch09-final"
+    },
+    {
+      "batch": "10",
+      "path": "apps/web/server/services/libraryRetrievalGoldCandidateCorpusSeeds.batch10.json",
+      "sha256": "7c97b09acf83f82bcd03f45c0bc1221ca3d200cfa64c3b091c51638827376356",
+      "candidates": 50,
+      "agent_review_accepted": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-machine-review-2026-10-17-batch10-final",
+      "reviewed_sha_before_label_repairs": "34dda8adad8c91a32adaa2c183764d1e169f2c8f8116a7420d2b16ae8db1ed12"
+    },
+    {
+      "batch": "11",
+      "path": "apps/web/server/services/libraryRetrievalGoldCandidateCorpusSeeds.batch11.json",
+      "sha256": "836d250d0322eab9bfa57ec1bfc600c19fd2c2ac28205bb73522a84236bc60e6",
+      "candidates": 50,
+      "agent_review_accepted": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-machine-review-2026-10-17-batch11-final",
+      "reviewed_sha_before_repairs": "087488ddfc7fe5f8f8043e6990d8d5c6a4585a2b65ed8b70068f573d46d14817",
+      "reviewed_corrected_sha": "836d250d0322eab9bfa57ec1bfc600c19fd2c2ac28205bb73522a84236bc60e6",
+      "review_findings": "37 accepted initially; 13 label/answer revisions applied and independently re-reviewed; all 50 accepted."
+    }
+  ],
+  "review_summary": {
+    "independently_reviewed": 560,
+    "agent_reviewed": 560,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "review_accepted": 560,
+    "pending_adjudication": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "development_only": 560,
+    "review_type": "independent machine review; not human gold acceptance"
+  },
+  "dataset_integrity": {
+    "all_rows_split": "development",
+    "all_rows_use_approval": "development_only",
+    "cross_split_source_group_leakage": false,
+    "source_path_digest_and_inclusive_quote_span_validated": true,
+    "duplicate_case_ids_or_normalized_queries": false,
+    "required_class_gaps": [],
+    "production_tenant_data_used": false
+  },
+  "benchmark_harness_run": {
+    "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json --system-sha f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+    "system_sha": "f9aec77641da3f8f0b7102ef2ea1fafb6b27be22",
+    "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
+    "metrics": null,
+    "release_criteria": [
+      {
+        "id": "crossTenantLeakage",
+        "threshold": "= 0",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "unauthorizedEvidenceLeakage",
+        "threshold": "= 0",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "exactIdentifierHitAt5",
+        "threshold": ">= 0.99",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "overallRecallAt20",
+        "threshold": ">= 0.95",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "thaiRecallAt20",
+        "threshold": ">= 0.92",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "englishRecallAt20",
+        "threshold": ">= 0.95",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "nDCGAt10",
+        "threshold": ">= 0.85",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "mrrAt10",
+        "threshold": ">= 0.85",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "citationPrecision",
+        "threshold": ">= 0.95",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "freshnessCorrectness",
+        "threshold": ">= 0.98",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "noAnswerPrecision",
+        "threshold": ">= 0.9",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "noAnswerRecall",
+        "threshold": ">= 0.9",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "simpleExactKeywordP95Ms",
+        "threshold": "<= 800ms",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "hybridRerankP95Ms",
+        "threshold": "<= 1500ms",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      },
+      {
+        "id": "rewriteHybridRerankP95Ms",
+        "threshold": "<= 2500ms",
+        "value": null,
+        "status": "NOT_EVALUABLE"
+      }
+    ],
+    "confidence_intervals": null,
+    "baseline_comparison": null,
+    "note": "No retrieval observations were supplied; metrics and all release criteria remain NOT_EVALUABLE."
+  },
+  "synthetic_fixture_negative_control": {
+    "status": "DEVELOPMENT_FIXTURES_NOT_CERTIFIED",
+    "source": "synthetic-fixtures",
+    "reviewedGoldQueries": false,
+    "fixtureCount": 9,
+    "metrics": {
+      "evidenceRecall": 1,
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "recallAt20": 1,
+      "recallAt50": 1,
+      "hitAt5": 1,
+      "hitAt10": 1,
+      "hitAt20": 1,
+      "hitAt50": 1,
+      "mrrAt10": 1,
+      "nDCGAt10": 1,
+      "exactIdentifierHitAt5": 1,
+      "thaiRecallAt20": 1,
+      "englishRecallAt20": 1,
+      "mixedRecallAt20": 1,
+      "evidenceCoverage": 0.8,
+      "citationPrecision": 0.5,
+      "citationAvailability": 0.25,
+      "freshnessCorrectness": 0.571429,
+      "authorityCorrectness": 0.857143,
+      "aclLeakage": 2,
+      "crossTenantLeakage": 1,
+      "unauthorizedEvidenceLeakage": 1,
+      "unsafePartialOrOutageAnswers": 1,
+      "staleOrRevokedEvidenceAccepted": 3,
+      "noAnswerPrecision": 1,
+      "noAnswerRecall": 1,
+      "partialOrOutageResults": 2,
+      "p50LatencyMs": null,
+      "p95LatencyMs": null,
+      "p99LatencyMs": null,
+      "meanCostMicros": null
+    },
+    "interpretation": "Synthetic negative-control fixture regression only; not retrieved by a production provider, not a benchmark baseline, and not release calibration."
+  },
+  "focused_tests": {
+    "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
+    "result": "PASS: 2 files, 16 tests"
+  },
+  "acceptance": {
+    "candidate_pipeline_workunit": "PASS",
+    "p2298_gold_dataset_calibration": "NOT_EVALUABLE",
+    "global_spec229": "INCOMPLETE"
+  },
+  "blockers": [
+    "No human source/use approval for release cohort; human-reviewed and human-accepted counts remain zero.",
+    "No retrieval-provider observations for comparison profiles, so quality metrics, confidence intervals, latency and cost cannot be evaluated.",
+    "All rows are development-only; there is no held-out release cohort."
+  ],
+  "next_action": "Obtain human source/use approval for a held-out cohort, then collect authorized retrieval observations by §27 profile and run the existing harness. Do not promote weak evidence or migrate consequential consumers before the calibrated quality gate passes.",
+  "prohibited_claims": [
+    "Do not describe these 560 machine-reviewed development candidates as human-reviewed gold queries.",
+    "Do not describe synthetic fixture metrics as release baseline or calibration.",
+    "Do not claim P229.8 or SPEC-229 acceptance."
+  ]
+}
