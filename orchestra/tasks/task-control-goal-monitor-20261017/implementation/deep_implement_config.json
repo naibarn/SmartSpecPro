@@ -43,9 +43,9 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Chat summary and Task Monitor UI are integrated; live authenticated API-to-Web parity and accessibility acceptance remain open.",
+      "next_action": "Chat summary and Task Monitor UI are integrated. Live authenticated API-to-Web parity and live accessibility acceptance remain open.",
       "checkpoint_sha": "1ddf3d5a9",
-      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
+      "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
     },
     "section-05-agent-monitor-ui": {
       "status": "checkpointed",
@@ -59,9 +59,9 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL.",
-      "checkpoint_sha": "1ddf3d5a9",
-      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
+      "next_action": "PR #1005 merged at 5322dfc; PR #1030 merged at d25a09c; handoff matrix PR #1031 merged at fe26fa68. Mission remains PARTIAL pending authoritative Goal/quota/helper sources and live authenticated DB/UAT/Runner acceptance.",
+      "checkpoint_sha": "51f6625527d4fe1495e83e4851867cb867999325",
+      "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
     }
   },
   "pre_commit": {
@@ -73,11 +73,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 65,
-  "updated_at": "2026-10-17T04:30:59.363062+00:00",
+  "generation": 67,
+  "updated_at": "2026-10-17T04:33:26.548331+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL.",
+    "next_action": "PR #1005 merged at 5322dfc; PR #1030 merged at d25a09c; handoff matrix PR #1031 merged at fe26fa68. Mission remains PARTIAL pending authoritative Goal/quota/helper sources and live authenticated DB/UAT/Runner acceptance.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -90,6 +90,6 @@
       "Authoritative Goal baseline and provider quota observation sources are not linked to this projection.",
       "Goal acceptance now rejects baseline scope/version/digest mismatch, but no authoritative baseline source is connected to worker-job projections."
     ],
-    "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
+    "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
   }
 }
