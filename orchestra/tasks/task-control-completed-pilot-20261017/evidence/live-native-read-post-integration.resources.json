@@ -1,0 +1,18 @@
+{
+  "profile": "integration",
+  "base_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+  "owned_file_sha256": {
+    "apps/web/server/services/taskObservabilityReadModel.ts": "b54557bc57ec8b425d4c50303adcbbc596a03356e7633d88ce53c25f43268ccc",
+    "apps/web/server/services/__tests__/taskObservabilityPostgres.integration.test.ts": "576e7496da97a2de9f6ddfcf9d9aec93381f31da958f9ed8eb9ee47ceed9df73",
+    "apps/web/server/services/__tests__/support/spec277AutoTeamRuntimeSchema.ts": "27b96f51effe98ed3689c3c9300f152fd2de1b6d0efd70b9e5396c03a4e16af3"
+  },
+  "command": "pnpm exec vitest run server/services/__tests__/taskObservabilityPostgres.integration.test.ts server/services/__tests__/taskObservabilityReadModel.test.ts server/routers/__tests__/workerJobs.test.ts server/services/__tests__/spec224CodexBudgetAdmission.integration.test.ts --maxWorkers=1",
+  "resource_before": "MemAvailable:   25893400 kB",
+  "started_at": 1792220697.1871707,
+  "finished_at": 1792220707.4220304,
+  "exit": 0,
+  "signal": null,
+  "max_rss_kib": 337780,
+  "outcome": "PASS",
+  "environment": "owned native PostgreSQL; TEST_ONLY caller scopes/model receipts; no live auth/Runner acceptance or provider dispatch"
+}

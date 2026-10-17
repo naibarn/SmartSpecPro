@@ -102,6 +102,12 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;
+  /** Pinned private origin for the existing Linux API/auth authority. */
+  AUTH_ORIGIN?: string;
+  /** Exact private hostname paired with AUTH_ORIGIN to prevent host injection. */
+  AUTH_ORIGIN_PRIVATE_HOST?: string;
+  /** Shared Worker-to-origin attestation secret; never exposed to clients. */
+  AUTH_ORIGIN_TOKEN?: string;
   /** Private, non-recursive platform origin that owns canonical authz and emergency transactions. */
   PLATFORM_EDGE_ORIGIN?: string;
   /** Exact hostname vetted by the deployment pipeline as the private platform origin. */

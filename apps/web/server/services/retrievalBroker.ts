@@ -248,8 +248,10 @@ function normalizeEvidence(
   content: string,
   sourceRevision: string,
   sourceDigest: string,
+  canonicalSourceUri?: string | null,
 ): RetrievalEvidenceV2 {
   const id = String(result.item_id);
+  const sourceUri = normalizeCitationSourceUri(canonicalSourceUri);
   return {
     evidenceId: `library:${tenantId}:${id}:${sourceRevision}:${sourceDigest.slice(0, 12)}`,
     sourceType: "library_item",
@@ -265,6 +267,7 @@ function normalizeEvidence(
     },
     title: result.title,
     text: content,
+    ...(sourceUri ? { sourceUri } : {}),
     retrievalProvider: "cloudflare_vectorize",
     providerProfileId: profileId ?? resolveLibraryVectorIndexName(),
     retrievalMode: "hybrid",
@@ -283,6 +286,28 @@ function normalizeEvidence(
     tombstoned: false,
     domainEligibility: "unknown",
   };
+}
+
+/** Only expose stable HTTP(S) source URLs as citation targets. */
+function normalizeCitationSourceUri(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const uri = new URL(value);
+    if (
+      (uri.protocol !== "https:" && uri.protocol !== "http:")
+      || uri.username
+      || uri.password
+      // Query strings often contain signed credentials or transient state and
+      // cannot be safely treated as stable citation identity.
+      || uri.search
+    ) {
+      return undefined;
+    }
+    uri.hash = "";
+    return uri.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 function truncateTextToTokenBudget(text: string, budget: number): string {
@@ -328,7 +353,15 @@ async function hydrateLibraryEvidence(params: {
       degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
       break;
     }
-    const content = await getLibraryMarkdownContent(result.item_id, params.actor);
+    let content: Awaited<ReturnType<typeof getLibraryMarkdownContent>>;
+    try {
+      content = await getLibraryMarkdownContent(result.item_id, params.actor);
+    } catch {
+      // Canonical ACL/source revalidation must fail closed. Keep other evidence
+      // only when its own canonical read was independently verified.
+      degradationReasons.add("CANONICAL_SOURCE_REVALIDATION_FAILED");
+      continue;
+    }
     if (!content) {
       degradationReasons.add("ACL_OR_SOURCE_REVOKED_AFTER_SEARCH");
       continue;
@@ -364,6 +397,7 @@ async function hydrateLibraryEvidence(params: {
       text,
       content.updated_at,
       sourceDigest,
+      content.canonicalSourceUri,
     );
     evidence.push(itemEvidence);
     remainingTokens = Math.max(0, remainingTokens - estimateTokens(text));
@@ -425,8 +459,29 @@ export async function retrieveLibraryEvidenceV2(
     };
   }
   const queryClass = request.queryClass;
-  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
-  const provider = resolveVectorProvider("search", providerConfig).provider;
+  let providerConfig: Awaited<ReturnType<typeof getEffectiveVectorProviderConfig>>;
+  let provider: string;
+  try {
+    providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
+    provider = resolveVectorProvider("search", providerConfig).provider;
+  } catch {
+    return {
+      retrievalTraceId,
+      plan: {
+        requestId: request.requestId,
+        purpose: request.purpose,
+        queryClass,
+        sourceClasses: request.sourceClasses,
+        evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
+      },
+      providerProfile: { provider: "unknown", profileId: "unavailable" },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["PROVIDER_CONFIGURATION_UNAVAILABLE"],
+    };
+  }
   const profileId = providerConfig.vectorizeKnowledgeIndexName?.trim()
     || providerConfig.vectorizeIndexName?.trim()
     || resolveLibraryVectorIndexName();
@@ -452,21 +507,35 @@ export async function retrieveLibraryEvidenceV2(
     };
   }
 
-  const results = await searchLibraryItems(
-    {
-      query,
-      limit: maxCandidates,
-      offset: 0,
-      filters: {
-        ...input.filters,
-        ...(request.projectId !== undefined ? { projectId: request.projectId } : {}),
-        ...(request.status?.length ? { status: request.status } : {}),
+  let results: Awaited<ReturnType<typeof searchLibraryItems>>;
+  try {
+    results = await searchLibraryItems(
+      {
+        query,
+        limit: maxCandidates,
+        offset: 0,
+        filters: {
+          ...input.filters,
+          ...(request.projectId !== undefined ? { projectId: request.projectId } : {}),
+          ...(request.status?.length ? { status: request.status } : {}),
+        },
+        scope: "all",
+        includeRetrievalDiagnostics: true,
       },
-      scope: "all",
-      includeRetrievalDiagnostics: true,
-    },
-    actor,
-  );
+      actor,
+    );
+  } catch {
+    return {
+      retrievalTraceId,
+      plan,
+      providerProfile: { provider, profileId },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["RETRIEVAL_PROVIDER_UNAVAILABLE"],
+    };
+  }
   const diagnostics = results.retrievalDiagnostics;
   if (!diagnostics || diagnostics.provider !== "cloudflare_vectorize") {
     return {

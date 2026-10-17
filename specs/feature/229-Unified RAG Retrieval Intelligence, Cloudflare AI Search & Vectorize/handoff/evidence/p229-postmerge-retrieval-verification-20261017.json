@@ -1,0 +1,24 @@
+{
+  "workunit": "SPEC229_P229_POSTMERGE_RETRIEVAL_VERIFICATION",
+  "source_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
+  "verification": {
+    "profile": "quick",
+    "commands": [
+      "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/libraryContextPackService.test.ts server/services/__tests__/contextPackBuilder.test.ts server/services/libraryKnowledgeReadService.test.ts server/services/__tests__/financeRetrievalService.test.ts"
+    ],
+    "results": [
+      "PASS: 3 test files, 50 passed, 28 existing todo",
+      "PASS: 4 test files, 38 passed"
+    ],
+    "execution": "Canonical source lease, isolated exact-SHA worktree, test-only; dependencies linked transiently from the existing checkout and links removed on exit."
+  },
+  "scope": [
+    "P229.1 Broker/library ACL, stale evidence, provenance, budget and degraded behavior regression",
+    "P229.8 canonical citation URI behavior and adjacent Library Markdown consumers"
+  ],
+  "limitations": [
+    "No production provider/index or runtime verification is claimed.",
+    "Evidence quality remains weak; source-location anchors and a calibrated sufficient-evidence gate remain incomplete."
+  ]
+}

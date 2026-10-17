@@ -6,7 +6,7 @@
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
-    "test": "node ../../node_modules/vitest/vitest.mjs run src"
+    "test": "vitest run src"
   },
   "dependencies": {
     "@smartspec/shared": "file:../../packages/shared"

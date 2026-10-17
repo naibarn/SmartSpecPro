@@ -65,6 +65,7 @@ beforeEach(() => {
     item_id: 12,
     content: "# Build guide\nCurrent canonical text.",
     updated_at: row.updated_at,
+    canonicalSourceUri: "https://canonical.example.test/build-guide",
   });
   mockGetProviderConfig.mockResolvedValue({
     provider: "cloudflare_vectorize",
@@ -88,6 +89,39 @@ beforeEach(() => {
 });
 
 describe("retrieveLibraryEvidenceV2", () => {
+  it("builds citations from the ACL-checked canonical source rather than provider metadata", async () => {
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence[0]).toMatchObject({
+      sourceUri: "https://canonical.example.test/build-guide",
+      canonicalRef: { kind: "library_item", id: "12" },
+    });
+    expect(result.evidenceQuality).toBe("weak");
+    expect(result.degradationReasons).toContain("QUALITY_GATE_NOT_CERTIFIED");
+  });
+
+  it.each([
+    "javascript:alert(1)",
+    "https://user:password@example.test/doc",
+    "https://example.test/doc?token=secret",
+    "not a url",
+  ])("omits unsafe or unstable canonical citation URI: %s", async (canonicalSourceUri) => {
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12,
+      content: "# Build guide\nCurrent canonical text.",
+      updated_at: row.updated_at,
+      canonicalSourceUri,
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence[0]).not.toHaveProperty("sourceUri");
+    expect(result.evidence[0]).toMatchObject({
+      canonicalRef: { kind: "library_item", id: "12" },
+      provenanceVerified: true,
+    });
+  });
+
   it("rejects missing authenticated identity before provider access", async () => {
     await expect(
       retrieveLibraryEvidenceV2({ query: "guide" }, { userId: 0, tenantId: "" }),
@@ -162,6 +196,36 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(mockSearchLibraryItems).not.toHaveBeenCalled();
   });
 
+  it("returns explicit degraded evidence when provider configuration is unavailable", async () => {
+    mockGetProviderConfig.mockRejectedValue(new Error("secret connection details"));
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result).toMatchObject({
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["PROVIDER_CONFIGURATION_UNAVAILABLE"],
+    });
+    expect(JSON.stringify(result)).not.toContain("secret connection details");
+  });
+
+  it("returns explicit degraded evidence when provider search is unavailable", async () => {
+    mockSearchLibraryItems.mockRejectedValue(new Error("secret provider response"));
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result).toMatchObject({
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["RETRIEVAL_PROVIDER_UNAVAILABLE"],
+    });
+    expect(JSON.stringify(result)).not.toContain("secret provider response");
+  });
+
   it("fails closed when the provider search silently falls back to keyword matching", async () => {
     mockSearchLibraryItems.mockResolvedValue({
       version: "library_search_v1", query: "guide", total: 1, limit: 20, offset: 0,
@@ -200,6 +264,19 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(result.evidence).toEqual([]);
     expect(result.degradationReasons).toContain("ACL_OR_SOURCE_REVOKED_AFTER_SEARCH");
     expect(result.partial).toBe(true);
+  });
+
+  it("fails closed when canonical ACL/source revalidation throws", async () => {
+    mockGetMarkdownContent.mockRejectedValue(new Error("private document details"));
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence).toEqual([]);
+    expect(result.evidenceQuality).toBe("no_evidence");
+    expect(result.degraded).toBe(true);
+    expect(result.partial).toBe(true);
+    expect(result.degradationReasons).toContain("CANONICAL_SOURCE_REVALIDATION_FAILED");
+    expect(JSON.stringify(result)).not.toContain("private document details");
   });
 
   it("bounds evidence and derives tenant scope from the authenticated actor", async () => {

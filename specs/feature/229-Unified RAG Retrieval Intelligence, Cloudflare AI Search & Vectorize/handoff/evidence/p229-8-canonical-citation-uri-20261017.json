@@ -1,0 +1,33 @@
+{
+  "workunit": "SPEC229_P229_8_CANONICAL_CITATION_URI",
+  "source_sha": "5c93ee55389153f076e199d039bdcf05fa9ab919",
+  "scope": [
+    "apps/web/server/services/libraryService.ts",
+    "apps/web/server/services/retrievalBroker.ts",
+    "apps/web/server/services/retrievalBroker.test.ts"
+  ],
+  "behavior": [
+    "Retrieval evidence obtains its citation source URI from the canonical Library row returned only after Library tenant and read-ACL checks.",
+    "Only stable HTTP(S) URLs without userinfo or query parameters are exposed as sourceUri; malformed, credential-bearing, query-bearing, or non-HTTP(S) values are omitted.",
+    "Canonical item identity and SHA-256 provenance remain present when sourceUri is omitted.",
+    "Evidence quality remains weak and degraded until the P229.8 quality gate is certified; this WorkUnit does not promote evidence to sufficient."
+  ],
+  "verification": {
+    "profile": "quick",
+    "commands": [
+      "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/libraryContextPackService.test.ts server/services/__tests__/contextPackBuilder.test.ts server/services/libraryKnowledgeReadService.test.ts server/services/__tests__/financeRetrievalService.test.ts"
+    ],
+    "results": [
+      "PASS: 3 test files, 50 passed, 28 existing todo",
+      "PASS: 4 test files, 38 passed"
+    ],
+    "diff_check": "PASS"
+  },
+  "security_boundary": "Uses canonical Library item sourceUrl only after the existing tenant/ACL-protected hydration. No provider-returned source URL, new database, provider, index, schema, dependency, or infrastructure is introduced.",
+  "limitations": [
+    "No page/line/time citation anchors are available for this Library Markdown profile.",
+    "The Evidence Quality Gate remains uncertified; evidenceQuality remains weak and must not be treated as sufficient grounded evidence.",
+    "Focused tests do not establish production verification or retrieval quality benchmarks."
+  ]
+}

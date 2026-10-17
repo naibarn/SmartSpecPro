@@ -73,6 +73,39 @@ values out of source control. The Worker forwards requests to the canonical
 app auth/service boundary and does not validate session tokens itself. Missing
 origin/token produces a closed 503.
 
+## Web/API origin routing
+
+`src/apiRouteManifest.ts` is the explicit HTTP routing inventory. Only
+`GET|HEAD /healthz` and `/readyz` are currently Worker-native. `/readyz` reports
+Worker bindings/job wiring only, not Linux app or PostgreSQL readiness.
+Auth/OAuth, tRPC, public APIs, and uploads are sent to the existing Linux
+Express authority. Metrics and ordinary HTTP streams also remain on that
+origin. Unknown paths and WebSocket upgrade endpoints fail closed when they reach this Worker; keep
+`/ws` and `/socket.io` on the Linux ingress until a separately tested WebSocket
+bridge exists. The Worker does not import the Express application or its
+background dependency graph, so it cannot start Linux schedulers or job
+workers.
+
+The API proxy requires `AUTH_ORIGIN` (an HTTPS origin-only URL),
+`AUTH_ORIGIN_PRIVATE_HOST` (its exact private hostname), and the
+`AUTH_ORIGIN_TOKEN` secret. Set the same high-entropy `AUTH_ORIGIN_TOKEN` only
+on the Worker and existing web origin through the approved secret pipeline.
+The origin validates the token before honoring the Worker-provided forwarded
+host/protocol. The proxy preserves cookies, CSRF and authorization headers,
+redirects, streamed bodies, and response cookies; it strips caller-supplied
+forwarded and internal trust headers. Missing Worker configuration returns a
+closed 503, and a wrong token returns 403 at the origin. Do not put staging or
+production values in Wrangler vars or source control.
+
+The production template intentionally has no broad SmartAIHub API route: its
+existing routes are limited to the runtime hostname and SPEC-260 namespaces.
+Do not add a general app-domain route until staging proves same-origin login,
+logout, CSRF, OAuth callbacks, refresh/revocation, tenant isolation, and a
+rollback. Rollback for a staged route is to remove/disable only that Worker
+route (or restore the previous route target), leaving the Linux Express service
+and database authoritative. No production routes or credentials were changed
+by this work.
+
 Canonical Queue consumption also calls the private platform's narrowly scoped
 `/api/internal/cloudflare-job-control/*` endpoints for dispatch validation,
 lease acquisition, and fenced settlement. Provision a separate high-entropy

@@ -31,7 +31,7 @@ const dialect = new PgDialect();
  * scheduler and bounded AutoTeam run evaluation. Cross-domain foreign keys are
  * intentionally omitted; this fixture is not a replacement for migrations.
  */
-export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql) {
+export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql, additionalTables: PgTable[] = []) {
   const configs = ([
     workers,
     workerJobs,
@@ -51,6 +51,7 @@ export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql) 
     agentActivityEvents,
     assistantProfiles,
     agentRunSummaries,
+    ...additionalTables,
   ] as PgTable[]).map(getTableConfig);
   const enums = new Map<string, string[]>();
   for (const table of configs) {

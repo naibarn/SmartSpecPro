@@ -1,0 +1,14 @@
+{
+  "workunit": "SPEC229_P229_1_CURRENT_MAIN_EVIDENCE_REFRESH",
+  "source_sha": "0c872e2cd1344ed618b8668299add58abadbfd1f",
+  "verification": {
+    "profile": "quick",
+    "command": "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+    "result": "PASS: 3 test files, 45 passed, 28 existing todo",
+    "execution": "Canonical source lease, isolated exact-SHA worktree, test-only; dependencies linked transiently from the existing checkout and links removed on exit."
+  },
+  "scope": "Refreshes the exact-SHA evidence for existing REQ-CAAB31EB9BD4 provider-outage/degraded-state acceptance. No P229.1 implementation was changed.",
+  "limitations": [
+    "Unit tests and exact source selection do not establish production provider availability or Production Verified status."
+  ]
+}
