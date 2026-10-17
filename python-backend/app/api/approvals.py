@@ -1332,6 +1332,14 @@ async def respond_to_approval(
     extra_data = approval_request.extra_data if isinstance(approval_request.extra_data, dict) else {}
     if isinstance(extra_data.get("p213WorkerJobResume"), dict):
         _assert_p213_approver_identity(approval_request, current_user.id, tenant_id)
+    if (
+        extra_data.get("cloudflareStagingGrantIssuerV1") == "admin_approval_workflow"
+        and approval_request.requester_id == current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CLOUDFLARE_STAGING_GRANT_REQUIRES_INDEPENDENT_APPROVER",
+        )
 
     # Check if user is authorized to approve this request
     can_approve = await approval_service.can_user_approve(

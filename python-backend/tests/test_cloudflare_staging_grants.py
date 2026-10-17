@@ -8,8 +8,10 @@ from pydantic import ValidationError
 
 from app.api.approvals import (
     CloudflareStagingGrantIssue,
+    ApprovalResponseCreate,
     _assert_cloudflare_staging_gateway_token,
     create_cloudflare_staging_grant_request,
+    respond_to_approval,
 )
 from app.models.approval import ApprovalStatus, ApprovalType
 from app.services.approval_db_service import (
@@ -94,6 +96,31 @@ async def test_cloudflare_grant_api_requires_admin_and_typed_staging_target():
             **issue.model_dump(by_alias=True),
             "targetId": "smartspec-cloudflare-production",
         })
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_cloudflare_staging_grant_requires_a_different_admin_approver(monkeypatch):
+    approval_request = SimpleNamespace(
+        requester_id=17,
+        extra_data={"cloudflareStagingGrantIssuerV1": "admin_approval_workflow"},
+    )
+    service = AsyncMock()
+    service.get_request.return_value = approval_request
+    monkeypatch.setattr("app.api.approvals.ApprovalDBService", lambda _db: service)
+
+    with pytest.raises(HTTPException) as raised:
+        await respond_to_approval(
+            "grant-1",
+            ApprovalResponseCreate(decision="approved"),
+            current_user=SimpleNamespace(id=17, role="admin"),
+            tenant_id="tenant-1",
+            db=AsyncMock(),
+        )
+
+    assert raised.value.status_code == 403
+    assert raised.value.detail == "CLOUDFLARE_STAGING_GRANT_REQUIRES_INDEPENDENT_APPROVER"
+    service.can_user_approve.assert_not_awaited()
 
 
 @pytest.mark.unit

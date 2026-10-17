@@ -1,7 +1,6 @@
 import { getDb } from "../db";
 import {
   getAppRuntimeConfig,
-  getPreferredInternalToken,
 } from "./appRuntimeConfig";
 import {
   CLOUDFLARE_STAGING_TARGET_ID,
@@ -102,10 +101,8 @@ export function createCloudflareStagingDeploymentRuntime(input: {
     resolveArtifact: resolveCloudflareStagingArtifact,
     resolveGrant: async rawGrantRef => {
       const grantRef = assertGrantRef(rawGrantRef);
-      const [config, token] = await Promise.all([
-        getAppRuntimeConfig(),
-        getPreferredInternalToken(),
-      ]);
+      const config = await getAppRuntimeConfig();
+      const token = config.webGatewayToken;
       if (!token) throw new Error("CLOUDFLARE_STAGING_GRANT_AUTH_UNAVAILABLE");
       const url = `${config.pythonBackendUrl}/api/v1/approvals/internal/cloudflare-staging-grants/${encodeURIComponent(grantRef)}`;
       const response = await fetchImpl(url, {
