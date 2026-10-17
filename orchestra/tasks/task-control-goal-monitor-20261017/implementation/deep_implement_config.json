@@ -47,8 +47,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps.",
+      "checkpoint_sha": "86f137f58"
     },
     "section-06-integration-live-acceptance": {
       "status": "checkpointed",
@@ -67,11 +67,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 21,
-  "updated_at": "2026-10-17T01:02:18.457267+00:00",
+  "generation": 22,
+  "updated_at": "2026-10-17T01:05:44.312732+00:00",
   "progress": {
-    "active_section": "section-01-ownership-contracts",
-    "next_action": "Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps.",
+    "active_section": "section-05-agent-monitor-ui",
+    "next_action": "Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
