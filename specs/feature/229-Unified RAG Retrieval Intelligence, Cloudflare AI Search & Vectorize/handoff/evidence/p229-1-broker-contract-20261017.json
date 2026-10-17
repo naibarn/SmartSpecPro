@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_RETRIEVAL_BROKER_REMAINDER",
+  "canonicalBaseSha": "9d1d54e56ad126f3b4dfdd815c2e41018b9fc268",
+  "sourceCommitSha": "1163fa59c7117c87dfec0d3371c92683d82e4fda",
+  "sourceBranch": "codex/spec229-p0-close",
+  "observedAt": "2026-10-17T02:59:00Z",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/routers/library.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 2,
+      "testsPassed": 32
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Existing apps/web/node_modules in canonical workspace",
+    "limitation": "No full TypeScript check run per repository RAM policy; full package/CI checks remain pending"
+  },
+  "productionVerified": false,
+  "acceptance": "PARTIAL: request normalization now accepts request ID, purpose, Library source class, project scope and nested evidence budget while deriving tenant/user from authenticated LibraryActor. Unsupported source classes fail closed. Consumer migrations and P229.8 evidence hydration/quality gates remain open."
+}

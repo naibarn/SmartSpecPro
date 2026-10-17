@@ -166,10 +166,10 @@
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Finish P229.1 by auditing/migrating authorized Library consumers onto the Broker contract, then baseline context use and indexing cost. Current Broker still returns candidate refs only; P229.8 owns hydration and quality gates. Existing Drive/OneDrive content-hash skip and context-pack tokenBudgetHint remain implemented and must not be duplicated.",
-    "next_ready_workunit": "SPEC229_P229_1_LIBRARY_CONSUMER_SECURITY_MIGRATION",
+    "next_action": "Complete P229.1 by auditing and migrating authorized consumers onto the Broker contract; preserve the current fail-closed behavior until content hydration and P229.8 quality gates are available. Then baseline measured context token use and indexing cost before any ranking/default change. Existing Drive/OneDrive content-hash skip and context-pack tokenBudgetHint are already implemented; do not duplicate them.",
+    "next_ready_workunit": "SPEC229_P229_1_CONSUMER_SECURITY_AND_CONTRACT_COVERAGE",
     "reactivation_predicate": null,
-    "resume_point": "Canonical base origin/main 9d1d54e56ad126f3b4dfdd815c2e41018b9fc268. P229.1 follow-up commit 8f29e9b37e98ce0f99d6e18c5087de3b0ae5d658 on codex/spec229-p0-close adds trace/purpose fields, empty-query validation, and route identity-binding coverage. Focused Broker + Library router: 31 passed; broader LibraryService file has 6 existing fixture/billing/group-sharing failures and is not part of the patch. No full typecheck or production validation. Evidence: handoff/evidence/p229-1-broker-boundary-20261017.json. P229.1 remains partial; do not close manifest requirements based on this checkpoint.",
+    "resume_point": "Canonical base origin/main 9d1d54e56ad126f3b4dfdd815c2e41018b9fc268. Current source commit 1163fa59c7117c87dfec0d3371c92683d82e4fda on codex/spec229-p0-close adds library-only source-class validation, nested evidence budgets, requestId/purpose/project filtering and finite budget clamping; route identity remains actor-derived and covered by 32 focused tests. P229.1 and evidence hydration/quality gate remain partial. No full typecheck or production validation. Evidence: handoff/evidence/p229-1-broker-contract-20261017.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -370,10 +370,12 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T02:56:38.706052Z",
+  "updated_at": "2026-10-17T02:59:04.498064Z",
   "verification": {
     "evidence": [
-      "handoff/evidence/p229-1-broker-focused-20261017.json"
+      "handoff/evidence/p229-1-broker-focused-20261017.json",
+      "handoff/evidence/p229-1-broker-boundary-20261017.json",
+      "handoff/evidence/p229-1-broker-contract-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
