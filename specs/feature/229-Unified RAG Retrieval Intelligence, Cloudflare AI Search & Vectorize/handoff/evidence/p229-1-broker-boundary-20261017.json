@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_RETRIEVAL_BROKER_REMAINDER",
+  "canonicalBaseSha": "9d1d54e56ad126f3b4dfdd815c2e41018b9fc268",
+  "sourceCommitSha": "8f29e9b37e98ce0f99d6e18c5087de3b0ae5d658",
+  "sourceBranch": "codex/spec229-p0-close",
+  "observedAt": "2026-10-17T02:56:00Z",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/routers/library.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 2,
+      "testsPassed": 31
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Existing apps/web/node_modules in canonical workspace",
+    "limitation": "No full TypeScript check run per repository RAM policy; full package/CI checks remain pending"
+  },
+  "productionVerified": false,
+  "acceptance": "PARTIAL: normalized trace/purpose fields, blank-query rejection, and authenticated tenant/user route binding are covered. Broker remains Library-only, evidence hydration/quality gating and P229.1 consumer migration remain open; no production verification."
+}

@@ -166,10 +166,10 @@
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Complete remaining P229.1 shared request/response and consumer security migration, then baseline measured context token use and indexing cost before any default change. Existing Google Drive/OneDrive content-hash skip paths and context-pack tokenBudgetHint are already implemented; do not duplicate them.",
-    "next_ready_workunit": "SPEC229_P229_1_RETRIEVAL_BROKER_REMAINDER",
+    "next_action": "Complete P229.1 by auditing and migrating authorized consumers onto the Broker contract; preserve the current fail-closed behavior until content hydration and P229.8 quality gates are available. Then baseline measured context token use and indexing cost before any ranking/default change. Existing Drive/OneDrive content-hash skip and context-pack tokenBudgetHint are already implemented; do not duplicate them.",
+    "next_ready_workunit": "SPEC229_P229_1_CONSUMER_SECURITY_AND_CONTRACT_COVERAGE",
     "reactivation_predicate": null,
-    "resume_point": "P229.1 partial Broker adapter merged by PR #1003 at canonical main SHA 32c9d397ea13fc5ce25431135f101cccbad3cd12. CI progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head 7c014c97e12df2b8d6a38c31afb5b34656f46e68; focused 11 tests and router import smoke passed locally with dependency-tree caveat recorded in evidence. Production verification not performed. Existing Drive/OneDrive ingestion already hashes and skips unchanged source content; context packs enforce tokenBudgetHint, prompt composer truncates scoped-memory text to allocated token budgets. AST/symbol/reference coding retrieval remains absent from current source search, but defer implementation until remaining P229.1 contract is complete and benchmark/evaluation can justify its cost.",
+    "resume_point": "Canonical base origin/main 9d1d54e56ad126f3b4dfdd815c2e41018b9fc268. Current source commit 1163fa59c7117c87dfec0d3371c92683d82e4fda on codex/spec229-p0-close adds library-only source-class validation, nested evidence budgets, requestId/purpose/project filtering and finite budget clamping; route identity remains actor-derived and covered by 32 focused tests. P229.1 and evidence hydration/quality gate remain partial. No full typecheck or production validation. Evidence: handoff/evidence/p229-1-broker-contract-20261017.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 16,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -370,10 +370,12 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T01:11:38.610118Z",
+  "updated_at": "2026-10-17T02:59:04.498064Z",
   "verification": {
     "evidence": [
-      "handoff/evidence/p229-1-broker-focused-20261017.json"
+      "handoff/evidence/p229-1-broker-focused-20261017.json",
+      "handoff/evidence/p229-1-broker-boundary-20261017.json",
+      "handoff/evidence/p229-1-broker-contract-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [

@@ -78,6 +78,8 @@ export interface RetrievalEvidenceV2 {
 export interface RetrievalResponseV2 {
   retrievalTraceId: string;
   plan: {
+    requestId: string;
+    purpose: string;
     queryClass: RetrievalQueryClassV2;
     sourceClasses: string[];
     evidenceBudget: {
@@ -98,10 +100,25 @@ export interface RetrievalResponseV2 {
   degradationReasons?: string[];
 }
 
-export interface RetrieveLibraryEvidenceV2Input {
+export interface RetrievalRequestV2 {
+  requestId?: string;
   query: string;
   queryClass?: RetrievalQueryClassV2;
+  /** Descriptive only; authorization is always derived from `actor`. */
+  purpose?: string;
+  /** This adapter is deliberately scoped to Library documents. */
+  sourceClasses?: string[];
+  projectId?: string | null;
+  evidenceBudget?: {
+    maxCandidates?: number;
+    maxEvidence?: number;
+    maxContextTokens?: number;
+  };
   filters?: LibrarySearchFilters;
+}
+
+/** Legacy flat budgets remain accepted until existing Library callers migrate. */
+export interface RetrieveLibraryEvidenceV2Input extends RetrievalRequestV2 {
   maxCandidates?: number;
   maxEvidence?: number;
   maxContextTokens?: number;
@@ -114,8 +131,11 @@ export class RetrievalAuthorizationError extends Error {
   }
 }
 
-const clampInteger = (value: number | undefined, fallback: number, max: number) =>
-  Math.max(1, Math.min(Math.trunc(value ?? fallback), max));
+const clampInteger = (value: number | undefined, fallback: number, max: number) => {
+  const candidate = value ?? fallback;
+  if (!Number.isFinite(candidate)) return fallback;
+  return Math.max(1, Math.min(Math.trunc(candidate), max));
+};
 
 function normalizeEvidence(
   result: LibrarySearchResultV1,
@@ -171,14 +191,45 @@ export async function retrieveLibraryEvidenceV2(
   }
 
   const query = input.query.trim();
+  if (!query) {
+    throw new TypeError("Retrieval query must not be empty");
+  }
+  if (query.length > 1_000) {
+    throw new TypeError("Retrieval query exceeds the 1000 character limit");
+  }
+  const sourceClasses = input.sourceClasses ?? ["library_document"];
+  if (sourceClasses.length !== 1 || sourceClasses[0] !== "library_document") {
+    return {
+      retrievalTraceId: randomUUID(),
+      plan: {
+        requestId: input.requestId?.trim().slice(0, 128) || randomUUID(),
+        purpose: input.purpose?.trim().slice(0, 128) || "library.search",
+        queryClass: input.queryClass ?? "HYBRID_SEARCH",
+        sourceClasses: ["library_document"],
+        evidenceBudget: {
+          maxCandidates: clampInteger(input.evidenceBudget?.maxCandidates ?? input.maxCandidates, 20, 50),
+          maxEvidence: clampInteger(input.evidenceBudget?.maxEvidence ?? input.maxEvidence, 10, 12),
+          maxContextTokens: clampInteger(input.evidenceBudget?.maxContextTokens ?? input.maxContextTokens, 4_000, 32_000),
+        },
+      },
+      providerProfile: { provider: "not_queried", profileId: "unsupported_source_class" },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["UNSUPPORTED_SOURCE_CLASS"],
+    };
+  }
   const queryClass = input.queryClass ?? "HYBRID_SEARCH";
-  const maxCandidates = clampInteger(input.maxCandidates, 20, 50);
+  const maxCandidates = clampInteger(input.evidenceBudget?.maxCandidates ?? input.maxCandidates, 20, 50);
   const maxEvidence = Math.min(
-    clampInteger(input.maxEvidence, 10, 12),
+    clampInteger(input.evidenceBudget?.maxEvidence ?? input.maxEvidence, 10, 12),
     maxCandidates,
   );
-  const maxContextTokens = clampInteger(input.maxContextTokens, 4_000, 32_000);
+  const maxContextTokens = clampInteger(input.evidenceBudget?.maxContextTokens ?? input.maxContextTokens, 4_000, 32_000);
   const traceId = randomUUID();
+  const requestId = input.requestId?.trim().slice(0, 128) || traceId;
+  const purpose = input.purpose?.trim().slice(0, 128) || "library.search";
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId });
   const provider = resolveVectorProvider("search", providerConfig).provider;
   const profileId = providerConfig.vectorizeKnowledgeIndexName?.trim()
@@ -186,8 +237,10 @@ export async function retrieveLibraryEvidenceV2(
     || resolveLibraryVectorIndexName();
 
   const plan = {
+    requestId,
+    purpose,
     queryClass,
-    sourceClasses: ["library_item"],
+    sourceClasses: ["library_document"],
     evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
   };
 
@@ -209,7 +262,10 @@ export async function retrieveLibraryEvidenceV2(
       query,
       limit: maxCandidates,
       offset: 0,
-      filters: input.filters,
+      filters: {
+        ...input.filters,
+        ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+      },
       scope: "all",
       includeRetrievalDiagnostics: true,
     },
