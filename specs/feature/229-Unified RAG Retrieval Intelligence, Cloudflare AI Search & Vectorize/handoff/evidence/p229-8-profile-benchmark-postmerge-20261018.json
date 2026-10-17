@@ -1,0 +1,77 @@
+{
+  "evidence_id": "SPEC229-P2298-PROFILE-BENCHMARK-POSTMERGE-20261018",
+  "workunit": "P229.8 Profile-aware benchmark observations",
+  "workunit_status": "PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "pr": {
+    "number": 1076,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/1076",
+    "head_sha": "7dbccfc0279d7c7c4268bfe132b7ae57ff80545f",
+    "merge_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
+    "merged_at": "2026-10-17T16:59:56Z",
+    "base_sha": "e8125353e283d9eb323f5cc113b3cd7db900c316",
+    "required_checks": {
+      "progressive_integration_gate": "PASS",
+      "local-contract": "PASS",
+      "Mocked SPEC-308 browser simulation": "PASS",
+      "build-preview": "SKIPPED (non-required)"
+    }
+  },
+  "verification": {
+    "source_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
+    "focused_tests": {
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts",
+      "result": "PASS: 3 files, 18 tests"
+    },
+    "dataset_harness": {
+      "command": "pnpm --filter @smartspec/web exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+      "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
+      "dataset_digest_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+      "counts": {
+        "candidateQueries": 560,
+        "independentlyReviewed": 560,
+        "machineReviewed": 560,
+        "humanReviewed": 0,
+        "humanAccepted": 0,
+        "acceptedForGold": 0,
+        "pendingAdjudication": 0,
+        "releaseApproved": 0,
+        "heldOutReleaseApproved": 0,
+        "developmentOnly": 560
+      },
+      "candidate_required_class_gaps": [],
+      "metrics": null,
+      "confidence_intervals": null,
+      "per_class_release_evaluation": null,
+      "release_criteria": {
+        "crossTenantLeakage": "NOT_EVALUABLE",
+        "unauthorizedEvidenceLeakage": "NOT_EVALUABLE",
+        "exactIdentifierHitAt5": "NOT_EVALUABLE",
+        "overallRecallAt20": "NOT_EVALUABLE",
+        "thaiRecallAt20": "NOT_EVALUABLE",
+        "englishRecallAt20": "NOT_EVALUABLE",
+        "nDCGAt10": "NOT_EVALUABLE",
+        "mrrAt10": "NOT_EVALUABLE",
+        "citationPrecision": "NOT_EVALUABLE",
+        "freshnessCorrectness": "NOT_EVALUABLE",
+        "noAnswerPrecision": "NOT_EVALUABLE",
+        "noAnswerRecall": "NOT_EVALUABLE",
+        "simpleExactKeywordP95Ms": "NOT_EVALUABLE",
+        "hybridRerankP95Ms": "NOT_EVALUABLE",
+        "rewriteHybridRerankP95Ms": "NOT_EVALUABLE"
+      }
+    },
+    "implementation": [
+      "Backward-compatible observation fields identify one §27 comparison profile and optional matching latency profile per benchmark run.",
+      "Latency release criteria are evaluated only when the matching profile and latency values for every evaluation observation are supplied.",
+      "CLI reports current and baseline profile identities; mixed profiles fail closed.",
+      "No release threshold changed. No production retrieval observations were collected."
+    ],
+    "limitations": [
+      "The 560 rows remain development-only machine-reviewed candidates, not human-reviewed gold queries.",
+      "No held-out release cohort or authorized §27 A–H retrieval observations exist; latency, cost, quality metrics, and confidence intervals are not evaluable.",
+      "P229.8 and global SPEC-229 remain incomplete; no evidence promotion, finance migration, or production verification is authorized by these tests."
+    ]
+  },
+  "next_action": "Obtain human source/use approval and review for a held-out cohort, then collect authorized retrieval observations for §27 A–H and the latency/cost profiles; rerun the existing harness against unchanged thresholds."
+}

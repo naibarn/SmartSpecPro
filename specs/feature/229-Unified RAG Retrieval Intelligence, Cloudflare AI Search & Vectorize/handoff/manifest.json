@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
+    "expected_canonical_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1074 merged at canonical main 67249224c8dd0394aef45f872e589aa7fa3899db. Post-merge focused tests pass 2 files/16 tests; the dataset harness at that exact SHA validates 560 independently agent-reviewed development candidates with all §27 candidate classes represented. Human-reviewed/accepted, release-approved, and held-out counts remain 0; metrics and all 15 release criteria remain NOT_EVALUABLE. See handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json.",
+    "next_action": "PR #1076 merged at canonical main 013098beb6f44f65f985820b01b7f73cee898a56. Profile-aware benchmark contract and latency gate are implemented; post-merge focused tests pass 3 files/18 tests. Harness validates 560 machine-reviewed development candidates with all required candidate classes, but human-reviewed/accepted and held-out counts remain 0; all 15 §27 release criteria remain NOT_EVALUABLE. See handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json.",
     "next_ready_workunit": "P229.8_RELEASE_COHORT_AND_OBSERVATIONS: obtain human source/use approval for a held-out query cohort and authorized retrieval observations for §27 profiles A–H, then run the existing harness and compare against the unchanged release criteria.",
     "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
-    "resume_point": "Canonical main exact SHA is 67249224c8dd0394aef45f872e589aa7fa3899db (PR #1074 merged). Post-merge focused suite passed 2 files/16 tests. Dataset digest 72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc; 560 unique development-only candidates, all 560 independently agent reviewed, 0 human accepted/release-approved/held-out, required class gaps empty. Benchmark metrics and release criteria are NOT_EVALUABLE without authorized observations. P229.8 and global SPEC-229 remain incomplete.",
-    "waiting_predicate": "Wait for human source/use approval of a held-out release cohort and authorized retrieval-provider observations across all §27 comparison profiles, including latency and cost. Continue no weak-to-sufficient promotion, finance/consequential consumer migration, P229.2, or Vectorize profile changes before gate certification."
+    "resume_point": "Canonical implementation SHA is 013098beb6f44f65f985820b01b7f73cee898a56 (PR #1076 merged). Profile-aware observation schema and matching latency gate are post-merge verified by 3 files/18 tests. Dataset digest 72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc; 560 development-only machine-reviewed candidates, 0 human accepted/release-approved/held-out. Metrics, confidence intervals and all 15 release criteria are NOT_EVALUABLE without an authorized held-out cohort and provider observations. P229.8 and global SPEC-229 remain incomplete.",
+    "waiting_predicate": "Wait for human source/use approval and human review of a held-out release cohort, plus authorized retrieval observations across §27 comparison profiles A–H including latency and cost. Do not promote weak evidence, migrate finance/consequential consumers, start P229.2, change the Vectorize profile, or claim production verification before the certified gate passes."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 64,
+  "generation": 65,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -101,7 +101,8 @@
       "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
       "d67738a929e4d14837730b389204936ee4dae70e",
       "b58ca9dd6",
-      "41be8c787888f0575e691a17ec6cab82a3b4eb08"
+      "41be8c787888f0575e691a17ec6cab82a3b4eb08",
+      "013098beb6f44f65f985820b01b7f73cee898a56"
     ],
     "mapping": [],
     "source_paths": [
@@ -110,14 +111,16 @@
       "apps/web/server/services/libraryRetrievalBenchmark.ts",
       "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
       "apps/web/server/services/libraryRetrievalBenchmark.test.ts",
+      "apps/web/server/services/libraryRetrievalBenchmarkProfiles.test.ts",
       "apps/web/scripts/run-retrieval-fixture-benchmark.ts",
+      "apps/web/scripts/run-retrieval-gold-dataset.ts",
       "apps/web/client/src/pages/DocumentManagement.tsx",
       "apps/web/client/src/components/library/CodeMirrorEditor.tsx",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-anchors-benchmark-20261017.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json",
       "apps/web/server/services/libraryRetrievalGoldDataset.ts",
       "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
       "apps/web/server/services/libraryRetrievalGoldCandidateSeeds.ts",
-      "apps/web/scripts/run-retrieval-gold-dataset.ts",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-gold-pipeline-20261017.json"
     ],
     "started": true,
@@ -125,9 +128,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
+    "canonical_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
     "integrated": true,
-    "integrated_at": "2026-10-17T16:46:51Z"
+    "integrated_at": "2026-10-17T16:59:56Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -278,7 +281,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T16:47:53.453280Z",
+  "updated_at": "2026-10-17T17:01:51.249205Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -294,7 +297,8 @@
       "handoff/evidence/p229-8-gold-pipeline-20261017.json",
       "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json",
       "handoff/evidence/p229-8-gold-review-batches-20261017.json",
-      "handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json"
+      "handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json",
+      "handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
