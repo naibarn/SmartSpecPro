@@ -314,7 +314,7 @@ const ContentQualityDashboard = lazy(
 );
 const HelpPage = lazy(() => import("./pages/Help"));
 import { SystemHealthBanner } from "./components/guardian/SystemHealthBanner";
-import { FeedbackButton } from "./components/guardian/FeedbackButton";
+import { RouteAwareFeedbackButton } from "./components/guardian/RouteAwareFeedbackButton";
 const HelpTopicPage = lazy(() => import("./pages/HelpTopic"));
 
 /**
@@ -1507,7 +1507,7 @@ function App() {
                           <LanguageSyncBridge />
                           <WelcomeLanguagePicker />
                           <Router />
-                          <FeedbackButton />
+                          <RouteAwareFeedbackButton />
                           <RuntimePerformanceOverlay />
                         </ConfirmProvider>
                       </TooltipProvider>
