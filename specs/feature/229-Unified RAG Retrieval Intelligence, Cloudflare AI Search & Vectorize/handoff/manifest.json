@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
+    "expected_canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1083 is open from source commit 9a75751e9aee5e538605125fcc7ccfa089122db7 and awaits required repository checks. The benchmark/review-queue implementation and development readiness workunit passed focused verification; P229.8 remains blocked by 0 human-reviewed/source-use-approved held-out queries and no authorized A–H or latency/cost observations. After merge, record the exact canonical SHA and rerun post-merge focused verification. See handoff/evidence/p229-8-calibration-readiness-20261018.json.",
-    "next_ready_workunit": "P229.8_RELEASE_COHORT_AND_OBSERVATIONS: obtain human review/adjudication and source-use approval for at least 500 held-out queries, then collect authorized retrieval observations for §27 A–H and the three latency/cost profiles; evaluate against unchanged thresholds.",
+    "next_action": "PR #1083 merged at canonical main a496735cd6d9c724e0ab93e2c263e0fde4d974f9. Post-merge focused verification passed 5 files/25 tests on that exact SHA. The development harness still reports 560 development-only candidates, 0 human-reviewed/accepted, 0 release-approved/held-out, no A–H or latency/cost observations, and all 15 §27 gates NOT_EVALUABLE. P229.8 remains blocked on human-reviewed/source-use-approved held-out queries and authorized retrieval observations. See handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json.",
+    "next_ready_workunit": "P229.8_RELEASE_COHORT_AND_OBSERVATIONS: obtain independent human review/adjudication and owner source-use approval for at least 500 held-out queries; collect authorized retrieval observations for §27 A–H plus all three latency/cost profiles; evaluate without changing thresholds.",
     "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
-    "resume_point": "Implementation source commit 9a75751e9aee5e538605125fcc7ccfa089122db7 is in PR #1083, currently pending required checks. Scope includes synthetic negative-control tests, multi-profile observation bundle, safer partial-sample confidence intervals, and deterministic review queue. Candidate corpus remains 560 development-only rows, 0 human-reviewed/accepted, 0 release-approved/held-out. All 15 §27 gates are NOT_EVALUABLE. After merge, bind evidence to the exact canonical SHA; then continue with human-approved gold cohort and authorized A–H plus latency/cost observations.",
+    "resume_point": "PR #1083 implementation is integrated at canonical SHA a496735cd6d9c724e0ab93e2c263e0fde4d974f9 and post-merge verified by 5 focused test files/25 tests plus the gold-dataset harness. The harness truthfully reports all 8 comparison profiles and 3 latency/cost profiles NOT_PROVIDED; 560 candidates remain development-only and 0 human accepted/release-approved/held-out. All 15 release criteria are NOT_EVALUABLE. P229.8 and global SPEC-229 remain incomplete.",
     "waiting_predicate": "Wait for human source/use approval and human review of a held-out release cohort, plus authorized retrieval observations across §27 comparison profiles A–H including latency and cost. Do not promote weak evidence, migrate finance/consequential consumers, start P229.2, change the Vectorize profile, or claim production verification before the certified gate passes."
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 66,
+  "generation": 67,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -103,7 +103,8 @@
       "b58ca9dd6",
       "41be8c787888f0575e691a17ec6cab82a3b4eb08",
       "013098beb6f44f65f985820b01b7f73cee898a56",
-      "9a75751e9aee5e538605125fcc7ccfa089122db7"
+      "9a75751e9aee5e538605125fcc7ccfa089122db7",
+      "a496735cd6d9c724e0ab93e2c263e0fde4d974f9"
     ],
     "mapping": [],
     "source_paths": [
@@ -124,6 +125,7 @@
       "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
       "apps/web/server/services/libraryRetrievalGoldDataset.ts",
       "handoff/evidence/p229-8-calibration-readiness-20261018.json",
+      "handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-anchors-benchmark-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-gold-pipeline-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json"
@@ -133,9 +135,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "013098beb6f44f65f985820b01b7f73cee898a56",
+    "canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
     "integrated": true,
-    "integrated_at": "2026-10-17T16:59:56Z"
+    "integrated_at": "2026-10-17T22:34:33Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -286,7 +288,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T22:28:46.614367Z",
+  "updated_at": "2026-10-17T22:35:25.897360Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -304,13 +306,14 @@
       "handoff/evidence/p229-8-gold-review-batches-20261017.json",
       "handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json",
       "handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json",
-      "handoff/evidence/p229-8-calibration-readiness-20261018.json"
+      "handoff/evidence/p229-8-calibration-readiness-20261018.json",
+      "handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json"
     ],
-    "freshness": "UNKNOWN",
+    "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": null,
-    "status": "UNKNOWN"
+    "sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
+    "status": "PASS"
   }
 }
