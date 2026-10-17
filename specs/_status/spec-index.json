@@ -60456,7 +60456,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "94cc9b8e877c36f1b6d2ee1140c113943d908877",
+      "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -118229,7 +118229,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "054646a76248d0d7ab9989f46811cfd0602bac9b",
+      "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
