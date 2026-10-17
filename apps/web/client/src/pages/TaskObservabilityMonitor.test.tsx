@@ -103,4 +103,11 @@ describe("TaskObservabilityMonitor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
     expect(aggregateOptions.current.enabled).toBe(false);
   });
+
+  it("labels an expired projection snapshot and offers a fresh read", () => {
+    listQuery.current = { data: undefined, isLoading: false, error: { data: { code: "PRECONDITION_FAILED" } }, refetch: vi.fn() };
+    render(<TaskObservabilityMonitor />);
+    expect(screen.getByText("Snapshot expired. Refresh snapshot to load current evidence.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Refresh snapshot" })).toBeTruthy();
+  });
 });

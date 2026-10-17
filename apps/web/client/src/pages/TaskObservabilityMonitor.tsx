@@ -46,6 +46,7 @@ export default function TaskObservabilityMonitor() {
   );
   const detail = detailQuery.data;
   const filtered = projectFilter || specFilter;
+  const snapshotExpired = query.error?.data?.code === "PRECONDITION_FAILED";
 
   return (
     <VStack as="main" gap={4} padding={4}>
@@ -65,7 +66,8 @@ export default function TaskObservabilityMonitor() {
             {filtered ? <Button label="Clear scope" variant="ghost" onClick={() => { setProjectDraft(""); setSpecDraft(""); setProjectFilter(""); setSpecFilter(""); setCursor(null); setSelectedId(null); }} /> : null}
             <Text type="supporting">Snapshot {query.data?.snapshot.asOf ?? "loading"} · {query.data?.snapshot.consistency ?? "consistency unknown"}; mutable task state can remain live.</Text>
           </HStack>
-          {query.error ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
+          {snapshotExpired ? <Text>Snapshot expired. Refresh snapshot to load current evidence.</Text> : null}
+          {query.error && !snapshotExpired ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
           {query.isLoading ? <Text>Loading owned jobs…</Text> : null}
           {!query.isLoading && items.length === 0 ? <Text>No matching canonical jobs are available in this account scope.</Text> : null}
           <VStack as="ol" gap={1}>
