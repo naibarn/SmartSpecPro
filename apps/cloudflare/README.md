@@ -75,16 +75,27 @@ origin/token produces a closed 503.
 
 ## Web/API origin routing
 
-`src/apiRouteManifest.ts` is the explicit HTTP routing inventory. Only
-`GET|HEAD /healthz` and `/readyz` are currently Worker-native. `/readyz` reports
-Worker bindings/job wiring only, not Linux app or PostgreSQL readiness.
-Auth/OAuth, tRPC, public APIs, and uploads are sent to the existing Linux
-Express authority. Metrics and ordinary HTTP streams also remain on that
+`src/apiRouteManifest.ts` is the explicit HTTP routing inventory. Hono backs
+the Fetch-standard native API routes. The first business route is
+`GET|HEAD /.well-known/smartaihub-evidence-keys.json`; it uses the same pure
+key parser as the existing Express endpoint and does not access auth, tenant,
+database, or job services. `/healthz` and `/readyz` also remain Worker-native;
+`/readyz` reports Worker bindings/job wiring only, not Linux app or PostgreSQL
+readiness. Auth/OAuth, tRPC, other public APIs, and uploads continue to use the
+existing Linux Express authority. Metrics and ordinary HTTP streams also remain on that
 origin. Unknown paths and WebSocket upgrade endpoints fail closed when they reach this Worker; keep
 `/ws` and `/socket.io` on the Linux ingress until a separately tested WebSocket
 bridge exists. The Worker does not import the Express application or its
 background dependency graph, so it cannot start Linux schedulers or job
 workers.
+
+New Worker HTTP routes should use Hono and be listed in the explicit manifest.
+Existing Express routes move incrementally. The diff-aware
+`scripts/guards/express-route-architecture.mjs` CI check blocks newly added
+Express route registrations unless a route-specific, owner-and-expiry exception
+is recorded; edits to existing routes remain allowed. Rollback for the public
+evidence-key route is to change its manifest classification to `ORIGIN_PROXY`,
+which sends it through the existing authenticated origin proxy.
 
 The API proxy requires `AUTH_ORIGIN` (an HTTPS origin-only URL),
 `AUTH_ORIGIN_PRIVATE_HOST` (its exact private hostname), and the

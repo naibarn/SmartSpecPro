@@ -3,9 +3,9 @@
  * Worker. Keep this explicit: routes absent from this inventory fail closed to
  * the native runtime and must never be dispatched to Worker business logic.
  *
- * The only currently Worker-native route is Express's dependency-free liveness
- * endpoint (`GET /healthz`, `_core/index.ts`). Auth, tRPC, provider APIs,
- * uploads, and application APIs remain owned by the existing Linux runtime.
+ * Worker-native routes must execute a registered Fetch handler; health checks
+ * and public verification-key metadata do not proxy to the Linux runtime.
+ * Auth, tRPC, provider APIs, uploads, and application APIs remain origin-owned.
  */
 export type ApiRouteClassification =
   | "WORKER_NATIVE"
@@ -44,6 +44,14 @@ export const API_ROUTE_MANIFEST: readonly ApiRouteManifestEntry[] = [
     methods: ["GET", "HEAD"],
     classification: "WORKER_NATIVE",
     reason: "Reports Cloudflare Worker binding/job readiness only; it does not assert Linux app or PostgreSQL readiness.",
+  },
+  {
+    id: "content-protection.public-keys",
+    path: "/.well-known/smartaihub-evidence-keys.json",
+    match: "exact",
+    methods: ["GET", "HEAD"],
+    classification: "WORKER_NATIVE",
+    reason: "Public verification-key metadata is stateless and uses the shared content-protection contract.",
   },
   {
     id: "ops.metrics",

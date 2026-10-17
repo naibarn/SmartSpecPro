@@ -1,6 +1,6 @@
 # Hono-first HTTP Migration Handoff
 
-Status: migration direction prepared; implementation and staging acceptance are not started.
+Status: first native Hono slice implemented locally; PR integration and staging acceptance remain open.
 
 Baseline: PR [#1040](https://github.com/naibarn/SmartSpecPro/pull/1040) merged as `931ceeca8f62b053f34752ebc017b1fc98ac9e84`.
 
@@ -43,4 +43,17 @@ Baseline: PR [#1040](https://github.com/naibarn/SmartSpecPro/pull/1040) merged a
 
 ## Next work unit
 
-Implement the Hono router shell behind the existing explicit manifest, with one low-risk Worker-native API using an existing service boundary. Keep current Express and origin proxy ownership unchanged until that slice passes the proof above. Record its exact source and integrated SHA, test scope, and remaining blockers here after promotion.
+Implemented slice: added a Hono Fetch router inside the existing Cloudflare package and wired it through the explicit route manifest. `GET|HEAD /.well-known/smartaihub-evidence-keys.json` is the first `WORKER_NATIVE` business API. Express and Hono call the same pure `getPublicEvidenceVerificationKeys` service; auth, tenant, PostgreSQL, job ownership, and other Express route behavior are unchanged. Reclassifying this entry to `ORIGIN_PROXY` restores Linux ownership.
+
+Local evidence on source base `0c872e2cd1344ed618b8668299add58abadbfd1f`:
+
+- Cloudflare package TypeScript check, build, and Vitest: passed; 11 files / 70 tests.
+- Linux Express public-key contract tests: passed; 1 file / 2 tests.
+- Express route architecture guard unit tests: passed; 4 tests. Existing route edits pass, new one-line/multiline routes fail without exact exceptions, expired/broad exceptions fail, and test files are excluded from production route registration checks.
+- Wrangler 4.151.1 dry-run bundle: passed (119.42 KiB, 27.88 KiB gzip).
+- Wrangler local workerd runtime: native public-key route returned 200 with no origin binding; HEAD returned 200; its weak ETag and conditional GET returned 304; auth legacy proxy failed closed with 503; unknown path returned 501. The Hono contract test rejects oversized request metadata with 413. These checks prove the selected route executed in the Worker runtime, not via Origin Proxy.
+- No production routing, activation, queues, database, tenant configuration, or credentials changed.
+
+Linux workload impact: requests to this public key endpoint no longer reach Express, but traffic volume and CPU savings have not been measured. This slice introduces no job consumers or database activity.
+
+Next: integrate the implementation through the normal PR workflow, then run isolated staging verification. Candidate follow-ups are the deterministic storyboard estimate after factoring its schema/contract away from Node-bound skill-registry imports, then the media credit estimate after reusing canonical auth/tenant context and validating database reads through a restricted Hyperdrive role. Do not expose protected APIs anonymously or mark DB-backed routes native before that evidence exists.

@@ -20,6 +20,7 @@ import { createSpec260PlatformRouteRegistry } from "./spec260PlatformProxy";
 import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
 import { classifyApiRoute } from "./apiRouteManifest";
 import { proxyAuthToOrigin } from "./authOriginProxy";
+import { dispatchManifestRoute } from "./nativeApi";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -182,6 +183,8 @@ export function createCloudflareWorker(
         const registry = spec260Routes ?? createSpec260PlatformRouteRegistry(env);
         return (await registry.dispatch(request)) ?? json({ error: "EMERGENCY_ROUTE_NOT_REGISTERED" }, 503);
       }
+      const manifestResponse = await dispatchManifestRoute(request, env);
+      if (manifestResponse) return manifestResponse;
       const apiRoute = classifyApiRoute(request.method, url.pathname);
       if (apiRoute.classification === "ORIGIN_PROXY" ||
           (apiRoute.classification === "NATIVE_RUNTIME_ONLY" && apiRoute.id !== "unmatched" &&
