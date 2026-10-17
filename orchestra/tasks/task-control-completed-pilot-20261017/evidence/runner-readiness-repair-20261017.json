@@ -1,0 +1,126 @@
+{
+  "schema_version": "runner-readiness-repair-evidence.v1",
+  "workunit": "RUNNER_CODEX_READINESS_REPAIR",
+  "owner": "/root",
+  "source_base": "e25f5bc80771dd07c74ee9bc14a41b304fd5bf4d",
+  "reconciled_base": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+  "implementation_sha": "7919c19ce22b9e751c87735dcf9dea58e1f79de3",
+  "root_causes": [
+    "Browser approval wrote online/lastSeen and retained a different or old session snapshot before any device heartbeat",
+    "Global default runner/device IDs collided across Linux CLI and Windows Desktop; their active sessions and machine/device keys differ",
+    "Desktop real-task verification only updated local UI, not backend capability publication",
+    "Real Codex authenticated readiness reference was gated on deterministic certification mode",
+    "Desktop packaging did not propagate installer version into the Runner library",
+    "Live web Runner-related source files match ccd4cd11; deployed workerJobs.ts has no observability procedure"
+  ],
+  "corrections": [
+    "Expired Linux enrollment is not evidence about the current Windows enrollment",
+    "Runner activeSessionId is a pairing/control session, not runner_execution_sessions identity",
+    "The deployed web service uses its production release worktree, not the dirty primary checkout",
+    "Capability policy pending/0 allowed is not itself a missing Recovery Grant; those authorities are checked separately"
+  ],
+  "pairing_metadata": {
+    "approved_at": "2026-10-17T07:52:32.925Z",
+    "runner_version": "0.1.0",
+    "same_machine_as_linux_saved_config": false,
+    "same_key_as_linux_saved_config": false,
+    "access": "READ_ONLY_ENCRYPTED_SESSION_METADATA_NO_TOKENS_OR_CODES_OUTPUT"
+  },
+  "checks": {
+    "runner_library": {
+      "profile": "package",
+      "command": "CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=<task-cache> cargo test --locked --manifest-path apps/runner-app/Cargo.toml --lib -- --test-threads=1",
+      "result": "PASS",
+      "passed": 193,
+      "failed": 0,
+      "exit": 0,
+      "elapsed_test_seconds": 30.93,
+      "start_epoch": 1792225127,
+      "completion_observed_epoch": 1792225288.9924889,
+      "resource_observation": {
+        "MemAvailable_MiB_before": 25708,
+        "build_jobs": 1,
+        "cgroup_memory_files": "NOT_EXPOSED_AT_NAMESPACE_ROOT"
+      }
+    },
+    "web": {
+      "profile": "quick",
+      "source_base": "e25f5bc80771dd07c74ee9bc14a41b304fd5bf4d",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/runnerGateway.test.ts",
+        "server/routes/__tests__/runnerControl.test.ts",
+        "--maxWorkers=1"
+      ],
+      "start_epoch": 1792225019.7453392,
+      "end_epoch": 1792225024.0469494,
+      "exit": 0,
+      "max_rss_kib": 352164,
+      "DATABASE_URL": "ABSENT",
+      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED"
+    },
+    "syntax": {
+      "node_check": "PASS",
+      "rustfmt_changed_files": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "independent_review": {
+      "agent": "/root/runner_codex_repair_review",
+      "requested_model": "gpt-6-luna",
+      "effective_model": "UNVERIFIED",
+      "result": "NO_MATERIAL_FINDINGS",
+      "finding_repaired": "Post-pairing sync failure no longer mislabels successful pairing as failed"
+    },
+    "native_windows_installer": {
+      "state": "PENDING",
+      "required_source": "integrated implementation SHA",
+      "workflow": "runner-desktop-release.yml",
+      "planned_version": "0.2.30"
+    }
+  },
+  "deployed_source_audit": {
+    "release_head": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "source_files": [
+      {
+        "path": "apps/web/server/routers/workerJobs.ts",
+        "sha256": "c2cd0be75af2b61e5b9d6bf68f661cfdbd93ac3b3d2e38c12b57241bc7618a9f",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      },
+      {
+        "path": "apps/web/server/routes/runnerControl.ts",
+        "sha256": "b39c37f1c4e444b19696cdbb58ca4ca47afa2ac6fef8eaf223900af2a19f6b2d",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      },
+      {
+        "path": "apps/web/server/services/runnerGateway.ts",
+        "sha256": "23e3f3edef54d7819f2eba45b1494aa17a0cafba7aa7f843d02a7c059cc18145",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      }
+    ]
+  },
+  "artifacts_sha256": {
+    "runner-readiness-web-tests-20261017.txt": "64bbf16708a475153fb3d59a98ad34ec4e9d1d1ceae93e589cef06f00f23ada3",
+    "runner-readiness-lib-tests-20261017.txt": "a0a7990b7fe33b47c6f6518f0a8cbed17ecb9fd9172c1c343e29ad4d0424a224"
+  },
+  "live_acceptance": "NOT_ACCEPTED",
+  "scope_boundary": {
+    "new_sdk_jobs": 0,
+    "job_or_command_dispatches": 0,
+    "production_database_mutations": 0,
+    "grants_created": 0,
+    "linux_runner_service_changed": false,
+    "windows_device_access": "NOT_AVAILABLE_IN_CURRENT_LINUX_SESSION"
+  },
+  "remaining": [
+    "Native Windows build and installer verification",
+    "Install/update and observe the current Windows device through an available authorized access channel",
+    "Fresh authenticated capability publication, owned workspace and selected WorkUnit lease",
+    "Existing protected Recovery Grant and exact live target serving source before SPEC-224 dispatch"
+  ]
+}
