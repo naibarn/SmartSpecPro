@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 45,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -226,11 +226,12 @@
       "tree_equivalent": true
     },
     "pending_checkpoint": {
-      "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
-      "next_action": "Final bounded verification after current independent model-passthrough WorkUnit is integrated",
-      "owned_commit_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
-      "pr": 999,
-      "status": "MERGED"
+      "branch": "codex/spec161-lineage-model-passthrough-20261017",
+      "intended_pr": "Next protected normal PR into main",
+      "next_action": "Push, required CI, guarded merge",
+      "owned_commit_sha": "21cff801a47a47bbf6c32d7f2a6d42839242b242",
+      "status": "FAST_GATE_PASSED_PENDING_PROTECTED_PROMOTION",
+      "verification": "46/46; red baseline6 lineage +1 policy; gitleaks/diff-check pass"
     }
   },
   "lifecycle": {
@@ -728,7 +729,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:42:09.932068Z",
+  "updated_at": "2026-10-17T00:42:10.431657Z",
   "verification": {
     "baseline_issues": [],
     "canonical_post_integration_20261017": {

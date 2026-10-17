@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 57,
+  "generation": 58,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -297,11 +297,12 @@
       "tree_equivalent": true
     },
     "pending_checkpoint": {
-      "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
-      "next_action": "Final bounded verification after current independent model-passthrough WorkUnit is integrated",
-      "owned_commit_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
-      "pr": 999,
-      "status": "MERGED"
+      "branch": "codex/spec161-lineage-model-passthrough-20261017",
+      "intended_pr": "Next protected normal PR into main",
+      "next_action": "Push, required CI, guarded merge",
+      "owned_commit_sha": "21cff801a47a47bbf6c32d7f2a6d42839242b242",
+      "status": "FAST_GATE_PASSED_PENDING_PROTECTED_PROMOTION",
+      "verification": "46/46; red baseline6 lineage +1 policy; gitleaks/diff-check pass"
     }
   },
   "lifecycle": {
@@ -708,7 +709,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:40:48.375824Z",
+  "updated_at": "2026-10-17T00:42:10.436080Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",
