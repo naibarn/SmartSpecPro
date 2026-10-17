@@ -6,15 +6,15 @@ Phase 3: Human-in-the-loop Approval Endpoints
 import asyncio
 import os
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal, Optional
 from urllib.parse import urlparse
 
 import httpx
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -86,6 +86,33 @@ class Spec224RecoveryGrantIssue(BaseModel):
 
     idempotency_key: str = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
     scope: dict
+
+
+class CloudflareStagingGrantIssue(BaseModel):
+    """Admin request for one exact, versioned staging deployment grant."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=255)
+    executor_id: StrictStr = Field(..., alias="executorId", min_length=1, max_length=255)
+    target_id: Literal["smartspec-cloudflare-staging"] = Field(..., alias="targetId")
+    environment: Literal["staging"]
+    artifact_ref: StrictStr = Field(..., alias="artifactRef", min_length=1, max_length=255)
+    source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+    build_digest: StrictStr = Field(..., alias="buildDigest", pattern=r"^[0-9a-f]{64}$")
+    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=2)
+    rollback_deployment_id: StrictStr = Field(..., alias="rollbackDeploymentId", min_length=1, max_length=255)
+    rollback_artifact_ref: StrictStr = Field(..., alias="rollbackArtifactRef", min_length=1, max_length=255)
+    rollback_source_sha: StrictStr = Field(..., alias="rollbackSourceSha", pattern=r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+    rollback_build_digest: StrictStr = Field(..., alias="rollbackBuildDigest", pattern=r"^[0-9a-f]{64}$")
+    expires_at: datetime = Field(..., alias="expiresAt")
+
+    @field_validator("actions")
+    @classmethod
+    def validate_unique_actions(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+        return value
 
 
 @router.post("/spec224/recovery-grants")
@@ -211,6 +238,22 @@ async def validate_spec224_recovery_grant(
         ),
     )
 
+
+@router.get("/internal/cloudflare-staging-grants/{grant_ref}")
+async def resolve_cloudflare_staging_grant(
+    grant_ref: str,
+    response: Response,
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Resolve a persisted staging grant for the trusted Web deployment runtime."""
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    grant = await ApprovalDBService(db).resolve_cloudflare_staging_grant(grant_ref)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="CLOUDFLARE_STAGING_GRANT_NOT_FOUND_OR_INACTIVE")
+    response.headers["Cache-Control"] = "no-store"
+    return {"grant": grant}
+
 class ApprovalRequestResponse(BaseModel):
     """Response model for approval request."""
     id: str
@@ -256,6 +299,11 @@ class ApprovalResponseModel(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CloudflareStagingGrantRevoke(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: StrictStr = Field(..., min_length=4, max_length=500)
 
 
 class ApprovalRuleCreate(BaseModel):
@@ -387,6 +435,13 @@ def _assert_spec224_gateway_token(token: Optional[str]) -> None:
 
 def _assert_spec224_recovery_grant_gateway_token(token: Optional[str]) -> None:
     """Restrict grant validation to the existing SmartSpec Web gateway credential."""
+    expected = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or "").strip()
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
+
+
+def _assert_cloudflare_staging_gateway_token(token: Optional[str]) -> None:
+    """Use the existing Web gateway service credential for grant lookup."""
     expected = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or "").strip()
     if not expected or not token or not secrets.compare_digest(token, expected):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal token")
@@ -1048,6 +1103,81 @@ async def acknowledge_spec224_external_agent_decision(
     if not acknowledged:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SPEC224_DECISION_ACK_REJECTED")
     return {"acknowledged": True, "deliveryId": data.delivery_id}
+
+@router.post("/cloudflare-staging-grants", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
+async def create_cloudflare_staging_grant_request(
+    data: CloudflareStagingGrantIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create a typed grant approval request; a separate admin must approve it."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
+    if data.expires_at.tzinfo is None:
+        raise HTTPException(status_code=422, detail="CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
+
+    expires_at = data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    grant_payload = {
+        "schemaVersion": "cloudflare.staging-deployment-grant.v1",
+        "grantRef": "pending-idempotency-binding",
+        "tenantId": tenant_id,
+        "requesterUserId": int(current_user.id),
+        "projectId": data.project_id,
+        "executorId": data.executor_id,
+        "targetId": data.target_id,
+        "environment": data.environment,
+        "artifactRef": data.artifact_ref,
+        "sourceSha": data.source_sha,
+        "buildDigest": data.build_digest,
+        "actions": data.actions,
+        "rollbackDeploymentId": data.rollback_deployment_id,
+        "rollbackArtifactRef": data.rollback_artifact_ref,
+        "rollbackSourceSha": data.rollback_source_sha,
+        "rollbackBuildDigest": data.rollback_build_digest,
+        "expiresAt": expires_at,
+        "revokedAt": None,
+    }
+    try:
+        return await ApprovalDBService(db).create_cloudflare_staging_grant_request(
+            tenant_id=tenant_id,
+            requester_id=int(current_user.id),
+            idempotency_key=data.idempotency_key,
+            payload=grant_payload,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/cloudflare-staging-grants/{grant_ref}/revoke", response_model=ApprovalRequestResponse)
+async def revoke_cloudflare_staging_grant(
+    grant_ref: str,
+    data: CloudflareStagingGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Revoke a staging grant under the authenticated administrator identity."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
+    try:
+        return await ApprovalDBService(db).revoke_cloudflare_staging_grant(
+            grant_ref=grant_ref,
+            tenant_id=tenant_id,
+            actor_id=int(current_user.id),
+            reason=data.reason,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc).endswith("NOT_FOUND") else 422, detail=str(exc)) from exc
+
 
 @router.post("/requests", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_approval_request(
