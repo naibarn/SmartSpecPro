@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `32`
-- Updated (UTC): `2026-10-17T02:54:33.483867+00:00`
+- State generation: `33`
+- Updated (UTC): `2026-10-17T03:03:16.805182+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `1090256c6fc04b9d8faee9f0095210698b51cfb4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-authenticated-read-api`
-- Next action: Push current branch to PR #1005, validate the updated economic settlement aggregation with required CI, promote after exact-head checks pass, then continue outstanding Goal and same-token requirements.
+- Next action: Canonical main advanced to 9d1d54e56 after CI; origin/main is now merged locally at a6186b279. Focused tests pass. Push reconciled head, rerun required CI, and retry exact-head protected promotion.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 33a8b04f | — | Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps. |
 | section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Continue source-bound Goal integration and validate corrected usage union against authorized database evidence |
-| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 42339e13689bd1ce26bbfe0dd65e192b52faa106 | — | Push current branch to PR #1005, validate the updated economic settlement aggregation with required CI, promote after exact-head checks pass, then continue outstanding Goal and same-token requirements. |
+| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 42339e13689bd1ce26bbfe0dd65e192b52faa106 | — | Canonical main advanced to 9d1d54e56 after CI; origin/main is now merged locally at a6186b279. Focused tests pass. Push reconciled head, rerun required CI, and retry exact-head protected promotion. |
 | section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
 | section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 86f137f58 | — | Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps. |
 | section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 27fdfd069ac86911144a2b3bff3a568101e658ae | 1090256c6fc04b9d8faee9f0095210698b51cfb4 | Continue the next independent API/model/usage work unit from canonical main 1090256c; preserve Goal baseline UNKNOWN, implement only existing bound settlement evidence, then add same-token history/parity where records support it. |
