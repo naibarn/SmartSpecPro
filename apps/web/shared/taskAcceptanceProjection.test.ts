@@ -46,11 +46,19 @@ const trustedGoal: GoalProgressInput = {
   }],
 };
 
+function trustedFixtureGoal(value: GoalProgressInput, scope: TaskAcceptanceInput["scope"] = { kind: "pilot", id: "pilot-1" }): TaskAcceptanceInput["goal"] {
+  return {
+    input: value,
+    baselineSource: "trusted",
+    scopeBinding: { scope, goalId: value.baseline!.goalId, baselineVersion: value.baseline!.version, baselineDigest: value.baseline!.digest },
+  };
+}
+
 function input(overrides: Partial<TaskAcceptanceInput> = {}): TaskAcceptanceInput {
   return {
     scope: { kind: "pilot", id: "pilot-1" },
     reported: { state: "COMPLETE", basis: "bounded pilot evidence", evidenceStatus: "verified" },
-    goal: { input: trustedGoal, baselineSource: "trusted" },
+    goal: trustedFixtureGoal(trustedGoal),
     parentClosure: { closedCount: 1, totalCount: 2, status: "incomplete" },
     remainingRequirements: ["whole SPEC acceptance"],
     graph: { available: [], links: [] },
@@ -153,7 +161,7 @@ describe("task acceptance projection", () => {
         workComplete: true,
       }],
     };
-    const projection = projectTaskAcceptance(input({ goal: { input: highScoreWithZeroWeightGate, baselineSource: "trusted" } }));
+    const projection = projectTaskAcceptance(input({ goal: trustedFixtureGoal(highScoreWithZeroWeightGate) }));
     expect(projection.goal.verifiedPercent).toBeLessThan(100);
     expect(projection.goal.verifiedPercentLabel).toBe("<100% (required criteria pending)");
   });
@@ -185,6 +193,7 @@ describe("task acceptance projection", () => {
   it("separates bounded scope completion from parent completion and verifies live acceptance only with live trusted evidence", () => {
     const pilot = projectTaskAcceptance(input({
       scope: { kind: "pilot", id: "bounded-pilot" },
+      goal: trustedFixtureGoal(trustedGoal, { kind: "pilot", id: "bounded-pilot" }),
       parentClosure: { closedCount: null, totalCount: null, status: "unknown" },
     }));
     expect(pilot.scopeCompletionStatus).toBe("complete");
@@ -192,7 +201,8 @@ describe("task acceptance projection", () => {
     expect(pilot.parentClosure.status).toBe("unknown");
 
     const liveSpec = projectTaskAcceptance(input({
-      scope: { kind: "spec", id: "SPEC-088" },
+      scope: { kind: "spec", id: "test-only:full-spec" },
+      goal: trustedFixtureGoal({ ...trustedGoal, baseline: { ...trustedGoal.baseline!, goalId: "test-only:full-spec-goal" } }, { kind: "spec", id: "test-only:full-spec" }),
       acceptanceEnvironment: { kind: "live_production", authStatus: "verified" },
     }));
     expect(liveSpec.scopeCompletionStatus).toBe("complete");
@@ -340,4 +350,33 @@ describe("cached acceptance observation", () => {
     expect(observeTaskAcceptanceSnapshot(original, Number.NaN).sdkUsage.current).toBeNull();
     expect(observeTaskAcceptanceSnapshot(original, Date.parse(original.sdkUsage.asOf!) - 30_001).sdkUsage.freshness).toBe("unknown");
   });
+});
+
+
+describe("bounded Goal cannot certify another scope", () => {
+  it("rejects a completed Pilot baseline reused as its parent SPEC baseline", () => {
+    const completedPilot = input();
+    const parent = projectTaskAcceptance({ ...completedPilot, scope: { kind: "spec", id: "SPEC-161" } });
+    expect(parent.goal.verifiedPercent).toBeNull();
+    expect(parent.scopeCompletionStatus).toBe("unknown");
+    expect(parent.wholeSpecComplete).toBeNull();
+  });
+});
+
+
+it("withholds trusted-source completion for absent or mismatched baseline bindings", () => {
+  const valid = input();
+  const binding = valid.goal.scopeBinding!;
+  for (const candidate of [
+    null,
+    { ...binding, goalId: "another-goal" },
+    { ...binding, baselineVersion: "another-version" },
+    { ...binding, baselineDigest: `sha256:${"b".repeat(64)}` },
+    { ...binding, scope: { kind: "pilot" as const, id: "another-pilot" } },
+  ]) {
+    const result = projectTaskAcceptance({ ...valid, goal: { ...valid.goal, scopeBinding: candidate } });
+    expect(result.goal.verifiedPercent).toBeNull();
+    expect(result.scopeCompletionStatus).toBe("unknown");
+    expect(result.verifiedLiveAcceptance).toBe(false);
+  }
 });
