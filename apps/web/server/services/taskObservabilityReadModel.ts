@@ -30,7 +30,7 @@ export class TaskObservabilityError extends Error {
 }
 
 type Scope = { tenantId: string; userId: number; isAdmin?: boolean };
-type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; asOf: string; beforeAt: string; beforeId: string; exp: number };
+type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; conversationId: number | null; asOf: string; beforeAt: string; beforeId: string; exp: number };
 
 function assertScope(scope: Scope): void {
   if (!scope.tenantId.trim() || !Number.isSafeInteger(scope.userId) || scope.userId <= 0) {
@@ -48,7 +48,7 @@ function encodeCursor(payload: CursorPayload): string {
   return `${body}.${sign(body)}`;
 }
 
-function decodeCursor(token: string, scope: Scope, filters: { projectId?: string; specId?: string }): CursorPayload {
+function decodeCursor(token: string, scope: Scope, filters: { projectId?: string; specId?: string; conversationId?: number }): CursorPayload {
   const [body, signature, extra] = token.split(".");
   if (!body || !signature || extra) throw new TaskObservabilityError("SNAPSHOT_INVALID");
   const expected = sign(body);
@@ -59,7 +59,7 @@ function decodeCursor(token: string, scope: Scope, filters: { projectId?: string
   try { payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as CursorPayload; }
   catch { throw new TaskObservabilityError("SNAPSHOT_INVALID"); }
   if (payload.v !== 1 || payload.tenantId !== scope.tenantId || payload.userId !== scope.userId || payload.isAdmin !== Boolean(scope.isAdmin) ||
-      payload.projectId !== (filters.projectId ?? null) || payload.specId !== (filters.specId ?? null)) {
+      payload.projectId !== (filters.projectId ?? null) || payload.specId !== (filters.specId ?? null) || payload.conversationId !== (filters.conversationId ?? null)) {
     throw new TaskObservabilityError("SNAPSHOT_INVALID");
   }
   if (!Number.isSafeInteger(payload.exp) || payload.exp <= Date.now()) throw new TaskObservabilityError("SNAPSHOT_EXPIRED");
@@ -378,7 +378,7 @@ export async function getTaskObservabilityDetail(input: { scope: Scope; jobId: s
   return loadJobDetail(input.scope, job);
 }
 
-export async function listTaskObservability(input: { scope: Scope; cursor?: string | null; projectId?: string; specId?: string }) {
+export async function listTaskObservability(input: { scope: Scope; cursor?: string | null; projectId?: string; specId?: string; conversationId?: number }) {
   assertScope(input.scope);
   getDb();
   const cursor = input.cursor ? decodeCursor(input.cursor, input.scope, input) : null;
@@ -387,6 +387,7 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
   if (!input.scope.isAdmin) predicates.push(eq(workerJobs.requestedByUserId, input.scope.userId));
   if (input.projectId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId') = ${input.projectId}`);
   if (input.specId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId') = ${input.specId}`);
+  if (input.conversationId) predicates.push(sql`${workerJobs.inputJson}->>'conversationId' = ${String(input.conversationId)}`);
   if (cursor) predicates.push(or(lt(workerJobs.createdAt, new Date(cursor.beforeAt)), and(eq(workerJobs.createdAt, new Date(cursor.beforeAt)), lt(workerJobs.id, cursor.beforeId))!));
   const rows = await db.select({
     id: workerJobs.id,
@@ -444,6 +445,6 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
     scope: input.scope.isAdmin ? "tenant_fleet" as const : "owner" as const,
     snapshot: { asOf, expiresAt: new Date((cursor?.exp ?? Date.now() + CURSOR_TTL_MS)).toISOString(), consistency: "created_at_watermark" as const },
     items,
-    nextCursor: hasMore && last ? encodeCursor({ v: 1, tenantId: input.scope.tenantId, userId: input.scope.userId, isAdmin: Boolean(input.scope.isAdmin), projectId: input.projectId ?? null, specId: input.specId ?? null, asOf, beforeAt: last.createdAt.toISOString(), beforeId: last.id, exp: cursor?.exp ?? Date.now() + CURSOR_TTL_MS }) : null,
+    nextCursor: hasMore && last ? encodeCursor({ v: 1, tenantId: input.scope.tenantId, userId: input.scope.userId, isAdmin: Boolean(input.scope.isAdmin), projectId: input.projectId ?? null, specId: input.specId ?? null, conversationId: input.conversationId ?? null, asOf, beforeAt: last.createdAt.toISOString(), beforeId: last.id, exp: cursor?.exp ?? Date.now() + CURSOR_TTL_MS }) : null,
   };
 }

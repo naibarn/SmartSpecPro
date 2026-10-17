@@ -123,10 +123,11 @@ export const workerJobsRouter = router({
       cursor: z.string().max(1024).nullable().optional(),
       projectId: z.string().trim().min(1).max(160).optional(),
       specId: z.string().trim().min(1).max(64).optional(),
+      conversationId: z.number().int().positive().optional(),
     }).strict().optional())
     .query(async ({ ctx, input }) => {
       try {
-        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId });
+        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId });
       } catch (error) { return mapObservabilityError(error); }
     }),
 

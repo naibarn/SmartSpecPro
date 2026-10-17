@@ -20,8 +20,11 @@ export default function TaskObservabilityMonitor() {
   const [projectDraft, setProjectDraft] = useState("");
   const [specDraft, setSpecDraft] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const conversationCandidate = Number(new URLSearchParams(window.location.search).get("conversationId"));
+  const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
+    ...(conversationId ? { conversationId } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
   }, { staleTime: 15_000, refetchInterval: 15_000, retry: false });
@@ -44,7 +47,8 @@ export default function TaskObservabilityMonitor() {
 
       <Section>
         <VStack gap={3}>
-          <Heading level={2}>{query.data?.scope === "tenant_fleet" ? "Tenant fleet and project scope" : "My tasks and project scope"}</Heading>
+          <Heading level={2}>{conversationId ? `Chat ${conversationId} evidence` : query.data?.scope === "tenant_fleet" ? "Tenant fleet and project scope" : "My tasks and project scope"}</Heading>
+          {conversationId ? <Text type="supporting">Conversation scope is bound by the authenticated read API to the conversation owner and current tenant.</Text> : null}
           <HStack gap={2} wrap="wrap">
             <TextInput label="Project ID" value={projectDraft} onChange={setProjectDraft} placeholder="Canonical project ID" />
             <TextInput label="SPEC ID" value={specDraft} onChange={setSpecDraft} placeholder="SPEC-###" />

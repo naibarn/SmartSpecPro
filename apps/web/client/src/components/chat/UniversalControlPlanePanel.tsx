@@ -730,6 +730,15 @@ export function UniversalControlPlanePanel({
             Chat composer → approval → canonical worker job → Runner/MCP →
             verified result
           </p>
+          {conversationId ? (
+            <Link
+              href={`/agent-monitor?conversationId=${conversationId}`}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
+            >
+              Inspect this Chat’s model, usage, and Runner evidence
+              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            </Link>
+          ) : null}
         </section>
         <Button
           variant="ghost"

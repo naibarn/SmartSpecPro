@@ -120,6 +120,7 @@ describe("workerJobsRouter task observability scope", () => {
       cursor: undefined,
       projectId: "project-1",
       specId: undefined,
+      conversationId: undefined,
     });
   });
 
@@ -132,7 +133,18 @@ describe("workerJobsRouter task observability scope", () => {
       cursor: undefined,
       projectId: undefined,
       specId: undefined,
+      conversationId: undefined,
     });
+  });
+
+  it("binds a Chat evidence filter to an explicit conversation ID", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
+    const fn = workerJobsRouter.observability as unknown as Function;
+    await fn({ ctx: CTX, input: { conversationId: 42 } });
+    expect(mockListTaskObservability).toHaveBeenCalledWith(expect.objectContaining({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false },
+      conversationId: 42,
+    }));
   });
 });
 

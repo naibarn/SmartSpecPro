@@ -33,14 +33,14 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Add API auth/cursor/snapshot security tests and coherent snapshot boundary; current mutable detail values are explicitly disclosed",
+      "next_action": "Implement durable same-filter projection token and DB-backed cursor/snapshot proof; Chat conversations now use this owner-scoped read endpoint",
       "checkpoint_sha": "746eebc5df3a3a8112aa3ac762cbbe8de8c56da7"
     },
     "section-04-task-control-ui": {
       "status": "in_progress",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Implement shared Project/SPEC aggregation display and authenticated responsive browser proof; current task inspector is partial"
+      "next_action": "Deliver Project/SPEC rollup and actual Chat summary parity; complete responsive browser coverage"
     },
     "section-05-agent-monitor-ui": {
       "status": "in_progress",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 9,
-  "updated_at": "2026-10-17T00:45:40.868703+00:00",
+  "generation": 11,
+  "updated_at": "2026-10-17T00:47:54.789394+00:00",
   "progress": {
-    "active_section": "section-05-agent-monitor-ui",
-    "next_action": "Add bound agent/session topology and recovery history only from existing canonical records; live runner acceptance remains open",
+    "active_section": "section-04-task-control-ui",
+    "next_action": "Deliver Project/SPEC rollup and actual Chat summary parity; complete responsive browser coverage",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
