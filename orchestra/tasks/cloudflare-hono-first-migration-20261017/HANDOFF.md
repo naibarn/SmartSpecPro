@@ -1,8 +1,9 @@
 # Hono-first HTTP Migration Handoff
 
-Status: first native Hono slice implemented locally; PR integration and staging acceptance remain open.
+Status: first native Hono slice merged; staging acceptance remains open.
 
 Baseline: PR [#1040](https://github.com/naibarn/SmartSpecPro/pull/1040) merged as `931ceeca8f62b053f34752ebc017b1fc98ac9e84`.
+Implementation: PR [#1045](https://github.com/naibarn/SmartSpecPro/pull/1045), source `928d630992bf719f2c09f64d9047ea1deefdc4a4`, merged as `bbcd9909c5c3c7cb4fb7ecf129a3e9f65aeac569` on 2026-10-17T08:02:54Z.
 
 ## Architecture decisions
 
@@ -54,6 +55,13 @@ Local evidence on source base `0c872e2cd1344ed618b8668299add58abadbfd1f`:
 - Wrangler local workerd runtime: native public-key route returned 200 with no origin binding; HEAD returned 200; its weak ETag and conditional GET returned 304; auth legacy proxy failed closed with 503; unknown path returned 501. The Hono contract test rejects oversized request metadata with 413. These checks prove the selected route executed in the Worker runtime, not via Origin Proxy.
 - No production routing, activation, queues, database, tenant configuration, or credentials changed.
 
+Required CI evidence on implementation head `928d630992bf719f2c09f64d9047ea1deefdc4a4`:
+
+- [Mocked SPEC-308 browser simulation](https://github.com/naibarn/SmartSpecPro/actions/runs/39015611563): passed.
+- [Cloudflare local-contract including Wrangler build and workerd smoke](https://github.com/naibarn/SmartSpecPro/actions/runs/39015611583): passed.
+- [Progressive integration gate](https://github.com/naibarn/SmartSpecPro/actions/runs/39015611560): passed.
+- `build-preview`: skipped by workflow policy; it is not a passing preview/deployment proof.
+
 Linux workload impact: requests to this public key endpoint no longer reach Express, but traffic volume and CPU savings have not been measured. This slice introduces no job consumers or database activity.
 
-Next: integrate the implementation through the normal PR workflow, then run isolated staging verification. Candidate follow-ups are the deterministic storyboard estimate after factoring its schema/contract away from Node-bound skill-registry imports, then the media credit estimate after reusing canonical auth/tenant context and validating database reads through a restricted Hyperdrive role. Do not expose protected APIs anonymously or mark DB-backed routes native before that evidence exists.
+Next: run isolated staging verification and measure the endpoint's request volume/Origin CPU reduction. Candidate follow-ups are the deterministic storyboard estimate after factoring its schema/contract away from Node-bound skill-registry imports, then the media credit estimate after reusing canonical auth/tenant context and validating database reads through a restricted Hyperdrive role. Do not expose protected APIs anonymously or mark DB-backed routes native before that evidence exists.
