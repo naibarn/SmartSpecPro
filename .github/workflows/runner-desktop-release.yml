@@ -102,6 +102,8 @@ jobs:
             cargo test --locked --manifest-path apps/runner-app/Cargo.toml --lib $scope -- --test-threads=1
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Verify Desktop workspace binding on Windows
+        run: cargo test --locked --manifest-path apps/runner-app/Cargo.toml --test desktop_workspace_binding -- --test-threads=1
       - name: Build unsigned review installer
         working-directory: apps/runner-desktop
         env:

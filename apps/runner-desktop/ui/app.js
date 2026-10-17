@@ -72,6 +72,9 @@ function safeError(error) {
     RUNNER_CONNECT_CONTROL_TOKEN_MISSING: "SmartAIHub ยังไม่ส่งข้อมูลเชื่อมต่อกลับมา กรุณาลองใหม่",
     RUNNER_CONNECT_BROWSER_OPEN_FAILED: "เปิดเบราว์เซอร์เพื่อขออนุมัติไม่ได้ กรุณาเปิดเบราว์เซอร์เริ่มต้นแล้วลองใหม่",
     RUNNER_DEFAULT_WORKSPACE_REQUIRES_STOP: "หยุด Runner ก่อนเปลี่ยน workspace หลัก",
+    RUNNER_WORKSPACE_BINDING_REQUIRES_STOP: "หยุด Runner ก่อนเปลี่ยน Project / Repository แล้วเริ่ม Runner อีกครั้งเพื่อส่งข้อมูลใหม่",
+    RUNNER_WORKSPACE_IDENTITY_INVALID: "ใช้ ID จากงานที่ได้รับมอบหมาย ไม่ใช้ URL, token หรือข้อมูลเข้าสู่ระบบ",
+    RUNNER_WORKSPACE_NOT_REGISTERED: "ไม่พบ workspace นี้ กรุณาโหลดรายการใหม่",
     RUNNER_WORKSPACE_REQUIRES_STOP: "หยุด Runner ก่อนนำ workspace ออก",
     RUNNER_CONNECTION_REQUIRED: "ไม่พบการเชื่อมต่อ Runner กรุณาเชื่อมต่อบัญชีก่อนเริ่มทำงาน",
     RUNNER_CONNECTION_INTERRUPTED: "การเชื่อมต่อขาดหาย Runner จะลองใหม่อัตโนมัติ ตรวจอินเทอร์เน็ตของเครื่องนี้",
@@ -206,7 +209,55 @@ async function refreshWorkspaces() {
       const path = document.createElement("output");
       path.className = "path";
       path.textContent = workspace.localPath;
-      description.append(name, path);
+      const facts = workspace.facts;
+      const git = document.createElement("p");
+      git.className = "body-copy";
+      git.textContent = facts.gitHead
+        ? `Git ${facts.gitBranch ?? "detached HEAD"} · ${facts.gitHead} · ${facts.dirty ? "มีไฟล์เปลี่ยนแปลง" : "ไม่มีไฟล์เปลี่ยนแปลง"}`
+        : "ยังยืนยัน Git HEAD ไม่ได้ — เลือกโฟลเดอร์ Git ที่ตรงกับงานก่อนรับงานพัฒนา";
+      const identity = document.createElement("form");
+      identity.className = "workspace-binding";
+      const inputs = {};
+      for (const [key, title] of [["projectId", "Project ID"], ["repositoryId", "Repository ID"]]) {
+        const label = document.createElement("label");
+        label.className = "field-label";
+        label.textContent = title;
+        const input = document.createElement("input");
+        input.className = "select-control";
+        input.type = "text";
+        input.maxLength = 200;
+        input.autocomplete = "off";
+        input.value = facts[key] ?? "";
+        label.append(input);
+        identity.append(label);
+        inputs[key] = input;
+      }
+      const hint = document.createElement("p");
+      hint.className = "body-copy";
+      hint.textContent = "ใช้ ID จริงจากงานที่ได้รับมอบหมาย เว้นว่างเพื่อล้าง binding; การบันทึกนี้ไม่อนุมัติสิทธิ์รันงาน ต้องหยุด Runner ก่อนแก้ไข";
+      const save = document.createElement("button");
+      save.type = "submit";
+      save.className = "button quiet";
+      save.textContent = "บันทึก Project / Repository";
+      identity.append(hint, save);
+      identity.addEventListener("submit", async event => {
+        event.preventDefault();
+        save.disabled = true;
+        try {
+          await invoke("bind_workspace_identity", {
+            workspaceId: workspace.workspaceId,
+            projectId: inputs.projectId.value.trim() || null,
+            repositoryId: inputs.repositoryId.value.trim() || null,
+          });
+          await refreshWorkspaces();
+          setNotice(elements["runtime-notice"], "บันทึก binding แล้ว เริ่ม Runner เพื่อส่งข้อมูลใหม่; สิทธิ์และ Lease ยังต้องผ่านการตรวจจากระบบ");
+        } catch (error) {
+          setNotice(elements["runtime-notice"], safeError(error));
+        } finally {
+          save.disabled = false;
+        }
+      });
+      description.append(name, path, git, identity);
       const remove = document.createElement("button");
       remove.className = "button quiet";
       remove.type = "button";
