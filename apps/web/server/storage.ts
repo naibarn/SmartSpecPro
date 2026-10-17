@@ -212,6 +212,14 @@ export async function assertR2StorageActive(): Promise<void> {
   }
 }
 
+/** Staging build artifacts must live in a shared remote store, never build-local uploads. */
+export async function assertSharedImmutableStorageActive(): Promise<void> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") {
+    throw new Error("STORAGE_SHARED_CONTENT_STORE_REQUIRED");
+  }
+}
+
 function isDurableMediaContentType(
   contentType: string,
   relKey?: string
