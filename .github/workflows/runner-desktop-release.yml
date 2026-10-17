@@ -93,6 +93,7 @@ jobs:
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          SAH_RUNNER_BUILD_VERSION: ${{ inputs.version }}
         run: cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis --config "{`"version`":`"$env:RELEASE_VERSION`"}"
       - name: Create checksummed manifest
         shell: pwsh
@@ -143,6 +144,7 @@ jobs:
         working-directory: apps/runner-desktop
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          SAH_RUNNER_BUILD_VERSION: ${{ inputs.version }}
         run: cargo tauri build --target universal-apple-darwin --bundles dmg --config "{\"version\":\"$RELEASE_VERSION\"}"
       - name: Create checksummed manifest
         env:

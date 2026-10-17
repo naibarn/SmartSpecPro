@@ -25,6 +25,7 @@ import { eq } from "drizzle-orm";
 import {
   defaultRunnerGateway,
   RunnerGatewayError,
+  runnerReadinessForDisplay,
   type RunnerGateway,
   type RunnerGatewayNode,
 } from "../services/runnerGateway";
@@ -1794,6 +1795,7 @@ export function registerRunnerControlRoutes(
         .where(eq(runnerNodes.tenantId, tenantId));
       return res.json({
         runners: rows.map(row => {
+          const readiness = runnerReadinessForDisplay(row);
           const toolInventory = Array.isArray(
             row.currentSnapshotJson?.toolInventory
           )
@@ -1814,7 +1816,7 @@ export function registerRunnerControlRoutes(
             displayName: row.displayName,
             profile: row.profile,
             nodeKind: row.nodeKind,
-            status: row.status,
+            status: readiness.status,
             trustState: row.trustState,
             lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
             runnerVersion:
@@ -1828,15 +1830,15 @@ export function registerRunnerControlRoutes(
                 toolId: typeof tool.toolId === "string" ? tool.toolId : "unknown",
                 displayName: typeof tool.displayName === "string" ? tool.displayName : String(tool.toolId ?? "Unknown tool"),
                 version: typeof tool.version === "string" ? tool.version : null,
-                availabilityState: typeof tool.availabilityState === "string" ? tool.availabilityState : "unknown",
-                trustState: typeof tool.trustState === "string" ? tool.trustState : "unknown",
-                reasonCodes: Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],
+                availabilityState: !readiness.snapshotCurrent ? "stale" : typeof tool.availabilityState === "string" ? tool.availabilityState : "unknown",
+                trustState: !readiness.snapshotCurrent ? "degraded" : typeof tool.trustState === "string" ? tool.trustState : "unknown",
+                reasonCodes: !readiness.snapshotCurrent ? ["capability_snapshot_not_current"] : Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],
               };
             }),
             toolCount: toolInventory.length,
             readyToolCount: toolInventory.filter(
               item =>
-                item &&
+                readiness.snapshotCurrent && item &&
                 typeof item === "object" &&
                 String((item as Record<string, unknown>).trustState ?? "") === "ready" &&
                 String((item as Record<string, unknown>).availabilityState ?? "") === "available"
@@ -1844,7 +1846,7 @@ export function registerRunnerControlRoutes(
             capabilityCount: capabilityInventory.length,
             readyCapabilityCount: capabilityInventory.filter(
               item =>
-                item &&
+                readiness.snapshotCurrent && item &&
                 typeof item === "object" &&
                 String(
                   (item as Record<string, unknown>).policyDecision ?? ""

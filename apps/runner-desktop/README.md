@@ -24,6 +24,13 @@ browser device-approval flow, then returns to this window.
    per-user Windows/macOS setting. Closing the window hides it to the tray/menu
    bar; use its menu to reopen or quit.
 
+After pairing and tool verification, the desktop publishes a bounded capability
+rescan when its task loop is stopped. It reports whether SmartAIHub acknowledged
+that publication; a local task answer alone does not prove backend readiness.
+This rescan does not poll or execute jobs. A running loop refreshes its own
+snapshot instead. Provider policy, workspace/job leases and protected recovery
+grants remain separate requirements for the work that needs them.
+
 Workspace paths and UI preferences are local. SmartAIHub receives workspace IDs
 and bounded capability status, not local absolute folder paths.
 
