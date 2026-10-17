@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e2d910cce266dd1193f69c9b44898f72615cb608",
+    "expected_canonical_sha": "ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
     "next_action": "PR #1019 carries bounded canonical Markdown hydration and budget-aware early stop through the existing LibraryService ACL boundary. After merge, continue remaining P229.1 consumer/contract requirements; keep P229.2 index profile migration blocked until versioned 1024D index/backfill/shadow-read prerequisites are approved by existing SPEC-229 contract. Do not claim quality certification or production verification.",
     "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1019 merged at canonical main SHA e2d910cce266dd1193f69c9b44898f72615cb608 on 2026-10-17T03:34:02Z. It adds ACL-checked canonical Library Markdown hydration, stale revision rejection, SHA-256 source provenance, and budget-aware early stop through existing services. Focused tests: 3 files, 42 passed, 28 todo; progressive gate and SPEC-308 mocked browser simulation passed. Quality gate remains uncertified; no production verification/full typecheck/benchmark claimed. Next: complete remaining P229.1 consumer and contract requirements. P229.2 remains gated on versioned 1024D profile/index/backfill/shadow-read prerequisites.",
+    "resume_point": "PR #1020 handoff receipt merged at canonical main SHA ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47 on 2026-10-17T03:37:09Z, confirming PR #1019 hydration work at e2d910cce266dd1193f69c9b44898f72615cb608. P229.8 remains partial: canonical markdown, stale drop, provenance digest and context budget early-stop implemented; quality gate/citations/evaluation remain open. Next ready workunit is remaining SPEC229_P229_1 broker contract/security acceptance. P229.2 profile/index work remains blocked pending versioned-index and re-embedding/shadow-read prerequisites. Production verification remains unverified.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -109,9 +109,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e2d910cce266dd1193f69c9b44898f72615cb608",
+    "canonical_sha": "ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:34:02Z"
+    "integrated_at": "2026-10-17T03:37:09Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -228,7 +228,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:34:24.582360Z",
+  "updated_at": "2026-10-17T03:37:29.594708Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
