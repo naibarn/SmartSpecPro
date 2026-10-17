@@ -18,6 +18,23 @@ export const retrievalBenchmarkGoldCaseSchema = z.object({
 
 export const retrievalBenchmarkObservationSchema = z.object({
   caseId: z.string().min(1),
+  // Optional for backward compatibility with existing observation fixtures.
+  // Each benchmark run may identify one §27 comparison arm and one latency gate.
+  comparisonProfile: z.enum([
+    "legacy_baseline",
+    "vectorize_dense",
+    "ai_search_bm25",
+    "ai_search_vector",
+    "hybrid_rrf",
+    "hybrid_reranker",
+    "conditional_rewrite",
+    "multi_query",
+  ]).optional(),
+  latencyProfile: z.enum([
+    "simple_exact_keyword",
+    "hybrid_rerank",
+    "rewrite_hybrid_rerank",
+  ]).optional(),
   answerSupported: z.boolean(),
   coveredClaims: z.array(z.string()),
   evidence: z.array(z.object({
@@ -46,6 +63,34 @@ export const retrievalBenchmarkObservationSchema = z.object({
 
 export type RetrievalBenchmarkGoldCase = z.infer<typeof retrievalBenchmarkGoldCaseSchema>;
 export type RetrievalBenchmarkObservation = z.infer<typeof retrievalBenchmarkObservationSchema>;
+
+export interface RetrievalBenchmarkProfile {
+  comparisonProfile: RetrievalBenchmarkObservation["comparisonProfile"] | null;
+  latencyProfile: RetrievalBenchmarkObservation["latencyProfile"] | null;
+}
+
+export function getRetrievalBenchmarkProfile(
+  observations: RetrievalBenchmarkObservation[],
+): RetrievalBenchmarkProfile {
+  const comparisonProfiles = new Set(
+    observations.map(row => row.comparisonProfile ?? null),
+  );
+  const latencyProfiles = new Set(
+    observations.map(row => row.latencyProfile ?? null),
+  );
+  if (comparisonProfiles.size > 1)
+    throw new Error(
+      "Benchmark observations must use one comparison profile per run",
+    );
+  if (latencyProfiles.size > 1)
+    throw new Error(
+      "Benchmark observations must use one latency profile per run",
+    );
+  return {
+    comparisonProfile: observations[0]?.comparisonProfile ?? null,
+    latencyProfile: observations[0]?.latencyProfile ?? null,
+  };
+}
 
 export interface RetrievalBenchmarkMetrics {
   caseCount: number;

@@ -17,14 +17,15 @@ import {
 } from "../server/services/libraryRetrievalGoldDataset";
 import {
   calculateRetrievalBenchmarkMetrics,
+  getRetrievalBenchmarkProfile,
   isCitationValid,
   retrievalBenchmarkObservationSchema,
 } from "../server/services/libraryRetrievalBenchmark";
 
 // Run development report: pnpm --filter @smartspec/web exec tsx scripts/run-retrieval-gold-dataset.ts
 // Add --dataset-file <json> --observations-file <json> --system-sha <40-or-64-char-sha> for a recorded run.
-// A comparable --baseline-file must include the same dataset digest, benchmark version, system SHA,
-// serialized observations, and observationsSha256; unbound metric-only baselines are rejected.
+// A comparable --baseline-file must include the same dataset digest and benchmark version, a valid
+// system SHA, serialized observations, and observationsSha256; unbound metric-only baselines are rejected.
 
 function argValue(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -48,6 +49,9 @@ const observations = observationFile
       .array()
       .parse(JSON.parse(readFileSync(observationFile, "utf8")))
   : undefined;
+const currentProfile = observations
+  ? getRetrievalBenchmarkProfile(observations)
+  : null;
 const evaluated = evaluateGoldDataset(candidates, observations);
 const releaseScope = isReleaseCohortReady(evaluated.counts);
 const evaluationCohort = releaseScope
@@ -324,9 +328,15 @@ if (baselineFile) {
     /^[a-f0-9]{40}([a-f0-9]{24})?$/.test(currentSystemSha ?? "") &&
     Array.isArray(baseline.observations) &&
     baseline.observationsSha256 === hash(JSON.stringify(baseline.observations));
+  const baselineObservations = compatible && baseline.observations
+    ? retrievalBenchmarkObservationSchema.array().parse(baseline.observations)
+    : undefined;
+  const baselineProfile = baselineObservations
+    ? getRetrievalBenchmarkProfile(baselineObservations)
+    : null;
   const baselineEvaluated =
-    compatible && baseline.observations && observations
-      ? evaluateGoldDataset(candidates, baseline.observations)
+    compatible && baselineObservations && observations
+      ? evaluateGoldDataset(candidates, baselineObservations)
       : undefined;
   const baselineMetrics = baselineEvaluated?.metrics;
   const comparison =
@@ -361,6 +371,8 @@ if (baselineFile) {
     baselineSystemSha: baseline.systemSha ?? null,
     currentSystemSha,
     baselineObservationsSha256: baseline.observationsSha256 ?? null,
+    baselineProfile,
+    currentProfile,
     comparison,
   };
 }
@@ -376,6 +388,8 @@ process.stdout.write(
       benchmarkVersion: "spec229-benchmark-v1",
       systemSha: currentSystemSha,
       observationsSha256: observationsDigest,
+      comparisonProfile: currentProfile?.comparisonProfile ?? null,
+      latencyProfile: currentProfile?.latencyProfile ?? null,
       counts: countGoldDataset(candidates),
       classCounts,
       candidateRequiredClassesMissing: missingRequiredQueryClasses(candidates),
@@ -402,7 +416,7 @@ process.stdout.write(
         "Machine review is reported separately and never counted as human review.",
         "Repository-backed candidates are development-only unless separately source-approved for release evaluation; their review state does not imply human review or quality certification.",
         "Per-class confidence intervals require at least 30 cases; this is a reporting floor, not a release threshold.",
-        "Latency release gates remain not evaluable because the existing observation contract does not distinguish retrieval profiles.",
+        "Each observation file must identify one consistent comparisonProfile; latency criteria are evaluated only when one matching latencyProfile and latency for every cohort row are present.",
         "This harness does not run retrieval, generate answers, or use an LLM as an answer judge.",
       ],
     },
