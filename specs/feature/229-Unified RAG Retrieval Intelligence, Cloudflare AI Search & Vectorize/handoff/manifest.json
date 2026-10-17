@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47",
+    "expected_canonical_sha": "34e7bd3a8287bd4e77da510fca9b08bf810fa630",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
     "next_action": "PR #1019 carries bounded canonical Markdown hydration and budget-aware early stop through the existing LibraryService ACL boundary. After merge, continue remaining P229.1 consumer/contract requirements; keep P229.2 index profile migration blocked until versioned 1024D index/backfill/shadow-read prerequisites are approved by existing SPEC-229 contract. Do not claim quality certification or production verification.",
     "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1020 handoff receipt merged at canonical main SHA ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47 on 2026-10-17T03:37:09Z, confirming PR #1019 hydration work at e2d910cce266dd1193f69c9b44898f72615cb608. P229.8 remains partial: canonical markdown, stale drop, provenance digest and context budget early-stop implemented; quality gate/citations/evaluation remain open. Next ready workunit is remaining SPEC229_P229_1 broker contract/security acceptance. P229.2 profile/index work remains blocked pending versioned-index and re-embedding/shadow-read prerequisites. Production verification remains unverified.",
+    "resume_point": "PR #1021 handoff receipt merged at canonical main SHA 34e7bd3a8287bd4e77da510fca9b08bf810fa630 on 2026-10-17T03:39:03Z, confirming PR #1020 receipt for PR #1019 hydration. Remaining P229.1 broker contract/security acceptance is next. Existing adapter supports only Library / Cloudflare Vectorize 768D, and unsupported source/query features fail closed. P229.2 requires a new 1024D index and canonical re-embedding/shadow-read plan; do not change the active 768D profile in place. Keep completion and Production Verified false.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 29,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -109,9 +109,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ea0dec58fa96ed40c83ebd66b7dfe0d963c6eb47",
+    "canonical_sha": "34e7bd3a8287bd4e77da510fca9b08bf810fa630",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:37:09Z"
+    "integrated_at": "2026-10-17T03:39:03Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -228,7 +228,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:37:29.594708Z",
+  "updated_at": "2026-10-17T03:39:22.338810Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
