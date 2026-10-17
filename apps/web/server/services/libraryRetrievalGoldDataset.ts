@@ -4,6 +4,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { normalizeCanonicalMarkdown, sha256 } from "./libraryCitationAnchor";
 import {
   calculateRetrievalBenchmarkMetrics,
+  getRetrievalBenchmarkProfile,
   retrievalBenchmarkObservationSchema,
   SPEC_229_RELEASE_CRITERIA,
   type RetrievalBenchmarkMetrics,
@@ -531,6 +532,7 @@ export function evaluateGoldDataset(
     };
   }
   const rows = retrievalBenchmarkObservationSchema.array().parse(observations);
+  const profile = getRetrievalBenchmarkProfile(rows);
   const cases = reviewedCases.map(item => ({
     caseId: item.caseId,
     query: item.query,
@@ -538,6 +540,20 @@ export function evaluateGoldDataset(
     language: item.language,
   }));
   const metrics = calculateRetrievalBenchmarkMetrics(cases, rows);
+  const latencyP95ForProfile = (expectedProfile: string): number | null => {
+    if (
+      profile.latencyProfile !== expectedProfile ||
+      rows.some(row => row.latencyMs === undefined)
+    ) {
+      return null;
+    }
+    return metrics.p95LatencyMs;
+  };
+  const simpleExactKeywordP95 = latencyP95ForProfile("simple_exact_keyword");
+  const hybridRerankP95 = latencyP95ForProfile("hybrid_rerank");
+  const rewriteHybridRerankP95 = latencyP95ForProfile(
+    "rewrite_hybrid_rerank",
+  );
   if (!releaseCohortReady) {
     return {
       counts,
@@ -674,24 +690,29 @@ export function evaluateGoldDataset(
         SPEC_229_RELEASE_CRITERIA.noAnswerRecall
       ),
     },
-    // Current observations do not distinguish the three §27 latency retrieval profiles.
     {
       id: "simpleExactKeywordP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.simpleExactKeywordP95Ms}ms`,
-      value: null,
-      pass: null,
+      value: simpleExactKeywordP95,
+      pass: simpleExactKeywordP95 === null
+        ? null
+        : simpleExactKeywordP95 <= SPEC_229_RELEASE_CRITERIA.simpleExactKeywordP95Ms,
     },
     {
       id: "hybridRerankP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.hybridRerankP95Ms}ms`,
-      value: null,
-      pass: null,
+      value: hybridRerankP95,
+      pass: hybridRerankP95 === null
+        ? null
+        : hybridRerankP95 <= SPEC_229_RELEASE_CRITERIA.hybridRerankP95Ms,
     },
     {
       id: "rewriteHybridRerankP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.rewriteHybridRerankP95Ms}ms`,
-      value: null,
-      pass: null,
+      value: rewriteHybridRerankP95,
+      pass: rewriteHybridRerankP95 === null
+        ? null
+        : rewriteHybridRerankP95 <= SPEC_229_RELEASE_CRITERIA.rewriteHybridRerankP95Ms,
     },
   ];
   const releaseCriteria = values.map(value => ({
