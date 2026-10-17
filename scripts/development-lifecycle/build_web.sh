@@ -10,3 +10,8 @@ fi
 
 pnpm --filter @smartspec/remotion-render build
 pnpm --filter @smartspec/web build
+pnpm dlx wrangler@4.151.1 deploy \
+  --config apps/cloudflare/wrangler.staging.jsonc \
+  --dry-run \
+  --outdir apps/cloudflare/.staging-artifact/wrangler
+node apps/cloudflare/scripts/package-staging-artifact.mjs
