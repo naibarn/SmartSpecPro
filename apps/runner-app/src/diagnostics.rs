@@ -413,23 +413,14 @@ fn scan_capability_tools(
             if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
                 return Ok(None);
             }
-            if tool.trust_state == TrustState::Ready
-                && deterministic_certification_adapter_enabled()
-            {
-                if let (Some(adapter_id), Some(session_id), Some(tenant_id)) =
-                    (tool.adapter_id.as_deref(), runner_session_id, tenant_id)
-                {
-                    if matches!(adapter_id, "codex.v1" | "claude.v1") {
-                        tool.authorization_evidence_ref =
-                            Some(build_external_agent_authorization_ref(
-                                &config.runner_id,
-                                session_id,
-                                tenant_id,
-                                adapter_id,
-                                snapshot_expiry_ms(),
-                            ));
-                    }
-                }
+            if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
+                tool.authorization_evidence_ref = external_agent_readiness_ref(
+                    config,
+                    tool,
+                    runner_session_id,
+                    tenant_id,
+                    crate::connection::token_expiry_ms(access_token),
+                );
             }
         }
     }
@@ -437,6 +428,43 @@ fn scan_capability_tools(
         return Ok(None);
     }
     Ok(Some((tools, browser_grant)))
+}
+
+fn external_agent_readiness_ref(
+    config: &RunnerConfig,
+    tool: &ToolCandidate,
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+    access_token_expires_at_ms: Option<u64>,
+) -> Option<String> {
+    let adapter_id = tool.adapter_id.as_deref()?;
+    // A real Codex login-status probe can establish adapter readiness too.
+    // This redacted reference binds those facts to the approved session; it
+    // never grants provider policy, a job lease or SPEC-224 recovery authority.
+    if tool.trust_state != TrustState::Ready
+        || tool.auth_state != CapabilityDimension::Ready
+        || !(adapter_id == "codex.v1" || deterministic_certification_adapter_enabled())
+        || !matches!(adapter_id, "codex.v1" | "claude.v1")
+    {
+        return None;
+    }
+    let session_id = runner_session_id.filter(|value| !value.trim().is_empty())?;
+    let tenant_id = tenant_id.filter(|value| !value.trim().is_empty())?;
+    let expires_at = access_token_expires_at_ms?.min(snapshot_expiry_ms());
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_millis();
+    if u128::from(expires_at) <= now_ms {
+        return None;
+    }
+    Some(build_external_agent_authorization_ref(
+        &config.runner_id,
+        session_id,
+        tenant_id,
+        adapter_id,
+        expires_at,
+    ))
 }
 
 fn connection_status_inner(
@@ -3732,11 +3760,11 @@ mod lifecycle_tests {
     use super::{
         browser_execution_capacity_available, build_keepalive_envelope,
         cancellation_target_command_id, cancellation_target_matches, capability_snapshot,
-        delivery_transport_label, keepalive_due, parse_refresh_interval,
-        persist_and_send_runner_receipt, recover_interrupted_external_agent_commands,
-        replay_pending_runner_receipts, runner_receipt_payload, semantic_receipt_payload,
-        snapshot_evidence, update_ack_statuses, CAPABILITY_SNAPSHOT_REFRESH_INTERVAL,
-        CAPABILITY_SNAPSHOT_TTL,
+        delivery_transport_label, external_agent_readiness_ref, keepalive_due,
+        parse_refresh_interval, persist_and_send_runner_receipt,
+        recover_interrupted_external_agent_commands, replay_pending_runner_receipts,
+        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+        CAPABILITY_SNAPSHOT_REFRESH_INTERVAL, CAPABILITY_SNAPSHOT_TTL,
     };
     #[cfg(target_os = "linux")]
     use super::{build_local_session_inventories, MAX_SAFE_JS_INTEGER};
@@ -3751,6 +3779,77 @@ mod lifecycle_tests {
     use serde_json::json;
     use std::collections::VecDeque;
     use std::time::Duration;
+
+    #[test]
+    fn authenticated_codex_has_session_bound_evidence_without_certification_mode() {
+        let config = RunnerConfig::local("runner-codex", "device-codex", "https://example.test");
+        let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
+            .into_iter()
+            .find(|tool| tool.tool_id == "codex")
+            .unwrap();
+        crate::adapters::apply_probe(
+            &mut tool,
+            crate::adapters::AdapterProbeResult {
+                version: "TEST_ONLY_codex".into(),
+                authenticated: true,
+                healthy: true,
+                available: true,
+                reason_codes: vec!["TEST_ONLY_AUTH_FIXTURE".into()],
+            },
+        )
+        .unwrap();
+        let expiry = super::snapshot_expiry_ms();
+        let evidence = external_agent_readiness_ref(
+            &config,
+            &tool,
+            Some("session"),
+            Some("tenant"),
+            Some(expiry),
+        );
+        assert!(evidence
+            .as_deref()
+            .unwrap()
+            .starts_with("runner-agent-auth:sha256:"));
+        assert!(
+            external_agent_readiness_ref(&config, &tool, None, Some("tenant"), Some(expiry))
+                .is_none()
+        );
+        assert!(
+            external_agent_readiness_ref(&config, &tool, Some("session"), None, Some(expiry))
+                .is_none()
+        );
+        assert!(external_agent_readiness_ref(
+            &config,
+            &tool,
+            Some("session"),
+            Some("tenant"),
+            Some(1)
+        )
+        .is_none());
+        tool.authorization_evidence_ref = evidence;
+        let snapshot = capability_snapshot(
+            &config,
+            &[tool.clone()],
+            Some("session"),
+            Some("tenant"),
+            None,
+            "https://example.test",
+        );
+        assert!(snapshot["toolInventory"][0]["authorizationEvidenceRef"].is_string());
+        assert_eq!(
+            snapshot["capabilityInventory"][0]["policyDecision"],
+            "pending"
+        );
+        tool.auth_state = crate::discovery::CapabilityDimension::Required;
+        assert!(external_agent_readiness_ref(
+            &config,
+            &tool,
+            Some("session"),
+            Some("tenant"),
+            Some(expiry)
+        )
+        .is_none());
+    }
 
     #[test]
     fn cancellation_targets_the_original_execution_command() {

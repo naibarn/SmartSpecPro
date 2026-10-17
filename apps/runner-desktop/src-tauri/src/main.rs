@@ -8,8 +8,8 @@ use smartaihub_runner::{
         token_expiry_ms,
     },
     diagnostics::{
-        discover_local_tools, run_local_entrypoint_desktop, runner_credential_diagnostics,
-        verify_local_tool,
+        connection_status, discover_local_tools, run_local_entrypoint_desktop,
+        runner_credential_diagnostics, verify_local_tool,
     },
     workspace_registry::{self, LocalWorkspaceDetails},
 };
@@ -51,7 +51,7 @@ struct RunnerState {
     worker: Mutex<Option<JoinHandle<()>>>,
     running: Arc<AtomicBool>,
     last_error: Arc<Mutex<Option<String>>>,
-    lifecycle: Mutex<()>,
+    lifecycle: Arc<Mutex<()>>,
     last_refresh_attempt: Mutex<Option<(Instant, &'static str)>>,
     last_refresh_error: Mutex<Option<String>>,
 }
@@ -109,12 +109,7 @@ fn app_config(app: &tauri::AppHandle) -> Result<(RunnerConfig, PathBuf), String>
         .app_data_dir()
         .map_err(|_| "RUNNER_APP_DATA_PATH_UNAVAILABLE".to_string())?;
     fs::create_dir_all(&data_root).map_err(safe_io_error)?;
-    let runner_id = std::env::var("SAH_RUNNER_ID").unwrap_or_else(|_| "local-runner".into());
-    let device_id = std::env::var("SAH_RUNNER_DEVICE_ID").unwrap_or_else(|_| "local-device".into());
-    let control_url = std::env::var("SAH_RUNNER_CONTROL_URL")
-        .unwrap_or_else(|_| format!("https://smartaihub.app/api/runners/{runner_id}/control"));
-    let mut config = RunnerConfig::local(&runner_id, &device_id, &control_url);
-    config.data_root = data_root.to_string_lossy().into_owned();
+    let config = RunnerConfig::local_from_env(&data_root.to_string_lossy())?;
     Ok((config, data_root.join("desktop_settings.json")))
 }
 
@@ -332,6 +327,41 @@ async fn verify_runner_tool(
     tauri::async_runtime::spawn_blocking(move || verify_local_tool(&config, &tool_id))
         .await
         .map_err(|_| "RUNNER_TOOL_VERIFY_TASK_FAILED".to_string())?
+}
+
+/// Publish readiness using the existing authenticated rescan path. This does
+/// not enter the control loop, poll commands or execute a task. Serialize with
+/// start/stop so a local verification cannot replace a live execution binding.
+#[tauri::command]
+async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<String, String> {
+    let config = state.config.clone();
+    let lifecycle = state.lifecycle.clone();
+    let running = state.running.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = lifecycle
+            .lock()
+            .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
+        if running.load(Ordering::Acquire) {
+            return Ok("runtime_running".into());
+        }
+        if load_connection(&config.data_root)?.is_none() {
+            return Ok("disconnected".into());
+        }
+        let report = connection_status(&config, "rescan")?;
+        let report: serde_json::Value =
+            serde_json::from_str(&report).map_err(|_| "RUNNER_CAPABILITY_SYNC_RESPONSE_INVALID")?;
+        let accepted = matches!(
+            report["delivery"]["ack"].as_str(),
+            Some("accepted" | "applied" | "duplicate")
+        );
+        if accepted && report["state"] == "connected" && report["pendingEvents"] == 0 {
+            Ok("synced".into())
+        } else {
+            Err("RUNNER_CAPABILITY_SYNC_PENDING".into())
+        }
+    })
+    .await
+    .map_err(|_| "RUNNER_CAPABILITY_SYNC_TASK_FAILED".to_string())?
 }
 
 #[derive(Debug, Deserialize)]
@@ -727,7 +757,7 @@ fn main() {
                 worker: Mutex::new(None),
                 running: Arc::new(AtomicBool::new(false)),
                 last_error: Arc::new(Mutex::new(None)),
-                lifecycle: Mutex::new(()),
+                lifecycle: Arc::new(Mutex::new(())),
                 last_refresh_attempt: Mutex::new(None),
                 last_refresh_error: Mutex::new(None),
             });
@@ -800,6 +830,7 @@ fn main() {
             retry_runner_credentials,
             connect_runner,
             rescan_runner,
+            sync_runner_capabilities,
             verify_runner_tool,
             export_runner_debug_report,
             open_runner_debug_folder,
