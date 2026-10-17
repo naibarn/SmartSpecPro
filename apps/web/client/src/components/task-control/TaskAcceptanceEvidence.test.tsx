@@ -59,7 +59,12 @@ describe("completed pilot acceptance evidence surface", () => {
     const goalInput = structuredClone(input.goal.input);
     goalInput.observations[0]!.liveRequired = true;
     goalInput.observations[0]!.liveVerified = false;
-    const projection = projectTaskAcceptance({ ...input, scope: { kind: "project", id: "parent-project" }, goal: { input: goalInput, baselineSource: "trusted" } });
+    goalInput.baseline!.goalId = "test-only:parent-project-goal";
+    const scope = { kind: "project" as const, id: "parent-project" };
+    const projection = projectTaskAcceptance({ ...input, scope, goal: {
+      input: goalInput, baselineSource: "trusted",
+      scopeBinding: { scope, goalId: goalInput.baseline!.goalId, baselineVersion: goalInput.baseline!.version, baselineDigest: goalInput.baseline!.digest },
+    } });
     render(<TaskAcceptanceEvidence projection={projection} />);
     expect(projection.goal.verifiedPercent).toBeLessThan(100);
     expect(screen.getByText(/Test pass rate: 100%/)).toBeTruthy();
