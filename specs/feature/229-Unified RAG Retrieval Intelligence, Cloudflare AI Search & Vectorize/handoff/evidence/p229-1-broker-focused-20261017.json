@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "workunit": "SPEC229_P229_1_RETRIEVAL_BROKER",
   "canonicalBaseSha": "772402cdf89c921e5fdd0e8e00e3143c5e56a7d8",
-  "sourceCommitSha": "13c65c378cad6119263c59e0d1d57c7941deb18a",
+  "sourceCommitSha": "c42d25ed2b6a583a9a471ae3c11332621e53a11d",
   "sourceBranch": "codex/spec229-p229-1-retrieval-broker",
-  "observedAt": "2026-10-17T01:01:16Z",
+  "observedAt": "2026-10-17T01:06:11Z",
   "profile": "quick",
   "checks": [
     {
