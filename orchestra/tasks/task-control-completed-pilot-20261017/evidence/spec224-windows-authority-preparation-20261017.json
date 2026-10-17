@@ -1,0 +1,79 @@
+{
+  "workunit": "SPEC224_WINDOWS_CODEX_EXECUTION_PROFILE",
+  "state": "DRAFT_NOT_SUBMITTABLE",
+  "creates_authority": false,
+  "endpoint": "POST /api/v1/approvals/spec224/recovery-grants",
+  "authentication": "existing authenticated tenant-owner session; do not mint tokens from server secrets",
+  "profile_id": "spec224-recovery-windows-x64-codex-nonprod",
+  "minimum_engine_version": "0.2.31",
+  "repository": {
+    "remote": "https://github.com/naibarn/SmartSpecPro.git",
+    "source_commit": null,
+    "bind_only_after": "protected integration and current canonical source attestation"
+  },
+  "known_source_scope": [
+    {
+      "path": "apps/runner-app/src/process.rs",
+      "sha256": "0e6d2120abf29555a6f1da64930ed5a97283cd40fc5421105527c343e0d42ffb"
+    }
+  ],
+  "proposed_scope": {
+    "sourceCommit": null,
+    "sourceSha256": null,
+    "sourceFiles": [
+      {
+        "path": "apps/runner-app/src/process.rs",
+        "sha256": "0e6d2120abf29555a6f1da64930ed5a97283cd40fc5421105527c343e0d42ffb"
+      }
+    ],
+    "workpackageId": null,
+    "allowedWriteSet": [
+      "apps/runner-app/src/process.rs"
+    ],
+    "allowedOperations": [
+      "read_source",
+      "protected_dispatch",
+      "protected_execute",
+      "protected_recovery"
+    ],
+    "forbiddenOperations": [
+      "production",
+      "paid_provider",
+      "cloudflare_migration",
+      "shared_worktree"
+    ],
+    "runtimeScope": "node-control-plane",
+    "environmentScope": "isolated-non-production",
+    "expiresAt": null,
+    "runtimeBinding": null,
+    "admissionBinding": null
+  },
+  "remaining_required_real_evidence": [
+    "owned Windows Git folder and local registry workspaceId",
+    "actual tenant/project/repository/task binding",
+    "selected authorized acceptance WorkPackage ID",
+    "current canonical DevelopmentRun/workerJob/attempt identity",
+    "lease/fencing/revision/decisionEpoch",
+    "Windows session and fresh capability snapshot ID/revision",
+    "source tree/manifest/sourceSha256 from existing attestation",
+    "profile bound to canonical source and certified native artifact evidence",
+    "existing model admission and authorized budget",
+    "owner-chosen expiry via existing approval mechanism"
+  ],
+  "submission_rules": [
+    "do not submit null or invented values",
+    "derive canonical idempotency key only from the real approved run/scope; check existing grant/job first",
+    "confirm the accepted scope covers the actual Codex subscription path without widening paid-provider policy",
+    "profile declaration/tests/native CI do not certify live authority"
+  ],
+  "workspace_action": {
+    "owner": "Windows workspace owner / SPEC-224 workspace-authority maintainer",
+    "local_command_form": "smartaihub-runner workspace add <real-owned-Git-folder> --project-id <actual-project-id> --repository-id github.com/naibarn/SmartSpecPro",
+    "preconditions": [
+      "verify folder Git remote/source SHA and ownership; do not use another session checkout",
+      "retain actual generated workspaceId; do not synthesize an ID",
+      "bind real task through existing admission; do not write backend registry rows by hand"
+    ]
+  },
+  "source_note": "The current profile extension separates Windows Codex Runner execution from Linux backend runtime. Native Windows v0.2.31 and live certification pending."
+}

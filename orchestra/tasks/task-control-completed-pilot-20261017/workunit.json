@@ -635,5 +635,18 @@
       "web": "44/44 PASS",
       "native_windows": "PENDING"
     }
+  },
+  "windows_first_continuation": {
+    "workunit_id": "SPEC224_WINDOWS_CODEX_EXECUTION_PROFILE",
+    "owner": "/root",
+    "source_sha": "c65be54189c0c428a8ba3525af304454e77f80d8",
+    "implementation_sha": "23a6270cca4a2896e7dbc00b5b22789a325ec514",
+    "pull_request": 1059,
+    "status": "ENGINEERING_VERIFIED_NATIVE_PENDING",
+    "profile_id": "spec224-recovery-windows-x64-codex-nonprod",
+    "authority_preparation": "evidence/spec224-windows-authority-preparation-20261017.json",
+    "live_acceptance": "NOT_ACCEPTED",
+    "new_jobs": 0,
+    "next_action": "protectively integrate, native Windows CI/build from canonical SHA, then deployment/workspace/certification/grant predicates"
   }
 }
