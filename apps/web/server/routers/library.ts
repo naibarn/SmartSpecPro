@@ -389,7 +389,7 @@ export const libraryRouter = router({
           z.object({
             updatedAfter: z.string().datetime().optional(),
             maxAgeSeconds: z.number().int().positive().optional(),
-          }),
+          }).strict(),
         ]).optional(),
         languageHints: z.array(z.string().min(1).max(32)).max(8).optional(),
         allowRewrite: z.boolean().optional(),
@@ -400,7 +400,7 @@ export const libraryRouter = router({
         maxEvidence: z.number().int().min(1).max(12).optional(),
         maxContextTokens: z.number().int().min(1).max(32_000).optional(),
         filters: searchFilterSchema.optional(),
-      }),
+      }).strict(),
     )
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
