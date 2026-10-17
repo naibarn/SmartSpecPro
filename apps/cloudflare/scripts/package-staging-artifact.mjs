@@ -121,6 +121,9 @@ for (const sourceFile of publicFiles) {
   const name = sourceFile.name.split(sep).join("/");
   if (!safeRelative(name)) throw new Error("STAGING_ARTIFACT_ASSET_PATH_INVALID");
   const bytes = await readFile(sourceFile.path);
+  // Empty public placeholders such as .gitkeep are not deployable HTTP assets;
+  // omitting them keeps the content-addressed publisher's non-empty blob rule.
+  if (bytes.byteLength === 0) continue;
   assets.push({ name, file: `apps/web/dist/public/${name}`, contentType: contentType(name), size: bytes.byteLength, sha256: digest(bytes) });
 }
 const entries = [

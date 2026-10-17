@@ -75,7 +75,9 @@ export function createCanonicalBuildReceiptAuthority(resultsRoot: string): Cloud
             record.source_verified === true && artifact?.source_sha?.toLowerCase() === receipt.sourceSha.toLowerCase() &&
             artifact?.build_digest?.toLowerCase() === receipt.cloudflareBundleDigest.toLowerCase() &&
             artifact?.artifact_ref === `sha256:${receipt.cloudflareBundleDigest.toLowerCase()}` &&
-            ["BUNDLE_READY", "PUBLISHED"].includes(artifact?.status);
+            ["BUNDLE_READY", "PUBLISHED"].includes(artifact?.status) ||
+            (artifact?.status === "PUBLISH_PENDING" &&
+              ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason));
         } catch {
           return false;
         }

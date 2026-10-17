@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  createCanonicalBuildReceiptAuthority,
   createCloudflareStagingArtifactAuthority,
   isCloudflareStagingArtifactPathAllowed,
   type CloudflareStagingArtifactStorage,
@@ -60,6 +64,37 @@ const bundle = {
 };
 
 describe("Cloudflare staging artifact authority", () => {
+  it("allows only retryable publish-pending canonical build receipts", async () => {
+    const resultsRoot = await mkdtemp(join(tmpdir(), "cf-staging-receipt-"));
+    try {
+      const record = {
+        status: "BUILD_PASSED",
+        canonical_ref: "refs/heads/main",
+        source_revision: sourceSha,
+        canonical_tip_after_build: sourceSha,
+        source_verified: true,
+        completed_at: 1,
+        cloudflare_staging_artifact: {
+          source_sha: sourceSha,
+          build_digest: buildDigest,
+          artifact_ref: `sha256:${buildDigest}`,
+          status: "PUBLISH_PENDING",
+          reason: "artifact_publish_failed",
+        },
+      };
+      const resultPath = join(resultsRoot, `${receipt.buildId}.json`);
+      await writeFile(resultPath, JSON.stringify(record));
+      const authority = createCanonicalBuildReceiptAuthority(resultsRoot);
+      expect(await authority.verify(receipt)).toBe(true);
+
+      record.cloudflare_staging_artifact.reason = "canonical_build_receipt_unavailable";
+      await writeFile(resultPath, JSON.stringify(record));
+      expect(await authority.verify(receipt)).toBe(false);
+    } finally {
+      await rm(resultsRoot, { recursive: true, force: true });
+    }
+  });
+
   it("allows release assets from the approved public source tree and rejects other paths", () => {
     expect(isCloudflareStagingArtifactPathAllowed(
       "/build/apps/web/client/public/releases/current.json",
