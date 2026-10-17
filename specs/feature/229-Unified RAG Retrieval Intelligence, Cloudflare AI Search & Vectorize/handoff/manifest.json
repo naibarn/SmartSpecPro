@@ -162,14 +162,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3e65fdde07bb806d6c58879843efe7ec4f49684f",
+    "expected_canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Proceed with the remaining P229.1 ACL/provenance/consumer-boundary requirements, then only P1 items whose providers, profile, and evidence prerequisites are ready. Keep searchV1 consumers on existing paths until hydration and certified evidence exist. Benchmark before any ranking/default change; do not duplicate current Drive/OneDrive hash skip or context-pack token budget implementations.",
-    "next_ready_workunit": "SPEC229_P229_1_ACL_PROVENANCE_AND_CONSUMER_BOUNDARY_REVIEW",
+    "next_action": "Complete remaining P229.1 broker contract and security requirements, then proceed through P229.2–P229.8 only when provider/index, evidence, benchmark, and migration prerequisites are met. Existing content-hash incremental indexing and context token budgeting are implemented; AST/code retrieval is a confirmed gap but defer until core evidence contract and baseline evaluation are ready.",
+    "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1015 (https://github.com/naibarn/SmartSpecPro/pull/1015) merged at canonical main SHA 3e65fdde07bb806d6c58879843efe7ec4f49684f on 2026-10-17T03:18:29Z. progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head 5f0fa01d20dd8dabda15bb94003a8dff93a4474c; preview skipped. Focused Broker/Library ACL/router suite passed 40. No production verification or full TypeScript check. P229.1 remains partial; consumers are not migrated and P229.8 hydration/quality gate remain open. Evidence: handoff/evidence/p229-1-request-boundary-20261017.json.",
+    "resume_point": "PR #1016 (https://github.com/naibarn/SmartSpecPro/pull/1016) recorded PR #1015 integration at canonical main SHA e80fc4f9e78204c8e57c23ed3fafbff8d4672bea on 2026-10-17T03:20:28Z. PR #1015 merged normalized SAH request DTO, trusted actor-derived tenant/user, strict route input, bounded budgets, and fail-closed unsupported features. Focused Broker/Library ACL/router tests: 40 passed; progressive gate and browser simulation passed for head 5f0fa01d20dd8dabda15bb94003a8dff93a4474c. No production verification/full typecheck. Requirements remain open; do not mark full P229.1 or Spec completion.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 22,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -245,9 +245,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3e65fdde07bb806d6c58879843efe7ec4f49684f",
+    "canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:18:29Z"
+    "integrated_at": "2026-10-17T03:20:28Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -370,7 +370,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:18:54.240670Z",
+  "updated_at": "2026-10-17T03:20:54.118820Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
