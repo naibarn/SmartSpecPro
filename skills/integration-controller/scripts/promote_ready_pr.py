@@ -228,6 +228,7 @@ def evaluate_pull_request(
     *,
     expected_head: str | None,
     expected_base_sha: str | None = None,
+    base_ref_ancestry_verified: bool = False,
     canonical_branch: str = "main",
 ) -> dict[str, Any]:
     blockers: list[str] = []
@@ -247,7 +248,7 @@ def evaluate_pull_request(
     head_sha = pull_request.get("headRefOid")
     if expected_head and head_sha != expected_head:
         blockers.append("EXPECTED_HEAD_MISMATCH")
-    if expected_base_sha and pull_request.get("baseRefOid") != expected_base_sha:
+    if expected_base_sha and pull_request.get("baseRefOid") != expected_base_sha and not base_ref_ancestry_verified:
         blockers.append("BASE_REF_STALE")
 
     if not checks:
@@ -278,6 +279,10 @@ def evaluate_pull_request(
         "merge_sha": (pull_request.get("mergeCommit") or {}).get("oid"),
         "merged_at": pull_request.get("mergedAt"),
         "base_branch": pull_request.get("baseRefName"),
+        "base_ref_sha": pull_request.get("baseRefOid"),
+        "base_ref_ancestry_verified": bool(expected_base_sha and (
+            pull_request.get("baseRefOid") == expected_base_sha or base_ref_ancestry_verified
+        )),
         "merge_state": pull_request.get("mergeStateStatus"),
         "checks": [
             {"name": check.get("name"), "state": check.get("state"), "link": check.get("link")}
@@ -335,11 +340,26 @@ def preflight(
     )
     if not isinstance(pull_request, dict) or not isinstance(checks, list):
         raise RuntimeError("GITHUB_RESPONSE_SHAPE_INVALID")
+    # GitHub may retain an older PR base snapshot while unrelated canonical
+    # commits advance. Reconcile its lineage; GitHub CLEAN/protection and the
+    # exact-head guarded normal merge remain mandatory.
+    base_ref_sha = pull_request.get("baseRefOid")
+    base_ref_ancestry_verified = base_ref_sha == canonical_sha
+    if not base_ref_ancestry_verified and isinstance(base_ref_sha, str) and re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", base_ref_sha):
+        object_type = runner(["git", "cat-file", "-t", base_ref_sha], cwd=repo, check=False)
+        if object_type.returncode == 0 and object_type.stdout.strip() == "commit":
+            ancestry = runner(
+                ["git", "merge-base", "--is-ancestor", base_ref_sha, canonical_sha],
+                cwd=repo,
+                check=False,
+            )
+            base_ref_ancestry_verified = ancestry.returncode == 0
     result = evaluate_pull_request(
         pull_request,
         checks,
         expected_head=expected_head,
         expected_base_sha=canonical_sha,
+        base_ref_ancestry_verified=base_ref_ancestry_verified,
         canonical_branch=canonical_branch,
     )
     result["canonical_ref"] = policy["canonical_ref"]

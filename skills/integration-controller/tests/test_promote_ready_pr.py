@@ -121,6 +121,62 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
         self.assertEqual("BLOCKED", result["status"])
         self.assertIn("BASE_REF_STALE", result["blockers"])
 
+    def test_verified_ancestor_base_does_not_override_other_protected_gates(self):
+        checks = [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}]
+        ready = PROMOTER.evaluate_pull_request(
+            pull_request(), checks, expected_head="a" * 40,
+            expected_base_sha="e" * 40, base_ref_ancestry_verified=True,
+        )
+        self.assertEqual("READY", ready["status"])
+        for pr, expected_head, evidence in (
+            (pull_request(mergeStateStatus="BEHIND"), "a" * 40, checks),
+            (pull_request(reviewDecision="REVIEW_REQUIRED"), "a" * 40, checks),
+            (pull_request(), "b" * 40, checks),
+            (pull_request(), "a" * 40, [{"name": "required", "state": "FAILURE"}]),
+        ):
+            with self.subTest(pr=pr, expected_head=expected_head, evidence=evidence):
+                result = PROMOTER.evaluate_pull_request(
+                    pr, evidence, expected_head=expected_head,
+                    expected_base_sha="e" * 40, base_ref_ancestry_verified=True,
+                )
+                self.assertEqual("BLOCKED", result["status"])
+
+    def test_preflight_proves_older_base_commit_ancestry_and_fails_closed(self):
+        for base, object_type, ancestry_exit, expected in (
+            ("c" * 40, "commit", 0, "READY"),
+            ("c" * 40, "commit", 1, "BLOCKED"),
+            ("c" * 40, "commit", 128, "BLOCKED"),
+            ("c" * 40, "tree", 0, "BLOCKED"),
+            ("c" * 40, None, 0, "BLOCKED"),
+            (None, "commit", 0, "BLOCKED"),
+            ("--malformed-ref", "commit", 0, "BLOCKED"),
+        ):
+            with self.subTest(base=base, object_type=object_type, ancestry_exit=ancestry_exit):
+                commands = []
+                def runner(command, *, cwd, check=True):
+                    commands.append(command)
+                    if command[:2] == ["git", "rev-parse"]:
+                        return subprocess.CompletedProcess(command, 0, "e" * 40 + "\n", "")
+                    if command[:2] == ["git", "cat-file"]:
+                        return subprocess.CompletedProcess(command, 0 if object_type else 128, object_type or "", "")
+                    if command[:2] == ["git", "merge-base"]:
+                        return subprocess.CompletedProcess(command, ancestry_exit, "", "")
+                    if command[:3] == ["gh", "pr", "view"]:
+                        return subprocess.CompletedProcess(command, 0, json.dumps(pull_request(baseRefOid=base)), "")
+                    if command[:3] == ["gh", "pr", "checks"]:
+                        return subprocess.CompletedProcess(command, 0, json.dumps([{"name": "focused-tests", "state": "SUCCESS"}]), "")
+                    return subprocess.CompletedProcess(command, 0, "", "")
+                result, _ = PROMOTER.preflight(self.isolated_git_repo(), 7, expected_head="a" * 40, runner=runner)
+                self.assertEqual(expected, result["status"])
+                self.assertEqual("e" * 40, result["canonical_sha"])
+                if expected == "READY":
+                    self.assertIn(["git", "merge-base", "--is-ancestor", base, "e" * 40], commands)
+                    self.assertTrue(result["base_ref_ancestry_verified"])
+                else:
+                    self.assertIn("BASE_REF_STALE", result["blockers"])
+                if base is None or base == "--malformed-ref":
+                    self.assertFalse(any(cmd[:2] == ["git", "cat-file"] for cmd in commands))
+
     def test_execute_rechecks_head_and_uses_normal_github_merge(self):
         commands = []
         merge_sha = "d" * 40
