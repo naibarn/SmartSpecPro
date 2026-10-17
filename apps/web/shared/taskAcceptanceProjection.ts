@@ -29,8 +29,10 @@ export type AcceptanceLink = Readonly<{
   to: AcceptanceReference;
 }>;
 
+export type TaskAcceptanceScope = Readonly<{ kind: "task" | "pilot" | "spec" | "project"; id: string }>;
+
 export type TaskAcceptanceInput = Readonly<{
-  scope: Readonly<{ kind: "task" | "pilot" | "spec" | "project"; id: string }>;
+  scope: TaskAcceptanceScope;
   reported: Readonly<{
     state: string;
     basis: string | null;
@@ -39,6 +41,13 @@ export type TaskAcceptanceInput = Readonly<{
   goal: Readonly<{
     input: GoalProgressInput;
     baselineSource: "trusted" | "unverified" | "missing";
+    /** Read-source binding, never execution authority or job-supplied metadata. */
+    scopeBinding?: Readonly<{
+      scope: TaskAcceptanceScope;
+      goalId: string;
+      baselineVersion: string;
+      baselineDigest: string;
+    }> | null;
   }>;
   parentClosure: Readonly<{
     closedCount: number | null;
@@ -142,7 +151,13 @@ export function formatVerifiedPercentLabel(goal: GoalProgressProjection): string
  * read adapter; this module neither authenticates sources nor persists state.
  */
 export function projectTaskAcceptance(input: TaskAcceptanceInput): TaskAcceptanceProjection {
-  const trustedGoalInput: GoalProgressInput = input.goal.baselineSource === "trusted"
+  const baseline = input.goal.input.baseline;
+  const binding = input.goal.scopeBinding;
+  const baselineTrusted = Boolean(input.goal.baselineSource === "trusted" && baseline && binding &&
+    binding.scope.kind === input.scope.kind && binding.scope.id === input.scope.id &&
+    binding.goalId === baseline.goalId && binding.baselineVersion === baseline.version &&
+    binding.baselineDigest === baseline.digest);
+  const trustedGoalInput: GoalProgressInput = baselineTrusted
     ? input.goal.input
     : { baseline: null, observations: [] };
   const projectedGoal = projectGoalProgress(trustedGoalInput);
@@ -175,7 +190,6 @@ export function projectTaskAcceptance(input: TaskAcceptanceInput): TaskAcceptanc
   const snapshotTimeKnown = input.sdkUsage.asOf !== null && Number.isFinite(Date.parse(input.sdkUsage.asOf));
   const freshness = input.sdkUsage.freshness === "current" && !snapshotTimeKnown ? "unknown" : input.sdkUsage.freshness;
   const current = freshness === "current" ? historical : null;
-  const baselineTrusted = input.goal.baselineSource === "trusted";
   const verifiedPercent = baselineTrusted ? goal.verifiedGoalCompletion.percent : null;
   const scopeComplete = Boolean(
     baselineTrusted &&
@@ -211,7 +225,9 @@ export function projectTaskAcceptance(input: TaskAcceptanceInput): TaskAcceptanc
     ),
     goal: {
       status: goal.status,
-      reason: input.goal.baselineSource === "trusted" ? goal.reason ?? null : `baseline_${input.goal.baselineSource}`,
+      reason: baselineTrusted ? goal.reason ?? null : input.goal.baselineSource === "trusted"
+        ? binding ? "baseline_scope_mismatch" : "baseline_scope_unverified"
+        : `baseline_${input.goal.baselineSource}`,
       verifiedPercent,
       verifiedPercentLabel: baselineTrusted ? formatVerifiedPercentLabel(goal) : "Unknown",
       requiredCriteriaComplete: baselineTrusted && goal.verifiedGoalCompletion.requiredCriteriaComplete,
