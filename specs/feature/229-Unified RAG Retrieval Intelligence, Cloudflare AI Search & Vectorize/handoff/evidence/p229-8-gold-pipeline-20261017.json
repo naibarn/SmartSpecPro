@@ -1,0 +1,72 @@
+{
+  "evidence_id": "SPEC229-P2298-GOLD-DATASET-PIPELINE-20261017",
+  "workunit": "P229.8 Gold Dataset Pipeline",
+  "outcome": "IMPLEMENTATION_ACCEPTANCE_PASS; P229.8_ACCEPTANCE_NOT_EVALUABLE",
+  "source_sha": "6802ce75f1c21dbe6475c8719c45dbce5a4f6aad",
+  "canonical_base_sha": "744987eebe320b17f5dcff41fef25720e6325589",
+  "observed_at": "2026-10-17T15:35:10Z",
+  "dataset_sha256": "b9c467c2d4adb206e69f176be3e84648e408c15aa69852c68d59d25dfc04afc1",
+  "counts": {
+    "candidate_queries": 10,
+    "independently_reviewed_machine": 10,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "review_accepted_machine": 10,
+    "pending_adjudication": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "development_only": 10
+  },
+  "review_provenance": {
+    "generator_identity": "candidate_queries",
+    "independent_reviewer_identity": "candidate_review",
+    "reviewer_version": "independent-agent-review-2026-10-17",
+    "review_type": "machine",
+    "candidate_009_second_pass": "same independent reviewer identity, version r2; no independent-second-reviewer or exact event timestamp claimed",
+    "human_review_claimed": false
+  },
+  "sources": {
+    "scope": "repository SPEC and handoff Markdown only; no tenant or production data",
+    "license": "root repository MIT license; review per-file authorship and embedded third-party material before release use",
+    "license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+    "source_groups": 1,
+    "observed_candidates_use_approval": "development_only"
+  },
+  "evaluation": {
+    "status": "NOT_EVALUABLE",
+    "release_criteria_status": "NOT_EVALUABLE for all 15 canonical §27 release metrics",
+    "metrics": null,
+    "confidence_intervals": null,
+    "reason": "No >=500 approved reviewed gold queries, no held-out release cohort, no retrieval observations, and no runtime profile-specific latency evidence.",
+    "synthetic_fixture_benchmark": "DEVELOPMENT_FIXTURES_NOT_CERTIFIED; 9 cases; crossTenantLeakage=1; unauthorizedEvidenceLeakage=1; aclLeakage=2; citationPrecision=0.5; freshnessCorrectness=0.571429; no latency or cost observations"
+  },
+  "commands": [
+    {
+      "command": "JWT_SECRET=<test-only> pnpm exec vitest run server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+      "result": "PASS: 2 files, 16 tests"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts",
+      "result": "PASS: deterministic report; 10 candidates; development-only; all release criteria NOT_EVALUABLE"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+      "result": "PASS: 9 synthetic cases; DEVELOPMENT_FIXTURES_NOT_CERTIFIED"
+    }
+  ],
+  "review_findings_resolved": [
+    "normalized duplicate queries rejected across all splits",
+    "seed review timestamps are omitted unless a real recordedAt is available",
+    "citation precision requires valid source anchor, tenant/authorization, live status, and matching expected revision",
+    "release evaluation and confidence intervals use a held-out release cohort only; at least 500 held-out approved reviewed queries required",
+    "development/calibration cases cannot make a release cohort evaluable"
+  ],
+  "limitations": [
+    "This is an implementation/development dataset receipt, not a certified release benchmark.",
+    "Only 10 candidates are currently present and all belong to one source group; no gold/held-out release case is approved.",
+    "No production verification is claimed.",
+    "Static repository sources cannot establish runtime ACL, freshness, outage, latency, or cost behavior."
+  ],
+  "code_commit_sha": "b58ca9dd6",
+  "verification_sha": "6802ce75f1c21dbe6475c8719c45dbce5a4f6aad"
+}
