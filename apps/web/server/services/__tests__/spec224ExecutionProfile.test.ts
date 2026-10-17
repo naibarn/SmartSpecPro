@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import {
   createSpec224ExecutionProfile,
+  matchesSpec224WindowsRunnerTarget,
   getSpec224ExecutionProfileTemplate,
   SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE,
   bindSpec224ExecutionProfileToSource,
@@ -50,6 +51,39 @@ describe("Spec 224 execution profile", () => {
     expect(() => createSpec224ExecutionProfile({ ...base, runtimeRole: undefined })).toThrow("runnerTarget");
     expect(() => createSpec224ExecutionProfile({ ...base, entrypoints: { ...base.entrypoints, rust: ["main.rs"] } })).toThrow("runnerTarget");
     expect(() => createSpec224ExecutionProfile({ ...base, runnerTarget: { ...base.runnerTarget!, requiredTools: ["git", "browser"] as any } })).toThrow("runnerTarget");
+  });
+
+  it("admits only an observed Windows Codex target and source-bound owned workspace", () => {
+    // TEST_ONLY observation; this predicate never certifies a live Runner.
+    const expected = { sourceCommit: "a".repeat(40), workspaceRef: "ws-owned" };
+    const now = Date.parse("2026-10-17T12:00:00Z");
+    const snapshot = {
+      platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc" },
+      runnerVersion: "0.2.31", observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z",
+      toolInventory: [{ adapterId: "codex.v1", installState: "installed", configurationState: "configured",
+        authState: "authenticated", healthState: "healthy", trustState: "ready", availabilityState: "available",
+        authorizationEvidenceRef: "TEST_ONLY_REDACTED_REFERENCE" }],
+      workspaces: [{ workspaceId: "ws-owned", gitHead: expected.sourceCommit, dirty: false,
+        projectId: "TEST_ONLY_PROJECT", repositoryId: "github.com/example/test-only" }],
+    };
+    expect(matchesSpec224WindowsRunnerTarget(snapshot, expected, now)).toBe(true);
+    expect(matchesSpec224WindowsRunnerTarget({ ...snapshot, runnerVersion: "0.10.0" }, expected, now)).toBe(true);
+    for (const patch of [
+      { runnerVersion: "0.2.30" }, { runnerVersion: "0.1.999" }, { runnerVersion: "unknown" },
+      { platform: { ...snapshot.platform, os: "linux" } },
+      { platform: { ...snapshot.platform, architecture: "arm64" } },
+      { platform: { ...snapshot.platform, target: "x86_64-unknown-linux-gnu" } },
+      { observedAt: "2026-10-18T00:00:00Z" }, { expiresAt: "2026-10-17T12:00:00Z" },
+      { toolInventory: [{ ...snapshot.toolInventory[0], authorizationEvidenceRef: "" }] },
+      { toolInventory: [{ ...snapshot.toolInventory[0], authState: "auth_required" }] },
+      { workspaces: [{ ...snapshot.workspaces[0], dirty: true }] },
+      { workspaces: [{ ...snapshot.workspaces[0], gitHead: null }] },
+      { workspaces: [{ ...snapshot.workspaces[0], repositoryId: null }] },
+      { workspaces: [{ ...snapshot.workspaces[0], projectId: "" }] },
+    ]) expect(matchesSpec224WindowsRunnerTarget({ ...snapshot, ...patch }, expected, now)).toBe(false);
+    expect(matchesSpec224WindowsRunnerTarget(snapshot, { ...expected, workspaceRef: "another-workspace" }, now)).toBe(false);
+    expect(matchesSpec224WindowsRunnerTarget(snapshot, { ...expected, sourceCommit: "b".repeat(40) }, now)).toBe(false);
+    expect(matchesSpec224WindowsRunnerTarget(null, expected, now)).toBe(false);
   });
 
   it("defines the reconciled non-production Recovery/Runner profile template", () => {

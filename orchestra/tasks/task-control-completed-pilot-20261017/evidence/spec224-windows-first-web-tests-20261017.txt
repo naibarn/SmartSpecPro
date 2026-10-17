@@ -2,7 +2,7 @@
  RUN  v4.1.11 /home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web
 
 
- Test Files  3 passed (3)
-      Tests  31 passed (31)
-   Start at  19:19:49
-   Duration  3.13s (transform 1.44s, setup 384ms, import 2.42s, tests 56ms, environment 0ms)
+ Test Files  4 passed (4)
+      Tests  40 passed (40)
+   Start at  19:28:35
+   Duration  3.71s (transform 1.47s, setup 466ms, import 2.85s, tests 53ms, environment 0ms)

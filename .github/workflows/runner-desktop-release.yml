@@ -55,6 +55,7 @@ jobs:
           server/services/__tests__/runnerReleaseBuildService.test.ts
           server/routes/__tests__/runnerReleases.test.ts
           server/services/__tests__/spec224ExecutionProfile.test.ts
+          server/services/__tests__/spec224RuntimeAdmission.test.ts
           server/services/__tests__/spec224TrustedSourceAttestation.test.ts
           server/services/__tests__/spec224RemoteBundleStorage.test.ts
           --pool=forks --maxWorkers=2

@@ -310,6 +310,43 @@ export function getSpec224ExecutionProfileTemplate(profileId: string): Spec224Ex
   return structuredClone(template);
 }
 
+/** Admission predicate only: matching observations do not issue a grant or
+ * certify the native artifact/provider. Existing lease and authority gates
+ * remain mandatory. The desktop need not contain the backend's toolchain. */
+export function matchesSpec224WindowsRunnerTarget(
+  snapshot: Record<string, unknown> | null,
+  expected: { sourceCommit: string; workspaceRef: string },
+  now = Date.now(),
+): boolean {
+  if (!snapshot || !expected.workspaceRef || !expected.sourceCommit) return false;
+  const record = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  const platform = record(snapshot.platform);
+  const versionParts = (value: unknown): number[] | null =>
+    typeof value === "string" && /^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(value) ? value.split(".").map(Number) : null;
+  const actual = versionParts(snapshot.runnerVersion);
+  const required = versionParts(SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE.runnerTarget!.minimumEngineVersion)!;
+  if (!actual || platform?.os !== "windows" || platform.architecture !== "x86_64" ||
+    platform.target !== "x86_64-pc-windows-msvc") return false;
+  const firstDifference = actual.findIndex((part, index) => part !== required[index]);
+  if (firstDifference >= 0 && actual[firstDifference] < required[firstDifference]) return false;
+  if (!(Date.parse(String(snapshot.observedAt)) <= now) || !(Date.parse(String(snapshot.expiresAt)) > now)) return false;
+  const codexReady = Array.isArray(snapshot.toolInventory) && snapshot.toolInventory.some(value => {
+    const tool = record(value);
+    return tool?.adapterId === "codex.v1" && tool.installState === "installed" &&
+      tool.configurationState === "configured" && tool.authState === "authenticated" &&
+      tool.healthState === "healthy" && tool.trustState === "ready" && tool.availabilityState === "available" &&
+      typeof tool.authorizationEvidenceRef === "string" && Boolean(tool.authorizationEvidenceRef.trim());
+  });
+  const workspaceBound = Array.isArray(snapshot.workspaces) && snapshot.workspaces.some(value => {
+    const workspace = record(value);
+    return workspace?.workspaceId === expected.workspaceRef && workspace.gitHead === expected.sourceCommit &&
+      workspace.dirty === false && typeof workspace.projectId === "string" && Boolean(workspace.projectId.trim()) &&
+      typeof workspace.repositoryId === "string" && Boolean(workspace.repositoryId.trim());
+  });
+  return Boolean(codexReady && workspaceBound);
+}
+
 type ExecutionProfileInput = Omit<Spec224ExecutionProfile, "profileDigest">;
 
 function canonicalize(value: unknown): unknown {
