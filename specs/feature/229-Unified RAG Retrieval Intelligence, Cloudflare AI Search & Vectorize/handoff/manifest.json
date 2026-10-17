@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "41be8c787888f0575e691a17ec6cab82a3b4eb08",
+    "expected_canonical_sha": "c3fba91f1a849e39d3dbbf16518834e9c3b0a7f9",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1066 merged as 41be8c787888f0575e691a17ec6cab82a3b4eb08. Post-merge verification on an exact-SHA leased canonical worktree passed: 2 focused files/16 tests, deterministic candidate report, synthetic fixture report, and structural handoff validation. P229.8 remains INCOMPLETE: 10 machine-reviewed development candidates from one source group; 0 human-reviewed, 0 release-approved, 0 held-out; all §27 metrics NOT_EVALUABLE. Next executable WorkUnit: expand from individually screened repository SPEC sources toward 500 unique reviewed held-out queries, then evaluate only with authorized retrieval observations. No production verification claimed.",
-    "next_ready_workunit": "P229.8_GOLD_DATASET_EXPANSION_AND_REVIEW: screen repository SPEC documents and embedded sources, deterministically generate distinct evidence-anchored candidates across source groups and required classes, independently review, record human review separately, then run held-out calibration using authorized retrieval observations.",
-    "reactivation_predicate": "At least 500 unique reviewed, source-approved held-out queries with complete class coverage and exact provenance are available, plus complete authorized retrieval observations including separate latency profiles; then evaluate unchanged §27 criteria.",
-    "resume_point": "P229.8 Gold Dataset Pipeline is integrated at canonical SHA 41be8c787888f0575e691a17ec6cab82a3b4eb08 (PR #1066). Exact-SHA post-merge evidence: handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json. Focused suite 2 files/16 passed; candidate report 10 candidates/10 machine-reviewed/0 human/0 release-approved; all canonical §27 criteria NOT_EVALUABLE. P229.8 and global SPEC-229 remain INCOMPLETE; evidence quality remains unchanged. Resume at P229.8_GOLD_DATASET_EXPANSION_AND_REVIEW; do not migrate consumers before certification.",
-    "waiting_predicate": "P229.8 certification waits on an expanded and reviewed held-out gold dataset plus authorized runtime retrieval observations/profile latency; P229.2 remains separately gated by explicit authorization and versioned index prerequisites."
+    "next_action": "P229.8 candidate batches 01-03 are committed through 58753a0c7580439625e7ae1de2a21021d4537ced on codex/spec229-gold-expansion-20261017. Exact-commit verification passed: 2 focused test files/16 tests and 160 source-validated machine-reviewed development candidates; all 15 §27 release criteria are NOT_EVALUABLE. Evidence: handoff/evidence/p229-8-gold-candidate-corpus-20261017.json. Open a normal PR after fast-gate review, merge only after required checks, then verify the merge SHA. P229.8 remains NOT_EVALUABLE.",
+    "next_ready_workunit": "P229.8_CANDIDATE_CORPUS_BATCH04: generate and independently review a new 50-query batch from unused approved SPEC sources; preserve source hashes/spans and diversity; continue toward 500 and fill missing taxonomy without fabricating runtime or no-evidence facts.",
+    "reactivation_predicate": "At least 500 unique independently reviewed queries with complete §27 class coverage and approved source provenance are available; release evaluation additionally requires eligible held-out reviewed data and authorized retrieval observations including profile-specific latency.",
+    "resume_point": "Canonical main through PR #1068 is c3fba91f1a849e39d3dbbf16518834e9c3b0a7f9. Candidate worktree commit 58753a0c7580439625e7ae1de2a21021d4537ced passed exact-commit verification: 160/160 machine-reviewed and accepted development candidates from 100 source groups (Thai 57, English 54, mixed 49); 0 human-reviewed, 0 release-approved, 0 held-out. Focused tests 2 files/16 passed. Batch03 first draft was rejected for lexical leakage, rewritten, and then accepted by independent machine review. All §27 release criteria remain NOT_EVALUABLE.",
+    "waiting_predicate": "P229.8 certification waits for the full reviewed source-approved query set and authorized retrieval observations including profile-specific latency; no production tenant data or retrieval run is available in this workunit."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 55,
+  "generation": 58,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -125,9 +125,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "41be8c787888f0575e691a17ec6cab82a3b4eb08",
+    "canonical_sha": "c3fba91f1a849e39d3dbbf16518834e9c3b0a7f9",
     "integrated": true,
-    "integrated_at": "2026-10-17T15:41:43Z"
+    "integrated_at": "2026-10-17T15:49:52Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -278,7 +278,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T15:43:33.014174Z",
+  "updated_at": "2026-10-17T15:57:49.619727Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
