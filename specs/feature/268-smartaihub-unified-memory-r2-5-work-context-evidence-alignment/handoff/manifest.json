@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "expected_canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 55,
+  "generation": 58,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -169,8 +169,10 @@
     "chat_entity_memory_scope": {
       "base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
       "branch": "codex/spec161-chain-runtime-repair-20261017",
+      "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
       "evidence_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json",
-      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+      "pr": 999,
+      "status": "SCOPED_VERIFIED_AND_MERGED"
     },
     "checkpoint_shas": [
       "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
@@ -283,16 +285,24 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
     "integrated": true,
-    "integrated_at": "2026-10-16T19:27:44Z",
+    "integrated_at": "2026-10-17T00:37:48Z",
+    "last_promotion": {
+      "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+      "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "pr": 999,
+      "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json",
+      "required_checks": "PASS; preview skipped",
+      "tree_equivalent": true
+    },
     "pending_checkpoint": {
-      "intended_pr": "Normal protected PR into main",
-      "next_action": "Push and create PR; await required checks; guarded non-force merge",
-      "owned_commit_sha": "49011da6a36541506b1605253ca98bdfcf3e34d2",
-      "source_branch": "codex/spec161-chain-runtime-repair-20261017",
+      "branch": "codex/spec161-lineage-model-passthrough-20261017",
+      "intended_pr": "Next protected normal PR into main",
+      "next_action": "Push, required CI, guarded merge",
+      "owned_commit_sha": "21cff801a47a47bbf6c32d7f2a6d42839242b242",
       "status": "FAST_GATE_PASSED_PENDING_PROTECTED_PROMOTION",
-      "verification": "132/132 focused tests; diff/check and gitleaks PASS"
+      "verification": "46/46; red baseline6 lineage +1 policy; gitleaks/diff-check pass"
     }
   },
   "lifecycle": {
@@ -699,7 +709,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:32:09.327913Z",
+  "updated_at": "2026-10-17T00:42:10.436080Z",
   "verification": {
     "baseline_issues": [
       "PR #875 integration 757a5750f00e916ed84801c6024bebdc814e60f9 is confirmed reachable from origin/main.",

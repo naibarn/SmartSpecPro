@@ -143,8 +143,10 @@ export async function resolveVerticalDramaSeriesModel(
     }
   } catch (error) {
     if (overrideId) throw error;
-    // A database read failure without an explicit pin may continue through
-    // automatic resolution, but must still fail closed if no model is found.
+    throw new Error(
+      `Could not read the selected Vertical Drama model for series ${seriesId}`,
+      { cause: error },
+    );
   }
   const autoModel = await autoFallback();
   if (autoModel) {

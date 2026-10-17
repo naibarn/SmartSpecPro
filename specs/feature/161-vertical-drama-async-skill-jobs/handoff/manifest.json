@@ -22,12 +22,12 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "expected_canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
     "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
   },
   "continuation": {
-    "next_action": "Promote PR999 including independently verified worker-QC guard; run bounded acceptance against exact merged canonical SHA; refresh remaining scope and blockers.",
-    "next_ready_workunit": "SPEC161_REMAINING_ACCEPTANCE_RECONCILIATION",
+    "next_action": "Promote both independently reviewed model repairs through protected PR; run exact merged-SHA bounded suite and refresh validation-only302/304 evidence.",
+    "next_ready_workunit": "SPEC161_FINAL_CANONICAL_ACCEPTANCE",
     "reactivation_predicate": null,
     "resume_point": "PR996 native persistence/restart-readback acceptance merged94cc9b8e; scoped success/failure and terminalreplay proven, requirement rows remainPARTIAL. Next actual functional chain-stop defect identified from canonical criterion8.",
     "waiting_predicate": null
@@ -69,7 +69,7 @@
     "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 39,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
     "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
@@ -90,10 +90,22 @@
     "deep_draft_failure_chain": {
       "base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
       "branch": "codex/spec161-chain-runtime-repair-20261017",
+      "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json",
+      "pr": 999,
+      "status": "SCOPED_VERIFIED_AND_MERGED"
+    },
+    "lineage_model_passthrough": {
+      "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json",
       "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
     },
     "mapping": [],
+    "model_policy_read_failure": {
+      "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json",
+      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+    },
     "native_worker_acceptance": {
       "base_sha": "4073a5c9cee1d7e83f28449984d56c869c633220",
       "branch": "codex/spec161-native-worker-acceptance-20261017",
@@ -184,30 +196,42 @@
       "workunit": "SPEC161_STORY_PLAN_FAILURE_CHAIN"
     },
     "story_worker_final_qc": {
+      "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json",
+      "pr": 999,
       "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/999",
       "source_base_sha": "9844c5cd4f5da2aff4f929ee70e174bb31846958",
-      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+      "status": "SCOPED_VERIFIED_AND_MERGED"
     },
     "story_worker_outcome": {
       "base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
       "branch": "codex/spec161-chain-runtime-repair-20261017",
+      "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
       "evidence_path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-outcome-20261017.json",
-      "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION"
+      "pr": 999,
+      "status": "SCOPED_VERIFIED_AND_MERGED"
     }
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "canonical_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
     "integrated": true,
-    "integrated_at": "2026-10-16T19:27:44Z",
+    "integrated_at": "2026-10-17T00:37:48Z",
+    "last_promotion": {
+      "head_sha": "ef07495a600d785a77f33dba5073076e81222e5a",
+      "merge_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "pr": 999,
+      "receipt": "/tmp/smartaihub-backlog-pilot/pr999-protected-promotion-20261017.json",
+      "required_checks": "PASS; preview skipped",
+      "tree_equivalent": true
+    },
     "pending_checkpoint": {
-      "intended_pr": "Normal protected PR into main",
-      "next_action": "Push and create PR; await required checks; guarded non-force merge",
-      "owned_commit_sha": "49011da6a36541506b1605253ca98bdfcf3e34d2",
-      "source_branch": "codex/spec161-chain-runtime-repair-20261017",
+      "branch": "codex/spec161-lineage-model-passthrough-20261017",
+      "intended_pr": "Next protected normal PR into main",
+      "next_action": "Push, required CI, guarded merge",
+      "owned_commit_sha": "21cff801a47a47bbf6c32d7f2a6d42839242b242",
       "status": "FAST_GATE_PASSED_PENDING_PROTECTED_PROMOTION",
-      "verification": "132/132 focused tests; diff/check and gitleaks PASS"
+      "verification": "46/46; red baseline6 lineage +1 policy; gitleaks/diff-check pass"
     }
   },
   "lifecycle": {
@@ -390,17 +414,18 @@
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
         "evidence_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6",
-        "final_state": "PARTIAL",
+        "final_state": "OPEN",
         "implementation_evidence": [
           {
             "kind": "CANONICAL_SOURCE_INSPECTION",
             "path": "apps/web/server/services/verticalDramaLlmModelPolicy.ts",
             "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
-          }
+          },
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Verify selected model crosses submit, canonical job, real worker and provider boundary without substitution.",
+        "next_action": "Verify merged lineage/policy guard; remaining whole-requirement provider and other-flow evidence stays separate.",
         "requirement_digest": "509c473458fc3ee5a19d4bba90401c16045104a53226aa468236d154253acb62",
         "requirement_id": "REQ-34822D26C584",
         "requirement_text": "5. model ที่ user เลือกถูกส่งถึง worker/provider โดยไม่ถูกแทนด้วย model อื่น",
@@ -412,7 +437,9 @@
             "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/backlog-pilot-20261016.json",
             "scope": "19 focused tests validate selected model policy fail-closed and provider reasoning adaptation plus static source callsite policy coverage; worker/provider end-to-end passthrough remains unproved.",
             "source_sha": "40a5e8d366aaae3d7e3695ffd6c2447116429ef6"
-          }
+          },
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json",
+          "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json"
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -702,7 +729,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T00:33:55.092444Z",
+  "updated_at": "2026-10-17T00:42:10.431657Z",
   "verification": {
     "baseline_issues": [],
     "canonical_post_integration_20261017": {

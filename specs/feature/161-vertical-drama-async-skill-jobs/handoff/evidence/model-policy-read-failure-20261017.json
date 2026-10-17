@@ -1,0 +1,117 @@
+{
+  "workunit_id": "SPEC161_MODEL_POLICY_READ_FAILURE_FAIL_CLOSED",
+  "spec_id": "161",
+  "requirement_ids": [
+    "REQ-34822D26C584"
+  ],
+  "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+  "writable_paths": [
+    "apps/web/server/services/verticalDramaLlmModelPolicy.ts",
+    "apps/web/server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+    "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/model-policy-read-failure-20261017.json"
+  ],
+  "runtime": "Focused mocked database policy unit test; no model provider, production, migration, or dependency use",
+  "acceptance": [
+    "A failed series policy read returns an actionable error with the original database error as cause",
+    "A failed policy read never calls automatic model fallback or enabled-model catalog loading",
+    "Successful missing-row and null-policy reads continue using existing automatic selection",
+    "Explicit unavailable pins continue failing closed without switching models"
+  ],
+  "decision": "The series model resolver is the single policy choke point. A database read failure leaves the user's pin unknown, so automatic fallback could silently replace an explicit selection. Match the adjacent prompt-expansion resolver's fail-closed error behavior while preserving successful no-pin behavior.",
+  "job_id": null,
+  "run_id": null,
+  "model": {
+    "requested_helper": "gpt-6-luna",
+    "effective": "UNVERIFIED",
+    "actual_conductor_and_helper_usage": "UNKNOWN",
+    "new_sdk_calls": 0
+  },
+  "files_modified": [
+    "apps/web/server/services/verticalDramaLlmModelPolicy.ts",
+    "apps/web/server/services/__tests__/verticalDramaLlmModelPolicy.test.ts"
+  ],
+  "file_sha256": {
+    "apps/web/server/services/verticalDramaLlmModelPolicy.ts": "6ffb1ca055b1a8b0a718fd20ff0f03c8a37f464539066aaa4349bede37fe5d65",
+    "apps/web/server/services/__tests__/verticalDramaLlmModelPolicy.test.ts": "907a1b848f6fa0a079c944a3db2cdd448373fbae936cda5dfee4260b24887d64"
+  },
+  "baseline": {
+    "profile": "quick",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+      "--maxWorkers=1"
+    ],
+    "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "exit": 0,
+    "result": "1 test file, 15/15 tests passed; baseline regression explicitly expected fallback on connection reset",
+    "duration_seconds": 1.09
+  },
+  "verification": {
+    "profile": "quick",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+      "--maxWorkers=1"
+    ],
+    "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "exit": 0,
+    "result": "1 test file, 15/15 tests passed; updated DB-failure regression verifies cause preservation and no fallback/catalog call",
+    "duration_seconds": 1.13
+  },
+  "fast_gate": {
+    "git_diff_check": "passed",
+    "owned_paths_only": true,
+    "commit_or_push": false
+  },
+  "independent_review": {
+    "result": "PASS",
+    "reviewer": "/root",
+    "scope": "Application series-model correctness; existing successful pin/no-pin and unavailable-pin behavior preserved. No Developer Fast Lane model-routing admission changed."
+  },
+  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "remaining": [
+    "Independent review and parent integration",
+    "No claims of application-wide provider behavior or non-production runtime acceptance"
+  ],
+  "parent_red": {
+    "log": "/tmp/smartaihub-backlog-pilot/policy-read-failure-parent-red.log",
+    "tests": "1 failed /14 passed against original policy source with updated regression",
+    "outcome": "EXPECTED_REGRESSION_REPRODUCTION"
+  },
+  "parent_green": {
+    "log": "/tmp/smartaihub-backlog-pilot/lineage-and-policy-final-candidate.log",
+    "tests": "46/46 across five focused files",
+    "resource": {
+      "start": "2026-10-17T00:41:13.583394+00:00",
+      "end": "2026-10-17T00:41:21.082812+00:00",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.skillContent.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEditionPlanner.skillContent.test.ts",
+        "--maxWorkers=1"
+      ],
+      "cwd": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web",
+      "exit": 0,
+      "profile": "integration",
+      "resource_observation": [
+        "MemAvailable:   24551348 kB"
+      ],
+      "max_rss_kib": 531452,
+      "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "working_delta": true,
+      "test_secret": "[REDACTED disposable test-only value]"
+    }
+  }
+}

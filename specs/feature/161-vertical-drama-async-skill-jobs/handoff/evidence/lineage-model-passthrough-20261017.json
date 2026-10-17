@@ -1,0 +1,133 @@
+{
+  "workunit_id": "SPEC161_LINEAGE_MODEL_PASSTHROUGH",
+  "requirement_ids": [
+    "REQ-34822D26C584"
+  ],
+  "scope": "Resolve the persisted parent-series model policy in season carry-over and special-edition worker services, preserving actual selected model identity through the LLM request and billing metadata.",
+  "source": {
+    "worktree": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016",
+    "task_id": "spec161-lineage-model-passthrough-20261017",
+    "branch": "codex/spec161-lineage-model-passthrough-20261017",
+    "base_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+    "git_state": "Uncommitted and unpushed. No commit created.",
+    "owned_paths": [
+      "apps/web/server/services/verticalDramaSeasonCarryOver.ts",
+      "apps/web/server/services/verticalDramaSpecialEdition.ts",
+      "apps/web/server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+      "apps/web/server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+      "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/lineage-model-passthrough-20261017.json"
+    ],
+    "sha256": {
+      "apps/web/server/services/verticalDramaSeasonCarryOver.ts": "24b4fff7865d46d33061e52f067f1b2b0393ff59f92b6f1913e9b41f7982f93f",
+      "apps/web/server/services/verticalDramaSpecialEdition.ts": "579c617a46a2fcda84519dec7d0b8d703b4fc69c28447f0e6ac2cbac856e97f9",
+      "apps/web/server/services/__tests__/verticalDramaSeasonCarryOver.test.ts": "01d2fc6720168b25115a80d5dc86243af9dfc71dccdfe9d4e582175f7625cfbf",
+      "apps/web/server/services/__tests__/verticalDramaSpecialEdition.test.ts": "0321615ea21da6b4c8d80f646767cddeefcbae6a6bf2570477f873d02bc85c97"
+    }
+  },
+  "repair": {
+    "behavior": "Both worker-side services now call resolveVerticalDramaSeriesModel(lineageContext.parentSeriesId, resolveStoryBibleModel). The persisted series pin takes precedence; only the policy resolver's no-pin path invokes the existing automatic story-bible resolver. Model resolution occurs before the LLM call and credit deduction, so an unavailable selected model fails closed.",
+    "billing": "The resolved model remains the model sent to executeJsonPlanningCallWithRetry, the pricing input to calculateCreditsForLLM, and the model/llmModel values in the skill billing metadata."
+  },
+  "verification": {
+    "profile": "package",
+    "baseline_command": "JWT_SECRET=<test-only 32-byte value> pnpm exec vitest run server/services/__tests__/verticalDramaSeasonCarryOver.test.ts server/services/__tests__/verticalDramaSpecialEdition.test.ts --maxWorkers=1",
+    "baseline_outcome": "PASS, 15 tests before source edits. A first invocation without JWT_SECRET failed during module import because repository token initialization requires it; the test-only local value allowed the baseline suite to run.",
+    "command": "JWT_SECRET=<test-only 32-byte value> pnpm exec vitest run server/services/__tests__/verticalDramaSeasonCarryOver.test.ts server/services/__tests__/verticalDramaSpecialEdition.test.ts server/services/__tests__/verticalDramaLlmModelPolicy.test.ts --maxWorkers=1",
+    "working_directory": "apps/web",
+    "started_at_local": "2026-10-17T07:38:18+07:00",
+    "outcome": "PASS",
+    "exit_code": 0,
+    "tests": "36 passed across 3 files",
+    "coverage": [
+      "Each worker service resolves using its lineageContext.parentSeriesId and sends the selected pin unchanged to the mocked LLM boundary, pricing calculation, returned model, and billing metadata.",
+      "Each worker service uses the automatic resolver callback when the policy boundary takes the no-pin path; the existing policy suite verifies a pin skips fallback, no pin uses fallback, and unavailable pins fail closed.",
+      "Each worker service rejects an unavailable pin before provider-bound execution, pricing, or credit deduction."
+    ],
+    "provider_boundary": "Mocked executeWithFallback; no external or paid provider call. Model policy tests use mocked database/model-catalog boundaries; no production database access.",
+    "fast_gate": "git diff --check passed.",
+    "resource_observation_after_run": {
+      "memory_available": "23 GiB",
+      "filesystem_available_on_tmp": "1.1 GiB"
+    }
+  },
+  "limits": [
+    "This proves worker-service model resolution, provider-bound argument, and billing identity with deterministic unit mocks; it is not live-provider evidence.",
+    "No UI/browser, migration, full typecheck/build, paid provider, or production run was performed."
+  ],
+  "usage": {
+    "model": "Luna",
+    "model_token_usage": "unknown",
+    "new_sdk_calls": 0,
+    "production_job_mutations": 0,
+    "original_fast_lane_job_mutated": false
+  },
+  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "independent_review": {
+    "result": "PASS",
+    "reviewer": "/root",
+    "decision": "Resolve policy inside the existing worker-side service using authenticated loaded parent-series context; no new router/queue contracts needed."
+  },
+  "baseline_regressions": {
+    "tests": "6 failed /15 passed against unchanged canonical source with new regressions",
+    "log": "/tmp/smartaihub-backlog-pilot/lineage-model-parent-red.log",
+    "resource": {
+      "start": "2026-10-17T00:39:12.306093+00:00",
+      "end": "2026-10-17T00:39:18.740667+00:00",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+        "--maxWorkers=1"
+      ],
+      "cwd": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web",
+      "exit": 1,
+      "profile": "integration",
+      "resource_observation": [
+        "MemAvailable:   24768656 kB"
+      ],
+      "max_rss_kib": 597808,
+      "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "working_delta": true,
+      "test_secret": "[REDACTED disposable test-only value]"
+    }
+  },
+  "parent_verification": {
+    "tests": "46/46 across five files",
+    "log": "/tmp/smartaihub-backlog-pilot/lineage-model-parent-green.log",
+    "resource": {
+      "start": "2026-10-17T00:39:18.797737+00:00",
+      "end": "2026-10-17T00:39:25.878391+00:00",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEdition.test.ts",
+        "server/services/__tests__/verticalDramaLlmModelPolicy.test.ts",
+        "server/services/__tests__/verticalDramaSeasonCarryOver.skillContent.test.ts",
+        "server/services/__tests__/verticalDramaSpecialEditionPlanner.skillContent.test.ts",
+        "--maxWorkers=1"
+      ],
+      "cwd": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane/spec161-native-episode-acceptance-20261016/apps/web",
+      "exit": 0,
+      "profile": "integration",
+      "resource_observation": [
+        "MemAvailable:   24512896 kB"
+      ],
+      "max_rss_kib": 597808,
+      "source_sha": "5b132da110b7d0b06202fdc5cf1b601d8c568304",
+      "working_delta": true,
+      "test_secret": "[REDACTED disposable test-only value]"
+    }
+  },
+  "runtime": "Bounded local Debian unit tests with existing provider/catalog/policy/billing boundaries mocked; no new SDK Job or provider call",
+  "dependency_evidence": [
+    "Existing authenticated worker executors loadOwnedSeries and lineageContext before these services",
+    "lineageContext already carries canonical parentSeriesId; common model policy supports persisted pin and no-pin resolver callback",
+    "No active PR ownership overlap outside this task; PR999 merged5b132da1"
+  ]
+}
