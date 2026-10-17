@@ -17,6 +17,8 @@ type ProbeResult = {
   profileId: CloudflareCredentialProfileId;
   checkedAt: string;
   error: string | null;
+  accountId: string | null;
+  zoneId: string | null;
   checks: Array<{
     id: string;
     label: string;
@@ -114,6 +116,8 @@ export default function CloudflareCredentialCenter() {
           <strong>{text("Read-only permission results", "ผลตรวจสิทธิ์แบบอ่านอย่างเดียว")}</strong>
           <span>{new Date(report.checkedAt).toLocaleString()}</span>
         </HStack>
+        {report.accountId ? <p>{text("Cloudflare Account ID", "Cloudflare Account ID")}: {report.accountId}</p> : null}
+        {report.zoneId ? <p>{text("smartaihub.app Zone ID", "Zone ID ของ smartaihub.app")}: {report.zoneId}</p> : null}
         {report.error ? <p role="status">{report.error === "credential_not_configured" ? text("No token is saved for this profile. Save a token before probing.", "profile นี้ยังไม่มี token ให้บันทึก token ก่อนตรวจ") : text("Cloudflare Account ID is not configured. Set it in this page before probing.", "ยังไม่ได้ตั้ง Cloudflare Account ID ให้ตั้งค่าในหน้านี้ก่อนตรวจ")}</p> : null}
         <ul>
           {report.checks.map((check) => (
@@ -126,7 +130,11 @@ export default function CloudflareCredentialCenter() {
                   </Badge>
                 </HStack>
                 <span>{text("Token profile", "Token ที่ตรวจ")}: {profileId === "deployment" ? text("Deployment / provisioning", "Deployment / provisioning") : text("Infrastructure audit", "Infrastructure audit")} · {text("scope", "ขอบเขต")}: {check.scope} · {text("required permission", "permission ที่ endpoint ยอมรับ")}: {check.permission}</span>
-                {check.status === "missing_permission" ? <p role="status">{text(
+                {check.status === "missing_permission" && check.id === "tokenVerification" ? <p role="status">{text(
+                  "Cloudflare rejected the token verification request. This is separate from the User Permission Catalog probe; check this API response before changing token scopes.",
+                  "Cloudflare ปฏิเสธคำขอตรวจ token ซึ่งแยกจากการอ่าน User Permission Catalog ให้ตรวจผล API นี้ก่อนเปลี่ยน scope ของ token"
+                )}</p> : null}
+                {check.status === "missing_permission" && check.id !== "tokenVerification" ? <p role="status">{text(
                   `In Cloudflare API Tokens, edit the ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} token and grant the required permission shown above at ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} scope. Where alternatives are listed, grant one accepted permission, not all of them. Save the updated token here, then run Probe read access again. HTTP 403 confirms this request was denied, but Cloudflare does not distinguish token scope, account/resource selection, or product entitlement; verify each before adding broader access.`,
                   `ไปที่ Cloudflare API Tokens แล้วแก้ token ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} เพิ่ม permission ตามที่แสดงด้านบนใน scope ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} หากแสดงตัวเลือกหลายรายการ ให้เพิ่มเพียงหนึ่ง permission ที่ endpoint ยอมรับ ไม่ต้องเพิ่มทั้งหมด จากนั้นบันทึก token ที่อัปเดตในหน้านี้และกดตรวจสิทธิ์อ่านอีกครั้ง HTTP 403 ยืนยันว่า request ถูกปฏิเสธ แต่ Cloudflare แยกสาเหตุระหว่าง scope ของ token, การเลือก account/resource หรือ entitlement ของบริการไม่ได้ ให้ตรวจทุกจุดก่อนเพิ่มสิทธิ์ให้กว้างขึ้น`
                 )}</p> : null}
@@ -197,8 +205,8 @@ export default function CloudflareCredentialCenter() {
         <VStack as="header" gap={2}>
           <h3>{text("Live Cloudflare API permission catalog", "รายการ permission API จาก Cloudflare โดยตรง")}</h3>
           <p>{text(
-            "Fetches the current account- and user-scoped permission groups from Cloudflare. It requires Account API Tokens Read and API Tokens Read (user scope). This checks catalog access, not whether the token has every listed permission. Containers/Worker App execution is verified through runtime bindings; write permissions remain unverified until an approved deployment operation.",
-            "ดึง permission group ทั้ง account scope และ user scope จาก Cloudflare ต้องมี Account API Tokens Read และ API Tokens Read (user scope) หาก scope ใดได้ 403 ให้เพิ่มสิทธิ์อ่านของ scope นั้นใน token Infrastructure audit แล้วบันทึก token ที่อัปเดตและตรวจใหม่ การดึงรายการนี้ยืนยันเฉพาะสิทธิ์อ่าน catalog ไม่ได้แปลว่า token มี permission ทุกตัวในรายการ ส่วน Containers/Worker App ต้องตรวจผ่าน runtime binding และ write permission ยังไม่ยืนยันจนกว่าจะมี deployment ที่อนุมัติ"
+            "Fetches account- and user-scoped permission groups. Account API Tokens Read is needed for the account catalog; API Tokens Read at user scope is needed only for the separate user catalog. A user-scope 403 does not block account/zone probes or prove Workers deployment is unavailable. This checks catalog visibility, not the token's effective product permissions. Write permissions remain unverified until an approved deployment operation.",
+            "ดึง permission group แยก account scope และ user scope โดย Account API Tokens Read ใช้กับ catalog ระดับ account ส่วน API Tokens Read ใน user scope ใช้เฉพาะ catalog ระดับ user ที่แยกกัน HTTP 403 ของ user scope ไม่ได้ขัดขวาง probe ระดับ account/zone และไม่ได้ยืนยันว่า Workers deploy ไม่ได้ การตรวจนี้ยืนยันเพียงการอ่าน catalog ไม่ได้ยืนยัน permission ของบริการแต่ละตัว ส่วน write permission ยังไม่ยืนยันจนกว่าจะมี deployment ที่อนุมัติ"
           )}</p>
           <HStack gap={2} wrap="wrap">
             <Button variant="outline" onClick={() => probePermissionCatalog.mutate({ profileId: "audit" })} disabled={probePermissionCatalog.isPending || !data?.profiles.audit.configured || !data?.accountId}>
@@ -210,7 +218,7 @@ export default function CloudflareCredentialCenter() {
             <p>{text("Checked", "ตรวจเมื่อ")}: {new Date(permissionCatalog.checkedAt).toLocaleString()} · {text("scope", "ขอบเขต")}: {text("account + user permission groups", "permission group ระดับ account + user")}</p>
             {permissionCatalog.status === "missing_permission" ? <p role="status">{text("The account catalog request was denied. Add Account API Tokens Read to the Infrastructure audit token at the Smartaihub account scope, save the updated token here, then run this check again. No permission was changed automatically.", "คำขออ่าน catalog ระดับ account ถูกปฏิเสธ ให้เพิ่ม Account API Tokens Read ให้ token Infrastructure audit ใน scope ของ Smartaihub account แล้วบันทึก token ที่แก้ในหน้านี้และตรวจใหม่ ระบบไม่ได้เปลี่ยน permission ให้อัตโนมัติ")}</p> : null}
             {permissionCatalog.status === "partial" ? <p role="status">{text("Only part of the catalog was readable. Check the account and user scope results below; missing scope results are not evidence that those products do not exist.", "อ่าน catalog ได้เพียงบาง scope โปรดตรวจผล account/user ด้านล่าง สถานะขาดสิทธิ์ไม่ได้แปลว่าผลิตภัณฑ์นั้นไม่มีอยู่")}</p> : null}
-            {permissionCatalog.sources.length ? <ul>{permissionCatalog.sources.map((source) => <li key={source.scope}><strong>{source.scope}</strong>: {statusLabels[source.status][isThai ? "th" : "en"]} · HTTP {source.httpStatus ?? "—"} · {source.groupCount} groups · {source.complete ? text("complete", "ครบ") : text("incomplete", "ยังไม่ครบ")}{source.status === "missing_permission" ? ` · ${source.scope === "user" ? text("edit the Infrastructure audit token and grant API Tokens Read at user scope (API Tokens Write also satisfies read)", "แก้ token Infrastructure audit แล้วเพิ่ม API Tokens Read ใน user scope (API Tokens Write ใช้แทนสิทธิ์อ่านได้)") : text("edit the Infrastructure audit token and grant Account API Tokens Read at the Smartaihub account scope (Account API Tokens Write also satisfies read)", "แก้ token Infrastructure audit แล้วเพิ่ม Account API Tokens Read ใน scope ของ Smartaihub account (Account API Tokens Write ใช้แทนสิทธิ์อ่านได้)")}` : ""}</li>)}</ul> : null}
+            {permissionCatalog.sources.length ? <ul>{permissionCatalog.sources.map((source) => <li key={source.scope}><strong>{source.scope}</strong>: {statusLabels[source.status][isThai ? "th" : "en"]} · HTTP {source.httpStatus ?? "—"} · {source.groupCount} groups · {source.complete ? text("complete", "ครบ") : text("incomplete", "ยังไม่ครบ")}{source.status === "missing_permission" ? ` · ${source.scope === "user" ? text("This optional catalog requires API Tokens Read at user scope; add it only if this catalog is needed. It does not establish Workers deployment permission.", "catalog นี้เป็นส่วนเสริม ต้องใช้ API Tokens Read ใน user scope ให้เพิ่มเฉพาะเมื่อต้องการอ่าน catalog นี้ และผลนี้ไม่ได้ยืนยันสิทธิ์ Workers deploy") : text("This account catalog requires Account API Tokens Read at the Smartaihub account scope (Account API Tokens Write also satisfies read).", "catalog ระดับ account ต้องใช้ Account API Tokens Read ใน scope ของ Smartaihub account (Account API Tokens Write ใช้แทนสิทธิ์อ่านได้)")}` : ""}</li>)}</ul> : null}
             {permissionCatalog.stale ? <p role="status">{text(`Showing the last successful catalog from ${permissionCatalog.lastSuccessAt ? new Date(permissionCatalog.lastSuccessAt).toLocaleString() : "an earlier check"}. Current probe failed; this is not current permission evidence.`, `กำลังแสดง catalog ล่าสุดที่อ่านสำเร็จเมื่อ ${permissionCatalog.lastSuccessAt ? new Date(permissionCatalog.lastSuccessAt).toLocaleString() : "ก่อนหน้านี้"} การตรวจครั้งนี้ไม่ผ่าน ข้อมูลนี้ไม่ใช่หลักฐาน permission ปัจจุบัน`)}</p> : null}
             {permissionCatalog.status === "granted" ? <>
               <Label htmlFor="cloudflare-permission-search">{text("Search all permission groups", "ค้นหา permission group ทั้งหมด")}</Label>

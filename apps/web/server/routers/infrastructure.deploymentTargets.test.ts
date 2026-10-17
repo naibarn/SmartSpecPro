@@ -14,6 +14,14 @@ describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
+  it("keeps Cloudflare credential metadata behind the exact-admin guard", async () => {
+    for (const user of [null, { id: 2, role: "user" }, { id: 3, role: "system_agent" }]) {
+      const caller = infrastructureRouter.createCaller({ user } as any);
+      await expect(caller.getCloudflareCredentialCenter()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("lists active canonical project identities only for an exact admin", async () => {
     const projects = [
       {
@@ -440,7 +448,7 @@ describe("infrastructure deployment target project selector", () => {
         v6DatabaseId: "db-1",
         v5EvidenceRef: "v5-evidence-1",
         v6EvidenceRef: "v6-evidence-1",
-        expiresAt: "2026-10-12T00:00:00.000Z",
+        expiresAt: "2030-10-12T00:00:00.000Z",
         outcome: "PASS",
       },
     });
