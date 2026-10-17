@@ -2,6 +2,9 @@
 
 Status: implementation checkpoint; production/staging acceptance remains open.
 
+Review PR: https://github.com/naibarn/SmartSpecPro/pull/1040
+Source branch: `codex/cloudflare-http-runtime-20261017` (rebased on `origin/main` at `e6e4253d75ea0b7c5319420d80d280cda0a66961`).
+
 ## Completed in this checkpoint
 
 - Added an explicit API route manifest. `/healthz` GET/HEAD is Worker-native; API/auth/OAuth/tRPC/upload paths use the existing origin; HTTP paths that require Node state stay origin-owned; WebSocket and unknown routes fail closed.
@@ -30,4 +33,4 @@ Status: implementation checkpoint; production/staging acceptance remains open.
 
 ## Safety and next action
 
-Do not attach a broad production hostname route or enable Cloudflare activation in this checkpoint. The production Wrangler template continues to route only its existing runtime/SPEC-260 patterns. Next action: create a normal review PR, then provision an isolated staging origin and restricted DB role through the owning authorization path; record all acceptance evidence against the merged SHA. Production cutover remains NO-GO until staging, tenant isolation, DB, and rollback evidence pass.
+Do not attach a broad production hostname route or enable Cloudflare activation in this checkpoint. The production Wrangler template continues to route only its existing runtime/SPEC-260 patterns. Next action: complete normal PR review/integration, then provision an isolated staging origin and restricted DB role through the owning authorization path; record all acceptance evidence against the merged SHA. Production cutover remains NO-GO until staging, tenant isolation, DB, and rollback evidence pass.
