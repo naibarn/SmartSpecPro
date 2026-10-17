@@ -356,9 +356,16 @@ def _cloudflare_staging_bundle(root: Path, source_revision: str) -> dict[str, An
                 if not isinstance(entry, dict):
                     return None
                 name = entry.get("name")
-                if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,512}", name):
+                if (
+                    not isinstance(name, str)
+                    or not name
+                    or len(name) > 512
+                    or name.startswith("/")
+                    or "\\" in name
+                    or any(ord(character) < 32 or ord(character) == 127 for character in name)
+                ):
                     return None
-                if any(part in ("", ".", "..") for part in name.split("/")) or name.startswith("/") or "\\" in name:
+                if any(part in ("", ".", "..") for part in name.split("/")):
                     return None
                 canonical_name = f"{group}/{name}"
                 if canonical_name in names:

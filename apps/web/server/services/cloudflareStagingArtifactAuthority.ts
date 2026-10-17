@@ -110,7 +110,7 @@ function sortedFileDigest(moduleFiles: CloudflareStagingBundle["moduleFiles"], a
   const entries: Array<[string, Uint8Array]> = [];
   for (const [name, file] of Object.entries(moduleFiles)) entries.push([`modules/${name}`, file.bytes]);
   for (const [name, file] of Object.entries(assets)) entries.push([`public/${name}`, file.bytes]);
-  entries.sort(([left], [right]) => left.localeCompare(right));
+  entries.sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
   const manifest = entries.map(([name, bytes]) => `${name}\0${sha256(bytes)}\0${bytes.byteLength}`).join("\n");
   return sha256(Buffer.from(manifest));
 }

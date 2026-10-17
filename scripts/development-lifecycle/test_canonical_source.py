@@ -359,18 +359,23 @@ class CanonicalSourceTests(unittest.TestCase):
         module_bytes = b"export default {};"
         asset_bytes = b"<html>spa</html>"
         release_bytes = b"{\"release\":1}"
+        localized_bytes = b"localized public guide"
         (modules / "index.js").write_bytes(module_bytes)
         (assets / "index.html").write_bytes(asset_bytes)
+        (assets / "คู่มือการใช้งาน.md").write_bytes(localized_bytes)
         (public_source / "current.json").write_bytes(release_bytes)
         os.symlink(os.path.relpath(public_source, assets), assets / "releases")
         module_digest = hashlib.sha256(module_bytes).hexdigest()
         asset_digest = hashlib.sha256(asset_bytes).hexdigest()
         release_digest = hashlib.sha256(release_bytes).hexdigest()
+        localized_digest = hashlib.sha256(localized_bytes).hexdigest()
         entries = [
             ("modules/index.js", module_digest, len(module_bytes)),
             ("public/index.html", asset_digest, len(asset_bytes)),
+            ("public/คู่มือการใช้งาน.md", localized_digest, len(localized_bytes)),
             ("public/releases/current.json", release_digest, len(release_bytes)),
         ]
+        entries.sort(key=lambda entry: entry[0])
         build_digest = hashlib.sha256("\n".join(f"{name}\0{digest}\0{size}" for name, digest, size in entries).encode()).hexdigest()
         manifest = {
             "format": "cloudflare-staging-build-bundle-v1",
@@ -381,6 +386,7 @@ class CanonicalSourceTests(unittest.TestCase):
             "moduleFiles": [{"name": "index.js", "sha256": module_digest, "size": len(module_bytes)}],
             "assets": [
                 {"name": "index.html", "sha256": asset_digest, "size": len(asset_bytes)},
+                {"name": "คู่มือการใช้งาน.md", "sha256": localized_digest, "size": len(localized_bytes)},
                 {"name": "releases/current.json", "sha256": release_digest, "size": len(release_bytes)},
             ],
         }

@@ -14,10 +14,12 @@ const sourceSha = "c".repeat(40);
 const moduleBytes = Buffer.from("export default { fetch: () => new Response('ok') };");
 const indexBytes = Buffer.from("<html><div id=\"root\"></div></html>");
 const jsBytes = Buffer.from("console.log('spa')");
+const localizedBytes = Buffer.from("localized guide");
 const buildDigest = sha256(Buffer.from([
   `modules/index.js\0${sha256(moduleBytes)}\0${moduleBytes.byteLength}`,
   `public/assets/app.js\0${sha256(jsBytes)}\0${jsBytes.byteLength}`,
   `public/index.html\0${sha256(indexBytes)}\0${indexBytes.byteLength}`,
+  `public/ä-user-guide.md\0${sha256(localizedBytes)}\0${localizedBytes.byteLength}`,
 ].join("\n")));
 const receipt: CloudflareStagingBuildReceipt = {
   buildId: "build-20261017-1",
@@ -52,6 +54,7 @@ const bundle = {
   assets: {
     "index.html": { contentType: "text/html", bytes: indexBytes },
     "assets/app.js": { contentType: "application/javascript", bytes: jsBytes },
+    "ä-user-guide.md": { contentType: "text/markdown", bytes: localizedBytes },
   },
 };
 
@@ -65,7 +68,7 @@ describe("Cloudflare staging artifact authority", () => {
       buildDigest,
       immutable: true,
     });
-    expect(objects.size).toBe(4);
+    expect(objects.size).toBe(5);
     const resolved = await authority.resolveBundle(published.artifactRef);
     expect(resolved).toMatchObject({ sourceSha, buildDigest, mainModule: "index.js", compatibilityDate: "2026-10-17" });
     expect(Buffer.from(resolved!.moduleFiles["index.js"]!.bytes).equals(moduleBytes)).toBe(true);
