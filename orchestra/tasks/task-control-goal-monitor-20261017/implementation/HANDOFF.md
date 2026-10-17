@@ -3,25 +3,25 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `14`
-- Updated (UTC): `2026-10-17T00:54:30.735734+00:00`
+- State generation: `18`
+- Updated (UTC): `2026-10-17T00:55:08.246714+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-06-integration-live-acceptance`
-- Next action: Retry protected CI after next head and repair only failures shown to be task-caused; obtain authorized DB/UAT runner for live read-path evidence
+- Active section: `section-05-agent-monitor-ui`
+- Next action: Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 746eebc5df3a3a8112aa3ac762cbbe8de8c56da7 | — | Review additive owner contracts after canonical merge; preserve unresolved acceptance statuses and finish remaining ownership gaps |
-| section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 746eebc5df3a3a8112aa3ac762cbbe8de8c56da7 | — | Build read-only source-bound Goal baseline integration after canonical storage/ownership is found; current UI correctly remains BASELINE_MISSING |
-| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 746eebc5df3a3a8112aa3ac762cbbe8de8c56da7 | — | Add coherent shared projection token, DB-backed tenant/cursor tests, and live source coverage after an authorized database is available |
-| section-04-task-control-ui | in_progress | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | — | — | Deliver Project/SPEC rollup and actual Chat summary parity; complete responsive browser coverage |
-| section-05-agent-monitor-ui | in_progress | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | — | — | Add bound agent/session topology and recovery history only from existing canonical records; live runner acceptance remains open |
+| section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Continue source-bound Goal integration and validate corrected usage union against authorized database evidence |
+| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks |
+| section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
+| section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete agent/session topology and recovery history from canonical linked data; obtain live Runner proof |
 | section-06-integration-live-acceptance | in_progress | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | — | — | Retry protected CI after next head and repair only failures shown to be task-caused; obtain authorized DB/UAT runner for live read-path evidence |
 
 ## Open gaps / blockers (not automatic merge blockers)
