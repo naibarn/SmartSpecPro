@@ -14349,7 +14349,7 @@ export const verticalDramaSeriesRouter = router({
         tenantId,
         userId,
         input: {
-          horizonEpisodes: input.horizonEpisodes,
+          horizonEpisodes: horizon,
           mode,
           idempotencyKey: assuranceIdempotencyKey,
           ...(assuranceRunId ? { runId: assuranceRunId } : {}),
@@ -14361,7 +14361,7 @@ export const verticalDramaSeriesRouter = router({
             legacyJobId: jobId,
             kind: "deep_generate",
             input: {
-              horizonEpisodes: input.horizonEpisodes,
+              horizonEpisodes: horizon,
               mode,
               idempotencyKey: assuranceIdempotencyKey,
             },
@@ -14526,7 +14526,7 @@ export const verticalDramaSeriesRouter = router({
         tenantId,
         userId,
         input: {
-          additionalEpisodes: input.additionalEpisodes,
+          additionalEpisodes,
           mode,
           idempotencyKey: assuranceIdempotencyKey,
           ...(assuranceRunId ? { runId: assuranceRunId } : {}),
@@ -14538,7 +14538,7 @@ export const verticalDramaSeriesRouter = router({
             legacyJobId: jobId,
             kind: "extend",
             input: {
-              additionalEpisodes: input.additionalEpisodes,
+              additionalEpisodes,
               mode,
               idempotencyKey: assuranceIdempotencyKey,
             },

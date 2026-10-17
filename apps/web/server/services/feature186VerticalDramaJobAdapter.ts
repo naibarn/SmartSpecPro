@@ -1,5 +1,9 @@
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobRef } from "./jobControlPlaneTypes";
+import {
+  getVerticalDramaStoryDeadlineMs,
+  getVerticalDramaStoryExecutionTimeoutMs,
+} from "./workerJobDeadlinePolicy";
 export { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
 
 export const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
@@ -69,6 +73,11 @@ export async function createFeature186VerticalDramaJobRef(input: {
   idempotencyKey?: string;
   activeDedupeKey?: string;
 }): Promise<JobRef> {
+  const storyExecutionTimeoutMs = getVerticalDramaStoryExecutionTimeoutMs(
+    input.jobType,
+    input.payload,
+  );
+  const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.payload);
   const job = await createControlPlaneJob({
     context: {
       tenantId: input.tenantId,
@@ -93,12 +102,15 @@ export async function createFeature186VerticalDramaJobRef(input: {
         baseDelayMs: 5_000,
         maxDelayMs: 5 * 60_000,
         jitter: "bounded",
-        deadlineMs: 6 * 60 * 60_000,
+        deadlineMs: storyDeadlineMs ?? 6 * 60 * 60_000,
+        ...(storyDeadlineMs !== null ? { deadlineMode: "fixed" as const } : {}),
         allowedErrorClasses: ["retryable", "timeout", "unavailable"],
       },
       timeoutPolicy: {
-        softTimeoutMs: 10 * 60_000,
-        hardTimeoutMs: 60 * 60_000,
+        softTimeoutMs: storyExecutionTimeoutMs === null
+          ? 10 * 60_000
+          : Math.min(60 * 60_000, storyExecutionTimeoutMs),
+        hardTimeoutMs: storyExecutionTimeoutMs ?? 60 * 60_000,
       },
     },
     createOptions: {
