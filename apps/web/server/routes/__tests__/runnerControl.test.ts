@@ -79,6 +79,7 @@ import {
   reserveRunnerCommandDispatch,
   resolveRunnerCommandCache,
   runnerSessionController,
+  runnerSnapshotHasReadyExecution,
   sendRunnerSocketAndWait,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
@@ -129,6 +130,23 @@ function envelope(runnerId: string) {
 }
 
 describe("Runner control transport routes", () => {
+  it("recognizes authenticated Codex readiness without requiring a browser", () => {
+    const at = Date.parse("2026-10-17T08:00:00.000Z");
+    const base = {
+      ...envelope("TEST_ONLY_codex").payload.snapshot,
+      observedAt: new Date(at - 1_000).toISOString(),
+      expiresAt: new Date(at + 30_000).toISOString(),
+      toolInventory: [{ adapterId: "codex.v1", trustState: "ready", availabilityState: "available",
+        authState: "authenticated", healthState: "healthy", installState: "installed",
+        configurationState: "configured", authorizationEvidenceRef: "TEST_ONLY_READY_REFERENCE" }],
+    } as unknown as NonNullable<Parameters<typeof runnerSnapshotHasReadyExecution>[0]>;
+    expect(runnerSnapshotHasReadyExecution(base, at)).toBe(true);
+    expect(runnerSnapshotHasReadyExecution({ ...base, observedAt: "invalid" }, at)).toBe(false);
+    expect(runnerSnapshotHasReadyExecution({ ...base, expiresAt: new Date(at).toISOString() }, at)).toBe(false);
+    for (const change of [{ authorizationEvidenceRef: null }, { authState: "auth_required" }, { adapterId: "unsupported.v1" }]) {
+      expect(runnerSnapshotHasReadyExecution({ ...base, toolInventory: [{ ...base.toolInventory![0], ...change }] } as typeof base, at)).toBe(false);
+    }
+  });
   const auditLog = vi
     .spyOn(auditLogger, "log")
     .mockImplementation(() => undefined);

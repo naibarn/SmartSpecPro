@@ -52,6 +52,7 @@ import {
   validateRunnerCapabilitySnapshot,
   validateRunnerProtocolEnvelope,
   type RunnerJobCommand,
+  type RunnerCapabilitySnapshot,
   type RunnerJobReceipt,
   type RunnerProtocolEnvelope,
 } from "../services/runnerContracts";
@@ -380,17 +381,32 @@ function assertRunnerCapabilitySessionBinding(
   }
 }
 
+export function runnerSnapshotHasReadyExecution(
+  snapshot: RunnerCapabilitySnapshot | null | undefined,
+  now = Date.now()
+): boolean {
+  if (!snapshot || !(Date.parse(snapshot.observedAt) <= now) || !(Date.parse(snapshot.expiresAt) > now))
+    return false;
+  const browser = snapshot.computerUse?.browser;
+  return Boolean(
+    (browser?.availabilityState === "available" && browser.authState === "authenticated" &&
+      browser.probeState === "ready" && browser.manifest?.supports.structuredObservation === true) ||
+    snapshot.toolInventory?.some(tool =>
+      (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
+      tool.trustState === "ready" && tool.availabilityState === "available" &&
+      tool.authState === "authenticated" && tool.healthState === "healthy" &&
+      tool.installState === "installed" && tool.configurationState === "configured" &&
+      Boolean(tool.authorizationEvidenceRef?.trim())
+    )
+  );
+}
+
 function markRunnerCapabilityReady(
   auth: { profile: string; runnerSessionId?: string | null },
   snapshot: Parameters<typeof validateRunnerCapabilitySnapshot>[0]
 ): void {
   if (auth.profile !== "local_device" || !auth.runnerSessionId) return;
-  const browser = snapshot.computerUse?.browser;
-  if (
-    browser?.availabilityState !== "available" ||
-    browser.probeState !== "ready"
-  )
-    return;
+  if (!runnerSnapshotHasReadyExecution(snapshot)) return;
   if (!snapshot.capabilitySnapshotId)
     throw new RunnerAuthError(
       "runner_capability_binding_invalid",
@@ -2541,8 +2557,7 @@ export function registerRunnerControlRoutes(
         connectionState:
           auth.runnerSessionId &&
           node.currentSnapshot?.runnerSessionId === auth.runnerSessionId &&
-          node.currentSnapshot?.computerUse?.browser.availabilityState ===
-            "available"
+          runnerSnapshotHasReadyExecution(node.currentSnapshot)
             ? "capability_ready"
             : auth.runnerSessionId
               ? "authorized"
