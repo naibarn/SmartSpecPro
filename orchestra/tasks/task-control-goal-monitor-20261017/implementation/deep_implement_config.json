@@ -33,15 +33,15 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1005 head 609193155 is pushed and passes progressive plus mocked browser checks; later resume source-bound DB auth/history acceptance when authorized DB/UAT is available; do not repeat the three promotion retries this round.",
-      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe"
+      "next_action": "Latest canonical main 86a16d135 adds scope-bound Goal acceptance checks; combined 10-file/100-test suite passes. Push the reconciled candidate and run exact-head checks; keep worker-job Goal baseline UNKNOWN until an authoritative source is connected.",
+      "checkpoint_sha": "6c2593a27916bf3ae38fae7f13a8b3ccd9e900ba"
     },
     "section-04-task-control-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Same projection token and expiry UX are implemented; Chat remains a deep-link and live responsive authenticated acceptance is open; continue only when authorized UAT is available.",
-      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe"
+      "next_action": "Scope-bound acceptance and shared projection expiry states pass; Chat remains deeplink-only and authenticated responsive UAT is unavailable. Push candidate and run exact-head checks.",
+      "checkpoint_sha": "6c2593a27916bf3ae38fae7f13a8b3ccd9e900ba"
     },
     "section-05-agent-monitor-ui": {
       "status": "checkpointed",
@@ -54,8 +54,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1005 remains open on latest main cb840cfc; exact-head progressive/browser checks pass, but canonical promotion requires a later eligible protected window and live DB/UAT/Runner evidence remains unavailable.",
-      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe",
+      "next_action": "PR #1005 has three BASE_REF_STALE promotion attempts in this round. Latest main 86a16d135 is merged locally and 10/100 focused tests pass; push and validate exact head, then wait for a fresh protected integration window and authorized live DB/UAT/Runner evidence.",
+      "checkpoint_sha": "6c2593a27916bf3ae38fae7f13a8b3ccd9e900ba",
       "merged_main_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4"
     }
   },
@@ -68,11 +68,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 41,
-  "updated_at": "2026-10-17T04:03:22.660830+00:00",
+  "generation": 45,
+  "updated_at": "2026-10-17T04:04:51.356287+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "PR #1005 remains open on latest main cb840cfc; exact-head progressive/browser checks pass, but canonical promotion requires a later eligible protected window and live DB/UAT/Runner evidence remains unavailable.",
+    "next_action": "PR #1005 has three BASE_REF_STALE promotion attempts in this round. Latest main 86a16d135 is merged locally and 10/100 focused tests pass; push and validate exact head, then wait for a fresh protected integration window and authorized live DB/UAT/Runner evidence.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -82,7 +82,8 @@
       "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
       "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.",
       "Authorized DB/UAT/Runner credentials and resources are absent; live acceptance cannot be performed.",
-      "Authoritative Goal baseline and provider quota observation sources are not linked to this projection."
+      "Authoritative Goal baseline and provider quota observation sources are not linked to this projection.",
+      "Goal acceptance now rejects baseline scope/version/digest mismatch, but no authoritative baseline source is connected to worker-job projections."
     ],
     "merged_main_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4"
   }
