@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a03cfa8fbe050295fdd873cff97bd8e862e0624d",
+    "expected_canonical_sha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "PR for SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE: integrate fail-closed degraded responses for provider config/search and canonical ACL revalidation exceptions. On merge, verify the exact canonical SHA, rerun focused RetrievalBroker/Library tests, then continue acceptance reconciliation for remaining P229.1 broker security/contract items. Keep broader consumer migration, P229.8 quality certification, production runtime verification, and all P229.2 index changes separate.",
-    "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
-    "reactivation_predicate": null,
-    "resume_point": "Source checkpoint fadb656fa7a469bb3f1fdf8d291e662c4abf059f on branch codex/spec229-p2291-degraded-fail-closed-20261017. Focused verification: 3 files passed, 45 passed, 28 todo; provider config/search outage responses are explicit no_evidence/degraded with stable non-sensitive reasons; canonical ACL/source hydration exceptions drop candidate and mark partial. Existing tenant-derived identity, ACL recheck, stale revision rejection, SHA-256 provenance, and token budget tests passed. PR/integration pending. Production not verified; P229.1 scope remains open pending post-integration and remaining acceptance reconciliation.",
-    "waiting_predicate": null
+    "next_action": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE is complete for its scoped Library Broker/security acceptance: canonical hydration/current revision, tenant/ACL boundary, SHA-256 provenance, context token budget, stale evidence rejection, and explicit degraded failure behavior have post-merge evidence. Next phase is P229.2 Direct Vectorize V2, which remains WAITING_AUTHORIZATION_AND_INDEX_PREREQUISITES; do not begin 1024D/index migration until explicit authorization and versioned index/backfill/shadow-read prerequisites are satisfied.",
+    "next_ready_workunit": null,
+    "reactivation_predicate": "All P229.2 authorization and versioned index/backfill/shadow-read/rollback prerequisites are documented and approved.",
+    "resume_point": "P229.1 scoped acceptance passed on canonical main SHA 926209d8d908ee3ad29a73eb03d8bef82fc2392a. PR #1035 merged at 2026-10-17T07:09:06Z; post-merge focused verification passed 3 files, 45 tests, 28 existing todo. Requirement REQ-CAAB31EB9BD4 (provider outage yields explicit degraded/no-evidence state) is PASS with FRESH exact-SHA evidence in handoff/evidence/p229-1-postmerge-20261017.json. Overall SPEC-229 is not complete: 104 requirements remain unresolved/open; P229.8 quality/citations and consumers/runtime verification remain unverified. Resume P229.2 only when the waiting predicate is satisfied.",
+    "waiting_predicate": "P229.2 may reactivate only after explicit authorization for the BGE-M3 1024D Direct Vectorize V2 phase and verified versioned index, backfill, shadow-read, rollback, and acceptance prerequisites. No live 768D profile/index changes or AI Search migration are authorized by this checkpoint."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 38,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -95,7 +95,8 @@
       "9c9ec911158512f6a77ac0990c1f1a10cdd66b12",
       "da0c0c4296ea897361e6145b911ba90ce2c1f2cb",
       "e2d910cce266dd1193f69c9b44898f72615cb608",
-      "fadb656fa7a469bb3f1fdf8d291e662c4abf059f"
+      "fadb656fa7a469bb3f1fdf8d291e662c4abf059f",
+      "926209d8d908ee3ad29a73eb03d8bef82fc2392a"
     ],
     "mapping": [],
     "source_paths": [
@@ -104,16 +105,17 @@
       "apps/web/server/services/libraryService.ts",
       "apps/web/server/services/retrievalBroker.test.ts",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-degraded-failure-20261017.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-degraded-failure-20261017.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a03cfa8fbe050295fdd873cff97bd8e862e0624d",
+    "canonical_sha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
     "integrated": true,
-    "integrated_at": "2026-10-17T06:54:04Z"
+    "integrated_at": "2026-10-17T07:09:06Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -127,6 +129,35 @@
       "previous_state": null,
       "state_evidence": [],
       "updated_at": "2026-10-06T03:28:17.934916Z"
+    },
+    "requirements": {
+      "REQ-CAAB31EB9BD4": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258"
+        ],
+        "authority_source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md#L2258",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "apps/web/server/services/retrievalBroker.ts",
+          "apps/web/server/services/retrievalBroker.test.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Reopen only if provider outage handling or its fail-closed evidence contract changes or regresses.",
+        "requirement_digest": "f1bc8404964b0ed68d2874b741434a6b9ebb81b306642e1635882dd25c017501",
+        "requirement_id": "REQ-CAAB31EB9BD4",
+        "requirement_text": "9. provider outage produces explicit degraded/insufficient evidence state.",
+        "source_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json"
+        ],
+        "verification_method": "Focused failure-injection tests for provider configuration and retrieval search exceptions, rerun on canonical SHA 926209d8d908ee3ad29a73eb03d8bef82fc2392a; PR progressive integration and mocked browser required checks also passed."
+      }
     }
   },
   "reconciliation": {
@@ -221,16 +252,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 0,
+    "pass": 1,
     "total": 105,
-    "unresolved": 105
+    "unresolved": 104
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T06:55:59.981602Z",
+  "updated_at": "2026-10-17T07:11:13.881786Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -239,13 +270,14 @@
       "handoff/evidence/p229-1-shared-contract-20261017.json",
       "handoff/evidence/p229-1-request-boundary-20261017.json",
       "handoff/evidence/p229-8-canonical-hydration-20261017.json",
-      "handoff/evidence/p229-1-degraded-failure-20261017.json"
+      "handoff/evidence/p229-1-degraded-failure-20261017.json",
+      "handoff/evidence/p229-1-postmerge-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
       "quick"
     ],
-    "sha": "fadb656fa7a469bb3f1fdf8d291e662c4abf059f",
+    "sha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
     "status": "UNKNOWN"
   }
 }

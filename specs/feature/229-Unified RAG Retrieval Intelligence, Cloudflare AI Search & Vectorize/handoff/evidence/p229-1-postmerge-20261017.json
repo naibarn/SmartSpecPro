@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
+  "canonicalBaseSha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
+  "sourceCommitSha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
+  "sourceBranch": "main",
+  "pullRequest": 1035,
+  "observedAt": "2026-10-17T14:10:00+07:00",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 3,
+      "testsPassed": 45,
+      "todo": 28
+    },
+    {
+      "command": "PR #1035 progressive_integration_gate",
+      "result": "PASS",
+      "runId": "39012308919"
+    },
+    {
+      "command": "PR #1035 Mocked SPEC-308 browser simulation",
+      "result": "PASS",
+      "runId": "39012308834"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "acceptanceCriteria": {
+    "canonicalLibraryMarkdownHydrationAndCurrentRevision": "PASS: retrievalBroker tests use LibraryService hydration and reject mismatched canonical updated_at; ACL/null source rechecks are dropped.",
+    "tenantIsolationAndLibraryAcl": "PASS: authenticated actor supplies tenant/user; protected route and Library search/ACL regression tests pass; canonical hydration rechecks read permission.",
+    "staleRevisionRejection": "PASS: stale canonical revision regression drops candidate.",
+    "sha256ProvenanceAndSourceIdentity": "PASS: canonical item id/revision and SHA-256 digest are asserted on returned evidence.",
+    "contextTokenBudget": "PASS: token estimator regression asserts returned text sum stays within requested budget and stops excess hydration.",
+    "providerFailureDegradedBehavior": "PASS: config and search exceptions produce no_evidence/degraded with stable non-sensitive reasons; canonical ACL/source read exception drops candidate and marks partial/degraded.",
+    "sourceCitationConstruction": "NOT IN P229.1: citation requests fail closed as uncertified; citation/evidence quality implementation belongs to P229.8 per Spec 229 implementation order."
+  },
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Existing shared checkout node_modules exposed through temporary symlinks in isolated verification worktree",
+    "limitation": "No full TypeScript check per repository RAM policy; no live production provider outage or production database runtime exercised"
+  },
+  "productionVerified": false,
+  "acceptance": "P229.1 remaining Library Broker acceptance criteria listed above PASS on integrated canonical SHA 926209d8d908ee3ad29a73eb03d8bef82fc2392a. This closes the scoped broker failure/degradation acceptance and the explicit Spec 229 acceptance item REQ-CAAB31EB9BD4. It does not close overall SPEC-229, P229.8 quality/citation acceptance, consumer migration phases, or production verification."
+}
