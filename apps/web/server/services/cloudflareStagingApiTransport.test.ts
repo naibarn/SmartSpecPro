@@ -97,7 +97,11 @@ describe("Cloudflare staging API transport", () => {
       sourceSha,
       buildDigest,
     });
-    expect(requests[0]?.url).toContain(`/accounts/${accountId}/workers/scripts/smartspec-cloudflare-staging/assets-upload-session`);
+    expect(
+      requests.some(request =>
+        request.url.endsWith(`/accounts/${accountId}/workers/scripts/smartspec-cloudflare-staging/assets-upload-session`),
+      ),
+    ).toBe(true);
     expect(requests.every(request => !request.url.includes("smartaihub.app") && !request.url.includes("/zones/"))).toBe(true);
 
     const verification = await cloudflare.verifyRuntime({
