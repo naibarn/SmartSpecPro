@@ -1,13 +1,8 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
-
-const FeedbackButton = lazy(() =>
-  import("./FeedbackButton").then(module => ({
-    default: module.FeedbackButton,
-  }))
-);
+import { FeedbackButton } from "./FeedbackButton";
 
 export function RouteAwareFeedbackButton() {
   const [location] = useLocation();
@@ -17,11 +12,7 @@ export function RouteAwareFeedbackButton() {
 
   if (pathname.toLowerCase() === "/login") {
     if (loginAssistantRequested) {
-      return (
-        <Suspense fallback={null}>
-          <FeedbackButton initiallyOpen />
-        </Suspense>
-      );
+      return <FeedbackButton initiallyOpen />;
     }
 
     // Keep the sign-in page free of the assistant's auth, portal, and mascot
@@ -42,9 +33,5 @@ export function RouteAwareFeedbackButton() {
     );
   }
 
-  return (
-    <Suspense fallback={null}>
-      <FeedbackButton />
-    </Suspense>
-  );
+  return <FeedbackButton />;
 }
