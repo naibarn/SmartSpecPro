@@ -26,10 +26,10 @@
     "disposition.INVALID_OR_UNKNOWN": 130,
     "disposition.SUPERSEDED_PARTIAL": 1,
     "lifecycle.CONTINUATION_REQUIRED": 1,
-    "lifecycle.DISCOVERING": 261,
+    "lifecycle.DISCOVERING": 260,
     "lifecycle.DORMANT_VALID": 2,
     "lifecycle.NOT_A_CANONICAL_SPEC": 157,
-    "lifecycle.PARTIAL_INTEGRATED": 10,
+    "lifecycle.PARTIAL_INTEGRATED": 11,
     "lifecycle.VALIDATING": 1,
     "lifecycle.VALIDATION_PENDING": 38,
     "lifecycle.VERIFIED": 2,
@@ -98354,7 +98354,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "32c9d397ea13fc5ce25431135f101cccbad3cd12",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -98466,8 +98466,7 @@
         "requirement REQ-CAAB31EB9BD4 is OPEN",
         "requirement REQ-BC16675772E5 is OPEN",
         "requirement REQ-E4DD8F449A5D is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -98539,7 +98538,7 @@
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.934916Z",
-      "lifecycle": "DISCOVERING",
+      "lifecycle": "PARTIAL_INTEGRATED",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "primary_blocker": null,
