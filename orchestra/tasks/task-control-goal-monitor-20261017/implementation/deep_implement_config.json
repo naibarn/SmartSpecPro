@@ -1,0 +1,53 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections",
+  "target_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+  "state_dir": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/implementation",
+  "git_root": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-ownership-contracts",
+    "section-02-goal-usage-projections",
+    "section-03-authenticated-read-api",
+    "section-04-task-control-ui",
+    "section-05-agent-monitor-ui",
+    "section-06-integration-live-acceptance"
+  ],
+  "sections_state": {
+    "section-01-ownership-contracts": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Resolve existing owner mapping; amend 277/294/088 and monitor owner; reconcile with shared writer; implement shared read contracts"
+    },
+    "section-02-goal-usage-projections": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Close source-bound model facets, dedupe/correction/cached/overlap and weighted Goal progress; focused tests are in place, rollups remain open"
+    },
+    "section-03-authenticated-read-api": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
+      "session_id": "codex-task-control-goal-monitor-20261017",
+      "next_action": "Validate owner/admin tenant scope, cursor expiry/current-state semantics, API integration and query bounds; Chat/project aggregation remain open"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-16T19:31:07.113601+00:00",
+  "generation": 4,
+  "updated_at": "2026-10-17T00:42:19.032792+00:00",
+  "progress": {
+    "active_section": "section-03-authenticated-read-api",
+    "next_action": "Validate owner/admin tenant scope, cursor expiry/current-state semantics, API integration and query bounds; Chat/project aggregation remain open",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017"
+  }
+}

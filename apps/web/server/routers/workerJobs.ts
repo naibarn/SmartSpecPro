@@ -18,6 +18,7 @@ import {
   listCanonicalJobs,
 } from "../services/jobControlPlaneMonitor";
 import { getSafeTaskControlSessionProjection } from "../services/runnerExecutionSessionService";
+import { getTaskObservabilityDetail, listTaskObservability, TaskObservabilityError } from "../services/taskObservabilityReadModel";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
@@ -31,7 +32,7 @@ const jobTypeSchema = z.string().trim().min(1).max(100);
 
 function requireWorkerJobAuth(ctx: {
   tenantId?: string | null;
-  user?: { id?: number | null } | null;
+  user?: { id?: number | null; role?: string | null } | null;
 }) {
   if (!ctx.tenantId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
@@ -42,7 +43,17 @@ function requireWorkerJobAuth(ctx: {
   return {
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
+    isAdmin: ctx.user.role === "admin" || ctx.user.role === "system_agent",
   };
+}
+
+function mapObservabilityError(error: unknown): never {
+  if (error instanceof TaskObservabilityError) {
+    if (error.code === "TASK_NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: error.code });
+    if (error.code === "SCOPE_REQUIRED") throw new TRPCError({ code: "FORBIDDEN", message: error.code });
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.code });
+  }
+  throw error;
 }
 
 export const workerJobsRouter = router({
@@ -96,6 +107,26 @@ export const workerJobsRouter = router({
     .query(async ({ ctx }) => {
       const auth = requireWorkerJobAuth(ctx);
       return getWorkerJobDashboardSummary(auth);
+    }),
+
+  observability: protectedProcedure
+    .input(z.object({
+      cursor: z.string().max(1024).nullable().optional(),
+      projectId: z.string().trim().min(1).max(160).optional(),
+      specId: z.string().trim().min(1).max(64).optional(),
+    }).strict().optional())
+    .query(async ({ ctx, input }) => {
+      const auth = requireWorkerJobAuth(ctx);
+      try {
+        return await listTaskObservability({ scope: auth, cursor: input?.cursor, projectId: input?.projectId, specId: input?.specId });
+      } catch (error) { return mapObservabilityError(error); }
+    }),
+
+  observabilityDetail: protectedProcedure
+    .input(z.object({ jobId: z.string().trim().min(1).max(36) }).strict())
+    .query(async ({ ctx, input }) => {
+      try { return await getTaskObservabilityDetail({ scope: requireWorkerJobAuth(ctx), jobId: input.jobId }); }
+      catch (error) { return mapObservabilityError(error); }
     }),
 
   cancelQueued: protectedProcedure

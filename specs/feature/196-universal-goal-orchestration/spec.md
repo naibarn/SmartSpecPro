@@ -6317,3 +6317,14 @@ As a user, I can state an outcome in Thai or English without naming an implement
 ## Acceptance Criteria
 
 The feature is accepted only when Goal-to-Plan decisions are versioned and auditable, capability discovery is policy-filtered, explicit pins are honored, durable work enters Feature 195, local work uses Feature 197 Runner, mixed versions are safe, and the missing registries/gateway have focused tenant/auth/rollback proof.
+
+# 2026-10-17 Additive Goal Completion Observation Contract
+
+This amendment owns Goal baseline semantics only; SPEC-277 renders them and SPEC-294 aggregates them. It does not add a Goal execution engine, task authority, scheduler or change SPEC-224. Existing Goal/Plan/WorkUnit records or authorized immutable metadata/evidence references remain authoritative.
+
+## Requirements and acceptance criteria
+
+- REQ-196-OBS-01: A Goal baseline MUST identify goal, baseline ID/version/digest/source, milestones, deliverables, stable acceptance-criterion IDs, declared nonnegative weights, required/live obligations and WorkUnit/dependency links. Missing, malformed or unbound baseline MUST produce BASELINE_MISSING/UNKNOWN with no invented percentage. Monitoring MUST NOT create a new execution Goal or infer a baseline from commits/tests/tokens.
+- REQ-196-OBS-02: Execution Progress, Work Completion and Verified Goal Completion MUST be separate. Milestone, deliverable and criterion weights compose multiplicatively into each unique criterion's effective goal weight; WorkUnit weights divide their criterion's effective weight. Shared criteria/deliverables and retried WorkUnits MUST count once. Each progress axis MUST remain UNKNOWN until its required evidence covers the declared baseline. Verified percentage MUST use only current baseline/digest-bound, non-invalidated criterion evidence and declared effective weights. Every required criterion, including a zero-weight/live requirement, MUST pass before reporting 100 percent. Optional scope MUST NOT hide a required gap.
+- REQ-196-OBS-03: Scope changes MUST create a distinct baseline revision; reopened/regressed work or newer failing evidence MUST reduce completion truthfully. Equal-revision conflicts MUST be UNKNOWN/CONFLICT rather than last-writer wins. Remaining/blocked/unverified scope, evidence coverage, dependency refs, next autonomous action and genuinely human-required blockers MUST be inspectable.
+- REQ-196-OBS-04: Fixtures MUST demonstrate weighted progress, shared deliverable dedupe, physical retry/replan identity continuity, missing baseline, wrong digest, stale/reopened/regressed evidence, required live and zero-weight gates. Existing canonical closure graphs MAY be adapted without modifying their execution semantics; undeclared weights MUST remain unknown.

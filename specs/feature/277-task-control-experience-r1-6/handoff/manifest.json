@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+        "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
-    "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
+    "expected_spec_digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce"
   },
   "continuation": {
     "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests.",
@@ -178,7 +178,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+        "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -186,13 +186,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 56,
+  "generation": 57,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-    "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+    "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-11T01:58:46.354041Z",
+      "last_evidence_at": "2026-10-16T19:32:51.753317Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -565,10 +565,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-11T01:58:46.354041Z",
+    "reconciled_at": "2026-10-16T19:32:51.753317Z",
     "sources": [
       {
-        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+        "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -596,7 +596,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
+        "digest": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -612,11 +612,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 431,
-    "unresolved": 431
+    "total": 440,
+    "unresolved": 440
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:58:34.305025Z",
+  "updated_at": "2026-10-16T19:32:51.753317Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."

@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "761ac52f75daa4593149ea3a0082c53bd34419d472c54b93b9fc83be57ea462a",
       "requirement_id": "REQ-D2BD67602629",
       "requirement_text": "AgentOps must preserve the SmartSpecPro tenant model:",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "dc45f8f7702efde59a2e4ed6f4e907ba5f22ee0a26725c7ff776a0e4f7b4c160",
       "requirement_id": "REQ-3D175EFD03CF",
       "requirement_text": "- trace visibility must not cross tenant boundaries by default",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "b1c6e4a84ad9b33ec50375b47fe22637840f46fd1eb1597b3b6e65f1235511c6",
       "requirement_id": "REQ-BD621DE1BBA2",
       "requirement_text": "1. Provide one trace model spanning work item, run, step, handoff, action, approval, and retrieval events.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "457e59bc0934aa688d6b335f26584a3327f7768a3ce21fef9e844ed52c65e82e",
       "requirement_id": "REQ-2080A66CBFCA",
       "requirement_text": "2. Support offline replay, shadow mode, canary, and safe rollout.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "55a8e94917cde74d60aeedf1af3fcf929ba0ce55af1b776d2142e2a15a8ce6f6",
       "requirement_id": "REQ-5444E7D0E42A",
       "requirement_text": "3. Measure both technical and business outcomes.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "ec7fc7c2a432ff01ea45d02c96cf06cc9bacabe3088f6a318e034b6b5df8a163",
       "requirement_id": "REQ-D1DBEBFE37EB",
       "requirement_text": "4. Enforce release gates before broader autonomy rollout.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "6523165bf9b25ea8e1e2f91996e9c99dd706285d9a3cacc14b81dbc249038993",
       "requirement_id": "REQ-1DDF11153B46",
       "requirement_text": "5. Help operators debug failure clusters and quality drift quickly.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "985063dc933bbe80ce01d2de0854714e934e4dc62c39fa7b5527a3743bba7cda",
       "requirement_id": "REQ-DE2368EB557F",
       "requirement_text": "6. Feed outcome memory back into future model, prompt, context, and policy decisions.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "ba97b8b3ff9465a6070c7e6548f427f08809b7923283ab86f691356a106e630b",
       "requirement_id": "REQ-733AE3163A37",
       "requirement_text": "- Work item, run, handoff, action, and approval events must share one correlation model.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "4c6e52ffcf12fd0091fe91464c2d003531d960a7ac1d944c2cc6e94da55458e0",
       "requirement_id": "REQ-A58ABCD65485",
       "requirement_text": "- The platform must make replay a standard operational tool.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "3d6733fa3870c5db667eac2631512388e8cb2ad304d15c10b057daefc5e215c8",
       "requirement_id": "REQ-E6E5D7F0EEF4",
       "requirement_text": "- The platform must support:",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "89081b279125eba83a8317e9dbdd5b4060f2d2597a558284ca61c07cb9c422f9",
       "requirement_id": "REQ-8307A1AC6DB2",
       "requirement_text": "- unit evals for schemas and contracts",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "bee952759d07fd195e4ed35d50f237e7c9f9946789e165d1bb88d98f9b9ef4ca",
       "requirement_id": "REQ-88DA1C04455D",
       "requirement_text": "- trajectory evals for decision quality",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "798d20908922a38ba9ded062e4d54c8520a7cc9ce0dfe0436adc388eb19482e3",
       "requirement_id": "REQ-A95AE29E43B9",
       "requirement_text": "- policy evals for allow/deny correctness",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "4eab2890c668f57060aba056985a3081c734135b85f042dc72a062326c5bb6f0",
       "requirement_id": "REQ-0D160118F78E",
       "requirement_text": "- business outcome evals for task completion quality",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "4188a02c5a2b0261ba1053645cfe5bc0b629a5682cf7a93ea40b6fdeb70f837f",
       "requirement_id": "REQ-DAE6609F0146",
       "requirement_text": "- offline replay",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "68af1f477bab8346dce86df26f1112152c4de3389abf62d186f931d86c924864",
       "requirement_id": "REQ-EF8D7995B225",
       "requirement_text": "- shadow mode",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "c1dc15a8e758777dce6defd2d578036cf7ef6defe5a91290492e0534ee71df41",
       "requirement_id": "REQ-3C4E0ED5E7CA",
       "requirement_text": "- canary",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "40c666ef913610ac4277096c66b58b117592105fc9367d63ad43368a11b9fa4a",
       "requirement_id": "REQ-BED18F0BE071",
       "requirement_text": "- safe launch",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "8b064f5a48f21e3aa0dfd5088af07e563674ee0446005b8b9057b856d0bf33f9",
       "requirement_id": "REQ-FE87BF6A9515",
       "requirement_text": "- rollback mode",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "6e764ea87883e24e1d6883b1702356d3045b0317f6148f468c64f947c8a52760",
       "requirement_id": "REQ-88B46A95F287",
       "requirement_text": "- success rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "087ca04d472d0362498b8b314f59b6847cbcf774576284ea0940938762c5489f",
       "requirement_id": "REQ-16BF279B0A79",
       "requirement_text": "- latency",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "5256cd3c57ef99606413118e294a973ae4c03f986bdaee4a723b89484c865677",
       "requirement_id": "REQ-B893AD23CFC4",
       "requirement_text": "- intervention rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "98e6522448fa0fc6b89ba8cf192451e4f57fdf8a07c6c02bd5a362975e4216d0",
       "requirement_id": "REQ-B6A31A07D31C",
       "requirement_text": "- approval rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "c671e8fde2da74d3f9e32709329b8df21fdea10565c53727403722e583416826",
       "requirement_id": "REQ-555CB7CD81E5",
       "requirement_text": "- escalation rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "d009d032adbddb0c05838d3d5bd9ebac2e3f7f7ba72dfb3bd3e72d1f89a36684",
       "requirement_id": "REQ-724AA23090FB",
       "requirement_text": "- hallucination or invalid-action rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "3cddd3c9532868590b20125abe1496bd7105724e3bd68051e7ea9769fd885b2e",
       "requirement_id": "REQ-821D5068EEDB",
       "requirement_text": "- cost per successful outcome",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "91ca5ec82fc71d8f26e38892beede7588ac46fdd3568362dad4cfdde855589c2",
       "requirement_id": "REQ-A687AD35A1CA",
       "requirement_text": "- SLA attainment",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "9c923afb41e3d36dc9dbf1fcb26a492289c876dfc682622bb89fc14c2db7de10",
       "requirement_id": "REQ-E7BD15828EC2",
       "requirement_text": "- best model by workload family",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "e944392c8d0aaf8c12d326ce72f85d2bbb02a1afa8c252d5312faf224a243111",
       "requirement_id": "REQ-FCE41BCF00CD",
       "requirement_text": "- improvement delta after rollout",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "b927828d50f788bf64251519028154a80363f65b088a267e59baec41352e762f",
       "requirement_id": "REQ-C5B1BB0C4828",
       "requirement_text": "- learning adoption rate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "ec9ded7ca52ae5a25c4582342f49e7bf9d7793e66e209d06a907174d34f9ba21",
       "requirement_id": "REQ-8CC53C6A2658",
       "requirement_text": "- Every evaluated run should produce a machine-readable learning summary that captures:",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "38a2a79d4f81c9eb48cfb299dfb9a41df203b8d855b26a10e7ac083f25a7ab0e",
       "requirement_id": "REQ-F831E9D2850C",
       "requirement_text": "- workload family",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "07c3bce5349472685a344a8e322451a09261ede7edd69210c8095b1b00d8b5be",
       "requirement_id": "REQ-9822DD2EC9D0",
       "requirement_text": "- model or prompt version",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "05216d3c057194e24a2b62490d79f811fe957c27b1a44767b5231e11fc645637",
       "requirement_id": "REQ-14EC0BC5231A",
       "requirement_text": "- context bundle version",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "7a04c6e3c2d28a4430763f6e19c87f0f100ec2e097384ff0e5387da3162958c5",
       "requirement_id": "REQ-E82B514F5DF1",
       "requirement_text": "- policy version",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "1c5cb0ddee4e010944d7ae5b9680fdecd96d02c779dded4169d9da53193ea713",
       "requirement_id": "REQ-0FED9F1DD256",
       "requirement_text": "- outcome quality",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "05ed5ef60fcf38b83234969e22d26833b1432547be37a0651a349a2afd1d44f7",
       "requirement_id": "REQ-C6B43827DFE1",
       "requirement_text": "- failure mode",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "18f45a0b467955bace9e388f38b82012a5a1f3a065a70cc6bfcfb6d7591c6142",
       "requirement_id": "REQ-EFC696E904A5",
       "requirement_text": "- intervention count",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "da29536d2c1902ad1e0c81ec4c5c0235c596e11f5118eca4919ea0e09fc8e5b9",
       "requirement_id": "REQ-308A686B2DFC",
       "requirement_text": "- improvement candidate",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "b650133b42b94691e49f362a0f5e6bae0506f3d715eca4df1d414916187dd762",
       "requirement_id": "REQ-9249B9C48F08",
       "requirement_text": "- The platform should compare candidate model versions and prompt variants on the same workload class before promotion.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "ab0d72856dad5965ec23d975b1f58503a5597ff9532d38c71255c28cc9d37ece",
       "requirement_id": "REQ-BDCBFB5EBD61",
       "requirement_text": "- When newer LLM models become available, the release-gate layer should be able to test them against the same benchmark family and surface whether they are actually better, faster, or more reliable.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "761ba126bfa726e4732c122b2e5782f07ba815e25836f7bb5399294926e6b352",
       "requirement_id": "REQ-46C450CF7F0E",
       "requirement_text": "- Regression findings should become actionable follow-up items rather than dead-end dashboards.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "d143812aff3aeff68a3de3887dcabda4685c67ac073582e5c7a652866d78f41a",
       "requirement_id": "REQ-2083EFD69B36",
       "requirement_text": "- Desktop should support local debug affordances for in-progress runs, but those affordances must align with the shared trace identity and release-gate posture instead of inventing a separate local observability model.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "a8b2773f6bd92dad00dccd4b9c392686ec14a3226a4222f230f987a8e037f882",
       "requirement_id": "REQ-3C23C1DC674B",
       "requirement_text": "- Web and desktop must share one trace and span identity model so a business run can be inspected seamlessly across surfaces.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "9f0d34b6cff2fc297e9fe90d99ee34207254c5ceef3d59fd19b94ba52a399bfd",
       "requirement_id": "REQ-D75AE4B0518C",
       "requirement_text": "- Desktop-originated telemetry must sync with enough provenance to distinguish local execution, degraded upload, and stale or partial traces.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "d31eb78921b5da3a4c9cd0a5f8f50f0f2f53047b1b1a3f62f47c8e76d37ba245",
       "requirement_id": "REQ-D9F6436AECE3",
       "requirement_text": "- Release-gate logic may consume local execution evidence, but local evidence must be normalized into the shared evaluation schema before it can influence promotion decisions.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "ae292cfc7744dd579191aa984735900a5d39f6e54844307e8d352d0e43033508",
       "requirement_id": "REQ-32F8608EDBDB",
       "requirement_text": "1. Operators can move from a business work item to a full agent trace without manual log stitching.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "4ce6b9035a3d08b7f79c784dd34256e3bbbf5b54664d1dfbb61d83e8a3af0a9f",
       "requirement_id": "REQ-B5B522ED45DC",
       "requirement_text": "2. New workpack or role-agent versions can be tested in shadow or replay mode before wider rollout.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "7b362928d43bd37e75c83b73bcae47dae216983dd8e3e20f4bef8287feb0e783",
       "requirement_id": "REQ-047E503B1982",
       "requirement_text": "3. Release gates can block promotion when intervention, policy, or outcome thresholds regress.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "403d216e65dfbcc203046e4a85789134b40fc593b6673e86808ff899e8fa7d1e",
       "requirement_id": "REQ-A10607728022",
       "requirement_text": "4. The system can compare human baseline and agent baseline for selected workloads.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "3a773a8cd0c7706cf9b05469f1dc20471944c123ade6ef90beedd11ec6580608",
       "requirement_id": "REQ-70CABFE9FE35",
       "requirement_text": "5. Drift and repeated failure patterns can be clustered and surfaced to operators.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,13 +1163,35 @@
       "requirement_digest": "b2d16db453e28410eed39c6757466504315afa0a52b8dfe3990abe5076729636",
       "requirement_id": "REQ-C43632AE550E",
       "requirement_text": "6. Operators can see which model, prompt, or policy variant produced the best outcome for a workload family and what to try next.",
-      "source_spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L221"
+      ],
+      "authority_source": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md#L221",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1dc3c83c3e646c030778b124787d42e365e593956a4221e720f268274407e66d",
+      "requirement_id": "REQ-088-OBS-01",
+      "requirement_text": "- REQ-088-OBS-01: Model/workload comparison MUST cite benchmark/workload and source/contract revision, verified outcome/evidence, call/attempt identity, requested versus provider-confirmed effective model, funding/unit, latency basis and usage coverage. Partial, unknown, normalized-fallback or unverified effective/quota/money evidence MUST remain labeled observational and MUST NOT establish a confirmed best-model or verified cost-per-success claim. Reuse current trace/outcome/receipt sources and SPEC-277/294 read models; this amendment MUST NOT add callers or dependencies on retired Agency/workpacks/workflow runtimes.",
+      "source_spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2",
+  "spec_digest": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62",
   "spec_id": "088"
 }

@@ -1,0 +1,173 @@
+import { useState } from "react";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack } from "@astryxdesign/core/HStack";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { Section } from "@astryxdesign/core/Section";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
+import { trpc } from "@/lib/trpc";
+
+const metricLabel = (value: number | null): string => value === null ? "Unknown" : `${value.toFixed(1)}%`;
+const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
+
+export default function TaskObservabilityMonitor() {
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [projectFilter, setProjectFilter] = useState("");
+  const [specFilter, setSpecFilter] = useState("");
+  const [projectDraft, setProjectDraft] = useState("");
+  const [specDraft, setSpecDraft] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const query = trpc.workerJobs.observability.useQuery({
+    cursor,
+    ...(projectFilter ? { projectId: projectFilter } : {}),
+    ...(specFilter ? { specId: specFilter } : {}),
+  }, { staleTime: 15_000, refetchInterval: 15_000, retry: false });
+  const runnerQuery = trpc.runnerNodes.list.useQuery(undefined, { staleTime: 15_000, refetchInterval: 15_000, retry: false });
+  const items = query.data?.items ?? [];
+  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
+  const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
+    { jobId: selected?.id ?? "" },
+    { enabled: Boolean(selected), staleTime: 15_000, refetchInterval: 15_000, retry: false },
+  );
+  const detail = detailQuery.data;
+  const filtered = projectFilter || specFilter;
+
+  return (
+    <VStack as="main" gap={4} padding={4}>
+      <VStack gap={1}>
+        <Heading level={1}>Task Control and Agent Monitor</Heading>
+        <Text type="supporting">Live task, runner, goal, model and resource evidence. Missing evidence remains unknown.</Text>
+      </VStack>
+
+      <Section>
+        <VStack gap={3}>
+          <Heading level={2}>{query.data?.scope === "tenant_fleet" ? "Tenant fleet and project scope" : "My tasks and project scope"}</Heading>
+          <HStack gap={2} wrap="wrap">
+            <TextInput label="Project ID" value={projectDraft} onChange={setProjectDraft} placeholder="Canonical project ID" />
+            <TextInput label="SPEC ID" value={specDraft} onChange={setSpecDraft} placeholder="SPEC-###" />
+            <Button label="Apply scope" variant="secondary" onClick={() => { setProjectFilter(projectDraft.trim()); setSpecFilter(specDraft.trim()); setCursor(null); setSelectedId(null); }} />
+            {filtered ? <Button label="Clear scope" variant="ghost" onClick={() => { setProjectDraft(""); setSpecDraft(""); setProjectFilter(""); setSpecFilter(""); setCursor(null); setSelectedId(null); }} /> : null}
+            <Text type="supporting">Created before {query.data?.snapshot.asOf ?? "loading"} · task and selected detail values are current reads.</Text>
+          </HStack>
+          {query.error ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
+          {query.isLoading ? <Text>Loading owned jobs…</Text> : null}
+          {!query.isLoading && items.length === 0 ? <Text>No matching canonical jobs are available in this account scope.</Text> : null}
+          <VStack as="ol" gap={1}>
+            {items.map((item) => (
+              <HStack as="li" key={item.id} gap={3} wrap="wrap" padding={2}>
+                <Button
+                  label={`${item.jobType} · ${item.status} · ${item.id}`}
+                  variant={selected?.id === item.id ? "primary" : "secondary"}
+                  onClick={() => setSelectedId(item.id)}
+                />
+                {item.operatorAttention.required ? <Badge variant="warning" label="Action required" /> : null}
+                <Text type="supporting">{item.stage ?? "stage unknown"} · attempt {item.attempt}/{item.maxAttempts}</Text>
+                <Text type="supporting">Worker {item.workerId ?? "unassigned"}</Text>
+                {query.data?.scope === "tenant_fleet" ? <Text type="supporting">Owner {item.ownerUserId}</Text> : null}
+              </HStack>
+            ))}
+          </VStack>
+          <HStack gap={2} wrap="wrap">
+            <Button label="Refresh snapshot" variant="secondary" onClick={() => { if (cursor) setCursor(null); else void query.refetch(); }} />
+            {cursor ? <Button label="Previous page" variant="secondary" onClick={() => { setCursor(null); setSelectedId(null); }} /> : null}
+            {query.data?.nextCursor ? <Button label="Next page" variant="secondary" onClick={() => { setCursor(query.data!.nextCursor); setSelectedId(null); }} /> : null}
+            <Text type="supporting">Cursor expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot.</Text>
+          </HStack>
+        </VStack>
+      </Section>
+
+      <Section>
+        <VStack gap={2}>
+          <Heading level={2}>Available runner fleet</Heading>
+          {runnerQuery.error ? <Text>Runner fleet is unavailable in this account scope.</Text> : null}
+          {runnerQuery.isLoading ? <Text>Loading runner observations…</Text> : null}
+          {!runnerQuery.isLoading && !runnerQuery.error && runnerQuery.data?.runners.length === 0 ? <Text>No registered runner is visible in this account scope.</Text> : null}
+          {runnerQuery.data?.runners.map((runner) => (
+            <HStack as="article" key={runner.runnerId} gap={3} wrap="wrap" padding={2}>
+              <Text>{runner.displayName ?? runner.runnerId}</Text>
+              <Badge label={runner.displayState} variant={runner.displayState === "ready" ? "success" : "neutral"} />
+              <Text type="supporting">Trust {runner.trustState} · status {runner.status} · last seen {runner.lastSeenAt ?? "unknown"} · snapshot expires {runner.snapshotExpiresAt ?? "unknown"}</Text>
+              <Text type="supporting">{runner.workspaceIds.length} workspace(s) · {runner.toolCount} tools · {runner.capabilityCount} capabilities</Text>
+            </HStack>
+          ))}
+        </VStack>
+      </Section>
+
+      {selected ? (
+        <VStack gap={3}>
+          {detailQuery.isLoading ? <Section><Text>Loading task detail…</Text></Section> : null}
+          {detailQuery.error ? <Section><Text>Task detail is unavailable in the current account scope.</Text></Section> : null}
+          {detail ? <>
+          <Section>
+            <VStack gap={3}>
+              <HStack gap={2} wrap="wrap">
+                <Heading level={2}>Task detail</Heading>
+                <Badge label={selected.status} variant={selected.operatorAttention.required ? "warning" : "neutral"} />
+                <Text type="supporting">{selected.id} · {selected.jobType} · {selected.updatedAt}</Text>
+              </HStack>
+              <HStack gap={4} wrap="wrap">
+                <Text>Stage: {selected.stage ?? "Unknown"}</Text>
+                <Text>Heartbeat: {detail.heartbeatAt ?? "Unknown"} · {detail.heartbeatFreshness}</Text>
+                <Text>Project: {detail.projectId ?? "Unbound"} · binding {detail.identityBinding.status}</Text>
+                <Text>SPEC: {detail.specId ?? "Unbound"} · binding {detail.identityBinding.status}</Text>
+                <Text>Runner: {detail.runner?.displayName ?? detail.runner?.status ?? "Unknown"} · freshness {detail.runner?.freshness ?? "unknown"}</Text>
+              </HStack>
+              {detail.operatorAttention.required ? <Text>Human attention: {detail.operatorAttention.reason ?? "required; reason unavailable"}</Text> : null}
+              <Text>Recovery: {detail.recovery.retryEligible ? `retry scheduled for ${detail.recovery.nextRetryAt}` : detail.recovery.runnerSessionState ?? "no recovery action recorded"}</Text>
+              <Heading level={3}>Goal progress</Heading>
+              {detail.goal.status !== "PROJECTED" ? <Text>Unknown · {detail.goal.reason ?? "goal baseline or evidence is unavailable"}.</Text> : (
+                <VStack gap={2}>
+                  <ProgressBar label="Verified goal completion" value={detail.goal.verifiedGoalCompletion.percent ?? 0} hasValueLabel formatValueLabel={() => metricLabel(detail.goal.verifiedGoalCompletion.percent)} variant={detail.goal.verifiedGoalCompletion.percent === 100 ? "success" : "accent"} />
+                  <HStack gap={3} wrap="wrap">
+                    <Text>Execution {metricLabel(detail.goal.executionProgress.percent)}</Text>
+                    <Text>Implementation {metricLabel(detail.goal.implementationCompletion.percent)}</Text>
+                    <Text>Work complete {metricLabel(detail.goal.workCompletion.percent)}</Text>
+                    <Text>Evidence {detail.goal.evidenceCoverage.coveredCriteria}/{detail.goal.evidenceCoverage.totalCriteria}</Text>
+                  </HStack>
+                  <Text>Remaining criteria: {detail.goal.remainingScope.map((item) => item.criterionId).join(", ") || "none"}</Text>
+                  <Text>Blocked: {detail.goal.blockedScope.map((item) => `${item.criterionId} (${item.blockers.join(", ")})`).join("; ") || "none"}</Text>
+                </VStack>
+              )}
+            </VStack>
+          </Section>
+
+          <Section>
+            <VStack gap={3}>
+              <Heading level={3}>Model identity and usage</Heading>
+              <Text type="supporting">Coverage {detail.usage.coverage.status}: {detail.usage.coverage.reason}</Text>
+              <Text>Current UI Session Model: {detail.modelSelection.uiSessionModel ?? "Unknown"} · source {detail.modelSelection.source} · observed {detail.modelSelection.asOf}</Text>
+              <Text>Current selection rationale: {detail.modelSelection.rationale?.mode ?? "Unknown"} · requested {detail.modelSelection.rationale?.selectedModel ?? "Unknown"} · resolved {detail.modelSelection.rationale?.lastResolvedModel ?? "Unknown"} · provider {detail.modelSelection.rationale?.provider ?? "Unknown"} · changed {detail.modelSelection.rationale?.updatedAt ?? "Unknown"}</Text>
+              <Text>Unique model calls {detail.usage.counts.unique}; corrections {detail.usage.counts.corrections}; retries/replays {detail.usage.counts.replayed}; missing {detail.usage.counts.missing}; conflicts {detail.usage.counts.conflicts}; overlap {detail.usage.counts.overlap}</Text>
+              <Text>Observed receipt total: {tokenLabel(detail.usage.completeTotalTokens)} · known subtotal {detail.usage.knownSubtotalTokens.toLocaleString()} · {detail.usage.coverageReason ?? "totals describe linked observed receipts only"}</Text>
+              <Text>Provider quota observation: {detail.quotaCoverage.status} · {detail.quotaCoverage.reason}</Text>
+              {detail.usage.receipts.map((receipt) => (
+                <Section key={`${receipt.identity.scope}:${receipt.identity.consumptionId}`} variant="transparent" padding={2} dividers={["bottom"]}>
+                  <VStack gap={1}>
+                    <Text type="label">Call {receipt.identity.consumptionId} · {receipt.asOf}</Text>
+                    <Text>UI Session {receipt.model.uiSession ?? "Unknown"} (call-time binding unverified) · Worker requested {receipt.model.requested ?? "Unknown"} (canonical reservation) · Provider effective {receipt.model.effective ?? "Unknown"} ({receipt.model.effective ? "provider receipt" : "unverified"}) · External helper {receipt.model.helper ?? "Unknown"} (independent call binding unverified)</Text>
+                    <Text>Call selection: {receipt.selection?.phase ?? "Unknown phase"} · role {receipt.selection?.role ?? "Unknown role"} · effort {receipt.selection?.effort ?? "Unknown"} · policy {receipt.selection?.policyProfile ?? "Unknown"} · rationale {receipt.selection?.rationale ?? "Not recorded"}</Text>
+                    <Text>Input {tokenLabel(receipt.tokens.inputTokens)} (cached subset {tokenLabel(receipt.tokens.cachedInputTokens)}) · Output {tokenLabel(receipt.tokens.outputTokens)} · total {tokenLabel(receipt.tokens.totalTokens)} · {receipt.tokens.reason ?? "measured"}</Text>
+                    <Text type="supporting">Evidence: {receipt.sourceRefs.map((source) => `${source.kind}:${source.reference}`).join(" · ") || "not recorded"}</Text>
+                  </VStack>
+                </Section>
+              ))}
+              {detail.usage.reservations.map((reservation, index) => <Text key={`${reservation.kind}-${index}`}>Resource reservation estimate: {reservation.estimateTokens ?? "Unknown"} tokens · {reservation.estimatedCostMicros === null ? "" : `${reservation.estimatedCostMicros} micro-USD estimated · `}{reservation.kind} · {reservation.modelCallId ?? "no call identity"} · {reservation.status} · {reservation.provider ?? "provider unknown"} · observed {reservation.observedAt ?? "unknown"}</Text>)}
+              {detail.usage.settlements.map((settlement) => <Text key={`${settlement.identity.scope}:${settlement.identity.consumptionId}`}>Settlement evidence: {settlement.amount ?? "Unknown"} {settlement.currency ?? "currency unknown"} · funding {settlement.funding ?? "unknown"}</Text>)}
+            </VStack>
+          </Section>
+
+          <Section>
+            <VStack gap={2}>
+              <Heading level={3}>Canonical job timeline</Heading>
+              {detail.timeline.length ? detail.timeline.map((event) => <Text key={event.id}>{event.at} · {event.type} · attempt {event.attempt ?? "unknown"} · {event.phase ?? event.reasonCode ?? "no detail recorded"}</Text>) : <Text>Timeline unavailable.</Text>}
+            </VStack>
+          </Section>
+          </> : null}
+        </VStack>
+      ) : null}
+    </VStack>
+  );
+}

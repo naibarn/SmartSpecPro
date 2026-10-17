@@ -10,6 +10,7 @@ import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Button as AstryxButton } from "@astryxdesign/core/Button";
 import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -263,6 +264,7 @@ export default function TaskQueueMonitor() {
             </p>
           </div>
         </div>
+        <AstryxButton label="Agent Monitor" href="/agent-monitor" variant="secondary" size="sm" />
         <Button
           variant="outline"
           size="sm"

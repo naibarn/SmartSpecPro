@@ -2,11 +2,11 @@
 # 088 — 088 - AgentOps Tracing Evaluation And Release Gates
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 53 unresolved of 53
+- Requirements: 0 pass / 54 unresolved of 54
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

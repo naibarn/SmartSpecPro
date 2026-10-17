@@ -298,6 +298,7 @@ const DomainBlogAdmin = lazy(() => import("./pages/DomainBlogAdmin"));
 const DomainDocsAdmin = lazy(() => import("./pages/DomainDocsAdmin"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
+const TaskObservabilityMonitor = lazy(() => import("./pages/TaskObservabilityMonitor"));
 const Teams = lazy(() => import("./pages/Teams"));
 const PersonaSettings = lazy(() => import("./pages/PersonaSettings"));
 const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
@@ -1344,6 +1345,11 @@ function Router() {
           <Route path="/tasks">
             <RequireAuth>
               <TaskQueueMonitor />
+            </RequireAuth>
+          </Route>
+          <Route path="/agent-monitor">
+            <RequireAuth>
+              <TaskObservabilityMonitor />
             </RequireAuth>
           </Route>
           <Route path="/media-history">
