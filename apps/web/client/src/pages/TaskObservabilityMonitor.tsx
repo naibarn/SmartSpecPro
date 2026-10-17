@@ -38,13 +38,15 @@ export default function TaskObservabilityMonitor() {
     ...(specFilter ? { specId: specFilter } : {}),
     ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}),
   }, { enabled: Boolean((projectFilter || specFilter) && (query.data?.snapshot.projectionToken || projectionToken)), staleTime: 60_000, retry: false });
-  const items = query.data?.items ?? [];
+  const items = query.error ? [] : query.data?.items ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
     { jobId: selected?.id ?? "", ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}) },
     { enabled: Boolean(selected), staleTime: 15_000, refetchInterval: 15_000, retry: false },
   );
-  const detail = detailQuery.data;
+  const detail = detailQuery.error ? undefined : detailQuery.data;
+  const runners = runnerQuery.error ? [] : runnerQuery.data?.runners ?? [];
+  const aggregate = aggregateQuery.error ? undefined : aggregateQuery.data;
   const filtered = projectFilter || specFilter;
   const snapshotExpired = query.error?.data?.code === "PRECONDITION_FAILED";
 
@@ -100,18 +102,18 @@ export default function TaskObservabilityMonitor() {
             <Heading level={2}>Project / SPEC usage union</Heading>
             {aggregateQuery.isLoading ? <Text>Loading bounded aggregate…</Text> : null}
             {aggregateQuery.error ? <Text>Aggregate is unavailable in the current account scope.</Text> : null}
-            {aggregateQuery.data ? <>
-              <Text>{aggregateQuery.data.scope} · {aggregateQuery.data.projectId ?? "project unknown"} · {aggregateQuery.data.specId ?? "SPEC unknown"} · binding {aggregateQuery.data.scopeBinding.status} · {aggregateQuery.data.observedJobCount} observed jobs · as of {aggregateQuery.data.asOf} · {aggregateQuery.data.consistency}</Text>
-              <Text type="supporting">{aggregateQuery.data.scopeBinding.reason}</Text>
-              <Text>Goal coverage {aggregateQuery.data.goalCoverage.status} · baseline candidates {aggregateQuery.data.goalCoverage.baselineCandidateCount} · {aggregateQuery.data.goalCoverage.reason}</Text>
-              <Text>Unique linked calls {aggregateQuery.data.usage.counts.unique}; corrections {aggregateQuery.data.usage.counts.corrections}; replayed {aggregateQuery.data.usage.counts.replayed}; missing {aggregateQuery.data.usage.counts.missing}; overlap {aggregateQuery.data.usage.counts.overlap}</Text>
-              <Text>Complete linked token total {tokenLabel(aggregateQuery.data.usage.completeTotalTokens)} · known subtotal {aggregateQuery.data.usage.knownSubtotalTokens.toLocaleString()} · {aggregateQuery.data.usage.coverage.reason}</Text>
-              <Text>Reservation estimate {tokenLabel(aggregateQuery.data.resourceEstimates.reservedTokenEstimate)} tokens across {aggregateQuery.data.resourceEstimates.observedReservationCount} distinct receipts · missing/conflicting estimates {aggregateQuery.data.resourceEstimates.missingReservationTokenEstimateCount} · known inference cost estimate {aggregateQuery.data.resourceEstimates.inferenceCostEstimateMicros.toLocaleString()} micro-USD · missing estimates {aggregateQuery.data.resourceEstimates.missingInferenceCostEstimateCount} · quota {aggregateQuery.data.quotaCoverage.status}</Text>
-              <Text>Canonical job settlement markers {aggregateQuery.data.jobSettlementMarkers?.observedCount ?? "Unknown"} · {aggregateQuery.data.jobSettlementMarkers?.byType?.map((item) => `${item.type}: ${item.count}`).join(", ") ?? "type coverage unknown"} · marker-only, no monetary amount asserted</Text>
-              <Text>Bound runner accounting evidence {aggregateQuery.data.economicSettlementEvidence?.observedEventCount ?? "Unknown"} events · settled {aggregateQuery.data.economicSettlementEvidence?.settledCount ?? "Unknown"} · reconciliation required {aggregateQuery.data.economicSettlementEvidence?.reconciliationRequiredCount ?? "Unknown"} · classifications {aggregateQuery.data.economicSettlementEvidence?.byClassification?.map((item) => `${item.classification}: ${item.count}`).join(", ") ?? "Unknown"} · provider capture subtotals {aggregateQuery.data.economicSettlementEvidence?.capturedProviderAmounts?.map((item) => `${item.capturedMinorUnits ?? "Unknown"} ${item.currency} minor units`).join(", ") ?? "Unknown"} · missing capture values {aggregateQuery.data.economicSettlementEvidence?.missingProviderCaptureValueCount ?? "Unknown"} · {aggregateQuery.data.economicSettlementEvidence?.meaning ?? "coverage unknown"}</Text>
-              {aggregateQuery.data.usage.settlements.slice(0, 10).map((settlement) => <Text key={`${settlement.identity.scope}:${settlement.identity.consumptionId}`}>Settlement: {settlement.amount ?? "Unknown"} {settlement.currency ?? "currency unknown"} · {settlement.funding ?? "funding unknown"} · {settlement.identity.consumptionId}</Text>)}
-              {aggregateQuery.data.usage.settlements.length > 10 ? <Text type="supporting">Showing 10 of {aggregateQuery.data.usage.settlements.length} settlement receipts.</Text> : null}
-              <Text type="supporting">Sources: {aggregateQuery.data.usage.coverage.sources.join(", ")} · uncovered: {aggregateQuery.data.usage.coverage.missingSources.join(", ")}</Text>
+            {aggregate ? <>
+              <Text>{aggregate.scope} · {aggregate.projectId ?? "project unknown"} · {aggregate.specId ?? "SPEC unknown"} · binding {aggregate.scopeBinding.status} · {aggregate.observedJobCount} observed jobs · as of {aggregate.asOf} · {aggregate.consistency}</Text>
+              <Text type="supporting">{aggregate.scopeBinding.reason}</Text>
+              <Text>Goal coverage {aggregate.goalCoverage.status} · baseline candidates {aggregate.goalCoverage.baselineCandidateCount} · {aggregate.goalCoverage.reason}</Text>
+              <Text>Unique linked calls {aggregate.usage.counts.unique}; corrections {aggregate.usage.counts.corrections}; replayed {aggregate.usage.counts.replayed}; missing {aggregate.usage.counts.missing}; overlap {aggregate.usage.counts.overlap}</Text>
+              <Text>Complete linked token total {tokenLabel(aggregate.usage.completeTotalTokens)} · known subtotal {aggregate.usage.knownSubtotalTokens.toLocaleString()} · {aggregate.usage.coverage.reason}</Text>
+              <Text>Reservation estimate {tokenLabel(aggregate.resourceEstimates.reservedTokenEstimate)} tokens across {aggregate.resourceEstimates.observedReservationCount} distinct receipts · missing/conflicting estimates {aggregate.resourceEstimates.missingReservationTokenEstimateCount} · known inference cost estimate {aggregate.resourceEstimates.inferenceCostEstimateMicros.toLocaleString()} micro-USD · missing estimates {aggregate.resourceEstimates.missingInferenceCostEstimateCount} · quota {aggregate.quotaCoverage.status}</Text>
+              <Text>Canonical job settlement markers {aggregate.jobSettlementMarkers?.observedCount ?? "Unknown"} · {aggregate.jobSettlementMarkers?.byType?.map((item) => `${item.type}: ${item.count}`).join(", ") ?? "type coverage unknown"} · marker-only, no monetary amount asserted</Text>
+              <Text>Bound runner accounting evidence {aggregate.economicSettlementEvidence?.observedEventCount ?? "Unknown"} events · settled {aggregate.economicSettlementEvidence?.settledCount ?? "Unknown"} · reconciliation required {aggregate.economicSettlementEvidence?.reconciliationRequiredCount ?? "Unknown"} · classifications {aggregate.economicSettlementEvidence?.byClassification?.map((item) => `${item.classification}: ${item.count}`).join(", ") ?? "Unknown"} · provider capture subtotals {aggregate.economicSettlementEvidence?.capturedProviderAmounts?.map((item) => `${item.capturedMinorUnits ?? "Unknown"} ${item.currency} minor units`).join(", ") ?? "Unknown"} · missing capture values {aggregate.economicSettlementEvidence?.missingProviderCaptureValueCount ?? "Unknown"} · {aggregate.economicSettlementEvidence?.meaning ?? "coverage unknown"}</Text>
+              {aggregate.usage.settlements.slice(0, 10).map((settlement) => <Text key={`${settlement.identity.scope}:${settlement.identity.consumptionId}`}>Settlement: {settlement.amount ?? "Unknown"} {settlement.currency ?? "currency unknown"} · {settlement.funding ?? "funding unknown"} · {settlement.identity.consumptionId}</Text>)}
+              {aggregate.usage.settlements.length > 10 ? <Text type="supporting">Showing 10 of {aggregate.usage.settlements.length} settlement receipts.</Text> : null}
+              <Text type="supporting">Sources: {aggregate.usage.coverage.sources.join(", ")} · uncovered: {aggregate.usage.coverage.missingSources.join(", ")}</Text>
             </> : null}
           </VStack>
         </Section>
@@ -122,8 +124,8 @@ export default function TaskObservabilityMonitor() {
           <Heading level={2}>Available runner fleet</Heading>
           {runnerQuery.error ? <Text>Runner fleet is unavailable in this account scope.</Text> : null}
           {runnerQuery.isLoading ? <Text>Loading runner observations…</Text> : null}
-          {!runnerQuery.isLoading && !runnerQuery.error && runnerQuery.data?.runners.length === 0 ? <Text>No registered runner is visible in this account scope.</Text> : null}
-          {runnerQuery.data?.runners.map((runner) => (
+          {!runnerQuery.isLoading && !runnerQuery.error && runners.length === 0 ? <Text>No registered runner is visible in this account scope.</Text> : null}
+          {runners.map((runner) => (
             <HStack as="article" key={runner.runnerId} gap={3} wrap="wrap" padding={2}>
               <Text>{runner.displayName ?? runner.runnerId}</Text>
               <Badge label={runner.displayState} variant={runner.displayState === "ready" ? "success" : "neutral"} />
@@ -132,7 +134,7 @@ export default function TaskObservabilityMonitor() {
             </HStack>
           ))}
           <Heading level={3}>Observed runner to task topology</Heading>
-          {runnerQuery.data?.runners.map((runner) => {
+          {runners.map((runner) => {
             const linkedJobs = items.filter((item) => item.runnerId === runner.runnerId);
             return (
               <VStack as="article" key={`topology-${runner.runnerId}`} gap={1} padding={2}>
@@ -146,10 +148,10 @@ export default function TaskObservabilityMonitor() {
               </VStack>
             );
           })}
-          {items.some((item) => item.runnerId && !runnerQuery.data?.runners.some((runner) => runner.runnerId === item.runnerId)) ? (
+          {items.some((item) => item.runnerId && !runners.some((runner) => runner.runnerId === item.runnerId)) ? (
             <VStack gap={1} padding={2}>
               <Text>Runner observation unavailable</Text>
-              {items.filter((item) => item.runnerId && !runnerQuery.data?.runners.some((runner) => runner.runnerId === item.runnerId)).map((item) => <Text key={`unbound-${item.id}`}>↳ {item.jobType} · {item.status} · runner {item.runnerId} (inventory unverified)</Text>)}
+              {items.filter((item) => item.runnerId && !runners.some((runner) => runner.runnerId === item.runnerId)).map((item) => <Text key={`unbound-${item.id}`}>↳ {item.jobType} · {item.status} · runner {item.runnerId} (inventory unverified)</Text>)}
             </VStack>
           ) : null}
         </VStack>
