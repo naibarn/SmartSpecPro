@@ -1,0 +1,2352 @@
+[
+  {
+    "caseId": "b05-100-1",
+    "query": "What does the spec report is unclear to users before execution begins?",
+    "expectedAnswer": "1. It does not clearly show the work plan before execution starts.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+      "sha256": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+      "lineStart": 35,
+      "lineEnd": 35,
+      "quoteSha256": "fe7fd332023ce27bdb0ea487f10f566560f767a90e43a295583c46937a96eb13",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md"
+      ],
+      "requiredClaims": ["feature100-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-100-2",
+    "query": "Which accountability details does the spec say are not reliably visible?",
+    "expectedAnswer": "2. It does not reliably show who did what, who reviewed it, and what changed as a result.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+      "sha256": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+      "lineStart": 36,
+      "lineEnd": 36,
+      "quoteSha256": "5991b7f9fa816c9bfa2505b12bdcac5361db50e63be9cd256c3c44c857f44406",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md"
+      ],
+      "requiredClaims": ["feature100-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-101-1",
+    "query": "What inconsistency in choosing skills for agent tasks does the spec identify?",
+    "expectedAnswer": "1. Skill selection is not consistently evidence-driven, so the wrong skill can be chosen or a good skill can be used at the wrong time.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md",
+      "sha256": "270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "f65631c185e4ac54ddba27b05c4aef7d938c32dc35bbdd1d275f0d274657e0f0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md"
+      ],
+      "requiredClaims": ["feature101-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-101-2",
+    "query": "Which parts of a review decision are not consistently structured for deterministic follow-up?",
+    "expectedAnswer": "2. Review output is not always structured enough to answer \"pass or fail, why, and what changes next?\" in a deterministic way.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md",
+      "sha256": "270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "4523eb48353d14082fa231cab21bee7131bc67f36f4280e3faee6bee5efacdea",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/101-openai-agents-sdk-chat-team-orchestration/spec.md"
+      ],
+      "requiredClaims": ["feature101-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:270fda287c7ddc993d9815bee17c1912065f68b736f08821dd3fec78c5ca1d6a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-102-1",
+    "query": "Which request field is used for single-speaker text-to-speech?",
+    "expectedAnswer": "- single-speaker text-to-speech through `voice`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+      "sha256": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "f060ed91860286b3496177e43ae1afb36bd1f9bff60a95df66bbaac46ac58203",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      ],
+      "requiredClaims": ["feature102-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-102-2",
+    "query": "Which request field selects multilingual speech synthesis?",
+    "expectedAnswer": "- multilingual synthesis through `language_code`",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+      "sha256": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "c3357a4e67f24107d18fac70f5647faf71a81860bb5ada35ebd2ffafca727896",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md"
+      ],
+      "requiredClaims": ["feature102-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-103-1",
+    "query": "How can someone reopen a knowledge note without remembering its exact title?",
+    "expectedAnswer": "- Open a note quickly by title, alias, or recent history.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+      "sha256": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+      "lineStart": 64,
+      "lineEnd": 64,
+      "quoteSha256": "f3454192c13bd7d60c962842a6ba2ddf9c6078d59569867a2a34c98d28a3f74e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      ],
+      "requiredClaims": ["feature103-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-103-2",
+    "query": "How can a reader discover connected notes from the one they are viewing?",
+    "expectedAnswer": "- Jump from a note to related notes without searching again.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+      "sha256": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+      "lineStart": 65,
+      "lineEnd": 65,
+      "quoteSha256": "0483451ba635514960cadd82d195333a9349ced6aab77a6fac3215a371cefb6b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md"
+      ],
+      "requiredClaims": ["feature103-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-104-1",
+    "query": "What should happen to cached knowledge when its source changes?",
+    "expectedAnswer": "2. Knowledge caches refresh automatically and measurably.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
+      "sha256": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "377b3aadb8fe745c61105a30dde688954b29086177930b2202d07e6f87be11c3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      ],
+      "requiredClaims": ["feature104-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-104-2",
+    "query": "ผู้ใช้ควรมีเครื่องมือหรือมุมมองใดบ้างเพื่อสำรวจคลังความรู้?",
+    "expectedAnswer": "3. Users navigate the vault through quick switch, inspector, views, graph, and canvas.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/104-md-knowledge-vault-production-readiness/spec.md",
+      "sha256": "bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+      "lineStart": 32,
+      "lineEnd": 32,
+      "quoteSha256": "371b5ab7417ba5da19939a3ccef5868c3cfedb249d7c3627918ac2560b6321fe",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/104-md-knowledge-vault-production-readiness/spec.md"
+      ],
+      "requiredClaims": ["feature104-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:bf42b226a51f476380103430ed6f6bd50541f1b84e0e999afee18030839f8778",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-106-1",
+    "query": "Where does the repository keep the skill collection used by this runtime?",
+    "expectedAnswer": "- a large skill library under `apps/web/skills`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "filename"],
+    "sourceGroupId": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+      "sha256": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "quoteSha256": "c9d53c66f98abb5e73490e9e6bd463948494708b0cae5cc7e2f096de63a1983a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      ],
+      "requiredClaims": ["feature106-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-106-2",
+    "query": "How should newly created skills become available to the Python Agents runtime?",
+    "expectedAnswer": "- Create new skills that are immediately usable by OpenAI Agents Python runtime.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+      "sha256": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+      "lineStart": 163,
+      "lineEnd": 163,
+      "quoteSha256": "a46c66104a32bea15a26f1fd3b5de96741cd8071a498ecd6ef993e61b42a6082",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/106-openai-agents-python-native-skill-system/spec.md"
+      ],
+      "requiredClaims": ["feature106-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-107-1",
+    "query": "Can a skill define specialist subagents as part of its contract?",
+    "expectedAnswer": "- Let a skill bundle declare one or more specialist subagents as part of the contract.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md",
+      "sha256": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+      "lineStart": 153,
+      "lineEnd": 153,
+      "quoteSha256": "91c91d696535fea8d8cbc73917d9aa33395433fdd10cf863d925499f3782e97a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature107-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-107-2",
+    "query": "Which runtime is expected to load and execute those skill-declared specialists?",
+    "expectedAnswer": "- Let the OpenAI Agents Python runtime load and execute those subagents as part of the skill run.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md",
+      "sha256": "130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+      "lineStart": 154,
+      "lineEnd": 154,
+      "quoteSha256": "d0ee05ae4fc91d3a7f9da354fc3a0b5bcc0dc96a6418fa6449606b3114f933b1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/107-openai-agents-python-subagent-skill-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature107-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:130c448eac73267e7321c97f42971b6c44a3c6f67db35395a279b6889d452413",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-108-1",
+    "query": "What structured field carries a completed transcript artifact?",
+    "expectedAnswer": "- transcript artifact output with structured `resultData`",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md",
+      "sha256": "fe5e9a637a0a303ee80533187bc2aeeb690ea6a3eaea08b4c68c2564c5844a9e",
+      "lineStart": 68,
+      "lineEnd": 68,
+      "quoteSha256": "9db31438e77762b2aba7394ca6a35a9b335676a993d0d6d4c6e0027f1dad542c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md"
+      ],
+      "requiredClaims": ["feature108-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fe5e9a637a0a303ee80533187bc2aeeb690ea6a3eaea08b4c68c2564c5844a9e",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-108-2",
+    "query": "Which header is named for checking provider health?",
+    "expectedAnswer": "- provider health check through `xi-api-key`",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md",
+      "sha256": "fe5e9a637a0a303ee80533187bc2aeeb690ea6a3eaea08b4c68c2564c5844a9e",
+      "lineStart": 69,
+      "lineEnd": 69,
+      "quoteSha256": "6aecdbd9aadebefecfe7f2e94cf9ed7bec8c2be7de51791476c29a3b75222a38",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/108-elevenlabs-elevenagents-runtime-integration/spec.md"
+      ],
+      "requiredClaims": ["feature108-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fe5e9a637a0a303ee80533187bc2aeeb690ea6a3eaea08b4c68c2564c5844a9e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-109-1",
+    "query": "When creating subtitles from a voiceover, which source script should take precedence?",
+    "expectedAnswer": "1. Prefer the exact `VOICEOVER SCRIPT`, `voiceoverScript`, or prepared audio script used to generate the voiceover.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/109-media-studio-script-first-subtitles/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/109-media-studio-script-first-subtitles/spec.md",
+      "sha256": "65a4906641455e5de99566b2e04a565ebb6e8ae9de068dccb3bf1b9abf96bf9f",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "17b85e4676a7e8e747d3eebbfb4882bf13b4741f8a99cb73a1e463c9ec74d620",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/109-media-studio-script-first-subtitles/spec.md"
+      ],
+      "requiredClaims": ["feature109-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:65a4906641455e5de99566b2e04a565ebb6e8ae9de068dccb3bf1b9abf96bf9f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-109-2",
+    "query": "สำหรับข่าว ควรใช้ข้อความบรรยายส่วนใดสร้างซับ แทนการใช้พรอมป์ตภาพ?",
+    "expectedAnswer": "2. In news mode, prefer the rewritten narration produced by the storyboard skill, not the visual video prompts.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/109-media-studio-script-first-subtitles/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/109-media-studio-script-first-subtitles/spec.md",
+      "sha256": "65a4906641455e5de99566b2e04a565ebb6e8ae9de068dccb3bf1b9abf96bf9f",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "6f1bc7c2ab9271906dbbfcbd9559d88c6d20ea812825f29f8b149c7b73f5d9c0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/109-media-studio-script-first-subtitles/spec.md"
+      ],
+      "requiredClaims": ["feature109-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:65a4906641455e5de99566b2e04a565ebb6e8ae9de068dccb3bf1b9abf96bf9f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-110-1",
+    "query": "Which provider should be added for image creation and editing workflows?",
+    "expectedAnswer": "1. Add a `magnific` Media Provider with encrypted API-key storage and admin connection testing.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/110-magnific-media-provider-models/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/110-magnific-media-provider-models/spec.md",
+      "sha256": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "lineStart": 65,
+      "lineEnd": 65,
+      "quoteSha256": "2a269665125f719edf0b6065e47cd796255ff662b141fe167f9384e24fcac325",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/110-magnific-media-provider-models/spec.md"
+      ],
+      "requiredClaims": ["feature110-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-110-2",
+    "query": "Which model categories does the requested provider seed cover?",
+    "expectedAnswer": "2. Seed all requested Magnific image, image-editing, video, and video-upscaler models.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/110-magnific-media-provider-models/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/110-magnific-media-provider-models/spec.md",
+      "sha256": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "lineStart": 66,
+      "lineEnd": 66,
+      "quoteSha256": "a939049c76adc37feffd2f2b314436bc298b8c038a8c893cc18465123453e246",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/110-magnific-media-provider-models/spec.md"
+      ],
+      "requiredClaims": ["feature110-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-111-1",
+    "query": "What kind of background image does the spec say should be generated with AI?",
+    "expectedAnswer": "1. Use AI image generation to create a realistic/photo background.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+      "sha256": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+      "lineStart": 16,
+      "lineEnd": 16,
+      "quoteSha256": "80e19a6b4f74960370a7e262da79f3b7fa38619ffd6a4e54de7e637171ca4a22",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md"
+      ],
+      "requiredClaims": ["feature111-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-111-2",
+    "query": "Which kinds of visual elements are rendered in a separate overlay layer?",
+    "expectedAnswer": "2. Generate text, panels, cards, and icons as a separate visual overlay.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+      "sha256": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "32701ab626f52a193b033f075e3eb68aacfbfff0440f28f81cf57dd40154cee4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md"
+      ],
+      "requiredClaims": ["feature111-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-112-1",
+    "query": "Which existing job service should the storyboard quality loop reuse?",
+    "expectedAnswer": "3. Existing SmartSpecPro media generation jobs.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+      "sha256": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "quoteSha256": "ac60e75e89adf86227e9cbc8d3ae157e9997ac1995b9f891d085683f9ff9db83",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md"
+      ],
+      "requiredClaims": ["feature112-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-112-2",
+    "query": "ไฟล์สื่อที่สร้างและประวัติการสร้างควรใช้ระบบเดิมส่วนใดต่อไป?",
+    "expectedAnswer": "4. Existing asset storage and media history.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+      "sha256": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "d4281fbb7b743ecace7394fbebff223bb06bc5ec362febddbaeadfc54baa33e2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md"
+      ],
+      "requiredClaims": ["feature112-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-113-1",
+    "query": "Where does the user authenticate before capturing marketplace product information?",
+    "expectedAnswer": "1. The user logs in to the marketplace directly in their own browser.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/113-marketplace-capture-extension/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/113-marketplace-capture-extension/spec.md",
+      "sha256": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "7e5bcebba53132f70adca0f83ef0023521b7a7117a63d600829c4d5b5d018034",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/113-marketplace-capture-extension/spec.md"
+      ],
+      "requiredClaims": ["feature113-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-113-2",
+    "query": "ก่อนเริ่มจับข้อมูล ผู้ใช้สามารถเปิดหน้าประเภทใดใน marketplace ได้บ้าง?",
+    "expectedAnswer": "2. The user opens a category, search, shop, or product page.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/113-marketplace-capture-extension/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/113-marketplace-capture-extension/spec.md",
+      "sha256": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "ae9d4695bb09628da469aa1b2e600fce7ce6e4c0cf28ace7b4fe378d61defe7f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/113-marketplace-capture-extension/spec.md"
+      ],
+      "requiredClaims": ["feature113-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-114-1",
+    "query": "What inputs can the Omni video feature use when creating a clip?",
+    "expectedAnswer": "- Gemini Omni Video: creates videos with prompt, image references, one source video, reusable character IDs, and reusable audio IDs.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
+      "sha256": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+      "lineStart": 13,
+      "lineEnd": 13,
+      "quoteSha256": "24daa863068b9c7add97af7830baec86e0ee1cc2102c17ed682b509d9a5d42f2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      ],
+      "requiredClaims": ["feature114-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-114-2",
+    "query": "What reusable asset does the Omni character feature create, and what identifier is returned?",
+    "expectedAnswer": "- Gemini Omni Character: creates a reusable character asset and stores the returned `characterId`.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
+      "sha256": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "quoteSha256": "c90ab743cd5bd464e3c32c517db4c0e775d195a631ea0d55338108fc47a22ce6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/114-gemini-omni-suite-media-assets/spec.md"
+      ],
+      "requiredClaims": ["feature114-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-115-1",
+    "query": "Which source module detects pages and scans products in the browser extension?",
+    "expectedAnswer": "- `src/content/index.ts` handles page detection, live snapshots, category scans, product scans, and message rejection for unknown types.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "filename", "code_identifier"],
+    "sourceGroupId": "specs/feature/115-extension-local-ai-analysis-layer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/115-extension-local-ai-analysis-layer/spec.md",
+      "sha256": "b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
+      "lineStart": 49,
+      "lineEnd": 49,
+      "quoteSha256": "115f5963328783c8564514bb379edcdbcd91362e423dd26518f84b4909ab0ae4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md"
+      ],
+      "requiredClaims": ["feature115-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-115-2",
+    "query": "Which extension module owns local review, draft creation, uploads, and server analysis?",
+    "expectedAnswer": "- `src/panel/App.tsx` owns connection, live detection, local review/edit/select, draft creation, asset upload, and server analysis.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "filename", "code_identifier"],
+    "sourceGroupId": "specs/feature/115-extension-local-ai-analysis-layer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/115-extension-local-ai-analysis-layer/spec.md",
+      "sha256": "b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
+      "lineStart": 51,
+      "lineEnd": 51,
+      "quoteSha256": "4a47c5255ea2887ef9451e9bef315a25441649b96df961502b3e8c666609bc1a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/115-extension-local-ai-analysis-layer/spec.md"
+      ],
+      "requiredClaims": ["feature115-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b369bef2e86441c439265f1eb2eb29dd5422ba818167cc826c10095fae71cb7a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-116-1",
+    "query": "Which exact Feature ID provides the storyboard skill QA loop concepts used by Production Director?",
+    "expectedAnswer": "- Feature 112: Storyboard Studio skill QA loop concepts.",
+    "language": "english",
+    "classes": ["spec_id", "exact_id"],
+    "sourceGroupId": "specs/feature/116-production-director-node-canvas/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/116-production-director-node-canvas/spec.md",
+      "sha256": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "5928990df6d36d534ab478e5ee1d3711da33b67c0a5659fcf4f6352e2eba85ce",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/116-production-director-node-canvas/spec.md"
+      ],
+      "requiredClaims": ["feature116-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-116-2",
+    "query": "Which exact Feature ID provides the Gemini Omni media assets and production-run foundation?",
+    "expectedAnswer": "- Feature 114: Gemini Omni Suite media assets, production runs, planner/verifier skills, output projection to Storyboard Review and Video Edit.",
+    "language": "english",
+    "classes": ["spec_id", "exact_id"],
+    "sourceGroupId": "specs/feature/116-production-director-node-canvas/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/116-production-director-node-canvas/spec.md",
+      "sha256": "7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "d036a9367af2dd0ff4e0ef6a1f13aaf5bb2c3fc4e20af907da5899bfa7bcf61b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/116-production-director-node-canvas/spec.md"
+      ],
+      "requiredClaims": ["feature116-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7a7fcc818d963dbd66b842255262c8b2f9ba7218f9c1e90f765df4c8956dbc3d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-117-1",
+    "query": "Which existing integration captures product details and selected images?",
+    "expectedAnswer": "- Marketplace Capture can capture product data and selected images.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+      "sha256": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+      "lineStart": 61,
+      "lineEnd": 61,
+      "quoteSha256": "70d63dcfb827531998cae06dd3aef27ce5a1442a3cefb730e72760efd744eda6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      ],
+      "requiredClaims": ["feature117-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-117-2",
+    "query": "What evidence should the marketplace handoff include before a story is ready?",
+    "expectedAnswer": "- Feature 115 can produce `MarketplaceStorytellingHandoff` with customer journey, evidence-backed claims, image fidelity, and readiness.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+      "sha256": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+      "lineStart": 62,
+      "lineEnd": 62,
+      "quoteSha256": "01a6839c4a755c43901adb21b32ba4d1e40bed38aaaf3aca9446073a70caf126",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md"
+      ],
+      "requiredClaims": ["feature117-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-118-1",
+    "query": "What project and review artifacts does the storyboard-images flow create?",
+    "expectedAnswer": "  - `storyboard_images`: create a Production Director Project, generate storyboard images, and create a Storyboard Review handoff.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+      "sha256": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "lineStart": 30,
+      "lineEnd": 30,
+      "quoteSha256": "19f4ef752024e35b43411e25d959966bc47a43caf102e3a3e2f9bea6912b9b8c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      ],
+      "requiredClaims": ["feature118-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-118-2",
+    "query": "โฟลว์ full-video เพิ่มขั้นตอนสื่อใดจากโฟลว์สร้างภาพและส่งต่อไป Storyboard Review?",
+    "expectedAnswer": "  - `full_video`: create a Production Director Project, generate images, create Storyboard Review, generate video clips, optionally handle audio, create a Video Editor project, render, and save the final video to Library.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+      "sha256": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "ede1766982952dedda4bb3dba7f20b3c5e37f9dc0964af295df9a4129cdb26e6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      ],
+      "requiredClaims": ["feature118-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-119-1",
+    "query": "Which repository document is cited for the HyperFrames render-platform design?",
+    "expectedAnswer": "- HyperFrames render platform design: `docs/portable-skill-pack/specs/2026-06-13-hyperframes-render-platform-design.md`",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "filename"],
+    "sourceGroupId": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+      "sha256": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "quoteSha256": "89619394ce922e774ee206742da129a1cc1721222eb237ca317313e839054a9f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md"
+      ],
+      "requiredClaims": ["feature119-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-119-2",
+    "query": "Where does the product/evidence information for a marketplace story come from?",
+    "expectedAnswer": "- Marketplace Capture remains the source for product/evidence data.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+      "sha256": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+      "lineStart": 60,
+      "lineEnd": 60,
+      "quoteSha256": "e5b105e32f8e3dbe9b160b911397610490f3e234015f32685f2355b595a1d5c1",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md"
+      ],
+      "requiredClaims": ["feature119-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-120-1",
+    "query": "What can happen to overlay text when the preview and final render use different payloads?",
+    "expectedAnswer": "- overlay text may be missing from final MP4 when UI preview and render payload diverge;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+      "sha256": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+      "lineStart": 65,
+      "lineEnd": 65,
+      "quoteSha256": "a4849aafbfa64411678e9d6dedb4c1209833a846e61f69e14285d9c41d1f1982",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      ],
+      "requiredClaims": ["feature120-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-120-2",
+    "query": "ข้อความบรรทัดบนของวิดีโอที่เรนเดอร์อาจเกิดปัญหาด้านภาพแบบใด?",
+    "expectedAnswer": "- top text may clip, overflow, or appear as a plain subtitle instead of meaningful product/spec copy;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+      "sha256": "e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+      "lineStart": 66,
+      "lineEnd": 66,
+      "quoteSha256": "bdec8c3fdeec3e676ecbf6d86b3c8a68782acb39bc6cdd9a0ac576dd0a2e7f8a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md"
+      ],
+      "requiredClaims": ["feature120-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e7e591d29f668247eebf08b251dbc5c6b8092cce4002b5fde9fb7a687dc4510f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-121-1",
+    "query": "Which transport remains the default for existing jobs and strict server-controlled provider calls?",
+    "expectedAnswer": "- `gateway_api` remains fully supported and remains the default for existing jobs, provider API keys, backend batch work, public API calls, and automation that needs strict server-side control.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+      "sha256": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "271cd653c6de5ea016f83292b91551a33b4558f7311c8c53c96a302a09fcc1fe",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      ],
+      "requiredClaims": ["feature121-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-121-2",
+    "query": "Which use cases does the user-connected provider transport support?",
+    "expectedAnswer": "- `mcp` is added as a second transport for user-connected provider accounts, provider-native creative workflows, account history access, and OAuth-based provider usage.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "code_identifier"],
+    "sourceGroupId": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+      "sha256": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "9b991d1251e81cc5ee71336e46a4e97cfd2172ac32a4c455d6817030ce606d41",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/121-mcp-connect-media-provider-sharing/spec.md"
+      ],
+      "requiredClaims": ["feature121-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b05-122-1",
+    "query": "What shared reusable registry does the segment planner introduce?",
+    "expectedAnswer": "  - adds a shared creative preset registry and schemas;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+      "sha256": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "quoteSha256": "379a30b89012160d9508527e517507a6f75eba8497f99ad502c89d886508379f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md"
+      ],
+      "requiredClaims": ["feature122-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-122-2",
+    "query": "มีหมวด preset ใดบ้างที่ใช้กำหนดแนวทางของแต่ละ segment?",
+    "expectedAnswer": "  - supports `tone_preset`, `story_arc_preset`, `pacing_preset`, `camera_motion_preset`, `visual_style_preset`, `audio_preset`, `platform_preset`, and `segment_structure_preset`;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+      "sha256": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "quoteSha256": "4ed011ef9f2f6a890219713bb7e279f2f8417bc101184b7aee6ec6fea8ad32e4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md"
+      ],
+      "requiredClaims": ["feature122-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-123-1",
+    "query": "Which existing review flows are supported by this experience adapter?",
+    "expectedAnswer": "- Storyboard Review and Marketplace Auto Review flows;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/123-agent-experience-adapter-layer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/123-agent-experience-adapter-layer/spec.md",
+      "sha256": "4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "b40754f38c75017b5a5345d2d9efa01d9786a799d5951c5c4a7ae17c2e07cb49",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/123-agent-experience-adapter-layer/spec.md"
+      ],
+      "requiredClaims": ["feature123-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-123-2",
+    "query": "Which operational information should the adapter expose alongside approval?",
+    "expectedAnswer": "- approval, artifact, cost, and debug surfaces;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/123-agent-experience-adapter-layer/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/123-agent-experience-adapter-layer/spec.md",
+      "sha256": "4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "2c5de06a2b33c19758f44ce3a7d10ef913629770a32f06130cc26bd6d40f207e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/123-agent-experience-adapter-layer/spec.md"
+      ],
+      "requiredClaims": ["feature123-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4bc884e1dcd71654e4151720e121ebd7bd3e8723e519171e4939720546913a15",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-124-1",
+    "query": "Which operating system is named in the Worker App installation scenario?",
+    "expectedAnswer": "1. User installs Smart AI Hub Worker App on Windows.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+      "sha256": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+      "lineStart": 38,
+      "lineEnd": 38,
+      "quoteSha256": "55566de68ac760f49f536ad690339d4665d7fe63e476704ec3831673c6a6f130",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md"
+      ],
+      "requiredClaims": ["feature124-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-124-2",
+    "query": "How does the server ensure a job is assigned to only one worker at a time?",
+    "expectedAnswer": "5. The server atomically assigns and locks one job to one worker at a time.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+      "sha256": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+      "lineStart": 46,
+      "lineEnd": 46,
+      "quoteSha256": "2d92549ea01e89952f22217dfb7bea35bec068bd267595c99779e3e851113a9d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/124-smart-ai-hub-worker-app/spec.md"
+      ],
+      "requiredClaims": ["feature124-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-125-1",
+    "query": "Which CSS/GSAP animation failure symptom is listed for browser capture?",
+    "expectedAnswer": "- CSS/GSAP animation can disappear or resolve differently.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md",
+      "sha256": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+      "lineStart": 52,
+      "lineEnd": 52,
+      "quoteSha256": "9e93ae5101521b911d4406883e947c532a13b97b405fba26a0aeb563bea590e9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      ],
+      "requiredClaims": ["feature125-b05-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b05-125-2",
+    "query": "Which subtitle timing symptom is listed for browser capture?",
+    "expectedAnswer": "- Subtitle cues can appear all at once instead of following their timestamps.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/125-storyboard-preview-match-browser-capture/spec.md",
+      "sha256": "be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+      "lineStart": 53,
+      "lineEnd": 53,
+      "quoteSha256": "28ab9bcbf3e8eb30bd0707c21e73aec714b7645908dbb06a1804b7144d37132a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpt."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v5"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch05",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified all 50 source digests, quote hashes, query uniqueness, labels and development-only status; accepted after reviewing 11 revisions."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/125-storyboard-preview-match-browser-capture/spec.md"
+      ],
+      "requiredClaims": ["feature125-b05-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:be0d15e990e7e3fdac667d9f0d8fef10956387b0bf9e3c5eab93ebf44cda88b8",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  }
+]

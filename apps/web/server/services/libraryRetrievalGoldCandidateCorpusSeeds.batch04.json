@@ -1,0 +1,2348 @@
+[
+  {
+    "caseId": "b04-150-1",
+    "query": "When dialogue is included in a shot, what mismatch between the written line and the visible performance can occur?",
+    "expectedAnswer": "1. A line is spoken by the wrong character or the wrong face moves.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+      "sha256": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+      "lineStart": 55,
+      "lineEnd": 55,
+      "quoteSha256": "85304abfa2c45d16ea70404a1fcde539cf70fcdfbfd4fad748230da086685384",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md"
+      ],
+      "requiredClaims": ["feature150-b04-1-when-dialogue-is-included-in-a-s"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-150-2",
+    "query": "แม้บทพูดฟังดูชัดเจน เหตุใดระบบยังอาจยืนยันไม่ได้ว่าใครเป็นผู้พูด?",
+    "expectedAnswer": "2. A line has no machine-provable speaker cue, even when the prose sounds clear.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+      "sha256": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+      "lineStart": 56,
+      "lineEnd": 56,
+      "quoteSha256": "1b058c9de9984eb93b2a1f335f0aa441151c461d7a33f46e7b7c449fc0bbfca0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md"
+      ],
+      "requiredClaims": ["feature150-b04-2-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-151-1",
+    "query": "How should platform-level deterministic checks relate to prose produced by an LLM?",
+    "expectedAnswer": "3. Keep deterministic platform checks independent from LLM-generated prose.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+      "sha256": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+      "lineStart": 67,
+      "lineEnd": 67,
+      "quoteSha256": "7806cf2f5d14314916f0ab0e0fe3083ff687dd212ae15e27f7671655f6f079df",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      ],
+      "requiredClaims": ["feature151-b04-1-how-should-platform-level-determ"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-151-2",
+    "query": "When should model-based or vision-based verification be introduced into output assurance?",
+    "expectedAnswer": "4. Support model-based and vision-based verification only when required by risk.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+      "sha256": "b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+      "lineStart": 68,
+      "lineEnd": 68,
+      "quoteSha256": "41569e703c80cbb8da7a7e81cdcd1a852fc8d311655fae1f8a64351647ff46eb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md"
+      ],
+      "requiredClaims": ["feature151-b04-2-when-should-model-based-or-visio"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b410f0f33d74f1bebd9023367ed6883f3aada90f71ad624de9b5c17b8200c17f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-152-1",
+    "query": "What durable generation capability does Feature 152 add for full stories and story horizons?",
+    "expectedAnswer": "- Added a durable assurance workflow for full-story and story-horizon generation.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md",
+      "sha256": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "802406e5e4dd7a24d183ecd3acfa1fae550634b9094fa892678d4141fd1c99c5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      ],
+      "requiredClaims": ["feature152-b04-1-what-durable-generation-capabili"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-152-2",
+    "query": "How does the workflow keep the original draft connected to the plan it is meant to fulfill?",
+    "expectedAnswer": "- Added source-draft snapshotting and a plan-to-draft alignment ledger.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md",
+      "sha256": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "lineStart": 24,
+      "lineEnd": 24,
+      "quoteSha256": "93b93126187ede03e7e19ae5860d1feb5cb3829f1cac92750e64f8e84465d311",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md"
+      ],
+      "requiredClaims": ["feature152-b04-2-how-does-the-workflow-keep-the-o"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-153-1",
+    "query": "How does long-form planning connect the overall series design to individual shot requirements?",
+    "expectedAnswer": "- Added hierarchical long-form planning from series blueprint to shot contract.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
+      "sha256": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+      "lineStart": 22,
+      "lineEnd": 22,
+      "quoteSha256": "ae3d0fc2b97ca6f473bce4c179b311a90d7287e5defebd4c6486cf48d16b5b18",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      ],
+      "requiredClaims": ["feature153-b04-1-how-does-long-form-planning-conn"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-153-2",
+    "query": "โครงเรื่องวางปริศนาหลักโดยย้อนคิดจากองค์ประกอบใดบ้าง?",
+    "expectedAnswer": "- Added reverse-planned central mystery, reveal, consequence, and finale closure.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md",
+      "sha256": "1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+      "lineStart": 23,
+      "lineEnd": 23,
+      "quoteSha256": "95d4dc37764ad7f5a79b6fd4774b81a129bc7e8caf678c3c6fc9d86c8c96df07",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/153-vertical-drama-long-form-story-architecture/spec.md"
+      ],
+      "requiredClaims": ["feature153-b04-2-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:1034e85b6d91b8dd7833902173194b0f7ecc7f1cc5b90dac73cb65a64fa05ef7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-154-1",
+    "query": "In Feature 154’s ownership boundary, which feature remains responsible for generation assurance and orchestration?",
+    "expectedAnswer": "- Feature 152 remains the generation assurance/orchestration layer.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+      "sha256": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+      "lineStart": 35,
+      "lineEnd": 35,
+      "quoteSha256": "690b2e76b2e465686506baff97cf3b23b9fe75c93d782beb89d7bf8866f77850",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      ],
+      "requiredClaims": ["feature154-b04-1-which-layer-is-responsible-for-g"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-154-2",
+    "query": "What compatibility behavior is required for old series and prompts when the feature flag is off?",
+    "expectedAnswer": "- Legacy series and flag-off prompts remain parseable and behavior-compatible.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+      "sha256": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+      "lineStart": 111,
+      "lineEnd": 111,
+      "quoteSha256": "c332bd7e9e9d4d8f79d2a9cbc795a6b422ad177b8ae00e9832f17f7f2df4d9af",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md"
+      ],
+      "requiredClaims": ["feature154-b04-2-what-compatibility-behavior-is-r"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-155-1",
+    "query": "Which kinds of regeneration or provider failure should be represented as separate cost allowances?",
+    "expectedAnswer": "3. Include separate allowances for content/prompt repair, image regeneration,\n   video regeneration, and provider/task failure retry.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+      "sha256": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+      "lineStart": 72,
+      "lineEnd": 73,
+      "quoteSha256": "c3ecb2d788a5171eba6ea669234a08d82e25a40485a844ba277978cf814e3af9",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md"
+      ],
+      "requiredClaims": ["feature155-b04-1-which-kinds-of-regeneration-or-p"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-155-2",
+    "query": "Before starting paid provider work, what budget protections should be checked?",
+    "expectedAnswer": "7. Enforce a configurable warning threshold and a hard series budget cap before\n   paid provider work begins.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+      "sha256": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+      "lineStart": 81,
+      "lineEnd": 82,
+      "quoteSha256": "b53e68569e739706483d96ef33fd8b027c77bde0080a20f035a7a998b20d6522",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md"
+      ],
+      "requiredClaims": ["feature155-b04-2-before-starting-paid-provider-wo"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-156-1",
+    "query": "Which policy does the selected Series profile set for handling factual claims and evidence?",
+    "expectedAnswer": "- factual/evidence policy;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md",
+      "sha256": "e63178be0e310988ba1497ecfbc647840f8536e548e98fdc156d8748cba07eaa",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "d46a7c09071127fbae54ea0a98b3df20da920f47bde26948c4ce2795c6bf482e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md"
+      ],
+      "requiredClaims": ["feature156-b04-1-which-content-decisions-belong-t"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e63178be0e310988ba1497ecfbc647840f8536e548e98fdc156d8748cba07eaa",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-156-2",
+    "query": "What pre-draft gate and approved-media use decisions can the profile control?",
+    "expectedAnswer": "- whether a pre-draft asset/evidence gate is required;\n- how approved images and video shots may become B-roll or story inserts.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md",
+      "sha256": "e63178be0e310988ba1497ecfbc647840f8536e548e98fdc156d8748cba07eaa",
+      "lineStart": 22,
+      "lineEnd": 23,
+      "quoteSha256": "87a41f1f64692dab5d84a46b13548c96bec59fabdf1a4f776b49c7e8ac187191",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/156-vertical-drama-unified-series-profile-story-assets/spec.md"
+      ],
+      "requiredClaims": ["feature156-b04-2-what-pre-draft-gate-and-approved"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e63178be0e310988ba1497ecfbc647840f8536e548e98fdc156d8748cba07eaa",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-157-1",
+    "query": "What outcome should every admitted run eventually reach?",
+    "expectedAnswer": "- every admitted run reaches a durable terminal or actionable waiting state;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
+      "sha256": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "lineStart": 92,
+      "lineEnd": 92,
+      "quoteSha256": "190029b68fa3239cf8e553a40169c7889bdace01b84f472090cc1890cf8152bb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md"
+      ],
+      "requiredClaims": ["feature157-b04-1-what-outcome-should-every-admitt"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-157-2",
+    "query": "How should errors be presented instead of exposing an unprocessed exception as the only result?",
+    "expectedAnswer": "- no raw exception is the only user-visible outcome;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md",
+      "sha256": "b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "lineStart": 93,
+      "lineEnd": 93,
+      "quoteSha256": "e8bbd4d18b46856e70ef38dd4625f713ca38d1854770cc6fc53bc54a239fb3d2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence/spec.md"
+      ],
+      "requiredClaims": ["feature157-b04-2-how-should-errors-be-presented-i"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b1af5bacdb5ed6056481a16ba8643912578dbd693d1e4e52bf0287e93213d21e",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-177-1",
+    "query": "What deployment conditions should be reviewed before choosing the primary Music 3 feasibility path?",
+    "expectedAnswer": "1. Primary feasibility candidate: Diffusers integrated Music 3 pipeline with the exact official checkpoint, tested single-GPU profile and offloading where necessary. Review a reachable merged revision; package pinned dependencies and checksums, never `pip install ...@main` on each job.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+      "sha256": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+      "lineStart": 57,
+      "lineEnd": 57,
+      "quoteSha256": "c76fa263a90c249453a923bc7075bce43c29a3005890ca940c3950cf34a8518e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/177-worker-minimax-music3-scoring/spec.md"
+      ],
+      "requiredClaims": ["feature177-b04-1-what-deployment-conditions-shoul"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-177-2",
+    "query": "Can the alternate SGLang execution profile be selected automatically as a fallback?",
+    "expectedAnswer": "2. For suitable managed GPU hosts, a pinned SGLang-Omni adapter serving the SAME checkpoint is an allowed explicit execution profile, not an automatic fallback provider. User/admin chooses the profile before authorization; scheduling must match it.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+      "sha256": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+      "lineStart": 58,
+      "lineEnd": 58,
+      "quoteSha256": "a564e9780172e2e2e2d5652617ebaa40f9123feb7047990ffb9d7a1f0295044b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/177-worker-minimax-music3-scoring/spec.md"
+      ],
+      "requiredClaims": ["feature177-b04-2-can-the-alternate-sglang-executi"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-179-1",
+    "query": "Which audio characteristics are included in the speaker-aware detection evidence?",
+    "expectedAnswer": "- adaptive noise-floor and audio-level statistics;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+      "sha256": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+      "lineStart": 234,
+      "lineEnd": 234,
+      "quoteSha256": "b2221eba6f9da5e5a520686f3ca0e6b29ef8558a99e3d56a0b973a2fdb80d394",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md"
+      ],
+      "requiredClaims": ["feature179-b04-1-which-audio-characteristics-are-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-179-2",
+    "query": "Which speech and pause durations are accounted for in the analysis?",
+    "expectedAnswer": "- minimum speech and minimum pause duration;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+      "sha256": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+      "lineStart": 235,
+      "lineEnd": 235,
+      "quoteSha256": "b6b857e14e1ed511c94c26dd197173b7ec0971e4f392c0713ae2ae3d367aa72d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md"
+      ],
+      "requiredClaims": ["feature179-b04-2-which-speech-and-pause-durations"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-191-1",
+    "query": "When the subject and action require more space than the current framing, how should the planner adjust zoom?",
+    "expectedAnswer": "- zooms out automatically when the combined region becomes larger;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+      "sha256": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+      "lineStart": 75,
+      "lineEnd": 75,
+      "quoteSha256": "2d9e33b2b53115252497139610f86b6341b1f2f10515e42089a034e519bffba5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md"
+      ],
+      "requiredClaims": ["feature191-b04-1-when-the-subject-and-action-requ"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-191-2",
+    "query": "Which user-authored framing controls should remain effective during automatic reframe?",
+    "expectedAnswer": "- respects user-created Mark points and manual regions;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+      "sha256": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+      "lineStart": 78,
+      "lineEnd": 78,
+      "quoteSha256": "c2850b71889d1882911286054d4669caad17e8c90040071c5c9f330a118fb9c6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md"
+      ],
+      "requiredClaims": ["feature191-b04-2-which-user-authored-framing-cont"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-192-1",
+    "query": "What exact database field name is the one canonical job identity?",
+    "expectedAnswer": "- Preserve `worker_jobs.id` as the only canonical job identity.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "exact_id", "code_identifier"],
+    "sourceGroupId": "specs/feature/192-cloudflare-local-migration-readiness/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/192-cloudflare-local-migration-readiness/spec.md",
+      "sha256": "c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
+      "lineStart": 54,
+      "lineEnd": 54,
+      "quoteSha256": "79722aa69c770f0a1d55d347d566a3e4748245a418c836d14ef4dd0f5102d1d8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/192-cloudflare-local-migration-readiness/spec.md"
+      ],
+      "requiredClaims": ["feature192-b04-1-what-identifier-remains-canonica"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-192-2",
+    "query": "Should the migration add a second generic jobs table or status/retry ledger?",
+    "expectedAnswer": "- Do not add a generic `jobs` table or a second status/retry/lease ledger.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/192-cloudflare-local-migration-readiness/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/192-cloudflare-local-migration-readiness/spec.md",
+      "sha256": "c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
+      "lineStart": 55,
+      "lineEnd": 55,
+      "quoteSha256": "9bc4732fcf3c6d3af86d6efc92c2cee505e49f60d982a0781775cd979d22373b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/192-cloudflare-local-migration-readiness/spec.md"
+      ],
+      "requiredClaims": ["feature192-b04-2-should-the-migration-add-a-secon"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c96d52fe7810612ae4178e04de48cca06c0c275dcc5c9f28b82531fc69608829",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-193-1",
+    "query": "Does the browser editor need a second `jobs` table or browser-owned job ledger?",
+    "expectedAnswer": "- No new generic `jobs` table or browser-owned job ledger.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "code_identifier", "exact_id"],
+    "sourceGroupId": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+      "sha256": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+      "lineStart": 66,
+      "lineEnd": 66,
+      "quoteSha256": "318ee974bb31a97fd7d0e4f55f6d6d2bb6c76863ae6c8c02790d039a11ed581f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/193-web-video-editor-worker-parity/spec.md"
+      ],
+      "requiredClaims": ["feature193-b04-1-should-the-browser-editor-add-it"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-193-2",
+    "query": "Does ordinary editing require the Worker App to remain running?",
+    "expectedAnswer": "- No requirement that a user keep Worker App running for ordinary editing.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+      "sha256": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+      "lineStart": 67,
+      "lineEnd": 67,
+      "quoteSha256": "1dfa8b847c136a6854b7f8219a2ad383676631b65f2764a56d3f9c72de2661c7",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/193-web-video-editor-worker-parity/spec.md"
+      ],
+      "requiredClaims": ["feature193-b04-2-does-ordinary-editing-require-th"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-194-1",
+    "query": "ระบบรองรับการค้นหาภาพด้วยข้อความในรูปแบบใดบ้าง?",
+    "expectedAnswer": "- Text-to-image search, for example “ภาพกระต่าย” or “ภาพผู้หญิง”.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md",
+      "sha256": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "lineStart": 37,
+      "lineEnd": 37,
+      "quoteSha256": "46230d1d5bd2c7fa9086e28873e3cc53e37ff519906b18fbadeb8cbec7dee8f5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md"
+      ],
+      "requiredClaims": ["feature194-b04-1-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-194-2",
+    "query": "How can a user provide a visual example when searching for similar images?",
+    "expectedAnswer": "- Image-to-image/product-image search by attaching a reference image.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md",
+      "sha256": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "lineStart": 40,
+      "lineEnd": 40,
+      "quoteSha256": "40a44730d309d3dcac1df428c112298eccdb21c92d434699a5c034bfb1315800",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md"
+      ],
+      "requiredClaims": ["feature194-b04-2-how-can-a-user-provide-a-visual-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-286-1",
+    "query": "Which existing video project foundation remains responsible for persistence and revisions?",
+    "expectedAnswer": "- video-project persistence and revisions;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+      "sha256": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
+      "lineStart": 134,
+      "lineEnd": 134,
+      "quoteSha256": "49a514ccd0c97033d66bf114bf550628c415e7bd47be44f7b2cf381be641ff5e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature286-b04-1-which-existing-video-project-fou"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-286-2",
+    "query": "Which existing quality capability is reused by the higher-level video runtime when available?",
+    "expectedAnswer": "- existing video quality-loop implementation where present;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+      "sha256": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
+      "lineStart": 139,
+      "lineEnd": 139,
+      "quoteSha256": "e3c4ec38d6ce1b4de8259ae6de7ea2134ffa51587ff9e22166b2c2216d2bdcd8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+      ],
+      "requiredClaims": ["feature286-b04-2-which-existing-quality-capabilit"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-287-1",
+    "query": "Can the same visual theme be forced on every tenant and Mini App?",
+    "expectedAnswer": "- force one visual theme on all tenants or Mini Apps;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+      "sha256": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
+      "lineStart": 145,
+      "lineEnd": 145,
+      "quoteSha256": "d4522043ef4a60d749175e676b256ef33c7ca7188c48f89dadf1ed6f6fc8d2a6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      ],
+      "requiredClaims": ["feature287-b04-1-can-the-same-visual-theme-be-for"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-287-2",
+    "query": "Which product contracts are outside the scope of this UI rendering conformance spec?",
+    "expectedAnswer": "- define generated surface schemas, action bindings, client-action semantics, authorization, billing, or durable execution;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
+      "sha256": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
+      "lineStart": 146,
+      "lineEnd": 146,
+      "quoteSha256": "e9e1b5082e253151640697665ef6bd6537c47e73f83e198a4ec61cb9d60ca05a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+      ],
+      "requiredClaims": ["feature287-b04-2-which-product-contracts-are-outs"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-288-1",
+    "query": "What lifecycle actions should the resource orchestration layer support for authorized resources?",
+    "expectedAnswer": "- Orchestra can discover, request, provision, configure, verify, repair, and retire authorized resources without unnecessary human intervention.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
+      "sha256": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "quoteSha256": "71a6587fb2867da4d713dc23aa0a10114344d5aee53a2c843bdeab9ffc45a7ed",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+      ],
+      "requiredClaims": ["feature288-b04-1-what-lifecycle-actions-should-th"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-288-2",
+    "query": "How should Mini Apps avoid binding themselves to one cloud vendor or database engine?",
+    "expectedAnswer": "- Mini Apps target stable backend contracts instead of hard-coding Cloudflare or a single database engine.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
+      "sha256": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "4d6ea3c1357f18d720cbf84f14e33a20d1adb5fd0effd181065dcf2fe60707a0",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+      ],
+      "requiredClaims": ["feature288-b04-2-how-should-mini-apps-avoid-bindi"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-289-1",
+    "query": "Which SPEC remains authoritative for capability discovery and intent routing under Feature 289?",
+    "expectedAnswer": "- **SPEC-256 (implemented):** existing capability discovery and intent routing is authoritative. Add a backward-compatible resolver extension/adapter, not a rewrite.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md",
+      "sha256": "07459d7363d7186cf55eaa9dd30e373dd1a344ea615aa99880b0fc7507510434",
+      "lineStart": 16,
+      "lineEnd": 16,
+      "quoteSha256": "2f35eba9fb62475d7fa545ad320cd81c9ab4fe939c907cd62aad95ac2e319494",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md"
+      ],
+      "requiredClaims": ["feature289-b04-1-should-capability-routing-replac"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:07459d7363d7186cf55eaa9dd30e373dd1a344ea615aa99880b0fc7507510434",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-289-2",
+    "query": "Under the Feature 289 delegation rule, which SPEC says assistants delegate intent or capability rather than backend implementation?",
+    "expectedAnswer": "- **SPEC-269:** assistant delegates intent/capability, not backend implementation.",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md",
+      "sha256": "07459d7363d7186cf55eaa9dd30e373dd1a344ea615aa99880b0fc7507510434",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "quoteSha256": "a3133c66d159d9d70180452a3591658db01ed1ac96c7045a70d5cfce57ccad59",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/289-Adaptive-Capability-Routing-Backend-Health-Agent-Reach-Integration/spec.md"
+      ],
+      "requiredClaims": ["feature289-b04-2-when-an-assistant-delegates-work"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:07459d7363d7186cf55eaa9dd30e373dd1a344ea615aa99880b0fc7507510434",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-290-1",
+    "query": "What traffic-related cost risk can a public page create for a usage-billed map provider?",
+    "expectedAnswer": "- a public page can generate unexpected map loads;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md",
+      "sha256": "7af8a52767e65f767352ecfcd4007ccc537b78f3c4883442265d1204c928e6e4",
+      "lineStart": 80,
+      "lineEnd": 80,
+      "quoteSha256": "554b02e648f3d780d05684d9fddadbf97fb8af37c295983a2727a1122209b828",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md"
+      ],
+      "requiredClaims": ["feature290-b04-1-what-traffic-related-cost-risk-c"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7af8a52767e65f767352ecfcd4007ccc537b78f3c4883442265d1204c928e6e4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-290-2",
+    "query": "How can a browser-side regression amplify map-provider charges?",
+    "expectedAnswer": "- a frontend regression can reload maps repeatedly;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md",
+      "sha256": "7af8a52767e65f767352ecfcd4007ccc537b78f3c4883442265d1204c928e6e4",
+      "lineStart": 82,
+      "lineEnd": 82,
+      "quoteSha256": "09e2d39d5273e7338ac7ce7237a7da3e5b8dc0c6e2cd174eeabf8d77471ca3e2",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/290-Longdo-Map-Migration-Google-Maps-Decommission/spec.md"
+      ],
+      "requiredClaims": ["feature290-b04-2-how-can-a-browser-side-regressio"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7af8a52767e65f767352ecfcd4007ccc537b78f3c4883442265d1204c928e6e4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-291-1",
+    "query": "Which SPECs’ orchestration and UAT authorities must Feature 291 avoid duplicating?",
+    "expectedAnswer": "4.  turn Spec 259/thClaws into a model-specific runtime;\n5.  duplicate Spec 271 UAT acceptance authority;",
+    "language": "english",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md",
+      "sha256": "2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de",
+      "lineStart": 51,
+      "lineEnd": 52,
+      "quoteSha256": "3bec2c0e9f2be44b28b3db4e9761b011a764d5b959bf12de3803476c1aa94a2d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md"
+      ],
+      "requiredClaims": ["feature291-b04-1-which-existing-orchestration-aut"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b04-291-2",
+    "query": "What fallback behavior is prohibited when local/private execution cannot run?",
+    "expectedAnswer": "7.  silently fall back from local/private execution to a cloud provider;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md",
+      "sha256": "2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de",
+      "lineStart": 54,
+      "lineEnd": 54,
+      "quoteSha256": "9b5ad0dceae67af51fbdd3f3f30d51e2590deaabd7cfb0298f5ae392258bf92b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/291-Local-Agentic-Model-Runtime-Capability-Resolution/spec.md"
+      ],
+      "requiredClaims": ["feature291-b04-2-what-fallback-behavior-is-prohib"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:2644ef4760166af90d8f6efa8478c1ac8ae859427a690c32a0763d1303a026de",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-292-1",
+    "query": "How should a project represent multiple people and assistants without merging their identities?",
+    "expectedAnswer": "1. Represent many humans and many assistants without collapsing identity.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
+      "sha256": "a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea",
+      "lineStart": 97,
+      "lineEnd": 97,
+      "quoteSha256": "ae12c54dc4466f149c421aa2dd3e930e0b8f29eaccffea6d1677dcf3a7508841",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md"
+      ],
+      "requiredClaims": ["feature292-b04-1-how-should-a-project-represent-m"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-292-2",
+    "query": "Can one project contain more than one conversation or work session?",
+    "expectedAnswer": "2. Allow a single Project to contain many conversation/work sessions.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
+      "sha256": "a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea",
+      "lineStart": 98,
+      "lineEnd": 98,
+      "quoteSha256": "33628c5a1a28095694944ea396a77833a6a0c34b294f85704777fe9753bc210a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md"
+      ],
+      "requiredClaims": ["feature292-b04-2-can-one-project-contain-more-tha"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-293-1",
+    "query": "Which repository is explicitly listed as a development target for repository federation?",
+    "expectedAnswer": "- development of SmartAIHub/SmartSpecPro itself;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+      "sha256": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "lineStart": 70,
+      "lineEnd": 70,
+      "quoteSha256": "3bf6be9816d2535244ada8f87d06cb738997584510906bcd213dd02f1a661eef",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
+      ],
+      "requiredClaims": ["feature293-b04-1-which-repository-is-explicitly-l"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-293-2",
+    "query": "What account topology should the workspace federation support?",
+    "expectedAnswer": "- multiple GitHub accounts and organizations;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+      "sha256": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "lineStart": 77,
+      "lineEnd": 77,
+      "quoteSha256": "f5deea7caa939cb81c79eed5eee719e3ce73b543a4811da83706866081560c58",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
+      ],
+      "requiredClaims": ["feature293-b04-2-what-account-topology-should-the"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-294-1",
+    "query": "Which ownership problem should mission control detect before coordinating work?",
+    "expectedAnswer": "1. canonical ownership / dependency-number collision;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
+      "sha256": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
+      "lineStart": 24,
+      "lineEnd": 24,
+      "quoteSha256": "dbdb983279e220a52ab96a637841ced17622c3a6725b01552cc20bd6933e9eae",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
+      ],
+      "requiredClaims": ["feature294-b04-1-which-ownership-problem-should-m"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-294-2",
+    "query": "Which project/work/chat boundaries must remain distinguishable?",
+    "expectedAnswer": "2. Project vs Work Context vs Chat scope separation;",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
+      "sha256": "156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "quoteSha256": "00b0740e33c62f31e8822d494fe0bfd3beaf34510a19c7205ca97c89924ff28a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
+      ],
+      "requiredClaims": ["feature294-b04-2-which-project-work-chat-boundari"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:156ebafacba4301a87d1964e57f7bbc1cf0783ab9001c43de592e328fd2e9396",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-295-1",
+    "query": "What repository and handoff evidence should an operations review refresh before planning a release or migration?",
+    "expectedAnswer": "1. re-read canonical `specs/feature` inventory, active Handoff/status records, active worktrees/PRs and any registered spec index;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
+      "sha256": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "quoteSha256": "e97dbc0e3ae846b496fe8243ff02a88d626ed7fa7859facef68243a4a16c65c4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
+      ],
+      "requiredClaims": ["feature295-b04-1-what-repository-and-handoff-evid"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-295-2",
+    "query": "Which SPEC revisions and operational authorities should the review resolve before proceeding?",
+    "expectedAnswer": "2. resolve current revisions/semantic identities for SPEC-261, 267, 288, 293 and 294 plus current incident/monitoring authorities;",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
+      "sha256": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "quoteSha256": "683e8aefb13405a8d193999ef75a49d36b8e8840a27397af9c4b2dd18a51dd3a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
+      ],
+      "requiredClaims": ["feature295-b04-2-which-related-feature-revisions-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-296-1",
+    "query": "ในหน้าตั้งค่าการตรวจจับช่วงเงียบ มีตัวเลือกใดอยู่ในแผงด้านขวา?",
+    "expectedAnswer": "- Right: settings panel (Volume Threshold, Minimum Duration, Softening Buffer)",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/296-silence-detection/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/296-silence-detection/spec.md",
+      "sha256": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "quoteSha256": "387f3ffae9ddb08ba7cf084c191f51f6f20cf75cb2c861ac73c40f647afe1a44",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": ["specs/feature/296-silence-detection/spec.md"],
+      "requiredClaims": ["feature296-b04-1-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b04-296-2",
+    "query": "When trimming a detected silent interval, how does the configured buffer change the cut boundaries?",
+    "expectedAnswer": "- For each detected silent region `[start, end]`, the actual cut region becomes `[start + buffer, end - buffer]`",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/296-silence-detection/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/296-silence-detection/spec.md",
+      "sha256": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+      "lineStart": 130,
+      "lineEnd": 130,
+      "quoteSha256": "3b229b0608fcaf2525a094648ac6e15f3afbabf019e2aca5681666df3bc505cb",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized, repository-authored SPEC documents screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v4"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch04",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independently verified answer/source span, digests, uniqueness, taxonomy and development-only status; all 50 candidates accepted."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": ["specs/feature/296-silence-detection/spec.md"],
+      "requiredClaims": ["feature296-b04-2-when-trimming-a-detected-silent-"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  }
+]
