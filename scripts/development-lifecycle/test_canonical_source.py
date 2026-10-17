@@ -352,17 +352,24 @@ class CanonicalSourceTests(unittest.TestCase):
         workspace = self.root / "bundle-workspace"
         modules = workspace / "apps/cloudflare/.staging-artifact/modules"
         assets = workspace / "apps/web/dist/public"
+        public_source = workspace / "apps/web/client/public/releases"
         modules.mkdir(parents=True)
         assets.mkdir(parents=True)
+        public_source.mkdir(parents=True)
         module_bytes = b"export default {};"
         asset_bytes = b"<html>spa</html>"
+        release_bytes = b"{\"release\":1}"
         (modules / "index.js").write_bytes(module_bytes)
         (assets / "index.html").write_bytes(asset_bytes)
+        (public_source / "current.json").write_bytes(release_bytes)
+        os.symlink(os.path.relpath(public_source, assets), assets / "releases")
         module_digest = hashlib.sha256(module_bytes).hexdigest()
         asset_digest = hashlib.sha256(asset_bytes).hexdigest()
+        release_digest = hashlib.sha256(release_bytes).hexdigest()
         entries = [
             ("modules/index.js", module_digest, len(module_bytes)),
             ("public/index.html", asset_digest, len(asset_bytes)),
+            ("public/releases/current.json", release_digest, len(release_bytes)),
         ]
         build_digest = hashlib.sha256("\n".join(f"{name}\0{digest}\0{size}" for name, digest, size in entries).encode()).hexdigest()
         manifest = {
@@ -372,7 +379,10 @@ class CanonicalSourceTests(unittest.TestCase):
             "mainModule": "index.js",
             "compatibilityDate": "2026-10-17",
             "moduleFiles": [{"name": "index.js", "sha256": module_digest, "size": len(module_bytes)}],
-            "assets": [{"name": "index.html", "sha256": asset_digest, "size": len(asset_bytes)}],
+            "assets": [
+                {"name": "index.html", "sha256": asset_digest, "size": len(asset_bytes)},
+                {"name": "releases/current.json", "sha256": release_digest, "size": len(release_bytes)},
+            ],
         }
         manifest_path = workspace / "apps/cloudflare/.staging-artifact/bundle-manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -381,6 +391,13 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(observed["status"], "BUNDLE_READY")
         self.assertEqual(observed["build_digest"], build_digest)
         self.assertIsNone(_cloudflare_staging_bundle(workspace, "f" * 40))
+
+        private = workspace / "apps/web/private"
+        private.mkdir(parents=True)
+        (private / "current.json").write_bytes(release_bytes)
+        (assets / "releases").unlink()
+        os.symlink(os.path.relpath(private, assets), assets / "releases")
+        self.assertIsNone(_cloudflare_staging_bundle(workspace, self.revision))
 
         (assets / "index.html").write_bytes(b"changed")
         self.assertIsNone(_cloudflare_staging_bundle(workspace, self.revision))
