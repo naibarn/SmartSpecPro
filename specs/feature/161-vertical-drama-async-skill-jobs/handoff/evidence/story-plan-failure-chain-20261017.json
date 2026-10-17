@@ -86,9 +86,54 @@
     "reviewer": "main conductor, distinct from implementing Luna helper",
     "result": "PASS source+fullfile; preserves original error identity, real candidate resume, historical checkpoint retry/history and existing helper; no shared mock reset remains"
   },
-  "status": "SCOPED_VERIFIED_PENDING_INTEGRATION",
+  "status": "SCOPED_VERIFIED_AND_MERGED",
   "remaining": [
     "Full draft/QC/fullstory transition acceptance and deployed/provider/browser obligations remain distinct",
     "No claim of real paid provider execution; only its permitted test boundary is mocked"
-  ]
+  ],
+  "pr": 998,
+  "canonical_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+  "merge_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+  "source_head_sha": "445d0ceb9ee94e37a507aebbc41aca581d404c62",
+  "merged_at": "2026-10-16T19:27:44Z",
+  "head_merge_trees_equal": true,
+  "merge_verified_reachable": true,
+  "post_integration": {
+    "profile": "integration",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "server/services/__tests__/scopedMemoryExpiry.test.ts",
+      "server/services/__tests__/scopedMemoryNativeExpiry.integration.test.ts",
+      "server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+      "server/services/__tests__/memoryServiceTeamRoomProvenance.test.ts",
+      "server/services/__tests__/memoryPersonaRouting.test.ts",
+      "server/services/__tests__/spec161EpisodeWorkerPersistence.integration.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "JWT_SECRET": "[REDACTED disposable test-only value]",
+      "RUN_NATIVE_MEMORY_EXPIRY_TESTS": "true",
+      "RUN_NATIVE_WORKER_POSTGRES_TESTS": "true"
+    },
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "started": 1792178991.1779888,
+    "ended": 1792179032.429351,
+    "exit": 0,
+    "max_rss_kib": 363996,
+    "resource_before": [
+      "MemTotal:       32444008 kB",
+      "MemFree:         3370996 kB",
+      "MemAvailable:   25077960 kB",
+      "Buffers:         4233448 kB"
+    ]
+  },
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "mocked_spec308_browser": "PASS",
+    "build_preview": "SKIPPED"
+  }
 }

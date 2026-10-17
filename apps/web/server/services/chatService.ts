@@ -3,7 +3,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { createHash } from "node:crypto";
-import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNotNull, ne } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   conversations,
@@ -987,21 +987,25 @@ export async function upsertEntityMemory(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // If projectId not provided but sourceConversationId exists, look it up
+  // Source provenance must belong to the caller even with an explicit project.
   let projectId = data.projectId ?? null;
   let personaId = data.personaId;
-  if (!projectId && data.sourceConversationId) {
-    try {
-      const [conv] = await db
-        .select({ projectId: conversations.projectId, personaId: conversations.personaId })
-        .from(conversations)
-        .where(eq(conversations.id, data.sourceConversationId))
-        .limit(1);
-      projectId = conv?.projectId ?? null;
+  if (data.sourceConversationId != null) {
+    const [conv] = await db
+      .select({ projectId: conversations.projectId, personaId: conversations.personaId })
+      .from(conversations)
+      .where(and(
+        eq(conversations.id, data.sourceConversationId),
+        eq(conversations.userId, data.userId),
+      ))
+      .limit(1);
+    if (!conv) throw new Error("Source conversation is not available to this user");
+    if (!projectId) {
+      projectId = conv.projectId ?? null;
       if (personaId === undefined) {
-        personaId = conv?.personaId ?? null;
+        personaId = conv.personaId ?? null;
       }
-    } catch {}
+    }
   }
 
   if (personaId === undefined) {
@@ -1017,6 +1021,10 @@ export async function upsertEntityMemory(data: {
         eq(entityMemories.userId, data.userId),
         eq(entityMemories.entityType, data.entityType),
         eq(entityMemories.entityName, data.entityName),
+        projectId === null
+          ? isNull(entityMemories.projectId)
+          : eq(entityMemories.projectId, projectId),
+        or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!,
         personaId === null
           ? isNull(entityMemories.personaId)
           : eq(entityMemories.personaId, personaId)
@@ -1035,7 +1043,6 @@ export async function upsertEntityMemory(data: {
         reinforcementCount: sql`${entityMemories.reinforcementCount} + 1`,
         lastAccessedAt: new Date(),
         updatedAt: new Date(),
-        ...(projectId && !existing.projectId ? { projectId } : {}),
         ...(existing.personaId !== personaId ? { personaId } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
@@ -1067,12 +1074,17 @@ export async function getEntityMemories(
   userId: number,
   entityType?: "user" | "project" | "preference" | "technical",
   personaId?: string | null,
-  projectIdFilter?: string | null
+  projectIdFilter?: string | null,
+  excludeTeamRoomMemory = false,
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
 
   const conditions: SQL<unknown>[] = [eq(entityMemories.userId, userId)];
+
+  if (excludeTeamRoomMemory) {
+    conditions.push(or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!);
+  }
 
   if (entityType) {
     conditions.push(eq(entityMemories.entityType, entityType));
@@ -1257,7 +1269,7 @@ export async function buildChatContext(
   // 2. Add entity memories
   // This legacy prompt path has no trusted active-project authorization
   // binding, so project-scoped memories must not cross into the chat prompt.
-  const memories = await getEntityMemories(userId, undefined, activePersonaId, null);
+  const memories = await getEntityMemories(userId, undefined, activePersonaId, null, true);
   if (memories.length > 0) {
     const memoryContext = memories
       .slice(0, 10) // Limit to top 10 most relevant

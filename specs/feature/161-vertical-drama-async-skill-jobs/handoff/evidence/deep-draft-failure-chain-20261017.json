@@ -1,0 +1,100 @@
+{
+  "workunit_id": "SPEC161_DEEP_DRAFT_FAILURE_CHAIN",
+  "spec_id": "161",
+  "requirement_ids": [
+    "REQ-50A4DD25D9C8",
+    "REQ-4C379A93119A"
+  ],
+  "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+  "writable_paths": [
+    "apps/web/server/routers/verticalDramaSeries.ts",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+    "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/deep-draft-failure-chain-20261017.json"
+  ],
+  "runtime": "Bounded local provider-boundary mocked acceptance; no paid API, production, shared database, migration, new dependency or retired runtime",
+  "acceptance": [
+    "Initial deep-draft and extension provider/schema failures propagate without a successful final persistence",
+    "Deep completion-repair exhaustion and incomplete extension results fail closed without synthetic episode materialization",
+    "Blocking deep-draft and story-plan assurance findings stop before final persistence; story-plan failure does not enqueue deep-draft handoff",
+    "Existing bounded LLM completion-repair, successful draft/extension flows and nonblocking advisory behavior remain available",
+    "Insufficient-credit failure during bounded completion repair still maps to FORBIDDEN and writes no final result",
+    "A complete genuine bounded repair clears the prior partial error and succeeds; incomplete or failed repair still fails closed"
+  ],
+  "decision": "Canonical SPEC-161 requires failed stages to stop their chain and expose the actual error; production generation cannot substitute deterministic completion. Preserve accepted intermediate chunks and existing provider repair paths.",
+  "job_id": null,
+  "run_id": null,
+  "model": {
+    "requested_helper": "gpt-6-luna",
+    "effective": "UNVERIFIED",
+    "actual_conductor_and_helper_usage": "UNKNOWN",
+    "new_sdk_calls": 0
+  },
+  "files_modified": [
+    "apps/web/server/routers/verticalDramaSeries.ts",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts"
+  ],
+  "file_sha256": {
+    "apps/web/server/routers/verticalDramaSeries.ts": "1bc823ba22943ec94cd013d9837275a716715221578e2345e6b5a7b28c71a0d9",
+    "apps/web/server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts": "53a45023d6b488a1540e9e50702c458e5079e1f10f13ba83489974b842dd69b2"
+  },
+  "baseline": {
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "baseline_tests": "76/76 passed per parent-run baseline at integrated PR998 SHA"
+  },
+  "verification": {
+    "profile": "quick",
+    "command": [
+      "pnpm",
+      "exec",
+      "vitest",
+      "run",
+      "server/routers/__tests__/verticalDramaSeries.deepStoryDrafts.test.ts",
+      "--maxWorkers=1"
+    ],
+    "environment": {
+      "JWT_SECRET": "[REDACTED disposable test-only value]"
+    },
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "exit": 0,
+    "result": "1 test file, 81/81 tests passed; Vitest duration 5.82s",
+    "max_rss_kib": null,
+    "resource_note": "Peak RSS measurement unavailable; /usr/bin/time is not installed on this host"
+  },
+  "fast_gate": {
+    "git_diff_check": "passed",
+    "owned_paths_only": true,
+    "commit_or_push": false
+  },
+  "independent_review": {
+    "result": "PASS",
+    "reviewer": "/root",
+    "scope": "Source, acceptance tests and actual native runtime evidence; no production acceptance",
+    "findings_resolved": [
+      "Prior genuine repair error must clear only after complete real repair; regression added"
+    ]
+  },
+  "status": "INDEPENDENTLY_VERIFIED_PENDING_PROTECTED_INTEGRATION",
+  "remaining": [
+    "Independent source/test review and conductor integration",
+    "Worker-level final QC enforcement is handled in a separate owned workstream",
+    "Full plan/draft/QC/full-story customer-flow acceptance and provider/browser obligations remain separate; this WorkUnit does not close all of REQ-50A4DD25D9C8 or SPEC-161"
+  ],
+  "observed_at": "2026-10-17T00:31:54.698702+00:00",
+  "integration": {
+    "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "source_branch": "codex/spec161-chain-runtime-repair-20261017",
+    "owned_commit_sha": null,
+    "intended_pr": "Next normal protected PR against main",
+    "pending_action": "Commit exact fast-gate-passing owned files, push, required CI, guarded protected merge, verify canonical SHA"
+  },
+  "parent_verification": {
+    "profile": "integration",
+    "log": "/tmp/smartaihub-backlog-pilot/chain-outcome-chat-reviewed.log",
+    "resource_receipt": "/tmp/smartaihub-backlog-pilot/chain-outcome-chat-reviewed.resources.json",
+    "status": "PASS",
+    "tests": "132/132 across 7 files",
+    "source_base_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+    "working_patch": true
+  },
+  "subsequent_qc_checkpoint": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/story-worker-final-qc-20261017.json"
+}

@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -24044,10 +24044,16 @@
       "implementation_evidence": [
         "apps/web/server/services/memoryService.ts",
         "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
-        "apps/web/server/services/memoryService.ts (source owner guard PR997)"
+        "apps/web/server/services/memoryService.ts (source owner guard PR997)",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Preserve owner validation and complete canonical tenant/App context acceptance independently; do not infer tenant authorization from user ownership.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "1f2472d77b0ed636f982d2496c996d1709eb98e07f5802603fec8895c77ce3c3",
       "requirement_id": "REQ-427F51C6939B",
       "requirement_text": "A record MUST carry enough scope and provenance to reproduce its authorization decision. Missing context dimensions MUST NOT be inferred from a matching user identifier or vector similarity. Cross-scope reads, writes, export, and deletion require explicit policy and auditable authorization.",
@@ -24057,7 +24063,8 @@
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
         "https://github.com/naibarn/SmartSpecPro/pull/995",
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
-        "https://github.com/naibarn/SmartSpecPro/pull/997"
+        "https://github.com/naibarn/SmartSpecPro/pull/997",
+        "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json"
       ],
       "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
     },
@@ -24097,10 +24104,16 @@
       "implementation_evidence": [
         "apps/web/server/services/memoryService.ts",
         "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
-        "apps/web/server/services/memoryService.ts (source owner guard PR997)"
+        "apps/web/server/services/memoryService.ts (source owner guard PR997)",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Preserve owner validation and complete canonical tenant/App context acceptance independently; do not infer tenant authorization from user ownership.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "ecf49966b6a7e24f145a0e18833e5e03abc45eacc1eae40c2f109bc44158473c",
       "requirement_id": "REQ-D4427964FE28",
       "requirement_text": "The runtime MUST validate that every supplied identifier belongs to the authenticated tenant and caller's permitted context. Absent optional fields remain absent; adapters MUST NOT silently substitute legacy `projectId`, `personaId`, `appId`, or a user-only scope as canonical authority. Compatibility adapters may map legacy values only when the mapping is explicit, validated, and recorded with provenance.",
@@ -24110,7 +24123,8 @@
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
         "https://github.com/naibarn/SmartSpecPro/pull/995",
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/conversation-source-owner-20261017.json",
-        "https://github.com/naibarn/SmartSpecPro/pull/997"
+        "https://github.com/naibarn/SmartSpecPro/pull/997",
+        "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json"
       ],
       "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
     },
@@ -24153,10 +24167,16 @@
         "apps/web/server/services/promptComposer.ts (PR #434 and #436; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)",
         "apps/web/server/services/chatService.ts (PR #434; project binding change rejected; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)",
         "apps/web/server/services/memoryService.ts",
-        "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts"
+        "apps/web/server/services/__tests__/memoryServiceNativeProvenance.integration.test.ts",
+        {
+          "kind": "SCOPED_REVIEWED_FIX",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json",
+          "source_sha": "f3a533fdf782ef0af140fda9420178083f399cd2",
+          "working_patch_pending_merge": true
+        }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Continue App complete-context and legacy provenance acceptance; source-ledger native subset verified/merged, production room policy remains disabled.",
+      "next_action": "Integrate reviewed checkpoint; verify exact canonical SHA. Full requirement remains open for separately documented gaps.",
       "requirement_digest": "ae9fd8a682a371e0f503342746785ac7d8ca888725481ef7f2aa4618e5123bde",
       "requirement_id": "REQ-CF6F62069953",
       "requirement_text": "An App switch MUST NOT expose another App's private memory. A Project switch MUST NOT expose another Project's private or shared memory. Shared Project memory requires current Project authorization and the policy for the selected memory class. Revocation MUST be rechecked at the read/write boundary, including during a long-lived conversation.",
@@ -24169,7 +24189,8 @@
         "https://github.com/naibarn/SmartSpecPro/pull/434",
         "https://github.com/naibarn/SmartSpecPro/pull/436",
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/native-source-ledger-acceptance-20261016.json",
-        "https://github.com/naibarn/SmartSpecPro/pull/995"
+        "https://github.com/naibarn/SmartSpecPro/pull/995",
+        "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/handoff/evidence/chat-entity-memory-scope-20261017.json"
       ],
       "verification_method": "Real isolated native PostgreSQL with unchanged migration0398, actual Drizzle, rollback/FK/revocation/restart coverage; production disabled; test-only enabled guarded reads. 21 focused tests passed."
     },

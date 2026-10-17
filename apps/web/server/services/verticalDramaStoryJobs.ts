@@ -251,6 +251,12 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
   heartbeatAt?: string;
 }
 
+export interface VerticalDramaStoryJobExpectedOwner {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+}
+
 export type VerticalDramaStoryJobRecoveryReason =
   | "active"
   | "checkpoint_available"
@@ -1414,12 +1420,22 @@ export async function runVerticalDramaStoryJob(
   jobId: string,
   executor: VerticalDramaStoryJobExecutor,
   dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
-): Promise<void> {
+  expectedOwner?: VerticalDramaStoryJobExpectedOwner,
+): Promise<VerticalDramaStoryJobRecord | null> {
   const deps = resolveDeps(dependencies);
   const record = await readRecord(jobId, deps);
   if (!record) {
     debugError("verticalDramaStoryJobs", `runVerticalDramaStoryJob: job ${jobId} not found — nothing to run`, null);
-    return;
+    return null;
+  }
+  if (
+    expectedOwner &&
+    (record.tenantId !== expectedOwner.tenantId ||
+      record.userId !== expectedOwner.userId ||
+      record.seriesId !== expectedOwner.seriesId)
+  ) {
+    debugError("verticalDramaStoryJobs", `runVerticalDramaStoryJob: owner mismatch for job ${jobId}`, null);
+    return null;
   }
 
   const assuranceRunId = typeof record.input.runId === "string"
@@ -1696,9 +1712,26 @@ export async function runVerticalDramaStoryJob(
             errorCode: assuranceError,
             expectedFenceToken: assuranceFenceToken,
           });
+        } else if (
+          report.findings.some((finding) => finding.blocking) ||
+          !report.finalGateEligible
+        ) {
+          // Persist the candidate and its QC report for repair, but do not
+          // finalize a run whose acceptance contract says it is ineligible.
+          assuranceAccepted = false;
+          assuranceError = "STORY_GENERATION_BLOCKING_FINDINGS";
+          await transitionStoryGenerationRun({
+            tenantId: record.tenantId,
+            runId: assuranceRunId,
+            to: "needs_repair",
+            stage: "validation",
+            checkpoint: currentCheckpoint,
+            errorCode: assuranceError,
+            expectedFenceToken: assuranceFenceToken,
+          });
         } else {
           // The story executor already performed structural/semantic repair.
-          // Assurance findings are retained for observability, while a
+          // Nonblocking findings are retained for observability, while an eligible
           // complete candidate is finalized automatically with no approval
           // click or second user workflow.
           const finalized = await finalizeStoryGeneration(
@@ -1734,11 +1767,12 @@ export async function runVerticalDramaStoryJob(
       });
     }
     await notifyStoryJobTerminal(terminalRecord);
+    return terminalRecord;
   } catch (error) {
     // A stale worker must not publish a terminal Redis record after another
     // worker has claimed the durable run. The durable fence is the authority;
     // the next worker owns recovery and will publish the current result.
-    if (error instanceof StoryGenerationFenceLostError) return;
+    if (error instanceof StoryGenerationFenceLostError) return null;
     const message = error instanceof Error ? error.message : String(error);
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
@@ -1772,6 +1806,7 @@ export async function runVerticalDramaStoryJob(
       }));
     }
     await notifyStoryJobTerminal(terminalRecord);
+    return terminalRecord;
   } finally {
     pendingWrites.delete(jobId);
     const pointerKey = activePointerKey(record.tenantId, record.seriesId);

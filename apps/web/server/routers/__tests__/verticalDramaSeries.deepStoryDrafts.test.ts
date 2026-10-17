@@ -118,6 +118,33 @@ const { mockGenerateStoryBible, mockGenerateStoryBibleDeep } = vi.hoisted(() => 
   mockGenerateStoryBible: vi.fn(),
   mockGenerateStoryBibleDeep: vi.fn(),
 }));
+const {
+  mockAdmitStoryGenerationRun,
+  mockGetStoryGenerationRun,
+  mockUpdateStoryGenerationCheckpoint,
+  mockValidateStoryGenerationOutput,
+} = vi.hoisted(() => ({
+  mockAdmitStoryGenerationRun: vi.fn(),
+  mockGetStoryGenerationRun: vi.fn(),
+  mockUpdateStoryGenerationCheckpoint: vi.fn(),
+  mockValidateStoryGenerationOutput: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaStoryGenerationRuntime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/verticalDramaStoryGenerationRuntime")>();
+  return { ...actual, admitStoryGenerationRun: mockAdmitStoryGenerationRun };
+});
+vi.mock("../../services/verticalDramaStoryGenerationRepository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/verticalDramaStoryGenerationRepository")>();
+  return {
+    ...actual,
+    getStoryGenerationRun: mockGetStoryGenerationRun,
+    updateStoryGenerationCheckpoint: mockUpdateStoryGenerationCheckpoint,
+  };
+});
+vi.mock("../../services/verticalDramaStoryGenerationValidation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/verticalDramaStoryGenerationValidation")>();
+  return { ...actual, validateStoryGenerationOutput: mockValidateStoryGenerationOutput };
+});
 vi.mock("../../services/verticalDramaStoryBible", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../services/verticalDramaStoryBible")>();
   return {
@@ -695,6 +722,34 @@ describe("runGenerateStoryBiblePlanJob — durable candidate checkpoint", () => 
     expect(mockEnqueueVerticalDramaStoryJobHandoff).not.toHaveBeenCalled();
   });
 
+  it("stops before plan persistence and deep handoff when assurance reports blocking findings", async () => {
+    const previousFlag = process.env.VERTICAL_DRAMA_STORY_ASSURANCE;
+    process.env.VERTICAL_DRAMA_STORY_ASSURANCE = "true";
+    try {
+      mockGenerateStoryBible.mockResolvedValueOnce({ expanded: candidate, creditsUsed: 7, model: "test-model" });
+      mockAdmitStoryGenerationRun.mockResolvedValueOnce({ runId: "plan-assurance-run" });
+      mockGetStoryGenerationRun.mockResolvedValueOnce({ contractJson: { contractId: "contract-1" } });
+      mockUpdateStoryGenerationCheckpoint.mockResolvedValueOnce(undefined);
+      mockValidateStoryGenerationOutput.mockReturnValueOnce({
+        passed: false,
+        findings: [{ code: "plan.episode_alignment", blocking: true }],
+      });
+      seedPlanDb();
+
+      await expect(runGenerateStoryBiblePlanJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10, jobId: "plan-assurance-job" },
+        vi.fn(),
+      )).rejects.toThrow("STORY_PLAN_FINAL_GATE_FAILED:plan.episode_alignment");
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockEnqueueVerticalDramaStoryJobHandoff).not.toHaveBeenCalled();
+    } finally {
+      if (previousFlag === undefined) delete process.env.VERTICAL_DRAMA_STORY_ASSURANCE;
+      else process.env.VERTICAL_DRAMA_STORY_ASSURANCE = previousFlag;
+      mockDb.select.mockReset();
+      mockDb.update.mockReset();
+    }
+  });
+
   it("re-enters provider generation for a historical deterministic fallback checkpoint", async () => {
     mockGenerateStoryBible.mockResolvedValueOnce({
       expanded: candidate,
@@ -978,7 +1033,7 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(result.creditsUsed).toBe(10);
   });
 
-  it("completes the season from the approved plan when the service returns a partial result", async () => {
+  it("stops when bounded completion repair still returns a partial result", async () => {
     const seriesRow = {
       id: 10,
       tenantId: "tenant-1",
@@ -992,9 +1047,6 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
       bible: { episodeBreakdown: Array.from({ length: 10 }, (_, i) => plannedItem(i + 1)) },
     };
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    const chain = updateChain([{ ...seriesRow }]);
-    mockDb.update.mockReturnValueOnce(chain);
-
     mockGenerateStoryBibleDeep.mockResolvedValue({
       draftedItems: [1, 2, 3, 4, 5].map(draftedResultItem),
       chunkSizes: [5],
@@ -1006,28 +1058,64 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
       error: "second chunk failed schema validation",
     });
 
-    const result = await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
-
-    expect(chain.set).toHaveBeenCalledTimes(1);
-    const setArg = chain.set.mock.calls[0][0];
-    const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
-    const items = versions[0].items as Array<Record<string, unknown>>;
-    expect(items.filter((i) => "shotDrafts" in i)).toHaveLength(10);
-
-    expect(result.partial).toBe(false);
-    expect(result.error).toBeUndefined();
-    expect(result.horizonEndEpisode).toBe(10);
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          episodeNumber: 10,
-          reason: "automatic_completion_fallback",
-        }),
-      ]),
-    );
+    await expect(
+      runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn()),
+    ).rejects.toThrow("second chunk failed schema validation");
+    expect(mockGenerateStoryBibleDeep).toHaveBeenCalledTimes(11);
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 
-  it("live-bug fix: passes missingEpisodes through, and horizonEndEpisode honestly reflects only the contiguous coverage actually drafted (never the gap)", async () => {
+  it("clears an earlier partial error when genuine bounded repair completes the missing episode", async () => {
+    const seriesRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: null,
+      tone: null,
+      targetEpisodeCount: 2,
+      defaultEpisodeDurationSeconds: 60,
+      bible: { episodeBreakdown: [plannedItem(1), plannedItem(2)] },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: true,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      error: "episode 2 is missing after the initial chunk",
+      missingEpisodes: [2],
+    });
+    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+      draftedItems: [draftedResultItem(2)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-repair-model",
+      warnings: [],
+      finalOpenThreads: [],
+      missingEpisodes: [],
+    });
+
+    const result = await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 2 },
+      vi.fn(),
+    );
+
+    expect(mockGenerateStoryBibleDeep).toHaveBeenCalledTimes(2);
+    expect(result.partial).toBe(false);
+    expect(result.error).toBeUndefined();
+    expect(result.horizonEndEpisode).toBe(2);
+    expect(chain.set).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not publish a missing episode after the bounded completion repair is exhausted", async () => {
     const seriesRow = {
       id: 10,
       tenantId: "tenant-1",
@@ -1041,9 +1129,6 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
       bible: { episodeBreakdown: Array.from({ length: 10 }, (_, i) => plannedItem(i + 1)) },
     };
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    const chain = updateChain([{ ...seriesRow }]);
-    mockDb.update.mockReturnValueOnce(chain);
-
     // Episode 10 is STILL missing even after the service's own corrective
     // retry — episodes 1-9 (contiguous) are the only ones actually drafted.
     mockGenerateStoryBibleDeep.mockResolvedValue({
@@ -1058,24 +1143,11 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
       missingEpisodes: [10],
     });
 
-    const result = await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
-
-    // The missing episode is completed from the approved plan after the
-    // provider retries, so the published horizon is complete.
-    expect(result.horizonEndEpisode).toBe(10);
-    expect(result.partial).toBe(false);
-    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([]);
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ episodeNumber: 10, reason: "automatic_completion_fallback" }),
-      ]),
-    );
-
-    const setArg = chain.set.mock.calls[0][0];
-    const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
-    expect(versions[0].deepDraft).toEqual(
-      expect.objectContaining({ horizonEndEpisode: 10 }),
-    );
+    await expect(
+      runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn()),
+    ).rejects.toThrow("still missing episode(s) 10");
+    expect(mockGenerateStoryBibleDeep).toHaveBeenCalledTimes(11);
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 
@@ -1467,10 +1539,9 @@ describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("provider-recoverable partial results finish automatically without a false failure ticket", async () => {
+  it("keeps provider-recoverable partial results failed instead of writing synthetic success", async () => {
     const seriesRow = tenEpisodeSeriesRow();
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
     const insertedRows = withInsertedRows();
     mockGenerateStoryBibleDeep.mockResolvedValue({
       draftedItems: [1, 2, 3].map(draftedResultItem),
@@ -1483,56 +1554,15 @@ describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit
       error: "second chunk failed schema validation",
     });
 
-    await runGenerateStoryBibleDeepJob(
+    await expect(runGenerateStoryBibleDeepJob(
       { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
       vi.fn(),
-    );
-
-    // The structural fallback closes the result, so only the normal success
-    // audit remains and no false system-failure ticket is filed.
-    expect(insertedRows).toHaveLength(1);
-    expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
+    )).rejects.toThrow("second chunk failed schema validation");
+    expect(insertedRows).toHaveLength(0);
+    expect(mockDb.update).not.toHaveBeenCalled();
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("does not create duplicate failure tickets for provider-recoverable partial results", async () => {
-    const seriesRow = tenEpisodeSeriesRow();
-    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
-    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
-      draftedItems: [1, 2, 3].map(draftedResultItem),
-      chunkSizes: [3],
-      partial: true,
-      creditsUsed: 9,
-      model: "test-model",
-      warnings: [],
-      finalOpenThreads: [],
-      error: "first failure reason",
-    });
-    await runGenerateStoryBibleDeepJob(
-      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
-      vi.fn(),
-    );
-
-    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
-    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
-      draftedItems: [1, 2, 3, 4].map(draftedResultItem),
-      chunkSizes: [4],
-      partial: true,
-      creditsUsed: 12,
-      model: "test-model",
-      warnings: [],
-      finalOpenThreads: [],
-      error: "a completely different failure reason this time",
-    });
-    await runGenerateStoryBibleDeepJob(
-      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
-      vi.fn(),
-    );
-
-    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
-  });
 });
 
 describe("runGenerateStoryBibleDeepJob — error mapping", () => {
@@ -1559,25 +1589,79 @@ describe("runGenerateStoryBibleDeepJob — error mapping", () => {
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 
-  it("completes from the approved plan after a schema validation failure", async () => {
+  it("preserves the insufficient-credit guard during bounded completion repair", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
-    mockGenerateStoryBibleDeep.mockRejectedValueOnce(
-      new VdSchemaValidationError("bad json", { issues: [] }),
-    );
+    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: true,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      missingEpisodes: [2],
+      error: "episode 2 is missing",
+    });
+    mockGenerateStoryBibleDeep.mockRejectedValueOnce(new InsufficientCreditsError());
 
-    const result = await runGenerateStoryBibleDeepJob(
+    await expect(runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 2 },
+      vi.fn(),
+    )).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("propagates provider and schema failures without persisting a successful draft", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const schemaError = new VdSchemaValidationError("bad json", { issues: [] });
+    mockGenerateStoryBibleDeep.mockRejectedValueOnce(schemaError);
+    await expect(runGenerateStoryBibleDeepJob(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       vi.fn(),
-    );
-    expect(result.partial).toBe(false);
-    expect(result.missingEpisodes).toEqual([]);
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ reason: "automatic_completion_fallback" }),
-      ]),
-    );
-    expect(mockDb.update).toHaveBeenCalled();
+    )).rejects.toBe(schemaError);
+    expect(mockDb.update).not.toHaveBeenCalled();
+
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const providerError = new Error("provider unavailable");
+    mockGenerateStoryBibleDeep.mockRejectedValueOnce(providerError);
+    await expect(runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    )).rejects.toBe(providerError);
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("stops before final persistence when the enabled assurance gate reports blocking findings", async () => {
+    const previousFlag = process.env.VERTICAL_DRAMA_STORY_ASSURANCE;
+    process.env.VERTICAL_DRAMA_STORY_ASSURANCE = "true";
+    try {
+      mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+      mockAdmitStoryGenerationRun.mockResolvedValueOnce({ runId: "assurance-run-1" });
+      mockGetStoryGenerationRun.mockResolvedValueOnce({ contractJson: { contractId: "contract-1" } });
+      mockUpdateStoryGenerationCheckpoint.mockResolvedValueOnce(undefined);
+      mockValidateStoryGenerationOutput.mockReturnValueOnce({
+        passed: false,
+        findings: [{ code: "structure.shot_count", blocking: true }],
+      });
+      mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+        draftedItems: [1, 2].map(draftedResultItem),
+        chunkSizes: [2],
+        partial: false,
+        creditsUsed: 6,
+        model: "test-model",
+        warnings: [],
+        finalOpenThreads: [],
+      });
+
+      await expect(runGenerateStoryBibleDeepJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10, runId: "assurance-run-1" },
+        vi.fn(),
+      )).rejects.toThrow("STORY_GENERATION_FINAL_GATE_FAILED:structure.shot_count");
+      expect(mockDb.update).not.toHaveBeenCalled();
+    } finally {
+      if (previousFlag === undefined) delete process.env.VERTICAL_DRAMA_STORY_ASSURANCE;
+      else process.env.VERTICAL_DRAMA_STORY_ASSURANCE = previousFlag;
+    }
   });
 });
 
@@ -1784,11 +1868,9 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
     expect(result.creditsUsed).toBe(8);
   });
 
-  it("live-bug fix: passes missingEpisodes through and keeps horizonEndEpisode honest (contiguous from the prior horizon, never past a still-missing gap)", async () => {
+  it("does not publish an extension with a missing episode after retries", async () => {
     const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    const chain = updateChain([{ ...seriesRow }]);
-    mockDb.update.mockReturnValueOnce(chain);
 
     // Episode 10 is still missing after the service's own corrective retry.
     mockGenerateStoryBibleDeep.mockResolvedValue({
@@ -1803,14 +1885,11 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
       missingEpisodes: [10],
     });
 
-    const result = await runExtendStoryDraftHorizonJob(
+    await expect(runExtendStoryDraftHorizonJob(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       vi.fn(),
-    );
-
-    expect(result.partial).toBe(false);
-    expect(result.horizonEndEpisode).toBe(10);
-    expect((result as { missingEpisodes: number[] }).missingEpisodes).toEqual([]);
+    )).rejects.toThrow("still missing episode(s) 10");
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 
   it("honors an explicit additionalEpisodes count smaller than the default", async () => {
@@ -2025,6 +2104,22 @@ describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audi
     return insertedRows;
   }
 
+  it.each([
+    ["provider", new Error("extension provider unavailable")],
+    ["schema", new VdSchemaValidationError("bad extension json", { issues: [] })],
+  ])("propagates initial %s failures without persisting a successful extension", async (_kind, error) => {
+    const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockGenerateStoryBibleDeep.mockRejectedValueOnce(error);
+
+    await expect(runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    )).rejects.toBe(error);
+    expect(mockDb.update).not.toHaveBeenCalled();
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
+  });
+
   it("partial: false (fully succeeded) never records the error audit event or files a system feedback ticket", async () => {
     const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
@@ -2044,10 +2139,9 @@ describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audi
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 
-  it("provider-recoverable partial extensions finish without a false failure ticket", async () => {
+  it("does not accept a partial extension as a successful completion", async () => {
     const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
-    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
     const insertedRows = withInsertedRows();
     mockGenerateStoryBibleDeep.mockResolvedValue({
       draftedItems: [6, 7, 8].map(draftedResultItem),
@@ -2060,10 +2154,10 @@ describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audi
       error: "extend chunk failed schema validation",
     });
 
-    await runExtendStoryDraftHorizonJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
-
-    expect(insertedRows).toHaveLength(1);
-    expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
+    await expect(runExtendStoryDraftHorizonJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn()))
+      .rejects.toThrow("extend chunk failed schema validation");
+    expect(insertedRows).toHaveLength(0);
+    expect(mockDb.update).not.toHaveBeenCalled();
     expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
   });
 });
