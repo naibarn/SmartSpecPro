@@ -11,6 +11,7 @@ import {
   workerJobAttempts,
   workerJobProviderReservations,
   workerJobSettlements,
+  economicEvents,
   llmInferenceAttempts,
   llmInferencePlans,
   workerJobs,
@@ -125,6 +126,56 @@ export function projectJobSettlementMarker(row: {
     committedAt: row.committedAt.toISOString(),
     monetaryAmount: null,
     meaning: "durable_marker_only" as const,
+  };
+}
+
+const ECONOMIC_SETTLEMENT_EVENT_TYPES = [
+  "runner_receipt_economically_settled",
+  "runner_receipt_reconciliation_required",
+] as const;
+
+export function projectEconomicSettlementEvidence(row: {
+  id: string;
+  workerJobId: string | null;
+  attemptId: string | null;
+  eventType: string;
+  policyVersion: string;
+  createdAt: Date;
+  payloadJson: unknown;
+}) {
+  const payload = objectValue(row.payloadJson);
+  const classification = payload?.classification;
+  const recognizedClassification = classification === "provider_metered"
+    || classification === "approved_subscription"
+    || classification === "verified_zero_charge"
+    ? classification
+    : "unknown";
+  const rawAmount = payload?.capturedMinorUnits;
+  const rawCurrency = payload?.currency;
+  const validCurrency = typeof rawCurrency === "string" && /^[A-Z]{3}$/i.test(rawCurrency) ? rawCurrency.toUpperCase() : null;
+  const amount = Number.isSafeInteger(rawAmount) && Number(rawAmount) >= 0 ? Number(rawAmount) : null;
+  const settled = row.eventType === "runner_receipt_economically_settled";
+  const reasonCode = typeof payload?.reasonCode === "string" && /^[A-Z0-9_]{1,100}$/.test(payload.reasonCode) ? payload.reasonCode : null;
+  return {
+    source: { kind: "economic_event" as const, reference: row.id },
+    workerJobId: row.workerJobId,
+    attemptId: row.attemptId,
+    status: settled ? "settled" as const : "reconciliation_required" as const,
+    classification: settled ? recognizedClassification : "unknown" as const,
+    reasonCode: settled ? null : reasonCode,
+    capturedMinorUnits: settled && recognizedClassification === "provider_metered" && validCurrency ? amount : null,
+    currency: settled && recognizedClassification === "provider_metered" && amount !== null ? validCurrency : null,
+    policyVersion: safeText(row.policyVersion, 64) ?? "unknown",
+    createdAt: row.createdAt.toISOString(),
+    meaning: settled
+      ? recognizedClassification === "provider_metered"
+        ? "verified_provider_metered_capture" as const
+        : recognizedClassification === "approved_subscription"
+          ? "approved_subscription_no_platform_capture" as const
+          : recognizedClassification === "verified_zero_charge"
+            ? "verified_zero_charge" as const
+            : "settlement_classification_unknown" as const
+      : "accounting_reconciliation_required" as const,
   };
 }
 
@@ -306,6 +357,9 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
   const settlementMarkers = await db.select({ id: workerJobSettlements.id, attemptId: workerJobSettlements.attemptId, settlementType: workerJobSettlements.settlementType, committedAt: workerJobSettlements.committedAt })
     .from(workerJobSettlements).where(and(eq(workerJobSettlements.workerJobId, job.id), ...(snapshotAt ? [lte(workerJobSettlements.committedAt, snapshotAt)] : [])))
     .orderBy(workerJobSettlements.committedAt).limit(MAX_JOB_DETAIL);
+  const economicSettlementRows = await db.select({ id: economicEvents.id, workerJobId: economicEvents.workerJobId, attemptId: economicEvents.attemptId, eventType: economicEvents.eventType, policyVersion: economicEvents.policyVersion, createdAt: economicEvents.createdAt, payloadJson: economicEvents.payloadJson })
+    .from(economicEvents).where(and(eq(economicEvents.tenantId, scope.tenantId), eq(economicEvents.workerJobId, job.id), inArray(economicEvents.eventType, [...ECONOMIC_SETTLEMENT_EVENT_TYPES]), ...(snapshotAt ? [lte(economicEvents.createdAt, snapshotAt)] : [])))
+    .orderBy(economicEvents.createdAt).limit(MAX_JOB_DETAIL);
   const reservations = await db.select().from(workerJobProviderReservations)
     .where(snapshotAt
       ? and(eq(workerJobProviderReservations.workerJobId, job.id), lte(workerJobProviderReservations.createdAt, snapshotAt), lte(workerJobProviderReservations.updatedAt, snapshotAt))
@@ -422,7 +476,7 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
     runner: runner ? { id: runner.runnerId, displayName: safeText(runner.displayName, 120), status: runner.revokedAt ? "revoked" : runner.status, trustState: runner.trustState, lastSeenAt: asIso(runner.lastSeenAt), freshness: runner.lastSeenAt && Date.now() - runner.lastSeenAt.getTime() < 5 * 60_000 ? "fresh" : "stale" } : { status: "unknown", freshness: "unknown" },
     goal: goalProjection(job),
-    usage: { ...usage, settlementMarkers: settlementMarkers.map(projectJobSettlementMarker), reservations: [
+    usage: { ...usage, settlementMarkers: settlementMarkers.map(projectJobSettlementMarker), economicSettlements: economicSettlementRows.map(projectEconomicSettlementEvidence), reservations: [
       ...reservations.map((row) => ({ kind: row.reservationKind, status: row.reservationStatus, modelCallId: row.modelCallId, estimateTokens: row.reservedTokens, estimatedCostMicros: null, provider: safeText(row.providerName, 64), observedAt: asIso(row.lastObservedAt) })),
       ...inferenceRows.map((row) => ({ kind: "inference_plan", status: "observed", estimateTokens: null, estimatedCostMicros: row.estimatedCostMicros, parentCostCeilingMicros: row.parentCostCeilingMicros, provider: null, observedAt: row.updatedAt.toISOString() })),
     ], coverage: { status: "PARTIAL" as const, observedCallSources: ["worker_job_provider_reservations", "llm_inference_attempts"], missingSources: ["unlinked_external_helper_calls", "unlinked_provider_usage", "provider_quota_observations"], reason: "Only usage linked to this canonical job can be counted; absence from linked sources is not evidence of zero usage." } },
@@ -534,6 +588,11 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
     .orderBy(workerJobSettlements.committedAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
   const settlementMarkersCapped = settlementMarkerRows.length > MAX_AGGREGATE_CALLS;
   const boundedSettlementMarkers = settlementMarkerRows.slice(0, MAX_AGGREGATE_CALLS);
+  const economicSettlementRows = jobIds.length ? await db.select({ id: economicEvents.id, workerJobId: economicEvents.workerJobId, attemptId: economicEvents.attemptId, eventType: economicEvents.eventType, policyVersion: economicEvents.policyVersion, createdAt: economicEvents.createdAt, payloadJson: economicEvents.payloadJson })
+    .from(economicEvents).where(and(eq(economicEvents.tenantId, input.scope.tenantId), inArray(economicEvents.workerJobId, jobIds), inArray(economicEvents.eventType, [...ECONOMIC_SETTLEMENT_EVENT_TYPES]), lte(economicEvents.createdAt, asOf)))
+    .orderBy(economicEvents.createdAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
+  const economicSettlementsCapped = economicSettlementRows.length > MAX_AGGREGATE_CALLS;
+  const boundedEconomicSettlements = economicSettlementRows.slice(0, MAX_AGGREGATE_CALLS).map(projectEconomicSettlementEvidence);
   const reservations = jobIds.length ? await db.select().from(workerJobProviderReservations)
     .where(and(inArray(workerJobProviderReservations.workerJobId, jobIds), lte(workerJobProviderReservations.createdAt, asOf), lte(workerJobProviderReservations.updatedAt, asOf)))
     .orderBy(workerJobProviderReservations.createdAt).limit(MAX_AGGREGATE_CALLS + 1) : [];
@@ -641,6 +700,22 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
       byType: settlementMarkersCapped ? null : [...boundedSettlementMarkers.reduce((counts, row) => counts.set(row.settlementType, (counts.get(row.settlementType) ?? 0) + 1), new Map<string, number>())].map(([type, count]) => ({ type: safeText(type, 64) ?? "unknown", count })),
       capped: settlementMarkersCapped,
       meaning: "durable_job_markers_not_monetary_settlements" as const,
+    },
+    economicSettlementEvidence: {
+      observedEventCount: economicSettlementsCapped ? null : boundedEconomicSettlements.length,
+      settledCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.status === "settled").length,
+      reconciliationRequiredCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.status === "reconciliation_required").length,
+      missingProviderCaptureValueCount: economicSettlementsCapped ? null : boundedEconomicSettlements.filter((event) => event.classification === "provider_metered" && (event.capturedMinorUnits === null || !event.currency)).length,
+      capturedProviderAmounts: economicSettlementsCapped ? null : [...boundedEconomicSettlements.reduce((totals, event) => {
+        if (event.classification === "provider_metered" && event.capturedMinorUnits !== null && event.currency) {
+          const nextTotal = (totals.get(event.currency) ?? 0) + event.capturedMinorUnits;
+          totals.set(event.currency, Number.isSafeInteger(nextTotal) ? nextTotal : null);
+        }
+        return totals;
+      }, new Map<string, number | null>())].map(([currency, capturedMinorUnits]) => ({ currency, capturedMinorUnits })),
+      capped: economicSettlementsCapped,
+      coverage: "PARTIAL" as const,
+      meaning: "verified_runner_economic_events_only_not_all_provider_or_platform_billing" as const,
     },
     quotaCoverage: { status: "UNKNOWN" as const, reason: "No provider quota observation is linked to this aggregate." },
   };
