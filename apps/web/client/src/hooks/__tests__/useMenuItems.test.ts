@@ -26,13 +26,12 @@ describe("useMenuItems", () => {
     expect(defaultMenuItems.some(item => item.id === "workflow-studio")).toBe(false);
   });
 
-  it("keeps the emergency route visible when a menu override tries to hide it", () => {
+  it("hides emergency navigation even when a menu override tries to show it", () => {
     const items = getResolvedMenuItems("user", "main", [
-      { menuItemId: "emergency", visible: false },
+      { menuItemId: "emergency", visible: true },
     ]);
-    const emergency = items.find(item => item.id === "emergency");
 
-    expect(emergency?.path).toBe("/dashboard/emergency");
+    expect(items.some(item => item.id.startsWith("emergency"))).toBe(false);
   });
 
   it("does not expose retired Work OS in the admin sidebar", () => {

@@ -15,6 +15,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { liveBuildTargetGuardPlugin } from "./scripts/live-build-target-guard.mjs";
 
 const configDir = import.meta.dirname;
 
@@ -28,7 +29,7 @@ const outDir = process.env.SSP_BUILD_OUT_DIR
   : "dist/public/widget/v1";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [liveBuildTargetGuardPlugin(configDir), react()],
   // The widget has no standalone public assets. In an atomic build the main
   // script populates public files once at the staging root.
   publicDir: false,
