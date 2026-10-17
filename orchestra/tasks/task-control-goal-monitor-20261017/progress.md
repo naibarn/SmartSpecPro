@@ -18,7 +18,7 @@ Original audit base: `9ec5db2f20535319b4b8b3dd6fe83e9c89100eff`; original PR sou
 - Focused Vitest command over workerJobs, read model, reducers, monitor, Chat link and SPEC-224 budget integration — 7 files / 56 passed on candidate `2af2e1d77ce306fb94fe8b01115fcffea3cff477`.
 - Latest combined acceptance/economic-evidence code: seven focused files / 56 tests passed after merging canonical PR #1014; conflict markers absent and `git diff --check` passed. Earlier six-file / 52-test check covered the economic follow-up before acceptance integration. SPEC-224 disposable PostgreSQL `beforeAll` timed out twice at 10 seconds under shared-host load; no assertion ran, so its status is UNKNOWN for the latest delta.
 - Full `npm run typecheck` was not run per repository RAM policy. A prior selected-file `tsc` traversed broad imports and was stopped before it became a repository-wide workload; this is not a typecheck pass.
-- `spec_handoff index --check` passed. Scoped validation reports valid with unresolved/open requirements. Global validation still has the unrelated pre-existing SPEC-014 source-evidence SHA mismatch.
+- `spec_handoff index --check` initially found generated-view SHA drift from the already-updated SPEC-229 manifest; regenerated the three derived views with no per-SPEC status drift, then check passed (473 records, 316 canonical specs). Scoped validation reports valid with unresolved/open requirements. Global validation still reports the unrelated pre-existing SPEC-014 source-evidence SHA mismatch.
 - SPEC-224 execution behavior and Luna/Sol routing were not modified. No deployment, runtime migration, new scheduler, or auto-resume claim.
 
 ## Resume
