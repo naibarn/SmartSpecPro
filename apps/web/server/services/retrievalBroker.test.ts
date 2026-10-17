@@ -57,7 +57,7 @@ beforeEach(() => {
   mockGetProviderConfig.mockResolvedValue({
     provider: "cloudflare_vectorize",
     currentReadProvider: "cloudflare_vectorize",
-    vectorizeKnowledgeIndexName: "library-index",
+    vectorizeKnowledgeIndexName: "knowledge-index",
   });
   mockResolveProvider.mockImplementation((_operation, config) => ({
     provider: config.currentReadProvider,
@@ -172,5 +172,6 @@ describe("retrieveLibraryEvidenceV2", () => {
     });
     expect(result.evidence[0]).not.toHaveProperty("text");
     expect(result.evidence[0]?.providerProfileId).toBe("library-index");
+    expect(result.providerProfile.profileId).toBe("library-index");
   });
 });

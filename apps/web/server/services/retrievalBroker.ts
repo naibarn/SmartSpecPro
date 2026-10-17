@@ -240,7 +240,7 @@ export async function retrieveLibraryEvidenceV2(
   return {
     retrievalTraceId: traceId,
     plan,
-    providerProfile: { provider, profileId },
+    providerProfile: { provider, profileId: diagnostics.profileId ?? profileId },
     evidence,
     // Search candidates are not treated as grounded RAG context until the
     // content hydration and quality-gate phases are connected.
