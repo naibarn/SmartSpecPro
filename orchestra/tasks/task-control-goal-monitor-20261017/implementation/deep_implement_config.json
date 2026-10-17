@@ -54,8 +54,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation.",
-      "checkpoint_sha": "540473640"
+      "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
+      "checkpoint_sha": "35a2eb4f3"
     }
   },
   "pre_commit": {
@@ -67,11 +67,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 25,
-  "updated_at": "2026-10-17T01:15:28.790277+00:00",
+  "generation": 26,
+  "updated_at": "2026-10-17T01:15:37.422460+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation.",
+    "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",

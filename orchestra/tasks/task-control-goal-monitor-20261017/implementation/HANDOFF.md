@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `25`
-- Updated (UTC): `2026-10-17T01:15:28.790277+00:00`
+- State generation: `26`
+- Updated (UTC): `2026-10-17T01:15:37.422460+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-06-integration-live-acceptance`
-- Next action: Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation.
+- Next action: Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks |
 | section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
 | section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 86f137f58 | — | Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps. |
-| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 540473640 | — | Commit current main reconciliation handoff, push exact candidate to PR #1001, rerun required checks and retry protected promotion after base-freshness validation. |
+| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 35a2eb4f3 | — | Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
