@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0121b3048ce726d3c24781ed6aac63a0f51fb00f",
+    "expected_canonical_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1074 is open from codex/spec229-gold-expansion-5-20261017, head e2da3e003abea12916fa790b99d25e7c764fb5a6, based on canonical main 0121b3048ce726d3c24781ed6aac63a0f51fb00f. Its P229.8 candidate dataset includes 560 unique development-only rows; 560 independently agent-reviewed, 0 human-reviewed/accepted, and 0 release-approved/held out. Exact-head CLI validates all required §27 candidate classes; focused tests pass 2 files/16 tests. Required PR gates and protected integration are pending. Calibration remains NOT_EVALUABLE due missing human-approved held-out cohort and authorized provider observations.",
-    "next_ready_workunit": "P229.8_GOLD_CANDIDATE_CORPUS_PR1074: complete required checks on exact PR head e2da3e003abea12916fa790b99d25e7c764fb5a6 and promote through the protected integration executor only when green; then verify exact canonical main SHA. Calibration remains waiting for human source/use approval and authorized observations.",
+    "next_action": "PR #1074 merged at canonical main 67249224c8dd0394aef45f872e589aa7fa3899db. Post-merge focused tests pass 2 files/16 tests; the dataset harness at that exact SHA validates 560 independently agent-reviewed development candidates with all §27 candidate classes represented. Human-reviewed/accepted, release-approved, and held-out counts remain 0; metrics and all 15 release criteria remain NOT_EVALUABLE. See handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json.",
+    "next_ready_workunit": "P229.8_RELEASE_COHORT_AND_OBSERVATIONS: obtain human source/use approval for a held-out query cohort and authorized retrieval observations for §27 profiles A–H, then run the existing harness and compare against the unchanged release criteria.",
     "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
-    "resume_point": "Canonical main is 0121b3048ce726d3c24781ed6aac63a0f51fb00f after PR #1072. Candidate branch head e2da3e003abea12916fa790b99d25e7c764fb5a6 has 560 development candidates, all 560 independently agent-reviewed; 0 human review/acceptance, 0 gold accepted, 0 release-approved/held-out. Dataset digest 72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc; all candidate class gaps empty. CLI and focused 2-file/16-test run pass at that SHA; metrics and 15 release criteria are NOT_EVALUABLE with no retrieval observations. PR #1074 required checks are pending.",
-    "waiting_predicate": "P229.8 release calibration remains waiting on human source/use approval for a held-out cohort and authorized retrieval observations covering the §27 profiles, including latency and cost. Agent review cannot substitute for human approval; do not promote weak evidence or migrate consequential consumers before certification."
+    "resume_point": "Canonical main exact SHA is 67249224c8dd0394aef45f872e589aa7fa3899db (PR #1074 merged). Post-merge focused suite passed 2 files/16 tests. Dataset digest 72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc; 560 unique development-only candidates, all 560 independently agent reviewed, 0 human accepted/release-approved/held-out, required class gaps empty. Benchmark metrics and release criteria are NOT_EVALUABLE without authorized observations. P229.8 and global SPEC-229 remain incomplete.",
+    "waiting_predicate": "Wait for human source/use approval of a held-out release cohort and authorized retrieval-provider observations across all §27 comparison profiles, including latency and cost. Continue no weak-to-sufficient promotion, finance/consequential consumer migration, P229.2, or Vectorize profile changes before gate certification."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 63,
+  "generation": 64,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -125,9 +125,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0121b3048ce726d3c24781ed6aac63a0f51fb00f",
+    "canonical_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
     "integrated": true,
-    "integrated_at": "2026-10-17T16:37:07Z"
+    "integrated_at": "2026-10-17T16:46:51Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -278,7 +278,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T16:42:18.408419Z",
+  "updated_at": "2026-10-17T16:47:53.453280Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -293,7 +293,8 @@
       "handoff/evidence/p229-8-anchors-benchmark-20261017.json",
       "handoff/evidence/p229-8-gold-pipeline-20261017.json",
       "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json",
-      "handoff/evidence/p229-8-gold-review-batches-20261017.json"
+      "handoff/evidence/p229-8-gold-review-batches-20261017.json",
+      "handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [

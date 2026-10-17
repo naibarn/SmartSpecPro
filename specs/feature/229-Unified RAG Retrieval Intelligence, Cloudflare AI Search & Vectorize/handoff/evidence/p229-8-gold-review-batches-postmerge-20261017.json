@@ -1,0 +1,206 @@
+{
+  "evidence_id": "SPEC229-P2298-GOLD-CANDIDATE-CORPUS-POSTMERGE-20261017",
+  "workunit": "P229.8 Gold Dataset Candidate Pipeline Expansion — post-merge verification",
+  "workunit_status": "PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "pr": {
+    "number": 1074,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/1074",
+    "head_sha": "5754231bacff28ecc7fce9c5b67183aca2631696",
+    "merge_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
+    "merged_at": "2026-10-17T16:46:51Z",
+    "base_sha": "0121b3048ce726d3c24781ed6aac63a0f51fb00f",
+    "required_checks": {
+      "progressive_integration_gate": "PASS",
+      "local-contract": "PASS",
+      "Mocked SPEC-308 browser simulation": "PASS",
+      "build-preview": "SKIPPED (non-required)"
+    }
+  },
+  "verification": {
+    "source_sha": "67249224c8dd0394aef45f872e589aa7fa3899db",
+    "focused_tests": {
+      "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
+      "result": "PASS: 2 files, 16 tests"
+    },
+    "dataset_harness": {
+      "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json --system-sha 67249224c8dd0394aef45f872e589aa7fa3899db",
+      "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED",
+      "dataset_file_sha256": "f1f1b98b05903ac3fb2210c41550a9a71209e4fccae79ff0faf69c5afc19cd47",
+      "dataset_digest_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+      "counts": {
+        "candidateQueries": 560,
+        "unreviewed": 0,
+        "independentlyReviewed": 560,
+        "machineReviewed": 560,
+        "humanReviewed": 0,
+        "humanAccepted": 0,
+        "reviewAccepted": 560,
+        "reviewDisagreements": 0,
+        "adjudicated": 0,
+        "acceptedForGold": 0,
+        "pendingAdjudication": 0,
+        "releaseApproved": 0,
+        "heldOutReleaseApproved": 0,
+        "developmentOnly": 560
+      },
+      "language_counts": {
+        "thai": 114,
+        "english": 355,
+        "mixed": 91
+      },
+      "class_counts": {
+        "quality_coverage": 1,
+        "spec_factual": 9,
+        "citation": 1,
+        "provenance": 1,
+        "negative_policy_answer": 4,
+        "quality_gate": 1,
+        "gold_dataset": 1,
+        "taxonomy": 1,
+        "release_threshold": 4,
+        "language": 2,
+        "latency": 2,
+        "handoff_fact": 1,
+        "exact_id": 142,
+        "spec_id": 78,
+        "document_title": 50,
+        "code_identifier": 55,
+        "semantic_paraphrase": 355,
+        "retrieval": 1,
+        "multi_hop": 13,
+        "follow_up": 4,
+        "filename": 15,
+        "path": 3,
+        "error_code": 11,
+        "api_path": 15,
+        "ambiguous": 4,
+        "coverage": 1,
+        "acl_attack": 27,
+        "machine_readable_error_policy": 1,
+        "freshness": 1,
+        "no_answer": 6,
+        "stale_conflict": 8,
+        "deleted_revoked": 5,
+        "code_config_log": 68,
+        "long_document": 2,
+        "typo": 5,
+        "ocr": 16,
+        "uuid": 5
+      },
+      "source_group_count": 276,
+      "required_class_gaps": [],
+      "release_criteria": [
+        {
+          "id": "crossTenantLeakage",
+          "threshold": "= 0",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "unauthorizedEvidenceLeakage",
+          "threshold": "= 0",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "exactIdentifierHitAt5",
+          "threshold": ">= 0.99",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "overallRecallAt20",
+          "threshold": ">= 0.95",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "thaiRecallAt20",
+          "threshold": ">= 0.92",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "englishRecallAt20",
+          "threshold": ">= 0.95",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "nDCGAt10",
+          "threshold": ">= 0.85",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "mrrAt10",
+          "threshold": ">= 0.85",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "citationPrecision",
+          "threshold": ">= 0.95",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "freshnessCorrectness",
+          "threshold": ">= 0.98",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "noAnswerPrecision",
+          "threshold": ">= 0.9",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "noAnswerRecall",
+          "threshold": ">= 0.9",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "simpleExactKeywordP95Ms",
+          "threshold": "<= 800ms",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "hybridRerankP95Ms",
+          "threshold": "<= 1500ms",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        },
+        {
+          "id": "rewriteHybridRerankP95Ms",
+          "threshold": "<= 2500ms",
+          "value": null,
+          "status": "NOT_EVALUABLE"
+        }
+      ],
+      "metrics": null,
+      "confidence_intervals": null,
+      "baseline_comparison": null,
+      "result": "all candidate class coverage valid; release metrics NOT_EVALUABLE because no retrieval observations or held-out release cohort exist"
+    }
+  },
+  "release_evaluation": {
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "accepted_for_gold": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "production_verified": false,
+    "p2298_accepted": false,
+    "global_spec229_complete": false
+  },
+  "blockers": [
+    "A human must source/use approve the held-out release cohort; all 560 rows are development-only and agent review is not human gold approval.",
+    "Authorized retrieval observations are absent for §27 comparison profiles, including latency and cost."
+  ],
+  "next_action": "Obtain human source/use approval for a held-out dataset, then collect authorized retrieval observations for A–H profile comparisons and execute the existing benchmark. Keep weak evidence unpromoted and consequential consumers unmigrated until §27 release criteria pass."
+}
