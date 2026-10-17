@@ -7,7 +7,7 @@ export type HyperdriveSqlClient = {
 
 export type HyperdriveClientFactory = (
   connectionString: string,
-  options: { prepare: false; max: 1; connect_timeout: number; idle_timeout: number },
+  options: { prepare: true; fetch_types: false; max: 5; connect_timeout: number; idle_timeout: number },
 ) => HyperdriveSqlClient;
 
 export type CanonicalReadOptions = {
@@ -37,8 +37,9 @@ export function createHyperdriveClient(
   const connectionString = binding?.connectionString?.trim();
   if (!connectionString) throw new Error("HYPERDRIVE_CONNECTION_NOT_CONFIGURED");
   return factory(connectionString, {
-    prepare: false,
-    max: 1,
+    prepare: true,
+    fetch_types: false,
+    max: 5,
     connect_timeout: 10,
     idle_timeout: 20,
   });
