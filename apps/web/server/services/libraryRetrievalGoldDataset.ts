@@ -7,6 +7,7 @@ import {
   getRetrievalBenchmarkProfile,
   retrievalBenchmarkObservationSchema,
   SPEC_229_RELEASE_CRITERIA,
+  type RetrievalBenchmarkLatencyProfile,
   type RetrievalBenchmarkMetrics,
 } from "./libraryRetrievalBenchmark";
 
@@ -319,6 +320,59 @@ export function isHeldOutReleaseEvaluationEligible(
   return item.split === "held_out" && isReleaseEvaluationEligible(item);
 }
 
+export function buildGoldDatasetReviewQueue(
+  candidates: GoldDatasetCandidate[]
+) {
+  return {
+    schemaVersion: "spec229-human-review-queue-v1" as const,
+    instructions: {
+      candidateReview:
+        "Record a human review with accept_candidate, reject, or needs_adjudication; include reviewer identity, version, timestamp, and rationale.",
+      adjudication:
+        "When reviewers disagree or request adjudication, record an adjudication by a reviewer who is neither the query generator nor a prior reviewer.",
+      sourceUseApproval:
+        "Record owner source/use approval separately from answer review; never infer it from a candidate review.",
+    },
+    entries: candidates
+      .map(item => ({
+        caseId: item.caseId,
+        query: item.query,
+        expectedAnswer: item.expectedAnswer,
+        language: item.language,
+        classes: [...item.classes].sort(),
+        split: item.split,
+        sourceGroupId: item.sourceGroupId,
+        source: item.source,
+        expectedEvidence: item.benchmarkGold,
+        machineReviews: item.reviews.filter(
+          review => review.reviewerType === "agent"
+        ),
+        humanReviews: item.reviews.filter(
+          review => review.reviewerType === "human"
+        ),
+        disagreement: item.disagreement,
+        adjudication: item.adjudication ?? null,
+        humanReviewStatus:
+          reviewState(item) === "accepted" && hasFinalHumanAcceptance(item)
+            ? "HUMAN_ACCEPTED"
+            : reviewState(item) === "rejected" &&
+                item.reviews.some(
+                  review =>
+                    review.reviewerType === "human" &&
+                    review.decision === "reject"
+                )
+              ? "HUMAN_REJECTED"
+              : "PENDING_HUMAN_REVIEW",
+        sourceUseApprovalStatus:
+          item.useApproval === "release_approved" && item.useApprovalEvidence
+            ? "OWNER_APPROVED"
+            : "PENDING_OWNER_SOURCE_USE_APPROVAL",
+        sourceUseApprovalEvidence: item.useApprovalEvidence ?? null,
+      }))
+      .sort((left, right) => left.caseId.localeCompare(right.caseId)),
+  };
+}
+
 export function isReleaseCohortReady(counts: GoldDatasetCounts): boolean {
   return (
     counts.acceptedForGold >= SPEC_229_MIN_RELEASE_GOLD_QUERIES &&
@@ -497,7 +551,8 @@ export function bootstrapMean95(
 
 export function evaluateGoldDataset(
   candidates: GoldDatasetCandidate[],
-  observations: unknown[] | undefined
+  observations: unknown[] | undefined,
+  latencyRuns?: Partial<Record<RetrievalBenchmarkLatencyProfile, unknown[]>>
 ): {
   counts: GoldDatasetCounts;
   metrics: RetrievalBenchmarkMetrics | null;
@@ -540,7 +595,33 @@ export function evaluateGoldDataset(
     language: item.language,
   }));
   const metrics = calculateRetrievalBenchmarkMetrics(cases, rows);
-  const latencyP95ForProfile = (expectedProfile: string): number | null => {
+  const latencyP95ForProfile = (
+    expectedProfile: RetrievalBenchmarkLatencyProfile
+  ): number | null => {
+    if (latencyRuns !== undefined) {
+      const suppliedRun = latencyRuns[expectedProfile];
+      if (!suppliedRun) return null;
+      const profileRows = retrievalBenchmarkObservationSchema
+        .array()
+        .parse(suppliedRun);
+      const latencyRunProfile = getRetrievalBenchmarkProfile(profileRows);
+      const expectedCaseIds = new Set(cases.map(item => item.caseId));
+      const observedCaseIds = new Set(profileRows.map(row => row.caseId));
+      if (
+        latencyRunProfile.latencyProfile !== expectedProfile ||
+        profileRows.length !== cases.length ||
+        observedCaseIds.size !== expectedCaseIds.size ||
+        [...expectedCaseIds].some(caseId => !observedCaseIds.has(caseId)) ||
+        profileRows.some(row => row.latencyMs === undefined)
+      ) {
+        return null;
+      }
+      const profileMetrics = calculateRetrievalBenchmarkMetrics(
+        cases,
+        profileRows
+      );
+      return profileMetrics.p95LatencyMs;
+    }
     if (
       profile.latencyProfile !== expectedProfile ||
       rows.some(row => row.latencyMs === undefined)
@@ -551,9 +632,7 @@ export function evaluateGoldDataset(
   };
   const simpleExactKeywordP95 = latencyP95ForProfile("simple_exact_keyword");
   const hybridRerankP95 = latencyP95ForProfile("hybrid_rerank");
-  const rewriteHybridRerankP95 = latencyP95ForProfile(
-    "rewrite_hybrid_rerank",
-  );
+  const rewriteHybridRerankP95 = latencyP95ForProfile("rewrite_hybrid_rerank");
   if (!releaseCohortReady) {
     return {
       counts,
@@ -694,25 +773,30 @@ export function evaluateGoldDataset(
       id: "simpleExactKeywordP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.simpleExactKeywordP95Ms}ms`,
       value: simpleExactKeywordP95,
-      pass: simpleExactKeywordP95 === null
-        ? null
-        : simpleExactKeywordP95 <= SPEC_229_RELEASE_CRITERIA.simpleExactKeywordP95Ms,
+      pass:
+        simpleExactKeywordP95 === null
+          ? null
+          : simpleExactKeywordP95 <=
+            SPEC_229_RELEASE_CRITERIA.simpleExactKeywordP95Ms,
     },
     {
       id: "hybridRerankP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.hybridRerankP95Ms}ms`,
       value: hybridRerankP95,
-      pass: hybridRerankP95 === null
-        ? null
-        : hybridRerankP95 <= SPEC_229_RELEASE_CRITERIA.hybridRerankP95Ms,
+      pass:
+        hybridRerankP95 === null
+          ? null
+          : hybridRerankP95 <= SPEC_229_RELEASE_CRITERIA.hybridRerankP95Ms,
     },
     {
       id: "rewriteHybridRerankP95Ms",
       threshold: `<= ${SPEC_229_RELEASE_CRITERIA.rewriteHybridRerankP95Ms}ms`,
       value: rewriteHybridRerankP95,
-      pass: rewriteHybridRerankP95 === null
-        ? null
-        : rewriteHybridRerankP95 <= SPEC_229_RELEASE_CRITERIA.rewriteHybridRerankP95Ms,
+      pass:
+        rewriteHybridRerankP95 === null
+          ? null
+          : rewriteHybridRerankP95 <=
+            SPEC_229_RELEASE_CRITERIA.rewriteHybridRerankP95Ms,
     },
   ];
   const releaseCriteria = values.map(value => ({

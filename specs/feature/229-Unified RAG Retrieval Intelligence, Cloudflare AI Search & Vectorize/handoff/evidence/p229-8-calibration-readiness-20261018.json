@@ -1,0 +1,101 @@
+{
+  "schema_version": "spec229-p2298-calibration-readiness-v1",
+  "workunit": "P229.8_NEGATIVE_CONTROLS_AND_CALIBRATION_READINESS",
+  "base_canonical_sha": "943cc9cb285f1f0019b6fbd6612f1df85d6d10ae",
+  "source_commit_sha": "9a75751e9aee5e538605125fcc7ccfa089122db7",
+  "scope": "Synthetic negative-control verification, gold dataset readiness, benchmark observation coverage, and fail-closed calibration harness readiness. No retrieval provider was called.",
+  "negative_controls": {
+    "classification": "Injected synthetic controls; not observations from retrieval execution.",
+    "expected_counts": {
+      "cross_tenant_leakage": 1,
+      "unauthorized_evidence_leakage": 1,
+      "stale_or_revoked_evidence_accepted": 3,
+      "unsafe_partial_or_outage_answers": 1
+    },
+    "positive_control": "Clean synthetic observations produce zero security/freshness/partial-outage failures and citation/freshness metrics of 1.0.",
+    "release_behavior": "Injected failures make the release evaluator FAIL. No threshold or evidence-strength mapping changed.",
+    "actual_retrieval_execution": "NOT RUN; synthetic fixtures only."
+  },
+  "dataset": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+    "sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+    "candidate_queries": 560,
+    "unique_case_ids": 560,
+    "unique_normalized_queries": 560,
+    "source_groups": 276,
+    "split_counts": {
+      "development": 560,
+      "calibration": 0,
+      "held_out": 0
+    },
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "source_use": "Repository-backed MIT sources validated by pinned SHA-256, canonical line span, and quote hash. All remain development-only; no tenant production data used.",
+    "sampling_and_leakage": "Current corpus has no held-out split. Source-group split validator prevents a canonical source from crossing splits. No existing candidate was relabeled or duplicated into held-out."
+  },
+  "review_queue": {
+    "command": "pnpm --filter @smartspec/web exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json --review-queue-file /tmp/spec229-p2298-review-queue-20261018.json",
+    "entries": 560,
+    "human_review_status": "PENDING_HUMAN_REVIEW for all entries",
+    "source_use_approval_status": "PENDING_OWNER_SOURCE_USE_APPROVAL for all entries",
+    "overwrite_behavior": "Exclusive create; existing queue files are not overwritten.",
+    "human_acceptance_semantics": "Conflicting or pending human reviews remain pending; human acceptance requires an accepted, resolved review state."
+  },
+  "observations": {
+    "canonical_comparison_profiles": {
+      "legacy_baseline": "NOT_PROVIDED",
+      "vectorize_dense": "NOT_PROVIDED",
+      "ai_search_bm25": "NOT_PROVIDED",
+      "ai_search_vector": "NOT_PROVIDED",
+      "hybrid_rrf": "NOT_PROVIDED",
+      "hybrid_reranker": "NOT_PROVIDED",
+      "conditional_rewrite": "NOT_PROVIDED",
+      "multi_query": "NOT_PROVIDED"
+    },
+    "latency_cost_profiles": {
+      "simple_exact_keyword": "NOT_PROVIDED",
+      "hybrid_rerank": "NOT_PROVIDED",
+      "rewrite_hybrid_rerank": "NOT_PROVIDED"
+    },
+    "release_criteria": {
+      "pass": 0,
+      "fail": 0,
+      "not_evaluable": 15
+    },
+    "baseline": "No development observation baseline exists because no authorized retrieval execution observations were available."
+  },
+  "verification": {
+    "command": "pnpm --filter @smartspec/web exec vitest run server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+    "result": "PASS: 5 test files, 25 tests.",
+    "format": "PASS: Prettier check for all six changed implementation/test files.",
+    "fast_gate": "PASS: git diff --check; no conflict markers; task-owned paths only.",
+    "independent_review": "PASS after repair of conflicting-human-review queue status and addition of case-keyed regression coverage.",
+    "lint": "NOT RUN: workspace eslint resolved legacy ESLint 6.4.0 with no configuration file in this isolated source tree.",
+    "typecheck": "NOT RUN: repository policy prohibits local repository-wide typecheck in shared implementation sessions.",
+    "production_verification": "NOT CLAIMED."
+  },
+  "implementation": {
+    "observation_bundle": "Backward-compatible named profile bundle validates A-H comparison identity and three separate latency/cost profile identities; certification requires exact complete case coverage for all profiles.",
+    "metric_aggregation": "Leakage confidence intervals use observed-case denominators; per-class confidence intervals are unavailable unless observations cover the full class cohort.",
+    "thresholds": "SPEC-229 \u00a727 thresholds unchanged.",
+    "review_queue": "Deterministic queue separates human answer review from source/use approval and never upgrades candidate status automatically."
+  },
+  "blockers": [
+    "At least 500 queries still require the canonical human review/adjudication and source-use approval process, with a release-approved held-out cohort.",
+    "Authorized retrieval observations are required for all \u00a727 profiles A-H and latency/cost profiles before release criteria can be evaluated.",
+    "Provider credentials/runtime and tenant/source access authorization are not available in this development session."
+  ],
+  "acceptance": {
+    "workunit": "IMPLEMENTATION_AND_DEVELOPMENT_READINESS_PASS",
+    "p229_8": "BLOCKED_PENDING_HUMAN_GOLD_COHORT_AND_AUTHORIZED_OBSERVATIONS",
+    "production_verified": false
+  },
+  "pr": {
+    "number": 1083,
+    "url": "https://github.com/naibarn/SmartSpecPro/pull/1083",
+    "status": "OPEN_PENDING_REQUIRED_CHECKS"
+  }
+}

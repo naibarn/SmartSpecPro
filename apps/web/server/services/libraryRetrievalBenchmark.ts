@@ -13,56 +13,73 @@ export const retrievalBenchmarkGoldCaseSchema = z.object({
   shouldCite: z.boolean(),
   language: z.enum(["thai", "english", "mixed"]).optional(),
   exactIdentifier: z.boolean().default(false),
-  gradedRelevantEvidence: z.array(z.object({ id: z.string(), relevance: z.number().min(0) })).default([]),
+  gradedRelevantEvidence: z
+    .array(z.object({ id: z.string(), relevance: z.number().min(0) }))
+    .default([]),
 });
+
+export const RETRIEVAL_BENCHMARK_LATENCY_PROFILES = [
+  "simple_exact_keyword",
+  "hybrid_rerank",
+  "rewrite_hybrid_rerank",
+] as const;
+export const RETRIEVAL_BENCHMARK_COMPARISON_PROFILES = [
+  "legacy_baseline",
+  "vectorize_dense",
+  "ai_search_bm25",
+  "ai_search_vector",
+  "hybrid_rrf",
+  "hybrid_reranker",
+  "conditional_rewrite",
+  "multi_query",
+] as const;
+export type RetrievalBenchmarkComparisonProfile =
+  (typeof RETRIEVAL_BENCHMARK_COMPARISON_PROFILES)[number];
+export type RetrievalBenchmarkLatencyProfile =
+  (typeof RETRIEVAL_BENCHMARK_LATENCY_PROFILES)[number];
 
 export const retrievalBenchmarkObservationSchema = z.object({
   caseId: z.string().min(1),
   // Optional for backward compatibility with existing observation fixtures.
   // Each benchmark run may identify one §27 comparison arm and one latency gate.
-  comparisonProfile: z.enum([
-    "legacy_baseline",
-    "vectorize_dense",
-    "ai_search_bm25",
-    "ai_search_vector",
-    "hybrid_rrf",
-    "hybrid_reranker",
-    "conditional_rewrite",
-    "multi_query",
-  ]).optional(),
-  latencyProfile: z.enum([
-    "simple_exact_keyword",
-    "hybrid_rerank",
-    "rewrite_hybrid_rerank",
-  ]).optional(),
+  comparisonProfile: z.enum(RETRIEVAL_BENCHMARK_COMPARISON_PROFILES).optional(),
+  latencyProfile: z.enum(RETRIEVAL_BENCHMARK_LATENCY_PROFILES).optional(),
   answerSupported: z.boolean(),
   coveredClaims: z.array(z.string()),
-  evidence: z.array(z.object({
-    evidenceId: z.string(),
-    tenantId: z.string(),
-    revision: z.string(),
-    digest: z.string().regex(/^[a-f0-9]{64}$/),
-    authorityRank: z.number().int().min(0),
-    authorized: z.boolean(),
-    revoked: z.boolean().default(false),
-    deleted: z.boolean().default(false),
-  })),
-  citations: z.array(z.object({
-    evidenceId: z.string(),
-    revision: z.string(),
-    digest: z.string().regex(/^[a-f0-9]{64}$/),
-    lineStart: z.number().int().positive(),
-    lineEnd: z.number().int().positive(),
-    quoteHash: z.string().regex(/^[a-f0-9]{64}$/),
-    markdown: z.string(),
-  })),
+  evidence: z.array(
+    z.object({
+      evidenceId: z.string(),
+      tenantId: z.string(),
+      revision: z.string(),
+      digest: z.string().regex(/^[a-f0-9]{64}$/),
+      authorityRank: z.number().int().min(0),
+      authorized: z.boolean(),
+      revoked: z.boolean().default(false),
+      deleted: z.boolean().default(false),
+    })
+  ),
+  citations: z.array(
+    z.object({
+      evidenceId: z.string(),
+      revision: z.string(),
+      digest: z.string().regex(/^[a-f0-9]{64}$/),
+      lineStart: z.number().int().positive(),
+      lineEnd: z.number().int().positive(),
+      quoteHash: z.string().regex(/^[a-f0-9]{64}$/),
+      markdown: z.string(),
+    })
+  ),
   providerState: z.enum(["complete", "partial", "outage"]),
   latencyMs: z.number().nonnegative().optional(),
   costMicros: z.number().nonnegative().optional(),
 });
 
-export type RetrievalBenchmarkGoldCase = z.infer<typeof retrievalBenchmarkGoldCaseSchema>;
-export type RetrievalBenchmarkObservation = z.infer<typeof retrievalBenchmarkObservationSchema>;
+export type RetrievalBenchmarkGoldCase = z.infer<
+  typeof retrievalBenchmarkGoldCaseSchema
+>;
+export type RetrievalBenchmarkObservation = z.infer<
+  typeof retrievalBenchmarkObservationSchema
+>;
 
 export interface RetrievalBenchmarkProfile {
   comparisonProfile: RetrievalBenchmarkObservation["comparisonProfile"] | null;
@@ -70,21 +87,21 @@ export interface RetrievalBenchmarkProfile {
 }
 
 export function getRetrievalBenchmarkProfile(
-  observations: RetrievalBenchmarkObservation[],
+  observations: RetrievalBenchmarkObservation[]
 ): RetrievalBenchmarkProfile {
   const comparisonProfiles = new Set(
-    observations.map(row => row.comparisonProfile ?? null),
+    observations.map(row => row.comparisonProfile ?? null)
   );
   const latencyProfiles = new Set(
-    observations.map(row => row.latencyProfile ?? null),
+    observations.map(row => row.latencyProfile ?? null)
   );
   if (comparisonProfiles.size > 1)
     throw new Error(
-      "Benchmark observations must use one comparison profile per run",
+      "Benchmark observations must use one comparison profile per run"
     );
   if (latencyProfiles.size > 1)
     throw new Error(
-      "Benchmark observations must use one latency profile per run",
+      "Benchmark observations must use one latency profile per run"
     );
   return {
     comparisonProfile: observations[0]?.comparisonProfile ?? null,
@@ -130,25 +147,41 @@ export interface RetrievalBenchmarkMetrics {
 
 export function isCitationValid(
   citation: RetrievalBenchmarkObservation["citations"][number],
-  evidence: RetrievalBenchmarkObservation["evidence"][number] | undefined,
+  evidence: RetrievalBenchmarkObservation["evidence"][number] | undefined
 ): boolean {
-  if (!evidence || citation.revision !== evidence.revision || citation.digest !== evidence.digest) return false;
+  if (
+    !evidence ||
+    citation.revision !== evidence.revision ||
+    citation.digest !== evidence.digest
+  )
+    return false;
   const markdown = normalizeCanonicalMarkdown(citation.markdown);
   if (sha256(markdown) !== citation.digest) return false;
   const lines = markdown.split("\n");
-  if (citation.lineEnd < citation.lineStart || citation.lineEnd > lines.length) return false;
-  const quote = lines.slice(citation.lineStart - 1, citation.lineEnd).join("\n");
+  if (citation.lineEnd < citation.lineStart || citation.lineEnd > lines.length)
+    return false;
+  const quote = lines
+    .slice(citation.lineStart - 1, citation.lineEnd)
+    .join("\n");
   return sha256(quote) === citation.quoteHash;
 }
 
 export function calculateRetrievalBenchmarkMetrics(
   cases: RetrievalBenchmarkGoldCase[],
-  observations: RetrievalBenchmarkObservation[],
+  observations: RetrievalBenchmarkObservation[]
 ): RetrievalBenchmarkMetrics {
-  if (cases.length !== observations.length) throw new Error("Benchmark case/observation count mismatch");
-  const observationsByCaseId = new Map(observations.map(observation => [observation.caseId, observation]));
-  if (observationsByCaseId.size !== observations.length || cases.some(item => !observationsByCaseId.has(item.caseId))) {
-    throw new Error("Benchmark observations must contain each gold caseId exactly once");
+  if (cases.length !== observations.length)
+    throw new Error("Benchmark case/observation count mismatch");
+  const observationsByCaseId = new Map(
+    observations.map(observation => [observation.caseId, observation])
+  );
+  if (
+    observationsByCaseId.size !== observations.length ||
+    cases.some(item => !observationsByCaseId.has(item.caseId))
+  ) {
+    throw new Error(
+      "Benchmark observations must contain each gold caseId exactly once"
+    );
   }
   let relevantTotal = 0;
   let relevantRecovered = 0;
@@ -187,11 +220,18 @@ export function calculateRetrievalBenchmarkMetrics(
 
   for (let index = 0; index < cases.length; index += 1) {
     const gold = retrievalBenchmarkGoldCaseSchema.parse(cases[index]);
-    const observed = retrievalBenchmarkObservationSchema.parse(observationsByCaseId.get(gold.caseId));
-    const evidenceById = new Map(observed.evidence.map(item => [item.evidenceId, item]));
-    const relevantIds = gold.gradedRelevantEvidence.length > 0
-      ? gold.gradedRelevantEvidence.filter(item => item.relevance > 0).map(item => item.id)
-      : gold.requiredEvidenceIds;
+    const observed = retrievalBenchmarkObservationSchema.parse(
+      observationsByCaseId.get(gold.caseId)
+    );
+    const evidenceById = new Map(
+      observed.evidence.map(item => [item.evidenceId, item])
+    );
+    const relevantIds =
+      gold.gradedRelevantEvidence.length > 0
+        ? gold.gradedRelevantEvidence
+            .filter(item => item.relevance > 0)
+            .map(item => item.id)
+        : gold.requiredEvidenceIds;
     const rankedIds = observed.evidence.map(item => item.evidenceId);
     relevantTotal += relevantIds.length;
     relevantRecovered += relevantIds.filter(id => evidenceById.has(id)).length;
@@ -204,24 +244,51 @@ export function calculateRetrievalBenchmarkMetrics(
       }
       const rank = rankedIds.findIndex(id => relevantIds.includes(id)) + 1;
       reciprocalRanks.push(rank > 0 && rank <= 10 ? 1 / rank : 0);
-      const gains = gold.gradedRelevantEvidence.length > 0
-        ? new Map(gold.gradedRelevantEvidence.map(item => [item.id, item.relevance]))
-        : new Map(relevantIds.map(id => [id, 1]));
-      const dcg = rankedIds.slice(0, 10).reduce((sum, id, index) => sum + ((2 ** (gains.get(id) ?? 0) - 1) / Math.log2(index + 2)), 0);
-      const ideal = [...gains.values()].sort((a, b) => b - a).slice(0, 10)
-        .reduce((sum, relevance, index) => sum + ((2 ** relevance - 1) / Math.log2(index + 2)), 0);
+      const gains =
+        gold.gradedRelevantEvidence.length > 0
+          ? new Map(
+              gold.gradedRelevantEvidence.map(item => [item.id, item.relevance])
+            )
+          : new Map(relevantIds.map(id => [id, 1]));
+      const dcg = rankedIds
+        .slice(0, 10)
+        .reduce(
+          (sum, id, index) =>
+            sum + (2 ** (gains.get(id) ?? 0) - 1) / Math.log2(index + 2),
+          0
+        );
+      const ideal = [...gains.values()]
+        .sort((a, b) => b - a)
+        .slice(0, 10)
+        .reduce(
+          (sum, relevance, index) =>
+            sum + (2 ** relevance - 1) / Math.log2(index + 2),
+          0
+        );
       ndcgs.push(ideal === 0 ? 0 : dcg / ideal);
-      if (gold.exactIdentifier) exactIdentifierHits.push(rankedIds.slice(0, 5).some(id => relevantIds.includes(id)) ? 1 : 0);
+      if (gold.exactIdentifier)
+        exactIdentifierHits.push(
+          rankedIds.slice(0, 5).some(id => relevantIds.includes(id)) ? 1 : 0
+        );
       if (gold.language) {
-        const recallAt20 = relevantIds.filter(id => rankedIds.slice(0, 20).includes(id)).length / relevantIds.length;
-        const bucket = gold.language === "thai" ? "thai" : gold.language === "english" ? "english" : "mixed";
+        const recallAt20 =
+          relevantIds.filter(id => rankedIds.slice(0, 20).includes(id)).length /
+          relevantIds.length;
+        const bucket =
+          gold.language === "thai"
+            ? "thai"
+            : gold.language === "english"
+              ? "english"
+              : "mixed";
         const values = languageRecall.get(bucket) ?? [];
         values.push(recallAt20);
         languageRecall.set(bucket, values);
       }
     }
     requiredClaimTotal += gold.requiredClaims.length;
-    coveredClaimTotal += gold.requiredClaims.filter(claim => observed.coveredClaims.includes(claim)).length;
+    coveredClaimTotal += gold.requiredClaims.filter(claim =>
+      observed.coveredClaims.includes(claim)
+    ).length;
     citationsTotal += observed.citations.length;
     const validCitationCount = observed.citations.filter(citation => {
       const evidence = evidenceById.get(citation.evidenceId);
@@ -244,15 +311,24 @@ export function calculateRetrievalBenchmarkMetrics(
       if (item.tenantId !== gold.tenantId) crossTenantLeakage += 1;
       if (!item.authorized) unauthorizedEvidenceLeakage += 1;
       if (item.tenantId !== gold.tenantId || !item.authorized) aclLeakage += 1;
-      if (item.revoked || item.deleted || (gold.expectedRevision && item.revision !== gold.expectedRevision)) {
+      if (
+        item.revoked ||
+        item.deleted ||
+        (gold.expectedRevision && item.revision !== gold.expectedRevision)
+      ) {
         staleAccepted += 1;
       }
       freshnessTotal += 1;
-      if (!item.revoked && !item.deleted && (!gold.expectedRevision || item.revision === gold.expectedRevision)) {
+      if (
+        !item.revoked &&
+        !item.deleted &&
+        (!gold.expectedRevision || item.revision === gold.expectedRevision)
+      ) {
         freshnessCorrect += 1;
       }
       authorityTotal += 1;
-      if (item.authorityRank >= gold.minimumAuthorityRank) authorityCorrect += 1;
+      if (item.authorityRank >= gold.minimumAuthorityRank)
+        authorityCorrect += 1;
     }
 
     if (!gold.supportsAnswer) {
@@ -273,7 +349,13 @@ export function calculateRetrievalBenchmarkMetrics(
   const safeRatio = (numerator: number, denominator: number): number | null =>
     denominator === 0 ? null : Number((numerator / denominator).toFixed(6));
   const mean = (values: number[]): number | null =>
-    values.length === 0 ? null : Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(6));
+    values.length === 0
+      ? null
+      : Number(
+          (
+            values.reduce((sum, value) => sum + value, 0) / values.length
+          ).toFixed(6)
+        );
   const percentile = (values: number[], p: number): number | null => {
     if (values.length === 0) return null;
     const sorted = [...values].sort((a, b) => a - b);
@@ -298,7 +380,10 @@ export function calculateRetrievalBenchmarkMetrics(
     mixedRecallAt20: mean(languageRecall.get("mixed") ?? []),
     evidenceCoverage: safeRatio(coveredClaimTotal, requiredClaimTotal) ?? 0,
     citationPrecision: safeRatio(citationsValid, citationsTotal),
-    citationAvailability: safeRatio(citationAvailableCases, citationRequiredCases),
+    citationAvailability: safeRatio(
+      citationAvailableCases,
+      citationRequiredCases
+    ),
     freshnessCorrectness: safeRatio(freshnessCorrect, freshnessTotal) ?? 1,
     authorityCorrectness: safeRatio(authorityCorrect, authorityTotal) ?? 1,
     aclLeakage,
@@ -306,8 +391,14 @@ export function calculateRetrievalBenchmarkMetrics(
     unauthorizedEvidenceLeakage,
     unsafePartialOrOutageAnswers,
     staleOrRevokedEvidenceAccepted: staleAccepted,
-    noAnswerPrecision: safeRatio(noAnswerTruePositive, noAnswerTruePositive + noAnswerFalsePositive),
-    noAnswerRecall: noAnswerCases === 0 ? null : safeRatio(noAnswerTruePositive, noAnswerCases),
+    noAnswerPrecision: safeRatio(
+      noAnswerTruePositive,
+      noAnswerTruePositive + noAnswerFalsePositive
+    ),
+    noAnswerRecall:
+      noAnswerCases === 0
+        ? null
+        : safeRatio(noAnswerTruePositive, noAnswerCases),
     partialOrOutageResults,
     p50LatencyMs: percentile(latencies, 50),
     p95LatencyMs: percentile(latencies, 95),
