@@ -1,0 +1,35 @@
+{
+  "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+  "profile": "quick",
+  "ledgers": [
+    {
+      "spec_id": "277",
+      "valid": true,
+      "completion_eligible": false,
+      "validation_errors": [],
+      "remaining_reason_count": 445
+    },
+    {
+      "spec_id": "294",
+      "valid": true,
+      "completion_eligible": false,
+      "validation_errors": [],
+      "remaining_reason_count": 502
+    },
+    {
+      "spec_id": "088",
+      "valid": true,
+      "completion_eligible": false,
+      "validation_errors": [],
+      "remaining_reason_count": 59
+    }
+  ],
+  "index": {
+    "record_count": 473,
+    "canonical_spec_count": 316,
+    "global_invariant": true,
+    "drift": [],
+    "per_spec_status_drift": [],
+    "written": false
+  }
+}

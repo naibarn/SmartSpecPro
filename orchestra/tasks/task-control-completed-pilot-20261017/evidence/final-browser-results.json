@@ -1,0 +1,25 @@
+{
+  "profile": "quick",
+  "runtime": "isolated actual component + retained canonical fixture; simulated authentication; no live production acceptance",
+  "results": [
+    {
+      "width": 1440,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 768,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 390,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    }
+  ],
+  "errors": [],
+  "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+  "fixture_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+  "moli": "UNVERIFIED; unavailable, existing Chromium used"
+}

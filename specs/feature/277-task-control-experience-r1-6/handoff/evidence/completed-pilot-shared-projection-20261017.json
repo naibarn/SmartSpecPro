@@ -29,7 +29,25 @@
       "apps/web/shared/taskAcceptanceProjection.test.ts": "e64e49fff7fd1ff9040354083f0e0683dc9bbb039b5319bb656e01248b183ceb",
       "apps/web/shared/taskAcceptanceProjection.ts": "eb54600bdc6d1053f17cef7d227d24a964f1ef79e82778a42b4677f9db7f12ac"
     },
-    "integrated_sha": null
+    "integrated_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+    "implementation_head": "0eefe4ce7d1276c904940c1d58aaa9cca1ed2776",
+    "latest_integrated_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "latest_owned_file_sha256": {
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "92e865d3b95c3c8c053d6c352d0ef8c7efdce8ef5180378ecdc1b61fdd3d3c87",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx": "c9d66bcffbd7f0e753dba7601f5f37bf9be3c478754f8e1da2cfe5b49345162e",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx": "8784595bbf9895cd2b3fae6ca33fde820ce3e99192bc0e29a913e137d1322a9c",
+      "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts": "938f550c1cb2fc32e81f9ad45e76dcecd786139bb675d1468575384119314402",
+      "apps/web/server/services/__tests__/completedPilotAcceptance.test.ts": "225208ee57077c3bf3a03f51dfadc6fc5ad977fd2df024e45aa7a39615178337",
+      "apps/web/server/services/__tests__/fixtures/completedAutonomousPilot.ts": "a5885427973f557bbb0ceb26613d0770a2ca34dd5b2fa2023dc09e9174d88aeb",
+      "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts": "baeaaa1fd8df7357f28fa9781be4f997c7d5f08b8bf9a470b7e8fe781ef7a5f7",
+      "apps/web/server/services/__tests__/taskObservabilityAcceptance.test.ts": "582f9302cd5eae9890f3100742381acb9929a7f65c987a48b8a1b9638cb25885",
+      "apps/web/server/services/__tests__/taskObservabilityReadModel.test.ts": "df706d277a411f42424edc4543b44ee3f15bc0261d2c376674567baed1589ddb",
+      "apps/web/server/services/taskObservabilityAcceptance.ts": "d3c585a46fcc04d0382b962336c1e937c84307f6bfa7be1b64092e5ce37a2266",
+      "apps/web/server/services/taskObservabilityReadModel.ts": "77f03b36ae242882239b8262e364f80d88da7d7d4711c942ed7d7c6038d7a40e",
+      "apps/web/shared/taskAcceptanceProjection.test.ts": "9e3703127199246154498072e46eccbc6d7dd3e02e61d63fd0837c6ff70c7d46",
+      "apps/web/shared/taskAcceptanceProjection.ts": "e7d381bd59e8a4136373aa58c36e9c698ec04239927886fd766816ed0460a738",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.test.tsx": "5f2e281c155743882d948d8c6eb43d2e30728d00d57976a312565db2c7e5a954"
+    }
   },
   "scope": "Read-only Task Control projection and consumer plus actual retained pilot regression; no execution or usage ledger created",
   "verification": {
@@ -78,7 +96,16 @@
       "Raw source reference graph bypassed existing credential sanitizer",
       "Comparator could certify malformed or unknown evidence"
     ],
-    "final_parent_checks": "76 scoped tests, targeted strict compile, esbuild syntax and browser fixture passed"
+    "final_parent_checks": "76 scoped tests, targeted strict compile, esbuild syntax and browser fixture passed",
+    "final_review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+      "requested_model": "gpt-6-luna",
+      "effective_model": "UNVERIFIED: no provider-confirmed usage receipt supplied",
+      "status": "NO_BLOCKING_FINDINGS",
+      "method": "Read-only source review of exact integrated code; no repeated tests",
+      "limits": "Typed comparator is internal; malformed object shapes outside its TypeScript contract can throw. No unvalidated JSON route currently consumes it."
+    }
   },
   "fixture": {
     "source_verification_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
@@ -119,7 +146,8 @@
     "Do not promote job-supplied goal baseline into authority",
     "Expose only sanitized source references after canonical tenant/owner check",
     "Keep test rate, verified Goal and parent closure separate",
-    "Browser UAT is isolated fixture acceptance; live production remains unverified"
+    "Browser UAT is isolated fixture acceptance; live production remains unverified",
+    "Require matching read-source scope kind/id, Goalid, baselineversion/digest; a childPilot baseline cannot certify its parentSpec/project. Negative regression failedactual100 before repair; runtime absentproducer remainsUnknown."
   ],
   "remaining": [
     "Trusted canonical Goal/WU baseline producer is not linked to Task Control; runtime correctly returns Unknown until bound",
@@ -139,14 +167,388 @@
       "scope": "pure projection/comparability and independent API/UI review",
       "status": "COMPLETED",
       "useful": true
+    },
+    {
+      "id": "/root/task_control_pilot_final_review",
+      "scope": "final independent API/shared/UI review at exact integrated SHA",
+      "status": "COMPLETED",
+      "useful": true
     }
   ],
   "retained_artifacts": {
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-768.png": "a26bd68c814d1443932d81b9a1a677c36b06616bea141430e511ef75044fc18b",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/browser-results.json": "9db66470c971f4c60ff2d358b25c61db1da2cfe74da9222164e610725b653768",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-acceptance-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-acceptance-768.png": "a26bd68c814d1443932d81b9a1a677c36b06616bea141430e511ef75044fc18b",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-browser-results.json": "32d652a72d354fab0fc351518ea3c015827d24355c026fa333cec3f9c3477bbc",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-task-control-focused.log": "32a9d687d936c2f32271ced7ad68b0607ffa5e7d3ccadc3faf1003350df83c9f",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/final-task-control-focused.resources.json": "5eb858b0cfc382bfaec4ea601938b8ee0885a5743cbc8e3efe80606408d8e946",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/git-base-reconciliation-tests.log": "fa28b88f3f8aa9eeaf8b4de2cffb66dceb216fb691bdd84189b6bf98e08d37e4",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/git-base-reconciliation-tests.resources.json": "c3fa5a322131bbb01badee38227a6c67a2c70235c327c5cdf5db9372ad1d4ca4",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pilot-current-source-tests.json": "2e387f2a5eb4313c3f94eca47162b18a0735a01b1a841652df52452d1dc6ee9e",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pilot-current-source.log": "98378c89418e98fb66e8213b0fb00e5a505a335adf81f574b6851f1cde048117",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pilot-current-source.resources.json": "2483658ebcc792e80d09de3251fc4b7f37e2644dd23e81e6f44bee28cc0dff30",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/post-integration-focused.log": "b642e65192e06c2cd74b368bcadf826136ab7a7ddcb0b04849cf9c588cb5ce1f",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/post-integration-focused.resources.json": "64d0de8118de64b58ea185f5bf2b7904aa00203722314fdd59a6f6d0c51fee66",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1014-protected-promotion.json": "bc2c893ae4c10ff0e91608ce7eba28ea30a18ab7460dfa824484ca5dd2f03467",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1014-verified-merge.json": "cab41393c3cf5c23dcff401ee58aceb08033e3e01f0ee6ceb8208ff66f9526d0",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1018-first-base-block.json": "72627e134a916f8dd25a9f15335b07aba295d64f1e27a490c69e18858f61222c",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1018-reconciled-protected-promotion.json": "7dcdd437410892b9c58bf3e46948ce0b6c06caab2e27a5433e32772b7618d0c0",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1018-verified-merge.json": "332df249b6bf8eed0c7bcb48e2900fe0c9f8638274ca2ee2802b4dfbb150c5b3",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1026-protected-promotion.json": "1e3dadff0b77f3a03b7a254845aa9060089763cbf3305520c75689d4a454ff4b",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1026-verified-merge.json": "e12dc01f4029756cd1e7bf39be219f913124bca33659d2b51bac3dc48ff12bc8",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1028-protected-promotion.json": "10342f9f9e17a80b36b81b0df813254db12ad2ba93dc06c43faab98f152643dd",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pr1028-verified-merge.json": "54e462b18b24aa12bc1be1183ea1238d2e01ffe8d5eb93db117445512ba1115a",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/r5-current-source.json": "34351d5718732c695117091ad700ab402242cadfcea754930843f0b8289c9503",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/r5-current-source.log": "112b1abc8d9e92e03ecf2ec101a3f2d4795c4a94b6038918de766dde23b81526",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-acceptance-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-acceptance-768.png": "a26bd68c814d1443932d81b9a1a677c36b06616bea141430e511ef75044fc18b",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-browser-results.json": "43739085ab55ac74cf77bfba447a40839ec7d8e361ba0acf298cd13f118ebc75",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-post-integration-focused.log": "ed2579a4688fd5afb732332b2f3b58e60046f09bd6b828a1d139c51ec0871799",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-post-integration-focused.resources.json": "aab759cb0e20bae3a92436973d35a367bbac5570e35e12752a204a8998885f12",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/snapshot-repair-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/snapshot-repair-browser.json": "9db66470c971f4c60ff2d358b25c61db1da2cfe74da9222164e610725b653768",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/snapshot-repair-focused.log": "56aed66eb99623590c446f3c24885505eb31bbe91217f4b202f313189a9f6dd1",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/snapshot-repair-focused.resources.json": "f42f3f5618fcda800a6264567edf96c60386fde35c408f952aa264b1cd0431d5",
     "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.log": "ee097ea4e3906a339bb2413ae24e98224727c1f2333a25468ea6a4d994889c33",
     "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.resources.json": "b514dbcdeac293b329f07ba78867005c38f9aa82a69de45286458fb8faefd1fb",
-    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/browser-results.json": "9db66470c971f4c60ff2d358b25c61db1da2cfe74da9222164e610725b653768",
-    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",
-    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-768.png": "a26bd68c814d1443932d81b9a1a677c36b06616bea141430e511ef75044fc18b",
-    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649"
-  }
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/canonical-ledger-index-validation.json": "d735a09b45d40147ae475c0c70a1a2b23e454efa18ddb008af901c811d4631ce"
+  },
+  "integration": {
+    "pr": 1014,
+    "merge_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+    "merged_at": "2026-10-17T03:11:10Z",
+    "reachable_from_origin_main": true,
+    "owned_source_hashes_verified": 13,
+    "required_checks": "progressive_integration_gate and Mocked SPEC-308 browser simulation SUCCESS; build-preview SKIPPED (not PASS)",
+    "receipt_freshness": "Promotion executor retains an initial OPEN snapshot field; subsequent independent GitHub read in pr1014-verified-merge.json confirms MERGED and exact SHA."
+  },
+  "post_integration": {
+    "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+    "task_control": {
+      "passed": 76,
+      "total": 76,
+      "files": 11,
+      "resource": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/post-integration-focused.resources.json"
+    },
+    "original_pilot_reverification": {
+      "passed": 295,
+      "total": 295,
+      "files": 26,
+      "skipped": 0,
+      "resource": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/pilot-current-source.resources.json"
+    },
+    "r5_native_http": {
+      "passed": 5,
+      "total": 5,
+      "authentication": "simulated",
+      "cleanup": "PASS: owner-marked cluster absent",
+      "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db"
+    },
+    "aggregation_rule": "Independent acceptance sets; never sum their pass rates into Goal progress or replace the historical3190569a fixture."
+  },
+  "workspace_convergence": {
+    "workspace": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+    "head": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "branch": "main",
+    "dirty_path_count": 75,
+    "action": "read-only observation; unrelated changes preserved",
+    "status": "DIRTY_WORK_PRESERVED",
+    "next_action": "Continue from owned exact-SHA workspace; primary75 unrelated dirty paths were preserved."
+  },
+  "snapshot_repair": {
+    "id": "TASK_CONTROL_STALE_CACHED_ACCEPTANCE_REPAIR",
+    "source_base_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+    "status": "VERIFIED_IN_MAIN",
+    "writable_paths": [
+      "apps/web/shared/taskAcceptanceProjection.ts",
+      "apps/web/shared/taskAcceptanceProjection.test.ts",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.test.tsx"
+    ],
+    "source_file_sha256": {
+      "apps/web/shared/taskAcceptanceProjection.ts": "3c0526df49aa0410e32fc83ac010ecab1d9662aa133f081b73a4206cb0bebbb5",
+      "apps/web/shared/taskAcceptanceProjection.test.ts": "6572129c9cc50b523fba4a18b9edcfe59f19c9f0ee8944ea3232d3df54cf51a7",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx": "c9d66bcffbd7f0e753dba7601f5f37bf9be3c478754f8e1da2cfe5b49345162e",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "b96e679069d8442837514c6e90000e0261d138246344c029f2539968514b8614",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx": "8784595bbf9895cd2b3fae6ca33fde820ce3e99192bc0e29a913e137d1322a9c",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.test.tsx": "5f2e281c155743882d948d8c6eb43d2e30728d00d57976a312565db2c7e5a954"
+    },
+    "job_id": null,
+    "run_id": null,
+    "runtime": "nonproduction direct scoped UI/shared repair; no dispatch or ledger writes",
+    "acceptance": [
+      "A mounted current snapshot expires to stale without losing historical receipts",
+      "Unknown or invalid clocks withhold current accounting; stale never upgrades",
+      "Failed authorized detail/list/runner/aggregate reads hide cached data"
+    ],
+    "tests": "80/80 at reconciled9462a0a8; exact six owned source hashes unchanged from6cdb5e106",
+    "implementation_commit": "6cdb5e106024fa4719fe66c0c2cd21aa43441378",
+    "independent_review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "source_sha": "6cdb5e106024fa4719fe66c0c2cd21aa43441378",
+      "status": "NO_BLOCKING_FINDINGS",
+      "method": "Read-only03f095534review plus final6cdb5e106delta review"
+    },
+    "source_note": "80 tests run on base472 plus these six exact owned files; hashes bind the same sources at committed03f095534. Original295 and native5 evidence remain bound independently to472.",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1018",
+    "reconciled_head": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+    "reconciliation": {
+      "reason": "BASE_REF_STALE detected by protected executor; normal non-force merge of latest canonical1cba46b8",
+      "owned_sources_changed": false,
+      "no_conflicts": true
+    },
+    "test_source_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+    "merge_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+    "merge_pr": 1018,
+    "post_integration": {
+      "passed": 80,
+      "total": 80,
+      "files": 11,
+      "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e"
+    }
+  },
+  "git_reconciliation_repair": {
+    "id": "PILOT_GIT_BASE_SNAPSHOT_RECONCILIATION",
+    "writable_paths": [
+      "skills/integration-controller/scripts/promote_ready_pr.py",
+      "skills/integration-controller/tests/test_promote_ready_pr.py"
+    ],
+    "job_id": null,
+    "run_id": null,
+    "runtime": "existing protected Git integration helper; direct local unit tests; no runner/model/budget mutation",
+    "authority": "User-provided AGENTS.md Outcome Completion explicitly permits project-local workflow policy repair when it adds no real security/data-safety boundary; user Decision-First policy authorizes safe Git integration recovery. No immutable Job authority is expanded.",
+    "source_base_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+    "source_file_sha256": {
+      "skills/integration-controller/scripts/promote_ready_pr.py": "c1f247df287e77ef0b3755e7dfc96115f1e13e58aaf9d6fbb73b957feef42e13",
+      "skills/integration-controller/tests/test_promote_ready_pr.py": "6b263c1a46970a12cce63692b9d7e424da0f2ba541e73d2834245a4f47bbde40"
+    },
+    "tests": {
+      "profile": "quick",
+      "command": "python3 -m unittest discover -s skills/integration-controller/tests -p test_*.py",
+      "started_epoch": 1792208430.7417128,
+      "finished_epoch": 1792208434.3267868,
+      "exit": 0,
+      "signal": null,
+      "max_rss_kib": 30480,
+      "outcome": "PASS",
+      "tests_passed": 25,
+      "source_base_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+      "owned_source_sha256": {
+        "skills/integration-controller/scripts/promote_ready_pr.py": "c1f247df287e77ef0b3755e7dfc96115f1e13e58aaf9d6fbb73b957feef42e13",
+        "skills/integration-controller/tests/test_promote_ready_pr.py": "6b263c1a46970a12cce63692b9d7e424da0f2ba541e73d2834245a4f47bbde40"
+      }
+    },
+    "review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "status": "NO_BLOCKING_FINDINGS",
+      "method": "Read-only actual helper/test diff",
+      "boundary": "GitHub CLEAN/MERGEABLE/reviews/checks/exacthead and protected normal merge remain required; strict BEHIND still blocked"
+    },
+    "rationale": "Repeated unrelated canonical advances leave GitHub PR baseRefOid snapshots behind and force unnecessary branch update/CI cycles. Prove the base is an actual commit and ancestor of freshly fetched configured canonical tip; fail closed otherwise.",
+    "ownership_observation": "No open PR owns either helper path and neither path is dirty in shared primary checkout; unrelated75 dirty paths preserved."
+  },
+  "bounded_acceptance": {
+    "seven_distinctions": "PASS",
+    "scope": "Task Control shared projection/fixture/authorized read consumer only",
+    "full_spec_or_project_closure": false,
+    "canonical_requirement_rows_fully_closed": 0,
+    "whole_specs_preserved": [
+      "161",
+      "268",
+      "302",
+      "304"
+    ],
+    "remaining_scope": "Trusted Goal/WU source binding, cross-surface snapshot/parity, complete helper/funding/quota coverage and real authenticated acceptance remain open."
+  },
+  "final_browser": {
+    "profile": "quick",
+    "runtime": "isolated actual component + retained canonical fixture; simulated authentication; no live production acceptance",
+    "results": [
+      {
+        "width": 1440,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      },
+      {
+        "width": 768,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      },
+      {
+        "width": 390,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      }
+    ],
+    "errors": [],
+    "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+    "fixture_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "moli": "UNVERIFIED; unavailable, existing Chromium used"
+  },
+  "goal_scope_binding": {
+    "id": "TASK_CONTROL_GOAL_BASELINE_SCOPE_BINDING",
+    "spec_ids": [
+      "277",
+      "294"
+    ],
+    "requirement_ids": [
+      "REQ-277-OBS-01",
+      "REQ-277-OBS-05",
+      "REQ-277-OBS-09",
+      "REQ-294-OBS-02",
+      "REQ-294-OBS-03"
+    ],
+    "source_base_sha": "cb840cfc115dd8986898afee19cc8c35c9f936a2",
+    "writable_paths": [
+      "apps/web/shared/taskAcceptanceProjection.ts",
+      "apps/web/shared/taskAcceptanceProjection.test.ts",
+      "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx"
+    ],
+    "source_file_sha256": {
+      "apps/web/shared/taskAcceptanceProjection.ts": "e7d381bd59e8a4136373aa58c36e9c698ec04239927886fd766816ed0460a738",
+      "apps/web/shared/taskAcceptanceProjection.test.ts": "9e3703127199246154498072e46eccbc6d7dd3e02e61d63fd0837c6ff70c7d46",
+      "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts": "baeaaa1fd8df7357f28fa9781be4f997c7d5f08b8bf9a470b7e8fe781ef7a5f7",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "92e865d3b95c3c8c053d6c352d0ef8c7efdce8ef5180378ecdc1b61fdd3d3c87"
+    },
+    "job_id": null,
+    "run_id": null,
+    "runtime": "direct nonproduction pure read projection + regression fixture; no Goal producer/authority/store introduced",
+    "regression": "Before repair a completed child Pilot baseline reused under SPEC161 scope returned100 and wholeSpecComplete=true. New adversarial test failed with actual100; guard now requires exact source binding for scope kind/id, Goalid and baselineversion/digest. Missing/mismatch yieldsUnknown.",
+    "status": "VERIFIED_IN_MAIN",
+    "acceptance": [
+      "Pilot completion cannot certify parentSPEC/project",
+      "Trustedsourcewithoutmatchingbinding cannotproduceverifiedGoal%",
+      "Source-onlybindingaddsnoexecutionauthority; realruntime missingtrustedproducerstaysUnknown"
+    ],
+    "branch": "codex/task-control-goal-scope-binding-20261017",
+    "implementation_commit": "49137fcfa39303eb7c12cc69358f86d37fc789dd",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+    "merge_pr": 1028,
+    "tests": {
+      "passed": 82,
+      "total": 82,
+      "files": 11,
+      "strict_two_module_compile": "PASS",
+      "profile": "package",
+      "candidate_base_sha": "cb840cfc115dd8986898afee19cc8c35c9f936a2",
+      "owned_file_hashes_match": true
+    },
+    "review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "status": "NO_BLOCKING_FINDINGS",
+      "method": "Read-only actual four-file diff and runtime trust-source audit",
+      "effective_model": "UNVERIFIED: no provider-confirmed receipt"
+    },
+    "merge_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "merged_at": "2026-10-17T04:03:32Z",
+    "post_integration": {
+      "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "passed": 82,
+      "total": 82,
+      "files": 11
+    }
+  },
+  "git_reconciliation_workunit": {
+    "id": "PILOT_GIT_BASE_SNAPSHOT_RECONCILIATION",
+    "writable_paths": [
+      "skills/integration-controller/scripts/promote_ready_pr.py",
+      "skills/integration-controller/tests/test_promote_ready_pr.py"
+    ],
+    "job_id": null,
+    "run_id": null,
+    "runtime": "existing protected Git integration helper; direct local unit tests; no runner/model/budget mutation",
+    "authority": "User-provided AGENTS.md Outcome Completion explicitly permits project-local workflow policy repair when it adds no real security/data-safety boundary; user Decision-First policy authorizes safe Git integration recovery. No immutable Job authority is expanded.",
+    "source_base_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+    "source_file_sha256": {
+      "skills/integration-controller/scripts/promote_ready_pr.py": "c1f247df287e77ef0b3755e7dfc96115f1e13e58aaf9d6fbb73b957feef42e13",
+      "skills/integration-controller/tests/test_promote_ready_pr.py": "6b263c1a46970a12cce63692b9d7e424da0f2ba541e73d2834245a4f47bbde40"
+    },
+    "tests": {
+      "profile": "quick",
+      "command": "python3 -m unittest discover -s skills/integration-controller/tests -p test_*.py",
+      "started_epoch": 1792208430.7417128,
+      "finished_epoch": 1792208434.3267868,
+      "exit": 0,
+      "signal": null,
+      "max_rss_kib": 30480,
+      "outcome": "PASS",
+      "tests_passed": 25,
+      "source_base_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+      "owned_source_sha256": {
+        "skills/integration-controller/scripts/promote_ready_pr.py": "c1f247df287e77ef0b3755e7dfc96115f1e13e58aaf9d6fbb73b957feef42e13",
+        "skills/integration-controller/tests/test_promote_ready_pr.py": "6b263c1a46970a12cce63692b9d7e424da0f2ba541e73d2834245a4f47bbde40"
+      }
+    },
+    "review": {
+      "reviewer": "/root/task_control_pilot_final_review",
+      "status": "NO_BLOCKING_FINDINGS",
+      "method": "Read-only actual helper/test diff",
+      "boundary": "GitHub CLEAN/MERGEABLE/reviews/checks/exacthead and protected normal merge remain required; strict BEHIND still blocked"
+    },
+    "rationale": "Repeated unrelated canonical advances leave GitHub PR baseRefOid snapshots behind and force unnecessary branch update/CI cycles. Prove the base is an actual commit and ancestor of freshly fetched configured canonical tip; fail closed otherwise.",
+    "requirement_refs": [
+      "User Primary Goal Phase C: Git Integration",
+      "User AGENTS Outcome Completion: project-local workflow policy repair"
+    ],
+    "branch": "codex/pilot-evidence-base-reconciliation-20261017",
+    "status": "VERIFIED_IN_MAIN",
+    "implementation_commit": "d83a51b77861c0f46078fe40cce2442cc6524843",
+    "merge_sha": "cb840cfc115dd8986898afee19cc8c35c9f936a2",
+    "merge_pr": 1026,
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1026",
+    "merged_at": "2026-10-17T03:52:41Z",
+    "canonical_hashes_verified": 2
+  },
+  "latest_verification": {
+    "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+    "task_control": {
+      "passed": 82,
+      "total": 82,
+      "files": 11,
+      "profile": "package",
+      "resource": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/scope-binding-post-integration-focused.resources.json"
+    },
+    "browser": {
+      "profile": "quick",
+      "runtime": "isolated actual component + retained canonical fixture; simulated authentication; no live production acceptance",
+      "results": [
+        {
+          "width": 1440,
+          "drilldown": "PASS",
+          "noHorizontalOverflow": true
+        },
+        {
+          "width": 768,
+          "drilldown": "PASS",
+          "noHorizontalOverflow": true
+        },
+        {
+          "width": 390,
+          "drilldown": "PASS",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "errors": [],
+      "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "fixture_source_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+      "moli": "UNVERIFIED; unavailable, existing Chromium used"
+    },
+    "strict_two_module_compile": "PASS",
+    "original_pilot": "295/295 scoped and5/5 native simulated-auth HTTP remain independently bound to47235563d14d6a4c861c04127e77e6dd655283db; never summed into Goalpercent"
+  },
+  "evidence_review": {
+    "reviewer": "/root/task_control_pilot_final_review",
+    "status": "NO_MATERIAL_OVERCLAIMS_OR_INCONSISTENCIES",
+    "scope": "10PARTIAL rows, unchanged authority/disposition/lifecycle/fullverification,14sourcehashes and separate82/295/5 source bindings",
+    "method": "read-only actual pending metadata diff"
+  },
+  "generated_index_reconciliation": "Existing canonical generator refreshed473records/316canonicalSpecs. It also reflects already-committed SPEC229 manifest state whose global projection was stale; no SPEC229 source/manifest/authority changed by this WorkUnit."
 }
