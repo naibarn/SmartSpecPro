@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-10-17T06:58:54.124292+00:00",
+  "runtime": "existing local web listener; primarycheckout source unchanged and dirty",
+  "path": "/trpc/workerJobs.observability",
+  "authenticated": false,
+  "http_status": 404,
+  "trpc_code": "NOT_FOUND",
+  "classification": "unauthenticated boundary only; NOT authenticated read-path/live acceptance",
+  "diagnostic": "Initial /api/trpc probe used wrong mountpath and returned404; corrected to canonical /trpc mount."
+}
