@@ -1,9 +1,10 @@
 # Cloudflare HTTP Runtime Compatibility Handoff
 
-Status: implementation checkpoint; production/staging acceptance remains open.
+Status: PR #1040 merged to `origin/main`; production/staging acceptance remains open.
 
 Review PR: https://github.com/naibarn/SmartSpecPro/pull/1040
-Source branch: `codex/cloudflare-http-runtime-20261017` (rebased on `origin/main` at `e6e4253d75ea0b7c5319420d80d280cda0a66961`).
+Source branch: `codex/cloudflare-http-runtime-20261017` (merged commit `931ceeca8f62b053f34752ebc017b1fc98ac9e84`; source head `269fc31c5dce67dce185ed253fc87f0eaff5dba3`).
+Required CI: Mocked SPEC-308 browser simulation, `local-contract`, and `progressive_integration_gate` passed. `build-preview` was skipped by workflow policy. Merge completed 2026-10-17T07:34:57Z through the normal PR executor.
 
 ## Completed in this checkpoint
 
@@ -22,7 +23,7 @@ Source branch: `codex/cloudflare-http-runtime-20261017` (rebased on `origin/main
 - Wrangler local runtime: `/healthz` 200; `/readyz` 503 with disabled/unbound bindings; API/auth and SSE proxy failed closed with 503 while origin bindings were absent; `/socket.io`, unknown paths, and POST `/healthz` returned 501.
 - Origin-attestation helper passed direct Node assertions. Its Vitest file was not run because web dependencies are not installed in this isolated checkout.
 - No PostgreSQL server, restricted staging role, Cloudflare credentials, or browser staging session was available; no database or production credential was accessed.
-- PR CI first found two existing Cloudflare local-contract setup defects: the workflow repeated the pnpm version already pinned by root `packageManager`, and the package test script hard-coded a root `node_modules/vitest` path. Both were corrected to use the workspace package manager pin and local Vitest binary; CI rerun is pending.
+- PR CI found two Cloudflare local-contract setup defects: the workflow repeated the pnpm version already pinned by root `packageManager`, and the package test script hard-coded a root `node_modules/vitest` path. Both were corrected; all required checks passed on the final PR head.
 
 ## Remaining acceptance work
 
