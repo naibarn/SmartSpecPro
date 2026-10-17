@@ -1,0 +1,26 @@
+{
+  "workunit": "SPEC229_P229_8_CANONICAL_MARKDOWN_HYDRATION",
+  "source_sha": "01e6a25700b2631ee994713de41447a1c7e00912",
+  "scope": [
+    "apps/web/server/services/retrievalBroker.ts",
+    "apps/web/server/services/retrievalBroker.test.ts"
+  ],
+  "behavior": [
+    "Hydrates Library search candidates through existing getLibraryMarkdownContent, which resolves tenant-scoped canonical item and rechecks read ACL before loading markdown_source.",
+    "Drops results when canonical updatedAt differs from indexed result updated_at, or canonical markdown is unavailable.",
+    "Computes SHA-256 over full canonical Markdown and binds source digest/revision in evidence while returning only a codepoint-safe prefix within maxContextTokens.",
+    "Stops further canonical reads when the remaining context budget is exhausted."
+  ],
+  "verification": {
+    "profile": "quick",
+    "command": "JWT_SECRET=<local-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+    "result": "PASS: 3 test files, 42 passed, 28 todo",
+    "diff_check": "PASS"
+  },
+  "security_boundary": "Uses existing LibraryService tenant resolution and ACL enforcement. No caller-supplied tenant/user, database ownership, provider, index, schema, or dependency changes.",
+  "limitations": [
+    "Quality gate remains uncertified; evidenceQuality remains weak and degraded.",
+    "Focused tests do not establish Production Verified.",
+    "No production provider/index verification or benchmark is claimed."
+  ]
+}
