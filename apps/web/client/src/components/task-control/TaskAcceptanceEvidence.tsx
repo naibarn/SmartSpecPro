@@ -1,17 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Section } from "@astryxdesign/core/Section";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
-import type { AcceptanceReference, TaskAcceptanceProjection } from "@shared/taskAcceptanceProjection";
+import { observeTaskAcceptanceSnapshot, type AcceptanceReference, type TaskAcceptanceProjection } from "@shared/taskAcceptanceProjection";
 
 const keyOf = (ref: AcceptanceReference) => `${ref.kind}:${ref.id}`;
 const count = (value: number | null | undefined) => value == null ? "Unknown" : value.toLocaleString();
 
 /** Read-only shared evidence surface; navigation never creates execution authority. */
-export function TaskAcceptanceEvidence({ projection }: { projection: TaskAcceptanceProjection }) {
+export function TaskAcceptanceEvidence({ projection: sourceProjection }: { projection: TaskAcceptanceProjection }) {
+  const [observedAt, setObservedAt] = useState(() => Date.now());
+  useEffect(() => {
+    setObservedAt(Date.now());
+    const timer = setInterval(() => setObservedAt(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [sourceProjection.sdkUsage.asOf]);
+  const projection = observeTaskAcceptanceSnapshot(sourceProjection, observedAt);
   const [selection, setSelection] = useState<string | null>(null);
   const graph = projection.graph;
   const selected = graph.references.find((ref) => keyOf(ref) === selection);

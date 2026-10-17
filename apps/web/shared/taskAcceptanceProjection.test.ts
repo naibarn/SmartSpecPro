@@ -4,6 +4,7 @@ import { loadCompletedAutonomousPilotFixture } from "../server/services/__tests_
 import {
   compareTaskAcceptanceEvidence,
   projectTaskAcceptance,
+  observeTaskAcceptanceSnapshot,
   type AcceptanceComparisonEvidence,
   type TaskAcceptanceInput,
 } from "./taskAcceptanceProjection";
@@ -319,5 +320,24 @@ describe("acceptance evidence contradictions", () => {
     expect(result.goal.verifiedPercent).toBeNull();
     expect(result.goal.reason).toBe("acceptance_result_conflict");
     expect(result.verifiedLiveAcceptance).toBe(false);
+  });
+});
+
+
+describe("cached acceptance observation", () => {
+  it("expires a formerly current snapshot without discarding its retained receipt evidence", () => {
+    const original = projectTaskAcceptance(input());
+    const observedAt = Date.parse(original.sdkUsage.asOf!) + 600_001;
+    const stale = observeTaskAcceptanceSnapshot(original, observedAt);
+    expect(stale.sdkUsage.current).toBeNull();
+    expect(stale.sdkUsage.freshness).toBe("stale");
+    expect(stale.sdkUsage.historical).toBe(original.sdkUsage.historical);
+    expect(original.sdkUsage.freshness).toBe("current");
+    expect(observeTaskAcceptanceSnapshot(stale, observedAt - 600_001)).toBe(stale);
+  });
+  it("withholds current usage when the observation clock or future snapshot is unverified", () => {
+    const original = projectTaskAcceptance(input());
+    expect(observeTaskAcceptanceSnapshot(original, Number.NaN).sdkUsage.current).toBeNull();
+    expect(observeTaskAcceptanceSnapshot(original, Date.parse(original.sdkUsage.asOf!) - 30_001).sdkUsage.freshness).toBe("unknown");
   });
 });

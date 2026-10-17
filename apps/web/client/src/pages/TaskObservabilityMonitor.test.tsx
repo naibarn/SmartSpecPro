@@ -82,3 +82,12 @@ describe("TaskObservabilityMonitor", () => {
     expect(screen.getByText(/Complete linked token total Unknown/)).toBeTruthy();
   });
 });
+
+
+it("withholds cached task detail after the authorized read fails", () => {
+  detailQuery.current = { ...detailQuery.current, error: new Error("TASK_NOT_FOUND") };
+  render(<TaskObservabilityMonitor />);
+  expect(screen.getByText("Task detail is unavailable in the current account scope.")).toBeTruthy();
+  expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+  expect(screen.queryByText(/Observed receipt total:/)).toBeNull();
+});
