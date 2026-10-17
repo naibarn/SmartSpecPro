@@ -453,7 +453,11 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const,
     source: development?.projectId || development?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null,
   };
-  const updatedAt = new Date(Math.max(job.createdAt.getTime(), runnerSession?.updatedAt.getTime() ?? 0, ...reservations.map((row) => row.updatedAt.getTime())));
+  const updatedAt = new Date(Math.max(
+    job.createdAt.getTime(), job.startedAt?.getTime() ?? 0,
+    job.heartbeatAt?.getTime() ?? 0, job.finishedAt?.getTime() ?? 0,
+    runnerSession?.updatedAt.getTime() ?? 0, ...reservations.map((row) => row.updatedAt.getTime()),
+  ));
   return {
     id: job.id,
     jobType: job.jobType,
@@ -501,9 +505,9 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
       .sort((left, right) => left.at.localeCompare(right.at) || left.id.localeCompare(right.id)).slice(-40),
     worker: worker ? { id: worker.id, displayName: safeText(worker.displayName, 120), status: worker.status, lastSeenAt: asIso(worker.lastSeenAt) } : null,
     runner: runner ? { id: runner.runnerId, displayName: safeText(runner.displayName, 120), status: runner.revokedAt ? "revoked" : runner.status, trustState: runner.trustState, lastSeenAt: asIso(runner.lastSeenAt), freshness: runner.lastSeenAt && Date.now() - runner.lastSeenAt.getTime() < 5 * 60_000 ? "fresh" : "stale" } : { status: "unknown", freshness: "unknown" },
-    goal: snapshotAt && job.updatedAt > snapshotAt
-      ? { ...projectGoalProgress({ baseline: null, observations: [] }), reason: "goal_job_state_changed_after_snapshot" }
-      : goalProjection(job),
+    // worker_jobs has activity timestamps, not an updatedAt column. Its mutable
+    // state is not historical reconstruction; Goal source trust stays separate.
+    goal: goalProjection(job),
     acceptance: projectAuthorizedTaskAcceptance({
       jobId: job.id,
       status: job.status,
