@@ -33,15 +33,15 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Latest canonical main is e80fc4f after PR #1016 and is merged locally. Three protected promotion attempts returned BASE_REF_STALE; preserve PR #1005 and continue independent same-token/history and authorized live acceptance work. Push this reconciled checkpoint and run its required checks.",
-      "checkpoint_sha": "42339e13689bd1ce26bbfe0dd65e192b52faa106"
+      "next_action": "PR #1005 head 609193155 is pushed and passes progressive plus mocked browser checks; later resume source-bound DB auth/history acceptance when authorized DB/UAT is available; do not repeat the three promotion retries this round.",
+      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe"
     },
     "section-04-task-control-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Same projection token and expiry UX are implemented; Chat remains a deep-link and live responsive authenticated acceptance is open; continue only when authorized UAT is available.",
+      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe"
     },
     "section-05-agent-monitor-ui": {
       "status": "checkpointed",
@@ -54,8 +54,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Continue the next independent API/model/usage work unit from canonical main 1090256c; preserve Goal baseline UNKNOWN, implement only existing bound settlement evidence, then add same-token history/parity where records support it.",
-      "checkpoint_sha": "27fdfd069ac86911144a2b3bff3a568101e658ae",
+      "next_action": "PR #1005 remains open on latest main cb840cfc; exact-head progressive/browser checks pass, but canonical promotion requires a later eligible protected window and live DB/UAT/Runner evidence remains unavailable.",
+      "checkpoint_sha": "6091931554f7712fb7e5924430f6f43c324c04fe",
       "merged_main_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4"
     }
   },
@@ -68,11 +68,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 38,
-  "updated_at": "2026-10-17T03:24:56.157989+00:00",
+  "generation": 41,
+  "updated_at": "2026-10-17T04:03:22.660830+00:00",
   "progress": {
-    "active_section": "section-03-authenticated-read-api",
-    "next_action": "Latest canonical main is e80fc4f after PR #1016 and is merged locally. Three protected promotion attempts returned BASE_REF_STALE; preserve PR #1005 and continue independent same-token/history and authorized live acceptance work. Push this reconciled checkpoint and run its required checks.",
+    "active_section": "section-06-integration-live-acceptance",
+    "next_action": "PR #1005 remains open on latest main cb840cfc; exact-head progressive/browser checks pass, but canonical promotion requires a later eligible protected window and live DB/UAT/Runner evidence remains unavailable.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -80,7 +80,9 @@
       "No authoritative universal Goal baseline store was found in the current schema/service search",
       "Stable same-token aggregation across Project/SPEC/Chat and historical revisions is incomplete",
       "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
-      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment."
+      "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.",
+      "Authorized DB/UAT/Runner credentials and resources are absent; live acceptance cannot be performed.",
+      "Authoritative Goal baseline and provider quota observation sources are not linked to this projection."
     ],
     "merged_main_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4"
   }
