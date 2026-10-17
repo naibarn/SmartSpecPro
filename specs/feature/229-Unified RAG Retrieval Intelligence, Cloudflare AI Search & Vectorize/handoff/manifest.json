@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
+    "expected_canonical_sha": "d67738a929e4d14837730b389204936ee4dae70e",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1050 head f863598e215e27aa28fba85cc17bec2b0aca7404 includes the normal merge of canonical main 928dbf7c08c3b9408d5aaff896370d698ed7abe2. Focused tests pass on this exact PR candidate; evidence is handoff/evidence/p229-8-anchors-benchmark-20261017.json. Wait for required GitHub checks, merge through the normal protected path, then verify post-merge on canonical main. P229.8 remains incomplete: fixtures are development-only and do not certify the quality gate; evidence remains weak/degraded, and consequential consumer migration is not authorized before certification. P229.2 remains separately gated.",
-    "next_ready_workunit": "SPEC229_P229_8_CITATION_AND_BENCHMARK_INTEGRATION",
-    "reactivation_predicate": "Protected PR for the currently ready Citation Anchor and Benchmark Harness WorkUnits is merged and post-merge exact-SHA checks pass; subsequent quality-gate work may proceed when reviewed 500-query data and calibration review are available.",
-    "resume_point": "The protected PR branch contains Citation Anchor and Benchmark Harness implementation plus a non-force merge of canonical main 928dbf7c08c3b9408d5aaff896370d698ed7abe2. Focused verification passed on exact candidate f863598e215e27aa28fba85cc17bec2b0aca7404 (8 files/97 tests, 3 resolver tests, 4 Library/finance regression files/38 tests and a 9-case synthetic benchmark run). Next: wait for required checks and merge normally; then rerun post-merge tests and refresh canonical evidence.",
-    "waiting_predicate": "P229.8 quality gate and consequential consumer migration remain blocked until reviewed gold data and approved calibration satisfy canonical SPEC §27; P229.2 remains separately gated on explicit authorization and approved versioned index/backfill/shadow-read/rollback prerequisites."
+    "next_action": "PR #1050 merged as d67738a929e4d14837730b389204936ee4dae70e. Post-merge focused verification passed on an exact-SHA leased canonical checkout: citation/benchmark/broker/router/UI suite 8 files/97 passed, Library resolver 3 passed, adjacent Library and finance consumer regressions 4 files/38 passed; synthetic benchmark output is explicitly DEVELOPMENT_FIXTURES_NOT_CERTIFIED. Evidence: handoff/evidence/p229-8-anchors-benchmark-20261017.json. Anchor and Harness WorkUnits pass. P229.8 remains INCOMPLETE because the reviewed 500-query gold dataset and certified Evidence Quality Gate are outstanding; evidence remains weak/degraded and consequential consumers must not migrate. Next executable step is to prepare and review the gold dataset/calibration against unchanged §27 criteria; production retrieval evidence/latency/cost measurement must be run in an authorized environment. P229.2 remains separately gated on explicit authorization and index prerequisites.",
+    "next_ready_workunit": null,
+    "reactivation_predicate": "A reviewed 500-query dataset and approved calibration baseline/proposal are available for gate evaluation against unchanged §27 criteria; or explicit P229.2 authorization and its prerequisites are separately fulfilled.",
+    "resume_point": "P229.8 Citation Anchor and Benchmark Harness WorkUnits are integrated in canonical main d67738a929e4d14837730b389204936ee4dae70e and pass post-merge exact-SHA verification. The synthetic nine-case development fixture intentionally detects ACL, stale, citation and partial/outage failures; it is not a release dataset or certification. P229.8 and global SPEC-229 remain incomplete; evidence quality remains weak/degraded. Next action: prepare reviewed 500-query gold data and calibration, preserve §27 thresholds, and only then consider consequential consumer migration after gate certification.",
+    "waiting_predicate": "Quality-gate certification and consequential consumer migration wait for reviewed 500-query gold data and calibrated results satisfying unchanged SPEC §27 release criteria; P229.2 waits for its separate explicit authorization and approved versioned index/backfill/shadow-read/rollback prerequisites."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 51,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -99,20 +99,10 @@
       "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
       "5c93ee55389153f076e199d039bdcf05fa9ab919",
       "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
-      "f863598e215e27aa28fba85cc17bec2b0aca7404"
+      "d67738a929e4d14837730b389204936ee4dae70e"
     ],
     "mapping": [],
     "source_paths": [
-      "apps/web/server/services/retrievalBroker.ts",
-      "apps/web/server/routers/library.ts",
-      "apps/web/server/services/libraryService.ts",
-      "apps/web/server/services/retrievalBroker.test.ts",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-hydration-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-degraded-failure-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-citation-uri-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-current-main-verification-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
       "apps/web/server/services/libraryCitationAnchor.ts",
       "apps/web/server/services/libraryCitationAnchor.test.ts",
       "apps/web/server/services/libraryRetrievalBenchmark.ts",
@@ -128,9 +118,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
+    "canonical_sha": "d67738a929e4d14837730b389204936ee4dae70e",
     "integrated": true,
-    "integrated_at": "2026-10-17T08:31:12Z"
+    "integrated_at": "2026-10-17T11:19:15Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -281,7 +271,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T08:34:07.848517Z",
+  "updated_at": "2026-10-17T11:20:31.265801Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -292,7 +282,8 @@
       "handoff/evidence/p229-8-canonical-hydration-20261017.json",
       "handoff/evidence/p229-1-degraded-failure-20261017.json",
       "handoff/evidence/p229-1-postmerge-20261017.json",
-      "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
+      "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
+      "handoff/evidence/p229-8-anchors-benchmark-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [

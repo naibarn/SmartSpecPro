@@ -3,8 +3,8 @@
     {
       "workunit": "SPEC229_P229_8_CITATION_ANCHOR",
       "status": "PASS",
-      "source_sha": "f863598e215e27aa28fba85cc17bec2b0aca7404",
-      "canonical_base_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
+      "source_sha": "d67738a929e4d14837730b389204936ee4dae70e",
+      "canonical_base_sha": "02201073e1cc9427393eb7b140a7f4de8c73f889",
       "scope": [
         "apps/web/server/services/libraryCitationAnchor.ts",
         "apps/web/server/services/libraryService.ts",
@@ -25,7 +25,8 @@
           "PASS: 1 file, 3 passed, 76 unrelated tests skipped"
         ],
         "diff_check": "PASS",
-        "syntax_transform": "PASS: esbuild transformed DocumentManagement.tsx, Citation Anchor, Benchmark module, and benchmark CLI"
+        "syntax_transform": "PASS: esbuild transformed DocumentManagement.tsx, Citation Anchor, Benchmark module, and benchmark CLI",
+        "post_merge_exact_sha": "d67738a929e4d14837730b389204936ee4dae70e"
       },
       "security_boundary": "Uses existing protected Library Markdown resolver and Document Management UI. Current tenant, ACL, document and content digest are checked on every anchored fetch. No sourceUrl is used as a positional authority.",
       "limitations": [
@@ -36,8 +37,8 @@
     {
       "workunit": "SPEC229_P229_8_BENCHMARK_HARNESS",
       "status": "PASS",
-      "source_sha": "f863598e215e27aa28fba85cc17bec2b0aca7404",
-      "canonical_base_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
+      "source_sha": "d67738a929e4d14837730b389204936ee4dae70e",
+      "canonical_base_sha": "02201073e1cc9427393eb7b140a7f4de8c73f889",
       "scope": [
         "apps/web/server/services/libraryRetrievalBenchmark.ts",
         "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
@@ -64,7 +65,8 @@
           "unsafe_partial_or_outage_answers": 1,
           "stale_or_revoked_evidence_accepted": 3
         },
-        "release_thresholds_modified": false
+        "release_thresholds_modified": false,
+        "post_merge_exact_sha": "d67738a929e4d14837730b389204936ee4dae70e"
       },
       "dataset_status": "Development synthetic fixtures only. This is not the reviewed 500-query gold dataset, not a live-provider baseline, and not a release calibration or certification receipt.",
       "limitations": [
@@ -87,5 +89,23 @@
     "Full repository typecheck (prohibited in local/shared session by AGENTS.md RAM policy)",
     "Production runtime verification"
   ],
-  "next_action": "Merge the protected PR, verify the resulting canonical main SHA, rerun focused checks on that SHA, then prepare the reviewed 500-query gold dataset and Evidence Quality Gate calibration for explicit review. Do not migrate consequential consumers or promote weak evidence before certification."
+  "next_action": "Merge the protected PR, verify the resulting canonical main SHA, rerun focused checks on that SHA, then prepare the reviewed 500-query gold dataset and Evidence Quality Gate calibration for explicit review. Do not migrate consequential consumers or promote weak evidence before certification.",
+  "post_merge_verification": {
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "d67738a929e4d14837730b389204936ee4dae70e",
+    "source_lease_verified": true,
+    "commands": [
+      "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryCitationAnchor.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/retrievalBroker.test.ts server/routers/library.test.ts client/src/lib/documentManagementUi.test.ts client/src/components/editor/UnifiedDocumentSurface.test.tsx client/src/components/library/DocumentPreviewPanel.test.tsx client/src/components/library/CodeMirrorEditor.citation.test.tsx",
+      "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryService.test.ts -t \"Library Markdown citation resolution\"",
+      "JWT_SECRET=<local-test-secret> pnpm exec vitest run server/services/libraryContextPackService.test.ts server/services/__tests__/contextPackBuilder.test.ts server/services/libraryKnowledgeReadService.test.ts server/services/__tests__/financeRetrievalService.test.ts",
+      "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts"
+    ],
+    "results": [
+      "PASS: 8 files, 97 passed, 28 existing todo",
+      "PASS: 1 file, 3 passed, 76 unrelated tests skipped",
+      "PASS: 4 files, 38 passed",
+      "PASS: deterministic 9-case report; DEVELOPMENT_FIXTURES_NOT_CERTIFIED"
+    ],
+    "production_verified": false
+  }
 }
