@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "d67738a929e4d14837730b389204936ee4dae70e",
+    "expected_canonical_sha": "41be8c787888f0575e691a17ec6cab82a3b4eb08",
     "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "Gold Dataset Pipeline source commit b58ca9dd6 is tested on exact worktree revision 6802ce75f1c21dbe6475c8719c45dbce5a4f6aad after reconciling origin/main 744987eebe320b17f5dcff41fef25720e6325589. Evidence: handoff/evidence/p229-8-gold-pipeline-20261017.json. Ready for normal PR review/checks; P229.8 remains INCOMPLETE (10 development candidates, zero release-approved).",
-    "next_ready_workunit": "P229.8_GOLD_DATASET_EXPANSION_AND_REVIEW: screen licensed repository SPEC sources, deterministically generate unique evidence-anchored candidates across source groups/classes, independently review, and keep human-reviewed count separate; then run held-out calibration only with approved observations.",
-    "reactivation_predicate": "At least 500 unique reviewed, source-approved held-out queries with complete class coverage, exact source provenance, and exact-cohort retrieval observations (including three latency profiles) are available; all unchanged SPEC §27 criteria are then evaluated.",
-    "resume_point": "Current implementation source commit b58ca9dd6, exact test revision 6802ce75f1c21dbe6475c8719c45dbce5a4f6aad, branch codex/spec229-p2298-gold-pipeline-20261017 based on canonical main 744987eebe320b17f5dcff41fef25720e6325589. Candidate count 10, machine independently reviewed 10, human reviewed 0, human accepted 0, pending 0, release approved 0, held-out approved 0. Focused tests 2 files/16 passed; reports deterministic, all §27 criteria NOT_EVALUABLE. Evidence: handoff/evidence/p229-8-gold-pipeline-20261017.json. Next work: expand dataset from screened repository docs and run authorized evaluation; P229.8/global SPEC-229 remain INCOMPLETE.",
-    "waiting_predicate": "P229.8 certification waits on the reviewed held-out gold set, source-use approvals where applicable, and authorized runtime retrieval observations; P229.2 remains separately blocked on explicit authorization and versioned-index prerequisites."
+    "next_action": "PR #1066 merged as 41be8c787888f0575e691a17ec6cab82a3b4eb08. Post-merge verification on an exact-SHA leased canonical worktree passed: 2 focused files/16 tests, deterministic candidate report, synthetic fixture report, and structural handoff validation. P229.8 remains INCOMPLETE: 10 machine-reviewed development candidates from one source group; 0 human-reviewed, 0 release-approved, 0 held-out; all §27 metrics NOT_EVALUABLE. Next executable WorkUnit: expand from individually screened repository SPEC sources toward 500 unique reviewed held-out queries, then evaluate only with authorized retrieval observations. No production verification claimed.",
+    "next_ready_workunit": "P229.8_GOLD_DATASET_EXPANSION_AND_REVIEW: screen repository SPEC documents and embedded sources, deterministically generate distinct evidence-anchored candidates across source groups and required classes, independently review, record human review separately, then run held-out calibration using authorized retrieval observations.",
+    "reactivation_predicate": "At least 500 unique reviewed, source-approved held-out queries with complete class coverage and exact provenance are available, plus complete authorized retrieval observations including separate latency profiles; then evaluate unchanged §27 criteria.",
+    "resume_point": "P229.8 Gold Dataset Pipeline is integrated at canonical SHA 41be8c787888f0575e691a17ec6cab82a3b4eb08 (PR #1066). Exact-SHA post-merge evidence: handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json. Focused suite 2 files/16 passed; candidate report 10 candidates/10 machine-reviewed/0 human/0 release-approved; all canonical §27 criteria NOT_EVALUABLE. P229.8 and global SPEC-229 remain INCOMPLETE; evidence quality remains unchanged. Resume at P229.8_GOLD_DATASET_EXPANSION_AND_REVIEW; do not migrate consumers before certification.",
+    "waiting_predicate": "P229.8 certification waits on an expanded and reviewed held-out gold dataset plus authorized runtime retrieval observations/profile latency; P229.2 remains separately gated by explicit authorization and versioned index prerequisites."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 54,
+  "generation": 55,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
@@ -100,7 +100,8 @@
       "5c93ee55389153f076e199d039bdcf05fa9ab919",
       "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
       "d67738a929e4d14837730b389204936ee4dae70e",
-      "b58ca9dd6"
+      "b58ca9dd6",
+      "41be8c787888f0575e691a17ec6cab82a3b4eb08"
     ],
     "mapping": [],
     "source_paths": [
@@ -124,9 +125,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d67738a929e4d14837730b389204936ee4dae70e",
+    "canonical_sha": "41be8c787888f0575e691a17ec6cab82a3b4eb08",
     "integrated": true,
-    "integrated_at": "2026-10-17T11:19:15Z"
+    "integrated_at": "2026-10-17T15:41:43Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -277,7 +278,7 @@
     "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T15:37:08.642154Z",
+  "updated_at": "2026-10-17T15:43:33.014174Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -290,7 +291,8 @@
       "handoff/evidence/p229-1-postmerge-20261017.json",
       "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
       "handoff/evidence/p229-8-anchors-benchmark-20261017.json",
-      "handoff/evidence/p229-8-gold-pipeline-20261017.json"
+      "handoff/evidence/p229-8-gold-pipeline-20261017.json",
+      "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
