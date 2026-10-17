@@ -3,26 +3,26 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `59`
-- Updated (UTC): `2026-10-17T04:26:39.019387+00:00`
+- State generation: `65`
+- Updated (UTC): `2026-10-17T04:30:59.363062+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
-- Latest recorded merged Main SHA: `5322dfcddb618e6bcf62738221d0cf6133b65a2d`
+- Latest recorded merged Main SHA: `d25a09ca47cfe4bd126fc8277dffe218d86ee645`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-06-integration-live-acceptance`
-- Next action: PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance.
+- Next action: PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 33a8b04f | — | Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps. |
-| section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Continue source-bound Goal integration and validate corrected usage union against authorized database evidence |
-| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 39b8b8c4de1b3d3b34bbeb1e9085846a7fa952ad | 5322dfcddb618e6bcf62738221d0cf6133b65a2d | Runtime worker Goal, historical usage reconstruction, and authenticated DB/UAT/Runner acceptance remain open. Continue only from existing authoritative sources; do not infer missing evidence. |
-| section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 1ddf3d5a9 | 5322dfcddb618e6bcf62738221d0cf6133b65a2d | PR #1030 (https://github.com/naibarn/SmartSpecPro/pull/1030) carries the Chat summary source commit 1ddf3d5a9; initial progressive and mocked browser checks passed. Refresh exact-head checks after this handoff update, then use protected merge; keep live-auth parity open. |
-| section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 86f137f58 | 5322dfcddb618e6bcf62738221d0cf6133b65a2d | Continue multi-hop topology and historical activity projections only from explicit bound identities; live Runner acceptance remains UNKNOWN until authorized Runner evidence is available. |
-| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 1ddf3d5a9 | 5322dfcddb618e6bcf62738221d0cf6133b65a2d | PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance. |
+| section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 33a8b04f | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | SPEC amendment and requirement ledger are integrated; keep all OBS requirements PARTIAL/OPEN until source-bound runtime acceptance is recorded. |
+| section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | Reducers and bounded usage read models are integrated; authoritative Goal baseline, provider quota, helper receipts, and all-history reconstruction remain open. |
+| section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 39b8b8c4de1b3d3b34bbeb1e9085846a7fa952ad | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | Protected API is integrated; perform DB-backed auth/revocation and live source binding acceptance when authorized DB/UAT/Runner evidence is available. |
+| section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 1ddf3d5a9 | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | Chat summary and Task Monitor UI are integrated; live authenticated API-to-Web parity and accessibility acceptance remain open. |
+| section-05-agent-monitor-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 86f137f58 | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | Bound Runner fleet/timeline are integrated; continue topology only from explicit identities and verify against an authorized live Runner. |
+| section-06-integration-live-acceptance | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 1ddf3d5a9 | d25a09ca47cfe4bd126fc8277dffe218d86ee645 | PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

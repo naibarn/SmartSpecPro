@@ -19,47 +19,49 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps.",
-      "checkpoint_sha": "33a8b04f"
+      "next_action": "SPEC amendment and requirement ledger are integrated; keep all OBS requirements PARTIAL/OPEN until source-bound runtime acceptance is recorded.",
+      "checkpoint_sha": "33a8b04f",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-02-goal-usage-projections": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Continue source-bound Goal integration and validate corrected usage union against authorized database evidence",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Reducers and bounded usage read models are integrated; authoritative Goal baseline, provider quota, helper receipts, and all-history reconstruction remain open.",
+      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-03-authenticated-read-api": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Runtime worker Goal, historical usage reconstruction, and authenticated DB/UAT/Runner acceptance remain open. Continue only from existing authoritative sources; do not infer missing evidence.",
+      "next_action": "Protected API is integrated; perform DB-backed auth/revocation and live source binding acceptance when authorized DB/UAT/Runner evidence is available.",
       "checkpoint_sha": "39b8b8c4de1b3d3b34bbeb1e9085846a7fa952ad",
-      "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-04-task-control-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1030 (https://github.com/naibarn/SmartSpecPro/pull/1030) carries the Chat summary source commit 1ddf3d5a9; initial progressive and mocked browser checks passed. Refresh exact-head checks after this handoff update, then use protected merge; keep live-auth parity open.",
+      "next_action": "Chat summary and Task Monitor UI are integrated; live authenticated API-to-Web parity and accessibility acceptance remain open.",
       "checkpoint_sha": "1ddf3d5a9",
-      "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-05-agent-monitor-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Continue multi-hop topology and historical activity projections only from explicit bound identities; live Runner acceptance remains UNKNOWN until authorized Runner evidence is available.",
+      "next_action": "Bound Runner fleet/timeline are integrated; continue topology only from explicit identities and verify against an authorized live Runner.",
       "checkpoint_sha": "86f137f58",
-      "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-06-integration-live-acceptance": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance.",
+      "next_action": "PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL.",
       "checkpoint_sha": "1ddf3d5a9",
-      "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     }
   },
   "pre_commit": {
@@ -71,11 +73,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 59,
-  "updated_at": "2026-10-17T04:26:39.019387+00:00",
+  "generation": 65,
+  "updated_at": "2026-10-17T04:30:59.363062+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance.",
+    "next_action": "PR #1005 and #1030 are integrated at d25a09ca47cfe4bd126fc8277dffe218d86ee645. Continue live acceptance only when authorized DB/UAT/Runner and authoritative Goal/quota sources exist; mission remains PARTIAL.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
@@ -88,6 +90,6 @@
       "Authoritative Goal baseline and provider quota observation sources are not linked to this projection.",
       "Goal acceptance now rejects baseline scope/version/digest mismatch, but no authoritative baseline source is connected to worker-job projections."
     ],
-    "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
+    "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
   }
 }
