@@ -25,6 +25,7 @@ import {
 } from "./spec224VerificationJob";
 import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
 import { executeSpec224DeveloperFastLaneJob } from "./spec224DeveloperFastLaneExecutor";
+import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, createCloudflareStagingDeploymentExecutor } from "./cloudflareStagingDeploymentExecutor";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -356,6 +357,16 @@ export function createJobExecutorRegistry(
 }
 
 export const defaultJobExecutorRegistry = createJobExecutorRegistry();
+
+// The canonical job type is routable, but no runtime is supplied until the
+// existing target, delegated grant, immutable artifact and executor identity
+// authorities are bound by the platform deployment composition.
+defaultJobExecutorRegistry.register({
+  jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+  executionClass: "long",
+  contractVersions: new Set([CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT]),
+  executor: createCloudflareStagingDeploymentExecutor(),
+});
 
 // Development-only local Node executor. It uses a server-owned private pipe
 // for model admission and never binds this work to a Protected Runner grant.
