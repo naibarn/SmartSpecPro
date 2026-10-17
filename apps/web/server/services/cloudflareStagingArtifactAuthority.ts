@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import type { CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
 import { storagePutIfAbsent, storageReadBuffer } from "../storage";
 
@@ -101,6 +101,14 @@ function sha256(bytes: Uint8Array) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+export function isCloudflareStagingArtifactPathAllowed(path: string, allowedRoots: readonly string[]) {
+  const candidate = resolve(path);
+  return allowedRoots.some(root => {
+    const relation = relative(resolve(root), candidate);
+    return Boolean(relation) && relation !== ".." && !relation.startsWith(`..${sep}`);
+  });
+}
+
 function safePath(value: string) {
   return value.length > 0 && value.length <= 512 && !value.startsWith("/") &&
     !value.includes("\\") && value.split("/").every(part => part && part !== "." && part !== "..");
@@ -110,7 +118,7 @@ function sortedFileDigest(moduleFiles: CloudflareStagingBundle["moduleFiles"], a
   const entries: Array<[string, Uint8Array]> = [];
   for (const [name, file] of Object.entries(moduleFiles)) entries.push([`modules/${name}`, file.bytes]);
   for (const [name, file] of Object.entries(assets)) entries.push([`public/${name}`, file.bytes]);
-  entries.sort(([left], [right]) => left.localeCompare(right));
+  entries.sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
   const manifest = entries.map(([name, bytes]) => `${name}\0${sha256(bytes)}\0${bytes.byteLength}`).join("\n");
   return sha256(Buffer.from(manifest));
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,6 +21,7 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     await writeFile(join(root, "apps/cloudflare/.staging-artifact/wrangler/index.js"), "export default {};\n");
     await writeFile(join(root, "apps/web/dist/public/index.html"), "<html></html>\n");
     await writeFile(join(root, "apps/web/dist/public/assets/app.js"), "console.log('ready');\n");
+    await writeFile(join(root, "apps/web/dist/public/ä-user-guide.md"), "localized guide\n");
     await writeFile(join(root, "apps/web/client/public/releases/current.json"), "{\"release\":1}\n");
     await symlink("../../client/public/releases", join(root, "apps/web/dist/public/releases"));
     await mkdir(join(root, "apps/cloudflare"), { recursive: true });
@@ -37,8 +39,16 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     assert.equal(manifest.sourceSha, sourceSha);
     assert.equal(manifest.mainModule, "index.js");
     assert.equal(manifest.moduleFiles.length, 1);
-    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html", "releases/current.json"]);
+    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html", "releases/current.json", "ä-user-guide.md"]);
     assert.match(manifest.buildDigest, /^[a-f0-9]{64}$/);
+    const digestRows = [
+      ...manifest.moduleFiles.map(file => [`modules/${file.name}`, file.sha256, file.size]),
+      ...manifest.assets.map(file => [`public/${file.name}`, file.sha256, file.size]),
+    ].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+    const expectedDigest = createHash("sha256")
+      .update(digestRows.map(([name, sha, size]) => `${name}\0${sha}\0${size}`).join("\n"))
+      .digest("hex");
+    assert.equal(manifest.buildDigest, expectedDigest);
 
     await mkdir(join(root, "apps/web/private"), { recursive: true });
     await writeFile(join(root, "apps/web/private/secret.txt"), "must not be packaged");

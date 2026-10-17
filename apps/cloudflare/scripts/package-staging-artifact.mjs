@@ -15,6 +15,10 @@ function digest(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function compareArtifactPaths(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function contentType(name) {
   const extension = name.split(".").pop()?.toLowerCase();
   if (extension === "js" || extension === "mjs") return "application/javascript";
@@ -68,7 +72,7 @@ async function walk(root, { allowedSymlinkRoot } = {}) {
     }
   }
   await visit(root, rootReal);
-  return output.sort((left, right) => left.name.localeCompare(right.name));
+  return output.sort((left, right) => compareArtifactPaths(left.name, right.name));
 }
 
 function safeRelative(value) {
@@ -122,7 +126,7 @@ for (const sourceFile of publicFiles) {
 const entries = [
   ...moduleFiles.map(file => [`modules/${file.name}`, file.sha256, file.size]),
   ...assets.map(file => [`public/${file.name}`, file.sha256, file.size]),
-].sort(([left], [right]) => left.localeCompare(right));
+].sort(([left], [right]) => compareArtifactPaths(left, right));
 const buildDigest = digest(Buffer.from(entries.map(([name, sha, size]) => `${name}\0${sha}\0${size}`).join("\n")));
 const compatibilityDate = JSON.parse((await readFile(join(repoRoot, "apps/cloudflare/wrangler.staging.jsonc"), "utf8")).replace(/^\s*\/\/.*$/gm, "")).compatibility_date;
 if (!/^\d{4}-\d{2}-\d{2}$/.test(compatibilityDate)) throw new Error("STAGING_ARTIFACT_COMPATIBILITY_DATE_INVALID");
