@@ -13,6 +13,7 @@ const elements = Object.fromEntries(
 
 const verifiedTools = new Map();
 const verifyingTools = new Set();
+let capabilitySyncing = false;
 const taskVerifiableAdapters = new Set([
   "codex.v1", "claude.v1", "deepseek.v1", "antigravity.v1", "openclaw.v1", "hermes.v1",
 ]);
@@ -96,6 +97,9 @@ function safeError(error) {
     RUNNER_AUTO_START_DISABLE_FAILED: "ปิดเริ่มอัตโนมัติไม่สำเร็จ",
     RUNNER_AUTO_START_REQUIRES_CONNECTION: "เชื่อมต่อ SmartAIHub ก่อนเปิดเริ่มอัตโนมัติ",
     RUNNER_THREAD_START_FAILED: "เริ่ม Runner ไม่สำเร็จ กรุณาปิดแล้วเปิดแอปใหม่",
+    RUNNER_CAPABILITY_SYNC_PENDING: "ทดสอบในเครื่องแล้ว แต่ Backend ยังไม่ยืนยันรับข้อมูลความพร้อม ตรวจการเชื่อมต่อและลองใหม่",
+    RUNNER_CAPABILITY_SYNC_TASK_FAILED: "ส่งข้อมูลความพร้อมไม่สำเร็จ ผลทดสอบในเครื่องยังคงอยู่",
+    RUNNER_CAPABILITY_SYNC_RESPONSE_INVALID: "Backend ยังไม่ยืนยันข้อมูลความพร้อม ผลทดสอบในเครื่องยังคงอยู่",
   };
   if (messages[code]) return messages[code];
   if (code.includes("BROWSER") || code.includes("OPEN_BROWSER")) return "เปิดหน้าขออนุมัติไม่ได้ กรุณาตรวจสอบเบราว์เซอร์เริ่มต้น";
@@ -125,9 +129,9 @@ async function refreshStatus({ retryCredentials = false } = {}) {
     elements["runtime-state"].textContent = status.running ? "กำลังทำงาน" : "หยุดอยู่";
     elements["runtime-state"].className = `state-pill${status.running ? " good" : ""}`;
     if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
-    elements["start-button"].disabled = !status.connected || status.running;
+    elements["start-button"].disabled = !status.connected || status.running || capabilitySyncing;
     elements["stop-button"].disabled = !status.running;
-    elements["connect-button"].disabled = status.running;
+    elements["connect-button"].disabled = status.running || capabilitySyncing;
     if (status.credentialState === "reauth_required") {
       elements["connection-state"].textContent = "ต้องเชื่อมต่อใหม่";
       elements["connection-state"].className = "state-pill warn";
@@ -150,7 +154,7 @@ async function refreshStatus({ retryCredentials = false } = {}) {
       elements["connection-state"].textContent = "ต่ออายุไม่สำเร็จ — จะลองใหม่";
       elements["connection-state"].className = "state-pill warn";
       elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
-      elements["connect-button"].disabled = status.running;
+      elements["connect-button"].disabled = status.running || capabilitySyncing;
     } else {
       elements["connect-button"].textContent = status.connected ? "เปลี่ยนบัญชี / เชื่อมต่อใหม่" : "เชื่อมต่อผ่านเบราว์เซอร์";
     }
@@ -241,6 +245,28 @@ async function scanTools() {
   }
 }
 
+async function syncCapabilities() {
+  if (capabilitySyncing) return;
+  capabilitySyncing = true;
+  elements["start-button"].disabled = true;
+  elements["connect-button"].disabled = true;
+  try {
+    setNotice(elements["runtime-notice"], "กำลังส่งข้อมูลความพร้อมไปยัง SmartAIHub…");
+    const state = await invoke("sync_runner_capabilities");
+    setNotice(elements["runtime-notice"], state === "synced"
+      ? "SmartAIHub รับข้อมูลความพร้อมแล้ว — เริ่ม Runner เพื่อรับงานที่ได้รับอนุญาต"
+      : state === "runtime_running"
+        ? "Runner กำลังทำงานและจะอัปเดตความพร้อมตามรอบ — ผลทดสอบนี้เป็นผลในเครื่อง"
+        : "ทดสอบในเครื่องแล้ว — เชื่อมต่อ SmartAIHub เพื่อส่งข้อมูลความพร้อม");
+  } catch (error) {
+    // Pairing and a completed local task remain valid when publishing fails.
+    setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    capabilitySyncing = false;
+    await refreshStatus();
+  }
+}
+
 function renderTools(tools) {
   const list = elements["tool-list"];
   list.replaceChildren();
@@ -296,6 +322,7 @@ function renderTools(tools) {
           renderTools(tools);
           try {
             verifiedTools.set(discovered.tool_id, await invoke("verify_runner_tool", { toolId: discovered.tool_id }));
+            await syncCapabilities();
           } catch (error) {
             setNotice(elements["runtime-notice"], safeError(error));
           } finally {
@@ -323,6 +350,7 @@ elements["connect-button"].addEventListener("click", async () => {
     setNotice(elements["connection-notice"], "อนุมัติแล้ว Runner เชื่อมต่อสำเร็จ");
     await refreshStatus();
     await scanTools();
+    await syncCapabilities();
   } catch (error) {
     setNotice(elements["connection-notice"], safeError(error));
     elements["connection-state"].textContent = "เชื่อมต่อไม่สำเร็จ";

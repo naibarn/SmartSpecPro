@@ -49,7 +49,7 @@ import {
   verifyRunnerControlToken,
 } from "../runnerAuthService";
 import { verifyBearerToken } from "../../_core/tokens";
-import { InMemoryRunnerRepository, RunnerGateway } from "../runnerGateway";
+import { InMemoryRunnerRepository, RunnerGateway, runnerReadinessForDisplay } from "../runnerGateway";
 
 const now = new Date("2026-09-18T00:00:00.000Z");
 const validTestPublicKey = crypto.generateKeyPairSync("rsa", {
@@ -479,6 +479,11 @@ describe("RunnerGateway", () => {
     );
     await gateway.enroll({ auth: authOne, deviceId: "device-1", displayName: "Fenced Runner", ownerUserId: 7 });
     await gateway.bindSession({ runnerId: "runner-session-fence", tenantId: "tenant-a", ownerUserId: 7, runnerSessionId: "session-one" });
+    await expect(gateway.getStatus(authOne)).resolves.toMatchObject({ status: "offline", lastSeenAt: null });
+    await gateway.publishCapabilities({ auth: authOne, snapshot: snapshot("9", "runner-session-fence"), idempotencyKey: "prior-session-facts" });
+    const live = await gateway.getStatus(authOne);
+    await gateway.bindSession({ runnerId: "runner-session-fence", tenantId: "tenant-a", ownerUserId: 7, runnerSessionId: "session-one" });
+    await expect(gateway.getStatus(authOne)).resolves.toMatchObject({ currentSnapshotRevision: "9", lastSeenAt: live.lastSeenAt });
     const authTwo = await verifyRunnerControlToken(
       createRunnerControlToken({
         runnerId: "runner-session-fence",
@@ -490,12 +495,34 @@ describe("RunnerGateway", () => {
       }),
     );
     await gateway.bindSession({ runnerId: "runner-session-fence", tenantId: "tenant-a", ownerUserId: 7, runnerSessionId: "session-two" });
+    await expect(gateway.getStatus(authTwo)).resolves.toMatchObject({
+      status: "offline", lastSeenAt: null, currentSnapshot: null, currentSnapshotRevision: null,
+    });
     await expect(
       gateway.publishCapabilities({ auth: authOne, snapshot: snapshot("1", "runner-session-fence"), idempotencyKey: "old-session" }),
     ).rejects.toMatchObject({ code: "RUNNER_SESSION_STALE" });
     await expect(
       gateway.publishCapabilities({ auth: authTwo, snapshot: snapshot("2", "runner-session-fence"), idempotencyKey: "new-session" }),
     ).resolves.toMatchObject({ status: "accepted" });
+  });
+
+  it("does not present the screenshot's stale or previous-session tool facts as current readiness", () => {
+    const at = now.getTime();
+    const row = {
+      status: "online", profile: "local_device", revokedAt: null,
+      lastSeenAt: new Date(at - 1_000), snapshotObservedAt: new Date(at - 2_000),
+      snapshotExpiresAt: new Date(at + 30_000), activeSessionId: "current-session",
+      currentSnapshotJson: { runnerSessionId: "current-session" },
+    };
+    expect(runnerReadinessForDisplay(row, at)).toEqual({ status: "online", snapshotCurrent: true });
+    expect(runnerReadinessForDisplay({ ...row, snapshotExpiresAt: new Date(at - 1) }, at))
+      .toEqual({ status: "degraded", snapshotCurrent: false });
+    expect(runnerReadinessForDisplay({ ...row, currentSnapshotJson: { runnerSessionId: "previous-session" } }, at))
+      .toEqual({ status: "degraded", snapshotCurrent: false });
+    expect(runnerReadinessForDisplay({ ...row, lastSeenAt: new Date(at - 300_000) }, at).status).toBe("offline");
+    expect(runnerReadinessForDisplay({ ...row, lastSeenAt: new Date(at + 1) }, at).status).toBe("offline");
+    expect(runnerReadinessForDisplay({ ...row, revokedAt: new Date(at) }, at))
+      .toEqual({ status: "revoked", snapshotCurrent: false });
   });
 
   it("revokes an owned Runner and rejects another owner", async () => {

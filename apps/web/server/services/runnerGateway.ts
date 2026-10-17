@@ -51,6 +51,32 @@ export type CapabilityPublicationResult = {
   staleEntriesMarkedUnavailable: number;
 };
 
+/** Read projection only: registration and an expired/foreign-session snapshot
+ * cannot advertise an online, executable device. Never writes a heartbeat. */
+export function runnerReadinessForDisplay(row: {
+  status: string;
+  profile: string;
+  revokedAt: Date | string | null;
+  lastSeenAt: Date | string | null;
+  snapshotObservedAt: Date | string | null;
+  snapshotExpiresAt: Date | string | null;
+  activeSessionId: string | null;
+  currentSnapshotJson: Record<string, unknown> | null;
+}, now = Date.now()): { status: string; snapshotCurrent: boolean } {
+  const seen = new Date(row.lastSeenAt ?? "").getTime();
+  const observed = new Date(row.snapshotObservedAt ?? "").getTime();
+  const expires = new Date(row.snapshotExpiresAt ?? "").getTime();
+  const sessionMatches = row.profile !== "local_device" || Boolean(
+    row.activeSessionId && row.currentSnapshotJson?.runnerSessionId === row.activeSessionId
+  );
+  const snapshotCurrent = sessionMatches && observed <= now && expires > now;
+  const fresh = seen <= now && now - seen < 5 * 60_000;
+  const status = row.revokedAt || row.status === "revoked" ? "revoked"
+    : !fresh || row.status === "offline" ? "offline"
+    : !snapshotCurrent ? "degraded" : row.status;
+  return { status, snapshotCurrent: snapshotCurrent && status !== "revoked" };
+}
+
 export interface RunnerRepository {
   getNode(
     runnerId: string,
@@ -426,7 +452,6 @@ export class RunnerGateway {
         "RUNNER_PROFILE_MISMATCH",
         "Shared Container cannot enroll as a device"
       );
-    const now = new Date().toISOString();
     const node: RunnerGatewayNode = existing ?? {
       runnerId: input.auth.runnerId,
       tenantId: input.auth.tenantId,
@@ -437,17 +462,15 @@ export class RunnerGateway {
       machineFingerprintHash: input.auth.machineFingerprintHash ?? null,
       displayName: input.displayName.trim().slice(0, 255),
       trustState: "trusted",
-      status: "online",
+      status: "offline",
       currentSnapshotRevision: null,
       currentSnapshot: null,
-      lastSeenAt: now,
+      lastSeenAt: null,
       revokedAt: null,
       activeSessionId: null,
     };
-    node.status = "online";
     node.machineFingerprintHash =
       input.auth.machineFingerprintHash ?? node.machineFingerprintHash ?? null;
-    node.lastSeenAt = now;
     await this.repository.saveNode(node);
     return node;
   }
@@ -606,9 +629,15 @@ export class RunnerGateway {
       throw new RunnerGatewayError("RUNNER_SESSION_INVALID", "Runner session is required");
     if (node.revokedAt || node.trustState === "revoked")
       throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
+    // Browser approval is registration, not a heartbeat. A new control session
+    // must publish its own facts; the previous device/session's snapshot cannot
+    // establish readiness. Keep historical snapshot rows for audit and replay.
+    if (node.activeSessionId === input.runnerSessionId) return node;
     node.activeSessionId = input.runnerSessionId;
-    node.status = "online";
-    node.lastSeenAt = new Date().toISOString();
+    node.currentSnapshot = null;
+    node.currentSnapshotRevision = null;
+    node.status = "offline";
+    node.lastSeenAt = null;
     await this.repository.saveNode(node);
     return node;
   }

@@ -1,0 +1,148 @@
+{
+  "schema_version": "runner-readiness-repair-evidence.v1",
+  "workunit": "RUNNER_CODEX_READINESS_REPAIR",
+  "owner": "/root",
+  "source_base": "e25f5bc80771dd07c74ee9bc14a41b304fd5bf4d",
+  "reconciled_base": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+  "implementation_sha": "97a265b1fab4d747aa809a6424acc8a69554c2d7",
+  "root_causes": [
+    "Browser approval wrote online/lastSeen and retained a different or old session snapshot before any device heartbeat",
+    "Global default runner/device IDs collided across Linux CLI and Windows Desktop; their active sessions and machine/device keys differ",
+    "Desktop real-task verification only updated local UI, not backend capability publication",
+    "Real Codex authenticated readiness reference was gated on deterministic certification mode",
+    "Desktop packaging did not propagate installer version into the Runner library",
+    "Live web Runner-related source files match ccd4cd11; deployed workerJobs.ts has no observability procedure",
+    "Session capability_ready and status only recognized browser, excluding an independently ready Codex adapter"
+  ],
+  "corrections": [
+    "Expired Linux enrollment is not evidence about the current Windows enrollment",
+    "Runner activeSessionId is a pairing/control session, not runner_execution_sessions identity",
+    "The deployed web service uses its production release worktree, not the dirty primary checkout",
+    "Capability policy pending/0 allowed is not itself a missing Recovery Grant; those authorities are checked separately"
+  ],
+  "pairing_metadata": {
+    "approved_at": "2026-10-17T07:52:32.925Z",
+    "runner_version": "0.1.0",
+    "same_machine_as_linux_saved_config": false,
+    "same_key_as_linux_saved_config": false,
+    "access": "READ_ONLY_ENCRYPTED_SESSION_METADATA_NO_TOKENS_OR_CODES_OUTPUT"
+  },
+  "checks": {
+    "runner_library": {
+      "profile": "package",
+      "command": "CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=<task-cache> cargo test --locked --manifest-path apps/runner-app/Cargo.toml --lib -- --test-threads=1",
+      "result": "PASS",
+      "passed": 193,
+      "failed": 0,
+      "exit": 0,
+      "elapsed_test_seconds": 30.93,
+      "start_epoch": 1792225127,
+      "completion_observed_epoch": 1792225288.9924889,
+      "resource_observation": {
+        "MemAvailable_MiB_before": 25708,
+        "build_jobs": 1,
+        "cgroup_memory_files": "NOT_EXPOSED_AT_NAMESPACE_ROOT"
+      }
+    },
+    "web": {
+      "profile": "quick",
+      "source_revision": "97a265b1fab4d747aa809a6424acc8a69554c2d7",
+      "command": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "server/services/__tests__/runnerGateway.test.ts",
+        "server/routes/__tests__/runnerControl.test.ts",
+        "--maxWorkers=1"
+      ],
+      "start_epoch": 1792225504.480395,
+      "end_epoch": 1792225508.8774886,
+      "exit": 0,
+      "max_rss_kib": 350104,
+      "DATABASE_URL": "ABSENT",
+      "JWT_SECRET": "EPHEMERAL_TEST_ONLY_REDACTED",
+      "passed": 44,
+      "failed": 0,
+      "result": "PASS"
+    },
+    "syntax": {
+      "node_check": "PASS",
+      "rustfmt_changed_files": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "independent_review": {
+      "agent": "/root/runner_codex_repair_review",
+      "requested_model": "gpt-6-luna",
+      "effective_model": "UNVERIFIED",
+      "result": "NO_MATERIAL_FINDINGS",
+      "finding_repaired": "Post-pairing sync failure no longer mislabels successful pairing as failed",
+      "followup": "No material finding in Codex-only capability-ready route/test delta; parent verified committed UI catch directly"
+    },
+    "native_windows_installer": {
+      "state": "PENDING",
+      "required_source": "integrated implementation SHA",
+      "workflow": "runner-desktop-release.yml",
+      "planned_version": "0.2.30"
+    }
+  },
+  "deployed_source_audit": {
+    "release_head": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "source_files": [
+      {
+        "path": "apps/web/server/routers/workerJobs.ts",
+        "sha256": "c2cd0be75af2b61e5b9d6bf68f661cfdbd93ac3b3d2e38c12b57241bc7618a9f",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      },
+      {
+        "path": "apps/web/server/routes/runnerControl.ts",
+        "sha256": "b39c37f1c4e444b19696cdbb58ca4ca47afa2ac6fef8eaf223900af2a19f6b2d",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      },
+      {
+        "path": "apps/web/server/services/runnerGateway.ts",
+        "sha256": "23e3f3edef54d7819f2eba45b1494aa17a0cafba7aa7f843d02a7c059cc18145",
+        "matches_release_head": true,
+        "has_observability_procedure": false
+      }
+    ]
+  },
+  "artifacts_sha256": {
+    "runner-readiness-web-tests-20261017.txt": "82afdbd03dc0c58fc0d541160fa046047c3299da558d96a898dd148d28346593",
+    "runner-readiness-lib-tests-20261017.txt": "a0a7990b7fe33b47c6f6518f0a8cbed17ecb9fd9172c1c343e29ad4d0424a224"
+  },
+  "live_acceptance": "NOT_ACCEPTED",
+  "scope_boundary": {
+    "new_sdk_jobs": 0,
+    "job_or_command_dispatches": 0,
+    "production_database_mutations": 0,
+    "grants_created": 0,
+    "linux_runner_service_changed": false,
+    "windows_device_access": "NOT_AVAILABLE_IN_CURRENT_LINUX_SESSION"
+  },
+  "remaining": [
+    "Native Windows build and installer verification",
+    "Install/update and observe the current Windows device through an available authorized access channel",
+    "Fresh authenticated capability publication, owned workspace and selected WorkUnit lease",
+    "Existing protected Recovery Grant and exact live target serving source before SPEC-224 dispatch"
+  ],
+  "initial_implementation_sha": "7919c19ce22b9e751c87735dcf9dea58e1f79de3",
+  "repaired_verification_setup_failures": [
+    "Initial test invocation lacked disposable JWT_SECRET; rerun used private random TEST_ONLY key and no DATABASE_URL",
+    "First new Rust fixture selected the first catalog entry (Claude), not Codex; corrected fixture to select tool_id codex"
+  ],
+  "source_files_sha256": {
+    ".github/workflows/runner-desktop-release.yml": "233de144ecd791509316dceb822f80d799d47226682cbae26a07208fd8ea0a57",
+    "apps/runner-app/src/config.rs": "f68728e0482b4fe295c8bca2d4213fa21656cf0adc1aea385cfddde757f8d655",
+    "apps/runner-app/src/diagnostics.rs": "79ca150ac1f6df8a8d6a1d6d4d250988102fb0ecfa7288401df6ada84a655a56",
+    "apps/runner-desktop/README.md": "73b30b867fa0b4c6bc07f63946565d3a969e11bb01baf3eb21c94e9f1f226285",
+    "apps/runner-desktop/src-tauri/src/main.rs": "383fb1222d6c5689b6b94c0dac6e7b15cc9a4a941425730e127bf49632a4deb6",
+    "apps/runner-desktop/ui/app.js": "2a1436b131efe13b0b5453fdf5f8295be21e292405bf656a363780174ae1ad66",
+    "apps/web/server/routes/__tests__/runnerControl.test.ts": "586d16b32ab4faa10e580a862aae064e579ed5204d12626c13936e254b5340e0",
+    "apps/web/server/routes/runnerControl.ts": "10a5682adf6c3dac1aa20ec0456474020212e110f306ba9bfa72b6f0098c45d0",
+    "apps/web/server/services/__tests__/runnerGateway.test.ts": "7647e3bed74d28250caaf796ab644075fe60222c8883239eb0269de5981768c2",
+    "apps/web/server/services/runnerGateway.ts": "b650435eacb46d8e12f641d8b2024c19faacacf814600df9a231ff38e4dbf081"
+  }
+}
