@@ -3,21 +3,21 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `20`
-- Updated (UTC): `2026-10-17T00:58:51.029669+00:00`
+- State generation: `21`
+- Updated (UTC): `2026-10-17T01:02:18.457267+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017/orchestra/tasks/task-control-goal-monitor-20261017/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-06-integration-live-acceptance`
-- Next action: Push branch codex/task-control-goal-monitor-20261017 to PR #1001, inspect required checks on the new head, and continue independent Task/Project/Chat snapshot and Agent topology gaps.
+- Active section: `section-01-ownership-contracts`
+- Next action: Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 746eebc5df3a3a8112aa3ac762cbbe8de8c56da7 | — | Review additive owner contracts after canonical merge; preserve unresolved acceptance statuses and finish remaining ownership gaps |
+| section-01-ownership-contracts | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | 33a8b04f | — | Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps. |
 | section-02-goal-usage-projections | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Continue source-bound Goal integration and validate corrected usage union against authorized database evidence |
 | section-03-authenticated-read-api | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks |
 | section-04-task-control-ui | checkpointed | codex-task-control-goal-monitor-20261017 | /mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017 | e44314365413113204334562690e8b921f901b23 | — | Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance |
