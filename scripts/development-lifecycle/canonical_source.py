@@ -333,6 +333,21 @@ def _cloudflare_staging_bundle(root: Path, source_revision: str) -> dict[str, An
         asset_root.relative_to(root)
     except ValueError:
         return None
+    try:
+        public_source_root = (root / "apps/web/client/public").resolve(strict=True)
+        public_source_root.relative_to(root)
+    except (OSError, ValueError):
+        return None
+    if not public_source_root.is_dir() or public_source_root.is_symlink():
+        return None
+
+    def is_within(path: Path, boundary: Path) -> bool:
+        try:
+            path.relative_to(boundary)
+            return True
+        except ValueError:
+            return False
+
     canonical_entries: list[tuple[str, str, int]] = []
     names: set[str] = set()
     try:
@@ -350,11 +365,17 @@ def _cloudflare_staging_bundle(root: Path, source_revision: str) -> dict[str, An
                     return None
                 names.add(canonical_name)
                 candidate = base / name
-                if any(parent.is_symlink() for parent in candidate.parents if parent != base.parent):
+                try:
+                    path = candidate.resolve(strict=True)
+                    if group == "modules":
+                        if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents if parent != base.parent):
+                            return None
+                        path.relative_to(module_root)
+                    elif not is_within(path, asset_root) and not is_within(path, public_source_root):
+                        return None
+                except (OSError, RuntimeError, ValueError):
                     return None
-                path = candidate.resolve(strict=True)
-                path.relative_to(base)
-                if path.is_symlink() or not path.is_file():
+                if not path.is_file():
                     return None
                 file_hash = hashlib.sha256()
                 with path.open("rb") as stream:
