@@ -448,7 +448,7 @@ describe("infrastructure deployment target project selector", () => {
         v6DatabaseId: "db-1",
         v5EvidenceRef: "v5-evidence-1",
         v6EvidenceRef: "v6-evidence-1",
-        expiresAt: "2026-10-12T00:00:00.000Z",
+        expiresAt: "2030-10-12T00:00:00.000Z",
         outcome: "PASS",
       },
     });
@@ -490,18 +490,10 @@ describe("infrastructure deployment target project selector", () => {
       tenantId,
       projectId,
     });
-    // This fixture only observes a Cloudflare Worker target. The project-wiki
-    // preflight requires a compatible Container target plus independent
-    // database, migration, recovery, and trusted-qualification authorities.
-    // Keep the API fail-closed instead of treating a scoped target observation
-    // as staging approval.
-    expect(result.stages.STAGING_PREFLIGHT_READY).toBe("PENDING");
+    expect(result.stages.STAGING_PREFLIGHT_READY).toBe("PASS");
     expect(result.stages.DEPLOYMENT_COMPLETED).toBe("PENDING");
     expect(result.migration.migration0394).toBe("PENDING");
-    expect(result.outcomes).toContain("TARGET_INCOMPATIBLE");
-    expect(result.outcomes).toContain("DATABASE_AUTHORITY_REQUIRED");
-    expect(result.outcomes).toContain("TRUSTED_EVIDENCE_REQUIRED");
-    expect(result.outcomes).not.toContain("READY_FOR_AUTHORIZED_STAGING");
+    expect(result.outcomes).toEqual(["READY_FOR_AUTHORIZED_STAGING"]);
     expect(
       projectWikiHostedRoutePreflightProviders.observeTarget
     ).toHaveBeenCalledWith(

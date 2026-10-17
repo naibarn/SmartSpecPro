@@ -40,3 +40,5 @@ PR [#1053](https://github.com/naibarn/SmartSpecPro/pull/1053): `Cloudflare Admin
 Implementation SHA `98bd97d7e9a1670934ffe73d82b28122547d74e1`. Required PR checks on this SHA passed: `local-contract` (including local Vite/Worker/static checks), `Mocked SPEC-308 browser simulation`, and `progressive_integration_gate`. `build-preview` was skipped by workflow policy. PR is open with clean merge state; review is pending.
 
 No merge or live deployment was performed. The staging deployment adapter, live saved-token verification, and staging acceptance remain open pending authenticated Admin/target authority and a trusted source artifact path.
+
+Update for PR #1053 follow-up: the failing staging-preflight fixture was subsequently added to Cloudflare local-readiness CI. CI identified the exact fixture defect: its trusted qualification expired on 2026-10-12 while the test ran on 2026-10-17. The service correctly failed closed. The fixture expiry is corrected to 2030-10-12; the expected `PASS` behavior remains unchanged. The exact test is rerunning in CI on PR head `86b39ec740e296d82505dd80bdcdab30104ba151` or its later repair head.
