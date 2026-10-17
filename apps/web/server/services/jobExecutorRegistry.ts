@@ -825,7 +825,9 @@ defaultJobExecutorRegistry.register({
     const { getVerticalDramaDraftQualityQcStatus } =
       await import("./verticalDramaDraftQualityQcJobs");
     await reporter.assertActive(lease);
-    await runVerticalDramaDraftQualityQcJob(input.runId);
+    await withLeaseHeartbeat(lease, reporter, () =>
+      runVerticalDramaDraftQualityQcJob(input.runId as string),
+    );
     const record = await getVerticalDramaDraftQualityQcStatus(
       input.runId,
       {
