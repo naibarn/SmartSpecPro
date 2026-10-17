@@ -15,7 +15,7 @@ export function TaskAcceptanceEvidence({ projection: sourceProjection }: { proje
   const [observedAt, setObservedAt] = useState(() => Date.now());
   useEffect(() => {
     setObservedAt(Date.now());
-    const timer = setInterval(() => setObservedAt(Date.now()), 30_000);
+    const timer = setInterval(() => setObservedAt((previous) => Math.max(previous, Date.now())), 30_000);
     return () => clearInterval(timer);
   }, [sourceProjection.sdkUsage.asOf]);
   const projection = observeTaskAcceptanceSnapshot(sourceProjection, observedAt);

@@ -79,4 +79,7 @@ it("ages a mounted snapshot to stale when no refreshed data arrives", () => {
   act(() => vi.advanceTimersByTime(630_000));
   expect(screen.getByText(/SDK current-snapshot linked total: Unknown tokens · snapshot stale/)).toBeTruthy();
   expect(screen.getByText(/SDK retained receipt total: 5,771,368 tokens/)).toBeTruthy();
+  vi.setSystemTime(new Date("2026-10-17T03:00:00Z"));
+  act(() => vi.advanceTimersByTime(30_000));
+  expect(screen.getByText(/SDK current-snapshot linked total: Unknown tokens · snapshot stale/)).toBeTruthy();
 });
