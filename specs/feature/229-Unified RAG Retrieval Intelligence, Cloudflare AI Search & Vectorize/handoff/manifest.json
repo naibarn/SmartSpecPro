@@ -162,14 +162,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "expected_canonical_sha": "3e65fdde07bb806d6c58879843efe7ec4f49684f",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Verify the normalized request contract at the merged SHA, then close remaining P229.1 consumer-boundary gaps without migrating callers that cannot yet consume evidence safely. Begin P1 only where prerequisites are met; add benchmark evidence before changing ranking defaults. Existing Drive/OneDrive hash skips and context-pack token budgets are implemented and must not be duplicated.",
-    "next_ready_workunit": "SPEC229_P229_1_CONSUMER_BOUNDARY_REVIEW",
+    "next_action": "Proceed with the remaining P229.1 ACL/provenance/consumer-boundary requirements, then only P1 items whose providers, profile, and evidence prerequisites are ready. Keep searchV1 consumers on existing paths until hydration and certified evidence exist. Benchmark before any ranking/default change; do not duplicate current Drive/OneDrive hash skip or context-pack token budget implementations.",
+    "next_ready_workunit": "SPEC229_P229_1_ACL_PROVENANCE_AND_CONSUMER_BOUNDARY_REVIEW",
     "reactivation_predicate": null,
-    "resume_point": "P229.1 follow-up source aaea22a38aad30f447bd489dadd7e99e72d94926 on codex/spec229-p2291-normalized-request adds strict request schemas on top of normalized SAH contract, authenticated tenant/user/environment binding, budget clamp, and fail-closed unsupported options. Focused Broker, Library ACL, and router tests: 40 passed. Handoff evidence: handoff/evidence/p229-1-request-boundary-20261017.json. PR #1015 checks are pending on current head; production/full typecheck not performed. P229.1 remains partial and no production consumer has been migrated.",
+    "resume_point": "PR #1015 (https://github.com/naibarn/SmartSpecPro/pull/1015) merged at canonical main SHA 3e65fdde07bb806d6c58879843efe7ec4f49684f on 2026-10-17T03:18:29Z. progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head 5f0fa01d20dd8dabda15bb94003a8dff93a4474c; preview skipped. Focused Broker/Library ACL/router suite passed 40. No production verification or full TypeScript check. P229.1 remains partial; consumers are not migrated and P229.8 hydration/quality gate remain open. Evidence: handoff/evidence/p229-1-request-boundary-20261017.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 21,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -245,9 +245,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "canonical_sha": "3e65fdde07bb806d6c58879843efe7ec4f49684f",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:03:44Z"
+    "integrated_at": "2026-10-17T03:18:29Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -370,7 +370,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:10:02.687719Z",
+  "updated_at": "2026-10-17T03:18:54.240670Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
