@@ -116,7 +116,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
-        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Verify local readiness without target credentials
         run: |
           npm --workspace @smartspec/web run verify:cloudflare-local-readiness
