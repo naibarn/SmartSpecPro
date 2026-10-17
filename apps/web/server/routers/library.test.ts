@@ -405,13 +405,20 @@ describe("libraryRouter.searchV2", () => {
         user: { id: 9, role: "user", currentTenantId: 44 },
         tenantId: null,
       },
-      input: { query: "launch", queryClass: "DOCUMENT_RAG" },
+      input: {
+        query: "launch",
+        queryClass: "DOCUMENT_RAG",
+        tenantId: "tenant-b",
+        userId: 999,
+      },
     });
 
     expect(mockRetrieveLibraryEvidenceV2).toHaveBeenCalledWith(
       expect.objectContaining({ query: "launch", queryClass: "DOCUMENT_RAG" }),
       expect.objectContaining({ userId: 9, tenantId: "44" }),
     );
+    expect(mockRetrieveLibraryEvidenceV2.mock.calls[0]?.[0]).not.toHaveProperty("tenantId");
+    expect(mockRetrieveLibraryEvidenceV2.mock.calls[0]?.[0]).not.toHaveProperty("userId");
   });
 });
 
