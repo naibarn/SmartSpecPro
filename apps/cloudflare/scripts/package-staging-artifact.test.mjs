@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -16,9 +16,12 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     execFileSync("git", ["config", "user.name", "Artifact Test"], { cwd: root });
     await mkdir(join(root, "apps/cloudflare/.staging-artifact/wrangler"), { recursive: true });
     await mkdir(join(root, "apps/web/dist/public/assets"), { recursive: true });
+    await mkdir(join(root, "apps/web/client/public/releases"), { recursive: true });
     await writeFile(join(root, "apps/cloudflare/.staging-artifact/wrangler/index.js"), "export default {};\n");
     await writeFile(join(root, "apps/web/dist/public/index.html"), "<html></html>\n");
     await writeFile(join(root, "apps/web/dist/public/assets/app.js"), "console.log('ready');\n");
+    await writeFile(join(root, "apps/web/client/public/releases/current.json"), "{\"release\":1}\n");
+    await symlink("../../client/public/releases", join(root, "apps/web/dist/public/releases"));
     await mkdir(join(root, "apps/cloudflare"), { recursive: true });
     await writeFile(join(root, "apps/cloudflare/wrangler.staging.jsonc"), await readFile(sourceConfig));
     const script = join(root, "apps/cloudflare/scripts/package-staging-artifact.mjs");
@@ -34,8 +37,17 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     assert.equal(manifest.sourceSha, sourceSha);
     assert.equal(manifest.mainModule, "index.js");
     assert.equal(manifest.moduleFiles.length, 1);
-    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html"]);
+    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html", "releases/current.json"]);
     assert.match(manifest.buildDigest, /^[a-f0-9]{64}$/);
+
+    await mkdir(join(root, "apps/web/private"), { recursive: true });
+    await writeFile(join(root, "apps/web/private/secret.txt"), "must not be packaged");
+    await unlink(join(root, "apps/web/dist/public/releases"));
+    await symlink("../../private", join(root, "apps/web/dist/public/releases"));
+    assert.throws(
+      () => execFileSync(process.execPath, [script], { cwd: root, encoding: "utf8", stdio: "pipe" }),
+      error => error.stderr.toString().includes("STAGING_ARTIFACT_SYMLINK_OUTSIDE_PUBLIC_SOURCE"),
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
