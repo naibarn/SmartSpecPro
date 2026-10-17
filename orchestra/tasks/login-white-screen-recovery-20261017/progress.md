@@ -6,9 +6,9 @@
 - Workspace: `/mnt/SmartSpecDev/.tmp/login-white-screen-recovery`
 - Symptom: production `/login` intermittently renders blank; hard refresh temporarily restores it. Browser console reports React `removeChild` against a null DOM parent. Repeated 402 errors in extension scripts appear browser-extension requests and are not evidence of application API failure.
 - Evidence-based root cause: browser translation/DOM mutation can alter React-managed text nodes and trigger this React DOM `removeChild` failure. Login itself previously disabled translation only within its React subtree, which occurs after React starts and does not protect the whole document.
-- Implemented: set `google notranslate`, `translate=no`, and `notranslate` at the static document/body/root boundary before React mounts; wrap App in the existing ErrorBoundary as a recovery fallback.
-- Local fast gate: `git diff --check` passed. No tests/build run before canonical integration.
-- Current source commit: pending.
+- Implemented: set `google notranslate` in the document head and `translate=no` / `notranslate` on body before React mounts; retain the existing root markup for the repository smoke contract; wrap App in the existing ErrorBoundary as a recovery fallback.
+- Local fast gate: `git diff --check` passed. PR CI exposed a smoke-test contract requiring literal `<div id="root">`; the root attributes caused that assertion to fail. Corrected by relying on the body-level translation exclusion while preserving root markup. PR checks are being rerun.
+- Current source commit: `058716b388ce2f1bfcbfa1f0ab22e9593ea76fe5` with a follow-up commit pending.
 - Integrated main SHA: pending.
 - Remaining: protected PR integration; canonical build from `/mnt`; production rollout and smoke verification; verify repeated normal `/login` navigation without hard reload.
 - Next action: run diff/fast gate, commit and open PR, wait required checks, merge via integration controller, canonical build, then deploy frontend hotfix under prior user authorization and perform read-only production smoke.
