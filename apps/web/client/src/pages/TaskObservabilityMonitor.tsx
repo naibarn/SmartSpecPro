@@ -37,7 +37,7 @@ export default function TaskObservabilityMonitor() {
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
     ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}),
-  }, { enabled: Boolean(projectFilter || specFilter), staleTime: 60_000, retry: false });
+  }, { enabled: Boolean((projectFilter || specFilter) && (query.data?.snapshot.projectionToken || projectionToken)), staleTime: 60_000, retry: false });
   const items = query.data?.items ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(

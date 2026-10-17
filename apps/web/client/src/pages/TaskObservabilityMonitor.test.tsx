@@ -3,20 +3,21 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-const { listQuery, detailQuery, runnerQuery, aggregateQuery, detailArgs, aggregateArgs } = vi.hoisted(() => ({
+const { listQuery, detailQuery, runnerQuery, aggregateQuery, detailArgs, aggregateArgs, aggregateOptions } = vi.hoisted(() => ({
   listQuery: { current: {} as Record<string, unknown> },
   detailQuery: { current: {} as Record<string, unknown> },
   runnerQuery: { current: {} as Record<string, unknown> },
   aggregateQuery: { current: {} as Record<string, unknown> },
   detailArgs: { current: [] as unknown[] },
   aggregateArgs: { current: [] as unknown[] },
+  aggregateOptions: { current: {} as Record<string, unknown> },
 }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: { workerJobs: {
     observability: { useQuery: () => listQuery.current },
     observabilityDetail: { useQuery: (...args: unknown[]) => { detailArgs.current = args; return detailQuery.current; } },
-    observabilityAggregate: { useQuery: (...args: unknown[]) => { aggregateArgs.current = args; return aggregateQuery.current; } },
+    observabilityAggregate: { useQuery: (...args: unknown[]) => { aggregateArgs.current = args; aggregateOptions.current = args[1] as Record<string, unknown>; return aggregateQuery.current; } },
   }, runnerNodes: { list: { useQuery: () => runnerQuery.current } } },
 }));
 
@@ -28,6 +29,7 @@ beforeEach(() => {
   listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z", projectionToken: "shared.snapshot-token" }, nextCursor: null }, isLoading: false, error: null, refetch: vi.fn() };
   detailArgs.current = [];
   aggregateArgs.current = [];
+  aggregateOptions.current = {};
   runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceIds: [], toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
   aggregateQuery.current = { data: null, isLoading: false, error: null };
   detailQuery.current = { data: {
@@ -92,5 +94,13 @@ describe("TaskObservabilityMonitor", () => {
     fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
     expect(aggregateArgs.current[0]).toMatchObject({ projectId: "project-2", projectionToken: "shared.snapshot-token" });
+  });
+
+  it("waits for a projection token before reading Project/SPEC aggregate", () => {
+    listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z" }, nextCursor: null }, isLoading: false, error: null };
+    render(<TaskObservabilityMonitor />);
+    fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
+    expect(aggregateOptions.current.enabled).toBe(false);
   });
 });
