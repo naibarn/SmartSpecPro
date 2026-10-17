@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "workunit": "SPEC229_P229_1_REMAINING_SHARED_CONTRACT_COVERAGE",
+  "canonicalBaseSha": "a98e15e68aeec444969f43c4dd536b60a309d5aa",
+  "sourceCommitSha": "0315fba7a3bf94244ec46e360accbbd8fe5724f3",
+  "sourceBranch": "codex/spec229-p2291-normalized-request",
+  "observedAt": "2026-10-17T03:07:30Z",
+  "profile": "quick",
+  "checks": [
+    {
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "exitCode": 0,
+      "result": "PASS",
+      "testFiles": 3,
+      "testsPassed": 40,
+      "todo": 28
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "environment": {
+    "node": "v22.22.3",
+    "dependencySource": "Existing apps/web/node_modules in canonical workspace",
+    "limitation": "No full TypeScript check run per repository RAM policy; post-integration CI pending"
+  },
+  "productionVerified": false,
+  "acceptance": "PARTIAL: normalized request now carries trusted tenant/user/environment, request ID, purpose, project, query class/source classes and bounded evidence budget. Unsupported exact, historical, cross-source, caller ACL, rewrite/multi-query/agentic/citation requests fail closed. Provider and consumer coverage remain Library-only; no production verification."
+}

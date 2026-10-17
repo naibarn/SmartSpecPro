@@ -162,14 +162,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "expected_canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": "Proceed with P229.1 contract/security gap review and only then the P1 WorkUnits whose prerequisites are met. Keep Library consumers on their existing behavior until the Broker can provide content evidence and certified profiles; benchmark before changing ranking defaults. Do not duplicate existing Drive/OneDrive content-hash skips or context-pack token budgeting.",
-    "next_ready_workunit": "SPEC229_P229_1_REMAINING_SHARED_CONTRACT_COVERAGE",
+    "next_action": "Complete remaining P229.1 broker contract and security requirements, then proceed through P229.2–P229.8 only when provider/index, evidence, benchmark, and migration prerequisites are met. Existing content-hash incremental indexing and context token budgeting are implemented; AST/code retrieval is a confirmed gap but defer until core evidence contract and baseline evaluation are ready.",
+    "next_ready_workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #1012 (https://github.com/naibarn/SmartSpecPro/pull/1012) merged through protected path at canonical main SHA 200d9d8f585a969f569cd0fac98e04dbd5f5092c on 2026-10-17T03:03:44Z. progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head c4697054dde73d10d28dd224a950a9130195ede4; preview skipped. Focused Broker + Library ACL/router tests passed 39. Production verification and full typecheck not performed. P229.1 remains partial; broader request contract, consumer migration, and P229.8 hydration/quality gates remain open. Evidence: handoff/evidence/p229-1-broker-contract-20261017.json.",
+    "resume_point": "PR #1016 (https://github.com/naibarn/SmartSpecPro/pull/1016) recorded PR #1015 integration at canonical main SHA e80fc4f9e78204c8e57c23ed3fafbff8d4672bea on 2026-10-17T03:20:28Z. PR #1015 merged normalized SAH request DTO, trusted actor-derived tenant/user, strict route input, bounded budgets, and fail-closed unsupported features. Focused Broker/Library ACL/router tests: 40 passed; progressive gate and browser simulation passed for head 5f0fa01d20dd8dabda15bb94003a8dff93a4474c. No production verification/full typecheck. Requirements remain open; do not mark full P229.1 or Spec completion.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -245,9 +245,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "canonical_sha": "e80fc4f9e78204c8e57c23ed3fafbff8d4672bea",
     "integrated": true,
-    "integrated_at": "2026-10-17T03:03:44Z"
+    "integrated_at": "2026-10-17T03:20:28Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -370,12 +370,14 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T03:04:07.903416Z",
+  "updated_at": "2026-10-17T03:20:54.118820Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
       "handoff/evidence/p229-1-broker-boundary-20261017.json",
-      "handoff/evidence/p229-1-broker-contract-20261017.json"
+      "handoff/evidence/p229-1-broker-contract-20261017.json",
+      "handoff/evidence/p229-1-shared-contract-20261017.json",
+      "handoff/evidence/p229-1-request-boundary-20261017.json"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [
