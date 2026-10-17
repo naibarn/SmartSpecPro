@@ -68968,15 +68968,15 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
         "requirement REQ-B67F19FDA439 is OPEN",
-        "requirement REQ-28722F9489C8 is PARTIAL",
+        "requirement REQ-28722F9489C8 is OPEN",
         "requirement REQ-F24F12012092 is OPEN",
-        "requirement REQ-32AD56643D4F is PARTIAL",
-        "requirement REQ-34822D26C584 is PARTIAL",
+        "requirement REQ-32AD56643D4F is OPEN",
+        "requirement REQ-34822D26C584 is OPEN",
         "requirement REQ-C523BE96231A is OPEN",
         "requirement REQ-98BB34ECF7FB is OPEN",
         "requirement REQ-50A4DD25D9C8 is OPEN",
@@ -68987,7 +68987,7 @@
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
-      "continuation": "VALIDATION_ONLY",
+      "continuation": "CONTINUE_REQUIRED",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
@@ -69002,8 +69002,8 @@
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T12:01:19.793317Z",
-      "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
       "path": "specs/feature/161-vertical-drama-async-skill-jobs",
       "primary_blocker": null,
       "problem": null,
@@ -126737,7 +126737,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -127073,7 +127073,7 @@
         "requirement REQ-85B96D795CFD is OPEN",
         "requirement REQ-42F12C88409B is OPEN",
         "requirement REQ-820266CBC59D is OPEN",
-        "requirement REQ-5941C106455E is PARTIAL",
+        "requirement REQ-5941C106455E is OPEN",
         "requirement REQ-D82044CA1410 is OPEN",
         "requirement REQ-3B4D16AD223A is OPEN",
         "requirement REQ-672A11E3AD7A is OPEN",
@@ -127104,9 +127104,9 @@
         "requirement REQ-AD112563C8F5 is OPEN",
         "requirement REQ-69FC7726EF68 is OPEN",
         "requirement REQ-AD6185D8AA66 is OPEN",
-        "requirement REQ-8C1A9F209C32 is PARTIAL",
+        "requirement REQ-8C1A9F209C32 is OPEN",
         "requirement REQ-8C960B7F2018 is OPEN",
-        "requirement REQ-B44EAA1A1285 is PARTIAL",
+        "requirement REQ-B44EAA1A1285 is OPEN",
         "requirement REQ-EF5462810822 is OPEN",
         "requirement REQ-0FE612822918 is OPEN",
         "requirement REQ-680C03ACE4F9 is OPEN",
@@ -127883,14 +127883,14 @@
       "evidence_freshness": "Exact PR source head c834ddcee771fd5c2c9d230b9689fd2c51e61d52 merged as 757a5750f00e916ed84801c6024bebdc814e60f9. Focused Vitest 6 files / 88 tests passed locally; progressive_integration_gate and mocked SPEC-308 browser simulation passed on actual PR head; build-preview skipped. Canonical build on previous Main 2ea4e3905cedce99d7986021e13d6aea69db174a passed with global mascot gate OFF but became stale when Main advanced; no production migration or memory enablement.",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T05:05:37.875870Z",
-      "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Continue exact canonical tenant/App scope and historical provenance acceptance; trusted ingress/receipt-dependent slices retain grants",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
         "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-        "next_action": "Run existing isolated source-ledger integration acceptance with an authorized disposable runtime/schema fixture, then reconcile requirement evidence. Preserve global-only fallback and disabled persistent team-room memory until provenance/isolation acceptance passes. Do not reimplement already integrated PR875 or apply production migrations.",
-        "root_cause": "PR875 implemented durable source ledger and tenant/project/current-membership-filtered reads, integrated757a5750. Its authorized isolated nonproduction persisted acceptance is still pending; legacy conversation provenance remains ambiguous, and persistent team-room memory stays disabled."
+        "next_action": "Preserve disabled persistent team-room policy; complete App context/legacy provenance/production gate separately. Do not recreate missing-fixture blocker.",
+        "root_cause": "Existing source ledger and guarded reads now pass real native PostgreSQL migration0398/rollback/FK/revocation/restart acceptance. Ordinary cross-project merge was reproduced and repaired in PR995. Full App context, legacy provenance ambiguity and rollout boundaries remain."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
@@ -141025,7 +141025,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -141273,7 +141273,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "45aee6aed00b39d93037fd8a59dfae34fbdfc364",
+      "canonical_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",

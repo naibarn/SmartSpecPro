@@ -2,11 +2,11 @@
 # 268 — SmartAIHub Unified Memory, Context Retrieval & Learning Runtime
 
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
-- Lifecycle: `VALIDATION_PENDING`
+- Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
-- Next action: Complete source-ledger isolation acceptance after PR #875 integrates; keep team-room memory disabled until direct non-production acceptance passes. Continue SPEC-308 development UI delivery independently.
-- Manifest generation: 58
+- Next action: Continue exact canonical tenant/App scope and historical provenance acceptance; trusted ingress/receipt-dependent slices retain grants
+- Manifest generation: 63
 
 ## Source-declared status and relationship claims
 
