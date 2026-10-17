@@ -3,8 +3,8 @@
     {
       "workunit": "SPEC229_P229_8_CITATION_ANCHOR",
       "status": "PASS",
-      "source_sha": "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
-      "canonical_base_sha": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+      "source_sha": "f863598e215e27aa28fba85cc17bec2b0aca7404",
+      "canonical_base_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
       "scope": [
         "apps/web/server/services/libraryCitationAnchor.ts",
         "apps/web/server/services/libraryService.ts",
@@ -36,8 +36,8 @@
     {
       "workunit": "SPEC229_P229_8_BENCHMARK_HARNESS",
       "status": "PASS",
-      "source_sha": "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
-      "canonical_base_sha": "a70f84651ffbaa8be385d90da5710c514a0b72ec",
+      "source_sha": "f863598e215e27aa28fba85cc17bec2b0aca7404",
+      "canonical_base_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
       "scope": [
         "apps/web/server/services/libraryRetrievalBenchmark.ts",
         "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
