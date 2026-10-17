@@ -16,6 +16,7 @@ const metricLabel = (value: number | null): string => value === null ? "Unknown"
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
 
 export default function TaskObservabilityMonitor() {
+  const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get("projectionToken"));
   const [cursor, setCursor] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("");
   const [specFilter, setSpecFilter] = useState("");
@@ -26,6 +27,7 @@ export default function TaskObservabilityMonitor() {
   const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
+    ...(projectionToken ? { projectionToken } : {}),
     ...(conversationId ? { conversationId } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
@@ -34,17 +36,19 @@ export default function TaskObservabilityMonitor() {
   const aggregateQuery = trpc.workerJobs.observabilityAggregate.useQuery({
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
-  }, { enabled: Boolean(projectFilter || specFilter), staleTime: 60_000, retry: false });
+    ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}),
+  }, { enabled: Boolean((projectFilter || specFilter) && (query.data?.snapshot.projectionToken || projectionToken)), staleTime: 60_000, retry: false });
   const items = query.error ? [] : query.data?.items ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
-    { jobId: selected?.id ?? "" },
+    { jobId: selected?.id ?? "", ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}) },
     { enabled: Boolean(selected), staleTime: 15_000, refetchInterval: 15_000, retry: false },
   );
   const detail = detailQuery.error ? undefined : detailQuery.data;
   const runners = runnerQuery.error ? [] : runnerQuery.data?.runners ?? [];
   const aggregate = aggregateQuery.error ? undefined : aggregateQuery.data;
   const filtered = projectFilter || specFilter;
+  const snapshotExpired = query.error?.data?.code === "PRECONDITION_FAILED";
 
   return (
     <VStack as="main" gap={4} padding={4}>
@@ -62,9 +66,10 @@ export default function TaskObservabilityMonitor() {
             <TextInput label="SPEC ID" value={specDraft} onChange={setSpecDraft} placeholder="SPEC-###" />
             <Button label="Apply scope" variant="secondary" onClick={() => { setProjectFilter(projectDraft.trim()); setSpecFilter(specDraft.trim()); setCursor(null); setSelectedId(null); }} />
             {filtered ? <Button label="Clear scope" variant="ghost" onClick={() => { setProjectDraft(""); setSpecDraft(""); setProjectFilter(""); setSpecFilter(""); setCursor(null); setSelectedId(null); }} /> : null}
-            <Text type="supporting">Created before {query.data?.snapshot.asOf ?? "loading"} · task and selected detail values are current reads.</Text>
+            <Text type="supporting">Snapshot {query.data?.snapshot.asOf ?? "loading"} · {query.data?.snapshot.consistency ?? "consistency unknown"}; mutable task state can remain live.</Text>
           </HStack>
-          {query.error ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
+          {snapshotExpired ? <Text>Snapshot expired. Refresh snapshot to load current evidence.</Text> : null}
+          {query.error && !snapshotExpired ? <Text>Task list could not be refreshed. Check access and retry the snapshot.</Text> : null}
           {query.isLoading ? <Text>Loading owned jobs…</Text> : null}
           {!query.isLoading && items.length === 0 ? <Text>No matching canonical jobs are available in this account scope.</Text> : null}
           <VStack as="ol" gap={1}>
@@ -83,10 +88,10 @@ export default function TaskObservabilityMonitor() {
             ))}
           </VStack>
           <HStack gap={2} wrap="wrap">
-            <Button label="Refresh snapshot" variant="secondary" onClick={() => { if (cursor) setCursor(null); else void query.refetch(); if (projectFilter || specFilter) void aggregateQuery.refetch(); }} />
+            <Button label="Refresh snapshot" variant="secondary" onClick={() => { setProjectionToken(null); setCursor(null); setSelectedId(null); }} />
             {cursor ? <Button label="Previous page" variant="secondary" onClick={() => { setCursor(null); setSelectedId(null); }} /> : null}
             {query.data?.nextCursor ? <Button label="Next page" variant="secondary" onClick={() => { setCursor(query.data!.nextCursor); setSelectedId(null); }} /> : null}
-            <Text type="supporting">Cursor expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot.</Text>
+            <Text type="supporting">Projection snapshot expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot shared with aggregate and detail reads.</Text>
           </HStack>
         </VStack>
       </Section>
@@ -104,6 +109,8 @@ export default function TaskObservabilityMonitor() {
               <Text>Unique linked calls {aggregate.usage.counts.unique}; corrections {aggregate.usage.counts.corrections}; replayed {aggregate.usage.counts.replayed}; missing {aggregate.usage.counts.missing}; overlap {aggregate.usage.counts.overlap}</Text>
               <Text>Complete linked token total {tokenLabel(aggregate.usage.completeTotalTokens)} · known subtotal {aggregate.usage.knownSubtotalTokens.toLocaleString()} · {aggregate.usage.coverage.reason}</Text>
               <Text>Reservation estimate {tokenLabel(aggregate.resourceEstimates.reservedTokenEstimate)} tokens across {aggregate.resourceEstimates.observedReservationCount} distinct receipts · missing/conflicting estimates {aggregate.resourceEstimates.missingReservationTokenEstimateCount} · known inference cost estimate {aggregate.resourceEstimates.inferenceCostEstimateMicros.toLocaleString()} micro-USD · missing estimates {aggregate.resourceEstimates.missingInferenceCostEstimateCount} · quota {aggregate.quotaCoverage.status}</Text>
+              <Text>Canonical job settlement markers {aggregate.jobSettlementMarkers?.observedCount ?? "Unknown"} · {aggregate.jobSettlementMarkers?.byType?.map((item) => `${item.type}: ${item.count}`).join(", ") ?? "type coverage unknown"} · marker-only, no monetary amount asserted</Text>
+              <Text>Bound runner accounting evidence {aggregate.economicSettlementEvidence?.observedEventCount ?? "Unknown"} events · settled {aggregate.economicSettlementEvidence?.settledCount ?? "Unknown"} · reconciliation required {aggregate.economicSettlementEvidence?.reconciliationRequiredCount ?? "Unknown"} · classifications {aggregate.economicSettlementEvidence?.byClassification?.map((item) => `${item.classification}: ${item.count}`).join(", ") ?? "Unknown"} · provider capture subtotals {aggregate.economicSettlementEvidence?.capturedProviderAmounts?.map((item) => `${item.capturedMinorUnits ?? "Unknown"} ${item.currency} minor units`).join(", ") ?? "Unknown"} · missing capture values {aggregate.economicSettlementEvidence?.missingProviderCaptureValueCount ?? "Unknown"} · {aggregate.economicSettlementEvidence?.meaning ?? "coverage unknown"}</Text>
               {aggregate.usage.settlements.slice(0, 10).map((settlement) => <Text key={`${settlement.identity.scope}:${settlement.identity.consumptionId}`}>Settlement: {settlement.amount ?? "Unknown"} {settlement.currency ?? "currency unknown"} · {settlement.funding ?? "funding unknown"} · {settlement.identity.consumptionId}</Text>)}
               {aggregate.usage.settlements.length > 10 ? <Text type="supporting">Showing 10 of {aggregate.usage.settlements.length} settlement receipts.</Text> : null}
               <Text type="supporting">Sources: {aggregate.usage.coverage.sources.join(", ")} · uncovered: {aggregate.usage.coverage.missingSources.join(", ")}</Text>
@@ -211,6 +218,8 @@ export default function TaskObservabilityMonitor() {
                 </Section>
               ))}
               {detail.usage.reservations.map((reservation, index) => <Text key={`${reservation.kind}-${index}`}>Resource reservation estimate: {reservation.estimateTokens ?? "Unknown"} tokens · {reservation.estimatedCostMicros === null ? "" : `${reservation.estimatedCostMicros} micro-USD estimated · `}{reservation.kind} · {reservation.modelCallId ?? "no call identity"} · {reservation.status} · {reservation.provider ?? "provider unknown"} · observed {reservation.observedAt ?? "unknown"}</Text>)}
+              {(detail.usage.settlementMarkers ?? []).map((marker) => <Text key={marker.source.reference}>Canonical job settlement marker: {marker.type} · attempt {marker.attemptId ?? "unknown"} · {marker.committedAt} · marker only; no amount included · source {marker.source.reference}</Text>)}
+              {(detail.usage.economicSettlements ?? []).map((event) => <Text key={event.source.reference}>Runner accounting evidence: {event.status} · {event.classification} · {event.reasonCode ? `reason ${event.reasonCode}` : event.meaning} · {event.capturedMinorUnits === null ? event.meaning : `${event.capturedMinorUnits} ${event.currency ?? "currency unknown"} minor units · ${event.meaning}`} · attempt {event.attemptId ?? "unknown"} · {event.createdAt} · source {event.source.reference}</Text>)}
               {detail.usage.settlements.map((settlement) => <Text key={`${settlement.identity.scope}:${settlement.identity.consumptionId}`}>Settlement evidence: {settlement.amount ?? "Unknown"} {settlement.currency ?? "currency unknown"} · funding {settlement.funding ?? "unknown"}</Text>)}
             </VStack>
           </Section>

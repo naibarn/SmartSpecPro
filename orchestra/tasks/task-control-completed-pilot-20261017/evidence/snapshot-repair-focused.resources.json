@@ -1,0 +1,13 @@
+{
+  "profile": "package",
+  "base_source_sha": "6cdb5e106024fa4719fe66c0c2cd21aa43441378",
+  "commands": [
+    "pnpm exec vitest run shared/taskGoalProgress.test.ts shared/taskUsageEvidence.test.ts shared/taskAcceptanceProjection.test.ts server/services/__tests__/completedAutonomousPilotFixture.test.ts server/services/__tests__/completedPilotAcceptance.test.ts server/services/__tests__/taskObservabilityAcceptance.test.ts server/services/__tests__/taskObservabilityReadModel.test.ts server/routers/__tests__/workerJobs.test.ts client/src/components/task-control/TaskAcceptanceEvidence.test.tsx client/src/pages/TaskObservabilityMonitor.test.tsx client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx --maxWorkers=1"
+  ],
+  "started_at_epoch": 1792207718.8913493,
+  "finished_at_epoch": 1792207729.318354,
+  "exit": 0,
+  "signal": null,
+  "max_rss_kib": 516080,
+  "outcome": "PASS"
+}

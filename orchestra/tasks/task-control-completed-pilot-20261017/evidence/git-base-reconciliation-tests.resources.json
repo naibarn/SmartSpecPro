@@ -1,0 +1,16 @@
+{
+  "profile": "quick",
+  "command": "python3 -m unittest discover -s skills/integration-controller/tests -p test_*.py",
+  "started_epoch": 1792208430.7417128,
+  "finished_epoch": 1792208434.3267868,
+  "exit": 0,
+  "signal": null,
+  "max_rss_kib": 30480,
+  "outcome": "PASS",
+  "tests_passed": 25,
+  "source_base_sha": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+  "owned_source_sha256": {
+    "skills/integration-controller/scripts/promote_ready_pr.py": "c1f247df287e77ef0b3755e7dfc96115f1e13e58aaf9d6fbb73b957feef42e13",
+    "skills/integration-controller/tests/test_promote_ready_pr.py": "6b263c1a46970a12cce63692b9d7e424da0f2ba541e73d2834245a4f47bbde40"
+  }
+}

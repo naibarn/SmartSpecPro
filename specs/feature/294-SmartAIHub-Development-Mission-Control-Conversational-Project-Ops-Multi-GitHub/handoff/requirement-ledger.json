@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -10880,7 +10880,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10893,10 +10893,24 @@
           ],
           "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
           "summary": "Read-only projection/reducer/UI slice implemented; remaining contract gaps are recorded in the mission gap matrix."
+        },
+        {
+          "canonical_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "kind": "INTEGRATED_READ_ONLY_PROJECTION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1014",
+          "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db"
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "INTEGRATED_READ_ONLY_PROJECTION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Continue the explicitly listed missing acceptance criteria; keep unknown evidence unknown and final state PARTIAL until source-bound integration and applicable live acceptance pass.",
+      "next_action": "Complete same-snapshot cross-surface Goal/WU projection binding, history/parity and authenticated dereference acceptance; this local fixture does not close Mission Control.",
       "requirement_digest": "dca0d008344ef724f35bbc3e24ab05c3f4c4f15bae2a52fd220c2ff09571c9ba",
       "requirement_id": "REQ-294-OBS-02",
       "requirement_text": "- REQ-294-OBS-02: Project/SPEC aggregation MUST union stable bound consumption/criterion identities, not sum overlapping session/task/SPEC summary totals. A call shared by two SPECs contributes once to the Project union with explicit shared attribution. Unbound or inaccessible scope MUST NOT be guessed or leaked through counts. Baseline revisions/weights and units/funding/time boundaries MUST remain explicit.",
@@ -10912,9 +10926,36 @@
           "kind": "GAP_MATRIX",
           "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
           "summary": "Required source binding, projection history/parity and/or live acceptance remain open."
+        },
+        {
+          "canonical_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "kind": "COMPLETED_PILOT_SHARED_PROJECTION_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1014",
+          "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "status": "PASS_SCOPED",
+          "summary": "PR1014 completed-pilot regression + read-only consumer: 76/76 focused tests in 11 files; actual-component Chromium drilldown at 1440/768/390; original 295/295 scoped and 5/5 simulated-auth PG/HTTP evidence remains independent. No full SPEC closure."
+        },
+        {
+          "canonical_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "kind": "SCOPED_POST_REPAIR_VERIFICATION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1018",
+          "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "status": "PASS_SCOPED",
+          "summary": "PR1018 snapshot expiry/failed-read cache repair verified at1f9cda785:80/80 focused tests in11files,14 owned source hashes matched, final independent review no blockers. Historical original295/295+native5/5 remain bound separately to47235563d and fixture3190569a. No whole-SPEC closure or model/accounting authority changes."
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "SCOPE_BOUND_COMPLETED_PILOT_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "status": "PASS_SCOPED",
+          "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
         }
       ],
-      "verification_method": "Focused Vitest, scoped esbuild syntax, generated SPEC index check; no live UAT claim."
+      "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
     },
     {
       "applicability": "APPLICABLE",
@@ -10925,7 +10966,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10938,10 +10979,23 @@
           ],
           "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
           "summary": "Read-only projection/reducer/UI slice implemented; remaining contract gaps are recorded in the mission gap matrix."
+        },
+        {
+          "kind": "READ_UI_CACHED_SCOPE_FAILURE_SUPPRESSION",
+          "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+          "scope": "Cached UI records are hidden after failed current reads; full same-snapshot/history/parity and live reauthorization remain open.",
+          "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e"
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "INTEGRATED_READ_ONLY_PROJECTION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Continue the explicitly listed missing acceptance criteria; keep unknown evidence unknown and final state PARTIAL until source-bound integration and applicable live acceptance pass.",
+      "next_action": "Complete same-snapshot cross-surface Goal/WU projection binding, history/parity and authenticated dereference acceptance; this local fixture does not close Mission Control.",
       "requirement_digest": "b9e45e0e86bb9e8bb8a525557df24be656617252b5c0a26689df1fb49159ae2e",
       "requirement_id": "REQ-294-OBS-03",
       "requirement_text": "- REQ-294-OBS-03: Pagination and drilldown MUST preserve the same snapshot and scope, reject mismatched cursor/filter/token, reauthorize after revocation and fail closed across tenants. Late correction/reopen/regression MUST affect a new projection version without rewriting historical answers.",
@@ -10957,9 +11011,27 @@
           "kind": "GAP_MATRIX",
           "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
           "summary": "Required source binding, projection history/parity and/or live acceptance remain open."
+        },
+        {
+          "canonical_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "kind": "SCOPED_POST_REPAIR_VERIFICATION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1018",
+          "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "status": "PASS_SCOPED",
+          "summary": "PR1018 snapshot expiry/failed-read cache repair verified at1f9cda785:80/80 focused tests in11files,14 owned source hashes matched, final independent review no blockers. Historical original295/295+native5/5 remain bound separately to47235563d and fixture3190569a. No whole-SPEC closure or model/accounting authority changes."
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "SCOPE_BOUND_COMPLETED_PILOT_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "status": "PASS_SCOPED",
+          "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
         }
       ],
-      "verification_method": "Focused Vitest, scoped esbuild syntax, generated SPEC index check; no live UAT claim."
+      "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
     },
     {
       "applicability": "APPLICABLE",
@@ -11015,7 +11087,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
+      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -11028,10 +11100,24 @@
           ],
           "source_sha": "2af2e1d77ce306fb94fe8b01115fcffea3cff477",
           "summary": "Read-only projection/reducer/UI slice implemented; remaining contract gaps are recorded in the mission gap matrix."
+        },
+        {
+          "canonical_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "kind": "INTEGRATED_READ_ONLY_PROJECTION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1014",
+          "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db"
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "INTEGRATED_READ_ONLY_PROJECTION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Continue the explicitly listed missing acceptance criteria; keep unknown evidence unknown and final state PARTIAL until source-bound integration and applicable live acceptance pass.",
+      "next_action": "Complete same-snapshot cross-surface Goal/WU projection binding, history/parity and authenticated dereference acceptance; this local fixture does not close Mission Control.",
       "requirement_digest": "4678fa2571fff4dd370e32d63619099309a8d90c0bc68ccfc6c46875ee37aec9",
       "requirement_id": "REQ-294-OBS-05",
       "requirement_text": "- REQ-294-OBS-05: Mission Control MUST display verified Goal progress/remaining scope plus Runner/Agent/job stage/heartbeat/recovery/freshness and model/usage evidence through existing Task Control/Agent Monitor surfaces, including responsive/mobile hierarchy and source-bound comparison. Live verification requirements MUST remain explicitly separate from integration/unit test results.",
@@ -11047,9 +11133,36 @@
           "kind": "GAP_MATRIX",
           "path": "orchestra/tasks/task-control-goal-monitor-20261017/gap-matrix.md",
           "summary": "Required source binding, projection history/parity and/or live acceptance remain open."
+        },
+        {
+          "canonical_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "kind": "COMPLETED_PILOT_SHARED_PROJECTION_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1014",
+          "source_sha": "47235563d14d6a4c861c04127e77e6dd655283db",
+          "status": "PASS_SCOPED",
+          "summary": "PR1014 completed-pilot regression + read-only consumer: 76/76 focused tests in 11 files; actual-component Chromium drilldown at 1440/768/390; original 295/295 scoped and 5/5 simulated-auth PG/HTTP evidence remains independent. No full SPEC closure."
+        },
+        {
+          "canonical_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "kind": "SCOPED_POST_REPAIR_VERIFICATION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1018",
+          "source_sha": "1f9cda7857372f0e4369943cb257216658b84d0e",
+          "status": "PASS_SCOPED",
+          "summary": "PR1018 snapshot expiry/failed-read cache repair verified at1f9cda785:80/80 focused tests in11files,14 owned source hashes matched, final independent review no blockers. Historical original295/295+native5/5 remain bound separately to47235563d and fixture3190569a. No whole-SPEC closure or model/accounting authority changes."
+        },
+        {
+          "canonical_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "kind": "SCOPE_BOUND_COMPLETED_PILOT_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
+          "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+          "status": "PASS_SCOPED",
+          "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
         }
       ],
-      "verification_method": "Focused Vitest, scoped esbuild syntax, generated SPEC index check; no live UAT claim."
+      "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
     }
   ],
   "schema_version": 1,

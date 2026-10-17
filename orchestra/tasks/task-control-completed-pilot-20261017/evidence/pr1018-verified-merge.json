@@ -1,0 +1,11 @@
+{
+  "headRefName": "codex/task-control-stale-snapshot-20261017",
+  "headRefOid": "9462a0a898f4fab7de2e9bee15ef49ded92ffc94",
+  "mergeCommit": {
+    "oid": "1f9cda7857372f0e4369943cb257216658b84d0e"
+  },
+  "mergedAt": "2026-10-17T03:40:47Z",
+  "number": 1018,
+  "state": "MERGED",
+  "url": "https://github.com/naibarn/SmartSpecPro/pull/1018"
+}

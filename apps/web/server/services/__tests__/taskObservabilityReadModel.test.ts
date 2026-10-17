@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, getTaskObservabilityDetail, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -41,6 +41,25 @@ function reservation(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe("shared projection snapshot token", () => {
+  const scope = { tenantId: "tenant-1", userId: 9 };
+  const asOf = "2026-10-17T00:00:00.000Z";
+
+  it("binds one expiring as-of token to the authenticated tenant and user", () => {
+    const token = encodeProjectionSnapshotToken(scope, asOf, Date.now() + 60_000);
+    expect(decodeProjectionSnapshotToken(token, scope)).toMatchObject({ tenantId: "tenant-1", userId: 9, asOf });
+    expect(() => decodeProjectionSnapshotToken(token, { ...scope, tenantId: "tenant-2" }))
+      .toThrowError(expect.objectContaining({ code: "SNAPSHOT_INVALID" }));
+  });
+
+  it("rejects tampered and expired snapshot tokens", () => {
+    const token = encodeProjectionSnapshotToken(scope, asOf, Date.now() + 60_000);
+    expect(() => decodeProjectionSnapshotToken(`${token}x`, scope)).toThrowError(expect.objectContaining({ code: "SNAPSHOT_INVALID" }));
+    const expired = encodeProjectionSnapshotToken(scope, asOf, Date.now() - 1);
+    expect(() => decodeProjectionSnapshotToken(expired, scope)).toThrowError(expect.objectContaining({ code: "SNAPSHOT_EXPIRED" }));
+  });
+});
+
 describe("projectRunnerTimelineEvent", () => {
   it("projects bound recovery facts and excludes raw runner identity payloads", () => {
     const event = projectRunnerTimelineEvent({
@@ -73,6 +92,79 @@ describe("projectRunnerTimelineEvent", () => {
   });
 });
 
+describe("projectJobSettlementMarker", () => {
+  it("shows a durable marker without treating result payload as monetary settlement", () => {
+    const marker = projectJobSettlementMarker({
+      id: "settlement-row-1",
+      attemptId: "attempt-1",
+      settlementType: "result",
+      committedAt: new Date("2026-10-17T00:04:00Z"),
+    });
+    expect(marker).toEqual({
+      source: { kind: "worker_job_settlement", reference: "settlement-row-1" },
+      attemptId: "attempt-1",
+      type: "result",
+      committedAt: "2026-10-17T00:04:00.000Z",
+      monetaryAmount: null,
+      meaning: "durable_marker_only",
+    });
+  });
+});
+
+describe("projectEconomicSettlementEvidence", () => {
+  const event = {
+    id: "economic-event-1",
+    workerJobId: "job-1",
+    attemptId: "attempt-1",
+    eventType: "runner_receipt_economically_settled",
+    policyVersion: "economic-receipt-verification-v1",
+    createdAt: new Date("2026-10-17T00:04:00Z"),
+  };
+
+  it("projects verified provider capture from the job-bound economic event", () => {
+    expect(projectEconomicSettlementEvidence({ ...event, payloadJson: {
+      classification: "provider_metered",
+      capturedMinorUnits: 125,
+      currency: "usd",
+      providerUsageRef: "secret-provider-ref",
+      runnerSessionId: "secret-session",
+    } })).toEqual({
+      source: { kind: "economic_event", reference: "economic-event-1" },
+      workerJobId: "job-1",
+      attemptId: "attempt-1",
+      status: "settled",
+      classification: "provider_metered",
+      reasonCode: null,
+      capturedMinorUnits: 125,
+      currency: "USD",
+      policyVersion: "economic-receipt-verification-v1",
+      createdAt: "2026-10-17T00:04:00.000Z",
+      meaning: "verified_provider_metered_capture",
+    });
+  });
+
+  it("does not present approved subscription evidence as platform spend", () => {
+    const projection = projectEconomicSettlementEvidence({ ...event, payloadJson: {
+      classification: "approved_subscription",
+      capturedMinorUnits: 0,
+      currency: "USD",
+      subscriptionRef: "private-subscription-ref",
+    } });
+    expect(projection).toMatchObject({ classification: "approved_subscription", capturedMinorUnits: null, currency: null, meaning: "approved_subscription_no_platform_capture" });
+    expect(projection).not.toHaveProperty("subscriptionRef");
+  });
+
+  it("keeps reconciliation reasons to a bounded safe code", () => {
+    const projection = projectEconomicSettlementEvidence({
+      ...event,
+      eventType: "runner_receipt_reconciliation_required",
+      payloadJson: { reasonCode: "ACCOUNTING_VERIFIER_UNAVAILABLE", evidenceRef: "private-ref" },
+    });
+    expect(projection).toMatchObject({ status: "reconciliation_required", classification: "unknown", reasonCode: "ACCOUNTING_VERIFIER_UNAVAILABLE", capturedMinorUnits: null });
+    expect(projection).not.toHaveProperty("evidenceRef");
+  });
+});
+
 describe("aggregateTaskObservability", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,6 +187,8 @@ describe("aggregateTaskObservability", () => {
     };
     mocks.rows = [
       [job],
+      [{ id: "settlement-1", workerJobId: "job-1", attemptId: "attempt-1", settlementType: "result", committedAt: new Date("2026-10-17T00:01:30Z") }],
+      [{ id: "economic-1", workerJobId: "job-1", attemptId: "attempt-1", eventType: "runner_receipt_economically_settled", policyVersion: "v1", createdAt: new Date("2026-10-17T00:01:45Z"), payloadJson: { classification: "provider_metered", capturedMinorUnits: 125, currency: "USD" } }],
       [reservation(), reservation({ id: "reservation-replay", attemptId: "attempt-2" })],
       [{ workerJobId: "job-1", id: "correction-1", createdAt: new Date("2026-10-17T00:02:00Z"), payloadJson: {
         modelCallId: "call-1", correctedAt: "2026-10-17T00:02:00Z", correctedUsage: { inputTokens: 13, outputTokens: 3, cachedInputTokens: 4 },
@@ -103,13 +197,19 @@ describe("aggregateTaskObservability", () => {
     ];
     mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
 
-    const result = await aggregateTaskObservability({ scope: { tenantId: "tenant-1", userId: 9 }, projectId: "project-1", specId: "SPEC-277" });
+    const scope = { tenantId: "tenant-1", userId: 9 };
+    const projectionToken = encodeProjectionSnapshotToken(scope, "2026-10-17T00:03:00.000Z", Date.now() + 60_000);
+    const result = await aggregateTaskObservability({ scope, projectId: "project-1", specId: "SPEC-277", projectionToken });
 
+    expect(result.asOf).toBe("2026-10-17T00:03:00.000Z");
+    expect(result.projectionSnapshot).toMatchObject({ token: projectionToken, asOf: result.asOf });
     expect(result.observedJobCount).toBe(1);
     expect(result.usage.completeTotalTokens).toBe(16);
     expect(result.usage.counts).toMatchObject({ received: 2, unique: 1, corrections: 1, replayed: 1 });
     expect(result.resourceEstimates.reservedTokenEstimate).toBe(100);
     expect(result.resourceEstimates.observedReservationCount).toBe(1);
+    expect(result.jobSettlementMarkers).toMatchObject({ observedCount: 1, byType: [{ type: "result", count: 1 }], capped: false });
+    expect(result.economicSettlementEvidence).toMatchObject({ observedEventCount: 1, settledCount: 1, reconciliationRequiredCount: 0, byClassification: [{ classification: "provider_metered", count: 1 }], capturedProviderAmounts: [{ currency: "USD", capturedMinorUnits: 125 }], capped: false });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "canonical_correction_event", reference: "correction-1", rationale: null });
     expect(result.usage.receipts[0].sourceRefs).toContainEqual({ kind: "worker_job_provider_reservation", reference: "reservation-replay", rationale: null });
   });
@@ -123,7 +223,7 @@ describe("aggregateTaskObservability", () => {
       inputJson: { projectId: "project-1" },
       progressJson: {},
     }));
-    mocks.rows = [jobs, [], [], []];
+    mocks.rows = [jobs, [], [], [], [], []];
     mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
 
     const result = await aggregateTaskObservability({ scope: { tenantId: "tenant-1", userId: 9 }, projectId: "project-1" });

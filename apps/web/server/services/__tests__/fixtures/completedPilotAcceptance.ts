@@ -267,6 +267,12 @@ export function buildCompletedPilotAcceptanceFixture(
         observations,
       },
       baselineSource: "trusted",
+      scopeBinding: {
+        scope: { kind: "pilot", id: "completed-autonomous-backlog-pilot-20261016-17" },
+        goalId: "test-only:completed-autonomous-pilot",
+        baselineVersion,
+        baselineDigest,
+      },
     },
     parentClosure: {
       closedCount: 0,

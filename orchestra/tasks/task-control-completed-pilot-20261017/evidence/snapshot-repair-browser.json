@@ -1,0 +1,22 @@
+{
+  "profile": "quick",
+  "runtime": "isolated actual component + retained canonical fixture; simulated authentication; no live production acceptance",
+  "results": [
+    {
+      "width": 1440,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 768,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 390,
+      "drilldown": "PASS",
+      "noHorizontalOverflow": true
+    }
+  ],
+  "errors": []
+}

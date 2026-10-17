@@ -19,43 +19,49 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Verify the SPEC status/ledger checkpoint on the exact pushed head; keep OBS implementation states PARTIAL or OPEN and continue the remaining source-bound acceptance gaps.",
-      "checkpoint_sha": "33a8b04f"
+      "next_action": "SPEC amendment and requirement ledger are integrated; keep all OBS requirements PARTIAL/OPEN until source-bound runtime acceptance is recorded.",
+      "checkpoint_sha": "33a8b04f",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-02-goal-usage-projections": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Continue source-bound Goal integration and validate corrected usage union against authorized database evidence",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Reducers and bounded usage read models are integrated; authoritative Goal baseline, provider quota, helper receipts, and all-history reconstruction remain open.",
+      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-03-authenticated-read-api": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Complete DB-backed tenant/cursor tests and same-token snapshot semantics; then re-run protected checks",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Protected API is integrated; perform DB-backed auth/revocation and live source binding acceptance when authorized DB/UAT/Runner evidence is available.",
+      "checkpoint_sha": "39b8b8c4de1b3d3b34bbeb1e9085846a7fa952ad",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-04-task-control-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Complete Project/SPEC Goal aggregation, Chat summary parity, and responsive authenticated browser acceptance",
-      "checkpoint_sha": "e44314365413113204334562690e8b921f901b23"
+      "next_action": "Chat summary and Task Monitor UI are integrated. Live authenticated API-to-Web parity and live accessibility acceptance remain open.",
+      "checkpoint_sha": "1ddf3d5a9",
+      "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
     },
     "section-05-agent-monitor-ui": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Push the bound Runner timeline checkpoint and verify protected CI on its exact head; continue remaining multi-hop topology, historical projection, and live Runner acceptance gaps.",
-      "checkpoint_sha": "86f137f58"
+      "next_action": "Bound Runner fleet/timeline are integrated; continue topology only from explicit identities and verify against an authorized live Runner.",
+      "checkpoint_sha": "86f137f58",
+      "merged_main_sha": "d25a09ca47cfe4bd126fc8277dffe218d86ee645"
     },
     "section-06-integration-live-acceptance": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
-      "checkpoint_sha": "35a2eb4f3"
+      "next_action": "PR #1005 merged at 5322dfc; PR #1030 merged at d25a09c; handoff matrix PR #1031 merged at fe26fa68. Mission remains PARTIAL pending authoritative Goal/quota/helper sources and live authenticated DB/UAT/Runner acceptance.",
+      "checkpoint_sha": "51f6625527d4fe1495e83e4851867cb867999325",
+      "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
     }
   },
   "pre_commit": {
@@ -67,22 +73,23 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 26,
-  "updated_at": "2026-10-17T01:15:37.422460+00:00",
+  "generation": 67,
+  "updated_at": "2026-10-17T04:33:26.548331+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "Push reconciled branch codex/task-control-goal-monitor-20261017 to PR #1001; verify both required checks against the refreshed base and retry protected promotion with the exact new head.",
+    "next_action": "PR #1005 merged at 5322dfc; PR #1030 merged at d25a09c; handoff matrix PR #1031 merged at fe26fa68. Mission remains PARTIAL pending authoritative Goal/quota/helper sources and live authenticated DB/UAT/Runner acceptance.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
       "Live Runner/API acceptance and responsive browser evidence remain UNKNOWN",
       "No authoritative universal Goal baseline store was found in the current schema/service search",
       "Stable same-token aggregation across Project/SPEC/Chat and historical revisions is incomplete",
-      "Required Mocked SPEC-308 browser simulation fails at assistant onboarding hint visibility on sign-in route (run 38988051046)",
       "No JWT_SECRET, DATABASE_URL, or SMARTSPEC_UAT_* environment is configured for live acceptance",
-      "PR #1001 required mocked SPEC-308 browser check failed on old head 75de263; verify new head before attribution or repair.",
       "Live authenticated read path and responsive browser acceptance remain unavailable without authorized DB/UAT environment.",
-      "PR #1001 promotion was blocked by BASE_REF_STALE after origin/main advanced to 9ec5db2f; the merge and SPEC index regeneration are local pending push and checks."
-    ]
+      "Authorized DB/UAT/Runner credentials and resources are absent; live acceptance cannot be performed.",
+      "Authoritative Goal baseline and provider quota observation sources are not linked to this projection.",
+      "Goal acceptance now rejects baseline scope/version/digest mismatch, but no authoritative baseline source is connected to worker-job projections."
+    ],
+    "merged_main_sha": "fe26fa6821607bd3d831137d53005eabc911aa43"
   }
 }

@@ -327,6 +327,28 @@ export function UniversalControlPlanePanel({
     new Set()
   );
   const trpcUtils = trpc.useUtils();
+  const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
+    conversationId ? { conversationId } : {},
+    { enabled: Boolean(conversationId), staleTime: 15_000, retry: false }
+  );
+  const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
+  const conversationJobs = taskObservabilityQuery.error ? [] : taskObservabilityQuery.data?.items ?? [];
+  const latestConversationJob = conversationJobs[0];
+  const conversationTaskDetailQuery = trpc.workerJobs.observabilityDetail.useQuery(
+    {
+      jobId: latestConversationJob?.id ?? "",
+      ...(taskProjectionToken ? { projectionToken: taskProjectionToken } : {}),
+    },
+    {
+      enabled: Boolean(conversationId && latestConversationJob && taskProjectionToken),
+      staleTime: 15_000,
+      retry: false,
+    },
+  );
+  const conversationTaskDetail = conversationTaskDetailQuery.error ? undefined : conversationTaskDetailQuery.data;
+  const taskMonitorHref = conversationId
+    ? `/agent-monitor?conversationId=${conversationId}${taskProjectionToken ? `&projectionToken=${encodeURIComponent(taskProjectionToken)}` : ""}`
+    : "";
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
@@ -731,13 +753,32 @@ export function UniversalControlPlanePanel({
             verified result
           </p>
           {conversationId ? (
-            <Link
-              href={`/agent-monitor?conversationId=${conversationId}`}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
-            >
-              Inspect this Chat’s model, usage, and Runner evidence
-              <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            </Link>
+            <section className="mt-2 space-y-2" aria-label="Chat task evidence">
+              <section className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground" aria-live="polite">
+                <p className="font-medium text-foreground">Chat model and usage snapshot</p>
+                {taskObservabilityQuery.isLoading ? <p>Loading linked task evidence…</p> : null}
+                {taskObservabilityQuery.error ? <p>Chat task evidence is unavailable. Check access and refresh the panel.</p> : null}
+                {!taskObservabilityQuery.isLoading && !taskObservabilityQuery.error && !latestConversationJob ? <p>No canonical worker task is linked to this Chat.</p> : null}
+                {latestConversationJob && conversationTaskDetailQuery.isLoading ? <p>Loading the latest linked task…</p> : null}
+                {latestConversationJob && conversationTaskDetailQuery.error ? <p>Latest task detail is unavailable; token and model values remain unknown.</p> : null}
+                {conversationTaskDetail ? (
+                  <section className="mt-1 space-y-1">
+                    <p>Latest linked task {conversationTaskDetail.id} · {conversationTaskDetail.status} · snapshot {taskObservabilityQuery.data?.snapshot.asOf ?? "unknown"}</p>
+                    <p>UI Session {conversationTaskDetail.modelSelection.uiSessionModel ?? "Unknown"} ({conversationTaskDetail.modelSelection.source}, observed {conversationTaskDetail.modelSelection.asOf ?? "unknown"})</p>
+                    <p>Worker requested {conversationTaskDetail.usage.receipts.at(-1)?.model.requested ?? "Unknown"} · Provider effective {conversationTaskDetail.usage.receipts.at(-1)?.model.effective ?? "Unknown / unverified"} · External helper {conversationTaskDetail.usage.receipts.at(-1)?.model.helper ?? "Unknown / unverified"}</p>
+                    <p>Measured linked tokens {conversationTaskDetail.usage.completeTotalTokens === null ? "Unknown" : conversationTaskDetail.usage.completeTotalTokens.toLocaleString()} · known subtotal {conversationTaskDetail.usage.knownSubtotalTokens.toLocaleString()} · calls {conversationTaskDetail.usage.counts.unique} · missing {conversationTaskDetail.usage.counts.missing} · quota {conversationTaskDetail.quotaCoverage.status}</p>
+                    <p>Coverage {conversationTaskDetail.usage.coverage.status}: {conversationTaskDetail.usage.coverage.reason}</p>
+                  </section>
+                ) : null}
+              </section>
+              <Link
+                href={taskMonitorHref}
+                className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
+              >
+                Inspect this Chat’s model, usage, and Runner evidence
+                <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            </section>
           ) : null}
         </section>
         <Button
