@@ -58,6 +58,47 @@ export interface DocumentQueryState {
   status?: string;
   docId?: number;
   folderId?: number | null;
+  citationToken?: string;
+}
+
+export interface DocumentCitationAnchor {
+  documentId: number;
+  revision: string;
+  digest: string;
+  lineStart: number;
+  lineEnd: number;
+  quoteHash: string;
+}
+
+export function parseDocumentCitationAnchor(
+  token: string | undefined,
+  expectedDocumentId?: number,
+): DocumentCitationAnchor | null {
+  if (!token || token.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(token)) return null;
+  try {
+    const base64 = token.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")));
+    if (
+      payload?.v !== 1 ||
+      !Number.isSafeInteger(payload.documentId) || payload.documentId <= 0 ||
+      (expectedDocumentId !== undefined && payload.documentId !== expectedDocumentId) ||
+      typeof payload.digest !== "string" || !/^[a-f0-9]{64}$/.test(payload.digest) ||
+      payload.revision !== `sha256:${payload.digest}` ||
+      !Number.isSafeInteger(payload.lineStart) || payload.lineStart < 1 ||
+      !Number.isSafeInteger(payload.lineEnd) || payload.lineEnd < payload.lineStart ||
+      typeof payload.quoteHash !== "string" || !/^[a-f0-9]{64}$/.test(payload.quoteHash)
+    ) return null;
+    return {
+      documentId: payload.documentId,
+      revision: payload.revision,
+      digest: payload.digest,
+      lineStart: payload.lineStart,
+      lineEnd: payload.lineEnd,
+      quoteHash: payload.quoteHash,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export interface KnowledgeVaultSurfaceAvailability {
@@ -241,6 +282,7 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
   const productId = normalizeDocumentSourceFilter(params.get("productId"));
   const runId = normalizeDocumentSourceFilter(params.get("runId"));
   const status = params.get("status") || undefined;
+  const citationToken = params.get("cite") || undefined;
   const docIdParsed = docIdRaw ? Number.parseInt(docIdRaw, 10) : NaN;
   const docId = Number.isFinite(docIdParsed) && docIdParsed > 0 ? docIdParsed : undefined;
   const folderIdParsed = folderIdRaw ? Number.parseInt(folderIdRaw, 10) : NaN;
@@ -275,6 +317,7 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
     status,
     docId,
     folderId,
+    ...(citationToken ? { citationToken } : {}),
   };
 }
 
@@ -312,6 +355,9 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   }
   if (state.folderId != null) {
     params.set("folder", String(state.folderId));
+  }
+  if (state.citationToken) {
+    params.set("cite", state.citationToken);
   }
   return params.toString();
 }

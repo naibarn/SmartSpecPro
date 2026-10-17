@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       }
@@ -21,22 +21,22 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
-    "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
+    "expected_canonical_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
+    "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
   },
   "continuation": {
-    "next_action": "PR #1042 merged as 27bc4368ced4c31d2be9dde9474af170b8c6d039. Post-merge focused retrieval verification passed 3 broker/library test files (50 passed, 28 existing todo) and 4 adjacent Library Markdown consumer files (38 passed); evidence is handoff/evidence/p229-postmerge-retrieval-verification-20261017.json. SPEC229_P229_8_CANONICAL_CITATION_URI passed focused acceptance; P229.8 remains incomplete because source-location anchors and a calibrated Evidence Quality Gate are absent, so evidence remains weak and consequential consumer migration must wait. P229.2 remains WAITING_EXPLICIT_AUTHORIZATION_AND_INDEX_PREREQUISITES. No further next WorkUnit is ready until these evidence/provider dependencies are resolved.",
-    "next_ready_workunit": null,
-    "reactivation_predicate": "All P229.2 authorization and versioned index/backfill/shadow-read/rollback prerequisites are documented and approved.",
-    "resume_point": "P229.1 remains accepted and its current exact-SHA regression suite passed on canonical main 27bc4368ced4c31d2be9dde9474af170b8c6d039. P229.8 canonical citation URI slice merged via PR #1042 and post-merge focused verification passed. Citation location anchors and quality calibration remain open; current evidence stays weak. P229.2 remains gated on explicit authorization and approved versioned index/backfill/shadow-read/rollback prerequisites. Global SPEC-229 remains incomplete with 104 unresolved requirements.",
-    "waiting_predicate": "P229.2 may reactivate only after explicit authorization for the BGE-M3 1024D Direct Vectorize V2 phase and verified versioned index, backfill, shadow-read, rollback, and acceptance prerequisites. No live 768D profile/index changes or AI Search migration are authorized by this checkpoint."
+    "next_action": "PR #1050 head f863598e215e27aa28fba85cc17bec2b0aca7404 includes the normal merge of canonical main 928dbf7c08c3b9408d5aaff896370d698ed7abe2. Focused tests pass on this exact PR candidate; evidence is handoff/evidence/p229-8-anchors-benchmark-20261017.json. Wait for required GitHub checks, merge through the normal protected path, then verify post-merge on canonical main. P229.8 remains incomplete: fixtures are development-only and do not certify the quality gate; evidence remains weak/degraded, and consequential consumer migration is not authorized before certification. P229.2 remains separately gated.",
+    "next_ready_workunit": "SPEC229_P229_8_CITATION_AND_BENCHMARK_INTEGRATION",
+    "reactivation_predicate": "Protected PR for the currently ready Citation Anchor and Benchmark Harness WorkUnits is merged and post-merge exact-SHA checks pass; subsequent quality-gate work may proceed when reviewed 500-query data and calibration review are available.",
+    "resume_point": "The protected PR branch contains Citation Anchor and Benchmark Harness implementation plus a non-force merge of canonical main 928dbf7c08c3b9408d5aaff896370d698ed7abe2. Focused verification passed on exact candidate f863598e215e27aa28fba85cc17bec2b0aca7404 (8 files/97 tests, 3 resolver tests, 4 Library/finance regression files/38 tests and a 9-case synthetic benchmark run). Next: wait for required checks and merge normally; then rerun post-merge tests and refresh canonical evidence.",
+    "waiting_predicate": "P229.8 quality gate and consequential consumer migration remain blocked until reviewed gold data and approved calibration satisfy canonical SPEC §27; P229.2 remains separately gated on explicit authorization and approved versioned index/backfill/shadow-read/rollback prerequisites."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 47,
+  "generation": 51,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-    "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+    "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-17T03:28:26.658969Z",
+      "last_evidence_at": "2026-10-17T08:30:09.380833Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -97,7 +97,9 @@
       "e2d910cce266dd1193f69c9b44898f72615cb608",
       "fadb656fa7a469bb3f1fdf8d291e662c4abf059f",
       "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
-      "5c93ee55389153f076e199d039bdcf05fa9ab919"
+      "5c93ee55389153f076e199d039bdcf05fa9ab919",
+      "d383e8eee1808c0d8d7c0d503ce48c98413fde73",
+      "f863598e215e27aa28fba85cc17bec2b0aca7404"
     ],
     "mapping": [],
     "source_paths": [
@@ -110,16 +112,25 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-canonical-citation-uri-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-current-main-verification-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
+      "apps/web/server/services/libraryCitationAnchor.ts",
+      "apps/web/server/services/libraryCitationAnchor.test.ts",
+      "apps/web/server/services/libraryRetrievalBenchmark.ts",
+      "apps/web/server/services/libraryRetrievalBenchmark.fixtures.ts",
+      "apps/web/server/services/libraryRetrievalBenchmark.test.ts",
+      "apps/web/scripts/run-retrieval-fixture-benchmark.ts",
+      "apps/web/client/src/pages/DocumentManagement.tsx",
+      "apps/web/client/src/components/library/CodeMirrorEditor.tsx",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-anchors-benchmark-20261017.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
+    "canonical_sha": "928dbf7c08c3b9408d5aaff896370d698ed7abe2",
     "integrated": true,
-    "integrated_at": "2026-10-17T07:57:22Z"
+    "integrated_at": "2026-10-17T08:31:12Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -172,10 +183,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-17T03:28:26.658969Z",
+    "reconciled_at": "2026-10-17T08:30:09.380833Z",
     "sources": [
       {
-        "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       },
@@ -187,7 +198,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
       },
       {
@@ -199,12 +210,17 @@
         "line": 12,
         "relation": "SUPERSEDES",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -226,7 +242,7 @@
         "excerpt": "**Status:** Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists",
         "line": 3,
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
       },
       {
@@ -237,7 +253,7 @@
         "line": 12,
         "relation": "SUPERSEDES",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
@@ -245,7 +261,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       }
@@ -256,16 +272,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 1,
-    "total": 105,
-    "unresolved": 104
+    "pass": 0,
+    "total": 106,
+    "unresolved": 106
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T07:59:05.482280Z",
+  "updated_at": "2026-10-17T08:34:07.848517Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -278,11 +294,11 @@
       "handoff/evidence/p229-1-postmerge-20261017.json",
       "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json"
     ],
-    "freshness": "FRESH",
+    "freshness": "UNKNOWN",
     "required_profiles": [
       "quick"
     ],
-    "sha": "27bc4368ced4c31d2be9dde9474af170b8c6d039",
-    "status": "PASS"
+    "sha": null,
+    "status": "UNKNOWN"
   }
 }

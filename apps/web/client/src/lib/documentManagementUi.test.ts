@@ -11,11 +11,37 @@ import {
   getDocumentAccessLabel,
   isMarkdownLibraryItem,
   parseDocumentQueryState,
+  parseDocumentCitationAnchor,
   resolveKnowledgeVaultMode,
   resolveDocumentPreviewType,
 } from "./documentManagementUi";
 
 describe("documentManagementUi", () => {
+  it("preserves and validates content-addressed citation anchors in the editor route", () => {
+    const payload = {
+      v: 1,
+      documentId: 42,
+      revision: `sha256:${"a".repeat(64)}`,
+      digest: "a".repeat(64),
+      lineStart: 3,
+      lineEnd: 4,
+      quoteHash: "b".repeat(64),
+    };
+    const token = btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const parsed = parseDocumentQueryState(`?mode=editor&doc=42&cite=${token}`);
+    expect(parseDocumentCitationAnchor(parsed.citationToken, parsed.docId)).toEqual({
+      documentId: 42,
+      revision: payload.revision,
+      digest: payload.digest,
+      lineStart: 3,
+      lineEnd: 4,
+      quoteHash: payload.quoteHash,
+    });
+    expect(buildDocumentQueryString(parsed)).toContain(`cite=${token}`);
+    expect(parseDocumentCitationAnchor(token, 43)).toBeNull();
+    expect(parseDocumentCitationAnchor("not-a-valid-token", 42)).toBeNull();
+  });
+
   it("parses and rebuilds URL query state with defaults", () => {
     const parsed = parseDocumentQueryState("?scope=shared_groups&sort=created_desc&q=guide&type=md&source=marketplace_auto_review_hyperframes_render&productId=product_1&runId=mar_1&status=ready");
     expect(parsed).toEqual({

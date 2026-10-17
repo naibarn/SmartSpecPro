@@ -35,8 +35,9 @@ export default function UnifiedDocumentSurface({
   editorUploadMetadata,
   editorLibraryScope = "all",
   onOpenWikiLink,
+  citationAnchor,
 }: UnifiedDocumentSurfaceProps) {
-  const [mode, setMode] = useState<EditorMode>("view");
+  const [mode, setMode] = useState<EditorMode>(citationAnchor ? "source" : "view");
   const [editorTemplate, setEditorTemplate] =
     useState<TiptapEditorTemplate>(initialEditorTemplate);
   const [tiptapContent, setTiptapContent] = useState<JSONContent>(() =>
@@ -61,6 +62,10 @@ export default function UnifiedDocumentSurface({
   const zoomStep = 10;
   const minZoom = 80;
   const maxZoom = 140;
+
+  useEffect(() => {
+    if (citationAnchor) setMode("source");
+  }, [citationAnchor?.revision, citationAnchor?.lineStart, citationAnchor?.lineEnd]);
 
   useEffect(() => {
     const handler = () => {
@@ -476,6 +481,7 @@ export default function UnifiedDocumentSurface({
         value={sourceMarkdown}
         onChange={handleSourceChange}
         visible={mode === "source"}
+        citationAnchor={citationAnchor}
       />
 
       {hasConflict && (

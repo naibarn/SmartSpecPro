@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import {
   resolveLibraryVectorIndexName,
@@ -10,6 +10,12 @@ import {
   type LibrarySearchResultV1,
 } from "./libraryService";
 import { estimateTokens } from "../utils/tokenEstimator";
+import {
+  buildLibraryCitationAnchorUri,
+  createLibraryCitationAnchor,
+  normalizeCanonicalMarkdown,
+  sha256,
+} from "./libraryCitationAnchor";
 import {
   getEffectiveVectorProviderConfig,
   resolveVectorProvider,
@@ -51,6 +57,10 @@ export interface RetrievalEvidenceV2 {
     lineEnd?: number;
     timeStartMs?: number;
     timeEndMs?: number;
+    revision?: string;
+    digest?: string;
+    quoteHash?: string;
+    anchorUri?: string;
   };
   retrievalProvider:
     | "cloudflare_ai_search"
@@ -249,9 +259,18 @@ function normalizeEvidence(
   sourceRevision: string,
   sourceDigest: string,
   canonicalSourceUri?: string | null,
+  query?: string,
 ): RetrievalEvidenceV2 {
   const id = String(result.item_id);
   const sourceUri = normalizeCitationSourceUri(canonicalSourceUri);
+  const anchor = query
+    ? createLibraryCitationAnchor({
+        documentId: result.item_id,
+        query,
+        markdown: content,
+        digest: sourceDigest,
+      })
+    : null;
   return {
     evidenceId: `library:${tenantId}:${id}:${sourceRevision}:${sourceDigest.slice(0, 12)}`,
     sourceType: "library_item",
@@ -268,6 +287,16 @@ function normalizeEvidence(
     title: result.title,
     text: content,
     ...(sourceUri ? { sourceUri } : {}),
+    ...(anchor ? {
+      citation: {
+        lineStart: anchor.lineStart,
+        lineEnd: anchor.lineEnd,
+        revision: anchor.revision,
+        digest: anchor.digest,
+        quoteHash: anchor.quoteHash,
+        anchorUri: buildLibraryCitationAnchorUri(anchor),
+      },
+    } : {}),
     retrievalProvider: "cloudflare_vectorize",
     providerProfileId: profileId ?? resolveLibraryVectorIndexName(),
     retrievalMode: "hybrid",
@@ -335,6 +364,7 @@ async function hydrateLibraryEvidence(params: {
   profileId: string | undefined;
   maxEvidence: number;
   maxContextTokens: number;
+  query: string;
 }): Promise<{
   evidence: RetrievalEvidenceV2[];
   partial: boolean;
@@ -381,24 +411,25 @@ async function hydrateLibraryEvidence(params: {
       continue;
     }
 
-    const text = truncateTextToTokenBudget(content.content, remainingTokens);
+    const canonicalMarkdown = normalizeCanonicalMarkdown(content.content);
+    const text = truncateTextToTokenBudget(canonicalMarkdown, remainingTokens);
     if (!text) {
       truncated = true;
       degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
       break;
     }
-    const sourceDigest = createHash("sha256")
-      .update(content.content, "utf8")
-      .digest("hex");
+    const sourceDigest = content.canonicalDigest || sha256(canonicalMarkdown);
     const itemEvidence = normalizeEvidence(
       result,
       params.tenantId,
       params.profileId,
-      text,
+      canonicalMarkdown,
       content.updated_at,
       sourceDigest,
       content.canonicalSourceUri,
+      params.query,
     );
+    itemEvidence.text = text;
     evidence.push(itemEvidence);
     remainingTokens = Math.max(0, remainingTokens - estimateTokens(text));
     if (text.length < content.content.length) {
@@ -559,6 +590,7 @@ export async function retrieveLibraryEvidenceV2(
     profileId: diagnostics.profileId,
     maxEvidence,
     maxContextTokens,
+    query,
   });
   const evidence = hydrated.evidence;
 

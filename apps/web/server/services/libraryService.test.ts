@@ -103,6 +103,7 @@ import {
   createLibraryItem,
   getPublicShareLinkState,
   getLibraryItemById,
+  getLibraryMarkdownContent,
   publishLibraryItemToGallery,
   listLibraryDocuments,
   normalizeLibraryMetadata,
@@ -111,6 +112,7 @@ import {
   uploadLibraryFile,
   updateLibraryItem,
 } from "./libraryService";
+import { sha256 } from "./libraryCitationAnchor";
 
 function makeSelectChain(rows: any[], withJoin = false) {
   const limitMock = vi.fn().mockResolvedValue(rows);
@@ -246,6 +248,70 @@ describe("ACL helpers", () => {
 
     expect(targets.vectorRefIds).toEqual(["vec-1"]);
     expect(targets.indexNames).toEqual(["finance-library-v2"]);
+  });
+});
+
+describe("Library Markdown citation resolution", () => {
+  const owner = { userId: 9, tenantId: "tenant-a", role: "user" as const };
+  const markdown = "# Guide\r\nEvidence is current.";
+  const item = {
+    id: 501,
+    tenantId: "tenant-a",
+    ownerUserId: 9,
+    itemType: "document",
+    source: "document_upload",
+    title: "Guide",
+    description: null,
+    status: "ready",
+    visibility: "private",
+    metadata: {},
+    sourceUrl: "https://example.test/original",
+    thumbnailUrl: null,
+    deletedAt: null,
+    createdAt: new Date("2026-10-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-10-02T00:00:00.000Z"),
+  };
+
+  it("returns canonical normalized Markdown with content-addressed revision after tenant and ACL checks", async () => {
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([item]))
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([{ content: markdown }]));
+
+    const result = await getLibraryMarkdownContent(501, owner);
+    const digest = sha256("# Guide\nEvidence is current.");
+    expect(result).toMatchObject({
+      item_id: 501,
+      content: "# Guide\nEvidence is current.",
+      canonicalDigest: digest,
+      canonicalRevision: `sha256:${digest}`,
+    });
+  });
+
+  it("withholds Markdown when the requested immutable revision or digest no longer matches", async () => {
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([item]))
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([{ content: "# Guide\nUpdated evidence." }]));
+    const staleAnchor = {
+      documentId: 501,
+      revision: `sha256:${"a".repeat(64)}`,
+      digest: "a".repeat(64),
+      lineStart: 2,
+      lineEnd: 2,
+      quoteHash: "b".repeat(64),
+    };
+
+    await expect(getLibraryMarkdownContent(501, owner, undefined, staleAnchor)).resolves.toBeNull();
+  });
+
+  it("withholds Markdown after Library ACL revocation", async () => {
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([{ ...item, ownerUserId: 999 }]))
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    await expect(getLibraryMarkdownContent(501, owner)).resolves.toBeNull();
+    expect(mockDb.select).toHaveBeenCalledTimes(2);
   });
 });
 

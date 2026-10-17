@@ -16,6 +16,13 @@ import {
 
 import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
+import {
+  canonicalMarkdownRevision,
+  normalizeCanonicalMarkdown,
+  sha256,
+  verifyLibraryCitationAnchor,
+  type LibraryCitationAnchor,
+} from "./libraryCitationAnchor";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import {
   assertR2StorageActive,
@@ -652,6 +659,8 @@ export interface LibraryMarkdownContentResult {
   item_id: number;
   content: string;
   updated_at: string;
+  canonicalRevision: string;
+  canonicalDigest: string;
   /** Canonical source URL from the ACL-checked Library row, when safe to cite. */
   canonicalSourceUri?: string | null;
 }
@@ -5595,7 +5604,8 @@ export async function listLibraryDocuments(
 export async function getLibraryMarkdownContent(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient
+  dbClient?: DbClient,
+  expectedCitationAnchor?: LibraryCitationAnchor,
 ): Promise<LibraryMarkdownContentResult | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5629,10 +5639,23 @@ export async function getLibraryMarkdownContent(
     )
     .limit(1);
 
+  const canonicalContent = normalizeCanonicalMarkdown(rows[0]?.content ?? "");
+  const canonicalDigest = sha256(canonicalContent);
+  const canonicalRevision = canonicalMarkdownRevision(canonicalDigest);
+  if (
+    expectedCitationAnchor &&
+    (expectedCitationAnchor.documentId !== item.id ||
+      !verifyLibraryCitationAnchor(expectedCitationAnchor, canonicalContent))
+  ) {
+    return null;
+  }
+
   return {
     item_id: item.id,
-    content: rows[0]?.content ?? "",
+    content: canonicalContent,
     updated_at: item.updatedAt.toISOString(),
+    canonicalRevision,
+    canonicalDigest,
     canonicalSourceUri: item.sourceUrl,
   };
 }

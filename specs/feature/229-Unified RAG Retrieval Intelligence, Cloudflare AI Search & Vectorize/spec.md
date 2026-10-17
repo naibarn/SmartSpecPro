@@ -848,6 +848,10 @@ interface RetrievalEvidenceV2 {
     lineEnd?: number;
     timeStartMs?: number;
     timeEndMs?: number;
+    revision?: string;
+    digest?: string;
+    quoteHash?: string;
+    anchorUri?: string;
   };
 
   retrievalProvider:
@@ -889,6 +893,8 @@ interface RetrievalEvidenceV2 {
 ```
 
 `canonicalRef` is authoritative identity. Provider-returned text/vector scores remain derived evidence.
+
+For Library Markdown citations, the canonical document is the `library_item` identified by `canonicalRef.id`; external `sourceUri` is a source reference and MUST NOT establish a Markdown position. Citation `revision` is the content-addressed immutable value `sha256:<digest>`, where `digest` is SHA-256 over canonical Markdown after converting CRLF and lone CR line endings to LF; all other Unicode code points remain unchanged. `lineStart` and `lineEnd` are 1-based and inclusive over that normalized canonical Markdown, before any context/token-budget truncation. `quoteHash`, when present, is SHA-256 over the normalized text of those complete lines joined with LF. `anchorUri` is an authenticated Document Management route carrying the document identity and anchor contract; it MUST resolve current canonical content and re-check tenant, ACL, revision, digest, and quote hash before returning text or opening the position. Mismatch, deletion, or revoked access fails closed without returning prior content. The UI opens the existing Markdown source editor and selects/scrolls the verified line range.
 
 ## 16.3 Response
 
@@ -984,6 +990,8 @@ Before sending context to an LLM, evaluate:
 - provenance;
 - authority;
 - citation availability.
+
+Citation availability means the evidence has a resolvable canonical identity and a valid source-location anchor when the source profile supports locations. Citation precision counts only anchors whose current ACL-authorized document identity, immutable revision, digest, line range, and optional quote hash resolve to the same canonical Markdown. A development fixture suite is not the reviewed 500-query golden dataset and cannot certify a quality threshold or promote `weak` evidence to `sufficient`.
 
 States:
 

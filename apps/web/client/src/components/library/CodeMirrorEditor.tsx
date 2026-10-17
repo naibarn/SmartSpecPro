@@ -144,6 +144,7 @@ interface CodeMirrorEditorProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  focusLineRange?: { start: number; end: number };
 }
 
 export interface CodeMirrorEditorMethods {
@@ -153,6 +154,7 @@ export interface CodeMirrorEditorMethods {
   getSelection: () => string;
   undo: () => void;
   redo: () => void;
+  focusLineRange: (start: number, end: number) => void;
 }
 
 /**
@@ -175,6 +177,7 @@ const CodeMirrorEditor = forwardRef<
       placeholder = "Start typing...",
       disabled = false,
       className = "",
+      focusLineRange,
     },
     ref: React.Ref<CodeMirrorEditorMethods>
   ) => {
@@ -259,7 +262,35 @@ const CodeMirrorEditor = forwardRef<
         if (!view) return;
         cmRedo(view);
       },
+      focusLineRange: (start: number, end: number) => {
+        const view = editorRef.current?.view;
+        if (!view || !Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > view.state.doc.lines) return;
+        const from = view.state.doc.line(start).from;
+        const to = view.state.doc.line(end).to;
+        view.dispatch({
+          selection: { anchor: from, head: to },
+          effects: EditorView.scrollIntoView(from, { y: "center" }),
+        });
+        view.focus();
+      },
     }));
+
+    useEffect(() => {
+      if (!focusLineRange) return;
+      const frame = requestAnimationFrame(() => {
+        const view = editorRef.current?.view;
+        if (view && focusLineRange.end <= view.state.doc.lines) {
+          const from = view.state.doc.line(focusLineRange.start).from;
+          const to = view.state.doc.line(focusLineRange.end).to;
+          view.dispatch({
+            selection: { anchor: from, head: to },
+            effects: EditorView.scrollIntoView(from, { y: "center" }),
+          });
+          view.focus();
+        }
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [focusLineRange?.start, focusLineRange?.end]);
 
     const extensions = useMemo(() => {
       const languageExt = detectLanguageExtension(fileExtension);

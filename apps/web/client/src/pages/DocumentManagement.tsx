@@ -101,6 +101,7 @@ import {
   getMarkdownPreviewFallbackContent,
   resolveKnowledgeVaultMode,
   parseDocumentQueryState,
+  parseDocumentCitationAnchor,
   resolveDocumentPreviewType,
   buildPublicDocumentShareUrl,
   supportsKnowledgeVaultScope,
@@ -855,14 +856,25 @@ export default function DocumentManagement() {
     selectedMarkdownDraft &&
     selectedMarkdownDraft.value !== selectedMarkdownDraft.savedValue
   );
+  const citationTokenPresent = Boolean(queryState.citationToken);
+  const requestedCitationAnchor = parseDocumentCitationAnchor(
+    queryState.citationToken,
+    selectedItem?.id,
+  );
   const markdownContentQuery = trpc.library.getMarkdownContent.useQuery(
-    { id: selectedItem?.id || 0 },
     {
-      enabled: Boolean(selectedItem && previewType === "markdown"),
+      id: selectedItem?.id || 0,
+      ...(requestedCitationAnchor ? { citationAnchor: requestedCitationAnchor } : {}),
+    },
+    {
+      enabled: Boolean(
+        selectedItem && previewType === "markdown" &&
+        (!citationTokenPresent || requestedCitationAnchor)
+      ),
       // Poll only when the local draft is clean so we can pick up external
       // edits without fighting the user's current typing session.
       refetchInterval:
-        previewType === "markdown" && !selectedMarkdownDraftIsDirty
+        previewType === "markdown" && !selectedMarkdownDraftIsDirty && !citationTokenPresent
           ? MARKDOWN_SYNC_POLL_INTERVAL_MS
           : false,
       // Prevent window-focus events (e.g. from screen-capture hotkeys) from
@@ -870,13 +882,24 @@ export default function DocumentManagement() {
       refetchOnWindowFocus: false,
     }
   );
-  const selectedMarkdownValue =
-    selectedMarkdownDraft &&
-    (selectedMarkdownDraftIsDirty ||
-      selectedMarkdownDraft.value.trim().length > 0)
+  const citationAnchorResolved = Boolean(
+    requestedCitationAnchor &&
+      markdownContentQuery.data?.canonicalRevision === requestedCitationAnchor.revision &&
+      markdownContentQuery.data?.canonicalDigest === requestedCitationAnchor.digest &&
+      markdownContentQuery.data?.item_id === requestedCitationAnchor.documentId,
+  );
+  const citationAnchor = citationAnchorResolved ? requestedCitationAnchor ?? undefined : undefined;
+  const citationResolutionError = citationTokenPresent &&
+    (!requestedCitationAnchor || markdownContentQuery.isError)
+    ? "This citation is no longer available. The document may have changed or access may have been revoked."
+    : undefined;
+  const selectedMarkdownValue = citationTokenPresent
+    ? citationAnchorResolved ? markdownContentQuery.data?.content ?? "" : ""
+    : selectedMarkdownDraft &&
+        (selectedMarkdownDraftIsDirty || selectedMarkdownDraft.value.trim().length > 0)
       ? selectedMarkdownDraft.value
-      : markdownContentQuery.data?.content ||
-        getMarkdownPreviewFallbackContent(selectedItem);
+      : markdownContentQuery.data?.content || getMarkdownPreviewFallbackContent(selectedItem);
+  const selectedMarkdownError = citationResolutionError ?? markdownError;
   const selectedMarkdownUpdatedAt =
     selectedMarkdownDraft?.updatedAt ||
     markdownContentQuery.data?.updated_at ||
@@ -1326,6 +1349,7 @@ export default function DocumentManagement() {
       ...(options?.scope ? { scope: options.scope } : {}),
       viewMode: "editor",
       docId: item.id,
+      citationToken: undefined,
     }));
     if (!isDesktopLayout) {
       setMobileTab("editor");
@@ -1346,6 +1370,7 @@ export default function DocumentManagement() {
       ...prev,
       viewMode: "editor",
       docId: tabId,
+      citationToken: undefined,
     }));
     if (!isDesktopLayout) {
       setMobileTab("editor");
@@ -3799,7 +3824,8 @@ export default function DocumentManagement() {
                       initialEditorTemplate="page"
                       markdownValue={selectedMarkdownValue}
                       markdownUpdatedAt={selectedMarkdownUpdatedAt}
-                      markdownError={markdownError}
+                      markdownError={selectedMarkdownError}
+                      citationAnchor={citationAnchor}
                       isMarkdownSaving={saveMarkdownMutation.isPending}
                       isRenamingTitle={updateItemMutation.isPending}
                       documentId={selectedItem?.id}
@@ -4370,7 +4396,8 @@ export default function DocumentManagement() {
                       initialEditorTemplate="page"
                       markdownValue={selectedMarkdownValue}
                       markdownUpdatedAt={selectedMarkdownUpdatedAt}
-                      markdownError={markdownError}
+                      markdownError={selectedMarkdownError}
+                      citationAnchor={citationAnchor}
                       isMarkdownSaving={saveMarkdownMutation.isPending}
                       isRenamingTitle={updateItemMutation.isPending}
                       documentId={selectedItem?.id}

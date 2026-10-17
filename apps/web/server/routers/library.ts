@@ -144,6 +144,14 @@ const permissionLevelSchema = z.enum(["read", "write", "delete", "owner"]);
 const sharePermissionLevelSchema = z.enum(["read", "write", "delete"]);
 const subjectTypeSchema = z.enum(["user", "tenant_role", "group"]);
 const publicShareTokenSchema = z.string().min(1).max(512);
+const libraryCitationAnchorSchema = z.object({
+  documentId: z.number().int().positive(),
+  revision: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  digest: z.string().regex(/^[a-f0-9]{64}$/),
+  lineStart: z.number().int().positive(),
+  lineEnd: z.number().int().positive(),
+  quoteHash: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict();
 
 const sourceLinkSchema = z.object({
   linkType: z.string().min(1).max(64),
@@ -1403,13 +1411,18 @@ export const libraryRouter = router({
     }),
 
   getMarkdownContent: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({
+      id: z.number().int().positive(),
+      citationAnchor: libraryCitationAnchorSchema.optional(),
+    }))
     .query(async ({ input, ctx }) => {
       const tenantIdResolved = await resolveLibraryTenantId(ctx);
       assertLibraryEnabled(tenantIdResolved);
       const actor = await createLibraryActor(ctx, tenantIdResolved);
 
-      const result = await getLibraryMarkdownContent(input.id, actor);
+      const result = input.citationAnchor
+        ? await getLibraryMarkdownContent(input.id, actor, undefined, input.citationAnchor)
+        : await getLibraryMarkdownContent(input.id, actor);
       if (!result) {
         throw new TRPCError({
           code: "NOT_FOUND",

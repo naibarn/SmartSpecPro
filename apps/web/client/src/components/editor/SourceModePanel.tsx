@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { DocumentCitationAnchor } from "@/lib/documentManagementUi";
 import { Braces, Hash, Layers3, Sparkles, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,14 @@ interface SourceModePanelProps {
   value: string;
   onChange: (value: string) => void;
   visible: boolean;
+  citationAnchor?: DocumentCitationAnchor;
 }
 
 export default function SourceModePanel({
   value,
   onChange,
   visible,
+  citationAnchor,
 }: SourceModePanelProps) {
   const tagCatalogQuery = trpc.library.listTagCatalog.useQuery(
     { query: undefined },
@@ -128,6 +131,9 @@ export default function SourceModePanel({
         extensions={sourceModeExtensions}
         height="100%"
         minHeight="300px"
+        focusLineRange={visible && citationAnchor
+          ? { start: citationAnchor.lineStart, end: citationAnchor.lineEnd }
+          : undefined}
       />
     </div>
   );
