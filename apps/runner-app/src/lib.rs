@@ -17,6 +17,8 @@ pub mod leasing;
 pub mod moli_acceptance;
 pub mod moli_isolation;
 pub mod process;
+#[cfg(windows)]
+mod windows_process;
 pub mod protocol;
 pub mod resource_admission;
 pub mod run_input;

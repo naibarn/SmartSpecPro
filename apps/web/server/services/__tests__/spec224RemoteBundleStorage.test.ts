@@ -80,6 +80,7 @@ describe("Spec 224 remote bundle object preparation", () => {
       bundleRoot: root,
       manifest,
       profileDigest: manifest.profileDigest,
+      profileVersion: 1,
       sourceTree: "1".repeat(40),
       sourceManifestDigest: "2".repeat(64),
       specSourceDigest: "3".repeat(64),
@@ -114,6 +115,7 @@ describe("Spec 224 remote bundle object preparation", () => {
       result.evidence.objectKey.split("/sha256/").at(-1)
     );
     expect(result.index.files).toHaveLength(2);
+    expect(result.index.profileVersion).toBe(1); // use verified profile, never legacy Linux v6
     expect(result.index.specDigest).toBe(manifest.specDigest);
     expect(result.index.files[0]!.path).toBe(".spec224-source-bundle.json");
     expect(result.index.files[1]!.path).toBe("src/main.ts");
@@ -151,6 +153,7 @@ describe("Spec 224 remote bundle object preparation", () => {
       bundleRoot: root,
       manifest,
       profileDigest: manifest.profileDigest,
+      profileVersion: 1,
       sourceTree: "1".repeat(40),
       sourceManifestDigest: "2".repeat(64),
       specSourceDigest: "3".repeat(64),
@@ -187,6 +190,7 @@ describe("Spec 224 remote bundle object preparation", () => {
       bundleRoot: root,
       manifest,
       profileDigest: manifest.profileDigest,
+      profileVersion: 1,
       sourceTree: "1".repeat(40),
       sourceManifestDigest: "2".repeat(64),
       specSourceDigest: "3".repeat(64),
@@ -269,6 +273,7 @@ describe("Spec 224 remote bundle object preparation", () => {
       bundleRoot: root,
       manifest,
       profileDigest: manifest.profileDigest,
+      profileVersion: 1,
       sourceTree: "1".repeat(40),
       sourceManifestDigest: "2".repeat(64),
       specSourceDigest: "3".repeat(64),

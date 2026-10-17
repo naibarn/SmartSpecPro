@@ -16,6 +16,8 @@ pub struct ExternalAgentResult {
 
 pub struct ExternalAgentProcess {
     child: Option<Child>,
+    #[cfg(windows)]
+    windows_job: crate::windows_process::WindowsProcessJob,
     #[cfg(target_os = "linux")]
     session_host: Option<crate::session_host::SessionHostClient>,
     output_path: PathBuf,
@@ -175,6 +177,23 @@ pub fn fixed_provider_args(command: &RunnerJobCommand) -> Result<Vec<String>, St
     }
 }
 
+fn agent_process_command(
+    spec: &crate::process::ProcessSpec,
+    stdout: std::fs::File,
+    stderr: std::fs::File,
+) -> Result<Command, String> {
+    let mut process = crate::process::command_for_cli(&spec.program, &spec.args)?;
+    process
+        .current_dir(&spec.working_directory)
+        // Provider credentials must come from the provider's approved local
+        // profile, never from an inherited Web/Runner environment.
+        .env_clear()
+        .envs(spec.environment.iter().map(|(key, value)| (key, value)))
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr));
+    Ok(process)
+}
+
 pub fn start_external_agent(
     config: &RunnerConfig,
     command: &RunnerJobCommand,
@@ -232,29 +251,17 @@ pub fn start_external_agent(
         .map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED".to_string())?;
     let stderr = std::fs::File::create(&error_path)
         .map_err(|_| "RUNNER_AGENT_ERROR_CREATE_FAILED".to_string())?;
-    let mut process = Command::new(&spec.program);
-    process
-        .args(&spec.args)
-        .current_dir(&spec.working_directory)
-        // Provider credentials must come from the provider's approved local
-        // profile, never from an inherited Web/Runner environment.
-        .env_clear()
-        .envs(spec.environment.iter().map(|(key, value)| (key, value)))
-        .stdout(Stdio::from(stdout))
-        .stderr(Stdio::from(stderr));
+    let mut process = agent_process_command(&spec, stdout, stderr)?;
     #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // The desktop Runner is a GUI-subsystem app. Keep console-based
-        // harnesses attached to captured output rather than opening a second
-        // black console window beside the UI.
-        process.creation_flags(0x0800_0000);
-    }
+    let (child, windows_job) = crate::windows_process::WindowsProcessJob::spawn(&mut process)?;
+    #[cfg(not(windows))]
     let child = process
         .spawn()
         .map_err(|_| "RUNNER_AGENT_PROCESS_SPAWN_FAILED".to_string())?;
     Ok(ExternalAgentProcess {
         child: Some(child),
+        #[cfg(windows)]
+        windows_job,
         #[cfg(target_os = "linux")]
         session_host: None,
         output_path,
@@ -573,6 +580,10 @@ impl ExternalAgentProcess {
                 let _ = child.kill();
                 let _ = child.wait();
             }
+            #[cfg(windows)]
+            self.windows_job
+                .terminate()
+                .map_err(|error| self.with_recovery_ref(&error))?;
             #[cfg(not(target_os = "linux"))]
             if let Some(child) = self.child.as_mut() {
                 let _ = child.kill();
@@ -617,6 +628,10 @@ impl ExternalAgentProcess {
         else {
             return Ok(None);
         };
+        #[cfg(windows)]
+        self.windows_job
+            .terminate()
+            .map_err(|error| self.with_recovery_ref(&error))?;
         let stdout = std::fs::read(&self.output_path).unwrap_or_default();
         let stderr = std::fs::read(&self.error_path).unwrap_or_default();
         let mut hasher = Sha256::new();
@@ -658,13 +673,21 @@ impl ExternalAgentProcess {
             host.terminate(sequence + 1, "runner-cancel")?;
             return Ok(());
         }
+        #[cfg(windows)]
+        self.windows_job.terminate()?;
         let child = self.child.as_mut().ok_or("RUNNER_AGENT_CANCEL_FAILED")?;
-        child.kill().map_err(|_| {
-            format!(
-                "RUNNER_AGENT_CANCEL_FAILED:{}",
-                recovery_ref.unwrap_or_default()
-            )
-        })?;
+        if child
+            .try_wait()
+            .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED")?
+            .is_none()
+        {
+            child.kill().map_err(|_| {
+                format!(
+                    "RUNNER_AGENT_CANCEL_FAILED:{}",
+                    recovery_ref.unwrap_or_default()
+                )
+            })?;
+        }
         let _ = child.wait();
         let _ = std::fs::remove_file(&self.output_path);
         let _ = std::fs::remove_file(&self.error_path);
@@ -711,6 +734,39 @@ mod tests {
             input_ref: "input-1".into(),
             payload: serde_json::json!({"taskId": "task-1"}),
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_external_agent_uses_cli_shim_and_preserves_spaced_workspace() {
+        let root = tempfile::tempdir().unwrap();
+        let workspace = root.path().join("owned workspace");
+        std::fs::create_dir(&workspace).unwrap();
+        let shim = root.path().join("codex.cmd");
+        std::fs::write(&shim, "@echo off\r\necho CODEX_SHIM_TEST_ONLY\r\n").unwrap();
+        let spec = crate::process::ProcessSpec {
+            program: shim.canonicalize().unwrap(),
+            args: fixed_provider_args(&command("codex.v1")).unwrap(),
+            working_directory: workspace.clone(),
+            environment: ["SystemRoot", "PATH", "TEMP", "TMP"]
+                .iter()
+                .filter_map(|key| std::env::var(key).ok().map(|v| ((*key).into(), v)))
+                .collect(),
+        };
+        let output_path = root.path().join("stdout");
+        let mut launch = agent_process_command(
+            &spec,
+            std::fs::File::create(&output_path).unwrap(),
+            std::fs::File::create(root.path().join("stderr")).unwrap(),
+        )
+        .unwrap();
+        let (mut child, job) =
+            crate::windows_process::WindowsProcessJob::spawn(&mut launch).unwrap();
+        assert!(child.wait().unwrap().success());
+        job.terminate().unwrap();
+        assert!(std::fs::read_to_string(output_path)
+            .unwrap()
+            .contains("CODEX_SHIM_TEST_ONLY"));
     }
 
     #[test]

@@ -18,6 +18,18 @@ export type Spec224ExecutionProfile = {
     platform: string;
     architecture: string;
   };
+  /** In split-host profiles runtime describes the backend, not the desktop. */
+  runtimeRole?: "control-plane";
+  runnerTarget?: {
+    platform: "windows";
+    architecture: "x86_64";
+    cargoTarget: "x86_64-pc-windows-msvc";
+    adapterId: "codex.v1";
+    minimumEngineVersion: string;
+    requiredTools: ["git", "codex"];
+    workspacePaths: "windows-native";
+    processContainment: "windows-job-object";
+  };
   npmRegistryUrl: string;
   generatedArtifacts: Array<{ path: string; command: string; inputs: string[]; sha256: string }>;
   cargoTarget: string;
@@ -257,6 +269,47 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
 /** Reviewed profile definition; bind it to the final source commit/tree before admission. */
 export const SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE = createSpec224ExecutionProfile(RECOVERY_RUNNER_PROFILE_INPUT);
 
+/** Windows-first declaration, NOT a live certification or an execution grant.
+ * Python/Node closure remains on the Linux backend. The desktop only executes
+ * Codex in its owned native Git workspace; it does not run backend test tools.
+ */
+export const SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE = createSpec224ExecutionProfile({
+  ...RECOVERY_RUNNER_PROFILE_INPUT,
+  profileId: "spec224-recovery-windows-x64-codex-nonprod",
+  version: 1,
+  supersedes: undefined,
+  runtimeRole: "control-plane",
+  runnerTarget: {
+    platform: "windows",
+    architecture: "x86_64",
+    cargoTarget: "x86_64-pc-windows-msvc",
+    adapterId: "codex.v1",
+    minimumEngineVersion: "0.2.31",
+    requiredTools: ["git", "codex"],
+    workspacePaths: "windows-native",
+    processContainment: "windows-job-object",
+  },
+  entrypoints: { ...RECOVERY_RUNNER_PROFILE_INPUT.entrypoints, rust: [] },
+  externalArtifacts: RECOVERY_RUNNER_PROFILE_INPUT.externalArtifacts.filter(
+    artifact => !artifact.startsWith("apps/runner-app/Cargo.lock:"),
+  ),
+  networkRequirements: [
+    "authenticated Runner WSS to the approved control-plane origin",
+    "Codex subscription/provider access through the approved local CLI profile",
+    "backend-only PostgreSQL; no desktop production database access",
+  ],
+});
+
+/** Resolve only reviewed declarations. Never silently substitute a Linux
+ * profile for an unknown/Windows profile while issuing source attestations. */
+export function getSpec224ExecutionProfileTemplate(profileId: string): Spec224ExecutionProfile {
+  const template = [SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE, SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE]
+    .find(profile => profile.profileId === profileId);
+  if (!template) throw new Error("SPEC224_EXECUTION_PROFILE_UNKNOWN");
+  // Callers may bind source identity; they must not mutate the shared template.
+  return structuredClone(template);
+}
+
 type ExecutionProfileInput = Omit<Spec224ExecutionProfile, "profileDigest">;
 
 function canonicalize(value: unknown): unknown {
@@ -293,6 +346,18 @@ export function createSpec224ExecutionProfile(input: ExecutionProfileInput): Spe
   }
   assertNonEmpty(input.runtime.platform, "runtime.platform");
   assertNonEmpty(input.runtime.architecture, "runtime.architecture");
+  if (input.runnerTarget && (
+    input.runtimeRole !== "control-plane" ||
+    input.runnerTarget.platform !== "windows" ||
+    input.runnerTarget.architecture !== "x86_64" ||
+    input.runnerTarget.cargoTarget !== "x86_64-pc-windows-msvc" ||
+    input.runnerTarget.adapterId !== "codex.v1" ||
+    !/^\d+\.\d+\.\d+$/.test(input.runnerTarget.minimumEngineVersion) ||
+    input.runnerTarget.requiredTools.join(",") !== "git,codex" ||
+    input.runnerTarget.workspacePaths !== "windows-native" ||
+    input.runnerTarget.processContainment !== "windows-job-object" ||
+    input.entrypoints.rust.length !== 0
+  )) throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:runnerTarget");
   assertNonEmpty(input.npmRegistryUrl, "npmRegistryUrl");
   try {
     const registry = new URL(input.npmRegistryUrl);

@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import {
   createSpec224ExecutionProfile,
+  getSpec224ExecutionProfileTemplate,
+  SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE,
   bindSpec224ExecutionProfileToSource,
   serializeSpec224ExecutionProfile,
   SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE,
@@ -11,6 +13,45 @@ import {
 } from "../spec224ExecutionProfile";
 
 describe("Spec 224 execution profile", () => {
+
+  it("separates Windows Codex execution from Linux backend dependencies", () => {
+    const profile = SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE;
+    expect(verifySpec224ExecutionProfile(profile)).toBe(true);
+    expect(profile.version).toBe(1);
+    expect(profile.supersedes).toBeUndefined();
+    expect(profile.runtimeRole).toBe("control-plane");
+    expect(profile.runtime.platform).toBe("linux");
+    expect(profile.runnerTarget).toEqual({
+      platform: "windows", architecture: "x86_64", cargoTarget: "x86_64-pc-windows-msvc",
+      adapterId: "codex.v1", minimumEngineVersion: "0.2.31", requiredTools: ["git", "codex"],
+      workspacePaths: "windows-native", processContainment: "windows-job-object",
+    });
+    expect(profile.entrypoints.rust).toEqual([]);
+    expect(profile.externalArtifacts.some(path => path.includes("resolve-linux-x86_64-runtime"))).toBe(false);
+    expect(profile.requiredRunnerCapabilities).toEqual(["agent.external_task"]);
+    expect(profile).not.toHaveProperty("certified");
+    expect(profile).not.toHaveProperty("grantId");
+  });
+
+  it("selects only the declared profile without a Linux fallback or shared mutation", () => {
+    const windows = getSpec224ExecutionProfileTemplate(SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE.profileId);
+    expect(windows.profileDigest).not.toBe(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.profileDigest);
+    expect(getSpec224ExecutionProfileTemplate(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.profileId).version).toBe(6);
+    windows.runtime.python = "modified";
+    expect(getSpec224ExecutionProfileTemplate(windows.profileId).runtime.python).toBe("3.12.12");
+    expect(() => getSpec224ExecutionProfileTemplate("unreviewed-platform")).toThrow("SPEC224_EXECUTION_PROFILE_UNKNOWN");
+    const bound = bindSpec224ExecutionProfileToSource(SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE, "a".repeat(40), "b".repeat(40));
+    expect(bound.runnerTarget?.platform).toBe("windows");
+    expect(bound.profileDigest).not.toBe(SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE.profileDigest);
+  });
+
+  it("rejects a mixed desktop/control-plane target or a required unrelated adapter", () => {
+    const { profileDigest: _digest, ...base } = SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE;
+    expect(() => createSpec224ExecutionProfile({ ...base, runtimeRole: undefined })).toThrow("runnerTarget");
+    expect(() => createSpec224ExecutionProfile({ ...base, entrypoints: { ...base.entrypoints, rust: ["main.rs"] } })).toThrow("runnerTarget");
+    expect(() => createSpec224ExecutionProfile({ ...base, runnerTarget: { ...base.runnerTarget!, requiredTools: ["git", "browser"] as any } })).toThrow("runnerTarget");
+  });
+
   it("defines the reconciled non-production Recovery/Runner profile template", () => {
     expect(verifySpec224ExecutionProfile(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE)).toBe(true);
     expect(SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE.version).toBe(6);

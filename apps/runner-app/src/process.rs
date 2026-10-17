@@ -172,6 +172,9 @@ impl ProcessHost for OsProcessHost {
             use std::os::unix::process::CommandExt;
             command.process_group(0);
         }
+        #[cfg(windows)]
+        let (child, windows_job) = crate::windows_process::WindowsProcessJob::spawn(&mut command)?;
+        #[cfg(not(windows))]
         let child = command
             .spawn()
             .map_err(|_| "RUNNER_PROCESS_SPAWN_FAILED".to_string())?;
@@ -179,6 +182,8 @@ impl ProcessHost for OsProcessHost {
         let process_group_id = child.id();
         Ok(Box::new(OsProcessHandle {
             child: Some(child),
+            #[cfg(windows)]
+            windows_job,
             #[cfg(unix)]
             process_group_id,
         }))
@@ -187,6 +192,8 @@ impl ProcessHost for OsProcessHost {
 
 struct OsProcessHandle {
     child: Option<std::process::Child>,
+    #[cfg(windows)]
+    windows_job: crate::windows_process::WindowsProcessJob,
     #[cfg(unix)]
     process_group_id: u32,
 }
@@ -232,7 +239,9 @@ impl ProcessHandle for OsProcessHandle {
                 }
             }
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
+        self.windows_job.terminate()?;
+        #[cfg(not(any(unix, windows)))]
         if still_running {
             child
                 .kill()
