@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, getTaskObservabilityDetail, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -131,5 +131,32 @@ describe("aggregateTaskObservability", () => {
     expect(result.observedJobCount).toBe(500);
     expect(result.usage.completeTotalTokens).toBeNull();
     expect(result.usage.coverage.status).toBe("CAPPED");
+  });
+});
+
+
+describe("task acceptance detail authorization", () => {
+  it("does not project an unavailable or unauthorized job", async () => {
+    mocks.db.select.mockImplementation(() => query([]));
+    await expect(getTaskObservabilityDetail({ scope: { tenantId: "tenant-1", userId: 9 }, jobId: "missing" }))
+      .rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
+  it("adds the shared projection without trusting job-supplied completion claims", async () => {
+    const job = {
+      id: "job-1", jobType: "spec224.development", status: "succeeded", attempt: 1, maxAttempts: 2,
+      requestedByUserId: 9, tenantId: "tenant-1", createdAt: new Date("2026-10-17T00:00:00Z"),
+      inputJson: { goalStatus: "COMPLETE", testsPassed: 999, goalBaseline: { goalId: "fake" } },
+      progressJson: {}, workerId: null,
+    };
+    mocks.rows = [[job], [], [], [], [], []];
+    mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
+    const result = await getTaskObservabilityDetail({ scope: { tenantId: "tenant-1", userId: 9 }, jobId: "job-1" });
+    expect(result.acceptance.scopeCompletionStatus).toBe("unknown");
+    expect(result.acceptance.verification.testsPassed).toBeNull();
+    expect(result.acceptance.goal.verifiedPercent).toBeNull();
+    expect(result.acceptance.sdkUsage.historical.completeTotalTokens).toBeNull();
+    expect(result.acceptance.graph.references).toEqual([{ kind: "job", id: "job-1" }]);
+    expect(result.acceptance.verifiedLiveAcceptance).toBe(false);
   });
 });

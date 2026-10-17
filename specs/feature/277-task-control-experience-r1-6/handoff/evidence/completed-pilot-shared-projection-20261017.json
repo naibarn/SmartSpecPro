@@ -1,0 +1,152 @@
+{
+  "workunit": "TASK_CONTROL_COMPLETED_PILOT_SHARED_PROJECTION",
+  "requirements": [
+    "REQ-277-OBS-01",
+    "REQ-277-OBS-03",
+    "REQ-277-OBS-04",
+    "REQ-277-OBS-05",
+    "REQ-277-OBS-07",
+    "REQ-277-OBS-09",
+    "REQ-294-OBS-02",
+    "REQ-294-OBS-05",
+    "REQ-088-OBS-01"
+  ],
+  "source": {
+    "original_sha": "1090256c6fc04b9d8faee9f0095210698b51cfb4",
+    "tested_base_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "owned_file_sha256": {
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.test.tsx": "99ee2b8d6a24940a4af5ecb4f63fa10b57ff86374f24fda611f982ade7db4381",
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx": "31aef282825abe665d4924d64d289bb671d887b60d8223ce4938281bfcefd3cd",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx": "b75644089157c8cee4aab99676f12e889d3ddc8d0259864405a4152060960d03",
+      "apps/web/server/services/__tests__/completedAutonomousPilotFixture.test.ts": "938f550c1cb2fc32e81f9ad45e76dcecd786139bb675d1468575384119314402",
+      "apps/web/server/services/__tests__/completedPilotAcceptance.test.ts": "225208ee57077c3bf3a03f51dfadc6fc5ad977fd2df024e45aa7a39615178337",
+      "apps/web/server/services/__tests__/fixtures/completedAutonomousPilot.ts": "a5885427973f557bbb0ceb26613d0770a2ca34dd5b2fa2023dc09e9174d88aeb",
+      "apps/web/server/services/__tests__/fixtures/completedPilotAcceptance.ts": "2c57a8a0df2a15922a411e19d85e3ec7a3097d7975e4af548100dbd80b75e16f",
+      "apps/web/server/services/__tests__/taskObservabilityAcceptance.test.ts": "582f9302cd5eae9890f3100742381acb9929a7f65c987a48b8a1b9638cb25885",
+      "apps/web/server/services/__tests__/taskObservabilityReadModel.test.ts": "df706d277a411f42424edc4543b44ee3f15bc0261d2c376674567baed1589ddb",
+      "apps/web/server/services/taskObservabilityAcceptance.ts": "d3c585a46fcc04d0382b962336c1e937c84307f6bfa7be1b64092e5ce37a2266",
+      "apps/web/server/services/taskObservabilityReadModel.ts": "77f03b36ae242882239b8262e364f80d88da7d7d4711c942ed7d7c6038d7a40e",
+      "apps/web/shared/taskAcceptanceProjection.test.ts": "e64e49fff7fd1ff9040354083f0e0683dc9bbb039b5319bb656e01248b183ceb",
+      "apps/web/shared/taskAcceptanceProjection.ts": "eb54600bdc6d1053f17cef7d227d24a964f1ef79e82778a42b4677f9db7f12ac"
+    },
+    "integrated_sha": null
+  },
+  "scope": "Read-only Task Control projection and consumer plus actual retained pilot regression; no execution or usage ledger created",
+  "verification": {
+    "profile": "package",
+    "base_source_sha": "200d9d8f585a969f569cd0fac98e04dbd5f5092c",
+    "commands": [
+      "pnpm exec vitest run shared/taskGoalProgress.test.ts shared/taskUsageEvidence.test.ts shared/taskAcceptanceProjection.test.ts server/services/__tests__/completedAutonomousPilotFixture.test.ts server/services/__tests__/completedPilotAcceptance.test.ts server/services/__tests__/taskObservabilityAcceptance.test.ts server/services/__tests__/taskObservabilityReadModel.test.ts server/routers/__tests__/workerJobs.test.ts client/src/components/task-control/TaskAcceptanceEvidence.test.tsx client/src/pages/TaskObservabilityMonitor.test.tsx client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx --maxWorkers=1"
+    ],
+    "started_at_epoch": 1792206308.784823,
+    "finished_at_epoch": 1792206318.7083712,
+    "exit": 0,
+    "signal": null,
+    "max_rss_kib": 536516,
+    "outcome": "PASS"
+  },
+  "focused_test_summary": {
+    "files": 11,
+    "passed": 76,
+    "failed": 0
+  },
+  "browser": {
+    "profile": "quick",
+    "runtime": "isolated actual component + retained canonical fixture; simulated authentication; no live production acceptance",
+    "results": [
+      {
+        "width": 1440,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      },
+      {
+        "width": 768,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      },
+      {
+        "width": 390,
+        "drilldown": "PASS",
+        "noHorizontalOverflow": true
+      }
+    ],
+    "errors": []
+  },
+  "independent_review": {
+    "reviewer": "/root/spec268_independent_final_review",
+    "findings_repaired": [
+      "Raw source reference graph bypassed existing credential sanitizer",
+      "Comparator could certify malformed or unknown evidence"
+    ],
+    "final_parent_checks": "76 scoped tests, targeted strict compile, esbuild syntax and browser fixture passed"
+  },
+  "fixture": {
+    "source_verification_sha": "3190569a5d27584131b39e3933d4b9f4aa72a08d",
+    "prs": [
+      999,
+      1000,
+      1002
+    ],
+    "coding_workunits": 6,
+    "scoped_tests": {
+      "passed": 295,
+      "total": 295
+    },
+    "native_postgres_http": {
+      "passed": 5,
+      "total": 5,
+      "auth": "simulated"
+    },
+    "pilot_goal": "COMPLETE",
+    "full_specs_complete": false
+  },
+  "accounting": {
+    "historical_sdk_calls": 74,
+    "historical_sdk_total_tokens": 5771368,
+    "new_sdk_calls": 0,
+    "assistant_usage": "UNKNOWN",
+    "goal_counter_snapshot": "STALE; not SDK evidence",
+    "billing_settlement": "UNKNOWN",
+    "current_goal_tool_observation": {
+      "status": "usageLimited",
+      "tokensUsed": 187249,
+      "timeUsedSeconds": 848,
+      "classification": "frozen Goal counter; not current assistant usage or SDK billing evidence"
+    }
+  },
+  "decisions": [
+    "Compose existing Goal and usage reducers; preserve unknown values and source-bound dedup",
+    "Do not promote job-supplied goal baseline into authority",
+    "Expose only sanitized source references after canonical tenant/owner check",
+    "Keep test rate, verified Goal and parent closure separate",
+    "Browser UAT is isolated fixture acceptance; live production remains unverified"
+  ],
+  "remaining": [
+    "Trusted canonical Goal/WU baseline producer is not linked to Task Control; runtime correctly returns Unknown until bound",
+    "Cross-surface snapshot history/parity and full funding/helper/quota coverage remain open in SPEC277/294",
+    "Actual live authenticated API\u2192Web/Runner acceptance remains unverified",
+    "Full SPEC161/268/302/304 closure unchanged"
+  ],
+  "agents": [
+    {
+      "id": "/root/spec161_validation_scout",
+      "scope": "retained fixture loader and mapper/tests",
+      "status": "INTERRUPTED_PENDING_INIT_ON_RESUME; parent completed three fixture repairs",
+      "useful": true
+    },
+    {
+      "id": "/root/spec268_independent_final_review",
+      "scope": "pure projection/comparability and independent API/UI review",
+      "status": "COMPLETED",
+      "useful": true
+    }
+  ],
+  "retained_artifacts": {
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.log": "ee097ea4e3906a339bb2413ae24e98224727c1f2333a25468ea6a4d994889c33",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/source-final-focused.resources.json": "b514dbcdeac293b329f07ba78867005c38f9aa82a69de45286458fb8faefd1fb",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/browser-results.json": "9db66470c971f4c60ff2d358b25c61db1da2cfe74da9222164e610725b653768",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-1440.png": "e7a6ad7b011ce07a6f7ad512982124273b061a3456246f3147f503f78a372dba",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-768.png": "a26bd68c814d1443932d81b9a1a677c36b06616bea141430e511ef75044fc18b",
+    "orchestra/tasks/task-control-completed-pilot-20261017/evidence/acceptance-390.png": "0c77f975d6528c9aa57ebe16868dd7f79ddb731b522b740bf5880faaa92d0649"
+  }
+}
