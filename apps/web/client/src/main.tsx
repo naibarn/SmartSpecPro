@@ -24,6 +24,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import { toast } from "sonner";
 import App from "./App";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { getLoginUrl } from "./const";
 import { setupAuthInterceptor } from "@/services/authService";
 import "@astryxdesign/core/astryx.css";
@@ -623,7 +624,9 @@ i18nReady.then(() => {
   createRoot(rootEl).render(
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </QueryClientProvider>
     </trpc.Provider>
   );
