@@ -67,6 +67,7 @@ export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql, 
     const columns = table.columns.map(column => {
       let definition = `${quote(column.name)} ${column.getSQLType()}`;
       if (column.primary) definition += " PRIMARY KEY";
+      else if ((column as typeof column & { isUnique?: boolean }).isUnique) definition += " UNIQUE";
       if (column.notNull) definition += " NOT NULL";
       if (column.default !== undefined) {
         if (is(column.default, SQL)) {
@@ -83,7 +84,11 @@ export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql, 
     for (const index of table.indexes) {
       const config = index.config;
       const columnNames = config.columns.map(column => {
-        if (is(column, SQL)) throw new Error("SPEC277_SCHEMA_EXPRESSION_INDEX_UNSUPPORTED");
+        if (is(column, SQL)) {
+          const expression = dialect.sqlToQuery(column);
+          if (expression.params.length) throw new Error("SPEC277_SCHEMA_INDEX_HAS_PARAMETERS");
+          return expression.sql;
+        }
         return quote(column.name);
       });
       const predicate = config.where ? dialect.sqlToQuery(config.where) : null;
