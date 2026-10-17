@@ -41,8 +41,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "Chat panel now renders the latest linked task model/usage snapshot using the shared token; focused Chat tests pass. Run exact-head CI and merge through protected flow, then keep live-auth parity open.",
-      "checkpoint_sha": "b534a4d54",
+      "next_action": "PR #1030 (https://github.com/naibarn/SmartSpecPro/pull/1030) carries the Chat summary source commit 1ddf3d5a9; initial progressive and mocked browser checks passed. Refresh exact-head checks after this handoff update, then use protected merge; keep live-auth parity open.",
+      "checkpoint_sha": "1ddf3d5a9",
       "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
     },
     "section-05-agent-monitor-ui": {
@@ -57,8 +57,8 @@
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
       "session_id": "codex-task-control-goal-monitor-20261017",
-      "next_action": "PR #1005 is integrated; Chat snapshot checkpoint b534a4d54 is locally committed and needs a protected PR plus exact-head checks. Mission remains PARTIAL until trusted Goal/quota sources and authenticated live acceptance exist.",
-      "checkpoint_sha": "b534a4d54",
+      "next_action": "PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance.",
+      "checkpoint_sha": "1ddf3d5a9",
       "merged_main_sha": "5322dfcddb618e6bcf62738221d0cf6133b65a2d"
     }
   },
@@ -71,11 +71,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-16T19:31:07.113601+00:00",
-  "generation": 57,
-  "updated_at": "2026-10-17T04:22:02.697172+00:00",
+  "generation": 59,
+  "updated_at": "2026-10-17T04:26:39.019387+00:00",
   "progress": {
     "active_section": "section-06-integration-live-acceptance",
-    "next_action": "PR #1005 is integrated; Chat snapshot checkpoint b534a4d54 is locally committed and needs a protected PR plus exact-head checks. Mission remains PARTIAL until trusted Goal/quota sources and authenticated live acceptance exist.",
+    "next_action": "PR #1005 is integrated. PR #1030 contains source commit 1ddf3d5a9 with initial exact-head CI passing; refresh checks after this handoff commit and merge through the protected path. Mission remains PARTIAL pending trusted Goal/quota sources and live acceptance.",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/task-control-goal-monitor-20261017",
     "gaps": [
       "Goal/model usage/chat and project/SPEC aggregation requirements remain incomplete",
