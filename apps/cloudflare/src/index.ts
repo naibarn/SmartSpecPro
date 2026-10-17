@@ -18,6 +18,8 @@ import { matchSpec260ApiRoute } from "@smartspec/shared/src/emergencyRouteManife
 import type { Spec260RouteRegistry } from "./spec260RouteRegistration";
 import { createSpec260PlatformRouteRegistry } from "./spec260PlatformProxy";
 import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
+import { classifyApiRoute } from "./apiRouteManifest";
+import { proxyAuthToOrigin } from "./authOriginProxy";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -78,8 +80,10 @@ export function createCloudflareWorker(
   return {
     async fetch(request: Request, env: CloudflareEnvironment): Promise<Response> {
       const url = new URL(request.url);
-      if (url.pathname === "/healthz") return json({ ok: true, service: "smartspec-cloudflare-runtime" });
-      if (url.pathname === "/readyz") {
+      if (url.pathname === "/healthz" && ["GET", "HEAD"].includes(request.method)) {
+        return json({ ok: true, service: "smartspec-cloudflare-runtime" });
+      }
+      if (url.pathname === "/readyz" && ["GET", "HEAD"].includes(request.method)) {
         const readiness = inspectBindingReadiness(env);
         const spec260EvidenceRetentionReady = env.CLOUDFLARE_ACTIVATION === "enabled" &&
           Boolean(env.PLATFORM_EDGE_ORIGIN?.trim() && env.PLATFORM_EDGE_PRIVATE_HOST?.trim() && env.PLATFORM_EDGE_TOKEN?.trim());
@@ -177,6 +181,15 @@ export function createCloudflareWorker(
       if (matchSpec260ApiRoute(request.method, url.pathname)) {
         const registry = spec260Routes ?? createSpec260PlatformRouteRegistry(env);
         return (await registry.dispatch(request)) ?? json({ error: "EMERGENCY_ROUTE_NOT_REGISTERED" }, 503);
+      }
+      const apiRoute = classifyApiRoute(request.method, url.pathname);
+      if (apiRoute.classification === "ORIGIN_PROXY" ||
+          (apiRoute.classification === "NATIVE_RUNTIME_ONLY" && apiRoute.id !== "unmatched" &&
+            !apiRoute.id.startsWith("websocket"))) {
+        return proxyAuthToOrigin(request, env);
+      }
+      if (apiRoute.classification === "NATIVE_RUNTIME_ONLY") {
+        return json({ error: "NATIVE_RUNTIME_ROUTE" }, 501);
       }
       return json({ error: "NOT_FOUND" }, 404);
     },

@@ -129,6 +129,17 @@ describe("Cloudflare local runtime contracts", () => {
     expect(await response.text()).not.toContain("do-not-return-this");
   });
 
+  it("dispatches only manifest routes and fails closed for native-only sockets and unknown paths", async () => {
+    const worker = createCloudflareWorker();
+    const env = { CLOUDFLARE_ACTIVATION: "disabled" };
+    expect((await worker.fetch(new Request("https://runtime.invalid/healthz"), env)).status).toBe(200);
+    expect((await worker.fetch(new Request("https://runtime.invalid/healthz", { method: "POST" }), env)).status).toBe(501);
+    expect((await worker.fetch(new Request("https://runtime.invalid/api/auth/session"), env)).status).toBe(503);
+    expect((await worker.fetch(new Request("https://runtime.invalid/api/virtual-admin/events"), env)).status).toBe(503);
+    expect((await worker.fetch(new Request("https://runtime.invalid/socket.io"), env)).status).toBe(501);
+    expect((await worker.fetch(new Request("https://runtime.invalid/unknown"), env)).status).toBe(501);
+  });
+
   it("does not claim readiness when the canonical job handler is not wired", async () => {
     const env = {
       CLOUDFLARE_ACTIVATION: "enabled",
@@ -312,7 +323,7 @@ describe("Cloudflare local runtime contracts", () => {
     const factory = vi.fn().mockReturnValue(client);
     const created = createHyperdriveClient({ connectionString: "postgres://injected-only" }, factory);
     expect(created).toBe(client);
-    expect(factory).toHaveBeenCalledWith("postgres://injected-only", { prepare: false, max: 1, connect_timeout: 10, idle_timeout: 20 });
+    expect(factory).toHaveBeenCalledWith("postgres://injected-only", { prepare: true, fetch_types: false, max: 5, connect_timeout: 10, idle_timeout: 20 });
     expect(canonicalReadOptions()).toEqual({ cache: "no-store", consistency: "strong" });
     expect(CANONICAL_TRANSACTION_POLICY).toMatchObject({ isolation: "read committed", maxRetries: 3, externalCallsAllowedInsideTransaction: false });
     const external = vi.fn();

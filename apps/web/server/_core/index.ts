@@ -94,6 +94,7 @@ import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
+import { isValidCloudflareOriginAttestation } from "./cloudflareOriginAttestation";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
 import { registerSpec260EmergencyEdgeRoutes } from "../routes/spec260EmergencyEdge";
@@ -340,6 +341,16 @@ app.use(correlationIdMiddleware);
 // "true" trusts ALL hops which allows IP spoofing to bypass rate limiters.
 // "1" means Express uses only the last XFF entry (appended by Nginx). (M-14 fix)
 app.set("trust proxy", 1);
+
+// Worker-proxied requests carry a shared private credential. Validate it
+// before trusting the forwarded public host/protocol set by the Worker.
+app.use((req, res, next) => {
+  const attestation = req.get("x-cloudflare-origin-token");
+  if (attestation && !isValidCloudflareOriginAttestation(attestation, process.env.AUTH_ORIGIN_TOKEN)) {
+    return res.status(403).json({ error: "INVALID_EDGE_ORIGIN_ATTESTATION" });
+  }
+  return next();
+});
 
 // Trusted origin check (shared between CORS and CSRF middleware)
 const configuredBrowserOrigins = [
