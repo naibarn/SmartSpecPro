@@ -652,6 +652,8 @@ export interface LibraryMarkdownContentResult {
   item_id: number;
   content: string;
   updated_at: string;
+  /** Canonical source URL from the ACL-checked Library row, when safe to cite. */
+  canonicalSourceUri?: string | null;
 }
 
 export interface SaveLibraryMarkdownInput {
@@ -5631,6 +5633,7 @@ export async function getLibraryMarkdownContent(
     item_id: item.id,
     content: rows[0]?.content ?? "",
     updated_at: item.updatedAt.toISOString(),
+    canonicalSourceUri: item.sourceUrl,
   };
 }
 
