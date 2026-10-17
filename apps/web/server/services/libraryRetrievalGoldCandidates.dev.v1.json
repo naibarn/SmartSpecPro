@@ -14565,5 +14565,2355 @@
       "shouldCite": true,
       "exactIdentifier": false
     }
+  },
+  {
+    "caseId": "b07-202-1",
+    "query": "Which exact spec ID owns canonical time and project/timeline revision authority?",
+    "expectedAnswer": "1. Spec 203 is authoritative for canonical time, project/timeline revisions,\n   execution snapshots, job lifecycle, agent capability/locality, and artifact",
+    "language": "english",
+    "classes": ["exact_id", "semantic_paraphrase", "spec_id"],
+    "sourceGroupId": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md",
+      "sha256": "b310c406a52c0090054600186272e68f416cc0529cf9f6741090359f218101b7",
+      "lineStart": 18,
+      "lineEnd": 19,
+      "quoteSha256": "e95898c4107dae484a1fceeb3a8d6bda0cedf968db9e54c4049c76bbb4ca2055",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md"
+      ],
+      "requiredClaims": ["spec202-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b310c406a52c0090054600186272e68f416cc0529cf9f6741090359f218101b7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-202-2",
+    "query": "Which part of the product does Spec 202 define in this responsibility split?",
+    "expectedAnswer": "2. Spec 202 is authoritative for user-facing tool scope, optional modules,\n   Rough Cut behaviors, EDL intent, and flexible Web Editor UX.",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md",
+      "sha256": "b310c406a52c0090054600186272e68f416cc0529cf9f6741090359f218101b7",
+      "lineStart": 21,
+      "lineEnd": 22,
+      "quoteSha256": "8b4ab757a4a83413bb700779c5a112b6ca61c534f8b8b1d3db6534dfd60f7602",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/202-ai_rough_cut_video_editor_unified/spec.md"
+      ],
+      "requiredClaims": ["spec202-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:b310c406a52c0090054600186272e68f416cc0529cf9f6741090359f218101b7",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-203-1",
+    "query": "SafetyValidator ต้องตรวจสอบองค์ประกอบการตัดต่อด้านใดบ้าง?",
+    "expectedAnswer": "6. `SafetyValidator` ตรวจสอบ Crop, Pan, Zoom, Cut, Timing และ Resolution",
+    "language": "thai",
+    "classes": ["code_identifier", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md",
+      "sha256": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+      "lineStart": 48,
+      "lineEnd": 48,
+      "quoteSha256": "e1a0e317cb12f6ed8b37facaa9aca779108ddb12057977266e7f94bab4d88ea7",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      ],
+      "requiredClaims": ["spec203-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-203-2",
+    "query": "If AI editing fails, what fallback does the shared-runtime spec describe?",
+    "expectedAnswer": "10. ถ้า AI ล้มเหลว ระบบจะ fallback กลับไปใช้ Local Face + Activity + Rule-based Editing โดยไม่ทำให้งานหยุด",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md",
+      "sha256": "ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+      "lineStart": 52,
+      "lineEnd": 52,
+      "quoteSha256": "07923c1619b80da6965ef5c00cfd08737469fa76e3036134bb88a426804a4d72",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md"
+      ],
+      "requiredClaims": ["spec203-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ab7615746d04cd785163d711aa0736eac2b3816c68b128d3cc25c18ab8016a02",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-209-1",
+    "query": "What kind of input can start workflow generation in the AI-first workflow studio?",
+    "expectedAnswer": "1. AI-first workflow generation from natural language.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+      "sha256": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "lineStart": 81,
+      "lineEnd": 81,
+      "quoteSha256": "9de9bcad5f3e69d8a40ae035ee3cb44de062a7015d256607b5cea962bb801609",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      ],
+      "requiredClaims": ["spec209-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-209-2",
+    "query": "What contract relationship is specified between a workflow and its nested subflows?",
+    "expectedAnswer": "4. Nested workflows / subflows with explicit contracts.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+      "sha256": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "lineStart": 84,
+      "lineEnd": 84,
+      "quoteSha256": "41648b256a61f3c51ccfa43a11f71edb063c2b75c6eb7c625de019ffa3b67479",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+      ],
+      "requiredClaims": ["spec209-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-211-1",
+    "query": "What adapter is specified to connect ACP clients with SmartAIHub Runner?",
+    "expectedAnswer": "1. a first-class **ACP Client Adapter** to SmartAIHub Runner;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+      "sha256": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+      "lineStart": 44,
+      "lineEnd": 44,
+      "quoteSha256": "8a71c76f841b4d09b72c658951751829efc527732930ca5a8c64107f8221c4d4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md"
+      ],
+      "requiredClaims": ["spec211-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-211-2",
+    "query": "Regardless of runtime route, what does the spec keep canonical across jobs and sessions?",
+    "expectedAnswer": "6. one canonical SmartAIHub job/session/event/result/approval/audit/billing model regardless of runtime route.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+      "sha256": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+      "lineStart": 52,
+      "lineEnd": 52,
+      "quoteSha256": "5978c5d478f2f84a793bcacd6f5565877a945f10375ee9fe8788f24352f8ef86",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md"
+      ],
+      "requiredClaims": ["spec211-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-213-1",
+    "query": "Which Computer Use implementation strategy does the Spec 213 non-goals section reject?",
+    "expectedAnswer": "- rebuild the Computer Use subsystem from zero;",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
+      "sha256": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "quoteSha256": "d054b6d92f2c3fe2e1b482e5d731f29a77c03155c25fa339b6d1daea041e232b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
+      ],
+      "requiredClaims": ["spec213-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-213-2",
+    "query": "What existing route must this amendment avoid bypassing?",
+    "expectedAnswer": "- bypass existing WebMCP-first routing;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
+      "sha256": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "73b057628afafd62024190c05d8d09038e67e370665d8736854e3c6e82ab183d",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
+      ],
+      "requiredClaims": ["spec213-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-227-1",
+    "query": "What policy screen is listed as the first publishing-compliance check?",
+    "expectedAnswer": "1. Community Guidelines screening;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md",
+      "sha256": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "lineStart": 41,
+      "lineEnd": 41,
+      "quoteSha256": "dcaada44ad5ad2e239f800b8a4673ad2e3c3d0ffc732312a80c1702b24a3e05a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md"
+      ],
+      "requiredClaims": ["spec227-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-227-2",
+    "query": "How does the publishing policy spec treat advertiser-friendly or monetization risk?",
+    "expectedAnswer": "4. advertiser-friendly / monetization risk as a separate dimension;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md",
+      "sha256": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "lineStart": 44,
+      "lineEnd": 44,
+      "quoteSha256": "65c6ac477945a88ca2ea6215bf2fd0b60508d61d0a138a7ec5cc303e15ac3271",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md"
+      ],
+      "requiredClaims": ["spec227-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-230-1",
+    "query": "Spec 230 แนะนำให้ใช้วิธีใดแทน giant prompt manuals สำหรับการโหลด context?",
+    "expectedAnswer": "5. **Use retrieval, not giant prompt manuals.**",
+    "language": "mixed",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+      "sha256": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+      "lineStart": 108,
+      "lineEnd": 108,
+      "quoteSha256": "84cef4288bc9c803f29d84b23315576872503425c1cc9f4f46adf179a76fddfd",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      ],
+      "requiredClaims": ["spec230-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-230-2",
+    "query": "Spec 230 กำหนดให้เข้าถึง platform data และ provider capabilities ผ่านช่องทางใด?",
+    "expectedAnswer": "6. **Use platform APIs/MCP, never direct Core SQL/R2/Vector/provider credentials.**",
+    "language": "mixed",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+      "sha256": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+      "lineStart": 109,
+      "lineEnd": 109,
+      "quoteSha256": "006f091d621700cc927e542c47cb60fd0d0810359786b7e1b8f1d223801ea544",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md"
+      ],
+      "requiredClaims": ["spec230-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-231-1",
+    "query": "In Spec 231, what does inference routing choose for an individual model call?",
+    "expectedAnswer": "**Routing** chooses the inference resource for one model call (not the external harness for a user-selected delegated job):",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+      "sha256": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
+      "lineStart": 72,
+      "lineEnd": 72,
+      "quoteSha256": "569f9185277c399a553b8fb227d8b608b6369e88d621d9d7c2d4c59ba71569d4",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
+      ],
+      "requiredClaims": ["spec231-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-231-2",
+    "query": "What responsibility does Spec 229 retain in the division of responsibilities listed by Spec 231?",
+    "expectedAnswer": "- Spec 229: evidence retrieval only.",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+      "sha256": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
+      "lineStart": 97,
+      "lineEnd": 97,
+      "quoteSha256": "eb53ac83858baf83f086e09f285b4553bb409d3cbd559758cf9ead902eeeff14",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
+      ],
+      "requiredClaims": ["spec231-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-244-1",
+    "query": "In the provisional research design, what kinds of events can start scoped sub-research during a lifecycle?",
+    "expectedAnswer": "1. **Research is a callable capability, not a one-off opening stage.** A question, user revision, failed tool result, new asset, missing specification, changed price, unexpected test or stale evidence may start a scoped sub-research task at any point in the lifecycle.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+      "sha256": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+      "lineStart": 38,
+      "lineEnd": 38,
+      "quoteSha256": "8399789f534c073b6876418436782e99f3c5a7494aa0b04f7ed064fe4ae5f225",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md"
+      ],
+      "requiredClaims": ["spec244-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-244-2",
+    "query": "หลักฐานแบบใดเป็นฐานของการตัดสินใจ และ summary หรือ model answer มีสถานะเป็นแหล่งใหม่หรือไม่?",
+    "expectedAnswer": "6. **Structured evidence, not accumulated summaries, is the basis of decisions.** Every material claim traces to authorized source/revision/location, observation time, applicability and conflict status. A summary or model answer is not a new independent source.",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+      "sha256": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "b0f34e2e60baed1a6ac101052e006bb9c3644af389d5571c88803380b3c46e7b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md"
+      ],
+      "requiredClaims": ["spec244-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-245-1",
+    "query": "Cloudflare-first หมายความว่าทุก workload ต้องรันใน Workers หรือไม่?",
+    "expectedAnswer": "**Cloudflare-first** does not mean every workload must execute inside Workers.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+      "sha256": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+      "lineStart": 80,
+      "lineEnd": 80,
+      "quoteSha256": "e80afbc4d7d31d479ec5412c3c8cc581910e7094fb55c58830e1831a2ca5a2d8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      ],
+      "requiredClaims": ["spec245-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-245-2",
+    "query": "What readiness condition does the database track place before final Debian retirement?",
+    "expectedAnswer": "- **DB track is parallel:** Managed PostgreSQL must be ready before *final Debian retirement*, not before every public Worker or Redis slice. A Workers↔current-PG bridge is allowed only when connection and data-policy tests pass. Neither plan authorizes dual writable primaries.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+      "sha256": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+      "lineStart": 102,
+      "lineEnd": 102,
+      "quoteSha256": "046962160c9d31bbc944511fb02e669c0af95e232929759da773d473da88b37e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md"
+      ],
+      "requiredClaims": ["spec245-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-276-1",
+    "query": "ควรย่อ tool output อย่างไรให้ context กระชับแต่ยังเรียกดู artifact ได้?",
+    "expectedAnswer": "2. Tool output → compact preview + recoverable artifact handle",
+    "language": "thai",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md",
+      "sha256": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+      "lineStart": 43,
+      "lineEnd": 43,
+      "quoteSha256": "5a11021c697982cd2f56181ca006a3e0fa44f97db63855a53d37f494b0afcb44",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md"
+      ],
+      "requiredClaims": ["spec276-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-276-2",
+    "query": "What evidence is required before one runtime should use many lightweight agents?",
+    "expectedAnswer": "4. One runtime → many lightweight agents, but only when telemetry proves it is worth doing",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md",
+      "sha256": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+      "lineStart": 45,
+      "lineEnd": 45,
+      "quoteSha256": "5aab8b369446ff73a3003de598fe6c61606b9628f64067279907c5b3d63a1235",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md"
+      ],
+      "requiredClaims": ["spec276-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-277-1",
+    "query": "What architectural role does Spec 277 assign to its task-control surface?",
+    "expectedAnswer": "- Spec 277 remains a UX/read-model layer over canonical task/evidence/runtime authorities.",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/277-task-control-experience-r1-6/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/277-task-control-experience-r1-6/spec.md",
+      "sha256": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
+      "lineStart": 40,
+      "lineEnd": 40,
+      "quoteSha256": "c2fdc59cc8c25d2a10ab655b9bd78974f34c1f38a540c1d34821b1a5e9a3d31c",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/277-task-control-experience-r1-6/spec.md"
+      ],
+      "requiredClaims": ["spec277-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-277-2",
+    "query": "Spec 277 ระบุว่าจะไม่สร้างระบบหรือ authority ใดเพิ่มขึ้นมา?",
+    "expectedAnswer": "- No new queue, approval authority, retrieval engine or artifact byte store is introduced here.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/277-task-control-experience-r1-6/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/277-task-control-experience-r1-6/spec.md",
+      "sha256": "a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
+      "lineStart": 44,
+      "lineEnd": 44,
+      "quoteSha256": "5b1ea03bd1d913062b341b231cd9413866f96ac421ec00798ff42b5de5d697dd",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/277-task-control-experience-r1-6/spec.md"
+      ],
+      "requiredClaims": ["spec277-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:a242a86431c633c17d0d467044a7cbe3da8d31d28553025377578f0b0ffe14ce",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-297-1",
+    "query": "Where does the social-ads proposal place recommendation judgment, and what does TypeScript compute?",
+    "expectedAnswer": "- *(v1.2)* **Skill-first analysis & recommendations**: two new skills — `social-page-advisor` (คำแนะนำเพิ่มผู้ติดตาม/reach/engagement ต่อเพจ) and `social-ads-advisor` (วิเคราะห์+แนะนำการจัดการโฆษณา) — where ALL judgment lives in `skill.md` and TypeScript computes facts only; advice can map to guarded one-click actions but never self-executes (§18).",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/297-social-ads-management/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/297-social-ads-management/spec.md",
+      "sha256": "72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "lineStart": 44,
+      "lineEnd": 44,
+      "quoteSha256": "333acd95b7d10114866fab19bc62bd1ff62c93396eaa553fa818d52627a35e3f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/297-social-ads-management/spec.md"
+      ],
+      "requiredClaims": ["spec297-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-297-2",
+    "query": "How should access tokens be sent on Graph API calls according to the social-ads design?",
+    "expectedAnswer": "| D4 | **`appsecret_proof` on all Graph calls when (and only when) the app secret matches the token's owning app**; token transport is **always `Authorization: Bearer` header — never URL query param** | Meta best practice + prevents token leakage into nginx/proxy logs, error objects, and audit trails (sec finding 2). |",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/297-social-ads-management/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/297-social-ads-management/spec.md",
+      "sha256": "72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "lineStart": 58,
+      "lineEnd": 58,
+      "quoteSha256": "1fb8d4d54b7e19c7d31fa965d888ea3ef3c46d24d5ff888f29c98f2dd182f038",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/297-social-ads-management/spec.md"
+      ],
+      "requiredClaims": ["spec297-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-302-1",
+    "query": "Identity resolution แทน authorization ได้หรือไม่ และ read/write ต้องตรวจอะไรซ้ำ?",
+    "expectedAnswer": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+      "sha256": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      ],
+      "requiredClaims": ["spec302-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-302-2",
+    "query": "How should ambiguous project context be handled before durable shared writes or high-impact actions?",
+    "expectedAnswer": "7. Ambiguous or unresolved project context MUST fail closed for durable shared writes and high-impact actions.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+      "sha256": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "lineStart": 30,
+      "lineEnd": 30,
+      "quoteSha256": "865492a68414082ae2c357bc44882559551078d7075d1c042e2af9374c1bcd3a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      ],
+      "requiredClaims": ["spec302-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-303-1",
+    "query": "What boundary does the Tenant represent in the ecosystem asset model?",
+    "expectedAnswer": "- `Tenant`: security, configuration, and data-isolation boundary.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+      "sha256": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "lineStart": 27,
+      "lineEnd": 27,
+      "quoteSha256": "040109042ba6f24a264bdf0350783bdd2af32f7568e59e18f872475bf0be8e37",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      ],
+      "requiredClaims": ["spec303-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-303-2",
+    "query": "What does the asset represent in the ecosystem registry?",
+    "expectedAnswer": "- `Asset`: stable, versioned product identity and rights container.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+      "sha256": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "d70bfae26ea4d7fd540589fef3371296754cffe60e6abaf0f220bf4087b093cd",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      ],
+      "requiredClaims": ["spec303-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-304-1",
+    "query": "What does an AppRelease bind as an immutable reference?",
+    "expectedAnswer": "- `AppRelease`: immutable package/build/version reference and provenance.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+      "sha256": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "lineStart": 28,
+      "lineEnd": 28,
+      "quoteSha256": "ac87b73e853fc83929576b570f542b909cd4de72e3fe840d75290fdb8e5c3b42",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
+      ],
+      "requiredClaims": ["spec304-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-304-2",
+    "query": "AppRouteAlias เก็บข้อมูล routing ที่เปลี่ยนแปลงได้อะไรบ้าง?",
+    "expectedAnswer": "- `AppRouteAlias`: mutable slug/custom domain/redirect mapping with verified ownership, routing policy, and history.",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+      "sha256": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "quoteSha256": "301f8962c05e414c9ac71e1f79814514754f5d53c48c848d5098e9da35b5cb9f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
+      ],
+      "requiredClaims": ["spec304-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-305-1",
+    "query": "What should happen to a mutation patch before it becomes canonical?",
+    "expectedAnswer": "-   proposed patches before canonical commit;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+      "sha256": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "lineStart": 50,
+      "lineEnd": 50,
+      "quoteSha256": "7427b04c1313142383c18be7f9f60ce6ac9deaedb425291ce5a5980786ea903e",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec305-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-305-2",
+    "query": "Which lineage information belongs in the artifact-intelligence scope?",
+    "expectedAnswer": "-   provenance and evidence lineage;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+      "sha256": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "lineStart": 54,
+      "lineEnd": 54,
+      "quoteSha256": "e49785c9895cecd576bc76d1471e6a56b74e46a53bb925861179a266ca16d7f3",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec305-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-306-1",
+    "query": "Which messaging channel is listed in the omnichannel specification?",
+    "expectedAnswer": "  - telegram",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
+      "sha256": "281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05",
+      "lineStart": 26,
+      "lineEnd": 26,
+      "quoteSha256": "cb13de393a8b8e5ca61a4f7b58b15b53254740226ebdfbe9a9f1312075f65833",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md"
+      ],
+      "requiredClaims": ["spec306-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-306-2",
+    "query": "Is WhatsApp Business included among the listed omnichannel integrations?",
+    "expectedAnswer": "  - whatsapp_business",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
+      "sha256": "281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05",
+      "lineStart": 30,
+      "lineEnd": 30,
+      "quoteSha256": "7493531f45188da5ff71d62e64dc751597be5ed74cb3ebaec83542c8636179ca",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md"
+      ],
+      "requiredClaims": ["spec306-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-307-1",
+    "query": "Which broad capability does the local-edge inference proposal include at this point in its scope list?",
+    "expectedAnswer": "-   image generation and editing;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+      "sha256": "ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1",
+      "lineStart": 116,
+      "lineEnd": 116,
+      "quoteSha256": "9b05f58e81df4181bfd5ddae067e27883fc1025c5f34e47b4236909fa92642b8",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec307-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-307-2",
+    "query": "What kind of execution context does the local-edge proposal identify for its supported inference access?",
+    "expectedAnswer": "-   multi-reference image workflows;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+      "sha256": "ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1",
+      "lineStart": 117,
+      "lineEnd": 117,
+      "quoteSha256": "95b99eeb5cf4d69bd221a9aff288b3bb3fa1f44cf4a2f9db5c3bc87ef70cf8af",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec307-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-308-1",
+    "query": "เมื่อมี authorized notification ใหม่ bell กับ mascot ทำอะไรได้ และการกดแต่ละส่วนจะพาไปไหน?",
+    "expectedAnswer": "       -> bell may ring once\n       -> mascot may show bounded reminder balloon\nClick bell / balloon -> existing Notification panel or /notifications\nClick mascot -> existing AI Chat & Feedback dialog",
+    "language": "mixed",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+      "sha256": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+      "lineStart": 188,
+      "lineEnd": 191,
+      "quoteSha256": "f6b91f321fe9481bb21059ab3175f5c87a0b124922a68ed896e54e734dd23396",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      ],
+      "requiredClaims": ["spec308-b07-1-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-308-2",
+    "query": "What does the proposed notification coordination explicitly avoid duplicating?",
+    "expectedAnswer": "**No duplicate transport:** Ideally refactor the existing Bell notification state to publish **authorized projection signals** to a tiny coordinator context, keeping the original single subscription and queries. Because `GlobalAlerts` and `FeedbackButton` are siblings today, share presentation events via one narrowly scoped context or an existing equivalent; do not scrape DOM, call `.click()`, expose a global custom event containing private data, create a second `EventSource`, duplicate `getNotifications`, wire a new poller, or mount Bell twice.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+      "sha256": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+      "lineStart": 194,
+      "lineEnd": 194,
+      "quoteSha256": "21a642103cb4a5aa040a39e2bff4771ad4d12e55167d0aa0c49cf050c5ff8161",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      ],
+      "requiredClaims": ["spec308-b07-2-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-297-3",
+    "query": "Why does the social-ads design keep ad credentials in a dedicated table rather than reusing page-token connections?",
+    "expectedAnswer": "| D2 | **New dedicated table `social_ads_connections`** for per-user ads credentials rather than overloading `socialProviderConnections` | `socialProviderConnections` rows are written by the Python OAuth callback with page-scoped tokens; ads tokens have different scopes, lifecycle, and per-ad-account selection. Clean separation avoids breaking the existing Channels OAuth flow. |",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/297-social-ads-management/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/297-social-ads-management/spec.md",
+      "sha256": "72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "lineStart": 56,
+      "lineEnd": 56,
+      "quoteSha256": "93df4bed3118e51e83036bfc0894863fee59c7dfda0c7e568ebdf3d0845990a6",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/297-social-ads-management/spec.md"
+      ],
+      "requiredClaims": ["spec297-b07-3-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-297-4",
+    "query": "What may scheduled-worker job payloads contain, and what credential material must they exclude?",
+    "expectedAnswer": "| D6 | **One shared BullMQ worker (`socialJobsWorker`)** runs scheduled publishing (fixing existing gap A), ads monitoring, and optimization. **Job payloads carry opaque ids only — never decrypted tokens** (§3.2). | Build the missing runner once; keep Redis free of secrets (sec finding 1 — CRITICAL). |",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/297-social-ads-management/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/297-social-ads-management/spec.md",
+      "sha256": "72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "lineStart": 60,
+      "lineEnd": 60,
+      "quoteSha256": "df7c9ec338749fad5366accd32aa5b31082b0a344b7d060c360195fbe7d4ef2f",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/297-social-ads-management/spec.md"
+      ],
+      "requiredClaims": ["spec297-b07-4-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-302-3",
+    "query": "How many Apps may a Project bind to under the project-identity contract, and can an App bind to many Projects?",
+    "expectedAnswer": "2. One Project MAY bind to many Apps and one App MAY bind to many Projects.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+      "sha256": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "quoteSha256": "373ab591ad33a7fe80e219d017293eda872ac8e49c79807ebf45d50f888636ec",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      ],
+      "requiredClaims": ["spec302-b07-3-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-302-4",
+    "query": "What can similarity do in project resolution, and what durable decision must it not make by itself?",
+    "expectedAnswer": "6. Similarity can retrieve or rank candidates, but MUST NOT alone select a durable project destination.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+      "sha256": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "3058f1873ac59b9115b91a64a1cd056e3e819d4621b6d6c9588e24766b0e5ed5",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      ],
+      "requiredClaims": ["spec302-b07-4-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-303-3",
+    "query": "In the asset registry, what does a Distribution represent?",
+    "expectedAnswer": "- `Distribution`: a channel-specific listing/deployment offer referencing an asset.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+      "sha256": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "c161b551d793c0584d9b3b29505fdbbb35e556847085494811c4c056a114794b",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      ],
+      "requiredClaims": ["spec303-b07-3-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-303-4",
+    "query": "Which contextual and pricing inputs does SPEC-280 consume from the ecosystem asset registry?",
+    "expectedAnswer": "- SPEC-280 consumes `assetId`, party/role bindings, channel/tenant context, and pricing/revenue policy versions; it remains capability-usage/revenue attribution authority.",
+    "language": "english",
+    "classes": ["exact_id", "spec_id", "semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+      "sha256": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "lineStart": 72,
+      "lineEnd": 72,
+      "quoteSha256": "6de383e06b41b2598e59db94c5e6a7ba4c96705fe1404500fd87a9fa6cd45e13",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      ],
+      "requiredClaims": ["spec303-b07-4-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "shouldCite": true,
+      "exactIdentifier": true
+    }
+  },
+  {
+    "caseId": "b07-304-3",
+    "query": "What lifecycle reference does an AppDeployment point to?",
+    "expectedAnswer": "- `AppDeployment`: operational target and SPEC-295 lifecycle reference.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+      "sha256": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "lineStart": 29,
+      "lineEnd": 29,
+      "quoteSha256": "c42a19fbccc2044a085d3a2537b8bf2524249066154de84003ef2e60b373366a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
+      ],
+      "requiredClaims": ["spec304-b07-3-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-304-4",
+    "query": "Which runtime and portability requirements can an app declare?",
+    "expectedAnswer": "- `RuntimeRequirementDeclaration`: requested capabilities, minimum runtime/API versions, data residency, storage, secret scopes, resource profile, network boundaries, and portability class.",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+      "sha256": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "lineStart": 32,
+      "lineEnd": 32,
+      "quoteSha256": "faa50a3ae0eedab33fda23c5669ff477dd91597dd5aa65dd76eed5061eb030fe",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
+      ],
+      "requiredClaims": ["spec304-b07-4-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-305-3",
+    "query": "Which categories of artifact differences are included in the semantic mutation scope?",
+    "expectedAnswer": "-   semantic, visual, evidence and data diffs;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+      "sha256": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "lineStart": 51,
+      "lineEnd": 51,
+      "quoteSha256": "8248869d28e627b036631318d2f94d63276154da4e05d53b42881571dc329507",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec305-b07-3-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
+  },
+  {
+    "caseId": "b07-305-4",
+    "query": "What version-control capabilities are listed for artifact revisions?",
+    "expectedAnswer": "-   revision graph, rollback and branching;",
+    "language": "english",
+    "classes": ["semantic_paraphrase"],
+    "sourceGroupId": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+    "split": "development",
+    "useApproval": "development_only",
+    "source": {
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+      "sha256": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "lineStart": 53,
+      "lineEnd": 53,
+      "quoteSha256": "dbaeea3e0856ae2185c6587df0d18e2f8e2bc3150952c1526c7e42d062de618a",
+      "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
+      "allowedUseEvidence": "Owner-authorized repository-authored SPEC text screened for development fixtures; no tenant production data or embedded third-party source excerpts."
+    },
+    "generator": {
+      "id": "codex-candidate-queries",
+      "version": "standalone-repo-spec-candidates-v7"
+    },
+    "reviews": [
+      {
+        "reviewerId": "candidate_review",
+        "reviewerVersion": "independent-agent-review-2026-10-17-batch07-final",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "All 50 candidates independently verified for answer/source support, hashes/spans, taxonomy, uniqueness and development-only status after one correction."
+      }
+    ],
+    "disagreement": {
+      "present": false
+    },
+    "benchmarkGold": {
+      "tenantId": "repo-development",
+      "supportsAnswer": true,
+      "requiredEvidenceIds": [
+        "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      ],
+      "requiredClaims": ["spec305-b07-4-claim"],
+      "minimumAuthorityRank": 1,
+      "expectedRevision": "sha256:6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+      "shouldCite": true,
+      "exactIdentifier": false
+    }
   }
 ]
