@@ -1,5 +1,5 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -2255,7 +2255,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
+      "evidence_sha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/retrievalBroker.ts",
@@ -2271,7 +2271,7 @@
       "verification_evidence": [
         "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-1-postmerge-20261017.json"
       ],
-      "verification_method": "Focused failure-injection tests for provider configuration and retrieval search exceptions, rerun on canonical SHA 926209d8d908ee3ad29a73eb03d8bef82fc2392a; PR progressive integration and mocked browser required checks also passed."
+      "verification_method": "Focused failure-injection tests for provider configuration and retrieval search exceptions, rerun from isolated canonical main SHA 3849c5483f773e69e9ade4de332d23815dc8fa4a; PR progressive integration and mocked browser required checks passed for the implementation."
     },
     {
       "applicability": "UNASSESSED",

@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "workunit": "SPEC229_P229_1_REMAINING_BROKER_ACCEPTANCE",
-  "canonicalBaseSha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
-  "sourceCommitSha": "926209d8d908ee3ad29a73eb03d8bef82fc2392a",
+  "canonicalBaseSha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
+  "sourceCommitSha": "3849c5483f773e69e9ade4de332d23815dc8fa4a",
   "sourceBranch": "main",
   "pullRequest": 1035,
-  "observedAt": "2026-10-17T14:10:00+07:00",
+  "observedAt": "2026-10-17T14:12:31+07:00",
   "profile": "quick",
   "checks": [
     {
-      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts",
+      "command": "JWT_SECRET=<ephemeral-test-value> pnpm --filter @smartspec/web exec vitest run server/services/retrievalBroker.test.ts server/services/librarySearchService.test.ts server/routers/library.test.ts (rerun from isolated canonical main SHA 3849c5483f773e69e9ade4de332d23815dc8fa4a)",
       "exitCode": 0,
       "result": "PASS",
       "testFiles": 3,
@@ -46,5 +46,5 @@
     "limitation": "No full TypeScript check per repository RAM policy; no live production provider outage or production database runtime exercised"
   },
   "productionVerified": false,
-  "acceptance": "P229.1 remaining Library Broker acceptance criteria listed above PASS on integrated canonical SHA 926209d8d908ee3ad29a73eb03d8bef82fc2392a. This closes the scoped broker failure/degradation acceptance and the explicit Spec 229 acceptance item REQ-CAAB31EB9BD4. It does not close overall SPEC-229, P229.8 quality/citation acceptance, consumer migration phases, or production verification."
+  "acceptance": "P229.1 remaining Library Broker acceptance criteria listed above PASS on integrated canonical SHA 3849c5483f773e69e9ade4de332d23815dc8fa4a. This closes the scoped broker failure/degradation acceptance and the explicit Spec 229 acceptance item REQ-CAAB31EB9BD4. It does not close overall SPEC-229, P229.8 quality/citation acceptance, consumer migration phases, or production verification."
 }
