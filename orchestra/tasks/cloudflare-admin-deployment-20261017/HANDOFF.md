@@ -35,6 +35,8 @@ Branch: `codex/cloudflare-credential-path-20261017`.
 
 ## Integration receipt
 
-Intended PR: `Cloudflare Admin authority diagnostics and read-only token verification` from `codex/cloudflare-credential-path-20261017` into `main`.
+PR [#1053](https://github.com/naibarn/SmartSpecPro/pull/1053): `Cloudflare Admin authority diagnostics and read-only token verification` from `codex/cloudflare-credential-path-20261017` into `main`.
 
-Owned paths: Cloudflare Credential Center, focused service/authority tests, and this task handoff. Required PR checks and protected integration remain pending.
+Implementation SHA `98bd97d7e9a1670934ffe73d82b28122547d74e1`. Required PR checks on this SHA passed: `local-contract` (including local Vite/Worker/static checks), `Mocked SPEC-308 browser simulation`, and `progressive_integration_gate`. `build-preview` was skipped by workflow policy. PR is open with clean merge state; review is pending.
+
+No merge or live deployment was performed. The staging deployment adapter, live saved-token verification, and staging acceptance remain open pending authenticated Admin/target authority and a trusted source artifact path.
