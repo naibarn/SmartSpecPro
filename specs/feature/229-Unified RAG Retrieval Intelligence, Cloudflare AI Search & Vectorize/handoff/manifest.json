@@ -162,14 +162,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "32c9d397ea13fc5ce25431135f101cccbad3cd12",
     "expected_spec_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Complete remaining P229.1 shared request/response and consumer security migration, then baseline measured context token use and indexing cost before any default change. Existing Google Drive/OneDrive content-hash skip paths and context-pack tokenBudgetHint are already implemented; do not duplicate them.",
+    "next_ready_workunit": "SPEC229_P229_1_RETRIEVAL_BROKER_REMAINDER",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "P229.1 partial Broker adapter merged by PR #1003 at canonical main SHA 32c9d397ea13fc5ce25431135f101cccbad3cd12. CI progressive_integration_gate and Mocked SPEC-308 browser simulation passed for head 7c014c97e12df2b8d6a38c31afb5b34656f46e68; focused 11 tests and router import smoke passed locally with dependency-tree caveat recorded in evidence. Production verification not performed. Existing Drive/OneDrive ingestion already hashes and skips unchanged source content; context packs enforce tokenBudgetHint, prompt composer truncates scoped-memory text to allocated token budgets. AST/symbol/reference coding retrieval remains absent from current source search, but defer implementation until remaining P229.1 contract is complete and benchmark/evaluation can justify its cost.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -212,7 +212,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -229,23 +229,39 @@
     "title": "Spec 229 — Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize V2"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "13c65c378cad6119263c59e0d1d57c7941deb18a",
+      "c42d25ed2b6a583a9a471ae3c11332621e53a11d"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/services/retrievalBroker.ts",
+      "apps/web/server/routers/library.ts",
+      "apps/web/server/services/libraryService.ts",
+      "apps/web/server/services/retrievalBroker.test.ts"
+    ],
+    "started": true,
+    "status": "IN_PROGRESS"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "32c9d397ea13fc5ce25431135f101cccbad3cd12",
+    "integrated": true,
+    "integrated_at": "2026-10-17T01:10:24Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
+    "current_state": "PARTIAL_INTEGRATED",
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:17.934916Z"
+  },
+  "manual_decisions": {
+    "lifecycle": {
+      "current_state": "PARTIAL_INTEGRATED",
+      "previous_state": null,
+      "state_evidence": [],
+      "updated_at": "2026-10-06T03:28:17.934916Z"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -354,14 +370,16 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.934916Z",
+  "updated_at": "2026-10-17T01:11:38.610118Z",
   "verification": {
-    "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      "handoff/evidence/p229-1-broker-focused-20261017.json"
+    ],
     "freshness": "UNKNOWN",
-    "required_profiles": [],
+    "required_profiles": [
+      "quick"
+    ],
     "sha": null,
-    "status": "UNKNOWN",
-    "task_regressions": []
+    "status": "UNKNOWN"
   }
 }
