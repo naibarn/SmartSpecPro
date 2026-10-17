@@ -413,6 +413,24 @@ async function getProbe(token: string, path: string, fetchImpl: typeof fetch = f
   }
 }
 
+/** Verify the saved API token itself without returning its identifier or value. */
+export async function verifyCloudflareToken(token: string, fetchImpl: typeof fetch = fetch): Promise<{
+  status: Exclude<CloudflareProbeStatus, "partial">;
+  httpStatus: number | null;
+}> {
+  const result = await getProbe(token, "user/tokens/verify", fetchImpl);
+  if (result.status !== "granted") return { status: result.status === "partial" ? "unavailable" : result.status, httpStatus: result.httpStatus };
+  const tokenStatus = result.result && typeof result.result === "object"
+    ? (result.result as Record<string, unknown>).status
+    : undefined;
+  return {
+    status: tokenStatus === "active" ? "granted"
+      : tokenStatus === "disabled" || tokenStatus === "expired" ? "invalid_token"
+        : "unavailable",
+    httpStatus: result.httpStatus,
+  };
+}
+
 export async function probeCloudflareServiceCatalog(
   token: string,
   accountId: string,
@@ -438,26 +456,40 @@ export async function probeCloudflareZoneServiceCatalog(
 export async function probeCloudflareCredential(
   db: DrizzleDB,
   profileId: CloudflareCredentialProfileId,
+  fetchImpl: typeof fetch = fetch,
 ) {
   const token = await readProfileToken(db, profileId);
-  if (!token) return { profileId, checkedAt: new Date().toISOString(), error: "credential_not_configured", checks: [] as ProbeResult[] };
+  if (!token) return { profileId, checkedAt: new Date().toISOString(), error: "credential_not_configured", accountId: null, zoneId: null, checks: [] as ProbeResult[] };
   const [accountRow] = await db.select({ value: systemSettings.value, isSensitive: systemSettings.isSensitive })
     .from(systemSettings).where(and(eq(systemSettings.category, "vectordb"), eq(systemSettings.key, "vectorizeAccountId"))).limit(1);
   const accountId = secretValue(accountRow ?? { value: null, isSensitive: false }) || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
-  if (!accountId) return { profileId, checkedAt: new Date().toISOString(), error: "account_id_not_configured", checks: [] as ProbeResult[] };
+  const checkedAt = new Date().toISOString();
+  const tokenVerification = await verifyCloudflareToken(token, fetchImpl);
+  const tokenCheck: ProbeResult = {
+    id: "tokenVerification",
+    label: "Cloudflare API token verification",
+    scope: "Token",
+    permission: "Valid API token",
+    status: tokenVerification.status,
+    httpStatus: tokenVerification.httpStatus,
+  };
+  if (tokenVerification.status !== "granted") {
+    return { profileId, checkedAt, error: null, accountId: accountId || null, zoneId: null, checks: [tokenCheck] };
+  }
+  if (!accountId) return { profileId, checkedAt, error: "account_id_not_configured", accountId: null, zoneId: null, checks: [tokenCheck] };
 
-  const accountChecks = await probeCloudflareServiceCatalog(token, accountId);
+  const accountChecks = await probeCloudflareServiceCatalog(token, accountId, fetchImpl);
 
-  const zones = await getProbe(token, "zones?name=smartaihub.app&per_page=50");
+  const zones = await getProbe(token, "zones?name=smartaihub.app&per_page=50", fetchImpl);
   const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: string; name?: string }> : [];
   const zoneId = zoneRows.find((zone) => zone.name === "smartaihub.app")?.id;
   const zoneChecks: ProbeResult[] = [];
   if (zoneId) {
     zoneChecks.push({ id: "zoneInventory", label: "Zone inventory (smartaihub.app)", scope: "Zone", permission: "Zone Read", status: zones.status, httpStatus: zones.httpStatus });
-    zoneChecks.push(...await probeCloudflareZoneServiceCatalog(token, zoneId));
+    zoneChecks.push(...await probeCloudflareZoneServiceCatalog(token, zoneId, fetchImpl));
   } else {
     zoneChecks.push({ id: "dns", label: "DNS / zone resources (smartaihub.app)", scope: "Zone", permission: "Zone Read + DNS Read", status: zones.status === "granted" ? "resource_not_found" : zones.status, httpStatus: zones.httpStatus });
   }
 
-  return { profileId, checkedAt: new Date().toISOString(), error: null, checks: [...accountChecks, ...zoneChecks] };
+  return { profileId, checkedAt, error: null, accountId, zoneId: zoneId ?? null, checks: [tokenCheck, ...accountChecks, ...zoneChecks] };
 }
