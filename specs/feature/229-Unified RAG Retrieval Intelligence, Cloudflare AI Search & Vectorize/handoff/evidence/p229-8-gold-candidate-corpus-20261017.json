@@ -1,9 +1,9 @@
 {
-  "evidence_id": "SPEC229-P2298-CANDIDATE-CORPUS-BATCH06-07-20261017",
-  "workunit": "P229.8 Gold Candidate Corpus Expansion — batches 06 and 07",
+  "evidence_id": "SPEC229-P2298-CANDIDATE-CORPUS-BATCH08-20261017",
+  "workunit": "P229.8 Gold Candidate Corpus Expansion — batch08 fixture-backed class coverage",
   "workunit_status": "PASS",
   "p2298_acceptance_status": "NOT_EVALUABLE",
-  "base_canonical_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
+  "base_canonical_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
   "previous_pr": {
     "number": 1069,
     "merged_sha": "4c1881967c7fab5833cabc01d71845888eb09ddd",
@@ -17,32 +17,32 @@
       "build-preview"
     ]
   },
-  "tested_source_sha": "47418ec2c45eb08577db96b8a80a3c28e93ec921",
+  "tested_source_sha": "76bf1084a883a7a9bbc833a5cd2b64ed8e37f680",
   "dataset_path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-  "dataset_file_sha256": "fc41348fc0c4f895ee3199a70085719f716813af56456a62d2fe7ea1b1ade0b6",
-  "dataset_digest_sha256": "67fee30ddb4a68f2695e4e0f2abf9cf6f084b0331d3fcab6249f51a728c120c5",
+  "dataset_file_sha256": "9e6d4f9d897ce814329d88050bf4d1b98adb0bfdeab543e69be458107ccd8d8a",
+  "dataset_digest_sha256": "57581a6845ecc1f714530f61b928632fe380392e0815258f20743d500912ff0a",
   "counts": {
-    "candidate_queries": 360,
+    "candidate_queries": 410,
     "unreviewed": 0,
-    "independently_reviewed": 360,
-    "machine_reviewed": 360,
+    "independently_reviewed": 410,
+    "machine_reviewed": 410,
     "human_reviewed": 0,
     "human_accepted": 0,
-    "review_accepted": 360,
+    "review_accepted": 410,
     "review_disagreements": 0,
     "adjudicated": 0,
     "accepted_for_gold": 0,
     "pending_adjudication": 0,
     "release_approved": 0,
     "held_out_release_approved": 0,
-    "development_only": 360
+    "development_only": 410
   },
   "language_counts": {
-    "thai": 103,
-    "english": 173,
-    "mixed": 84
+    "thai": 106,
+    "english": 214,
+    "mixed": 90
   },
-  "source_group_count": 195,
+  "source_group_count": 206,
   "class_counts": {
     "quality_coverage": 1,
     "spec_factual": 9,
@@ -56,23 +56,31 @@
     "language": 2,
     "latency": 2,
     "handoff_fact": 1,
-    "exact_id": 110,
+    "exact_id": 121,
     "spec_id": 77,
     "document_title": 50,
     "code_identifier": 55,
-    "semantic_paraphrase": 280,
+    "semantic_paraphrase": 281,
     "retrieval": 1,
     "multi_hop": 10,
     "follow_up": 2,
     "filename": 11,
     "path": 3,
-    "error_code": 1,
-    "api_path": 7,
+    "error_code": 8,
+    "api_path": 9,
     "ambiguous": 1,
     "coverage": 1,
-    "acl_attack": 2,
+    "acl_attack": 4,
     "machine_readable_error_policy": 1,
-    "freshness": 1
+    "freshness": 1,
+    "no_answer": 6,
+    "stale_conflict": 4,
+    "deleted_revoked": 3,
+    "code_config_log": 42,
+    "long_document": 1,
+    "typo": 4,
+    "ocr": 13,
+    "uuid": 3
   },
   "batch_review": {
     "batch04": {
@@ -113,18 +121,19 @@
       "accepted": 50,
       "revised_initially": 1,
       "sha256": "47341a12d0e9cd05266ce84e32bf111e81d673f63a1287341ed09ed151040e1f"
+    },
+    "batch08": {
+      "queries": 50,
+      "reviewer_id": "candidate_review",
+      "reviewer_type": "agent",
+      "reviewer_version": "independent-agent-review-2026-10-17-batch08-final",
+      "accepted": 50,
+      "revised_initially": 2,
+      "sha256": "43a902ec45237ed078830fe31e8540d6a9826c2a38768ea82863a998405d8e56",
+      "sources": "repository-owned synthetic test/fixture sources only"
     }
   },
-  "candidate_required_classes_missing": [
-    "uuid",
-    "typo",
-    "stale_conflict",
-    "no_answer",
-    "deleted_revoked",
-    "ocr",
-    "long_document",
-    "code_config_log"
-  ],
+  "candidate_required_classes_missing": [],
   "release_criteria": {
     "crossTenantLeakage": "NOT_EVALUABLE",
     "unauthorizedEvidenceLeakage": "NOT_EVALUABLE",
@@ -144,9 +153,10 @@
   },
   "baseline": {
     "kind": "synthetic_negative_control_fixture_baseline",
-    "source_sha": "4c1881967c7fab5833cabc01d71845888eb09ddd",
+    "source_sha": "e2852edc753b3b49602d12fe678234f34bab02ee",
     "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
     "status": "DEVELOPMENT_FIXTURES_NOT_CERTIFIED",
+    "reviewed_gold_queries": false,
     "fixture_cases": 9,
     "metrics": {
       "recall_at_20": 1.0,
@@ -171,25 +181,30 @@
       "p95_latency_ms": null,
       "mean_cost_micros": null
     },
-    "release_use": "synthetic negative control only; not baseline/certification"
+    "confidence_intervals": null,
+    "release_use": "negative-control demonstration only; not retrieval performance baseline/certification; n=9 is below any per-class interval floor"
   },
   "test_profile": "quick",
   "commands": [
     {
       "command": "pnpm exec vitest run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
-      "result": "PASS: 2 files, 16 tests on exact tested_source_sha 47418ec2c45eb08577db96b8a80a3c28e93ec921"
+      "result": "PASS: 2 files, 16 tests on exact tested_source_sha 76bf1084a883a7a9bbc833a5cd2b64ed8e37f680"
     },
     {
       "command": "pnpm exec tsx scripts/run-retrieval-gold-dataset.ts --dataset-file server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-      "result": "PASS: source digests, quote hashes, inclusive spans, uniqueness and reviews; 360 independently machine-reviewed development-only candidates; all 15 §27 criteria NOT_EVALUABLE"
+      "result": "PASS: 410 independent agent-reviewed development candidates; all required §27 query classes now represented in the candidate corpus; all 15 release criteria NOT_EVALUABLE"
+    },
+    {
+      "command": "pnpm exec tsx scripts/run-retrieval-fixture-benchmark.ts",
+      "result": "PASS: 9 synthetic negative-control fixtures at exact canonical SHA e2852edc753b3b49602d12fe678234f34bab02ee; status DEVELOPMENT_FIXTURES_NOT_CERTIFIED"
     }
   ],
   "production_verified": false,
   "remaining": [
-    "At least 140 additional unique independently reviewed queries are needed to reach 500 candidate rows; missing required classes: uuid, typo, stale_conflict, no_answer, deleted_revoked, OCR, long_document, code_config_log.",
-    "Human-reviewed and human-accepted: 0; agent reviews are distinct and not human approval.",
-    "Release-approved and held-out queries: 0; all 15 §27 criteria remain NOT_EVALUABLE.",
-    "No authorized retrieval observations, confidence intervals, profile-specific latency or cost/query."
+    "At least 90 additional unique independently reviewed candidates are needed to reach 500.",
+    "Coverage classes are present, but no release-approved or held-out query cohort exists; all 15 §27 criteria remain NOT_EVALUABLE.",
+    "Human-reviewed/accepted remains 0; agent review is reported separately.",
+    "No authorized retrieval observations, confidence intervals, retrieval-profile latency or cost/query."
   ],
   "batch_files": {
     "batch01_sha256": "60cc5ac0cc619c0704c7bc8359700ae258568c1f96dc91062c57f068a0bf7b07",
@@ -198,7 +213,8 @@
     "batch04_sha256": "20e90527e735f64d4e05c23d76eb70512eca722563e8a2577d00d590f2d5dc55",
     "batch05_sha256": "6b9887fc802cd64435cf44c70ab3ac41b2e78129fd274a1ca4cfc201ac4334de",
     "batch06_sha256": "d23497f699d972ad8ac010a85c8180afcdacf6e3bd89df7e4823a9ace8b3a096",
-    "batch07_sha256": "47341a12d0e9cd05266ce84e32bf111e81d673f63a1287341ed09ed151040e1f"
+    "batch07_sha256": "47341a12d0e9cd05266ce84e32bf111e81d673f63a1287341ed09ed151040e1f",
+    "batch08_sha256": "43a902ec45237ed078830fe31e8540d6a9826c2a38768ea82863a998405d8e56"
   },
   "previous_prs": [
     {
@@ -210,6 +226,10 @@
       "number": 1070,
       "merged_sha": "6c7713705ca826523a4cf73e0781667e789b5fa8",
       "merged_at": "2026-10-17T16:11:37Z"
+    },
+    {
+      "number": 1071,
+      "merged_sha": "e2852edc753b3b49602d12fe678234f34bab02ee"
     }
   ],
   "release_criteria_count_not_evaluable": 15
