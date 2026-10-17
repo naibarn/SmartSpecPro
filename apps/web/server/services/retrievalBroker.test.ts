@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSearchLibraryItems, mockGetProviderConfig, mockResolveProvider } =
-  vi.hoisted(() => ({
+const {
+  mockSearchLibraryItems,
+  mockGetMarkdownContent,
+  mockGetProviderConfig,
+  mockResolveProvider,
+} = vi.hoisted(() => ({
     mockSearchLibraryItems: vi.fn(),
+    mockGetMarkdownContent: vi.fn(),
     mockGetProviderConfig: vi.fn(),
     mockResolveProvider: vi.fn(),
   }));
 
 vi.mock("./libraryService", () => ({
   resolveLibraryVectorIndexName: vi.fn(() => "library-index"),
+  getLibraryMarkdownContent: mockGetMarkdownContent,
   searchLibraryItems: mockSearchLibraryItems,
 }));
 
@@ -21,6 +27,7 @@ import {
   RetrievalAuthorizationError,
   retrieveLibraryEvidenceV2,
 } from "./retrievalBroker";
+import { estimateTokens } from "../utils/tokenEstimator";
 
 const actor = { userId: 7, tenantId: "tenant-a", role: "user" };
 
@@ -54,6 +61,11 @@ const row = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetMarkdownContent.mockResolvedValue({
+    item_id: 12,
+    content: "# Build guide\nCurrent canonical text.",
+    updated_at: row.updated_at,
+  });
   mockGetProviderConfig.mockResolvedValue({
     provider: "cloudflare_vectorize",
     currentReadProvider: "cloudflare_vectorize",
@@ -162,6 +174,34 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(result.degradationReasons).toContain("RETRIEVAL_PROVIDER_FALLBACK_OR_DIAGNOSTICS_UNAVAILABLE");
   });
 
+  it("drops evidence whose canonical revision changed after vector search", async () => {
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12,
+      content: "Changed canonical source.",
+      updated_at: "2026-10-17T00:00:00.000Z",
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence).toEqual([]);
+    expect(result).toMatchObject({
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: true,
+    });
+    expect(result.degradationReasons).toContain("STALE_EVIDENCE_DROPPED");
+  });
+
+  it("drops evidence if canonical ACL recheck fails during hydration", async () => {
+    mockGetMarkdownContent.mockResolvedValue(null);
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence).toEqual([]);
+    expect(result.degradationReasons).toContain("ACL_OR_SOURCE_REVOKED_AFTER_SEARCH");
+    expect(result.partial).toBe(true);
+  });
+
   it("bounds evidence and derives tenant scope from the authenticated actor", async () => {
     mockSearchLibraryItems.mockResolvedValue({
       version: "library_search_v1",
@@ -177,6 +217,11 @@ describe("retrieveLibraryEvidenceV2", () => {
         updated_at: `2026-10-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`,
       })),
     });
+    mockGetMarkdownContent.mockImplementation(async (itemId: number) => ({
+      item_id: itemId,
+      content: `# Guide ${itemId}\nCanonical content for evidence ${itemId}.`,
+      updated_at: `2026-10-${String(itemId).padStart(2, "0")}T00:00:00.000Z`,
+    }));
 
     const result = await retrieveLibraryEvidenceV2(
       {
@@ -184,7 +229,7 @@ describe("retrieveLibraryEvidenceV2", () => {
         requestId: "client-request-1",
         projectId: "project-a",
         status: ["ready"],
-        evidenceBudget: { maxCandidates: 100, maxEvidence: 40, maxContextTokens: 90_000 },
+        evidenceBudget: { maxCandidates: 100, maxEvidence: 40, maxContextTokens: 90 },
       },
       actor,
     );
@@ -202,10 +247,11 @@ describe("retrieveLibraryEvidenceV2", () => {
     expect(result.plan.evidenceBudget).toEqual({
       maxCandidates: 50,
       maxEvidence: 12,
-      maxContextTokens: 32_000,
+      maxContextTokens: 90,
     });
     expect(result.plan).toMatchObject({ requestId: "client-request-1", purpose: "library.search", sourceClasses: ["library_document"] });
-    expect(result.evidence).toHaveLength(12);
+    expect(result.evidence.length).toBeGreaterThan(0);
+    expect(result.evidence.length).toBeLessThanOrEqual(12);
     expect(result.evidence[0]).toMatchObject({
       canonicalRef: {
         kind: "library_item",
@@ -216,14 +262,19 @@ describe("retrieveLibraryEvidenceV2", () => {
       aclVerified: true,
       provenanceVerified: true,
       freshnessState: "current",
+      text: expect.any(String),
+      sourceDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
-    expect(result).toMatchObject({
-      evidenceQuality: "weak",
-      degraded: true,
-      degradationReasons: ["CONTENT_HYDRATION_AND_QUALITY_GATE_PENDING"],
-    });
-    expect(result.evidence[0]).not.toHaveProperty("text");
+    expect(result).toMatchObject({ evidenceQuality: "weak", degraded: true, partial: true });
+    expect(result.degradationReasons).toContain("QUALITY_GATE_NOT_CERTIFIED");
+    expect(result.degradationReasons).toContain("CONTEXT_BUDGET_EXHAUSTED");
     expect(result.evidence[0]?.providerProfileId).toBe("library-index");
     expect(result.providerProfile.profileId).toBe("library-index");
+    expect(
+      result.evidence.reduce((sum, item) => sum + (item.text ? estimateTokens(item.text) : 0), 0),
+    ).toBeLessThanOrEqual(90);
+    expect(mockGetMarkdownContent.mock.calls.length).toBeLessThanOrEqual(
+      result.evidence.length + 1,
+    );
   });
 });

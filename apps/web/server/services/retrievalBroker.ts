@@ -1,13 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import {
   resolveLibraryVectorIndexName,
+  getLibraryMarkdownContent,
   searchLibraryItems,
   type LibraryItemStatus,
   type LibraryActor,
   type LibrarySearchFilters,
   type LibrarySearchResultV1,
 } from "./libraryService";
+import { estimateTokens } from "../utils/tokenEstimator";
 import {
   getEffectiveVectorProviderConfig,
   resolveVectorProvider,
@@ -243,20 +245,26 @@ function normalizeEvidence(
   result: LibrarySearchResultV1,
   tenantId: string,
   profileId: string | undefined,
+  content: string,
+  sourceRevision: string,
+  sourceDigest: string,
 ): RetrievalEvidenceV2 {
   const id = String(result.item_id);
   return {
-    evidenceId: `library:${tenantId}:${id}:${result.updated_at}`,
+    evidenceId: `library:${tenantId}:${id}:${sourceRevision}:${sourceDigest.slice(0, 12)}`,
     sourceType: "library_item",
     sourceId: id,
     itemId: result.item_id,
-    sourceRevision: result.updated_at,
+    sourceRevision,
+    sourceDigest,
     canonicalRef: {
       kind: "library_item",
       id,
-      revision: result.updated_at,
+      revision: sourceRevision,
+      digest: sourceDigest,
     },
     title: result.title,
+    text: content,
     retrievalProvider: "cloudflare_vectorize",
     providerProfileId: profileId ?? resolveLibraryVectorIndexName(),
     retrievalMode: "hybrid",
@@ -271,10 +279,104 @@ function normalizeEvidence(
     aclVerified: true,
     provenanceVerified: true,
     freshnessState: "current",
-    updatedAt: result.updated_at,
+    updatedAt: sourceRevision,
     tombstoned: false,
     domainEligibility: "unknown",
   };
+}
+
+function truncateTextToTokenBudget(text: string, budget: number): string {
+  if (estimateTokens(text) <= budget) return text;
+  const characters = Array.from(text);
+  let low = 0;
+  let high = characters.length;
+  while (low < high) {
+    const midpoint = Math.ceil((low + high) / 2);
+    const prefix = characters.slice(0, midpoint).join("");
+    const candidate = midpoint < characters.length ? `${prefix}…` : prefix;
+    if (estimateTokens(candidate) <= budget) low = midpoint;
+    else high = midpoint - 1;
+  }
+  if (low === 0) return "";
+  const prefix = characters.slice(0, low).join("");
+  const candidate = low < characters.length ? `${prefix}…` : prefix;
+  return estimateTokens(candidate) <= budget ? candidate : "";
+}
+
+async function hydrateLibraryEvidence(params: {
+  results: LibrarySearchResultV1[];
+  actor: LibraryActor;
+  tenantId: string;
+  profileId: string | undefined;
+  maxEvidence: number;
+  maxContextTokens: number;
+}): Promise<{
+  evidence: RetrievalEvidenceV2[];
+  partial: boolean;
+  degradationReasons: string[];
+}> {
+  const evidence: RetrievalEvidenceV2[] = [];
+  const degradationReasons = new Set<string>();
+  let remainingTokens = params.maxContextTokens;
+  let truncated = false;
+
+  for (const result of params.results.slice(0, params.maxEvidence)) {
+    // Do not hydrate more canonical documents once the request budget is spent.
+    // This avoids database reads that cannot contribute evidence to the response.
+    if (remainingTokens <= 0) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
+      break;
+    }
+    const content = await getLibraryMarkdownContent(result.item_id, params.actor);
+    if (!content) {
+      degradationReasons.add("ACL_OR_SOURCE_REVOKED_AFTER_SEARCH");
+      continue;
+    }
+    const indexedRevision = Date.parse(result.updated_at);
+    const canonicalRevision = Date.parse(content.updated_at);
+    if (
+      !Number.isFinite(indexedRevision)
+      || !Number.isFinite(canonicalRevision)
+      || indexedRevision !== canonicalRevision
+    ) {
+      degradationReasons.add("STALE_EVIDENCE_DROPPED");
+      continue;
+    }
+    if (!content.content.trim()) {
+      degradationReasons.add("CANONICAL_TEXT_NOT_AVAILABLE_FOR_SOURCE");
+      continue;
+    }
+
+    const text = truncateTextToTokenBudget(content.content, remainingTokens);
+    if (!text) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
+      break;
+    }
+    const sourceDigest = createHash("sha256")
+      .update(content.content, "utf8")
+      .digest("hex");
+    const itemEvidence = normalizeEvidence(
+      result,
+      params.tenantId,
+      params.profileId,
+      text,
+      content.updated_at,
+      sourceDigest,
+    );
+    evidence.push(itemEvidence);
+    remainingTokens = Math.max(0, remainingTokens - estimateTokens(text));
+    if (text.length < content.content.length) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_TRUNCATED");
+    }
+  }
+
+  const partial = evidence.length < Math.min(params.results.length, params.maxEvidence);
+  if (partial) degradationReasons.add("CONTENT_HYDRATION_PARTIAL");
+  if (evidence.length > 0) degradationReasons.add("QUALITY_GATE_NOT_CERTIFIED");
+  return { evidence, partial: partial || truncated, degradationReasons: [...degradationReasons] };
 }
 
 /**
@@ -381,24 +483,26 @@ export async function retrieveLibraryEvidenceV2(
       degradationReasons: ["RETRIEVAL_PROVIDER_FALLBACK_OR_DIAGNOSTICS_UNAVAILABLE"],
     };
   }
-  const evidence = results.results
-    .slice(0, maxEvidence)
-    .map((result) => normalizeEvidence(result, tenantId, diagnostics.profileId));
-  const needsHydration = evidence.length > 0;
-  const documentRag = queryClass === "DOCUMENT_RAG";
+  const hydrated = await hydrateLibraryEvidence({
+    results: results.results,
+    actor,
+    tenantId,
+    profileId: diagnostics.profileId,
+    maxEvidence,
+    maxContextTokens,
+  });
+  const evidence = hydrated.evidence;
 
   return {
     retrievalTraceId,
     plan,
     providerProfile: { provider, profileId: diagnostics.profileId ?? profileId },
     evidence,
-    // Search candidates are not treated as grounded RAG context until the
-    // content hydration and quality-gate phases are connected.
     evidenceQuality: evidence.length === 0 ? "no_evidence" : "weak",
-    degraded: needsHydration || documentRag,
-    partial: false,
-    ...(needsHydration || documentRag
-      ? { degradationReasons: ["CONTENT_HYDRATION_AND_QUALITY_GATE_PENDING"] }
+    degraded: evidence.length > 0 || hydrated.partial || results.results.length > 0,
+    partial: hydrated.partial,
+    ...(hydrated.degradationReasons.length > 0
+      ? { degradationReasons: hydrated.degradationReasons }
       : {}),
   };
 }
