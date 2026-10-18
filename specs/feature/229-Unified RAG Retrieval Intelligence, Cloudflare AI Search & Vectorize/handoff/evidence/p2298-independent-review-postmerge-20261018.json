@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "spec229-postmerge-verification-v1",
+  "workunit": "P229.8_INTEGRITY_V1_INDEPENDENT_CANDIDATE_REVIEW",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
+  "pullRequest": 1140,
+  "sourceSha": "4e66e264f72d27e1faa3f9dcdbe4272a523a7add",
+  "verification": {
+    "focusedTestCommand": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/cloudflareAiSearchProvider.test.ts",
+    "focusedTests": {
+      "testFilesPassed": 6,
+      "testsPassed": 54,
+      "testsFailed": 0,
+      "result": "PASS",
+      "runAtUtc": "2026-10-18T11:07:08Z"
+    },
+    "requiredPullRequestChecks": {
+      "progressive_integration_gate": "PASS",
+      "local-contract": "PASS",
+      "Mocked SPEC-308 browser simulation": "PASS",
+      "build-preview": "SKIPPED by workflow"
+    },
+    "handoffValidation": {
+      "result": "PASS",
+      "completionEligible": false
+    }
+  },
+  "dataset": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.integrity-v1.json",
+    "sha256": "1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63",
+    "candidateCount": 500,
+    "machineAcceptedAsDevelopmentCandidate": 451,
+    "machineRejected": 49,
+    "humanReviewed": 0,
+    "humanAccepted": 0,
+    "releaseApproved": 0,
+    "heldOutReleaseApproved": 0
+  },
+  "acceptance": {
+    "p2298": "NOT_EVALUABLE",
+    "globalSpec229": "INCOMPLETE",
+    "reason": "This reviewed cohort remains development-only and is not an untouched, source-use-approved held-out certification cohort. Actual provider observations are not present."
+  },
+  "runtime": {
+    "providerObservations": 0,
+    "resourcesProvisioned": 0,
+    "providerCost": null,
+    "costProvenance": "No provider calls or resource provisioning were performed in this verification."
+  }
+}
