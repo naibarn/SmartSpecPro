@@ -284,6 +284,7 @@ class CanonicalSourceTests(unittest.TestCase):
         shared_core = self.shared / "scripts/development-lifecycle"
         shared_core.mkdir(parents=True)
         shutil.copy2(SCRIPT, shared_core / SCRIPT.name)
+        shutil.copy2(SCRIPT.with_name("portable_file_lock.py"), shared_core / "portable_file_lock.py")
         shutil.copy2(SCRIPT.with_name("resolve-policy.sh"), shared_core / "resolve-policy.sh")
         integration_scripts = self.shared / "skills/integration-controller/scripts"
         integration_scripts.mkdir(parents=True)
@@ -307,6 +308,7 @@ class CanonicalSourceTests(unittest.TestCase):
         core_dir = self.shared / "scripts/development-lifecycle"
         core_dir.mkdir(parents=True)
         shutil.copy2(SCRIPT, core_dir / SCRIPT.name)
+        shutil.copy2(SCRIPT.with_name("portable_file_lock.py"), core_dir / "portable_file_lock.py")
         shutil.copy2(SCRIPT.with_name("resolve-policy.sh"), core_dir / "resolve-policy.sh")
         canonical_scripts = self.shared / "skills/canonical-checkout-sync/scripts"
         canonical_scripts.mkdir(parents=True)
@@ -548,6 +550,7 @@ class CanonicalSourceTests(unittest.TestCase):
         core_path = self.seed / "scripts/development-lifecycle/canonical_source.py"
         core_path.parent.mkdir(parents=True)
         shutil.copy2(SCRIPT, core_path)
+        shutil.copy2(SCRIPT.with_name("portable_file_lock.py"), core_path.parent / "portable_file_lock.py")
         web_builder = self.seed / "scripts/development-lifecycle/build_web.sh"
         web_builder.write_text("#!/usr/bin/env bash\nset -euo pipefail\nprintf 'fixture build\\n'\n", encoding="utf-8")
         command("git", "-C", str(self.seed), "add", ".development-repository.toml", "scripts/development-lifecycle")
