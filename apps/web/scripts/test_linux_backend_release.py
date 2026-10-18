@@ -340,10 +340,14 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (web / "scripts").mkdir(parents=True)
         (web / "dist/public").mkdir(parents=True)
         (web / "dist/public/index.html").write_text("<html>packaged frontend</html>")
-        (web / "scripts/package-linux-backend.sh").write_text(SCRIPT.with_name("package-linux-backend.sh").read_text())
         release_files = web / "client/public/releases"
         release_files.mkdir(parents=True)
         (release_files / "desktop-release.zip").write_bytes(b"release-fixture")
+        (web / "dist/public/releases").symlink_to("../../client/public/releases")
+        (web / "scripts/package-linux-backend.sh").write_text(SCRIPT.with_name("package-linux-backend.sh").read_text())
+        (web / "scripts/materialize-public-releases.sh").write_text(
+            SCRIPT.with_name("materialize-public-releases.sh").read_text()
+        )
         (repo / ".gitignore").write_text("apps/web/dist/\n")
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)
@@ -362,8 +366,6 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\"\n"
             "mkdir -p \"$target/node_modules/.pnpm/node_modules/@smartspec\"\n"
             "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
-            "mkdir -p \"$target/dist/public\"\n"
-            "ln -s \"$PWD/apps/web/client/public/releases\" \"$target/dist/public/releases\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
             "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n",
             encoding="utf-8",
@@ -387,6 +389,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertFalse((runtime / "dist/public/releases").is_symlink())
         self.assertEqual((runtime / "dist/public/releases/desktop-release.zip").read_bytes(), b"release-fixture")
         self.assertTrue((runtime / "dist/public/index.html").is_file())
+        self.assertFalse((web / "dist/public/releases").is_symlink())
+        self.assertEqual((web / "dist/public/releases/desktop-release.zip").read_bytes(), b"release-fixture")
         metadata = json.loads((runtime / "release-build.json").read_text())
         self.assertEqual(metadata["sourceSha"], subprocess.check_output(
             ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True

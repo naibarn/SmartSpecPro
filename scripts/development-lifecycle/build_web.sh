@@ -11,6 +11,7 @@ fi
 
 pnpm --filter @smartspec/remotion-render build
 pnpm --filter @smartspec/web build
+bash apps/web/scripts/materialize-public-releases.sh "$REPO_ROOT/apps/web"
 pnpm dlx wrangler@4.151.1 deploy \
   --config apps/cloudflare/wrangler.staging.jsonc \
   --dry-run \
