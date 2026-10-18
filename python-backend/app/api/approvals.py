@@ -139,7 +139,34 @@ async def issue_spec224_recovery_grant(
 
 
 class Spec224RecoveryGrantRevoke(BaseModel):
-    reason: str = Field(..., min_length=4, max_length=500)
+    model_config = ConfigDict(extra="forbid")
+
+    reason: StrictStr = Field(..., min_length=4, max_length=500)
+
+
+@router.post("/spec224/recovery-grants/{grant_id}/revoke")
+async def revoke_spec224_recovery_grant(
+    grant_id: str,
+    request: Spec224RecoveryGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Revoke a recovery grant through the authenticated tenant owner."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    try:
+        return await ApprovalDBService(db).revoke_spec224_recovery_grant(
+            grant_id=grant_id,
+            tenant_id=tenant_id,
+            owner_id=int(current_user.id),
+            reason=request.reason,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        status_code = 404 if str(exc) == "SPEC224_RECOVERY_GRANT_NOT_FOUND" else 422
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 class Spec224RuntimeBinding(BaseModel):
