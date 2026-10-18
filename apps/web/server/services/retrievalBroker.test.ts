@@ -10,6 +10,7 @@ const {
   mockResolveAiSearchRoute,
   mockResolveProjectionByKey,
   mockAiSearchProviderSearch,
+  mockAiSearchProviderSearchMany,
 } = vi.hoisted(() => ({
     mockSearchLibraryItems: vi.fn(),
     mockGetMarkdownContent: vi.fn(),
@@ -19,6 +20,7 @@ const {
     mockResolveAiSearchRoute: vi.fn(),
     mockResolveProjectionByKey: vi.fn(),
     mockAiSearchProviderSearch: vi.fn(),
+    mockAiSearchProviderSearchMany: vi.fn(),
   }));
 
 vi.mock("./libraryService", () => ({
@@ -41,6 +43,7 @@ vi.mock("./ragProjectionRegistry", () => ({
 vi.mock("./cloudflareAiSearchProvider", () => ({
   CloudflareAiSearchProvider: class {
     search(input: unknown) { return mockAiSearchProviderSearch(input); }
+    searchMany(input: unknown) { return mockAiSearchProviderSearchMany(input); }
   },
 }));
 
@@ -90,6 +93,8 @@ beforeEach(() => {
   vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
   vi.stubEnv("CF_ACCOUNT_ID", "");
   vi.stubEnv("CLOUDFLARE_AI_API_KEY", "");
+  vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_TENANT_ID", "");
+  vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS", "");
   mockGetActorScopes.mockResolvedValue(["tenant_shared:1234567890abcdef"]);
   mockResolveAiSearchRoute.mockResolvedValue({
     namespace: "smartaihub-dev",
@@ -97,6 +102,7 @@ beforeEach(() => {
     profileVersion: "p229-dev-v1",
   });
   mockAiSearchProviderSearch.mockResolvedValue([]);
+  mockAiSearchProviderSearchMany.mockResolvedValue([]);
   mockResolveProjectionByKey.mockResolvedValue(null);
   mockGetMarkdownContent.mockResolvedValue({
     item_id: 12,
@@ -128,6 +134,120 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("retrieveLibraryEvidenceV2", () => {
+  it("fails closed before provider access when the evaluation tenant and item allowlist are absent", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const result = await retrieveLibraryEvidenceV2({
+      query: "guide",
+      comparisonProfile: "ai_search_vector",
+    }, actor);
+    expect(result).toMatchObject({
+      providerProfile: { provider: "not_queried", profileId: "ai_search_vector" },
+      evidence: [],
+      degradationReasons: ["NON_PRODUCTION_EVALUATION_PROFILE_NOT_AUTHORIZED"],
+    });
+    expect(mockResolveAiSearchRoute).not.toHaveBeenCalled();
+    expect(mockAiSearchProviderSearch).not.toHaveBeenCalled();
+  });
+
+  it("executes AI Search comparison profiles through the existing adapter and restricts hydrated evidence to allowlisted items", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_TENANT_ID", "tenant-a");
+    vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS", "12");
+    const markdown = "# Build guide\nCanonical item text.";
+    const digest = createHash("sha256").update(markdown, "utf8").digest("hex");
+    const revision = `sha256:${digest}`;
+    const projectionKey = `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`;
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12, title: "Build guide", content: markdown, updated_at: row.updated_at,
+      canonicalRevision: revision, canonicalDigest: digest,
+    });
+    mockAiSearchProviderSearch.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.8, text: "provider text", key: projectionKey,
+      instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:1234567890abcdef", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-a", sourceType: "library_document", sourceId: "12",
+      sourceVersion: revision, projectionPart: "whole", projectionHash: digest,
+      projectionKey, aclScope: "tenant_shared:1234567890abcdef",
+    });
+
+    const result = await retrieveLibraryEvidenceV2({
+      query: "guide",
+      comparisonProfile: "ai_search_bm25",
+    }, actor);
+    expect(mockAiSearchProviderSearch).toHaveBeenCalledWith(expect.objectContaining({
+      retrievalType: "keyword", reranking: false, queryRewrite: false,
+    }));
+    expect(result).toMatchObject({
+      providerProfile: { profileId: "ai-search:p229-dev-v1:ai_search_bm25" },
+      evidence: [{ sourceId: "12", retrievalMode: "keyword", text: markdown }],
+    });
+
+    vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS", "99");
+    mockGetMarkdownContent.mockClear();
+    const excluded = await retrieveLibraryEvidenceV2({
+      query: "guide",
+      comparisonProfile: "ai_search_bm25",
+    }, actor);
+    expect(excluded.evidence).toEqual([]);
+    expect(excluded.degradationReasons).toContain("NON_ALLOWLISTED_EVALUATION_SOURCE_DROPPED");
+    expect(mockGetMarkdownContent).not.toHaveBeenCalled();
+  });
+
+  it("runs profile H through existing bounded multi-query search with conditional rewrite history", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_TENANT_ID", "tenant-a");
+    vi.stubEnv("SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS", "12");
+    const markdown = "# Build guide\nCanonical item text.";
+    const digest = createHash("sha256").update(markdown, "utf8").digest("hex");
+    const revision = `sha256:${digest}`;
+    const projectionKey = `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`;
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12, title: "Build guide", content: markdown, updated_at: row.updated_at,
+      canonicalRevision: revision, canonicalDigest: digest,
+    });
+    mockAiSearchProviderSearchMany.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.8, text: "provider text", key: projectionKey,
+      instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:1234567890abcdef", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-a", sourceType: "library_document", sourceId: "12",
+      sourceVersion: revision, projectionPart: "whole", projectionHash: digest,
+      projectionKey, aclScope: "tenant_shared:1234567890abcdef",
+    });
+
+    await retrieveLibraryEvidenceV2({
+      query: "and the deployment step?",
+      messages: [
+        { role: "user", content: "How do I build the guide?" },
+        { role: "assistant", content: "Use the documented build process." },
+        { role: "user", content: "and the deployment step?" },
+      ],
+      comparisonProfile: "multi_query",
+      multiQueryVariants: ["document build workflow"],
+    }, actor);
+
+    expect(mockAiSearchProviderSearchMany).toHaveBeenCalledWith(expect.objectContaining({
+      queries: ["and the deployment step?", "document build workflow"],
+      queryRewrite: true,
+      reranking: true,
+      retrievalType: "hybrid",
+      fusionMethod: "rrf",
+      messages: [
+        { role: "user", content: "How do I build the guide?" },
+        { role: "assistant", content: "Use the documented build process." },
+        { role: "user", content: "and the deployment step?" },
+      ],
+    }));
+    expect(mockAiSearchProviderSearch).not.toHaveBeenCalled();
+  });
+
   it("builds citations from the ACL-checked canonical source rather than provider metadata", async () => {
     const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
 

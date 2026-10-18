@@ -19,6 +19,10 @@ import {
 } from "./retrievalInstanceRoutes";
 import { resolveIndexedRagProjectionByKey } from "./ragProjectionRegistry";
 import {
+  getAiSearchComparisonOptions,
+  type AiSearchComparisonProfile,
+} from "./retrievalComparisonProfiles";
+import {
   buildLibraryCitationAnchorUri,
   createLibraryCitationAnchor,
   normalizeCanonicalMarkdown,
@@ -160,6 +164,10 @@ export interface RetrievalRequestV2 {
     nodeId?: string;
   };
   traceId?: string;
+  /** Internal, development-only profile selector for §27 comparison runs. */
+  comparisonProfile?: AiSearchComparisonProfile;
+  /** Agent-reviewed query variants used only by the multi_query evaluation arm. */
+  multiQueryVariants?: string[];
   filters?: LibrarySearchFilters;
 }
 
@@ -235,8 +243,27 @@ function getUnsupportedRequestReasons(request: NormalizedRetrievalRequestV2): st
   if (request.sourceClasses.length !== 1 || request.sourceClasses[0] !== "library_document") {
     reasons.push("UNSUPPORTED_SOURCE_CLASS");
   }
-  if (request.structuredSelector || request.messages?.length) {
+  const supportsMessages = request.comparisonProfile === "conditional_rewrite" ||
+    request.comparisonProfile === "multi_query";
+  if (request.structuredSelector || (request.messages?.length && !supportsMessages)) {
     reasons.push("UNSUPPORTED_QUERY_SHAPE");
+  }
+  if (supportsMessages && request.messages?.length && (
+    request.messages.at(-1)?.role !== "user" ||
+    request.messages.at(-1)?.content !== request.query
+  )) {
+    reasons.push("REWRITE_MESSAGES_MUST_END_WITH_QUERY");
+  }
+  if (request.comparisonProfile === "multi_query" && (
+    !Array.isArray(request.multiQueryVariants) ||
+    !request.multiQueryVariants.length ||
+    request.multiQueryVariants.length > 7 ||
+    request.multiQueryVariants.some(value => typeof value !== "string" || !value.trim() || value.length > 1_000)
+  )) {
+    reasons.push("MULTI_QUERY_VARIANTS_REQUIRED");
+  }
+  if (request.multiQueryVariants && request.comparisonProfile !== "multi_query") {
+    reasons.push("MULTI_QUERY_VARIANTS_NOT_SUPPORTED");
   }
   if (request.exactIdentifiers?.length || request.queryClass === "EXACT_IDENTIFIER") {
     reasons.push("EXACT_IDENTIFIER_LANE_NOT_CERTIFIED");
@@ -456,6 +483,27 @@ type ResolvedAiSearchRoute = Awaited<
   ReturnType<typeof resolveRetrievalInstanceRoute>
 >;
 
+function getNonProductionEvaluationItemAllowlist(
+  tenantId: string
+): ReadonlySet<number> | null {
+  const environment = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  if (environment !== "development" && environment !== "staging") return null;
+  const configuredTenant = (
+    process.env.SPEC229_NONPRODUCTION_EVALUATION_TENANT_ID ?? ""
+  ).trim();
+  const rawIds = (
+    process.env.SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS ?? ""
+  ).trim();
+  const values = rawIds.split(",").map(value => Number(value.trim()));
+  if (
+    configuredTenant !== tenantId ||
+    !rawIds ||
+    values.length < 1 ||
+    values.some(value => !Number.isSafeInteger(value) || value <= 0)
+  ) return null;
+  return new Set(values);
+}
+
 async function resolveNonProductionAiSearchRoute(tenantId: string): Promise<
   | {
       accountId: string;
@@ -508,6 +556,10 @@ async function retrieveFromAiSearch(params: {
   maxCandidates: number;
   maxEvidence: number;
   maxContextTokens: number;
+  comparisonProfile?: AiSearchComparisonProfile;
+  multiQueryVariants?: string[];
+  evaluationLibraryItemIds?: ReadonlySet<number>;
+  messages?: Array<{ role: string; content: string }>;
   resolved: NonNullable<
     Awaited<ReturnType<typeof resolveNonProductionAiSearchRoute>>
   >;
@@ -528,7 +580,10 @@ async function retrieveFromAiSearch(params: {
     };
   }
   const { accountId, apiToken, route } = params.resolved;
-  const profileId = `ai-search:${route.profileVersion}`;
+  const comparisonOptions = params.comparisonProfile
+    ? getAiSearchComparisonOptions(params.comparisonProfile)
+    : { retrievalType: "hybrid" as const, fusionMethod: "rrf" as const, reranking: true, queryRewrite: false, multiQuery: false };
+  const profileId = `ai-search:${route.profileVersion}${params.comparisonProfile ? `:${params.comparisonProfile}` : ""}`;
   const degradationReasons = new Set<string>();
   const evidence: RetrievalEvidenceV2[] = [];
   const seenSourceVersions = new Set<string>();
@@ -539,20 +594,31 @@ async function retrieveFromAiSearch(params: {
   try {
     authorizedAclScopes = await getLibraryActorAiSearchScopes(params.actor);
     const provider = new CloudflareAiSearchProvider({ accountId, apiToken });
-    candidates = await provider.search({
+    const rewriteEnabled = comparisonOptions.queryRewrite && (params.messages?.length ?? 0) > 1;
+    const messages = rewriteEnabled
+      ? [...params.messages!.slice(0, -1), { role: "user" as const, content: params.query }]
+      : undefined;
+    const providerInput = {
       namespace: route.namespace,
       instanceIds: route.instanceIds,
       tenantId: params.tenantId,
       authorizedAclScopes,
       sourceClasses: ["library_document"],
       query: params.query,
-      retrievalType: "hybrid",
+      retrievalType: comparisonOptions.retrievalType,
       maxResults: Math.min(params.maxCandidates, 50),
       keywordMatchMode: "or",
-      fusionMethod: "rrf",
-      queryRewrite: false,
-      reranking: true,
-    });
+      ...(comparisonOptions.fusionMethod ? { fusionMethod: comparisonOptions.fusionMethod } : {}),
+      queryRewrite: rewriteEnabled,
+      reranking: comparisonOptions.reranking,
+      ...(messages ? { messages } : {}),
+    };
+    candidates = comparisonOptions.multiQuery
+      ? await provider.searchMany({
+          ...providerInput,
+          queries: [params.query, ...(params.multiQueryVariants ?? [])],
+        })
+      : await provider.search(providerInput);
   } catch {
     return {
       retrievalTraceId: params.retrievalTraceId,
@@ -620,6 +686,10 @@ async function retrieveFromAiSearch(params: {
       String(itemId) !== projection.sourceId
     ) {
       degradationReasons.add("PROJECTION_SOURCE_ID_INVALID");
+      continue;
+    }
+    if (params.evaluationLibraryItemIds && !params.evaluationLibraryItemIds.has(itemId)) {
+      degradationReasons.add("NON_ALLOWLISTED_EVALUATION_SOURCE_DROPPED");
       continue;
     }
 
@@ -691,7 +761,13 @@ async function retrieveFromAiSearch(params: {
       retrievalProvider: "cloudflare_ai_search",
       providerProfileId: profileId,
       providerProfileVersion: route.profileVersion,
-      retrievalMode: "hybrid",
+      retrievalMode: comparisonOptions.retrievalType === "keyword"
+        ? "keyword"
+        : comparisonOptions.retrievalType === "vector"
+          ? "semantic"
+          : params.comparisonProfile === "multi_query"
+            ? "multi_query"
+            : "hybrid",
       scores: { fused: candidate.fusionScore ?? candidate.score },
       aclScope: projection.aclScope,
       aclVerified: true,
@@ -755,6 +831,27 @@ export async function retrieveLibraryEvidenceV2(
   const maxCandidates = request.evidenceBudget.maxCandidates;
   const maxEvidence = request.evidenceBudget.maxEvidence;
   const maxContextTokens = request.evidenceBudget.maxContextTokens;
+  const evaluationLibraryItemIds = request.comparisonProfile
+    ? getNonProductionEvaluationItemAllowlist(tenantId)
+    : null;
+  if (request.comparisonProfile && !evaluationLibraryItemIds) {
+    return {
+      retrievalTraceId,
+      plan: {
+        requestId: request.requestId,
+        purpose: request.purpose,
+        queryClass: request.queryClass,
+        sourceClasses: request.sourceClasses,
+        evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
+      },
+      providerProfile: { provider: "not_queried", profileId: request.comparisonProfile },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["NON_PRODUCTION_EVALUATION_PROFILE_NOT_AUTHORIZED"],
+    };
+  }
   const unsupportedReasons = getUnsupportedRequestReasons(request);
   if (unsupportedReasons.length > 0) {
     return {
@@ -788,7 +885,19 @@ export async function retrieveLibraryEvidenceV2(
     Object.keys(input.filters ?? {}).length === 0;
   if (aiSearchSupportsRequest) {
     const aiSearchRoute = await resolveNonProductionAiSearchRoute(tenantId);
-    if (aiSearchRoute) {
+    if (aiSearchRoute || request.comparisonProfile) {
+      if (!aiSearchRoute) {
+        return {
+          retrievalTraceId,
+          plan: aiSearchPlan,
+          providerProfile: { provider: "cloudflare_ai_search", profileId: "evaluation_route_unavailable" },
+          evidence: [],
+          evidenceQuality: "no_evidence",
+          degraded: true,
+          partial: false,
+          degradationReasons: ["RETRIEVAL_ROUTE_NOT_CONFIGURED"],
+        };
+      }
       return retrieveFromAiSearch({
         query,
         actor,
@@ -798,6 +907,10 @@ export async function retrieveLibraryEvidenceV2(
         maxCandidates,
         maxEvidence,
         maxContextTokens,
+        ...(request.comparisonProfile ? { comparisonProfile: request.comparisonProfile } : {}),
+        ...(request.multiQueryVariants ? { multiQueryVariants: request.multiQueryVariants } : {}),
+        ...(evaluationLibraryItemIds ? { evaluationLibraryItemIds } : {}),
+        ...(request.messages ? { messages: request.messages } : {}),
         resolved: aiSearchRoute,
       });
     }
