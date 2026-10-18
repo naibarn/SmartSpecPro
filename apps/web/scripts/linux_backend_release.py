@@ -169,7 +169,8 @@ def validate_build_result(path: Path) -> tuple[dict[str, Any], Path, Path]:
         raise ReleaseError("Build workspace no longer matches its recorded source SHA")
     dirty = subprocess.run(
         ["git", "-c", f"safe.directory={workspace}", "-C", str(workspace), "status", "--porcelain=v1", "--untracked-files=all", "--",
-         ".", ":(exclude)apps/web/dist", ":(exclude)apps/web/dist/**"],
+         ".", ":(exclude)apps/web/dist", ":(exclude)apps/web/dist/**",
+         ":(exclude)apps/cloudflare/.staging-artifact", ":(exclude)apps/cloudflare/.staging-artifact/**"],
         capture_output=True,
         text=True,
         check=True,
