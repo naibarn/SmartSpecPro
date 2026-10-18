@@ -11,7 +11,7 @@ The existing WorkUnit/HandOff is the durable record; do not create another job s
 
 1. Start the next independent, useful slice from a verified canonical source. Preserve the ownership and base SHA of in-flight work; do not forcibly reset stale or dirty worktrees.
 2. Implement and run focused checks appropriate to the changed scope.
-3. Commit and promote each coherent checkpoint via the repository's existing protected Git/PR flow. Do not require task completion, whole-SPEC validation or deployment before development integration.
+3. Whenever the user stops, pauses, hands off, or switches to another subtask, immediately checkpoint all coherent safe work already done for the current slice. Run only the FAST INTEGRATION GATE before committing owned paths; do not wait for the parent task, unrelated work, full verification, UAT or deployment. Push the commit to the configured canonical branch directly when current repository rules allow it; use a PR only when branch protection or an explicit repository rule requires one. Honor actual required checks and reviews, and never bypass protection.
 4. Confirm the integrated canonical SHA, write a short HandOff (done, missing, checks, owner, next action) and continue. Refresh the base for the next slice; do not pause unrelated sessions for global workspace convergence.
 5. Build on the intended development runtime, debug, review and integrate fixes progressively. Keep final UAT and production release evidence separate.
 
