@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: Continue with Profile C AI Search BM25 implementation through the current provider/broker boundary; Profile B code is tested, while provider observations remain unevaluated until the dedicated non-production runtime is available.
-- Manifest generation: 74
+- Manifest generation: 77
 
 ## Source-declared status and relationship claims
 

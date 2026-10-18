@@ -1,0 +1,39 @@
+{
+  "evidence_id": "SPEC229-P229-PROFILE-C-AI-SEARCH-BM25-IMPLEMENTATION-20261018",
+  "workunit": "P229 Profile C disposable non-production AI Search BM25 evaluation path",
+  "workunit_status": "IMPLEMENTED_AND_FOCUSED_TESTS_PASS_PROVIDER_OBSERVATION_NOT_RUN",
+  "canonical_sha_at_start": "0a17118f85892f26dbc30af2a1fc028becbb08be",
+  "feature_commit_sha": "151a39101b37e833a237f591eda14d276f6c8aa6",
+  "pr": "https://github.com/naibarn/SmartSpecPro/pull/1099",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "profile_c": {
+    "implementation": "Opt-in isolated Cloudflare AI Search keyword-only BM25 runner using the existing development gold cohort and benchmark bundle contract; no production RetrievalBroker route or production profile is changed.",
+    "runtime_controls": "Requires SPEC229_EVAL_DISPOSABLE=1, pinned clean SOURCE_SHA, account ID and API token; only spec229-eval-* instance IDs are accepted; private endpoint disabled; API token is only sent as Bearer auth and is never written to observations.",
+    "corpus_security": "Repository-only MIT development cohort, digest/revision checked, tenant and ACL metadata filters, cross-tenant and same-tenant private ACL positive/negative canaries; any foreign, stale or ownership-mismatched result aborts.",
+    "latency": "Measured per query around actual provider search calls when runtime is available.",
+    "cost": "NOT_EVALUABLE: no billable per-query usage was returned or measured; null is recorded, never treated as zero.",
+    "actual_observations": 0,
+    "provider_observations": "NOT_RUN: dedicated non-production account/token/runtime variables are not available in this session.",
+    "production_behavior": "Unchanged; no production configuration, index or consumer routing was modified.",
+    "metrics": "Actual query observations are evaluated with calculateRetrievalBenchmarkMetrics and emitted as developmentMetrics; releaseGate remains NOT_EVALUABLE for this non-release-approved development cohort."
+  },
+  "dataset": {
+    "source": "Existing 560-query development candidate pool; deterministic corpus source paths and digests validated.",
+    "source_use": "Owner-authorized repository MIT development evaluation only; no tenant or production data.",
+    "human_reviewed": 0,
+    "release_approved": 0,
+    "held_out": 0
+  },
+  "verification": {
+    "focused_tests": {
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/__tests__/vectorizeContract.test.ts server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-embeddings.test.ts server/__tests__/vectorize-search.test.ts server/__tests__/vectorize-indexing.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryCitationAnchor.test.ts",
+      "result": "PASS: 12 files, 86 tests after adding in-run benchmark metric calculation."
+    },
+    "patch_hygiene": "PASS: git diff --check before commit.",
+    "runner_guard": "PASS_EXPECTED_FAIL_CLOSED: tsx runner loaded and exited before provider access because SOURCE_SHA is unset; disposable flag alone is insufficient.",
+    "local_typecheck": "NOT_RUN: prohibited by AGENTS.md shared RAM restriction.",
+    "pr_required_ci": "PENDING",
+    "profile_runner_guard": "PASS_EXPECTED_FAIL_CLOSED: tsx runner loaded and exited before provider access because SOURCE_SHA is unset; disposable flag alone is insufficient."
+  },
+  "acceptance_boundary": "Profile C disposable evaluation code and REST contract tests are implemented. No real retrieval observation, cost metric, held-out release cohort, P229.3 provider/capacity provisioning acceptance, P229.8 certification, or production verification is claimed."
+}
