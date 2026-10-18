@@ -155,6 +155,15 @@ export function buildNonProductionReleaseCohort(
     ) % 100;
     return {
       ...candidate,
+      // Retrieval runners identify indexed repository documents by canonical
+      // source path. Normalize singleton aliases only in the release cohort;
+      // synthetic fixture IDs and the source candidate pool keep their own IDs.
+      benchmarkGold: candidate.benchmarkGold.requiredEvidenceIds.length === 1
+        ? {
+            ...candidate.benchmarkGold,
+            requiredEvidenceIds: [candidate.source.path],
+          }
+        : candidate.benchmarkGold,
       split: bucket < SPEC_229_DEVELOPMENT_HELD_OUT_BUCKETS
         ? "held_out" as const
         : "development" as const,

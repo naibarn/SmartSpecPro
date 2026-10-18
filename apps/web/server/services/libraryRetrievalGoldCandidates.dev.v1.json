@@ -19959,9 +19959,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
-      "lineStart": 21,
-      "lineEnd": 21,
+      "sha256": "789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
+      "lineStart": 22,
+      "lineEnd": 22,
       "quoteSha256": "dfa943ea8d24ed030820167a38713df23b8c87601c57819572a494db22120749",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -19977,6 +19977,13 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "/root/review_p2298_refresh",
+        "reviewerVersion": "independent-anchor-refresh-review-2026-10-18",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independent read-only re-review at fbd7fd1bd8324973540664d7f7de2bd9e5844757 confirmed answer and claim against current source anchor line 22; stale source revision rebound only after verification."
       }
     ],
     "disagreement": {
@@ -19992,7 +19999,7 @@
         "b09-claim-013"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "expectedRevision": "sha256:789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -20010,9 +20017,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
-      "lineStart": 43,
-      "lineEnd": 43,
+      "sha256": "789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
+      "lineStart": 44,
+      "lineEnd": 44,
       "quoteSha256": "666dd75685154cc0f5ffb445196bc10304717e4c889c1a8202c8616c986aa0d7",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -20028,6 +20035,13 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "/root/review_p2298_refresh",
+        "reviewerVersion": "independent-anchor-refresh-review-2026-10-18",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independent read-only re-review at fbd7fd1bd8324973540664d7f7de2bd9e5844757 confirmed answer and claim against current source anchor line 44; stale source revision rebound only after verification."
       }
     ],
     "disagreement": {
@@ -20043,7 +20057,7 @@
         "b09-claim-014"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "expectedRevision": "sha256:789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -21802,9 +21816,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
-      "lineStart": 72,
-      "lineEnd": 72,
+      "sha256": "789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
+      "lineStart": 94,
+      "lineEnd": 94,
       "quoteSha256": "8f2e0ba71ca73101a0ca5c9bef32abde53db70d63d8fc79fc417f976f6d12b92",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -21820,6 +21834,13 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "/root/review_p2298_refresh",
+        "reviewerVersion": "independent-anchor-refresh-review-2026-10-18",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independent read-only re-review at fbd7fd1bd8324973540664d7f7de2bd9e5844757 confirmed answer and claim against current source anchor line 94; stale source revision rebound only after verification."
       }
     ],
     "disagreement": {
@@ -21835,7 +21856,7 @@
         "b09-claim-049"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "expectedRevision": "sha256:789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -21853,9 +21874,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
-      "lineStart": 198,
-      "lineEnd": 198,
+      "sha256": "789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
+      "lineStart": 220,
+      "lineEnd": 220,
       "quoteSha256": "0decc3b101f6e56c25188a90e4b299314bc16e3c429d904d6a67882ef2a5a806",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -21871,6 +21892,13 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "/root/review_p2298_refresh",
+        "reviewerVersion": "independent-anchor-refresh-review-2026-10-18",
+        "reviewerType": "agent",
+        "decision": "accept_candidate",
+        "rationale": "Independent read-only re-review at fbd7fd1bd8324973540664d7f7de2bd9e5844757 confirmed answer and claim against current source anchor line 220; stale source revision rebound only after verification."
       }
     ],
     "disagreement": {
@@ -21886,7 +21914,7 @@
         "b09-claim-050"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "expectedRevision": "sha256:789c0798672c098913c453e1176300b5d1785a49935d84a13a3018cbe973f797",
       "shouldCite": true,
       "exactIdentifier": false
     }

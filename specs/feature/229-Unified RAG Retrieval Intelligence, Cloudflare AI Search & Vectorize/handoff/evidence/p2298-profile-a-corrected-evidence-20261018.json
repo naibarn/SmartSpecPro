@@ -1,0 +1,213 @@
+{
+  "evidence_id": "SPEC229-P2298-PROFILE-A-CORRECTED-OBSERVATION-20261018",
+  "workunit": "P229.8 corrected evidence identity and Profile A local observation",
+  "status": "ACTUAL_NONPRODUCTION_OBSERVATION; P229.8_ACCEPTANCE_NOT_EVALUABLE",
+  "source_sha": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+  "canonical_main_at_reconciliation": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+  "run_id": "bb04cd9e-50df-4201-8453-ec6c3b822b25",
+  "collector_patch_sha256": "55991e08bf5768f6aeb3e979880570d1895cb370dd506ddfb11717f9545c508c",
+  "profile": "legacy_baseline",
+  "latency_profile": "simple_exact_keyword",
+  "runtime": "isolated local PostgreSQL + existing libraryService.searchLibraryItems keyword fallback",
+  "provider_configuration": {
+    "vectorProvider": "chromadb",
+    "externalProviderCalls": false
+  },
+  "corpus": {
+    "tenantId": "repo-development",
+    "sourceSha": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+    "sourceCount": 276,
+    "revision": "sha256:84e30e535795d15ff9c648d9cb32b4700e70d4e89095d52f0eaebbb8b340c6e8"
+  },
+  "candidate_dataset": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v3.json",
+    "sha256": "1b2a25c475860be3abd332055cc7c8a22cd63227b40cce40c7b584909135d045",
+    "queries": 560,
+    "held_out_queries": 503,
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "source_use_approval": "owner-delegated non-production repository-source policy",
+    "singleton_required_evidence_ids_normalized_to_source_path": true
+  },
+  "metric_confidence_intervals": {
+    "method": "repository bootstrapMean95 deterministic percentile bootstrap",
+    "replicates": 2000,
+    "recall_at_20": {
+      "overall": {
+        "n": 497,
+        "mean": 0.422535,
+        "ci95": {
+          "lower": 0.380282,
+          "upper": 0.466801
+        }
+      },
+      "thai": {
+        "n": 97,
+        "mean": 0.597938,
+        "ci95": {
+          "lower": 0.494845,
+          "upper": 0.701031
+        }
+      },
+      "english": {
+        "n": 318,
+        "mean": 0.311321,
+        "ci95": {
+          "lower": 0.261006,
+          "upper": 0.361635
+        }
+      },
+      "mixed": {
+        "n": 82,
+        "mean": 0.646341,
+        "ci95": {
+          "lower": 0.536585,
+          "upper": 0.756098
+        }
+      }
+    }
+  },
+  "metrics": {
+    "caseCount": 503,
+    "evidenceRecall": 0.55332,
+    "recallAt5": 0.193159,
+    "recallAt10": 0.307847,
+    "recallAt20": 0.422535,
+    "recallAt50": 0.55332,
+    "hitAt5": 0.193159,
+    "hitAt10": 0.307847,
+    "hitAt20": 0.422535,
+    "hitAt50": 0.55332,
+    "mrrAt10": 0.126713,
+    "nDCGAt10": 0.168542,
+    "exactIdentifierHitAt5": 0.297619,
+    "thaiRecallAt20": 0.597938,
+    "englishRecallAt20": 0.311321,
+    "mixedRecallAt20": 0.646341,
+    "evidenceCoverage": 0.55332,
+    "citationPrecision": null,
+    "citationAvailability": 0,
+    "freshnessCorrectness": 1,
+    "authorityCorrectness": 1,
+    "aclLeakage": 0,
+    "crossTenantLeakage": 0,
+    "unauthorizedEvidenceLeakage": 0,
+    "unsafePartialOrOutageAnswers": 0,
+    "staleOrRevokedEvidenceAccepted": 0,
+    "noAnswerPrecision": 0.026316,
+    "noAnswerRecall": 1,
+    "partialOrOutageResults": 0,
+    "p50LatencyMs": 472.769,
+    "p95LatencyMs": 503.409,
+    "p99LatencyMs": 513.409,
+    "meanCostMicros": 0
+  },
+  "release_criteria_15": [
+    {
+      "id": "crossTenantLeakage",
+      "threshold": "= 0",
+      "value": 0,
+      "status": "PASS"
+    },
+    {
+      "id": "unauthorizedEvidenceLeakage",
+      "threshold": "= 0",
+      "value": 0,
+      "status": "PASS"
+    },
+    {
+      "id": "exactIdentifierHitAt5",
+      "threshold": ">= 0.99",
+      "value": 0.297619,
+      "status": "FAIL"
+    },
+    {
+      "id": "overallRecallAt20",
+      "threshold": ">= 0.95",
+      "value": 0.422535,
+      "status": "FAIL"
+    },
+    {
+      "id": "thaiRecallAt20",
+      "threshold": ">= 0.92",
+      "value": 0.597938,
+      "status": "FAIL"
+    },
+    {
+      "id": "englishRecallAt20",
+      "threshold": ">= 0.95",
+      "value": 0.311321,
+      "status": "FAIL"
+    },
+    {
+      "id": "nDCGAt10",
+      "threshold": ">= 0.85",
+      "value": 0.168542,
+      "status": "FAIL"
+    },
+    {
+      "id": "mrrAt10",
+      "threshold": ">= 0.85",
+      "value": 0.126713,
+      "status": "FAIL"
+    },
+    {
+      "id": "citationPrecision",
+      "threshold": ">= 0.95",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "freshnessCorrectness",
+      "threshold": ">= 0.98",
+      "value": 1,
+      "status": "PASS"
+    },
+    {
+      "id": "noAnswerPrecision",
+      "threshold": ">= 0.9",
+      "value": 0.026316,
+      "status": "FAIL"
+    },
+    {
+      "id": "noAnswerRecall",
+      "threshold": ">= 0.9",
+      "value": 1,
+      "status": "PASS"
+    },
+    {
+      "id": "simpleExactKeywordP95Ms",
+      "threshold": "<= 800ms",
+      "value": 503.409,
+      "status": "PASS"
+    },
+    {
+      "id": "hybridRerankP95Ms",
+      "threshold": "<= 1500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "rewriteHybridRerankP95Ms",
+      "threshold": "<= 2500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    }
+  ],
+  "p2298_acceptance": "NOT_EVALUABLE; Profile A baseline fails multiple §27 quality gates. Citation and profiles B-H remain unavailable.",
+  "artifacts": [
+    {
+      "path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-19ddb536-corrected-cohort.json",
+      "sha256": "662e01844be74db9785fd3ab8f82a879adac8a637495483923b03847ca43a8b3",
+      "bytes": 41173276,
+      "mode": "0o600"
+    },
+    {
+      "path": "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v2.json",
+      "sha256": "1b2a25c475860be3abd332055cc7c8a22cd63227b40cce40c7b584909135d045",
+      "bytes": 1539700
+    }
+  ],
+  "supersedes": "Earlier 2026-10-18 Profile A quality aggregates derived from release.dev.v1/v2 are invalidated: 151 singleton requiredEvidenceIds did not match runner source-path identity. This run uses v3 and corrected identities."
+}
