@@ -77,7 +77,8 @@ pnpm run dev:web:status
 ```
 
 The restart command fetches canonical history and fast-forwards a clean canonical
-checkout before restarting only the dev service, then checks health and the
+checkout, refreshes web dependencies when the lockfile changes, then restarts
+only the dev web service and checks both API readiness and the
 anonymous diagnostics guard. Edited or differently branched checkouts are preserved
 and identified explicitly in the launcher revision.
 
@@ -94,10 +95,17 @@ Systemd user service templates and the complete `web.env.example` are in
 `ops/dev-web/`. `SMARTSPEC_ALLOWED_ORIGINS` must contain the exact HTTPS dev
 origin so browser login passes the existing CSRF/CORS checks. The web service's
 `~/.config/smartspec-dev/process.env` sets PATH to the installed Node 22 binary.
-The dedicated Redis instance listens only on loopback port 6391. The development
-database has its own restricted login role, a schema-only snapshot, and synthetic
+The dedicated Redis instance listens only on loopback port 6391. The separate
+Python backend listens on loopback port 8100 with `python.env`; both APIs use
+the dedicated dev database. The Python launcher also rejects a production DB
+name and disables discovery of the production dotenv file. Its working directory
+and media files live outside the production tree. Python readiness is checked
+at `/health/ready`; detailed `/health` reports missing test LLM credentials
+until a development provider is configured. The development
+database has its own restricted login role, a schema-only snapshot (plus non-secret checkpoint schema-version metadata), and synthetic
 test accounts; production data and provider credentials are not copied.
-Development feature integrations need their own test credentials and backend.
+External providers and Google OAuth need their own test credentials; production
+provider keys are not copied.
 
 Configure the Cloudflare DNS record in the account owning `aimarkethubs.com`:
 CNAME `@` to `<dev-tunnel-id>.cfargotunnel.com`, proxied, TTL Auto. The tunnel's
@@ -126,3 +134,6 @@ credentials are read from `~/.config/smartspec-dev/admin-login.txt` and
 to `~/.local/share/smartspec-dev/evidence/`. If local DNS still caches an old
 negative answer, the check resolves the public address through Cloudflare DoH
 and records that fallback explicitly; TLS verification remains enabled.
+
+The host must enable user lingering (`loginctl enable-linger dev`) for the
+development user services to remain available after SSH logout and after boot.

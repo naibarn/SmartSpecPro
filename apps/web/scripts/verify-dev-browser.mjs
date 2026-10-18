@@ -67,6 +67,9 @@ try {
       formVisible: true,
       errors,
     });
+    console.log(
+      `[dev:web:verify] Fresh login ${attempt + 1}/3 HTTP ${response.status()}`
+    );
     if (!attempt)
       await page.screenshot({
         path: `${evidence}/public-login-first-load.png`,
@@ -88,6 +91,7 @@ try {
   );
   await page.locator('button[type="submit"]').click();
   result.loginStatus = (await login).status();
+  console.log(`[dev:web:verify] Admin login HTTP ${result.loginStatus}`);
   if (result.loginStatus !== 200)
     throw new Error(`Admin login HTTP ${result.loginStatus}`);
   await page.waitForTimeout(1000);
@@ -100,15 +104,17 @@ try {
   } catch {
     /* Existing accounts may already have chosen a language. */
   }
-  const collected = page.waitForResponse(
-    response =>
-      response.url().includes("infrastructure.getSpec224DatabaseDiagnostics"),
-    { timeout: 60000 }
-  );
-  await page
-    .getByRole("button", { name: /Collect evidence|เก็บหลักฐาน/ })
-    .click({ timeout: 60000 });
-  const response = await collected;
+  await page.getByRole("tab", { name: /^(Monitoring|มอนิเตอร์)$/ }).click();
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes("infrastructure.getSpec224DatabaseDiagnostics"),
+      { timeout: 30000 }
+    ),
+    page
+      .getByRole("button", { name: /Collect evidence|เก็บหลักฐาน/ })
+      .click({ timeout: 30000 }),
+  ]);
   result.collectStatus = response.status();
   const json = await response.json();
   const row = Array.isArray(json) ? json[0] : json;

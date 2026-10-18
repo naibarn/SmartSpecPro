@@ -1,0 +1,17 @@
+[Unit]
+Description=SmartSpec isolated development Python backend
+After=network-online.target smartspec-dev-redis.service
+Wants=smartspec-dev-redis.service
+
+[Service]
+WorkingDirectory=%h/.local/share/smartspec-dev/python
+Environment=PYTHONPATH=%h/projects/SmartSpecPro/python-backend
+Environment=PYTHON_DOTENV_DISABLED=1
+EnvironmentFile=%h/.config/smartspec-dev/python.env
+ExecStart=%h/projects/SmartSpecPro/python-backend/.venv/bin/python %h/projects/SmartSpecPro/scripts/dev-python-backend.py
+Restart=on-failure
+RestartSec=5
+MemoryMax=3G
+
+[Install]
+WantedBy=default.target

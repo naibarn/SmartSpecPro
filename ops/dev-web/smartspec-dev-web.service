@@ -1,7 +1,7 @@
 [Unit]
 Description=SmartSpec isolated development web server
-After=network-online.target smartspec-dev-redis.service
-Wants=smartspec-dev-redis.service
+After=network-online.target smartspec-dev-redis.service smartspec-dev-backend.service
+Wants=smartspec-dev-redis.service smartspec-dev-backend.service
 
 [Service]
 WorkingDirectory=%h/projects/SmartSpecPro/apps/web
