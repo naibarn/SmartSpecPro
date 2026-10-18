@@ -317,6 +317,20 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
                 )
         self.assertEqual(self.runtime.restart_count, 0)
 
+    def test_restart_preflight_rejects_port_owner_outside_target_systemd_unit(self):
+        service_cgroup = "/system.slice/smartspec-web.service"
+        release.validate_listener_ownership(
+            'LISTEN 0 128 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=41,fd=20))',
+            service_cgroup,
+            lambda _pid: "0::/system.slice/smartspec-web.service\n",
+        )
+        with self.assertRaisesRegex(release.ReleaseError, "outside smartspec-web.service"):
+            release.validate_listener_ownership(
+                'LISTEN 0 128 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=42,fd=20))',
+                service_cgroup,
+                lambda _pid: "0::/user.slice/other.service\n",
+            )
+
     def test_canonical_packaging_script_copies_portable_runtime_and_frontend(self):
         repo = self.root / "packaging-fixture"
         web = repo / "apps/web"

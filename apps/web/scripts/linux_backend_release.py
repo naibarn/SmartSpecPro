@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import pwd
+import re
 import shutil
 import subprocess
 import sys
@@ -321,6 +322,20 @@ class SystemdRuntime:
         exec_start = self._run("show", self.service, "--property=ExecStart", "--value")
         if "--import tsx" not in exec_start or "server/_core/index.ts" not in exec_start:
             raise ReleaseError("smartspec-web.service entrypoint differs from the approved Node runtime")
+        service_cgroup = self._run("show", self.service, "--property=ControlGroup", "--value")
+        listeners = subprocess.run(
+            ["ss", "-H", "-ltnp", "sport = :3000"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if listeners.returncode:
+            raise ReleaseError("Cannot verify port 3000 ownership before service restart")
+        validate_listener_ownership(
+            listeners.stdout,
+            service_cgroup,
+            lambda pid: Path(f"/proc/{pid}/cgroup").read_text(encoding="utf-8"),
+        )
 
     def restart(self) -> None:
         self._run("restart", self.service)
@@ -508,6 +523,24 @@ def _next_generation(receipt_root: Path, service: str) -> int:
         if item.get("service") == service:
             values.append(int(item.get("generation", 0)))
     return max(values, default=0) + 1
+
+
+def validate_listener_ownership(
+    ss_output: str,
+    service_cgroup: str,
+    read_cgroup: Callable[[int], str],
+) -> None:
+    pids = {int(value) for value in re.findall(r"pid=(\d+)", ss_output)}
+    if not pids:
+        raise ReleaseError("smartspec-web.service has no identifiable listener on port 3000")
+    for pid in pids:
+        groups = read_cgroup(pid).splitlines()
+        if not any(
+            line.rsplit(":", 1)[-1] == service_cgroup
+            or line.rsplit(":", 1)[-1].startswith(service_cgroup.rstrip("/") + "/")
+            for line in groups
+        ):
+            raise ReleaseError(f"Port 3000 is also owned by a process outside {SERVICE}: pid={pid}")
 
 
 def promote_artifact(
