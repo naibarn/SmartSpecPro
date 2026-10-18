@@ -272,7 +272,8 @@ export async function queueLibraryDocumentRagProjectionSync(
       allowedScopes: [...new Set(source.allowedScopes)].sort(),
     })
   ).slice(0, 24);
-  const idempotencyKey = `library-rag-projection:${input.sourceJobId}:${sourceStateHash}`;
+  const tenantHash = digest(input.tenantId).slice(0, 12);
+  const idempotencyKey = `library-rag-projection:${tenantHash}:${input.libraryItemId}:${input.sourceJobId}:${sourceStateHash}`;
   const job = await dependencies.enqueue({
     context: {
       tenantId: input.tenantId,

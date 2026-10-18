@@ -98,7 +98,7 @@ describe("Library RAG projection lifecycle", () => {
           actorType: "system",
           authorizationScope: "system:library-rag-projection",
           idempotencyKey: expect.stringMatching(
-            /^library-rag-projection:731:[a-f0-9]{24}$/
+            /^library-rag-projection:[a-f0-9]{12}:42:731:[a-f0-9]{24}$/
           ),
         }),
         definition: expect.objectContaining({
@@ -110,7 +110,7 @@ describe("Library RAG projection lifecycle", () => {
     );
   });
 
-  it("queues a throttled Library event using the current canonical state", async () => {
+  it("queues throttled Library events separately using current canonical state", async () => {
     const enqueue = vi.fn().mockResolvedValue({ jobId: "job-projection-2", created: true });
     const deps = {
       getRuntimeConfig: vi.fn(() => runtimeConfig),
@@ -124,14 +124,16 @@ describe("Library RAG projection lifecycle", () => {
       { tenantId, libraryItemId, sourceJobId: 0 },
       deps,
     );
-
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: expect.objectContaining({
-          idempotencyKey: expect.stringMatching(/^library-rag-projection:0:[a-f0-9]{24}$/),
-        }),
-      }),
+    await queueLibraryDocumentRagProjectionSync(
+      { tenantId, libraryItemId: 43, sourceJobId: 0 },
+      deps,
     );
+
+    const keys = enqueue.mock.calls.map(call => call[0].context.idempotencyKey);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toMatch(/^library-rag-projection:[a-f0-9]{12}:42:0:[a-f0-9]{24}$/);
+    expect(keys[1]).toMatch(/^library-rag-projection:[a-f0-9]{12}:43:0:[a-f0-9]{24}$/);
+    expect(new Set(keys).size).toBe(2);
   });
 
   it("does not access database or provider outside explicitly configured non-production runtime", async () => {
