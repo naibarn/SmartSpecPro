@@ -28,7 +28,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
+    "expected_canonical_sha": "3f10850c07c54a05b13256a9464a719168c82628",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 122,
+  "generation": 123,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -231,14 +231,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
+    "canonical_sha": "3f10850c07c54a05b13256a9464a719168c82628",
     "integrated": true,
     "integrated_at": "2026-10-18T11:06:34Z",
-    "intended_pr": "PR #1140 merged as 793ee9f947c41cd650e0a3d62e4105613cd58f7a; exact-SHA focused post-merge verification passed 6 files / 54 tests. P229.8 remains NOT_EVALUABLE.",
+    "intended_pr": "PR #1142 merged as 3f10850c07c54a05b13256a9464a719168c82628; pending SPEC229_P229_8_FRESHNESS_UNKNOWN_FAIL_CLOSED checkpoint.",
     "pending_pr": null,
-    "pending_source_branch": null,
-    "pending_source_sha": null,
-    "pending_workunit": null
+    "pending_source_branch": "codex/spec229-integrity-20261018",
+    "pending_source_sha": "94cf9237bf10944a3e20ed67262c411d2090af92",
+    "pending_workunit": "SPEC229_P229_8_FRESHNESS_UNKNOWN_FAIL_CLOSED"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -466,7 +466,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:07:36.883338Z",
+  "updated_at": "2026-10-18T11:15:01.371664Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
