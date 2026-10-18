@@ -111,6 +111,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.source_sha = subprocess.check_output(
             ["git", "-C", str(self.workspace), "rev-parse", "HEAD"], text=True
         ).strip()
+        staging_output = self.workspace / "apps/cloudflare/.staging-artifact"
+        staging_output.mkdir(parents=True)
+        (staging_output / "bundle-manifest.json").write_text('{"sourceSha":"fixture"}\n')
         self.dist = self.workspace / "apps/web/dist"
         self.public = self.dist / "public"
         self.backend = self.dist / "backend-runtime"
