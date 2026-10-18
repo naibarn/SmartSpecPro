@@ -9,6 +9,11 @@ import {
   type AiSearchEvaluationDocument,
 } from "../server/services/cloudflareAiSearchEvaluation";
 import {
+  calculateRetrievalBenchmarkMetrics,
+  SPEC_229_RELEASE_CRITERIA,
+  retrievalBenchmarkGoldCaseSchema,
+} from "../server/services/libraryRetrievalBenchmark";
+import {
   normalizeCanonicalMarkdown,
   sha256,
 } from "../server/services/libraryCitationAnchor";
@@ -16,27 +21,10 @@ import { retrievalBenchmarkRunBundleSchema } from "../server/services/libraryRet
 import {
   goldDatasetCandidateSchema,
   validateGoldDataset,
+  type GoldDatasetCandidate,
 } from "../server/services/libraryRetrievalGoldDataset";
 
-type Candidate = {
-  caseId: string;
-  query: string;
-  source: {
-    path: string;
-    sha256: string;
-    license: string;
-    allowedUseEvidence: string;
-  };
-  benchmarkGold: {
-    tenantId: string;
-    supportsAnswer: boolean;
-    requiredEvidenceIds: string[];
-    requiredClaims: string[];
-    expectedRevision: string;
-    minimumAuthorityRank: number;
-    shouldCite: boolean;
-  };
-};
+type Candidate = GoldDatasetCandidate;
 
 type Source = { path: string; digest: string; content: string };
 
@@ -350,6 +338,21 @@ async function main() {
     const sourceDigest = sha256Hex(
       sources.map(source => `${source.path}\0${source.digest}\n`).join(""),
     );
+    const benchmarkCases = candidates.map(candidate =>
+      retrievalBenchmarkGoldCaseSchema.parse({
+        caseId: candidate.caseId,
+        query: candidate.query,
+        tenantId: candidate.benchmarkGold.tenantId,
+        supportsAnswer: candidate.benchmarkGold.supportsAnswer,
+        requiredEvidenceIds: candidate.benchmarkGold.requiredEvidenceIds,
+        requiredClaims: candidate.benchmarkGold.requiredClaims,
+        minimumAuthorityRank: candidate.benchmarkGold.minimumAuthorityRank,
+        expectedRevision: candidate.benchmarkGold.expectedRevision,
+        shouldCite: candidate.benchmarkGold.shouldCite,
+        language: candidate.language,
+        exactIdentifier: candidate.benchmarkGold.exactIdentifier,
+      })
+    );
     const observations = [];
     const traces = [];
     for (const [index, candidate] of candidates.entries()) {
@@ -447,6 +450,10 @@ async function main() {
       }
     }
 
+    const developmentMetrics = calculateRetrievalBenchmarkMetrics(
+      benchmarkCases,
+      observations,
+    );
     run = {
       schemaVersion: "spec229-local-observation-run-v1",
       runId: RUN_ID,
@@ -495,6 +502,12 @@ async function main() {
         comparisonRuns: { [PROFILE]: observations },
         latencyRuns: {},
       }),
+      developmentMetrics,
+      releaseGate: {
+        status: "NOT_EVALUABLE",
+        reason: "development candidate pool is not a release-approved held-out reviewed cohort",
+        canonicalReleaseCriteria: SPEC_229_RELEASE_CRITERIA,
+      },
       traces,
     };
   } finally {
