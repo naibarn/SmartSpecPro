@@ -28,7 +28,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+    "expected_canonical_sha": "a8a2f85d7d3f7b40737fd63d36706b4b6026e0d8",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 114,
+  "generation": 115,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -230,13 +230,13 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+    "canonical_sha": "a8a2f85d7d3f7b40737fd63d36706b4b6026e0d8",
     "integrated": true,
     "integrated_at": "2026-10-18T09:22:10Z",
     "intended_pr": "PR #1126 merged as 9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170; Cloudflare AI Search instance scope contract fix; exact-SHA post-merge tests passed.",
     "pending_pr": null,
     "pending_source_branch": "codex/spec229-eval-integrity-20261018",
-    "pending_source_sha": "beee23366594253f22f38f82e803261f80db98b5",
+    "pending_source_sha": "b532afdd7779bcb208f054419f9d3cf65aaf2613",
     "pending_workunit": "P229.8_EVALUATION_CONTROL_INTEGRITY_AND_DISPOSABLE_PROVIDER_SCOPING"
   },
   "lifecycle": {
@@ -465,7 +465,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T10:38:11.660927Z",
+  "updated_at": "2026-10-18T10:45:51.156002Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
