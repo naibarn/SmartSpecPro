@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.
-- Manifest generation: 73
+- Next action: Continue with Profile C AI Search BM25 implementation through the current provider/broker boundary; Profile B code is tested, while provider observations remain unevaluated until the dedicated non-production runtime is available.
+- Manifest generation: 74
 
 ## Source-declared status and relationship claims
 

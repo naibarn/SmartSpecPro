@@ -604,6 +604,63 @@ describe("vectorProvider adapter contract", () => {
     });
   });
 
+  it("isolates the opt-in SPEC-229 1024D adapter from ordinary Vectorize indexes", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const result = url.endsWith("/query")
+        ? { matches: [] }
+        : { mutationId: "eval-upsert-1" };
+      return new Response(JSON.stringify({ success: true, result }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const adapter = createVectorProviderAdapter("cloudflare_vectorize", {
+      vectorizeAccountId: "account-1",
+      vectorizeApiToken: "vectorize-token",
+      spec229EvaluationVectorizeDimensions: 1024,
+    });
+    const vector = {
+      id: "eval-vector-1",
+      values: Array.from({ length: 1024 }, () => 0.1),
+      namespace: "tenant:repo-development",
+      metadata: {
+        tenantId: "repo-development",
+        type: "document",
+        createdAt: Date.now(),
+        title: "public evaluation fixture",
+        sourceUrl: "repo/file.md",
+      },
+    };
+
+    expect(getProviderCapabilities("cloudflare_vectorize").supportedDimensions)
+      .toEqual([768]);
+    expect(adapter.capabilities.supportedDimensions).toEqual([1024]);
+    await expect(adapter.index({ indexName: "spec229-eval-run-1", vectors: [vector] }))
+      .resolves.toMatchObject({ count: 1, mutationId: "eval-upsert-1" });
+    await expect(adapter.search({
+      indexName: "spec229-eval-run-1",
+      vector: vector.values,
+      topK: 50,
+      filter: { tenantId: "repo-development", type: "document:spec229-eval-run-1" },
+      namespace: "tenant:repo-development",
+    })).resolves.toEqual({ matches: [] });
+    await expect(adapter.index({ indexName: "smartaihub-knowledge-v1", vectors: [vector] }))
+      .rejects.toMatchObject({ code: "evaluation_index_not_isolated" });
+    await expect(adapter.index({
+      indexName: "spec229-eval-run-1",
+      vectors: [{ ...vector, values: vector.values.slice(1) }],
+    })).rejects.toMatchObject({ code: "VECTORIZE_VALUES_INVALID" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      "/indexes/spec229-eval-run-1/upsert"
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
+      namespace: "tenant:repo-development",
+      filter: { tenantId: "repo-development", type: "document:spec229-eval-run-1" },
+    });
+  });
+
   it("requires tenant and item ownership evidence before destructive cleanup", async () => {
     vi.stubGlobal(
       "fetch",

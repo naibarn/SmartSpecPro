@@ -73,6 +73,8 @@ export interface VectorProviderConfig {
   vectorizeKnowledgeIndexName?: string;
   vectorizeMediaIndexName?: string;
   vectorizeAgentMemoryIndexName?: string;
+  /** Explicitly opts a direct Cloudflare Vectorize adapter into the isolated SPEC-229 eval profile. */
+  spec229EvaluationVectorizeDimensions?: 1024;
 }
 
 export interface VectorProviderAdapter {
@@ -686,13 +688,37 @@ function normalizeCloudflareVectors(
 function createCloudflareVectorizeAdapter(
   config?: VectorProviderConfig
 ): VectorProviderAdapter {
+  const evaluationDimensions = config?.spec229EvaluationVectorizeDimensions;
+  if (evaluationDimensions !== undefined && evaluationDimensions !== 1024) {
+    throw new VectorProviderError({
+      provider: "cloudflare_vectorize",
+      code: "evaluation_dimensions_invalid",
+      message: "SPEC-229 profile B only supports its pinned 1024-dimensional profile",
+      classification: "permanent",
+    });
+  }
+  const expectedDimensions = evaluationDimensions ?? 768;
+  const capabilities = evaluationDimensions === 1024
+    ? { ...getProviderCapabilities("cloudflare_vectorize"), supportedDimensions: [1024] }
+    : getProviderCapabilities("cloudflare_vectorize");
+  const assertEvaluationIndex = (indexName: string) => {
+    if (evaluationDimensions === 1024 && !indexName.startsWith("spec229-eval-")) {
+      throw new VectorProviderError({
+        provider: "cloudflare_vectorize",
+        code: "evaluation_index_not_isolated",
+        message: "SPEC-229 profile B requires an index prefixed spec229-eval-",
+        classification: "permanent",
+      });
+    }
+  };
   return {
-    capabilities: getProviderCapabilities("cloudflare_vectorize"),
+    capabilities,
 
     async index(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
       validateVectorizeIndexName(params.indexName);
-      validateVectorizeEntries(params.vectors);
+      assertEvaluationIndex(params.indexName);
+      validateVectorizeEntries(params.vectors, expectedDimensions);
       const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
         const ndjson = `${params.vectors.map(vector => JSON.stringify(vector)).join("\n")}\n`;
@@ -739,6 +765,7 @@ function createCloudflareVectorizeAdapter(
     async delete(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
       validateVectorizeIndexName(params.indexName);
+      assertEvaluationIndex(params.indexName);
       validateVectorizeIds(params.ids);
       const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
@@ -782,7 +809,8 @@ function createCloudflareVectorizeAdapter(
     async search(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
       validateVectorizeIndexName(params.indexName);
-      validateVectorizeQuery(params);
+      assertEvaluationIndex(params.indexName);
+      validateVectorizeQuery(params, expectedDimensions);
       const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
         const response = await fetch(`${baseUrl}/query`, {
@@ -829,6 +857,7 @@ function createCloudflareVectorizeAdapter(
     async getByIds(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
       validateVectorizeIndexName(params.indexName);
+      assertEvaluationIndex(params.indexName);
       validateVectorizeIds(params.ids);
       const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
@@ -1329,7 +1358,10 @@ export async function dispatchVectorOperation(
 
   if (params.operation === "index") {
     if (resolved.provider === "cloudflare_vectorize")
-      validateVectorizeEntries(params.vectors);
+      validateVectorizeEntries(
+        params.vectors,
+        params.providerConfig?.spec229EvaluationVectorizeDimensions ?? 768
+      );
     const dimension = params.vectors[0]?.values.length;
     validateProviderCapabilityRequest({
       capabilities: adapter.capabilities,
@@ -1350,7 +1382,10 @@ export async function dispatchVectorOperation(
   }
 
   if (resolved.provider === "cloudflare_vectorize")
-    validateVectorizeQuery(params);
+    validateVectorizeQuery(
+      params,
+      params.providerConfig?.spec229EvaluationVectorizeDimensions ?? 768
+    );
   validateProviderCapabilityRequest({
     capabilities: adapter.capabilities,
     request: {

@@ -81,4 +81,22 @@ describe("Vectorize projection contract", () => {
       })
     ).toThrow("VECTORIZE_NAMESPACE_INVALID");
   });
+
+  it("validates a non-default dimension only when the evaluation caller opts in", () => {
+    const dense1024 = {
+      id: "eval-vector",
+      values: Array.from({ length: 1024 }, () => 0.1),
+      namespace: "tenant:repo-development",
+      metadata: { tenantId: "repo-development" },
+    };
+
+    expect(() => validateVectorizeEntry(dense1024)).toThrow(
+      "VECTORIZE_VALUES_INVALID"
+    );
+    expect(() => validateVectorizeEntry(dense1024, 1024)).not.toThrow();
+    expect(() => validateVectorizeQuery({ vector: dense1024.values, topK: 5 }))
+      .toThrow("VECTORIZE_QUERY_VECTOR_INVALID");
+    expect(() => validateVectorizeQuery({ vector: dense1024.values, topK: 5 }, 1024))
+      .not.toThrow();
+  });
 });

@@ -41,7 +41,6 @@ const inputFile = argValue("--dataset-file");
 const observationFile = argValue("--observations-file");
 const baselineFile = argValue("--baseline-file");
 const reviewQueueFile = argValue("--review-queue-file");
-const currentSystemSha = argValue("--system-sha") ?? null;
 const candidates = (
   inputFile
     ? JSON.parse(readFileSync(inputFile, "utf8"))
@@ -62,9 +61,31 @@ if (reviewQueuePath && serializedReviewQueue) {
   writeFileSync(reviewQueuePath, serializedReviewQueue, { flag: "wx" });
 }
 
-const rawObservations = observationFile
+const observationDocument = observationFile
   ? (JSON.parse(readFileSync(observationFile, "utf8")) as unknown)
   : undefined;
+const isRecord = (
+  value: unknown
+): value is Record<string, unknown> =>
+  Boolean(value && typeof value === "object" && !Array.isArray(value));
+const recordedRun =
+  isRecord(observationDocument) &&
+  observationDocument.schemaVersion === "spec229-local-observation-run-v1"
+    ? observationDocument
+    : null;
+const currentSystemSha =
+  argValue("--system-sha") ??
+  (typeof recordedRun?.systemSha === "string" ? recordedRun.systemSha : null);
+if (
+  recordedRun &&
+  argValue("--system-sha") &&
+  recordedRun.systemSha !== argValue("--system-sha")
+) {
+  throw new Error("--system-sha must match the recorded observation run systemSha");
+}
+const rawObservations = recordedRun
+  ? recordedRun.observationBundle
+  : observationDocument;
 const observationBundle =
   rawObservations && !Array.isArray(rawObservations)
     ? retrievalBenchmarkRunBundleSchema.parse(rawObservations)
@@ -580,6 +601,19 @@ process.stdout.write(
       benchmarkVersion: "spec229-benchmark-v1",
       systemSha: currentSystemSha,
       observationsSha256: observationsDigest,
+      recordedRunProvenance: recordedRun
+        ? {
+            runId: recordedRun.runId ?? null,
+            systemSha: recordedRun.systemSha ?? null,
+            collectorPatchSha256: recordedRun.collectorPatchSha256 ?? null,
+            profile: recordedRun.profile ?? null,
+            runtime: recordedRun.runtime ?? null,
+            providerConfiguration: recordedRun.providerConfiguration ?? null,
+            corpus: recordedRun.corpus ?? null,
+            usage: recordedRun.usage ?? null,
+            cleanup: recordedRun.cleanup ?? null,
+          }
+        : null,
       comparisonProfile: currentProfile?.comparisonProfile ?? null,
       latencyProfile: currentProfile?.latencyProfile ?? null,
       releaseComparisonProfile:

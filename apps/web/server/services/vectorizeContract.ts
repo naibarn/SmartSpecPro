@@ -194,11 +194,11 @@ export function validateVectorizeEntry(entry: {
   values: readonly number[];
   metadata: Record<string, unknown>;
   namespace?: string;
-}): void {
+}, embeddingDimensions = VECTORIZE_EMBEDDING_DIMENSIONS): void {
   validateVectorizeIds([entry.id]);
   if (
     !Array.isArray(entry.values) ||
-    entry.values.length !== VECTORIZE_EMBEDDING_DIMENSIONS ||
+    entry.values.length !== embeddingDimensions ||
     entry.values.some(
       value => typeof value !== "number" || !Number.isFinite(value)
     )
@@ -236,7 +236,8 @@ export function validateVectorizeEntries(
     values: readonly number[];
     metadata: Record<string, unknown>;
     namespace?: string;
-  }[]
+  }[],
+  embeddingDimensions = VECTORIZE_EMBEDDING_DIMENSIONS
 ): void {
   if (
     !Array.isArray(entries) ||
@@ -245,7 +246,7 @@ export function validateVectorizeEntries(
   ) {
     throw new VectorizeContractError("VECTORIZE_BATCH_INVALID");
   }
-  entries.forEach(validateVectorizeEntry);
+  entries.forEach(entry => validateVectorizeEntry(entry, embeddingDimensions));
   const uploadBytes = entries.reduce(
     (total, entry) => total + utf8ByteLength(JSON.stringify(entry)) + 1,
     0
@@ -259,7 +260,7 @@ export function validateVectorizeQuery(params: {
   topK: number;
   filter?: Record<string, string | number | boolean>;
   namespace?: string;
-}): void {
+}, embeddingDimensions = VECTORIZE_EMBEDDING_DIMENSIONS): void {
   if (
     params.namespace !== undefined &&
     (!params.namespace.trim() ||
@@ -278,7 +279,7 @@ export function validateVectorizeQuery(params: {
   }
   if (
     !Array.isArray(params.vector) ||
-    params.vector.length !== VECTORIZE_EMBEDDING_DIMENSIONS ||
+    params.vector.length !== embeddingDimensions ||
     params.vector.some(
       value => typeof value !== "number" || !Number.isFinite(value)
     )
