@@ -16,6 +16,21 @@ const request = {
   retrievalType: "hybrid" as const,
   maxResults: 20,
 };
+const projectionItem = {
+  namespace: "smartaihub-dev",
+  instanceId: "tenant-pool-01-rag-v2",
+  key: `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`,
+  content: "canonical projection body",
+  metadata: {
+    tenant_id: "tenant-a",
+    acl_scope: "tenant_shared:1234567890abcdef",
+    source_type: "library_document",
+    source_id: "document-a",
+    source_revision: `sha256:${"c".repeat(64)}`,
+    projection_hash: "c".repeat(64),
+    embedding_profile: "bge-m3-1024-v1",
+  },
+};
 
 function response(
   metadata = {
@@ -145,6 +160,40 @@ describe("Cloudflare AI Search provider adapter", () => {
     );
   });
 
+  it("exposes explicit rerank/rewrite profiles and fuses bounded multi-query results", async () => {
+    const fetchImpl = vi.fn(async () => response());
+    const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
+    await provider.search({
+      ...request,
+      retrievalType: "vector",
+      queryRewrite: true,
+      reranking: true,
+    });
+    const firstBody = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(firstBody.ai_search_options).toMatchObject({
+      query_rewrite: { enabled: true },
+      reranking: { enabled: true },
+      retrieval: { retrieval_type: "vector" },
+    });
+
+    const multiQuery = await provider.searchMany({
+      ...request,
+      queries: ["variant one", "variant two"],
+    });
+    expect(multiQuery).toHaveLength(1);
+    expect(multiQuery[0].fusionScore).toBeCloseTo(1 / 61 + 1 / 61);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    const lastBody = JSON.parse(String(fetchImpl.mock.calls[2][1]?.body));
+    expect(lastBody.ai_search_options.retrieval.fusion_method).toBe("rrf");
+    await expect(
+      provider.searchMany({
+        ...request,
+        queries: Array.from({ length: 9 }, (_, index) => `variant-${index}`),
+      })
+    ).rejects.toThrow("AI_SEARCH_MULTI_QUERY_INVALID");
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
   it("does not echo provider bodies or secrets on errors", async () => {
     const fetchImpl = vi.fn(
       async () =>
@@ -161,5 +210,78 @@ describe("Cloudflare AI Search provider adapter", () => {
       "AI_SEARCH_PROVIDER_REQUEST_FAILED:403"
     );
     await expect(provider.search(request)).rejects.not.toThrow("private-token");
+  });
+
+  it("uploads only bounded, provenance-bearing projection items to explicit instances", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: {
+              id: "provider-item-1",
+              key: projectionItem.key,
+              status: "completed",
+            },
+          }),
+          { status: 200 }
+        )
+    );
+    const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
+
+    await expect(provider.upsertItem(projectionItem)).resolves.toEqual({
+      id: "provider-item-1",
+      key: projectionItem.key,
+      status: "completed",
+    });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toContain("/instances/tenant-pool-01-rag-v2/items");
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer private-token",
+    });
+    expect(init?.body).toBeInstanceOf(FormData);
+    const form = init?.body as FormData;
+    expect(JSON.parse(String(form.get("metadata")))).toMatchObject({
+      tenant_id: "tenant-a",
+      acl_scope: "tenant_shared:1234567890abcdef",
+      source_revision: `sha256:${"c".repeat(64)}`,
+    });
+    await expect(
+      provider.upsertItem({
+        ...projectionItem,
+        content: "x".repeat(3_500_001),
+      })
+    ).rejects.toThrow("AI_SEARCH_PROJECTION_SPLIT_REQUIRED");
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("deletes only by explicit instance and opaque provider item identity", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: null,
+          }),
+          { status: 200 }
+        )
+    );
+    const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
+    await expect(
+      provider.deleteItem({
+        namespace: "smartaihub-dev",
+        instanceId: "tenant-pool-01-rag-v2",
+        providerItemId: "provider-item-1",
+      })
+    ).resolves.toBeUndefined();
+    expect(fetchImpl.mock.calls[0][0]).toContain("/items/provider-item-1");
+    await expect(
+      provider.deleteItem({
+        namespace: "smartaihub-dev",
+        instanceId: "tenant-pool-01-rag-v2",
+        providerItemId: "../other-tenant",
+      })
+    ).rejects.toThrow("AI_SEARCH_PROVIDER_ITEM_ID_INVALID");
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 });

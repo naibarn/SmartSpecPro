@@ -1,0 +1,25 @@
+{
+  "evidence_id": "p229-3-ai-search-provider-capacity-postmerge-20261018",
+  "spec_id": "229",
+  "workunit": "P229.3_AI_SEARCH_PROVIDER_AND_CAPACITY_ROUTING",
+  "status": "FOCUSED_POSTMERGE_REGRESSION_PASS",
+  "pr": 1100,
+  "merge_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+  "source_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+  "source_verified": true,
+  "isolated_workspace": "/home/dev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b-test",
+  "verification": {
+    "profile": "quick",
+    "command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest --no-cache run server/services/retrievalInstanceRoutes.test.ts server/services/retrievalInstanceRoutesMigration.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/retrievalBroker.test.ts server/routers/library.test.ts",
+    "result": "PASS: 9 test files, 84 passed, 28 todo",
+    "started_at": "2026-10-18T04:57:34Z",
+    "completed_at": "2026-10-18T04:57:36Z",
+    "clean_worktree_after_run": true
+  },
+  "acceptance_boundary": "P229.3 route registry, capacity validation, and provider adapter code passed focused regression on exact canonical SHA. No RetrievalBroker connection, projection/index execution, provider observations, release calibration, or production verification is claimed.",
+  "remaining": [
+    "P229.4 must implement canonical RAG projections and ACL projections before AI Search can be consumed by RetrievalBroker.",
+    "No local DATABASE_URL, disposable database credential, or authorized Cloudflare/Vectorize credentials were injected; no real provider observation or cost was collected.",
+    "P229.8 remains NOT_EVALUABLE."
+  ]
+}

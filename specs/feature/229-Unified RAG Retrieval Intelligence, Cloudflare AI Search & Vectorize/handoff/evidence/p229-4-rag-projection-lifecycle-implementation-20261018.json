@@ -1,0 +1,37 @@
+{
+  "evidence_id": "p229-4-rag-projection-lifecycle-implementation-20261018",
+  "spec_id": "229",
+  "workunit": "P229.4_RAG_PROJECTION_AND_ACL_PROJECTIONS",
+  "status": "IMPLEMENTATION_CHECKPOINT",
+  "canonical_base_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+  "source_sha": "f5caedbc4e692ed6804de2d5102fed8a8a863902",
+  "source_branch": "codex/spec229-p2294-projection-main",
+  "changes": [
+    "Added PostgreSQL-owned rag_projection_items lifecycle state and indexes with immutable source identity, ACL scope, content hash, provider receipt, and bounded projection size.",
+    "Added deterministic hashed projection keys, opaque tenant-bound Library ACL scope mapping, incremental no-op detection, provider receipt state transitions, stale-worker fencing, and canonical identity-only projection resolution.",
+    "Added a projection indexing operation through the existing AI Search provider adapter, including provenance metadata, 3.5 MB soft-limit enforcement, sanitized failure state, and best-effort cleanup for superseded provider writes.",
+    "Extended the existing provider adapter with explicit vector/hybrid+RRF/rerank/rewrite settings, bounded multi-query RRF, and bounded upload/delete operations. Defaults remain keyword-safe, rerank/rewrite/cache off; no consumer is registered."
+  ],
+  "verification": {
+    "command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest --no-cache run server/services/ragProjectionRegistry.test.ts server/services/ragProjectionRegistryMigration.test.ts server/services/ragProjectionIndexer.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/retrievalInstanceRoutes.test.ts server/services/retrievalInstanceRoutesMigration.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/retrievalBroker.test.ts server/routers/library.test.ts",
+    "result": "PASS: 12 files, 100 passed, 28 todo",
+    "format": "PASS: Prettier check on changed TypeScript files and Drizzle journal",
+    "patch": "PASS: git diff --check",
+    "limitations": [
+      "No PostgreSQL DATABASE_URL credential was injected; migration execution and disposable database integration were not run.",
+      "Cloudflare AI Search, Workers AI, and Vectorize runtime credentials were unset; no provider observations, latency, or cost were collected.",
+      "The registry/indexer is not yet wired to Library ingestion, ACL-change/delete jobs, or RetrievalBroker; consumer behavior remains unchanged.",
+      "Repository-wide TypeScript check was not run under the local RAM policy."
+    ]
+  },
+  "security": {
+    "pre_retrieval_filters": "existing provider adapter enforces tenant, authorized ACL scopes, and source type",
+    "canonical_authorization": "projection resolution yields identity only; caller must perform the current canonical ACL/revision read before exposing text",
+    "tenant_boundary": "projection unique and lookup paths bind tenant_id",
+    "production_vector_profile_changed": false,
+    "production_behavior_enabled": false,
+    "secrets_read_or_persisted": false
+  },
+  "acceptance_boundary": "P229.4 projection registry/indexer and provider contract checkpoint passed focused mocked tests. It is not P229.4 end-to-end acceptance, does not establish real provider profile observations, and does not certify P229.8 or production behavior.",
+  "next_action": "Integrate this additive checkpoint through protected CI. Then connect the indexer and stale/revocation cleanup to the existing Library indexing and ACL lifecycle; bind AI Search candidate identity to RetrievalBroker canonical hydration and authorization before any consumer migration. Run real profiles only in an authorized disposable runtime."
+}

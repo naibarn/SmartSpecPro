@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Integrate the safe P229.3 route/capacity and provider adapter checkpoint. Then implement P229.4 projection/ACL metadata and canonical identity revalidation before connecting AI Search to the existing RetrievalBroker; do not migrate consumers before those controls exist.
-- Manifest generation: 81
+- Next action: Complete the P229.4 integration gap after the additive registry/indexer checkpoint: connect to existing Library ingestion and ACL revocation paths, then revalidate provider candidates through RetrievalBroker canonical tenant/ACL/revision/digest hydration.
+- Manifest generation: 85
 
 ## Source-declared status and relationship claims
 
