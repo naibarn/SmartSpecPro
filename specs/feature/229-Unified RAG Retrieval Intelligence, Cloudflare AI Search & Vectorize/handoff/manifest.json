@@ -28,14 +28,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "60e3a759710442308168e7264c1752515a67ac01",
+    "expected_canonical_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Promote the P229.3 implementation checkpoint through a protected PR. Then continue in dependency order with P229.4 RAG projection and ACL projection integration before wiring AI Search through the existing RetrievalBroker. Collect actual Profiles A-H and latency/cost observations only from an authorized non-production runtime; current provider observations remain absent and P229.8 remains NOT_EVALUABLE.",
-    "next_ready_workunit": "P229.4_RAG_PROJECTION_AND_ACL_PROJECTIONS: implement projection and canonical identity/revision metadata using the existing indexing pipeline, enforce tenant and ACL filtering plus canonical post-retrieval revalidation, then bind the AI Search provider to the existing RetrievalBroker without changing default 768D behavior.",
-    "reactivation_predicate": "Continue P229.4 from the exact latest origin/main SHA after the P229.3 checkpoint merges. Run Cloudflare provider profiles only when authorized non-production credentials/runtime and an isolated corpus revision are securely injected; no production secrets, index, or tenant data.",
-    "resume_point": "Canonical origin/main is 60e3a759710442308168e7264c1752515a67ac01 (PR #1099). P229.3 implementation checkpoint source is d05d4e5eb; focused tests passed 9 files/84 tests with 28 existing todo. The provider adapter is unregistered and has no RetrievalBroker consumer; no actual provider observations or production verification were collected. P229.8 remains NOT_EVALUABLE.",
+    "next_action": "Promote the safe P229.4 registry/indexer checkpoint through protected CI. Then wire projection creation, ACL change/revoke/delete cleanup, and canonical candidate hydration into existing Library indexing and RetrievalBroker paths. Do not migrate consumers or claim real profile observations before authorized runtime access.",
+    "next_ready_workunit": "P229.4_LIBRARY_INGESTION_ACL_REVOCATION_AND_BROKER_HYDRATION: connect the new projection lifecycle to the existing Library indexing and ACL lifecycle, then bind returned provider identities to current tenant/ACL/revision/digest canonical hydration in RetrievalBroker with stale/revoked regressions.",
+    "reactivation_predicate": "Continue from current origin/main after PR #1100; refresh exact canonical SHA before each checkpoint. Run actual A-H provider profiles only after authorized disposable PostgreSQL DATABASE_URL, isolated corpus source SHA, and required Cloudflare/Workers AI/Vectorize credentials are securely injected; no production index, tenant data, or secret readback.",
+    "resume_point": "Canonical origin/main is 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.3 route/provider checkpoint is merged and has exact-SHA focused evidence (9 files/84 tests). P229.4 code checkpoint source is f5caedbc43e1b6def11db6a4cb07cba4b5042645 (12 files/100 passed, 28 todo); it adds projection state/indexer/provider operations but is not connected to Library ingestion or RetrievalBroker. Local PostgreSQL requires a credential not injected; provider credentials are unset. No actual provider observations/costs; P229.8 remains NOT_EVALUABLE.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -53,14 +53,13 @@
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
-    "next_action": "Integrate the safe P229.3 route/capacity and provider adapter checkpoint. Then implement P229.4 projection/ACL metadata and canonical identity revalidation before connecting AI Search to the existing RetrievalBroker; do not migrate consumers before those controls exist.",
-    "rationale": "Profile C evaluation was merged in PR #1099. The current P229.3 checkpoint adds the canonical route registry, capacity guards and a fail-closed but unregistered AI Search provider adapter. The existing RetrievalBroker remains on its certified Vectorize path until P229.4 supplies canonical projection metadata and hydration.",
+    "next_action": "Complete the P229.4 integration gap after the additive registry/indexer checkpoint: connect to existing Library ingestion and ACL revocation paths, then revalidate provider candidates through RetrievalBroker canonical tenant/ACL/revision/digest hydration.",
+    "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
     "residual_requirements": [
-      "Complete P229.3 provider and capacity routing through the existing RetrievalBroker after P229.4 projection/ACL metadata and canonical hydration are available.",
-      "Implement and collect actual retrieval observations for §27 profiles A–H where authorized non-production runtime/provider capability exists.",
-      "Collect actual latency/cost observations for all three §27 latency profiles.",
-      "Create an untouched release-approved held-out cohort of at least 500 reviewed queries with required classes.",
-      "Evaluate all 15 release criteria without changing thresholds."
+      "Wire rag_projection_items to existing Library ingestion, ACL changes, revoke/delete, and reconciliation lifecycle.",
+      "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
+      "Implement/run actual comparison profiles A-H and all three latency/cost profiles in authorized non-production runtime.",
+      "Evaluate §27 release criteria with a reviewed held-out cohort; P229.8 remains NOT_EVALUABLE until actual observations and cohort eligibility are evidenced."
     ]
   },
   "dependencies": {
@@ -94,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 81,
+  "generation": 83,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -136,7 +135,9 @@
       "0a17118f85892f26dbc30af2a1fc028becbb08be",
       "5ab5363e218220249356fd21b702e716239404d7",
       "151a39101b37e833a237f591eda14d276f6c8aa6",
-      "d05d4e5ebf2c132ab12c2bf59407aecd443b34a9"
+      "d05d4e5ebf2c132ab12c2bf59407aecd443b34a9",
+      "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+      "f5caedbc43e1b6def11db6a4cb07cba4b5042645"
     ],
     "mapping": [],
     "source_paths": [
@@ -183,21 +184,26 @@
       "apps/web/server/services/retrievalInstanceRoutes.ts",
       "apps/web/server/services/retrievalInstanceRoutes.test.ts",
       "apps/web/server/services/retrievalInstanceRoutesMigration.test.ts",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-3-ai-search-provider-capacity-implementation-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-3-ai-search-provider-capacity-implementation-20261018.json",
+      "handoff/evidence/p229-3-ai-search-provider-capacity-postmerge-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-4-rag-projection-lifecycle-implementation-20261018.json",
+      "apps/web/drizzle/0406_spec229_rag_projection_items.sql",
+      "apps/web/server/services/ragProjectionIndexer.ts",
+      "apps/web/server/services/ragProjectionRegistry.ts"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "60e3a759710442308168e7264c1752515a67ac01",
+    "canonical_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
     "integrated": true,
-    "integrated_at": "2026-10-18T04:41:27Z",
-    "intended_pr": "PR #1099 merged at 60e3a759710442308168e7264c1752515a67ac01. P229.3 implementation checkpoint is PR #1100: https://github.com/naibarn/SmartSpecPro/pull/1100.",
-    "pending_pr": 1100,
-    "pending_source_branch": "codex/spec229-p2293-provider",
-    "pending_source_sha": "bf435364d2e31a24ae104333699d9ef083309a32",
-    "pending_workunit": "P229.3_AI_SEARCH_PROVIDER_AND_CAPACITY_ROUTING: additive PostgreSQL route registry, explicit capacity-aware route resolver, and fail-closed AI Search REST adapter; no broker consumer migration or provider observation is claimed."
+    "integrated_at": "2026-10-18T04:56:31Z",
+    "intended_pr": "PR #1100 merged at 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.4 projection lifecycle checkpoint is being prepared on codex/spec229-p2294-projection-main.",
+    "pending_pr": null,
+    "pending_source_branch": "codex/spec229-p2294-projection-main",
+    "pending_source_sha": "f5caedbc43e1b6def11db6a4cb07cba4b5042645",
+    "pending_workunit": "P229.4_RAG_PROJECTION_AND_ACL_PROJECTIONS: additive projection lifecycle/indexer and provider contract. Library ingestion/ACL cleanup/Broker binding and live provider execution remain for follow-on."
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -243,14 +249,13 @@
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
         }
       ],
-      "next_action": "Integrate the safe P229.3 route/capacity and provider adapter checkpoint. Then implement P229.4 projection/ACL metadata and canonical identity revalidation before connecting AI Search to the existing RetrievalBroker; do not migrate consumers before those controls exist.",
-      "rationale": "Profile C evaluation was merged in PR #1099. The current P229.3 checkpoint adds the canonical route registry, capacity guards and a fail-closed but unregistered AI Search provider adapter. The existing RetrievalBroker remains on its certified Vectorize path until P229.4 supplies canonical projection metadata and hydration.",
+      "next_action": "Complete the P229.4 integration gap after the additive registry/indexer checkpoint: connect to existing Library ingestion and ACL revocation paths, then revalidate provider candidates through RetrievalBroker canonical tenant/ACL/revision/digest hydration.",
+      "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
       "residual_requirements": [
-        "Complete P229.3 provider and capacity routing through the existing RetrievalBroker after P229.4 projection/ACL metadata and canonical hydration are available.",
-        "Implement and collect actual retrieval observations for §27 profiles A–H where authorized non-production runtime/provider capability exists.",
-        "Collect actual latency/cost observations for all three §27 latency profiles.",
-        "Create an untouched release-approved held-out cohort of at least 500 reviewed queries with required classes.",
-        "Evaluate all 15 release criteria without changing thresholds."
+        "Wire rag_projection_items to existing Library ingestion, ACL changes, revoke/delete, and reconciliation lifecycle.",
+        "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
+        "Implement/run actual comparison profiles A-H and all three latency/cost profiles in authorized non-production runtime.",
+        "Evaluate §27 release criteria with a reviewed held-out cohort; P229.8 remains NOT_EVALUABLE until actual observations and cohort eligibility are evidenced."
       ]
     },
     "disposition": {
@@ -412,7 +417,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T04:51:37.320497Z",
+  "updated_at": "2026-10-18T05:05:16.764807Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -432,13 +437,14 @@
       "handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json",
       "handoff/evidence/p229-8-calibration-readiness-20261018.json",
       "handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json",
-      "handoff/evidence/p229-profile-c-ai-search-development-implementation-20261018.json"
+      "handoff/evidence/p229-profile-c-ai-search-development-implementation-20261018.json",
+      "handoff/evidence/p229-3-ai-search-provider-capacity-postmerge-20261018.json"
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": null,
-    "status": "UNKNOWN"
+    "sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+    "status": "PASS"
   }
 }
