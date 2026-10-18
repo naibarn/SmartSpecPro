@@ -1,0 +1,44 @@
+{
+  "workunit": "P229.8_AI_SEARCH_INSTANCE_SCOPE_CONTRACT_FIX",
+  "source_sha": "92220d19dfc7e0ff09a5f290c07407e5494d343a",
+  "canonical_base_sha": "65de5b552597f9cbfa0eed960db67d413ff9ded4",
+  "pull_request": 1126,
+  "observed_at": "2026-10-18T09:16:00Z",
+  "finding": {
+    "status": "CONFIRMED_CONTRACT_DEFECT",
+    "detail": "Cloudflare namespace multi-instance search requires ai_search_options.instance_ids. The adapter sent instance_ids under ai_search_options.retrieval, so the provider request did not follow the documented instance routing contract.",
+    "official_api": "https://developers.cloudflare.com/api/typescript/resources/ai_search/subresources/namespaces/methods/search/",
+    "corrected_shape": {
+      "ai_search_options": {
+        "instance_ids": [
+          "<authorized instance ids>"
+        ],
+        "retrieval": {
+          "retrieval_type": "hybrid"
+        }
+      }
+    }
+  },
+  "implementation": {
+    "status": "PASS",
+    "changes": [
+      "Move instance_ids to the ai_search_options sibling of retrieval.",
+      "Assert expected top-level placement and reject nested instance_ids in adapter tests."
+    ],
+    "security_boundary": "The adapter retains tenant ACL/source filters and response instance scope validation. No production profile, index, tenant data, secret, or configuration was changed."
+  },
+  "verification": {
+    "command": "JWT_SECRET=<test-only-value> node_modules/.bin/vitest run --maxWorkers=1 server/services/cloudflareAiSearchProvider.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts",
+    "result": "PASS",
+    "test_files": 2,
+    "tests_passed": 17,
+    "diff_check": "PASS",
+    "typecheck": "NOT RUN per repository resource policy"
+  },
+  "provider_runtime": {
+    "status": "NOT_EVALUABLE",
+    "actual_provider_calls": 0,
+    "reason": "No authorized non-production account, namespace, provider credentials, or registered GitHub runner are available in this environment. No observations were fabricated."
+  },
+  "acceptance_boundary": "This closes the provider request-shape contract defect for the AI Search adapter. Profiles C-H still require actual non-production observations; Profile B requires a dedicated 1024D evaluation index and secure credentials. The development candidates are not a new untouched held-out cohort. P229.8 and overall SPEC-229 remain NOT_EVALUABLE."
+}
