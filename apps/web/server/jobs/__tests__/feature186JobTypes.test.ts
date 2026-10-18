@@ -17,6 +17,14 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
     expect(isPostgresNodeJobType("gdrive.edit_session_cleanup")).toBe(true);
   });
 
+  it("admits Library RAG projection reconciliation through the canonical worker path", () => {
+    expect(isPostgresNodeJobType("library.rag_projection_sync")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(
+      "library.rag_projection_sync",
+      "feature-186-v1",
+    )).toBeDefined();
+  });
+
   it("admits both AutoTeam recovery jobs through the registered canonical worker path", () => {
     for (const jobType of ["auto-team.recovery.scan", "auto-team.recovery.evaluate"]) {
       expect(isPostgresNodeJobType(jobType)).toBe(true);

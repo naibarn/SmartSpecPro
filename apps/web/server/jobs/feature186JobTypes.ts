@@ -28,6 +28,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "worker.heartbeat_retention",
   "spec224.runner_input_retention",
   "library.trash_purge",
+  "library.rag_projection_sync",
   "storyboard.skill.run",
   "skill.execute",
   "scheduled.skill.execute",

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { getTableColumns } from "drizzle-orm";
 
-import { retrievalInstanceRoutes } from "../../drizzle/schema";
+import { retrievalInstanceRoutes } from "../../drizzle/schema.ts";
 import type { DrizzleDB } from "../db";
 
 import {

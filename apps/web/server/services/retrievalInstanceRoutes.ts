@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import {
   retrievalInstanceRoutes,
   type InsertRetrievalInstanceRoute,
-} from "../../drizzle/schema";
+} from "../../drizzle/schema.ts";
 import type { DrizzleDB } from "../db";
 
 export const AI_SEARCH_CAPACITY_LIMITS = Object.freeze({

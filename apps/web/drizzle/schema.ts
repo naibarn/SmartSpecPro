@@ -4585,6 +4585,7 @@ export const ragProjectionItems = pgTable(
       t.sourceVersion,
       t.projectionPart,
       t.aclScope,
+      t.instanceId,
       t.embeddingProfile
     ),
     uniqueIndex("rag_projection_items_provider_item_unique")

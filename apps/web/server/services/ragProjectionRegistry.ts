@@ -4,7 +4,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   ragProjectionItems,
   type InsertRagProjectionItem,
-} from "../../drizzle/schema";
+} from "../../drizzle/schema.ts";
 import type { DrizzleDB } from "../db";
 
 export const RAG_PROJECTION_LIMITS = Object.freeze({
@@ -101,8 +101,9 @@ export function buildRagProjectionKey(input: RagProjectionInput): string {
     `${input.sourceVersion}:${input.projectionHash}`
   ).slice(0, 24);
   const aclHash = sha256(input.aclScope).slice(0, 24);
+  const instanceHash = sha256(input.instanceId).slice(0, 12);
   const part = input.projectionPart ?? "whole";
-  return `rag/${tenantHash}/${input.sourceType}/${sourceHash}/${versionHash}/${aclHash}/${part}.md`;
+  return `rag/${tenantHash}/${input.sourceType}/${sourceHash}/${versionHash}/${aclHash}/${instanceHash}/${part}.md`;
 }
 
 /**
@@ -211,6 +212,7 @@ export async function ensureRagProjection(
         eq(ragProjectionItems.sourceVersion, record.sourceVersion),
         eq(ragProjectionItems.projectionPart, record.projectionPart),
         eq(ragProjectionItems.aclScope, record.aclScope),
+        eq(ragProjectionItems.instanceId, record.instanceId),
         eq(ragProjectionItems.embeddingProfile, record.embeddingProfile)
       )
     )
@@ -237,7 +239,16 @@ export async function ensureRagProjection(
     .insert(ragProjectionItems)
     .values(record)
     .onConflictDoUpdate({
-      target: [ragProjectionItems.tenantId, ragProjectionItems.projectionKey],
+      target: [
+        ragProjectionItems.tenantId,
+        ragProjectionItems.sourceType,
+        ragProjectionItems.sourceId,
+        ragProjectionItems.sourceVersion,
+        ragProjectionItems.projectionPart,
+        ragProjectionItems.aclScope,
+        ragProjectionItems.instanceId,
+        ragProjectionItems.embeddingProfile,
+      ],
       set: {
         sourceType: record.sourceType,
         sourceId: record.sourceId,
@@ -362,6 +373,33 @@ export async function markRagProjectionDeletePending(
     .where(and(...conditions))
     .returning({ id: ragProjectionItems.id });
   return rows.length;
+}
+
+/** Tombstone one exact ACL/shard receipt before attempting provider deletion. */
+export async function markRagProjectionItemDeletePending(
+  db: DrizzleDB,
+  input: {
+    tenantId: string;
+    projectionKey: string;
+    instanceId: string;
+    providerItemId: string | null;
+  }
+): Promise<boolean> {
+  const providerItemCondition = input.providerItemId === null
+    ? isNull(ragProjectionItems.providerItemId)
+    : eq(ragProjectionItems.providerItemId, input.providerItemId);
+  const rows = await db
+    .update(ragProjectionItems)
+    .set({ status: "delete_pending", updatedAt: new Date() })
+    .where(and(
+      eq(ragProjectionItems.tenantId, input.tenantId),
+      eq(ragProjectionItems.projectionKey, input.projectionKey),
+      eq(ragProjectionItems.instanceId, input.instanceId),
+      providerItemCondition,
+      inArray(ragProjectionItems.status, ["queued", "indexing", "indexed", "stale", "failed", "delete_pending"])
+    ))
+    .returning({ id: ragProjectionItems.id });
+  return rows.length === 1;
 }
 
 /**

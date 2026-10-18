@@ -2752,6 +2752,13 @@
       "when": 1792299555000,
       "tag": "0406_spec229_rag_projection_items",
       "breakpoints": true
+    },
+    {
+      "idx": 407,
+      "version": "7",
+      "when": 1792300000000,
+      "tag": "0407_spec229_projection_shard_identity",
+      "breakpoints": true
     }
   ]
 }
