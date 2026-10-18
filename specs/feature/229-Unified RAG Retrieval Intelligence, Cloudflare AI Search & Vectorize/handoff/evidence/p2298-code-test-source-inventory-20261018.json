@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "spec229-postmerge-class-source-inventory-v1",
+  "evidenceId": "SPEC229-P2298-CODE-TEST-SOURCE-INVENTORY-20261018",
+  "workunit": "Read-only untouched source inventory for SPEC-229 cohort classes",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "13547c452ea11645b41d60677137c50004510a03",
+  "reviewer": {
+    "id": "candidate_review",
+    "type": "agent",
+    "method": "read-only git inventory and source inspection; no candidate generation"
+  },
+  "inventory": {
+    "committedCandidateAndSeedArtifacts": 16,
+    "candidateRows": 3279,
+    "distinctPriorSourcePaths": 875,
+    "candidateRelevantPathCandidates": 119,
+    "individuallyInspectedUntouchedCodeTestFixtureFiles": 52
+  },
+  "classSourceFindings": [
+    {
+      "class": "uuid/exact_id",
+      "path": "apps/web/server/services/__tests__/fixtures/spec224RecoveryGrantFenceVectors.json",
+      "lines": [
+        7,
+        20
+      ],
+      "grounding": "deterministic identifier facts only; SPEC-224 fixture is not evidence of P229 behavior"
+    },
+    {
+      "class": "ocr/thai_mixed",
+      "path": "apps/web/server/services/__tests__/financeDocumentExtractionService.test.js",
+      "lines": [
+        487,
+        504
+      ],
+      "grounding": "synthetic OCR receipt facts only; not OCR accuracy or actual document retrieval"
+    },
+    {
+      "class": "long_document/context_budget",
+      "path": "apps/web/server/services/__tests__/verticalDramaSeriesMemoryProjection.test.ts",
+      "lines": [
+        235,
+        254
+      ],
+      "grounding": "deterministic 100-episode synthetic context budget only"
+    },
+    {
+      "class": "tenant_acl",
+      "path": "apps/web/server/services/groupsService.test.ts",
+      "lines": [
+        287,
+        310
+      ],
+      "grounding": "cross-tenant group service denial, not Library Retrieval ACL"
+    },
+    {
+      "class": "revoked",
+      "path": "apps/web/server/routers/__tests__/scopedMemoryRouter.test.ts",
+      "lines": [
+        176,
+        176
+      ],
+      "grounding": "memory/session state, not Library document lifecycle"
+    }
+  ],
+  "unresolvedClasses": [
+    "no_answer",
+    "follow_up",
+    "multi_hop",
+    "P229-specific ACL attack",
+    "P229-specific stale revision",
+    "P229-specific deleted/revoked retrieval"
+  ],
+  "rightsAndScope": {
+    "repositoryLicense": "MIT",
+    "licenseSha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+    "caveat": "root license does not by itself clear embedded third-party content; each source needs screening and nonproduction provenance"
+  },
+  "disposition": "Inventory only. No gold rows generated or labels reviewed. Existing fixtures may support development-only cases with strictly matching expected facts, but subsystem-specific tests must not be repurposed as P229 retrieval evidence.",
+  "postMergeVerification": {
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalObservedEvidence.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+    "testFilesPassed": 5,
+    "testsPassed": 41,
+    "testsFailed": 0,
+    "exactSha": true
+  },
+  "acceptance": {
+    "P2298": "NOT_EVALUABLE",
+    "globalSPEC229": "INCOMPLETE",
+    "productionVerified": false
+  }
+}
