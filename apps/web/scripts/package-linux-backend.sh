@@ -70,6 +70,7 @@ if (Object.keys(paths).length !== runtimeAliases.length) {
 }
 writeFileSync(path, `${JSON.stringify({ compilerOptions: { baseUrl: ".", paths } }, null, 2)}\n`);
 JS
+node "$WEB_ROOT/scripts/verify-linux-runtime-dependencies.mjs" "$PACKAGE_ROOT"
 mkdir -p "$PACKAGE_ROOT/dist/public"
 cp -a "$WEB_ROOT/dist/public/." "$PACKAGE_ROOT/dist/public/"
 node --input-type=module - "$PACKAGE_ROOT/release-build.json" "$SOURCE_SHA" <<'JS'

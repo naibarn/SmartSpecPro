@@ -80,6 +80,38 @@ class IsolatedSystemdRuntime:
 
 
 class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
+    def test_runtime_dependency_preflight_rejects_missing_and_unavailable_packages(self):
+        runtime = self.root / "dependency-runtime"
+        (runtime / "server/_core").mkdir(parents=True)
+        (runtime / "node_modules").mkdir()
+        (runtime / "package.json").write_text(json.dumps({"dependencies": {}}))
+        source = runtime / "server/_core/index.ts"
+        source.write_text('import "@smartspec/runtime-only";\n')
+        checker = Path(__file__).with_name("verify-linux-runtime-dependencies.mjs")
+
+        missing = subprocess.run(
+            ["node", str(checker), str(runtime)], text=True, capture_output=True, check=False
+        )
+        self.assertEqual(missing.returncode, 1)
+        self.assertIn("not a production dependency", missing.stderr)
+
+        (runtime / "package.json").write_text(json.dumps({
+            "dependencies": {"@smartspec/runtime-only": "1.0.0"}
+        }))
+        unavailable = subprocess.run(
+            ["node", str(checker), str(runtime)], text=True, capture_output=True, check=False
+        )
+        self.assertEqual(unavailable.returncode, 1)
+        self.assertIn("does not resolve in the runtime artifact", unavailable.stderr)
+
+        package = runtime / "node_modules/@smartspec/runtime-only"
+        package.mkdir(parents=True)
+        (package / "package.json").write_text('{"name":"@smartspec/runtime-only"}\n')
+        available = subprocess.run(
+            ["node", str(checker), str(runtime)], text=True, capture_output=True, check=False
+        )
+        self.assertEqual(available.returncode, 0, available.stderr)
+
     def test_production_web_entrypoint_does_not_eagerly_load_vite(self):
         vite_source = (SCRIPT.parent.parent / "server/_core/vite.ts").read_text()
         self.assertNotRegex(vite_source, r'import\s+.*\sfrom\s+["\']vite["\']')
@@ -373,6 +405,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         web = repo / "apps/web"
         (web / "scripts").mkdir(parents=True)
         (web / "dist/public").mkdir(parents=True)
+        (web / "package.json").write_text('{"name":"@smartspec/web","dependencies":{}}\n')
         (web / "dist/public/index.html").write_text("<html>packaged frontend</html>")
         (web / "tsconfig.json").write_text(json.dumps({
             "extends": "../../tsconfig.base.json",
@@ -392,6 +425,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (release_files / "desktop-release.zip").write_bytes(b"release-fixture")
         (web / "dist/public/releases").symlink_to("../../client/public/releases")
         (web / "scripts/package-linux-backend.sh").write_text(SCRIPT.with_name("package-linux-backend.sh").read_text())
+        (web / "scripts/verify-linux-runtime-dependencies.mjs").symlink_to(
+            Path(__file__).with_name("verify-linux-runtime-dependencies.mjs").resolve()
+        )
         (web / "scripts/materialize-public-releases.sh").write_text(
             SCRIPT.with_name("materialize-public-releases.sh").read_text()
         )
@@ -410,12 +446,14 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         fake_pnpm.write_text(
             "#!/bin/sh\n"
             "for target in \"$@\"; do :; done\n"
-            "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\"\n"
+            "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\" \"$target/node_modules/typescript\"\n"
             "mkdir -p \"$target/node_modules/.pnpm/node_modules/@smartspec\"\n"
             "cp \"$PWD/apps/web/tsconfig.json\" \"$target/tsconfig.json\"\n"
+            "cp \"$PWD/apps/web/package.json\" \"$target/package.json\"\n"
             "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
-            "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n",
+            "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n"
+            "printf '{\"name\":\"typescript\"}\\n' > \"$target/node_modules/typescript/package.json\"\n",
             encoding="utf-8",
         )
         fake_pnpm.chmod(0o755)

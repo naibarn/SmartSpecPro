@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { assertR2StorageActive, storagePut } from "server/storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import { ENV } from "./env";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { prepareImagePromptSafety } from "../services/imagePromptSafetyService";
