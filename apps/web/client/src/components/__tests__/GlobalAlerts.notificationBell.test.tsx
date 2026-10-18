@@ -10,10 +10,13 @@ let urgentRemindersData: any[] = [];
 let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
 let viewerRole: string | undefined;
+let authenticated = true;
+let suspendAdminNamespace = false;
 const setLocationMock = vi.fn();
 const openWindowMock = vi.fn();
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
+const scopedTranslationCalls = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -38,52 +41,58 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1, role: viewerRole, currentTenantId: "tenant-1" } }),
+  useAuth: () => ({ user: authenticated ? { id: 1, role: viewerRole, currentTenantId: "tenant-1" } : null }),
 }));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
-  useScopedTranslation: () => ({
-    locale: mockLocale,
-    t: (key: string, options?: { count?: number }) => {
-      const count = options?.count ?? 0;
-      const messages: Record<string, string> = {
-        "admin.notificationBell.unread": `${count} unread notification${count === 1 ? "" : "s"}`,
-        "admin.notificationBell.recentHistory": `No unread alerts, but ${count} recent item${count === 1 ? "" : "s"} available`,
-        "admin.notificationBell.none": "No notifications yet",
-        "admin.notificationBell.recent": "Recent",
-        "admin.notificationBell.title": "Notifications",
-        "admin.notificationBell.titleCount": `Notifications (${count})`,
-        "admin.notificationBell.close": "Close notifications",
-        "admin.notificationBell.markAllRead": "Mark all as read",
-        "admin.notificationBell.markRead": "Mark as read",
-        "admin.notificationBell.expandActions": "Expand quick actions",
-        "admin.notificationBell.collapseActions": "Collapse quick actions",
-        "admin.notificationBell.viewDetails": "View details",
-        "admin.notificationBell.openChat": "Open Chat",
-        "admin.notificationBell.viewSchedule": "View schedule",
-        "admin.notificationBell.viewAll": "View all notifications",
-        "admin.notificationBell.history": "View recent history",
-        "admin.notificationBell.scheduledAlerts": "Scheduled alerts",
-        "admin.notificationBell.viewDetailsButton": "View details",
-        "admin.notificationBell.openChatButton": "Open Chat",
-        "admin.notificationBell.viewScheduleButton": "View schedule",
-        "admin.notificationBell.openMediaStudio": "Open Media Studio",
-        "admin.notificationBell.adminSettings": "Admin Settings",
-        "admin.notificationBell.systemGuardian": "System Guardian",
-        "admin.notificationBell.viewFeedback": "View Feedback",
-        "admin.notificationBell.back": "Back",
-        "admin.notificationBell.errorDetails": "Error details",
-        "admin.notificationBell.code": "Code",
-        "admin.notificationBell.duration": "Duration",
-        "admin.notificationBell.cost": "Cost",
-        "admin.notificationBell.retry": "Retry",
-        "admin.notificationBell.nextRetry": "Next retry",
-        "admin.notificationBell.source": "Source",
-        "admin.notificationBell.emptyList": "Your notification list is empty.",
-      };
-      return messages[key] ?? key;
-    },
-  }),
+  useScopedTranslation: (...args: unknown[]) => {
+    scopedTranslationCalls(...args);
+    if (suspendAdminNamespace && args[0] === "admin") {
+      throw new Promise(() => {});
+    }
+    return {
+      locale: mockLocale,
+      t: (key: string, options?: { count?: number }) => {
+        const count = options?.count ?? 0;
+        const messages: Record<string, string> = {
+          "admin.notificationBell.unread": `${count} unread notification${count === 1 ? "" : "s"}`,
+          "admin.notificationBell.recentHistory": `No unread alerts, but ${count} recent item${count === 1 ? "" : "s"} available`,
+          "admin.notificationBell.none": "No notifications yet",
+          "admin.notificationBell.recent": "Recent",
+          "admin.notificationBell.title": "Notifications",
+          "admin.notificationBell.titleCount": `Notifications (${count})`,
+          "admin.notificationBell.close": "Close notifications",
+          "admin.notificationBell.markAllRead": "Mark all as read",
+          "admin.notificationBell.markRead": "Mark as read",
+          "admin.notificationBell.expandActions": "Expand quick actions",
+          "admin.notificationBell.collapseActions": "Collapse quick actions",
+          "admin.notificationBell.viewDetails": "View details",
+          "admin.notificationBell.openChat": "Open Chat",
+          "admin.notificationBell.viewSchedule": "View schedule",
+          "admin.notificationBell.viewAll": "View all notifications",
+          "admin.notificationBell.history": "View recent history",
+          "admin.notificationBell.scheduledAlerts": "Scheduled alerts",
+          "admin.notificationBell.viewDetailsButton": "View details",
+          "admin.notificationBell.openChatButton": "Open Chat",
+          "admin.notificationBell.viewScheduleButton": "View schedule",
+          "admin.notificationBell.openMediaStudio": "Open Media Studio",
+          "admin.notificationBell.adminSettings": "Admin Settings",
+          "admin.notificationBell.systemGuardian": "System Guardian",
+          "admin.notificationBell.viewFeedback": "View Feedback",
+          "admin.notificationBell.back": "Back",
+          "admin.notificationBell.errorDetails": "Error details",
+          "admin.notificationBell.code": "Code",
+          "admin.notificationBell.duration": "Duration",
+          "admin.notificationBell.cost": "Cost",
+          "admin.notificationBell.retry": "Retry",
+          "admin.notificationBell.nextRetry": "Next retry",
+          "admin.notificationBell.source": "Source",
+          "admin.notificationBell.emptyList": "Your notification list is empty.",
+        };
+        return messages[key] ?? key;
+      },
+    };
+  },
 }));
 
 vi.mock("wouter", () => ({
@@ -155,6 +164,9 @@ describe("GlobalNotificationBell occurrence badge", () => {
     currentLocation = "/";
     mockLocale = "en";
     viewerRole = undefined;
+    authenticated = true;
+    suspendAdminNamespace = false;
+    scopedTranslationCalls.mockClear();
     setLocationMock.mockClear();
     openWindowMock.mockReset();
     toastSuccessMock.mockReset();
@@ -165,6 +177,24 @@ describe("GlobalNotificationBell occurrence badge", () => {
       writable: true,
       value: openWindowMock,
     });
+  });
+
+  it("does not load the admin translation namespace for anonymous visitors", () => {
+    authenticated = false;
+    const { container } = render(<GlobalAlerts />);
+    expect(container.firstChild).toBeNull();
+    expect(scopedTranslationCalls).not.toHaveBeenCalled();
+  });
+
+  it("keeps the rest of the page mounted while the admin namespace is loading", () => {
+    suspendAdminNamespace = true;
+    render(
+      <>
+        <main>Login content</main>
+        <GlobalAlerts />
+      </>,
+    );
+    expect(screen.getByText("Login content")).toBeInTheDocument();
   });
 
   it("shows an immediate completion toast with a result navigation action", () => {

@@ -8,8 +8,9 @@ vi.mock("wouter", () => ({
   useLocation: () => [routeState.location, vi.fn()],
 }));
 
+const scopedTranslationMock = vi.hoisted(() => vi.fn());
 vi.mock("@/i18n/useScopedTranslation", () => ({
-  useScopedTranslation: () => ({ t: () => "Open AI Chat & Feedback" }),
+  useScopedTranslation: (...args: unknown[]) => scopedTranslationMock(...args),
 }));
 
 vi.mock("../FeedbackButton", () => ({
@@ -31,6 +32,7 @@ describe("RouteAwareFeedbackButton", () => {
       expect(
         screen.getByRole("button", { name: "Open AI Chat & Feedback" })
       ).toBeInTheDocument();
+      expect(scopedTranslationMock).not.toHaveBeenCalled();
       expect(
         screen.queryByRole("button", { name: "Feedback launcher" })
       ).not.toBeInTheDocument();

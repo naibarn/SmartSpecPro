@@ -5,6 +5,7 @@
  */
 
 import {
+  Suspense,
   useEffect,
   useState,
   useCallback,
@@ -355,7 +356,22 @@ function localizeActionLabel(
 }
 
 export function GlobalAlerts() {
+  // This global sibling of Router can request lazy admin translations. Keep
+  // that suspension from hiding the entire application during a cold load.
+  return (
+    <Suspense fallback={null}>
+      <GlobalAlertsAuthGate />
+    </Suspense>
+  );
+}
+
+function GlobalAlertsAuthGate() {
   const { user } = useAuth();
+  if (!user) return null;
+  return <AuthenticatedGlobalAlerts />;
+}
+
+function AuthenticatedGlobalAlerts() {
   const { locale } = useScopedTranslation("admin");
   const [location] = useLocation();
   const activeUrgentSurfaceRef = useRef<UrgentSurface | null>(null);
@@ -378,8 +394,6 @@ export function GlobalAlerts() {
     activeUrgentSurfaceRef.current = null;
     setActiveUrgentSurface(null);
   }, []);
-
-  if (!user) return null;
 
   return (
     <>

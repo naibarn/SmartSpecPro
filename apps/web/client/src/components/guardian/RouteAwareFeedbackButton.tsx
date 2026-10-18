@@ -1,14 +1,22 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@smartspec/ui/src/components/ui/button";
-import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { FeedbackButton } from "./FeedbackButton";
 
 export function RouteAwareFeedbackButton() {
+  // Feedback translations are lazy and this component sits outside Router's
+  // route-level Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <RouteAwareFeedbackButtonContent />
+    </Suspense>
+  );
+}
+
+function RouteAwareFeedbackButtonContent() {
   const [location] = useLocation();
   const [loginAssistantRequested, setLoginAssistantRequested] = useState(false);
   const pathname = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
-  const { t } = useScopedTranslation("settings");
 
   if (pathname.toLowerCase() === "/login") {
     if (loginAssistantRequested) {
@@ -22,7 +30,7 @@ export function RouteAwareFeedbackButton() {
         type="button"
         variant="outline"
         size="icon"
-        aria-label={t("assistantAppearance.launcherAriaLabel")}
+        aria-label="Open AI Chat & Feedback"
         className="fixed bottom-4 right-4 z-50 h-16 w-16 rounded-full bg-white text-slate-900 shadow-lg hover:bg-slate-100 md:h-20 md:w-20"
         onClick={() => setLoginAssistantRequested(true)}
       >
