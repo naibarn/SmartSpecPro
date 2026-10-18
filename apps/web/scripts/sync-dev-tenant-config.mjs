@@ -87,8 +87,8 @@ try {
         const bytes = Buffer.from(await object.Body.transformToByteArray());
         if (bytes.length > 10*1024*1024) throw new Error('Branding image too large');
         const digest = hash(bytes), filename = `${digest}${extname(key)}`;
-        mkdirSync(resolve(appRoot,'public/dev-tenant-assets'),{recursive:true});
-        writeFileSync(resolve(appRoot,'public/dev-tenant-assets',filename),bytes);
+        mkdirSync(resolve(appRoot,'client/public/dev-tenant-assets'),{recursive:true});
+        writeFileSync(resolve(appRoot,'client/public/dev-tenant-assets',filename),bytes);
         const local = `/dev-tenant-assets/${filename}`; assetMap.set(assetPath,local);
         assets.push({path:local,sha256:digest,bytes:bytes.length});
       }

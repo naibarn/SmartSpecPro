@@ -328,4 +328,5 @@ apps/web/finance-ocr-debug.jsonl
 .tmp-audit-download/
 
 # Local public branding snapshots for the isolated development tenant
+/apps/web/client/public/dev-tenant-assets/
 /apps/web/public/dev-tenant-assets/
