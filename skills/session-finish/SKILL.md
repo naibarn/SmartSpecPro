@@ -9,6 +9,8 @@ Follow the shared [development lifecycle contract](../development-lifecycle/SKIL
 
 Use this skill whenever a session reaches a safe checkpoint, is about to pause/stop/handoff, approaches quota or context exhaustion, or completes implementation. Task completion is **not** required. Safe valuable progress must not remain only on a session branch, local worktree, sandbox, or chat context.
 
+**A user instruction to stop this task, switch to another requested subtask, or handle something else is an immediate mandatory trigger.** Treat the changes already made for the current subtask as checkpoint candidates at that point. Do not defer them because the parent task is unfinished or because unrelated work, full verification, UAT, preview, or production checks remain. After the FAST INTEGRATION GATE passes, commit only task-owned paths and push/open the established PR immediately. Merge through the existing protected path as soon as required reviews/checks pass; if they are pending or fail, keep the PR open, record the exact blocker, and continue independent work. Never bypass protection to satisfy the checkpoint.
+
 ## Required lifecycle
 
 ```text

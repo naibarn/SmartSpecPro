@@ -141,7 +141,7 @@ Concurrent operations for distinct repository/revision/purpose tuples use indepe
 
 ## Boundaries
 
-- This skill certifies source selection and execution placement only. A successful source lease is not a passing build, test, deployment, or runtime check.
+- This skill certifies source selection and execution placement only. A successful source lease is not a passing build, test, deployment, or runtime check. `BUILD_PASSED` certifies an artifact for its recorded source SHA and digest only; it does not establish publication or that a frontend/backend process is serving that revision. Report those states separately with evidence.
 - Bind all verification results to `source_revision`; a later revision can stale earlier evidence.
 - Heavy verification and long-running execution still use the repository's canonical `worker_jobs` plus outbox control plane where required. This source lease is not a job queue.
 - The older `canonical-sync-preflight.sh`, dirty-rescue, and local-branch realignment helpers are not part of this path. Do not use them to prepare build input.
