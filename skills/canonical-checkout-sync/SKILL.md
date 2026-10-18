@@ -112,11 +112,22 @@ The runner checks the lease fence, expiry, workspace cleanliness, and exact sour
 
 When multiple sessions changed the repository, merge all intended work through the normal protected path first. Then start the build from the main workspace; the builder fetches the configured canonical ref and uses its latest tip, never the caller's branch or dirty files.
 
-Use the repository's configured central build command, for example:
+Use this command to produce a verified full-stack build artifact from the latest
+configured canonical revision. It works at the repository root and from
+`apps/web`; both package scripts invoke the same central builder:
 
 ```bash
 pnpm run build:canonical
 ```
+
+This build runs in an isolated canonical-source workspace. For SmartSpecPro it
+builds the web assets, Cloudflare staging bundle, and Linux backend package; it
+does not publish assets or switch/restart production services. `npm run
+build:deploy` and `pnpm run release:web:linux` build, prepare, and promote the
+compatible Linux full-stack release. They restart only `smartspec-web.service`
+through the existing sudo-gated workflow, then require health verification or
+rollback. Use `pnpm run build:canonical` when only an artifact is needed. See
+`docs/WEB_RELEASE_WORKFLOW.md` for the commands and browser verification.
 
 To require specific merge commits to be included, repeat the revision option; the build fails before running if any required commit is not in the fetched canonical tip:
 
@@ -126,7 +137,7 @@ pnpm run build:canonical -- \
   --required-integrated-revision <merge-sha-2>
 ```
 
-From a stale session checkout that does not yet contain that package script, use the installed central entry point:
+For an older checkout that does not yet contain these package scripts, use the installed central entry point:
 
 ```bash
 ~/.codex/skills/canonical-checkout-sync/scripts/build-canonical-main.sh \

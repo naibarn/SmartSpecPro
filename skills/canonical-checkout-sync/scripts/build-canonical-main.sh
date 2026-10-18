@@ -3,6 +3,9 @@ set -euo pipefail
 
 REPO="${1:-$PWD}"
 shift || true
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
 REPO="$(git -C "$REPO" rev-parse --show-toplevel)"
 POLICY_PATH="$REPO/.development-repository.toml"
 if [[ ! -f "$POLICY_PATH" ]]; then
