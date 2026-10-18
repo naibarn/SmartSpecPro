@@ -242,6 +242,42 @@ class ReleaseIntegrityTests(unittest.TestCase):
         module.publish_public_tree(source, destination, self.root / "retry-backup")
         self.assertEqual((destination / "index.html").read_text(encoding="utf-8"), "new index")
 
+    def test_release_symlink_is_materialized_without_writing_outside_publish_root(self):
+        source = self.root / "release-source"
+        destination = self.root / "release-public"
+        external_releases = self.root / "shared-releases"
+        (source / "releases").mkdir(parents=True)
+        destination.mkdir()
+        external_releases.mkdir()
+        (source / "index.html").write_text("new index", encoding="utf-8")
+        (source / "releases/installer.exe").write_bytes(b"canonical installer")
+        (destination / "index.html").write_text("old index", encoding="utf-8")
+        (external_releases / "installer.exe").write_bytes(b"shared installer")
+        (destination / "releases").symlink_to(external_releases, target_is_directory=True)
+
+        backup = self.root / "release-backup"
+        with self.assertRaisesRegex(RuntimeError, "injected failure"):
+            module.publish_public_tree(
+                source,
+                destination,
+                backup,
+                before_index_swap=lambda: (_ for _ in ()).throw(RuntimeError("injected failure")),
+            )
+        self.assertFalse((destination / "releases").is_symlink())
+        self.assertEqual((destination / "releases/installer.exe").read_bytes(), b"canonical installer")
+        self.assertEqual((external_releases / "installer.exe").read_bytes(), b"shared installer")
+
+        module.restore_previous_public_tree(backup, destination)
+        self.assertTrue((destination / "releases").is_symlink())
+        self.assertEqual((destination / "releases").resolve(), external_releases)
+        self.assertEqual((external_releases / "installer.exe").read_bytes(), b"shared installer")
+        self.assertEqual((destination / "index.html").read_text(encoding="utf-8"), "old index")
+
+        module.publish_public_tree(source, destination, self.root / "release-retry-backup")
+        self.assertFalse((destination / "releases").is_symlink())
+        self.assertEqual((destination / "releases/installer.exe").read_bytes(), b"canonical installer")
+        self.assertEqual((external_releases / "installer.exe").read_bytes(), b"shared installer")
+
     def test_asset_path_collision_cannot_mutate_files_used_by_current_release(self):
         source = self.root / "collision-source"
         destination = self.root / "collision-public"
