@@ -896,10 +896,10 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Platform/Security Owner: approve and provision the exact non-production source-trust identities/signer/storage/revocation/retention scope in the authority blocker. Runtime/Tenant Owner: use existing APIs to read fresh Runner, workspace crosswalk, Jobs/Attempts, lease/fence/idempotency; prepare one DevelopmentRun and grant under existing owner scope. Then revalidate and execute one authorized WorkUnit only if every gate passes.",
+    "next_action": "PR #1111 (source 4a48df5f28c6b305c730ae49c0f93372ef2e2399) adds the authenticated Tenant Owner recovery-grant revoke route. Await required protected checks, then merge through promote_ready_pr.py. Focused pytest is pending because pytest is unavailable in the isolated environment; py_compile and diff checks passed. Live acceptance still requires fresh authenticated Runtime/Tenant Owner evidence and Platform/Security source-trust authority; do not dispatch.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: PR #1108 capability availability reconciliation is integrated at 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Live acceptance awaits Platform/Security source-trust provisioning and authenticated Runtime/Tenant Owner authority; do not repeat prior Windows workspace/Runner setup.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
-    "resume_point": "PR #1108 merged through the protected executor at canonical origin/main SHA 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Capability normalization remains availability-only; focused candidate tests passed 24/24 and PR required checks passed except build-preview, which policy skipped. Live acceptance remains blocked on external source-trust and authenticated owner/runtime authority; no Certification, Grant or dispatch was created. Resume with fresh authenticated authority reads; Runner Workspace ID supplied earlier ws-smartspecpro-12883242a753 and Workspace Authority ID workspace:3e9a549f-34f3-4147-9edd-dfd4f5ef338a remain unverified as a current crosswalk.",
+    "resume_point": "SPEC-224 PR #1111 is open from codex/spec224-recovery-grant-revoke-20261018 at 4a48df5f28c6b305c730ae49c0f93372ef2e2399, based on canonical 19ddb53616fb91f26dd773125f8f2b499c67993a. Revoke endpoint is server-authenticated and delegates owner/scope/fence/audit checks to ApprovalDBService. py_compile and git diff --check passed; focused pytest unavailable (module missing). No grant was issued and no dispatch occurred. Next: required protected PR checks and normal protected merge; then refresh authenticated runtime evidence and continue only if all admission gates pass.",
     "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 98,
+  "generation": 99,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T07:44:31.829353Z",
+  "updated_at": "2026-10-18T07:51:23.634070Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
