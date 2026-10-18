@@ -510,6 +510,72 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 
 Actual base version/digest MUST be pinned by CI and periodically refreshed.
 
+### 8.1.1 Minimal SmartAIHub Runner image
+
+The shared-container Runner image SHALL package the existing Linux
+`smartaihub-runner` release artifact from Feature 205. The same Linux Runner
+artifact SHALL also be installable and runnable natively on a compatible Linux
+VM; a VM MUST NOT need Docker or another container engine. Cloudflare image
+packaging is an additional delivery format, not a separate Runner
+implementation or Linux build target. The Linux-only session-host helper is
+included only in profiles that explicitly enable the Feature 278 session-host
+capability.
+
+Runner images MUST use a multi-stage build: a pinned Rust builder stage consumes
+`Cargo.lock` and source, and the final runtime stage contains only the Runner
+artifact(s), required CA roots and runtime files. Order dependency manifests
+before frequently changing source, and use the CI builder's supported Cargo
+dependency/build cache so source edits do not invalidate dependency layers.
+Build caches are build-time only and MUST NOT be copied into the final image.
+The final image MUST use a pinned minimal glibc base compatible with the
+published Linux binary, run as non-root, and omit compilers, Cargo, package
+managers, debugging utilities and unused shells. Add `tini` or another init
+only when the selected process/signal model requires it and the measured image
+and startup impact is recorded.
+
+The minimal Runner image MUST NOT include Claude, Codex, Browser, Chromium,
+Media, FFmpeg, ImageMagick, or other optional toolchains by default. Those
+belong in existing specialized runtime images or an explicitly selected
+capability profile. Dependency selection MUST preserve the existing Job,
+lease, fencing, authentication, recovery, and execution contracts; image
+minimization MUST NOT remove a required Runner library or runtime capability.
+
+### 8.1.2 Runner image and startup performance acceptance
+
+Before setting numeric size or latency limits, capture a reproducible baseline
+for the same source revision, Linux target, image profile, base digest, build
+toolchain, Cloudflare instance class, and VM class. Record at least:
+
+- compressed OCI image size and per-layer compressed sizes;
+- release binary sizes for `smartaihub-runner` and, when included,
+  `smartaihub-session-host`, plus the compressed release bundle size;
+- first-pull duration from a host with no cached image layers;
+- cold start from process/container creation to truthful Runner readiness;
+- warm start from a stopped or host-slept instance to readiness;
+- readiness-to-first-authorized-job-start and enqueue-to-first-job-start
+  durations, reported separately so queue wait is visible;
+- p50 and p95 for cold start, warm start, and time-to-first-job, with sample
+  count, host/image identity, and the measurement boundaries above.
+
+Capture an untuned baseline before changing build optimization or image
+composition, then repeat the same protocol after each material change. Use at
+least 30 independent cold and warm observations for the initial baseline and
+100 observations for a numeric p95 acceptance decision; if host cost or
+availability prevents that sample size, label the percentile provisional and
+do not claim a final performance pass. Acceptance SHALL compare results with
+the recorded baseline and numeric limits approved from that evidence. A limit
+MUST NOT be invented before baseline collection. The report MUST identify any
+trade-off where a smaller artifact increases startup or first-job latency.
+
+Run startup, crash, sleep/wake, restart, and instance-replacement scenarios
+only where the host exposes those lifecycle operations. Cloudflare results
+MUST distinguish first pull, cold start, warm/sleep wake, crash restart, and
+replacement. On a native Linux VM, verify direct binary startup and service
+restart without Docker; mark container sleep and provider-managed instance
+replacement `NOT_APPLICABLE` unless that VM host actually supports and
+exercises them. Every supported scenario MUST verify readiness and canonical
+Job/lease/fencing recovery.
+
 ## 8.4 Example video-render image pattern
 
 ```dockerfile
@@ -567,6 +633,12 @@ org.opencontainers.image.created
 smartaihub.runtime.type
 smartaihub.runtime.api_version
 ```
+
+For Runner images, `/health/runner` is the existing Feature 205 shared-container
+readiness contract. It MUST remain profile-specific and MUST NOT expose Job,
+attempt, lease, tenant, or credential data. Generic `/health/live` and
+`/health/ready` requirements for other runtime images do not authorize adding
+a duplicate Runner health API.
 
 ---
 

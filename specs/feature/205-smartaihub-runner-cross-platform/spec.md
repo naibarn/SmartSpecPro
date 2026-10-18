@@ -202,6 +202,38 @@ authenticated WSS path, HTTPS durable fallback and reconciliation semantics as
 `connect`/`reconnect`. The shared Container `run` entrypoint remains an
 assignment-scoped health/runtime process owned by Feature 204 scheduling.
 
+### 5.1 Rust release optimization and Linux artifact portability
+
+The release workflow MUST build the Runner from the pinned Rust toolchain and
+committed `Cargo.lock`, recording the target triple, toolchain, source commit,
+profile, binary hash, and artifact size. Release optimization SHOULD evaluate
+size-oriented optimization, link-time optimization, single codegen unit, and
+symbol stripping against the measured baseline. The selected profile MUST be
+chosen from reproducible binary-size, startup, and representative execution
+measurements; optimization MUST preserve useful crash diagnostics and MUST NOT
+weaken authentication, lease/fencing, recovery, or execution behavior. Any
+panic strategy change requires explicit crash/recovery evidence.
+
+The initial Linux deliverable remains one `x86_64-unknown-linux-gnu` Runner
+build. The same `smartaihub-runner` binary and version MUST be usable in the
+Feature 204 Cloudflare Container and directly on certified x86_64 GNU/Linux
+VMs. Linux VM installation MUST NOT require Docker, a container runtime, or
+administrator privileges when run as a user service. A release MUST state the
+minimum tested glibc/Linux baseline and prove it on the oldest supported VM
+image; it MUST NOT claim compatibility with arbitrary Linux distributions.
+Cloudflare packaging MUST use a compatible pinned glibc runtime. A second
+Linux binary target MUST NOT be introduced solely for container versus VM
+deployment. Additional targets require measured compatibility evidence and an
+explicit cross-platform revision.
+
+The Runner's runtime dependency set MUST remain limited to dependencies needed
+by the Rust Runner core and its explicitly enabled capability profile. Build
+tools, test fixtures, browser/media/CLI agents, and optional session-host
+support MUST NOT be copied into the minimal Runner runtime unless that profile
+requires them. The Linux release bundle may carry the separate SPEC-278
+session-host helper where enabled; the Cloudflare minimal profile omits it
+unless that capability is explicitly selected.
+
 For SmartAIHub-dispatched work, the Runner is the authenticated execution
 gateway between the control plane and an external local tool/runtime:
 
@@ -371,6 +403,17 @@ dependencies and an `available` or `busy` availability state. `allowed` is a
 separate server policy decision; a tool is selectable only when its trust,
 availability and policy states all permit the requested operation.
 
+Process liveness and work readiness are distinct. The Runner MUST report ready
+only after required configuration is valid, its profile-specific supervisor
+has initialized, and the existing authenticated control/assignment path is
+usable. A local Linux service may be live while disconnected and MUST expose
+that as degraded/unavailable rather than ready for new work. In
+`shared_container` mode, use the existing Feature 204 `/health/runner`
+contract; readiness MUST NOT imply a new job queue, job authority, or bypass of
+canonical authorization and lease/fencing checks. Startup and reconnect probes
+MUST be bounded and MUST NOT delay process liveness indefinitely on an
+unavailable control plane.
+
 ### 8.1 Known external tool catalog
 
 The initial local catalog MUST recognize these external agent/tool families
@@ -530,6 +573,12 @@ it MUST NOT silently cross-run an Intel binary on Apple Silicon or vice versa.
 Linux arm64, Windows arm64 and universal macOS packaging are future extensions
 unless the implementation plan proves them without weakening the four initial
 native platform targets.
+
+The Linux `.tar.gz` MUST contain the same `smartaihub-runner` executable used
+by the Cloudflare Runner image. Linux VM installation and foreground execution
+MUST work without Docker. Compatibility claims are bounded by the minimum
+glibc/Linux baseline certified by release acceptance, not by the archive's
+target triple alone.
 
 ## 12. Web and Product UI Integration
 
@@ -722,6 +771,31 @@ The Runner MUST not import the Worker App's media executor or Tauri state.
 
 Feature 205 is not complete when the binary merely compiles. Acceptance SHALL
 include focused evidence for:
+
+### Linux artifact, readiness, and performance
+
+- The release manifest records the Linux target, minimum tested glibc/Linux
+  baseline, Rust toolchain, source SHA, build profile, per-binary byte size,
+  artifact hash, and compressed bundle size.
+- The `smartaihub-runner` artifact hash is identical between the native Linux
+  release bundle and the binary copied into the Cloudflare Runner image.
+- A clean compatible Linux VM runs the binary directly and through the
+  documented user service without Docker or another container engine.
+- Performance baselines, sample sizes, image/binary size and startup/first-job
+  measurements, and numeric limit approval follow the single shared protocol
+  in [Feature 204 §8.1.2](../204-cloudflare-container-runtime-control-plane/spec.md#812-runner-image-and-startup-performance-acceptance).
+  The Feature 205 evidence MUST identify the exact Linux binary hash and build
+  profile used by that report; this Spec does not define a second benchmark or
+  separate performance thresholds.
+- Cloudflare acceptance covers first pull, cold/warm start, sleep/wake,
+  crash/restart, and instance replacement where the platform exposes them.
+  Linux VM acceptance covers direct startup, clean restart, crash recovery,
+  and service restart; sleep/wake and instance replacement are tested only
+  when supported by the actual VM host. Unsupported lifecycle cases are
+  recorded `NOT_APPLICABLE` with the host limitation.
+- Every supported restart/replacement case verifies truthful readiness,
+  authenticated reconnection, no orphaned child process where supported, and
+  canonical Job/lease/fencing recovery without duplicate authority.
 
 ### Contract and security
 

@@ -732,10 +732,10 @@
       "spec_id": "117"
     },
     {
-      "authority": "UNRESOLVED",
+      "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "priority": "R3_RELATIONSHIP_CLAIM",
       "record_key": "canonical:specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
@@ -4917,6 +4917,15 @@
       "rationale": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
       "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
       "spec_id": "161"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
+      "priority": "P1",
+      "rationale": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
+      "record_key": "canonical:specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
+      "spec_id": "229"
     },
     {
       "confidence": "HIGH",
