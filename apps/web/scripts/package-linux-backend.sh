@@ -11,7 +11,9 @@ if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40,64}$ ]]; then
   exit 2
 fi
 
-DIRTY="$(git status --porcelain=v1 --untracked-files=all -- . ':(exclude)apps/web/dist' ':(exclude)apps/web/dist/**')"
+DIRTY="$(git status --porcelain=v1 --untracked-files=all -- . \
+  ':(exclude)apps/web/dist' ':(exclude)apps/web/dist/**' \
+  ':(exclude)apps/cloudflare/.staging-artifact' ':(exclude)apps/cloudflare/.staging-artifact/**')"
 if [[ -n "$DIRTY" ]]; then
   echo "Backend packaging requires a clean pinned source checkout" >&2
   exit 2
