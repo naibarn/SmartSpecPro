@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 72,
+  "generation": 73,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -128,7 +128,8 @@
       "9a75751e9aee5e538605125fcc7ccfa089122db7",
       "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
       "41faa3a5f",
-      "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1"
+      "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1",
+      "5085625d411ccc8a78b1d5b5b18a6bd81a3a4ce1"
     ],
     "mapping": [],
     "source_paths": [
@@ -162,9 +163,10 @@
     "canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
     "integrated": true,
     "integrated_at": "2026-10-17T22:34:33Z",
-    "intended_pr": "Create substantive PR containing implementation, exact-SHA local baseline evidence, current 560-candidate source validation, and SPEC 3.1 contract; required checks must pass before merge.",
+    "intended_pr": "https://github.com/naibarn/SmartSpecPro/pull/1089; merge only after required checks and current-head verification pass.",
+    "pending_pr": 1089,
     "pending_source_branch": "codex/spec229-executable-eval",
-    "pending_source_sha": "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1",
+    "pending_source_sha": "5085625d411ccc8a78b1d5b5b18a6bd81a3a4ce1",
     "pending_workunit": "P229.8 executable local baseline, candidate source revalidation, and versioned non-production source-use policy"
   },
   "lifecycle": {
@@ -379,7 +381,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T00:28:02.195591Z",
+  "updated_at": "2026-10-18T00:28:54.341129Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
