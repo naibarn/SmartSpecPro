@@ -137,3 +137,30 @@ and records that fallback explicitly; TLS verification remains enabled.
 
 The host must enable user lingering (`loginctl enable-linger dev`) for the
 development user services to remain available after SSH logout and after boot.
+
+## Mirror tenant website configuration into development
+
+```bash
+pnpm run dev:tenant:sync             # read-only inventory
+pnpm run dev:tenant:sync -- --apply  # copy current production tenant config
+pnpm run dev:web:restart
+pnpm run dev:web:verify
+```
+
+The sync reads the production connection from `apps/web/.env` with a read-only
+transaction and writes only to the isolated development database configured in
+`~/.config/smartspec-dev/web.env`. It copies branding, theme, tenant settings,
+active-system feature flags, plan limits, public pages, navigation and per-path
+SEO. Tenant ID, slug, dev domain, owners, users, billing and credentials remain
+separate. Retired-system feature flags remain disabled. It does not copy global
+provider credentials or execute jobs/migrations.
+
+Public tenant branding images are read from their exact source storage keys and
+saved as content-addressed local files under `apps/web/public/dev-tenant-assets/`
+(ignored by Git). Storage credentials are used only in the sync process and are
+never copied into dev. Internal website URLs point to the dev hostname.
+
+The target update is transactional, fenced against concurrent syncs, and verified
+field by field before commit. Existing dev data is backed up privately before
+updates; unrelated dev content is retained. A receipt and backup path are recorded
+under `~/.local/share/smartspec-dev/evidence/tenant-config-sync.json`.

@@ -326,3 +326,6 @@ apps/web/client/public/releases/*.zip
 # Runtime/debug and downloaded audit artifacts belong in external project storage.
 apps/web/finance-ocr-debug.jsonl
 .tmp-audit-download/
+
+# Local public branding snapshots for the isolated development tenant
+/apps/web/public/dev-tenant-assets/

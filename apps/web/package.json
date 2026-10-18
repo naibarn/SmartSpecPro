@@ -116,7 +116,8 @@
     "test:research-notes-package-context": "bash scripts/validate-research-notes-package-context.sh",
     "dev:web:restart": "bash ../../scripts/restart-dev-web.sh ../..",
     "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service",
-    "dev:web:verify": "node scripts/verify-dev-browser.mjs"
+    "dev:web:verify": "node scripts/verify-dev-browser.mjs",
+    "dev:tenant:sync": "node --import tsx scripts/sync-dev-tenant-config.mjs"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.6.3",
