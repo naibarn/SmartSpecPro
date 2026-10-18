@@ -878,9 +878,9 @@
       "class": "AUTHORITY",
       "classification": "TRUE_EXTERNAL",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Provide or discover through the authorized control plane an owner-approved isolated Runner registration and protected dispatch grant with fresh identity/capability/source/workspace/allowed-operations/lease/fencing/expiry binding. Then run Live Agents SDK + Codex subscription acceptance, crash/restart/quota resume, durable receipt settlement and independent final verification. Keep protected dispatch fail-closed until that binding is verified.",
-      "owner": "SPEC-224/workspace-authority maintainer",
-      "root_cause": "The disposable PostgreSQL prerequisite is now provisioned and migrated, and the existing registered Runner loopback E2E passes. The isolated runtime still lacks an owner-authorized protected dispatch grant bound to an active trusted Runner session and current DevelopmentRun source/workspace. A crash-mode attempt stopped at canonical admission with “protected dispatch is fail-closed until canonical admission commits a durable execution-start”; no authority was created or widened."
+      "next_action": "Platform/Security Owner must record the exact non-production REMOTE_TEST_TRUSTED decision and provision the approved issuer principal; signing KMS/key ID/fingerprint; source storage account/bucket/prefix with distinct writer and read-only verifier; TTL/clock-skew and revocation; tenant/project/profile scope; retention and incident owner; durable approval reference. Then authenticated Runtime access must read the current Runner/session/capability snapshot, canonical Runner Workspace ↔ Workspace Authority crosswalk, and existing Jobs/Attempts/Lease/Fencing/Idempotency. Tenant Owner must create/prep one SPEC-224 DevelopmentRun and issue/bind an exact recovery grant through existing authority APIs. Revalidate source trust/admission/lease before one dispatch; never issue a grant or dispatch without those live authorities.",
+      "owner": "Platform/Security Owner and SPEC-224 Tenant Owner",
+      "root_cause": "Code and protected checks are integrated, and existing source confirms preparation and protected dispatch are separately gated. Live backend/Runner authority was not available in this session, so user-provided Runner/Workspace IDs are not a fresh crosswalk or admission snapshot. Existing source-trust handoff still has no approved remote test trust issuer, purpose-specific signing key, or verified non-production immutable source bucket/read-only verifier. No Profile Certification, authenticated Tenant Owner scope, or Recovery Grant has been confirmed."
     },
     {
       "class": "WORKSPACE_LIFECYCLE",
@@ -892,14 +892,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "1fa15ebd72a0801c889f340b0c5fecfccc371511",
+    "expected_canonical_sha": "32120b2d34b48cd5bc622e11c29cd3c066a3a231",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Monitor required checks and promote PR #1108 with the protected integration executor only after it is current and green. After merge, resume live acceptance when Platform/Security source-trust approval and authenticated Runtime/Tenant Owner authority are available; recheck Jobs/Attempts/lease/fencing/idempotency before one dispatch.",
-    "next_ready_workunit": "PR_1108_CHECKS_PENDING: SPEC-224 Windows Runner capability availability reconciliation; head 29b172aa7d61f2fa9bb63ff31465da6487233f27; candidate source e2e535af7aa274e937e0f4adf04fdbf9ff262456. Await protected checks and merge. Live acceptance remains open.",
+    "next_action": "Platform/Security Owner: approve and provision the exact non-production source-trust identities/signer/storage/revocation/retention scope in the authority blocker. Runtime/Tenant Owner: use existing APIs to read fresh Runner, workspace crosswalk, Jobs/Attempts, lease/fence/idempotency; prepare one DevelopmentRun and grant under existing owner scope. Then revalidate and execute one authorized WorkUnit only if every gate passes.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: PR #1108 capability availability reconciliation is integrated at 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Live acceptance awaits Platform/Security source-trust provisioning and authenticated Runtime/Tenant Owner authority; do not repeat prior Windows workspace/Runner setup.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
-    "resume_point": "PR #972 code remediation is integrated at 1fa15ebd72a0801c889f340b0c5fecfccc371511; its handoff receipt is protected PR #973. Post-integration focused verification then passed on exact canonical origin/main SHA 21ab41c5f9421306a51458591741f60645af8263: disposable PostgreSQL continuation/process-boundary recovery 5/5, guarded Registered Runner loopback E2E 1/1, and deterministic Fast Lane quota/multi-day injected-clock E2E 4/4. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/post-integration-runner-recovery-20261016.md. Mock/injected-clock results are not live provider acceptance. No protected Runner grant/token/profile was available; Live Codex dispatch, independent final verification and live settlement remain open. SPEC-224 remains PARTIAL.",
+    "resume_point": "PR #1108 merged through the protected executor at canonical origin/main SHA 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Capability normalization remains availability-only; focused candidate tests passed 24/24 and PR required checks passed except build-preview, which policy skipped. Live acceptance remains blocked on external source-trust and authenticated owner/runtime authority; no Certification, Grant or dispatch was created. Resume with fresh authenticated authority reads; Runner Workspace ID supplied earlier ws-smartspecpro-12883242a753 and Workspace Authority ID workspace:3e9a549f-34f3-4147-9edd-dfd4f5ef338a remain unverified as a current crosswalk.",
     "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 97,
+  "generation": 98,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1165,7 +1165,8 @@
       "1d080e1e0a44470cbf0ae5da6a615f432c35fce4",
       "265b7f79ed26e7df9931bf80f6b0e0099b10ae12",
       "4a5a2317004d79f4a5c3cce15fc616dc1564fb25",
-      "e2e535af7aa274e937e0f4adf04fdbf9ff262456"
+      "e2e535af7aa274e937e0f4adf04fdbf9ff262456",
+      "32120b2d34b48cd5bc622e11c29cd3c066a3a231"
     ],
     "mapping": [
       {
@@ -1349,11 +1350,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1fa15ebd72a0801c889f340b0c5fecfccc371511",
+    "canonical_sha": "32120b2d34b48cd5bc622e11c29cd3c066a3a231",
     "integrated": true,
-    "integrated_at": "2026-10-15T17:01:22Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/972",
-    "source_sha": "9886be1d4f2656e03f256c203fb1bcefd22d6eab"
+    "integrated_at": "2026-10-18T07:43:58Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1108",
+    "source_sha": "b8934a794d2cf50c67e2c433ade6f73cf2487288"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2693,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T07:39:35.179034Z",
+  "updated_at": "2026-10-18T07:44:31.829353Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2898,6 +2899,15 @@
         "scope": "Exact candidate source SHA; focused profile/wire-contract Vitest passed 2 files/24 tests. Independent read-only review confirmed availability normalization leaves owner approval/goal grant and fenced Recovery Grant authorization checks intact. No live Runner admission or dispatch evidenced.",
         "source_sha": "e2e535af7aa274e937e0f4adf04fdbf9ff262456",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "32120b2d34b48cd5bc622e11c29cd3c066a3a231",
+        "kind": "SPEC224_WINDOWS_CAPABILITY_AVAILABILITY_PROTECTED_INTEGRATION",
+        "path": "https://github.com/naibarn/SmartSpecPro/pull/1108",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1108",
+        "scope": "PR #1108 merged through the protected executor. progressive_integration_gate, local-contract and Mocked SPEC-308 browser simulation passed; build-preview was skipped by policy. Focused tests on code commit e2e535af7aa274e937e0f4adf04fdbf9ff262456 passed 2 files/24 tests. This establishes Runner capability availability normalization only; it does not establish Windows live admission, Profile Certification, Recovery Grant, source trust, or dispatch.",
+        "source_sha": "b8934a794d2cf50c67e2c433ade6f73cf2487288",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
