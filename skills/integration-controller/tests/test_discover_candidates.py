@@ -36,6 +36,7 @@ class DiscoverCandidatesTests(unittest.TestCase):
             support.mkdir(parents=True)
             shutil.copy2(SOURCE_ROOT / "scripts/development-lifecycle/resolve-policy.sh", support)
             shutil.copy2(SOURCE_ROOT / "scripts/development-lifecycle/canonical_source.py", support)
+            shutil.copy2(SOURCE_ROOT / "scripts/development-lifecycle/portable_file_lock.py", support)
             script = root / "skills/integration-controller/scripts/discover-candidates.sh"
             script.parent.mkdir(parents=True)
             shutil.copy2(DISCOVERY_SCRIPT, script)

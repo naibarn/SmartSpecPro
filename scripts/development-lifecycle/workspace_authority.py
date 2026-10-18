@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import contextvars
+import ctypes
 import errno
 import hashlib
 import importlib.util
@@ -27,7 +28,7 @@ import tomllib
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator
+from typing import Any, Iterator, Sequence
 from urllib.parse import urlsplit
 
 
@@ -149,6 +150,32 @@ def _canonical_remote_url(repo: Path, remote: str) -> str | None:
 
 
 def _process_start(pid: int) -> str | None:
+    if os.name == "nt":
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+        class FILETIME(ctypes.Structure):
+            _fields_ = [("dwLowDateTime", ctypes.c_uint32), ("dwHighDateTime", ctypes.c_uint32)]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+        open_process.restype = ctypes.c_void_p
+        get_times = kernel32.GetProcessTimes
+        get_times.argtypes = [ctypes.c_void_p, ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME)]
+        get_times.restype = ctypes.c_int
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [ctypes.c_void_p]
+        close_handle.restype = ctypes.c_int
+        handle = open_process(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid)
+        if not handle:
+            return None
+        try:
+            creation, exit_time, kernel_time, user_time = FILETIME(), FILETIME(), FILETIME(), FILETIME()
+            if not get_times(handle, ctypes.byref(creation), ctypes.byref(exit_time), ctypes.byref(kernel_time), ctypes.byref(user_time)):
+                return None
+            return f"{creation.dwHighDateTime:08x}{creation.dwLowDateTime:08x}"
+        finally:
+            close_handle(handle)
     try:
         raw = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
         fields = raw[raw.rfind(")") + 2 :].split()
@@ -158,6 +185,17 @@ def _process_start(pid: int) -> str | None:
 
 
 def _pid_alive(pid: int, expected_start: str | None) -> bool:
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        actual_start = _process_start(pid)
+        if actual_start is not None:
+            return expected_start is None or actual_start == expected_start
+        # An inaccessible process is not safe to reclaim; invalid PID is stale.
+        error = ctypes.get_last_error()
+        if error in {5, 32}:  # access denied / sharing violation: preserve ownership
+            return True
+        return False
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -438,6 +476,9 @@ def _upsert_workspace(
                 (policy["project_id"], policy["repository_id"], str(workspace)),
             ).fetchone()[0]
             owner_start = _process_start(owner_pid) if owner_pid else None
+            if os.name == "nt" and owner_pid is not None:
+                if owner_pid <= 0 or owner_start is None or not _pid_alive(owner_pid, owner_start):
+                    raise WorkspaceAuthorityError("OWNER_PROCESS_IDENTITY_UNAVAILABLE")
             now = _now()
             expires = time.time() + owner_lease_seconds if owner_lease_seconds else None
             previous_owner = old or {}
@@ -1062,7 +1103,8 @@ def claim_registered_workspace(
         raise WorkspaceAuthorityError("DEVELOPER_CLAIM_IDENTITY_REQUIRED")
     if not 30 <= owner_lease_seconds <= 3600:
         raise WorkspaceAuthorityError("DEVELOPER_CLAIM_LEASE_OUT_OF_RANGE")
-    if not _pid_alive(owner_pid, _process_start(owner_pid)):
+    process_start = _process_start(owner_pid)
+    if process_start is None or not _pid_alive(owner_pid, process_start):
         raise WorkspaceAuthorityError("DEVELOPER_CLAIM_PROCESS_NOT_ACTIVE")
 
     remote = _canonical_remote_url(repo, policy["remote"]) or str(policy["remote"])
@@ -1100,7 +1142,6 @@ def claim_registered_workspace(
         raise WorkspaceAuthorityError("DEVELOPER_CLAIM_REQUIRES_REPOSITORY_WRITE")
 
     now = time.time()
-    process_start = _process_start(owner_pid)
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
@@ -1161,6 +1202,7 @@ def create_registered_worktree(
     session_id: str | None = None,
     owner_pid: int | None = None,
     owner_lease_seconds: int = 300,
+    sparse_checkout_paths: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Create and register a task/session worktree with shared admission and recovery."""
     repo = _repo_root(repo)
@@ -1168,15 +1210,31 @@ def create_registered_worktree(
         raise WorkspaceAuthorityError("WORKTREE_ROLE_INVALID")
     if not destination.is_absolute():
         raise WorkspaceAuthorityError("WORKTREE_DESTINATION_MUST_BE_ABSOLUTE")
+    if sparse_checkout_paths is not None:
+        if not sparse_checkout_paths:
+            raise WorkspaceAuthorityError("SPARSE_CHECKOUT_PATHS_REQUIRED")
+        normalized_paths: list[str] = []
+        for value in sparse_checkout_paths:
+            path = PurePosixPath(str(value))
+            if path.is_absolute() or ".." in path.parts or "\\" in str(value) or str(path) in {"", "."}:
+                raise WorkspaceAuthorityError("SPARSE_CHECKOUT_PATH_INVALID")
+            normalized_paths.append(str(path))
+        if len(set(normalized_paths)) != len(normalized_paths):
+            raise WorkspaceAuthorityError("SPARSE_CHECKOUT_PATH_DUPLICATE")
+        sparse_checkout_paths = normalized_paths
     destination = destination.resolve()
     if destination == repo or repo in destination.parents:
         raise WorkspaceAuthorityError("WORKTREE_DESTINATION_INSIDE_REPOSITORY")
     source_policy = load_source_policy(repo, policy_path)
     policy = load_workspace_policy(repo, policy_path)
     metadata_evidence = _filesystem_evidence(_common_dir(repo))
-    if metadata_evidence.get("error") or not metadata_evidence.get("writable") or metadata_evidence.get("available_bytes", 0) < 16 * 1024 * 1024 or metadata_evidence.get("available_inodes", 0) < 128:
+    if metadata_evidence.get("error") or not metadata_evidence.get("writable") or metadata_evidence.get("available_bytes", 0) < 16 * 1024 * 1024 or (metadata_evidence.get("available_inodes") is not None and metadata_evidence["available_inodes"] < 128):
         raise WorkspaceAuthorityError(f"RESOURCE_BLOCKED: Git metadata filesystem is not admissible; evidence={json.dumps(metadata_evidence, sort_keys=True)}")
     revision = str(_git(repo, "rev-parse", f"{base_sha}^{{commit}}")).strip()
+    if sparse_checkout_paths is not None:
+        for sparse_path in sparse_checkout_paths:
+            if not str(_git(repo, "ls-tree", "--name-only", revision, "--", sparse_path)).strip():
+                raise WorkspaceAuthorityError(f"SPARSE_CHECKOUT_PATH_NOT_IN_SOURCE: {sparse_path}")
     _git(repo, "fetch", "--no-tags", policy["remote"], policy["canonical_ref"])
     canonical_tip = str(_git(repo, "rev-parse", "FETCH_HEAD^{commit}")).strip()
     if not _is_ancestor(repo, revision, canonical_tip):
@@ -1195,7 +1253,7 @@ def create_registered_worktree(
         if evidence.get("error") or not evidence.get("writable"):
             attempts.append({"path": str(candidate), "resource_code": "EACCES", "filesystem": evidence})
             continue
-        if evidence.get("available_bytes", 0) < 1024 * 1024 * 1024 or evidence.get("available_inodes", 0) < 10_000:
+        if evidence.get("available_bytes", 0) < 1024 * 1024 * 1024 or (evidence.get("available_inodes") is not None and evidence["available_inodes"] < 10_000):
             attempts.append({"path": str(candidate), "resource_code": "ENOSPC" if evidence.get("available_bytes", 0) < 1024 * 1024 * 1024 else "INODE_EXHAUSTION", "filesystem": evidence})
             continue
         if candidate.exists():
@@ -1212,7 +1270,13 @@ def create_registered_worktree(
         stat = candidate.stat()
         reservation = (stat.st_dev, stat.st_ino)
         try:
-            _git(repo, "worktree", "add", "--detach", str(candidate), revision)
+            if sparse_checkout_paths is None:
+                _git(repo, "worktree", "add", "--detach", str(candidate), revision)
+            else:
+                _git(repo, "worktree", "add", "--no-checkout", "--detach", str(candidate), revision)
+                _git(candidate, "sparse-checkout", "init", "--cone")
+                _git(candidate, "sparse-checkout", "set", *sparse_checkout_paths)
+                _git(candidate, "checkout", "--detach", revision)
         except WorkspaceAuthorityError as exc:
             message = str(exc)
             code = _resource_code(message)
@@ -1225,6 +1289,29 @@ def create_registered_worktree(
         break
     if selected is None:
         raise WorkspaceAuthorityError(f"RESOURCE_BLOCKED: no authorized worktree destination succeeded; attempts={json.dumps(attempts, sort_keys=True)}")
+
+    try:
+        attested_head = str(_git(selected, "rev-parse", "HEAD")).strip()
+        attested_dirty = str(_git(selected, "status", "--porcelain=v1", "--untracked-files=all")).strip()
+        attested_remote = _canonical_remote_url(selected, policy["remote"])
+        expected_remote = _canonical_remote_url(repo, policy["remote"])
+        sparse_paths_materialized = True
+        if sparse_checkout_paths is not None:
+            sparse_paths_materialized = all((selected / Path(*PurePosixPath(path).parts)).exists() for path in sparse_checkout_paths)
+    except Exception as exc:
+        rollback = _rollback_attempt(repo, selected, reservation)
+        raise WorkspaceAuthorityError(
+            f"WORKTREE_MATERIALIZATION_ATTESTATION_FAILED: workspace={selected}; "
+            f"attestation_error={exc}; rollback={json.dumps(rollback, sort_keys=True)}"
+        ) from exc
+    if attested_head != revision or attested_dirty or attested_remote != expected_remote or not sparse_paths_materialized:
+        rollback = _rollback_attempt(repo, selected, reservation)
+        raise WorkspaceAuthorityError(
+            f"WORKTREE_MATERIALIZATION_ATTESTATION_FAILED: workspace={selected}; attestation did not pass; "
+            f"expected_sha={revision}; observed_sha={attested_head}; clean={not bool(attested_dirty)}; "
+            f"remote_matches={attested_remote == expected_remote}; sparse_paths_materialized={sparse_paths_materialized}; "
+            f"rollback={json.dumps(rollback, sort_keys=True)}"
+        )
 
     try:
         registered = register_workspace(
@@ -1245,6 +1332,25 @@ def create_registered_worktree(
         "owner_lease_expires_at": registered.get("owner_lease_expires_at"),
         "base_sha": revision,
         "canonical_tip": canonical_tip,
+        "source_sha": attested_head,
+        "repository_id": policy["repository_id"],
+        "canonical_remote": attested_remote,
+        "clean_checkout": not bool(attested_dirty),
+        "sparse_paths_materialized": sparse_paths_materialized,
+        "sparse_checkout_paths": list(sparse_checkout_paths) if sparse_checkout_paths is not None else None,
+        "attestation": {
+            "schema": "registered-worktree-attestation.v1",
+            "sourceSha": attested_head,
+            "repositoryId": policy["repository_id"],
+            "canonicalRemote": attested_remote,
+            "workspaceId": registered["workspace_id"],
+            "workspaceLocation": str(selected),
+            "gitCommonDir": str(_common_dir(selected)),
+            "gitDir": str(_git_dir(selected)),
+            "filesystem": _filesystem_evidence(selected),
+            "clean": not bool(attested_dirty),
+            "sparsePathsMaterialized": sparse_paths_materialized,
+        },
         "role": role,
         "task_id": task_id,
         "workspace_filesystem": _filesystem_evidence(selected),
@@ -1348,6 +1454,127 @@ def _copy_file_with_deadline(source: Path, destination: Path) -> dict[str, Any]:
     return {"path": str(destination), "bytes": total_bytes, "sha256": digest.hexdigest()}
 
 
+def _windows_private_directory_acl(path: Path) -> bool:
+    """Require Windows write access to be limited to this user and OS principals."""
+    if os.name != "nt":
+        return False
+    from ctypes import wintypes
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel32.LocalFree.restype = ctypes.c_void_p
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+
+    def sid_text(sid: int) -> str:
+        converted = wintypes.LPWSTR()
+        convert = advapi32.ConvertSidToStringSidW
+        convert.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.LPWSTR)]
+        convert.restype = wintypes.BOOL
+        if not convert(sid, ctypes.byref(converted)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            return converted.value
+        finally:
+            kernel32.LocalFree(ctypes.cast(converted, ctypes.c_void_p))
+
+    class SID_AND_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [("Sid", ctypes.c_void_p), ("Attributes", wintypes.DWORD)]
+
+    class TOKEN_USER(ctypes.Structure):
+        _fields_ = [("User", SID_AND_ATTRIBUTES)]
+
+    class TOKEN_APPCONTAINER_INFORMATION(ctypes.Structure):
+        _fields_ = [("TokenAppContainer", ctypes.c_void_p)]
+
+    token = wintypes.HANDLE()
+    open_token = advapi32.OpenProcessToken
+    open_token.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    open_token.restype = wintypes.BOOL
+    if not open_token(kernel32.GetCurrentProcess(), 0x0008, ctypes.byref(token)):
+        return False
+    allowed_sids = {"S-1-5-18", "S-1-5-32-544"}  # System and built-in Administrators
+    try:
+        get_info = advapi32.GetTokenInformation
+        get_info.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+        get_info.restype = wintypes.BOOL
+        needed = wintypes.DWORD()
+        get_info(token, 1, None, 0, ctypes.byref(needed))
+        user_buffer = ctypes.create_string_buffer(needed.value)
+        if not get_info(token, 1, user_buffer, needed, ctypes.byref(needed)):
+            return False
+        user_sid = ctypes.cast(user_buffer, ctypes.POINTER(TOKEN_USER)).contents.User.Sid
+        allowed_sids.add(sid_text(user_sid))
+
+        needed = wintypes.DWORD()
+        get_info(token, 31, None, 0, ctypes.byref(needed))  # TokenAppContainerSid
+        if needed.value:
+            app_buffer = ctypes.create_string_buffer(needed.value)
+            if not get_info(token, 31, app_buffer, needed, ctypes.byref(needed)):
+                return False
+            app_sid = ctypes.cast(app_buffer, ctypes.POINTER(TOKEN_APPCONTAINER_INFORMATION)).contents.TokenAppContainer
+            if app_sid:
+                allowed_sids.add(sid_text(app_sid))
+    finally:
+        kernel32.CloseHandle(token)
+
+    dacl = ctypes.c_void_p()
+    owner_sid = ctypes.c_void_p()
+    security_descriptor = ctypes.c_void_p()
+    get_security = advapi32.GetNamedSecurityInfoW
+    get_security.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD,
+                             ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),
+                             ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    get_security.restype = wintypes.DWORD
+    result = get_security(str(path), 1, 0x00000001 | 0x00000004, ctypes.byref(owner_sid), None, ctypes.byref(dacl), None, ctypes.byref(security_descriptor))
+    if result != 0 or not dacl or not owner_sid:
+        if security_descriptor:
+            kernel32.LocalFree(security_descriptor)
+        return False
+    try:
+        # Owner Rights (S-1-3-4) grants rights to whoever owns this object, so
+        # accept it only after proving that the actual owner is trusted.
+        if sid_text(owner_sid) not in allowed_sids:
+            return False
+        allowed_sids.add("S-1-3-4")
+        class ACL_HEADER(ctypes.Structure):
+            _fields_ = [("AclRevision", ctypes.c_ubyte), ("Sbz1", ctypes.c_ubyte),
+                        ("AclSize", wintypes.WORD), ("AceCount", wintypes.WORD), ("Sbz2", wintypes.WORD)]
+
+        class ACE_HEADER(ctypes.Structure):
+            _fields_ = [("AceType", ctypes.c_ubyte), ("AceFlags", ctypes.c_ubyte), ("AceSize", wintypes.WORD)]
+
+        class ACCESS_ALLOWED_ACE(ctypes.Structure):
+            _fields_ = [("Header", ACE_HEADER), ("Mask", wintypes.DWORD), ("SidStart", wintypes.DWORD)]
+
+        acl = ctypes.cast(dacl, ctypes.POINTER(ACL_HEADER)).contents
+        get_ace = advapi32.GetAce
+        get_ace.argtypes = [ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)]
+        get_ace.restype = wintypes.BOOL
+        write_mask = 0x00000002 | 0x00000004 | 0x00000010 | 0x00000100 | 0x00010000 | 0x00040000 | 0x00080000 | 0x00000040 | 0x40000000 | 0x10000000
+        for index in range(acl.AceCount):
+            ace_ptr = ctypes.c_void_p()
+            if not get_ace(dacl, index, ctypes.byref(ace_ptr)):
+                return False
+            header = ctypes.cast(ace_ptr, ctypes.POINTER(ACE_HEADER)).contents
+            if header.AceType in {5, 11}:  # object allow ACEs need GUID-aware parsing; fail closed.
+                return False
+            if header.AceType not in {0, 9}:  # ordinary or callback allow ACE
+                continue
+            ace = ctypes.cast(ace_ptr, ctypes.POINTER(ACCESS_ALLOWED_ACE)).contents
+            if ace.Mask & write_mask:
+                sid = ctypes.c_void_p(ace_ptr.value + ACCESS_ALLOWED_ACE.SidStart.offset)
+                if sid_text(sid) not in allowed_sids:
+                    return False
+        return True
+    except (OSError, ValueError, ctypes.ArgumentError):
+        return False
+    finally:
+        kernel32.LocalFree(security_descriptor)
+
+
 def _safe_recovery_root(repo: Path, policy: dict[str, Any]) -> Path:
     configured = policy.get("recovery_root")
     root = Path(configured).resolve() if configured else _common_dir(repo) / "workspace-recovery"
@@ -1356,7 +1583,10 @@ def _safe_recovery_root(repo: Path, policy: dict[str, Any]) -> Path:
         raise WorkspaceAuthorityError("RECOVERY_ROOT_UNSAFE")
     existed = root.exists()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if not existed:
+    if os.name == "nt":
+        if not _windows_private_directory_acl(root):
+            raise WorkspaceAuthorityError("RECOVERY_ROOT_PERMISSIONS_UNSAFE")
+    elif not existed:
         os.chmod(root, 0o700)
     elif root.stat().st_mode & 0o077:
         raise WorkspaceAuthorityError("RECOVERY_ROOT_PERMISSIONS_UNSAFE")
@@ -2104,6 +2334,7 @@ def _cli() -> int:
     parser.add_argument("--session-id")
     parser.add_argument("--owner-pid", type=int)
     parser.add_argument("--owner-lease-seconds", type=int, default=300)
+    parser.add_argument("--sparse-path", action="append", dest="sparse_paths", help="include a repository-relative directory in the registered sparse worktree; repeat as needed")
     parser.add_argument("--integrated-sha")
     parser.add_argument("--workspace-id")
     parser.add_argument("--apply", action="store_true", help="apply a retirement; default is dry-run")
@@ -2127,6 +2358,7 @@ def _cli() -> int:
                 repo, args.policy, args.workspace, base_sha=args.base_sha,
                 role=args.role, task_id=args.task_id, session_id=args.session_id,
                 owner_pid=args.owner_pid, owner_lease_seconds=args.owner_lease_seconds,
+                sparse_checkout_paths=args.sparse_paths,
             )
         elif args.action == "converge":
             result = converge_canonical_workspace(repo, args.policy, integrated_sha=args.integrated_sha, task_id=args.task_id)

@@ -35,7 +35,7 @@ class ProgressiveExecutionTests(unittest.TestCase):
         shutil.copy2(ROOT / "skills/development-lifecycle/lifecycle_policy.py", policy)
         lifecycle_scripts = self.repo / "scripts/development-lifecycle"
         lifecycle_scripts.mkdir(parents=True)
-        for name in ("canonical_source.py", "workspace_authority.py", "convergence_contract.py"):
+        for name in ("canonical_source.py", "portable_file_lock.py", "workspace_authority.py", "convergence_contract.py"):
             shutil.copy2(ROOT / "scripts/development-lifecycle" / name, lifecycle_scripts / name)
         (self.repo / ".development-repository.toml").write_text(
             '[repository]\n'

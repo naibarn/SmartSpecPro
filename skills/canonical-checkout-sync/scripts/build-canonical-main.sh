@@ -34,6 +34,7 @@ CANONICAL_SHA="$(git -C "$REPO" rev-parse 'FETCH_HEAD^{commit}')"
 TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/canonical-main-build.XXXXXX")"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
 git -C "$REPO" show "$CANONICAL_SHA:scripts/development-lifecycle/canonical_source.py" > "$TEMP_DIR/canonical_source.py"
+git -C "$REPO" show "$CANONICAL_SHA:scripts/development-lifecycle/portable_file_lock.py" > "$TEMP_DIR/portable_file_lock.py"
 git -C "$REPO" show "$CANONICAL_SHA:.development-repository.toml" > "$TEMP_DIR/repository.toml"
 
 echo "[central-build] builder_revision=$CANONICAL_SHA canonical_ref=$CANONICAL_REF" >&2
