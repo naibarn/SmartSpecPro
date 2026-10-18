@@ -12,6 +12,7 @@ import {
   groupMembers,
 } from "../drizzle/schema";
 import { searchLibraryItems, type LibraryActor } from "../server/services/libraryService";
+import { mapObservedLibraryEvidence } from "../server/services/libraryRetrievalObservedEvidence";
 import {
   countGoldDataset,
   evaluateGoldDataset,
@@ -195,14 +196,16 @@ async function main() {
       const source = sourceByPath.get(path);
       if (!source) return [];
       return [{
-        evidenceId: path,
-        tenantId: EVAL_TENANT,
-        revision: `sha256:${source.digest}`,
-        digest: source.digest,
-        authorityRank: 1,
-        authorized: true,
-        revoked: false,
-        deleted: false,
+        ...mapObservedLibraryEvidence({
+          result: {
+            status: result.status,
+            accessSource: result.access_source,
+            metadata: result.metadata,
+          },
+          evidenceId: path,
+          callerTenantId: String(actor.tenantId),
+          expectedTenantId: candidate.benchmarkGold.tenantId,
+        }),
         title: result.title,
         combinedScore: result.combined_score,
         keywordScore: result.keyword_score,
