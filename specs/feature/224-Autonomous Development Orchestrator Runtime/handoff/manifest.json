@@ -896,11 +896,11 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "The development-policy authority slice is integrated at origin/main 038afce8d93ab0d571b8a7e4686d1ea159cd7239. Continue SPEC-224 with the exact Source Trust Owner Approval/resource inventory in owner-approval-request.md. Verify actual issuer, signing and storage authorities read-only before implementing a production runtime adapter. Separately obtain fresh authenticated Windows Runner/profile/crosswalk/lease and Tenant Owner grant bindings before one dispatch.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: exact authenticated Platform/Security source-trust decision/resources and fresh Runtime/Tenant live bindings. Engineering policy authority checkpoint is integrated; no source-trust shortcut is authorized.",
+    "next_action": "Commit c76036087fb4c33d12d47fd1c2bd019e2516a247 for SPEC224_DEV_POLICY_GRANTS_20261018 is based on canonical origin/main df065b5e1db81aa8e8e203855fc703b8e374461c. Create and integrate the protected PR for this source-bound policy Recovery Grant and workspace crosswalk fix. After integration, resume only with authenticated Platform/Security Source Trust resources/approval and fresh Windows Runner/profile/session/crosswalk/lease/Tenant authority evidence.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY after protected integration: Platform/Security Source Trust approval/resources plus fresh Windows Runtime Owner/Tenant evidence. Do not issue cloud trust, bind/dispatch a grant, or claim live acceptance before those records validate.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "SPEC224_DEV_POLICY_TRUST_20261018 safe checkpoint integrated by PR #1129, source head 01f316c23ee513469884fc9855584a74cb28bf82, merge SHA 038afce8d93ab0d571b8a7e4686d1ea159cd7239, verified reachable from origin/main. Required PR checks passed: progressive_integration_gate, local-contract, and Mocked SPEC-308 browser simulation; build-preview was skipped. Local focused evidence: policy evaluator 11/11, authenticated API boundary 2/2, Runtime Admission/Remote Source Trust Verifier/Authorization Binding Vitest 37/37, py_compile, scoped esbuild, diff hygiene; independent static review passed. No full TS typecheck or DB race test. Integrated code provides tenant-owner-defined bounded non-production policy decisions through existing approval authority; no Recovery Grant automation, remote trust adapter/resource, profile certification, or live Windows evidence has been established. No source key/storage provisioned, no production data changed, no grant issued, and no dispatch occurred. Next is the exact existing Platform/Security authority decision plus fresh authenticated Windows/tenant authority evidence.",
-    "waiting_predicate": "PR #1129 becomes eligible for protected merge when required checks pass and required review conditions are satisfied. Live trust work resumes when Platform/Security returns an authenticated exact resource/approval record (issuer workload/owner, signing operation and key identity, storage account/bucket/prefix, separate permissions, scope, TTL, revocation/replay, retention/incident owner, budget bound, audit ref); live dispatch remains separately gated on current authenticated Windows Runner/session/profile/crosswalk/job/attempt/lease/fencing/idempotency and Tenant Owner grant evidence."
+    "resume_point": "Owned source branch codex/spec224-policy-recovery-grants-20261018, commit c76036087fb4c33d12d47fd1c2bd019e2516a247, task SPEC224_DEV_POLICY_GRANTS_20261018, base origin/main df065b5e1db81aa8e8e203855fc703b8e374461c. Implementation adds authenticated exact-scope policy Recovery Grant issue/validation, revoke-safe authority lock order and canonical workspace crosswalk from persisted job manifest through grant binding to protected admission. Focused Python 34/34, Vitest 14/14, py_compile, scoped esbuild, diff hygiene and independent read-only review pass. Intended next operation is protected PR creation/integration; no grant issued and no dispatch. Source Trust resources/approval, profile certification and fresh live Windows bindings remain unverified.",
+    "waiting_predicate": "Proceed to live acceptance only after protected PR integration and authenticated Source Trust owner approval/resource proof is available, and Windows Runtime Owner/Tenant Owner evidence confirms current runner/session/profile/crosswalk/lease/fencing/idempotency. If absent, run only local non-production checks and keep live acceptance blocked."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 107,
+  "generation": 111,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T09:53:49.041492Z",
+  "updated_at": "2026-10-18T10:07:08.551237Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

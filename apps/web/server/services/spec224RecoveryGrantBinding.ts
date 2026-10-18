@@ -52,6 +52,8 @@ function bindingPayload(value: unknown): RecordValue | null {
     typeof raw.runId !== "string" ||
     typeof raw.workerJobId !== "string" ||
     typeof raw.workPackageId !== "string" ||
+    typeof raw.workspaceId !== "string" ||
+    !raw.workspaceId.trim() ||
     typeof raw.attestationId !== "string" ||
     typeof raw.operation !== "string" ||
     typeof raw.path !== "string" ||
@@ -100,6 +102,7 @@ export function createSpec224RecoveryGrantBindingPayload(input: {
     runId: canonical.runId,
     workerJobId: canonical.workerJobId,
     workPackageId: canonical.workPackageId,
+    workspaceId: canonical.workspaceId,
     operation: input.operation,
     path: input.path,
     sourceCommit: canonical.sourceCommit,
@@ -276,6 +279,10 @@ export async function bindSpec224RecoveryGrant(input: {
         "SPEC224_GRANT_BINDING_JOB_STATE_INVALID"
       );
     const run = record(job.progressJson.spec224)!;
+    const manifest = record(record(job.inputJson)?.manifest);
+    const workspaceId = typeof manifest?.workspaceId === "string"
+      ? manifest.workspaceId
+      : "";
     const runRevision = asInt(run.projectionVersion);
     const runFence = asInt(run.fencingVersion);
     const decisionEpoch = asInt(run.decisionEpoch);
@@ -287,6 +294,7 @@ export async function bindSpec224RecoveryGrant(input: {
       run.workerJobId !== job.id ||
       run.actorId !== job.requestedByUserId ||
       !run.workPackageId ||
+      !workspaceId.trim() ||
       runRevision === null ||
       runFence === null ||
       decisionEpoch === null ||
@@ -466,6 +474,7 @@ export async function bindSpec224RecoveryGrant(input: {
     const admissionBinding = {
       ...runtimeBinding,
       workPackageId: run.workPackageId,
+      workspaceId,
       attemptId: attempt.id,
       sourceCommit: attestation.sourceCommit,
       sourceTree: attestation.sourceTree,
@@ -484,6 +493,7 @@ export async function bindSpec224RecoveryGrant(input: {
       ownerId: tenant.ownerId,
       runId: input.runId,
       workPackageId: String(run.workPackageId),
+      workspaceId,
       attemptId: attempt.id,
       attempt: job.attempt,
       revision: runRevision,

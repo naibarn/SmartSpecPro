@@ -17,6 +17,7 @@ const persisted = {
   runId: "run-1",
   workerJobId: "job-1",
   workPackageId: "WP-RECOVERY-04",
+  workspaceId: "workspace-authority-1",
   attestationId: "attestation-1",
   operation: "modify_owned_paths",
   path: "python-backend/app/services/approval_db_service.py",

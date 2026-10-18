@@ -26,6 +26,7 @@ const current = {
     tenantId: "tenant-1",
     workerJobId: "job-1",
     actorId: 7,
+    workspaceId: "workspace-authority-1",
     workPackageId: "WP-REQ-01",
     attempt: 2,
     revision: 4,
