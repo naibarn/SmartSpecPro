@@ -8,7 +8,9 @@ import {
   workerJobs,
 } from "../../drizzle/schema";
 import { db, getDb } from "../db";
-import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import {
+  getAppRuntimeConfig,
+} from "./appRuntimeConfig";
 import {
   appendJobEvent,
   createJobControlPlane,
@@ -115,6 +117,9 @@ function runInput(
     workerJobId: loaded.run.workerJobId,
     attemptId: loaded.attemptId,
     workspaceId: loaded.run.workspaceId,
+    ...(typeof loaded.run.metadata?.profileId === "string"
+      ? { profileId: loaded.run.metadata.profileId }
+      : {}),
     provider,
     deadline:
       deadline ??
@@ -191,6 +196,7 @@ async function createApproval(
   loaded: LoadedRun,
   runner: Spec224AuthorizationRunner,
   provider: "codex" | "claude_code",
+  profileId: string,
   deadline: string,
   budgetCapMinorUnits: number,
   currency: string
@@ -222,6 +228,7 @@ async function createApproval(
         payload: {
           runId: loaded.run.runId,
           provider,
+          profileId,
           workspaceId: loaded.run.workspaceId,
           runnerId: runner.runnerId,
           runnerSessionId: runner.activeSessionId,
@@ -245,6 +252,114 @@ async function createApproval(
   if (!mapped?.approvalRef)
     throw new Spec224AuthorizationError("APPROVAL_REFERENCE_MISSING");
   return mapped;
+}
+
+async function createPolicyDecision(
+  ctx: Spec224AuthorizationContext,
+  loaded: LoadedRun,
+  runner: Spec224AuthorizationRunner,
+  profileId: string,
+  deadline: string,
+  budgetCapMinorUnits: number,
+  currency: string
+): Promise<Spec224ApprovalEvidence | null> {
+  const projectId = loaded.run.metadata?.projectId;
+  const persistedProfileId = loaded.run.metadata?.profileId;
+  const tool = runner.snapshot?.toolInventory?.find(
+    item => item.toolId === "codex" || item.adapterId === "codex.v1"
+  );
+  if (
+    typeof projectId !== "string" ||
+    !projectId.trim() ||
+    typeof persistedProfileId !== "string" ||
+    persistedProfileId !== profileId ||
+    !loaded.run.workerJobId ||
+    !loaded.attemptId ||
+    !runner.activeSessionId ||
+    !runner.snapshot?.capabilitySnapshotId ||
+    runner.snapshot.revision === undefined ||
+    runner.snapshot.revision === null ||
+    !tool?.authorizationEvidenceRef
+  )
+    return null;
+
+  const runtime = await getAppRuntimeConfig();
+  const resourceScopes = [
+    { kind: "development_run", id: loaded.run.runId },
+    { kind: "worker_job", id: loaded.run.workerJobId },
+    { kind: "attempt", id: loaded.attemptId },
+    { kind: "workspace", id: loaded.run.workspaceId },
+    { kind: "runner", id: runner.runnerId },
+    { kind: "runner_session", id: runner.activeSessionId },
+    { kind: "capability_snapshot", id: runner.snapshot.capabilitySnapshotId },
+  ];
+  const idempotencyKey = createHash("sha256")
+    .update(
+      [
+        ctx.tenantId,
+        loaded.run.runId,
+        loaded.run.workerJobId,
+        loaded.attemptId,
+        runner.runnerId,
+        runner.activeSessionId,
+        profileId,
+      ].join(":"),
+      "utf8"
+    )
+    .digest("hex");
+  const response = await fetch(
+    `${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224/development-policy-decisions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${requiredToken(ctx)}`,
+      },
+      body: JSON.stringify({
+        tenantId: ctx.tenantId,
+        idempotencyKey,
+        projectId,
+        environment: "development",
+        profileId,
+        operation: "spec224.development.run",
+        runId: loaded.run.runId,
+        provider: "codex",
+        executionId: loaded.run.workerJobId,
+        attemptId: loaded.attemptId,
+        workspaceId: loaded.run.workspaceId,
+        authorizationGrantRef: tool.authorizationEvidenceRef,
+        runnerId: runner.runnerId,
+        runnerSessionId: runner.activeSessionId,
+        capabilitySnapshotId: runner.snapshot.capabilitySnapshotId,
+        capabilitySnapshotRevision: String(runner.snapshot.revision),
+        resourceScopes,
+        budgetMinorUnits: budgetCapMinorUnits,
+        currency: currency.trim().toUpperCase(),
+        expiresAt: deadline,
+      }),
+    }
+  );
+  if (response.status === 403 || response.status === 422) return null;
+  if (!response.ok)
+    throw new Spec224AuthorizationError("POLICY_AUTHORITY_UNAVAILABLE");
+  const data = (await response.json()) as Record<string, unknown>;
+  const approvalRef =
+    typeof data.approvalRequestId === "string" ? data.approvalRequestId : "";
+  if (!approvalRef || data.status !== "approved")
+    throw new Spec224AuthorizationError("POLICY_DECISION_RECORD_INVALID");
+  return {
+    approvalRef,
+    tenantId: typeof data.tenantId === "string" ? data.tenantId : null,
+    executionId: typeof data.executionId === "string" ? data.executionId : null,
+    requesterId: Number.isSafeInteger(Number(data.requesterId))
+      ? Number(data.requesterId)
+      : null,
+    status: "approved",
+    currentApprovals: 0,
+    requiredApprovers: 0,
+    expiresAt: typeof data.expiresAt === "string" ? data.expiresAt : null,
+    payload: asRecord(data.payload) ?? {},
+  };
 }
 
 async function loadRun(
@@ -329,7 +444,8 @@ async function loadRun(
         typeof pending.budgetCapMinorUnits === "number"
           ? pending.budgetCapMinorUnits
           : undefined,
-      currency: typeof pending.currency === "string" ? pending.currency : undefined,
+      currency:
+        typeof pending.currency === "string" ? pending.currency : undefined,
       status: typeof pending.status === "string" ? pending.status : undefined,
     },
   };
@@ -621,12 +737,14 @@ export function createSpec224AuthorizationService() {
       deadline: string;
       budgetCapMinorUnits: number;
       currency: string;
+      profileId: string;
     }): Promise<Spec224ApprovalEvidence> {
       if (
         !Number.isSafeInteger(input.budgetCapMinorUnits) ||
         input.budgetCapMinorUnits <= 0 ||
         !/^[A-Za-z]{3}$/.test(input.currency)
-      ) throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_INVALID");
+      )
+        throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_INVALID");
       const loaded = await loadRun(input.context, input.runId);
       const runner = mapRunner(
         await defaultRunnerGateway.getNode(
@@ -643,20 +761,45 @@ export function createSpec224AuthorizationService() {
       });
       if (check.status !== "APPROVAL_REQUIRED")
         throw new Spec224AuthorizationError(check.reasons[0] ?? check.status);
-      const created = await createApproval(
-        input.context,
-        loaded,
-        runner,
-        input.provider,
-        input.deadline,
-        input.budgetCapMinorUnits,
-        input.currency
-      );
+      const created =
+        input.provider === "codex"
+          ? ((await createPolicyDecision(
+              input.context,
+              loaded,
+              runner,
+              input.profileId,
+              input.deadline,
+              input.budgetCapMinorUnits,
+              input.currency
+            )) ??
+            (await createApproval(
+              input.context,
+              loaded,
+              runner,
+              input.provider,
+              input.profileId,
+              input.deadline,
+              input.budgetCapMinorUnits,
+              input.currency
+            )))
+          : await createApproval(
+              input.context,
+              loaded,
+              runner,
+              input.provider,
+              input.profileId,
+              input.deadline,
+              input.budgetCapMinorUnits,
+              input.currency
+            );
       await persistAuthorizationProjection(
         input.context,
         loaded,
         {
-          status: "APPROVAL_REQUIRED",
+          status:
+            created.status === "approved"
+              ? "BUDGET_REQUIRED"
+              : "APPROVAL_REQUIRED",
           runnerId: input.runnerId,
           approvalRef: created.approvalRef,
           deadline: input.deadline,
@@ -701,8 +844,10 @@ export function createSpec224AuthorizationService() {
         !approval ||
         approval.payload.budgetCapMinorUnits !== input.amountMinorUnits ||
         typeof approval.payload.currency !== "string" ||
-        approval.payload.currency.trim().toUpperCase() !== input.currency.trim().toUpperCase()
-      ) throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
+        approval.payload.currency.trim().toUpperCase() !==
+          input.currency.trim().toUpperCase()
+      )
+        throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
       const hold = await reserveEconomicHold(
         db,
         reserveInput(

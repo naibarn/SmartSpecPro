@@ -30,6 +30,7 @@ export type Spec224AuthorizationRun = {
   workerJobId: string | null;
   attemptId: string | null;
   workspaceId: string;
+  profileId?: string;
   provider: "codex" | "claude_code";
   deadline: string;
   /** Required only when authorization is delegated from an approved Goal grant. */
@@ -311,7 +312,9 @@ export function evaluateSpec224Authorization(
       approval.payload.runId !== run.runId ||
       approval.payload.provider !== run.provider ||
       approval.payload.workspaceId !== run.workspaceId ||
-      approval.payload.authorizationGrantRef !== tool.authorizationEvidenceRef
+      approval.payload.authorizationGrantRef !== tool.authorizationEvidenceRef ||
+      (run.profileId !== undefined &&
+        approval.payload.profileId !== run.profileId)
     ) {
       reasons.push("APPROVAL_BINDING_MISMATCH");
     }

@@ -413,6 +413,17 @@ describe("Spec 224 owner authorization binding", () => {
     expect(result.reasons).toContain("APPROVAL_TENANT_MISMATCH");
   });
 
+  it("binds a policy approval to the persisted effective profile", () => {
+    const input = baseInput();
+    input.run.profileId = "windows-codex-v1";
+    input.approval!.payload.profileId = "other-profile";
+
+    const result = evaluateSpec224Authorization(input);
+
+    expect(result.status).toBe("APPROVAL_REQUIRED");
+    expect(result.reasons).toContain("APPROVAL_BINDING_MISMATCH");
+  });
+
   it("rejects expired or revoked Runner evidence", () => {
     const revoked = {
       ...baseInput().runner!,

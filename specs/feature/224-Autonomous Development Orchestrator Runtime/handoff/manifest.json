@@ -896,10 +896,10 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Platform/Security Owner: return an authenticated APPROVE_NONPRODUCTION_SOURCE_TRUST decision and exact existing issuer, signing operation/key identity, non-production storage/account/bucket/prefix, separate writer/read-only verifier, scope/freshness/revocation/retention/incident policy, and durable approval reference (no secret values). If no suitable resources exist, approve their provisioning through the established platform workflow. Runtime Owner then provides fresh Runner/session/capability/source/workspace-crosswalk and live Job/Attempt/Lease/Fencing/Idempotency evidence. Do not activate remote trust or issue a grant/dispatch before those authorities are independently verified.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authorized Platform/Database Admin must invoke the integrated read-only diagnostic on the backend that produced the run-creation error; no DB target has been verified by this session.",
+    "next_action": "Continue implementation from isolated Workspace Authority workspace:9e0a2639-72b7-4f61-a762-07c2df408403. Development Policy Authority is in progress on top of canonical origin/main 202024804f4383e981a74a60e8764e4e97a81ca3; focus checks cover policy evaluation, bearer-authenticated actor binding, persisted profile binding, and existing trust verifier/admission. Review exact task diff and integrate a safe partial checkpoint through normal protected PR path. Keep remote trust, Recovery Grant automation, Windows live binding/profile/lease/dispatch blocked until their canonical authorities are verified.",
+    "next_ready_workunit": "ENGINEERING_PARTIAL: tenant-owned SPEC-224 development policy and idempotent scoped ApprovalRequest path; then WAITING_EXTERNAL_AUTHORITY for approved non-production issuer/signing identity/storage/revocation plus fresh Runtime/Windows and Tenant Owner bindings.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "PR #1118 merged through the protected executor at canonical origin/main SHA 7d09711641d6d7698ae0e7b84b890a46bd659c1d. It is test-only: Windows admission fixture now models fresh git.v1/codex.v1 inventory and both tool.execute.codex + agent.external_task; focused verifier and runtime admission suites passed 20/20, with independent review. `spec224RemoteSourceTrustVerifier` remains isolated and has no production authority adapter; no Owner Approval Record was found; no wrangler/aws/rclone CLI or relevant cloud identity environment names are present. Wrangler configs show activation disabled and no source-trust R2 binding. Runtime still returns DENIED_REMOTE_TRUST_REQUIRED. No grant or dispatch occurred. Next: obtain exact Platform/Security decision/resources from owner-approval-request.md, verify them read-only, then implement only the canonical adapter/wiring after approval.",
+    "resume_point": "At canonical origin/main SHA 202024804f4383e981a74a60e8764e4e97a81ca3, workspace workspace:9e0a2639-72b7-4f61-a762-07c2df408403 is registered TASK_WORKTREE for SPEC224_DEV_POLICY_TRUST_20261018 and was reclaimed with Workspace Authority receipt c88f4792-b120-4fe7-8f16-48afa8cf6bf7 (fencing generation 2). Current uncommitted implementation adds an owner-authored bounded non-production policy in existing approval_rules, authenticated policy decisions in ApprovalRequest/AuditLog, API bearer actor binding, idempotent decision replay, policy revoke, and runtime profile-scope comparison. Independent static review passed after corrections. Focused tests: Python evaluator 11/11, API identity boundary 2/2, Vitest runtime/trust/authorization binding 37/37; py_compile, scoped esbuild, and git diff --check passed. No full typecheck. Remote source verifier remains without approved authority adapter; no Cloudflare/AWS CLI or trust-related environment identities are available and no authenticated Owner Approval Record is evidenced. No Windows Runtime API/session, recovery grant, or authorized dispatch was used. Next: finish review, commit/promote the safe policy slice; then continue any engineering-only grant/trust wiring that can be completed without introducing a trust root, and wait only on exact Platform/Security and Runtime/Tenant authority required for live acceptance.",
     "waiting_predicate": "Wait for one authorized Platform/Database Admin action: /admin/settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence, then provide the displayed sanitized result. Do not provide session cookies or credentials. Revalidate target identity and authorization before any schema operation or run creation."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 103,
+  "generation": 104,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T08:19:26.765196Z",
+  "updated_at": "2026-10-18T09:48:00.666117Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
