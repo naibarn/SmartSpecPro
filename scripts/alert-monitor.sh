@@ -16,7 +16,6 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 declare -A SERVICES=(
     ["SmartSpec Web"]="http://localhost:3000/health"
     ["Python Backend"]="http://localhost:8000/health"
-    ["Control Plane"]="http://localhost:7070/health"
 )
 
 # รายการพอร์ตที่ต้องตรวจสอบ (TCP Check)
