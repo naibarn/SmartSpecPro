@@ -75,12 +75,21 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             'repository_id = "test-repository"\n'
             'remote = "origin"\n'
             'canonical_ref = "refs/heads/main"\n'
-            f'source_root = "{self.root / "source"}"\n'
-            f'source_fallback_roots = ["{self.root / "fallback-source"}"]\n'
-            f'canonical_user_workspace = "{self.canonical}"\n'
-            f'recovery_root = "{self.recovery}"\n',
+            f'source_root = "{(self.root / "source").as_posix()}"\n'
+            f'source_fallback_roots = ["{(self.root / "fallback-source").as_posix()}"]\n'
+            f'canonical_user_workspace = "{self.canonical.as_posix()}"\n'
+            f'recovery_root = "{self.recovery.as_posix()}"\n',
             encoding="utf-8",
         )
+
+    def _seed_legacy_stale_owner(self, workspace_id: str, session_id: str, pid: int) -> None:
+        """Model a stale row written by an older authority implementation."""
+        with authority._db(self.canonical) as db:
+            db.execute(
+                "UPDATE workspaces SET owner_session_id=?,owner_pid=?,owner_host=?,owner_process_start=NULL,"
+                "owner_lease_expires_at=?,owner_fencing_version=1,owner_state='LEASED' WHERE workspace_id=?",
+                (session_id, pid, authority.socket.gethostname(), time.time() + 30, workspace_id),
+            )
 
     def test_explicit_registry_roles_ignore_path_and_branch_names(self) -> None:
         project = authority.resolve_project_authority(self.canonical, self.policy)
@@ -247,6 +256,93 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         (recovered_workspace / "continued.txt").write_text("task resumed\n", encoding="utf-8")
         self.assertIn("continued.txt", git(recovered_workspace, "status", "--short"))
 
+    def test_create_sparse_worktree_preserves_exact_sha_and_attests_clean_identity(self) -> None:
+        destination = self.root / "sparse-task-worktree"
+        source_sha = git(self.canonical, "rev-parse", "HEAD")
+        result = authority.create_registered_worktree(
+            self.canonical, self.policy, destination, base_sha=source_sha,
+            role="TASK_WORKTREE", task_id="task-sparse",
+            sparse_checkout_paths=["tracked.txt"],
+        )
+        workspace = Path(result["workspace"])
+        self.assertEqual(result["source_sha"], source_sha)
+        self.assertEqual(result["repository_id"], self.repo_id)
+        self.assertTrue(result["clean_checkout"])
+        self.assertEqual(result["sparse_checkout_paths"], ["tracked.txt"])
+        self.assertTrue(result["sparse_paths_materialized"])
+        self.assertEqual(result["attestation"]["sourceSha"], source_sha)
+        self.assertEqual(result["attestation"]["canonicalRemote"], result["canonical_remote"])
+        self.assertTrue(result["attestation"]["clean"])
+        self.assertTrue(result["attestation"]["sparsePathsMaterialized"])
+        self.assertTrue((workspace / "tracked.txt").is_file())
+        self.assertEqual(git(workspace, "rev-parse", "HEAD"), source_sha)
+        self.assertEqual(git(workspace, "status", "--porcelain=v1", "--untracked-files=all"), "")
+        registered = authority.observe_workspace(self.canonical, self.policy, workspace)
+        self.assertEqual(registered["workspace_id"], result["workspace_id"])
+        self.assertEqual(registered["role"], "TASK_WORKTREE")
+
+    @unittest.skipUnless(os.name == "nt", "Windows owner-process validation")
+    def test_windows_registration_rejects_pid_zero_and_unidentifiable_owner(self) -> None:
+        workspace_path = self.root / "invalid-owner"
+        git(self.canonical, "worktree", "add", "-b", "task/invalid-owner", str(workspace_path), "HEAD")
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "OWNER_PROCESS_IDENTITY_UNAVAILABLE"):
+            authority.register_workspace(
+                self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+                task_id="task-invalid-owner", owner_session_id="invalid-zero", owner_pid=0,
+                owner_lease_seconds=30,
+            )
+        with patch.object(authority, "_process_start", return_value=None), patch.object(authority, "_pid_alive", return_value=False):
+            with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "OWNER_PROCESS_IDENTITY_UNAVAILABLE"):
+                authority.register_workspace(
+                    self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
+                    task_id="task-invalid-owner", owner_session_id="invalid-stale", owner_pid=99999999,
+                    owner_lease_seconds=30,
+                )
+
+    def test_sparse_worktree_rejects_paths_absent_from_exact_source(self) -> None:
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "SPARSE_CHECKOUT_PATH_NOT_IN_SOURCE"):
+            authority.create_registered_worktree(
+                self.canonical, self.policy, self.root / "missing-sparse-path", base_sha=git(self.canonical, "rev-parse", "HEAD"),
+                role="TASK_WORKTREE", task_id="task-missing-sparse", sparse_checkout_paths=["missing.txt"],
+            )
+
+    def test_failed_worktree_attestation_rolls_back_reserved_path(self) -> None:
+        destination = self.root / "failed-attestation-worktree"
+        selected = destination.resolve()
+        original_remote = authority._canonical_remote_url
+
+        def mismatched_selected_remote(path: Path, remote: str) -> str | None:
+            if path.resolve() == selected:
+                return "https://example.invalid/mismatch.git"
+            return original_remote(path, remote)
+
+        with patch.object(authority, "_canonical_remote_url", side_effect=mismatched_selected_remote):
+            with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "WORKTREE_MATERIALIZATION_ATTESTATION_FAILED"):
+                authority.create_registered_worktree(
+                    self.canonical, self.policy, destination, base_sha=git(self.canonical, "rev-parse", "HEAD"),
+                    role="TASK_WORKTREE", task_id="task-failed-attestation", sparse_checkout_paths=["tracked.txt"],
+                )
+        self.assertFalse(destination.exists())
+        self.assertNotIn(str(destination), git(self.canonical, "worktree", "list", "--porcelain"))
+
+    def test_attestation_command_error_rolls_back_reserved_path(self) -> None:
+        destination = (self.root / "failed-attestation-command-worktree").resolve()
+        original_git = authority._git
+
+        def fail_selected_head(repo: Path, *args: str, check: bool = True) -> str:
+            if repo.resolve() == destination and args == ("rev-parse", "HEAD"):
+                raise authority.WorkspaceAuthorityError("GIT_COMMAND_FAILED: injected attestation error")
+            return original_git(repo, *args, check=check)
+
+        with patch.object(authority, "_git", side_effect=fail_selected_head):
+            with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "WORKTREE_MATERIALIZATION_ATTESTATION_FAILED"):
+                authority.create_registered_worktree(
+                    self.canonical, self.policy, destination, base_sha=git(self.canonical, "rev-parse", "HEAD"),
+                    role="TASK_WORKTREE", task_id="task-failed-attestation-command", sparse_checkout_paths=["tracked.txt"],
+                )
+        self.assertFalse(destination.exists())
+        self.assertNotIn(str(destination), git(self.canonical, "worktree", "list", "--porcelain"))
+
     def test_registered_workspace_owner_cannot_be_silently_replaced(self) -> None:
         workspace_path = self.root / "owned-task"
         git(self.canonical, "worktree", "add", "-b", "task/owned", str(workspace_path), "HEAD")
@@ -274,9 +370,10 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         git(self.canonical, "worktree", "add", "-b", "task/reclaimable", str(workspace_path), "HEAD")
         original = authority.register_workspace(
             self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
-            task_id="task-reclaimable", owner_session_id="session-ended",
-            owner_pid=99999999, owner_lease_seconds=30,
+            task_id="task-reclaimable",
         )
+        self._seed_legacy_stale_owner(original["workspace_id"], "session-ended", 99999999)
+        original["owner_fencing_version"] = 1
         self.policy.write_text(self.policy.read_text(encoding="utf-8").replace('remote = "origin"', 'remote = "https://github.com/example/smartspec.git"'), encoding="utf-8")
         original_run = authority.subprocess.run
 
@@ -310,9 +407,10 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         git(self.canonical, "worktree", "add", "-b", "task/race-reclaim", str(workspace_path), "HEAD")
         original = authority.register_workspace(
             self.canonical, self.policy, workspace_path, role="TASK_WORKTREE",
-            task_id="task-race-reclaim", owner_session_id="session-ended",
-            owner_pid=99999998, owner_lease_seconds=30,
+            task_id="task-race-reclaim",
         )
+        self._seed_legacy_stale_owner(original["workspace_id"], "session-ended", 99999998)
+        original["owner_fencing_version"] = 1
         self.policy.write_text(self.policy.read_text(encoding="utf-8").replace('remote = "origin"', 'remote = "https://github.com/example/smartspec.git"'), encoding="utf-8")
         original_run = authority.subprocess.run
 
@@ -402,10 +500,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             self.policy,
             self.canonical,
             role="CANONICAL_USER_WORKSPACE",
-            owner_session_id="session-dead",
-            owner_pid=2_000_000_000,
-            owner_lease_seconds=300,
         )
+        self._seed_legacy_stale_owner(workspace["workspace_id"], "session-dead", 2_000_000_000)
         (self.canonical / "tracked.txt").write_text("dirty\n", encoding="utf-8")
         facts = authority.observe_workspace(self.canonical, self.policy, self.canonical)
         self.assertTrue(facts["dirty"])
@@ -420,10 +516,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             task,
             role="TASK_WORKTREE",
             task_id="ended-session-task",
-            owner_session_id="ended-session",
-            owner_pid=2_000_000_001,
-            owner_lease_seconds=300,
         )
+        self._seed_legacy_stale_owner(task_workspace["workspace_id"], "ended-session", 2_000_000_001)
         project = authority.resolve_project_authority(self.canonical, self.policy)
         task_state = next(row for row in project["workspaces"] if row["workspace_id"] == task_workspace["workspace_id"])
         self.assertEqual(task_state["session_state"], "STALE_CLOSED_SESSION")

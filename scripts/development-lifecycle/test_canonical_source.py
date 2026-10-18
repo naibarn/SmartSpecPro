@@ -68,15 +68,15 @@ class CanonicalSourceTests(unittest.TestCase):
         build_target: str | None = None,
     ) -> None:
         build_target_line = f'build_target = "{build_target}"\n' if build_target else ""
-        fallback_line = f'source_fallback_roots = ["{self.fallback_root}"]\n'
+        fallback_line = f'source_fallback_roots = ["{self.fallback_root.as_posix()}"]\n'
         self.policy.write_text(
             "[repository]\n"
             f'repository_id = "{repository_id}"\n'
             f'remote = "{remote}"\n'
             f'canonical_ref = "{canonical_ref}"\n'
-            f'source_root = "{self.source_root}"\n'
+            f'source_root = "{self.source_root.as_posix()}"\n'
             f"{fallback_line}"
-            f'lease_root = "{self.lease_root}"\n'
+            f'lease_root = "{self.lease_root.as_posix()}"\n'
             f"{build_target_line}",
             encoding="utf-8",
         )
@@ -212,6 +212,15 @@ class CanonicalSourceTests(unittest.TestCase):
         stdout, stderr = runner.communicate(timeout=5)
         self.assertEqual(runner.returncode, 0, stderr or stdout)
 
+    def test_lock_open_failure_returns_structured_resource_blocked_error(self) -> None:
+        import canonical_source
+
+        with mock.patch.object(canonical_source.FileLock, "acquire", side_effect=PermissionError(13, "permission denied")):
+            with self.assertRaisesRegex(canonical_source.LifecycleError, "RESOURCE_BLOCKED.*evidence="):
+                canonical_source.prepare_source(
+                    self.shared, purpose="build", source_revision=self.revision, policy_path=self.policy,
+                )
+
     def test_distinct_purposes_get_independent_workspaces(self) -> None:
         build_lease = self.prepare("--source-revision", self.revision)
         test_result = subprocess.run(
@@ -247,7 +256,7 @@ class CanonicalSourceTests(unittest.TestCase):
             'repository_id = "other-project"\n'
             'remote = "origin"\n'
             'canonical_ref = "refs/heads/develop"\n'
-            f'source_root = "{self.source_root}"\n',
+            f'source_root = "{self.source_root.as_posix()}"\n',
             encoding="utf-8",
         )
         result = subprocess.run(
@@ -262,12 +271,14 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertNotEqual(other_lease["isolated_workspace"], first_lease["isolated_workspace"])
         self.assertEqual(other_lease["source_revision"], self.revision)
 
+    @unittest.skipUnless(os.name != "nt", "Bash wrapper integration runs in Unix CI; Windows acceptance exercises the native Python lifecycle API")
     def test_legacy_mutating_preflight_refuses_to_run(self) -> None:
         legacy = Path(__file__).resolve().parents[2] / "skills/canonical-checkout-sync/scripts/canonical-sync-preflight.sh"
         result = subprocess.run(["bash", str(legacy), str(self.shared)], text=True, capture_output=True)
         self.assertEqual(result.returncode, 64)
         self.assertIn("DEPRECATED_USE_ISOLATED_CANONICAL_SOURCE_LEASE", result.stderr)
 
+    @unittest.skipUnless(os.name != "nt", "Bash wrapper integration runs in Unix CI; Windows acceptance exercises the native Python lifecycle API")
     def test_candidate_inventory_uses_configured_ref_and_includes_dirty_unmarked_branch(self) -> None:
         shutil.copy2(self.policy, self.shared / ".development-repository.toml")
         shared_core = self.shared / "scripts/development-lifecycle"
@@ -290,6 +301,7 @@ class CanonicalSourceTests(unittest.TestCase):
         worktree_row = next(row for row in rows if row[0] == "WORKTREE" and row[1] == str(self.shared))
         self.assertIn("local-only.txt", worktree_row[12])
 
+    @unittest.skipUnless(os.name != "nt", "Bash wrapper integration runs in Unix CI; Windows acceptance exercises the native Python lifecycle API")
     def test_skill_wrappers_run_command_from_leased_source(self) -> None:
         shutil.copy2(self.policy, self.shared / ".development-repository.toml")
         core_dir = self.shared / "scripts/development-lifecycle"
@@ -364,7 +376,12 @@ class CanonicalSourceTests(unittest.TestCase):
         (assets / "index.html").write_bytes(asset_bytes)
         (assets / "คู่มือการใช้งาน.md").write_bytes(localized_bytes)
         (public_source / "current.json").write_bytes(release_bytes)
-        os.symlink(os.path.relpath(public_source, assets), assets / "releases")
+        try:
+            os.symlink(os.path.relpath(public_source, assets), assets / "releases")
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege is not enabled for this account")
+            raise
         module_digest = hashlib.sha256(module_bytes).hexdigest()
         asset_digest = hashlib.sha256(asset_bytes).hexdigest()
         release_digest = hashlib.sha256(release_bytes).hexdigest()
@@ -423,10 +440,12 @@ class CanonicalSourceTests(unittest.TestCase):
     def test_central_build_classifies_sigkill_as_resource_blocked(self) -> None:
         from canonical_source import build_canonical
 
-        killed_commands = [
-            ([sys.executable, "-c", "import os, signal; os.kill(os.getpid(), signal.SIGKILL)"], "SIGKILL"),
-            ([sys.executable, "-c", "raise SystemExit(137)"], None),
-        ]
+        killed_commands = [([sys.executable, "-c", "raise SystemExit(137)"], None)]
+        if hasattr(__import__("signal"), "SIGKILL"):
+            killed_commands.insert(
+                0,
+                ([sys.executable, "-c", "import os, signal; os.kill(os.getpid(), signal.SIGKILL)"], "SIGKILL"),
+            )
         for command_to_kill, expected_signal in killed_commands:
             with self.subTest(command=command_to_kill[-1]):
                 result = build_canonical(
@@ -494,7 +513,7 @@ class CanonicalSourceTests(unittest.TestCase):
             'repository_id = "fixture-repository"\n'
             'remote = "origin"\n'
             'canonical_ref = "refs/heads/trunk"\n'
-            f'source_root = "{self.source_root}"\n',
+            f'source_root = "{self.source_root.as_posix()}"\n',
             encoding="utf-8",
         )
         (self.seed / "app.txt").write_text("canonical v2\n", encoding="utf-8")
@@ -515,6 +534,7 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(command("git", "-C", str(main_workspace), "rev-parse", "HEAD"), latest)
         self.assertEqual((main_workspace / "app.txt").read_text(encoding="utf-8"), "canonical v2\n")
 
+    @unittest.skipUnless(os.name != "nt", "Bash wrapper integration runs in Unix CI; Windows acceptance exercises the native Python lifecycle API")
     def test_installed_central_entrypoint_uses_builder_from_latest_canonical(self) -> None:
         main_policy = self.seed / ".development-repository.toml"
         main_policy.write_text(
@@ -551,7 +571,7 @@ class CanonicalSourceTests(unittest.TestCase):
     def test_source_root_inside_shared_checkout_is_rejected(self) -> None:
         self.write_policy("fixture-repository", "origin", "refs/heads/trunk")
         self.policy.write_text(
-            self.policy.read_text(encoding="utf-8").replace(str(self.source_root), str(self.shared / ".build")),
+            self.policy.read_text(encoding="utf-8").replace(self.source_root.as_posix(), (self.shared / ".build").as_posix()),
             encoding="utf-8",
         )
         result = subprocess.run(
