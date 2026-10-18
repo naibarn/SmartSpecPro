@@ -53,6 +53,12 @@
       "bytes": 37623,
       "sha256": "4f2e8e7fe5227684669b42b9e224d0adfc8c8562a1c515fbb62b1110368d16e2",
       "mode": "0o600"
+    },
+    {
+      "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-current-dev-cohort-validation-20261018.json",
+      "bytes": 11517,
+      "sha256": "2913a40aad3aecf4065c3e2568768c95ea722987755294b1acf14d64fdf8de85",
+      "mode": "0o644"
     }
   ],
   "development_cohort_counts": {
@@ -246,11 +252,6 @@
   ],
   "production_verified": false,
   "next_action": "Implement and test the next SPEC-ordered non-production profile only where an existing authorized provider/runtime is available; otherwise leave its observations NOT_EVALUABLE and continue with the independent profile/configuration work.",
-  "development_cohort_validation": {
-    "dataset_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
-    "validator": "run-retrieval-gold-dataset.ts validateGoldDataset; unique case IDs and normalized queries, pinned source digests/line anchors, required query classes",
-    "status": "PASS"
-  },
   "current_spec_revision": "3.1",
   "current_spec_sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
   "policy_contract": {
@@ -258,5 +259,38 @@
     "version": 1,
     "repository_license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
     "policy_usage": "unit-tested only; no candidate source-use approval is inferred or issued by this workunit"
+  },
+  "baseline_observation_dataset_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+  "current_development_cohort_validation": {
+    "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-current-dev-cohort-validation-20261018.json",
+    "sha256": "2913a40aad3aecf4065c3e2568768c95ea722987755294b1acf14d64fdf8de85",
+    "system_sha": "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1",
+    "dataset_sha256": "5b681a519c550fd2137ea55b3cf3a1aa173f9534b41eb5f9dd4f557ef761f732",
+    "candidate_queries": 560,
+    "independently_reviewed": 560,
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "review_accepted": 560,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "candidate_required_classes_missing": [],
+    "release_criteria_count": 15,
+    "release_criteria_statuses": [
+      "NOT_EVALUABLE"
+    ],
+    "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED"
+  },
+  "source_revision_revalidation": {
+    "changed_source_cases": [
+      "b09-011",
+      "b09-012",
+      "b09-013",
+      "b09-014",
+      "b09-049",
+      "b09-050"
+    ],
+    "source_digests_and_quote_anchors_rebound_to_current_repo_revision": true,
+    "current_dataset_validation": "PASS",
+    "baseline_observations_remain_bound_to_prior_canonical_dataset_sha": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc"
   }
 }
