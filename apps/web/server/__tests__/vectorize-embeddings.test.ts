@@ -17,7 +17,13 @@ beforeEach(() => {
 });
 
 // Import after mocks
-const { chunkDocument, generateEmbedding, generateImageDescription } =
+const {
+  chunkDocument,
+  generateEmbedding,
+  generateImageDescription,
+  generateSpec229DenseEvaluationEmbedding,
+  generateSpec229DenseEvaluationEmbeddings,
+} =
   await import("../services/vectorize");
 
 describe("Embedding Generation", () => {
@@ -55,6 +61,51 @@ describe("Embedding Generation", () => {
     const result = await generateEmbedding("test text");
     expect(result).toHaveLength(768);
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("generates the isolated SPEC-229 BGE-M3 1024D profile", async () => {
+    const mockEmbedding = Array.from({ length: 1024 }, () => 0.1);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ result: { data: [mockEmbedding] }, success: true }),
+    });
+
+    const result = await generateSpec229DenseEvaluationEmbedding("Thai retrieval query");
+
+    expect(result).toHaveLength(1024);
+    expect(String(mockFetch.mock.calls[0][0])).toContain("/@cf/baai/bge-m3");
+  });
+
+  it("rejects profile B output whose dimension differs from the SPEC", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ result: { data: [[0.1, 0.2]] }, success: true }),
+    });
+
+    await expect(generateSpec229DenseEvaluationEmbedding("invalid shape"))
+      .rejects.toThrow(/invalid 1024-dimensional/);
+  });
+
+  it("batches profile B inputs with explicitly injected evaluation credentials", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        result: { data: [Array(1024).fill(0.1), Array(1024).fill(0.2)] },
+        success: true,
+      }),
+    });
+
+    const result = await generateSpec229DenseEvaluationEmbeddings(
+      ["one", "two"],
+      { accountId: "eval-account", apiKey: "eval-api-key" },
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toHaveLength(1024);
+    expect(String(mockFetch.mock.calls[0][0])).toContain("eval-account/ai/run/@cf/baai/bge-m3");
+    expect(mockFetch.mock.calls[0][1]?.headers).toMatchObject({
+      Authorization: "Bearer eval-api-key",
+    });
   });
 
   it("generates image descriptions via vision model", async () => {

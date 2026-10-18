@@ -8,18 +8,19 @@
 import { VECTORIZE_EMBEDDING_DIMENSIONS } from "./vectorizeContract";
 
 const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5";
+const SPEC229_DENSE_EVAL_MODEL = "@cf/baai/bge-m3";
 const VISION_MODEL = "@cf/llava-hf/llava-1.5-7b-hf";
 const CHUNK_SIZE = 2000; // ~500 tokens
 const CHUNK_OVERLAP = 200;
 
-function getWorkersAiUrl(model: string): string {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+function getWorkersAiUrl(model: string, accountIdOverride?: string): string {
+  const accountId = accountIdOverride || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
   if (!accountId) throw new Error("CLOUDFLARE_ACCOUNT_ID not set");
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
 }
 
-function getApiKey(): string {
-  const key = process.env.CLOUDFLARE_AI_API_KEY;
+function getApiKey(apiKeyOverride?: string): string {
+  const key = apiKeyOverride || process.env.CLOUDFLARE_AI_API_KEY;
   if (!key) throw new Error("CLOUDFLARE_AI_API_KEY not set");
   return key;
 }
@@ -43,13 +44,54 @@ export function chunkDocument(text: string): string[] {
  * Generate a 768-dimension embedding vector from text using Workers AI.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await fetch(getWorkersAiUrl(EMBEDDING_MODEL), {
+  return generateEmbeddingForProfile(text, EMBEDDING_MODEL, VECTORIZE_EMBEDDING_DIMENSIONS);
+}
+
+/**
+ * Generate the SPEC-229 comparison profile B vector. It is deliberately
+ * separate from the production 768D helper and rejects any output that does
+ * not match the SPEC's pinned 1024D contract.
+ */
+export async function generateSpec229DenseEvaluationEmbedding(
+  text: string,
+  credentials?: { accountId: string; apiKey: string },
+): Promise<number[]> {
+  const [vector] = await generateSpec229DenseEvaluationEmbeddings([text], credentials);
+  return vector;
+}
+
+export async function generateSpec229DenseEvaluationEmbeddings(
+  texts: string[],
+  credentials?: { accountId: string; apiKey: string },
+): Promise<number[][]> {
+  if (texts.length === 0 || texts.some(text => !text.trim())) {
+    throw new Error("SPEC-229 profile B embedding input must be non-empty");
+  }
+  return generateEmbeddingBatchForProfile(texts, SPEC229_DENSE_EVAL_MODEL, 1024, credentials);
+}
+
+async function generateEmbeddingForProfile(
+  text: string,
+  model: string,
+  dimensions: number,
+): Promise<number[]> {
+  const [vector] = await generateEmbeddingBatchForProfile([text], model, dimensions);
+  return vector;
+}
+
+async function generateEmbeddingBatchForProfile(
+  texts: string[],
+  model: string,
+  dimensions: number,
+  credentials?: { accountId: string; apiKey: string },
+): Promise<number[][]> {
+  const response = await fetch(getWorkersAiUrl(model, credentials?.accountId), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${getApiKey(credentials?.apiKey)}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text: [text] }),
+    body: JSON.stringify({ text: texts }),
   });
 
   if (!response.ok) {
@@ -66,13 +108,16 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   if (
     data.success === false
     || !Array.isArray(vectors)
-    || !Array.isArray(vectors[0])
-    || vectors[0].length !== VECTORIZE_EMBEDDING_DIMENSIONS
-    || vectors[0].some((value) => typeof value !== "number" || !Number.isFinite(value))
+    || vectors.length !== texts.length
+    || vectors.some(vector =>
+      !Array.isArray(vector)
+      || vector.length !== dimensions
+      || vector.some((value) => typeof value !== "number" || !Number.isFinite(value))
+    )
   ) {
-    throw new Error("Workers AI embedding returned an invalid 768-dimensional vector");
+    throw new Error(`Workers AI embedding returned an invalid ${dimensions}-dimensional vector`);
   }
-  return vectors[0] as number[];
+  return vectors as number[][];
 }
 
 /**
