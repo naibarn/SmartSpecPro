@@ -156,10 +156,21 @@ describe("Cloudflare AI Search provider adapter", () => {
     await provider.search({
       ...request,
       retrievalType: "vector",
+      messages: [
+        { role: "user", content: "original question" },
+        { role: "assistant", content: "follow up context" },
+        { role: "user", content: request.query },
+      ],
       queryRewrite: true,
       reranking: true,
     });
     const firstBody = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(firstBody.messages).toEqual([
+      { role: "user", content: "original question" },
+      { role: "assistant", content: "follow up context" },
+      { role: "user", content: request.query },
+    ]);
+    expect(firstBody.query).toBeUndefined();
     expect(firstBody.ai_search_options).toMatchObject({
       query_rewrite: { enabled: true },
       reranking: { enabled: true },
@@ -168,6 +179,12 @@ describe("Cloudflare AI Search provider adapter", () => {
 
     const multiQuery = await provider.searchMany({
       ...request,
+      messages: [
+        { role: "user", content: "first question" },
+        { role: "assistant", content: "first answer" },
+        { role: "user", content: "variant one" },
+      ],
+      queryRewrite: true,
       queries: ["variant one", "variant two"],
     });
     expect(multiQuery).toHaveLength(1);
@@ -175,6 +192,12 @@ describe("Cloudflare AI Search provider adapter", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     const lastBody = JSON.parse(String(fetchImpl.mock.calls[2][1]?.body));
     expect(lastBody.ai_search_options.retrieval.fusion_method).toBe("rrf");
+    expect(lastBody.messages).toEqual([
+      { role: "user", content: "first question" },
+      { role: "assistant", content: "first answer" },
+      { role: "user", content: "variant two" },
+    ]);
+    expect(lastBody.query).toBeUndefined();
     await expect(
       provider.searchMany({
         ...request,
@@ -182,6 +205,15 @@ describe("Cloudflare AI Search provider adapter", () => {
       })
     ).rejects.toThrow("AI_SEARCH_MULTI_QUERY_INVALID");
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails closed when query rewrite lacks follow-up conversation messages", async () => {
+    const fetchImpl = vi.fn(async () => response());
+    const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
+    await expect(provider.search({ ...request, queryRewrite: true })).rejects.toThrow(
+      "AI_SEARCH_QUERY_REWRITE_REQUIRES_FOLLOWUP_MESSAGES",
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("does not echo provider bodies or secrets on errors", async () => {

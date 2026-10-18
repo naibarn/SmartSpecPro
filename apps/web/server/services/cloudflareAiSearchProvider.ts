@@ -37,6 +37,7 @@ export interface AiSearchProviderRequest {
   authorizedAclScopes: string[];
   sourceClasses: string[];
   query: string;
+  messages?: Array<{ role: string; content: string }>;
   retrievalType: AiSearchRetrievalType;
   maxResults: number;
   keywordMatchMode?: "and" | "or";
@@ -141,6 +142,28 @@ function validateRequest(input: AiSearchProviderRequest): void {
   if (!input.query.trim() || input.query.length > 10_000) {
     throw new Error("AI_SEARCH_QUERY_INVALID");
   }
+  if (input.messages !== undefined && (
+    !Array.isArray(input.messages) ||
+    input.messages.length < 1 ||
+    input.messages.length > 20 ||
+    input.messages.some(message =>
+      !message ||
+      !["user", "assistant"].includes(message.role) ||
+      typeof message.content !== "string" ||
+      !message.content.trim() ||
+      message.content.length > 10_000
+    )
+  )) {
+    throw new Error("AI_SEARCH_MESSAGES_INVALID");
+  }
+  if (input.queryRewrite && (
+    !input.messages ||
+    input.messages.length < 2 ||
+    input.messages.at(-1)?.role !== "user" ||
+    input.messages.at(-1)?.content !== input.query
+  )) {
+    throw new Error("AI_SEARCH_QUERY_REWRITE_REQUIRES_FOLLOWUP_MESSAGES");
+  }
   if (
     !Number.isInteger(input.maxResults) ||
     input.maxResults < 1 ||
@@ -180,7 +203,9 @@ export class CloudflareAiSearchProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        query: input.query,
+        ...(input.queryRewrite && input.messages
+          ? { messages: input.messages }
+          : { query: input.query }),
         ai_search_options: {
           cache: { enabled: false },
           query_rewrite: { enabled: input.queryRewrite ?? false },
@@ -283,9 +308,13 @@ export class CloudflareAiSearchProvider {
       { candidate: AiSearchProviderCandidate; score: number }
     >();
     for (const query of [...new Set(input.queries)]) {
+      const messages = input.messages && input.queryRewrite
+        ? [...input.messages.slice(0, -1), { ...input.messages.at(-1)!, content: query }]
+        : input.messages;
       const candidates = await this.search({
         ...input,
         query,
+        messages,
         fusionMethod: "rrf",
       });
       candidates.forEach((candidate, index) => {
