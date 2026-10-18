@@ -2,11 +2,13 @@
 
 ## Current checkpoint
 
-- Source base: `origin/main` `19ddb53616fb91f26dd773125f8f2b499c67993a`.
+- Source base after reconciliation: `origin/main` `d40202cb8552f25f6dd125496ba4e3fe7b41c61a`.
 - Work branch: `codex/spec224-db-identity-20261018`.
+- Implementation commit after rebase: `ca20bbbf403c19b87af6e189502bc0aa6aa283b3`.
 - Scope: exact-admin, read-only diagnostics endpoint and a manual Admin UI action. It reports only backend runtime identity, a hashed non-secret DB fingerprint, database/schema/role, summarized migration state, `worker_runtime_type` labels, migration activity count and the latest failed `startWorkspaceRun` correlation.
 - The endpoint uses the existing `exactAdminProcedure`. It has no input, mutation, migration, grant or dispatch behavior. `startWorkspaceRun` behavior is unchanged; new failure audit records include allowlisted backend runtime identity fields.
 - Focused service tests: `spec224DatabaseDiagnostics.test.ts`, 4 passing. Browser UAT and live backend diagnostics have not run.
+- PR/required CI: not yet opened; intended next action is push branch, open protected PR, and wait on required checks.
 
 ## Exact authorized Admin action
 
