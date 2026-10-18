@@ -1,0 +1,25 @@
+{
+  "evidence_id": "SPEC229-P2298-POSTMERGE-QUICK-20261018",
+  "workunit": "P229.8 corrected cohort identity post-merge verification",
+  "source_sha": "c9dd724407942047d41b79f087c979538f2ae217",
+  "pr": 1114,
+  "pr_head_sha": "0534594514a623eb5c56da0dc40a8f5823b690bb",
+  "merge_sha": "c9dd724407942047d41b79f087c979538f2ae217",
+  "merge_time": "2026-10-18T08:02:01Z",
+  "source_selection": {
+    "purpose": "test",
+    "source_verified": true,
+    "isolated_workspace": "/mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/c9dd724407942047d41b79f087c979538f2ae217-test"
+  },
+  "command": "pnpm --filter @smartspec/web exec vitest run server/services/libraryRetrievalReleaseCohort.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts",
+  "result": "PASS: 3 test files, 21 tests",
+  "retrieval_observation": {
+    "profile": "legacy_baseline / simple_exact_keyword",
+    "corpus_sha": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+    "candidate_dataset_sha256": "1b2a25c475860be3abd332055cc7c8a22cd63227b40cce40c7b584909135d045",
+    "raw_artifact_private_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-19ddb536-corrected-cohort.json",
+    "raw_artifact_sha256": "662e01844be74db9785fd3ab8f82a879adac8a637495483923b03847ca43a8b3",
+    "note": "The 276 source-path corpus digest is unchanged between corpus SHA 19ddb536 and merged SHA c9dd724; intervening changes do not touch candidate source files. This is a local development observation, not production verification."
+  },
+  "p2298_acceptance": "NOT_EVALUABLE"
+}
