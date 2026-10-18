@@ -95,6 +95,53 @@ describe("Library retrieval development benchmark", () => {
     expect(metrics.aclLeakage).toBe(2);
   });
 
+  it("checks expected revision only against the expected source identity", () => {
+    const gold = {
+      caseId: "revision-with-current-distractor",
+      query: "current policy",
+      tenantId: "tenant-a",
+      supportsAnswer: true,
+      requiredEvidenceIds: ["expected-doc"],
+      requiredClaims: [],
+      minimumAuthorityRank: 1,
+      expectedRevision: "r2",
+      shouldCite: false,
+    };
+    const observation = {
+      caseId: gold.caseId,
+      answerSupported: true,
+      coveredClaims: [],
+      evidence: [
+        {
+          evidenceId: "expected-doc",
+          tenantId: "tenant-a",
+          revision: "r2",
+          digest: "a".repeat(64),
+          authorityRank: 1,
+          authorized: true,
+          revoked: false,
+          deleted: false,
+        },
+        {
+          evidenceId: "unrelated-current-doc",
+          tenantId: "tenant-a",
+          revision: "r17",
+          digest: "b".repeat(64),
+          authorityRank: 1,
+          authorized: true,
+          revoked: false,
+          deleted: false,
+        },
+      ],
+      citations: [],
+      providerState: "complete" as const,
+    };
+
+    const metrics = calculateRetrievalBenchmarkMetrics([gold], [observation]);
+    expect(metrics.freshnessCorrectness).toBe(1);
+    expect(metrics.staleOrRevokedEvidenceAccepted).toBe(0);
+  });
+
   it("rejects citations backed by unauthorized, cross-tenant, stale, revoked, or deleted evidence", () => {
     const markdown = "# Authorized guide\nThe approved amount is 42.";
     const digest = sha256(markdown);

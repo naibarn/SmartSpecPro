@@ -4,6 +4,7 @@ import { P2298_CANDIDATE_SEEDS } from "./libraryRetrievalGoldCandidateSeeds";
 import {
   countGoldDataset,
   assignDeterministicSplits,
+  buildGoldDatasetReviewQueue,
   bootstrapMean95,
   deterministicStratifiedSample,
   evaluateGoldDataset,
@@ -58,6 +59,14 @@ describe("SPEC-229 gold dataset pipeline", () => {
       countGoldDataset([{ ...P2298_CANDIDATE_SEEDS[0], reviews: [] }])
         .unreviewed
     ).toBe(1);
+    const queue = buildGoldDatasetReviewQueue([P2298_CANDIDATE_SEEDS[0]]);
+    expect(queue.schemaVersion).toBe("spec229-independent-review-queue-v2");
+    expect(queue.entries[0]).toMatchObject({
+      machineReviews: expect.any(Array),
+      humanReviews: [],
+      humanReviewStatus: "PENDING_HUMAN_REVIEW",
+      sourceUseApprovalStatus: "PENDING_OWNER_SOURCE_USE_APPROVAL",
+    });
   });
 
   it("never evaluates release criteria using only development or calibration rows", () => {
@@ -133,6 +142,57 @@ describe("SPEC-229 gold dataset pipeline", () => {
         criterion => criterion.id === "heldOutGoldQueryCount"
       )
     ).toMatchObject({ value: 1, status: "NOT_EVALUABLE" });
+  });
+
+  it("accepts only source-bound owner-delegated policy evidence for repository-only non-production use", () => {
+    const seed = P2298_CANDIDATE_SEEDS[0];
+    const approved = {
+      ...seed,
+      split: "held_out" as const,
+      useApproval: "release_approved" as const,
+      useApprovalEvidence: {
+        approverType: "owner_delegated_policy" as const,
+        policyId: "SPEC229_NONPRODUCTION_REPO_SOURCE" as const,
+        policyVersion: 1 as const,
+        authorizationRef:
+          "owner-directive:SPEC229_NONPRODUCTION_EVAL" as const,
+        approvedAt: "2026-10-18T00:00:00.000Z",
+        sourcePath: seed.source.path,
+        sourceSha256: seed.source.sha256,
+        repositoryLicenseSha256:
+          "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+        scope: "non-production retrieval evaluation" as const,
+      },
+    };
+
+    expect(isHeldOutReleaseEvaluationEligible(approved)).toBe(true);
+    expect(() =>
+      validateGoldDataset([approved], resolve(process.cwd(), "../../"))
+    ).not.toThrow();
+    expect(countGoldDataset([approved])).toMatchObject({
+      machineReviewed: 1,
+      humanReviewed: 0,
+      humanAccepted: 0,
+      releaseApproved: 1,
+      humanSourceUseApproved: 0,
+      ownerDelegatedPolicySourceUseApproved: 1,
+      heldOutReleaseApproved: 1,
+    });
+    expect(() =>
+      validateGoldDataset([
+        {
+          ...approved,
+          useApprovalEvidence: {
+            ...approved.useApprovalEvidence,
+            sourceSha256: "f".repeat(64),
+          },
+        },
+      ], resolve(process.cwd(), "../../"))
+    ).toThrow("auditable source-use approval evidence");
+    expect(isHeldOutReleaseEvaluationEligible({
+      ...approved,
+      source: { ...approved.source, license: "unverified" },
+    })).toBe(false);
   });
 
   it("rejects self-review and source-group leakage across data splits", () => {

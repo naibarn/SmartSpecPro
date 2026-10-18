@@ -18,7 +18,7 @@ const handoff = readFileSync(
   "utf8"
 ).replace(/\r\n?/g, "\n");
 const specDigest =
-  "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b";
+  "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d";
 const handoffDigest =
   "835f3795aaf9584ca62210b87ab3341077e32cb5172eab571b178857e9c20f55";
 

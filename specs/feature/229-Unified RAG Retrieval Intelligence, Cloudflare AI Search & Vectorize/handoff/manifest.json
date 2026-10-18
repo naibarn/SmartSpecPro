@@ -5,45 +5,62 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [],
-    "confidence": "UNRESOLVED",
+    "claims": [
+      "Owner-directed active SPEC-229 retrieval and non-production evaluation work."
+    ],
+    "confidence": "HIGH",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+      },
+      {
+        "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
-    "expected_spec_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b"
+    "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "PR #1083 merged at canonical main a496735cd6d9c724e0ab93e2c263e0fde4d974f9. Post-merge focused verification passed 5 files/25 tests on that exact SHA. The development harness still reports 560 development-only candidates, 0 human-reviewed/accepted, 0 release-approved/held-out, no A–H or latency/cost observations, and all 15 §27 gates NOT_EVALUABLE. P229.8 remains blocked on human-reviewed/source-use-approved held-out queries and authorized retrieval observations. See handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json.",
-    "next_ready_workunit": "P229.8_RELEASE_COHORT_AND_OBSERVATIONS: obtain independent human review/adjudication and owner source-use approval for at least 500 held-out queries; collect authorized retrieval observations for §27 A–H plus all three latency/cost profiles; evaluate without changing thresholds.",
-    "reactivation_predicate": "At least 500 unique queries pass independent review with all required §27 query classes, followed by complete held-out release approval and authorized profile-specific retrieval/latency/cost observations; release metrics and confidence intervals are then calculated without changing canonical thresholds.",
-    "resume_point": "PR #1083 implementation is integrated at canonical SHA a496735cd6d9c724e0ab93e2c263e0fde4d974f9 and post-merge verified by 5 focused test files/25 tests plus the gold-dataset harness. The harness truthfully reports all 8 comparison profiles and 3 latency/cost profiles NOT_PROVIDED; 560 candidates remain development-only and 0 human accepted/release-approved/held-out. All 15 release criteria are NOT_EVALUABLE. P229.8 and global SPEC-229 remain incomplete.",
-    "waiting_predicate": "Wait for human source/use approval and human review of a held-out release cohort, plus authorized retrieval observations across §27 comparison profiles A–H including latency and cost. Do not promote weak evidence, migrate finance/consequential consumers, start P229.2, change the Vectorize profile, or claim production verification before the certified gate passes."
+    "next_action": "The 560-candidate development cohort has an actual A legacy-baseline run only; it is not held out and all 15 release criteria remain NOT_EVALUABLE. Continue with profile B implementation, then C–H in canonical dependency order.",
+    "next_ready_workunit": "P229_PROFILE_B_NONPRODUCTION_VECTORIZE_DENSE: implement a separate non-production 1024D path without changing the production 768D profile; add adapter/config/integration regression tests, then capture real observations only when authorized provider runtime is configured.",
+    "reactivation_predicate": "Profile B code and tests pass, and an isolated authorized runtime is available for real profile B observations; continue independently with AI Search and composition profiles.",
+    "resume_point": "Canonical base is origin/main 8b224d657454dcf9e4978296cc379b1a33b94c70. Worktree codex/spec229-executable-eval contains unintegrated P229.8 local runtime/source policy slice. Exact local baseline run and report are in handoff/evidence/p2298-executable-local-eval-20261018.json; see external SHA-bound run artifacts listed there. P229.8 remains NOT_EVALUABLE.",
+    "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+      },
+      {
+        "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.",
+    "rationale": "The owner explicitly directed autonomous implementation and evidence collection. Local profile A is now executable; remaining profiles and held-out release evaluation remain open.",
+    "residual_requirements": [
+      "Implement and execute §27 comparison profiles B–H in non-production.",
+      "Collect actual latency/cost observations for all three §27 latency profiles.",
+      "Create an untouched release-approved held-out cohort of at least 500 reviewed queries with required classes.",
+      "Evaluate all 15 release criteria without changing thresholds."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -60,29 +77,34 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "evidence": [
       {
-        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+      },
+      {
+        "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 67,
+  "generation": 70,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-    "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+    "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-17T08:30:09.380833Z",
+      "last_evidence_at": "2026-10-18T00:24:53.798462Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "3.0",
+    "revision": "3.1",
     "slug": "229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
     "spec_id": "229",
     "title": "Spec 229 — Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize V2"
@@ -146,6 +168,69 @@
     "updated_at": "2026-10-06T03:28:17.934916Z"
   },
   "manual_decisions": {
+    "authority": {
+      "claims": [
+        "Owner-directed active SPEC-229 retrieval and non-production evaluation work."
+      ],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+        },
+        {
+          "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+        },
+        {
+          "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
+        }
+      ],
+      "next_action": "Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.",
+      "rationale": "The owner explicitly directed autonomous implementation and evidence collection. Local profile A is now executable; remaining profiles and held-out release evaluation remain open.",
+      "residual_requirements": [
+        "Implement and execute §27 comparison profiles B–H in non-production.",
+        "Collect actual latency/cost observations for all three §27 latency profiles.",
+        "Create an untouched release-approved held-out cohort of at least 500 reviewed queries with required classes.",
+        "Evaluate all 15 release criteria without changing thresholds."
+      ]
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+        },
+        {
+          "digest": "321b84a25b87a7a353a80a21930290e39312eaf437f58be368171ebd2c3d63ec",
+          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
+        }
+      ],
+      "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
+      "value": "ACTIVE_CANONICAL"
+    },
     "lifecycle": {
       "current_state": "PARTIAL_INTEGRATED",
       "previous_state": null,
@@ -190,10 +275,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-17T08:30:09.380833Z",
+    "reconciled_at": "2026-10-18T00:24:53.798462Z",
     "sources": [
       {
-        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       },
@@ -205,7 +290,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "source_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
       },
       {
@@ -217,7 +302,7 @@
         "line": 12,
         "relation": "SUPERSEDES",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "source_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
@@ -249,7 +334,7 @@
         "excerpt": "**Status:** Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists",
         "line": 3,
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "source_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
       },
       {
@@ -260,7 +345,7 @@
         "line": 12,
         "relation": "SUPERSEDES",
         "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-        "source_digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "source_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "target_spec_ids": [],
         "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
@@ -268,7 +353,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
       }
@@ -284,11 +369,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 106,
-    "unresolved": 106
+    "total": 108,
+    "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T22:35:25.897360Z",
+  "updated_at": "2026-10-18T00:25:13.176703Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",

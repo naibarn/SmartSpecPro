@@ -36,7 +36,7 @@ function argValue(name: string): string | undefined {
   return index < 0 ? undefined : process.argv[index + 1];
 }
 
-const repoRoot = resolve(process.cwd(), "../..");
+const repoRoot = resolve(argValue("--repo-root") ?? resolve(process.cwd(), "../.."));
 const inputFile = argValue("--dataset-file");
 const observationFile = argValue("--observations-file");
 const baselineFile = argValue("--baseline-file");

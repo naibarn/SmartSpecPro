@@ -9,7 +9,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 984,
       "lineEnd": 992,
       "quoteSha256": "efc39497475428081d8becc4d0e235026405da48099e11f55482b09dfd6a29f8",
@@ -41,7 +41,7 @@
       ],
       "requiredClaims": ["quality-gate-dimensions"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -56,7 +56,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 994,
       "lineEnd": 994,
       "quoteSha256": "bf37c2281e01be1c02152566462c9195df8c1097919d115be5157657c371f4b3",
@@ -88,7 +88,7 @@
       ],
       "requiredClaims": ["citation-identity-contract"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -103,7 +103,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 994,
       "lineEnd": 994,
       "quoteSha256": "bf37c2281e01be1c02152566462c9195df8c1097919d115be5157657c371f4b3",
@@ -135,7 +135,7 @@
       ],
       "requiredClaims": ["fixtures-not-certification"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -150,7 +150,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1451,
       "lineEnd": 1451,
       "quoteSha256": "38d29f6b79d28fad7032ad11b45f910a89401026912d7d790ec7b741a5c25174",
@@ -182,7 +182,7 @@
       ],
       "requiredClaims": ["initial-gold-size"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -197,7 +197,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1453,
       "lineEnd": 1453,
       "quoteSha256": "2fe79c5633814b75631a1902a387966e57f9d2ed2b26d15406acad9d934ed44e",
@@ -229,7 +229,7 @@
       ],
       "requiredClaims": ["required-query-classes"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -244,7 +244,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1492,
       "lineEnd": 1493,
       "quoteSha256": "70f251860394cfba8be7ccc21e3f53d1709137692e96f5e48eea9295bbbbc05f",
@@ -276,7 +276,7 @@
       ],
       "requiredClaims": ["exact-and-overall-thresholds"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -291,7 +291,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1475,
       "lineEnd": 1478,
       "quoteSha256": "a19fb19f83d527f6a50d14931d9ba048c8a340288c90da00a4ef684556fd517e",
@@ -323,7 +323,7 @@
       ],
       "requiredClaims": ["language-recall-thresholds"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -338,7 +338,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1500,
       "lineEnd": 1501,
       "quoteSha256": "ff88d7928a65055bb9c264dd1c18e533c3a3476a95c3a2091e33dc01e9622965",
@@ -370,7 +370,7 @@
       ],
       "requiredClaims": ["no-answer-thresholds"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -439,7 +439,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-      "sha256": "22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "lineStart": 1507,
       "lineEnd": 1509,
       "quoteSha256": "c0f3b880926c1173d7bcdb55e7d48c6d57a791aab2acc219a91db455fb7d69ca",
@@ -471,7 +471,7 @@
       ],
       "requiredClaims": ["latency-targets"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:22c00ed37c65360269ffb57917a37eef919a1f1976eee426c28fc0eda86fd63b",
+      "expectedRevision": "sha256:0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
       "shouldCite": true,
       "exactIdentifier": false
     }
