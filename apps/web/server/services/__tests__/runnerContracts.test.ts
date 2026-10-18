@@ -262,6 +262,43 @@ describe("Feature 197 Runner contracts", () => {
     });
   });
 
+  it("maps ready Codex wire capability to external-task availability, not authority", () => {
+    const rawCodexSnapshot = {
+      ...snapshot,
+      capabilities: ["tool.execute.codex"],
+      toolInventory: [{
+        toolId: "codex",
+        kind: "agent_cli",
+        displayName: "Codex CLI",
+        version: "1.2.3",
+        adapterId: "codex.v1",
+        adapterVersion: "sah-adapter-v1",
+        discoverySource: "path",
+        installState: "installed",
+        configurationState: "configured",
+        authState: "authenticated",
+        healthState: "healthy",
+        availabilityState: "available",
+        trustState: "ready",
+        fingerprint: "sha256:tool-fingerprint",
+        authorizationEvidenceRef: "TEST_ONLY_REDACTED_REFERENCE",
+        observedAt: "2026-09-17T00:00:00Z",
+        expiresAt: "2026-09-17T00:10:00Z",
+        reasonCodes: [],
+      }],
+    };
+    const normalized = validateRunnerCapabilitySnapshot(rawCodexSnapshot);
+    expect(normalized.capabilities).toContain("agent.external_task");
+    expect(normalized).not.toHaveProperty("grantId");
+    const withoutToolCapability = validateRunnerCapabilitySnapshot({ ...rawCodexSnapshot, capabilities: [] });
+    expect(withoutToolCapability.capabilities).not.toContain("agent.external_task");
+    const untrustedCodex = validateRunnerCapabilitySnapshot({
+      ...rawCodexSnapshot,
+      toolInventory: [{ ...rawCodexSnapshot.toolInventory[0], trustState: "degraded" }],
+    });
+    expect(untrustedCodex.capabilities).not.toContain("agent.external_task");
+  });
+
   it("preserves a redacted platform target for Task Control projection", () => {
     const normalized = validateRunnerCapabilitySnapshot({
       ...snapshot,

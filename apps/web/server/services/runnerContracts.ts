@@ -1080,6 +1080,23 @@ export function validateRunnerCapabilitySnapshot(
   }
   const workspaceIds = stringList(raw.workspaceIds, "snapshot.workspaceIds");
   const workspaces = workspaceFacts(raw.workspaces, workspaceIds);
+  const toolInventory = raw.toolInventory === undefined
+    ? []
+    : validateRunnerToolInventory(raw.toolInventory);
+  const capabilities = stringList(raw.capabilities, "snapshot.capabilities");
+  // Runner wire capabilities are adapter-scoped (tool.execute.*). Expose the
+  // high-level external-task capability as availability only when the
+  // authenticated Codex adapter is actually ready. This does not approve a
+  // policy decision, tenant-owner authorization, or a Recovery Grant.
+  const codexReady = toolInventory.some(tool => tool.adapterId === "codex.v1" &&
+    capabilities.includes(`tool.execute.${tool.toolId}`) &&
+    tool.installState === "installed" && tool.configurationState === "configured" &&
+    tool.authState === "authenticated" && tool.healthState === "healthy" &&
+    tool.trustState === "ready" && tool.availabilityState === "available" &&
+    Boolean(tool.authorizationEvidenceRef?.trim()));
+  if (codexReady && !capabilities.includes("agent.external_task")) {
+    capabilities.push("agent.external_task");
+  }
   return {
     runnerId,
     ...(tenantId ? { tenantId } : {}),
@@ -1094,16 +1111,13 @@ export function validateRunnerCapabilitySnapshot(
     revision,
     observedAt: new Date(observedAt).toISOString(),
     expiresAt: new Date(expiresAt).toISOString(),
-    capabilities: stringList(raw.capabilities, "snapshot.capabilities"),
+    capabilities,
     workspaceIds,
     ...(raw.workspaces === undefined ? {} : { workspaces }),
     resourceClass:
       raw.resourceClass as RunnerCapabilitySnapshot["resourceClass"],
     ...(platform ? { platform } : {}),
-    toolInventory:
-      raw.toolInventory === undefined
-        ? []
-        : validateRunnerToolInventory(raw.toolInventory),
+    toolInventory,
     capabilityInventory:
       raw.capabilityInventory === undefined
         ? []
