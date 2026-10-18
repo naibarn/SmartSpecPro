@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
+    "expected_canonical_sha": "a0c78a429407c8a3b66e477479d885074f9b9e78",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Continue SPEC-229 P229.8 only with the remaining acceptance gaps: complete the required untouched query classes/cohort without reusing diagnostic source groups; implement or verify provider-backed lifecycle controls from actual corpus state; execute profiles only through an authorized secure non-production Cloudflare runner, then evaluate §27 thresholds unchanged.",
-    "next_ready_workunit": "P229.8_UNTOUCHED_COHORT_CATEGORY_COMPLETION_AND_PROVIDER_EXECUTION",
+    "next_action": "Merge PR #1145 through required checks; then continue lifecycle canaries and secure provider execution. Keep P229.8 NOT_EVALUABLE until cohort and §27 evidence meet contract.",
+    "next_ready_workunit": "P229.8_PROVIDER_LIFECYCLE_CANARIES_AND_SECURE_RUNTIME",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "PR #1140 merged to origin/main at exact SHA 793ee9f947c41cd650e0a3d62e4105613cd58f7a. Post-merge focused verification passed 6 files / 54 tests; progressive integration, local-contract, and SPEC-308 browser simulation checks passed. Candidate artifact SHA-256 1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63 contains 500 development-only candidates: 451 machine-accepted as development candidates and 49 machine-rejected; 0 human-reviewed, 0 release-approved, 0 held-out release-approved. P229.8 remains NOT_EVALUABLE and global SPEC-229 INCOMPLETE.",
-    "waiting_predicate": "Provider execution resumes when an authorized non-production runner securely injects AI Search Edit+Run, Vectorize Write scoped to a dedicated spec229-eval-* 1024D index, and Workers AI Read/Write credentials. Account token in Admin UI is encrypted but not bridged to this runner; no credential value was read. Non-provider cohort work can proceed independently."
+    "resume_point": "Canonical base a0c78a429407c8a3b66e477479d885074f9b9e78. PR #1145 source d94986453950b88cc4d835fed920e6241888f855 corrects legacy Profile A evidence mapping; 23 focused tests pass. The unseen-v2 candidate artifact remains local and unintegrated because the original generator bytes/query equality cannot be independently verified. Current candidate dispositions are machine-only development records; no human/release approvals or held-out cohort exist. P229.8 remains NOT_EVALUABLE.",
+    "waiting_predicate": "Provider-backed execution resumes only through a registered non-production runtime with securely injected, scoped Cloudflare Vectorize/Workers AI and AI Search credentials; Admin UI token values remain server-side and are not exposed to local scripts. Cohort work may continue without provider credentials."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -107,13 +107,13 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 126,
+  "generation": 128,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-18T06:01:29.349687Z",
+      "last_evidence_at": "2026-10-18T11:50:55.809171Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -232,14 +232,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
+    "canonical_sha": "a0c78a429407c8a3b66e477479d885074f9b9e78",
     "integrated": true,
     "integrated_at": "2026-10-18T11:19:57Z",
-    "intended_pr": "PR #1144 tracks machine-review preservation for the unseen development cohort; it does not certify P229.8.",
-    "pending_pr": "PR #1144",
-    "pending_source_branch": "codex/spec229-unseen-review-20261018",
-    "pending_source_sha": "cb88e3bfba8b106d67eb441dfca3c439b656a489",
-    "pending_workunit": "SPEC229_P229_8_UNSEEN_COHORT_MACHINE_REVIEW"
+    "intended_pr": "PR #1145 contains a Profile A evidence integrity fix; it does not certify P229.8.",
+    "pending_pr": "PR #1145",
+    "pending_source_branch": "codex/spec229-cohort-repair-20261018",
+    "pending_source_sha": "d94986453950b88cc4d835fed920e6241888f855",
+    "pending_workunit": "P229.8_PROFILE_A_OBSERVED_EVIDENCE_INTEGRITY"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -369,7 +369,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-18T06:01:29.349687Z",
+    "reconciled_at": "2026-10-18T11:50:55.809171Z",
     "sources": [
       {
         "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -467,7 +467,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:21:39.879013Z",
+  "updated_at": "2026-10-18T11:52:09.986761Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
