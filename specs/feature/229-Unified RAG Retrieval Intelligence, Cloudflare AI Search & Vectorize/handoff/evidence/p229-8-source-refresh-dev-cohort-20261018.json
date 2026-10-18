@@ -1,0 +1,55 @@
+{
+  "schema_version": "spec229-development-cohort-refresh-v1",
+  "recorded_at": "2026-10-18T06:29:09Z",
+  "work_unit": "P229.8_SOURCE_REVISION_COHORT_PREPARATION",
+  "canonical_corpus_sha": "f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa",
+  "implementation_commit_sha": "4cd29e9b51aa4eb999b79188bb634e9e183212c7",
+  "candidate_pool": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
+    "sha256": "7960da38d0117d0d50340f10b28792d4b5425a5892a656be80b5524de558a3fd",
+    "candidate_queries": 560,
+    "independently_reviewed_machine": 560,
+    "human_reviewed": 0,
+    "human_accepted": 0,
+    "refreshed_stale_source_cases": 14,
+    "independent_refresh_review": "PASS 14/14 by agent reviewer p2298_stale_source_review; not human review"
+  },
+  "source_validation": {
+    "status": "PASS",
+    "checks": [
+      "canonical source SHA-256",
+      "1-based inclusive line span quote SHA-256",
+      "benchmarkGold.expectedRevision == sha256:<source digest>"
+    ],
+    "rows_validated": 560
+  },
+  "development_cohort": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v1.json",
+    "sha256": "eeeee577663e815473b48062c5c2329ff1ab814a31fa9ba4cd46e4fca6adf9c7",
+    "candidate_queries": 560,
+    "held_out": 503,
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "owner_delegated_nonproduction_source_use": 560,
+    "use_scope": "non-production repository MIT source evaluation only",
+    "certification": "NOT_CERTIFIED"
+  },
+  "verification": {
+    "focused_command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 node_modules/.bin/vitest --no-cache run server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalReleaseCohort.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/retrievalComparisonProfiles.test.ts server/services/retrievalBroker.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/__tests__/vectorProvider.test.ts server/services/libraryCitationAnchor.test.ts server/__tests__/vectorize-embeddings.test.ts",
+    "focused_result": "PASS: 12 files, 99 tests",
+    "syntax_command": "node_modules/.bin/esbuild scripts/prepare-spec229-release-cohort.ts scripts/run-spec229-legacy-baseline.ts scripts/run-spec229-vectorize-profile-b.ts scripts/run-spec229-ai-search-profile-c.ts --outdir=/tmp/spec229-fast-syntax --platform=node --format=esm --log-level=warning",
+    "syntax_result": "PASS",
+    "diff_check": "PASS",
+    "canonical_binding": "Local verification ran on implementation commit 4cd29e9b51aa4eb999b79188bb634e9e183212c7 based on canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa; post-merge exact canonical verification remains pending."
+  },
+  "runtime_observations": {
+    "profiles_A_through_H": "NOT_EVALUABLE on this worktree; no actual new provider observations collected",
+    "release_criteria": "all 15 NOT_EVALUABLE; no release calibration or production verification claimed",
+    "provider_credentials_present": false,
+    "disposable_database_configuration_present": false,
+    "secrets_read_or_copied": false
+  },
+  "next_action": "Run Profile A only on an isolated disposable local PostgreSQL runtime; collect B-H only after an authorized non-production Cloudflare runtime and dedicated Vectorize evaluation index are injected.",
+  "canonical_sha": "f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa",
+  "test_execution_source_sha": "4cd29e9b51aa4eb999b79188bb634e9e183212c7"
+}

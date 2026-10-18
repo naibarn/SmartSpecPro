@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, resolve, sep } from "node:path";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { getDb, closeDb } from "../server/db";
 import {
   libraryChunks,
@@ -42,10 +42,20 @@ const EVAL_USER = 923229;
 const RUN_ID = randomUUID();
 const repoRoot = resolve(process.cwd(), "../..");
 const corpusRoot = resolve(process.env.SPEC229_CORPUS_ROOT ?? repoRoot);
-const candidatePath = resolve(
-  corpusRoot,
-  "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-);
+const configuredCandidatePath = process.env.SPEC229_GOLD_CANDIDATE_PATH;
+const candidatePath = configuredCandidatePath
+  ? resolve(repoRoot, configuredCandidatePath)
+  : resolve(corpusRoot, "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json");
+if (configuredCandidatePath) {
+  const candidateRelative = relative(realpathSync(repoRoot), realpathSync(candidatePath));
+  if (
+    isAbsolute(candidateRelative) ||
+    candidateRelative === ".." ||
+    candidateRelative.startsWith(`..${sep}`)
+  ) {
+    throw new Error("SPEC229_GOLD_CANDIDATE_PATH must stay within the system repository");
+  }
+}
 const outputPath = process.argv[2] ? resolve(process.argv[2]) : undefined;
 
 function sha256(value: string | Buffer): string {
@@ -82,6 +92,7 @@ async function main() {
   assertDisposableDatabase();
   const collectorSourceDigest = collectorPatchSha256();
   const corpusSha = execFileSync("git", ["-C", corpusRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const systemSha = execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const expectedCorpusSha = process.env.SOURCE_SHA;
   if (!expectedCorpusSha || corpusSha !== expectedCorpusSha) {
     throw new Error("Corpus worktree SHA must exactly match SOURCE_SHA");
@@ -219,7 +230,8 @@ async function main() {
   const run = {
     schemaVersion: "spec229-local-observation-run-v1",
     runId: RUN_ID,
-    systemSha: process.env.SOURCE_SHA ?? "unbound-local-working-tree",
+    systemSha,
+    collectorGitSha: systemSha,
     collectorPatchSha256: collectorSourceDigest,
     profile: PROFILE,
     runtime: "isolated local PostgreSQL + existing libraryService.searchLibraryItems keyword fallback",

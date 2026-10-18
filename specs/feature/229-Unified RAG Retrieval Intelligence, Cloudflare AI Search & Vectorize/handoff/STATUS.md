@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: After PR #1104 merges, implement A/B evaluation execution through existing legacy/Vectorize paths, then collect actual observations with the isolated authorized development corpus. Keep P229.8 NOT_EVALUABLE until release cohort and §27 criteria pass.
-- Manifest generation: 94
+- Manifest generation: 96
 
 ## Source-declared status and relationship claims
 
