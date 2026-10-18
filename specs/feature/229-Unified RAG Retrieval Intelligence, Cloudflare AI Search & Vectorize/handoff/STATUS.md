@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: Construct deterministic, explicitly synthetic development controls for ACL, stale, revoked/deleted, no-answer, follow-up, multi-hop, and OCR/long-document classes where test-only semantics are honest. Ensure data provenance, content digest, revision pair, ACL ownership, and expected visibility are explicit. Independently review and adjudicate without human labels unless actually human-reviewed. No threshold changes or release approval.
-- Manifest generation: 140
+- Manifest generation: 141
 
 ## Source-declared status and relationship claims
 
