@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 119,
+  "generation": 120,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -235,7 +235,7 @@
     "integrated": true,
     "integrated_at": "2026-10-18T10:51:01Z",
     "intended_pr": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f; fail-closed evaluation control integrity; exact-SHA post-merge focused tests passed.",
-    "pending_pr": "To be created after pre-promotion required-check review for source commit 9e949e3aef1695fb5cdbdc4afdc5f171d47f4614",
+    "pending_pr": "PR #1140: https://github.com/naibarn/SmartSpecPro/pull/1140",
     "pending_source_branch": "codex/spec229-gold-review-20261018",
     "pending_source_sha": "9e949e3aef1695fb5cdbdc4afdc5f171d47f4614",
     "pending_workunit": "P229.8_INTEGRITY_V1_INDEPENDENT_CANDIDATE_REVIEW"
@@ -466,7 +466,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:01:42.401387Z",
+  "updated_at": "2026-10-18T11:02:20.092057Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
