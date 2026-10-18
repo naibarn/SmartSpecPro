@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "038afce8d93ab0d571b8a7e4686d1ea159cd7239",
+    "expected_canonical_sha": "0a20b653c2cebc8052dea6832fb994ff9518a7c4",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Commit c76036087fb4c33d12d47fd1c2bd019e2516a247 for SPEC224_DEV_POLICY_GRANTS_20261018 is based on canonical origin/main df065b5e1db81aa8e8e203855fc703b8e374461c. Create and integrate the protected PR for this source-bound policy Recovery Grant and workspace crosswalk fix. After integration, resume only with authenticated Platform/Security Source Trust resources/approval and fresh Windows Runner/profile/session/crosswalk/lease/Tenant authority evidence.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY after protected integration: Platform/Security Source Trust approval/resources plus fresh Windows Runtime Owner/Tenant evidence. Do not issue cloud trust, bind/dispatch a grant, or claim live acceptance before those records validate.",
+    "next_action": "PR #1132 is merged at 0a20b653c2cebc8052dea6832fb994ff9518a7c4 and reachable from origin/main. Continue live acceptance only after the authenticated Platform/Security Source Trust approval/resource package is present and current Windows Runner/profile/session/crosswalk/lease/Tenant authority evidence is available. No grant or dispatch is authorized by this evidence alone.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: exact authenticated Source Trust owner approval/resources and fresh Windows Runtime/Tenant binding evidence. Engineering policy grant issuance and workspace crosswalk are integrated; Source Trust remains deny-only.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "Owned source branch codex/spec224-policy-recovery-grants-20261018, commit c76036087fb4c33d12d47fd1c2bd019e2516a247, task SPEC224_DEV_POLICY_GRANTS_20261018, base origin/main df065b5e1db81aa8e8e203855fc703b8e374461c. Implementation adds authenticated exact-scope policy Recovery Grant issue/validation, revoke-safe authority lock order and canonical workspace crosswalk from persisted job manifest through grant binding to protected admission. Focused Python 34/34, Vitest 14/14, py_compile, scoped esbuild, diff hygiene and independent read-only review pass. Intended next operation is protected PR creation/integration; no grant issued and no dispatch. Source Trust resources/approval, profile certification and fresh live Windows bindings remain unverified.",
-    "waiting_predicate": "Proceed to live acceptance only after protected PR integration and authenticated Source Trust owner approval/resource proof is available, and Windows Runtime Owner/Tenant Owner evidence confirms current runner/session/profile/crosswalk/lease/fencing/idempotency. If absent, run only local non-production checks and keep live acceptance blocked."
+    "resume_point": "SPEC224_DEV_POLICY_GRANTS_20261018 integrated by PR #1132: source head e25853430d66af89b81191b403bce087967a5f5c, merge SHA 0a20b653c2cebc8052dea6832fb994ff9518a7c4, verified reachable from origin/main. Required checks passed: progressive_integration_gate, local-contract (current head and preceding handoff commit), Mocked SPEC-308 browser simulation; build-preview skipped. Local focused evidence: Python 34/34, Vitest 14/14, py_compile, scoped esbuild, diff hygiene; independent read-only review found no remaining issue. Integrated feature permits policy-backed exact-scope Recovery Grant issuance/validation and enforces canonical Workspace Authority crosswalk plus revoke-compatible authority locks. No actual grant was issued, no Runner dispatch occurred, and no Source Trust resource was activated. Owner approval request still has no authenticated response; GitHub search found no approval issue/PR. Cloud resource existence remains UNKNOWN because account inventory access is unavailable. Next: exact Platform/Security decision and resource IDs/permissions/budget, then fresh Windows Runtime Owner/Tenant bindings before one dispatch.",
+    "waiting_predicate": "Resume Source Trust integration when an authenticated Platform/Security Owner Approval Record supplies exact issuer workload/owner/entrypoint/environment, signing operation/key ID/fingerprint and rotation/revocation, evidence storage provider/account/bucket/prefix and split writer/verifier permissions with isolation/readback, trust scope/TTL/clock skew/replay/revocation/retention/incident owner, bounded cost/resource limits, canonical binding fields, and durable audit reference. Resume live dispatch only when Windows Runner/session/profile certification/capability/workspace crosswalk, current job/attempt/lease/fencing/idempotency and Tenant authority bindings are independently read back and valid."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 111,
+  "generation": 112,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1350,11 +1350,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "038afce8d93ab0d571b8a7e4686d1ea159cd7239",
+    "canonical_sha": "0a20b653c2cebc8052dea6832fb994ff9518a7c4",
     "integrated": true,
-    "integrated_at": "2026-10-18T09:53:25Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1129",
-    "source_sha": "01f316c23ee513469884fc9855584a74cb28bf82"
+    "integrated_at": "2026-10-18T10:12:25Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1132",
+    "source_sha": "e25853430d66af89b81191b403bce087967a5f5c"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T10:07:08.551237Z",
+  "updated_at": "2026-10-18T10:12:45.453894Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
