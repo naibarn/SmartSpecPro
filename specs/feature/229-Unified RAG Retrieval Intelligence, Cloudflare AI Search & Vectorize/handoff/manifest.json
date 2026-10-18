@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 75,
+  "generation": 76,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -405,9 +405,26 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T04:31:45.247166Z",
+  "updated_at": "2026-10-18T04:32:37.415869Z",
   "verification": {
     "evidence": [
+      "handoff/evidence/p229-1-broker-focused-20261017.json",
+      "handoff/evidence/p229-1-broker-boundary-20261017.json",
+      "handoff/evidence/p229-1-broker-contract-20261017.json",
+      "handoff/evidence/p229-1-shared-contract-20261017.json",
+      "handoff/evidence/p229-1-request-boundary-20261017.json",
+      "handoff/evidence/p229-8-canonical-hydration-20261017.json",
+      "handoff/evidence/p229-1-degraded-failure-20261017.json",
+      "handoff/evidence/p229-1-postmerge-20261017.json",
+      "handoff/evidence/p229-postmerge-retrieval-verification-20261017.json",
+      "handoff/evidence/p229-8-anchors-benchmark-20261017.json",
+      "handoff/evidence/p229-8-gold-pipeline-20261017.json",
+      "handoff/evidence/p229-8-gold-pipeline-postmerge-20261017.json",
+      "handoff/evidence/p229-8-gold-review-batches-20261017.json",
+      "handoff/evidence/p229-8-gold-review-batches-postmerge-20261017.json",
+      "handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json",
+      "handoff/evidence/p229-8-calibration-readiness-20261018.json",
+      "handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json",
       "handoff/evidence/p229-profile-c-ai-search-development-implementation-20261018.json"
     ],
     "freshness": "STALE",
