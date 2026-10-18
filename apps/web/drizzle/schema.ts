@@ -4452,6 +4452,80 @@ export const vectorIndexRecords = pgTable(
 export type VectorIndexRecord = typeof vectorIndexRecords.$inferSelect;
 export type InsertVectorIndexRecord = typeof vectorIndexRecords.$inferInsert;
 
+/**
+ * Canonical provider routing for AI Search instances. Instance IDs are stored
+ * here rather than derived by feature or consumer code; PostgreSQL remains the
+ * route authority while provider indexes stay rebuildable projections.
+ */
+export const retrievalInstanceRoutes = pgTable(
+  "retrieval_instance_routes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    environment: varchar("environment", { length: 24 }).notNull(),
+    topologyMode: varchar("topology_mode", { length: 32 }).notNull(),
+    namespace: varchar("namespace", { length: 64 }).notNull(),
+    instanceIds: jsonb("instance_ids").$type<string[]>().notNull(),
+    sourceClassRoutes: jsonb("source_class_routes")
+      .$type<Record<string, string[]>>()
+      .notNull()
+      .default({}),
+    shardPolicy: jsonb("shard_policy")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    capacityState: varchar("capacity_state", { length: 32 })
+      .notNull()
+      .default("unknown"),
+    profileVersion: varchar("profile_version", { length: 64 }).notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("retrieval_instance_routes_tenant_environment_unique").on(
+      t.tenantId,
+      t.environment
+    ),
+    index("retrieval_instance_routes_environment_enabled_idx").on(
+      t.environment,
+      t.enabled
+    ),
+    check(
+      "retrieval_instance_routes_environment_check",
+      sql`${t.environment} IN ('dev', 'staging', 'prod')`
+    ),
+    check(
+      "retrieval_instance_routes_topology_check",
+      sql`${t.topologyMode} IN ('shared', 'dedicated', 'pooled', 'sharded')`
+    ),
+    check(
+      "retrieval_instance_routes_capacity_state_check",
+      sql`${t.capacityState} IN ('unknown', 'healthy', 'warning', 'rebalance_required', 'full')`
+    ),
+    check(
+      "retrieval_instance_routes_instance_ids_check",
+      sql`CASE WHEN jsonb_typeof(${t.instanceIds}) = 'array' THEN jsonb_array_length(${t.instanceIds}) BETWEEN 1 AND 10 ELSE false END`
+    ),
+    check(
+      "retrieval_instance_routes_source_class_routes_check",
+      sql`jsonb_typeof(${t.sourceClassRoutes}) = 'object'`
+    ),
+    check(
+      "retrieval_instance_routes_shard_policy_check",
+      sql`jsonb_typeof(${t.shardPolicy}) = 'object'`
+    ),
+  ]
+);
+
+export type RetrievalInstanceRoute =
+  typeof retrievalInstanceRoutes.$inferSelect;
+export type InsertRetrievalInstanceRoute =
+  typeof retrievalInstanceRoutes.$inferInsert;
+
 export const libraryContentVersions = pgTable(
   "library_content_versions",
   {

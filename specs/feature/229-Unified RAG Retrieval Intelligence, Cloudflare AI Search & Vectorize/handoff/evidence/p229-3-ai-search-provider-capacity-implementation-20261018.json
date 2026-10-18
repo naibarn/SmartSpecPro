@@ -1,0 +1,36 @@
+{
+  "evidence_id": "p229-3-ai-search-provider-capacity-implementation-20261018",
+  "spec_id": "229",
+  "workunit": "P229.3_AI_SEARCH_PROVIDER_AND_CAPACITY_ROUTING",
+  "status": "IMPLEMENTATION_CHECKPOINT",
+  "canonical_base_sha": "60e3a759710442308168e7264c1752515a67ac01",
+  "source_sha": "d05d4e5ebf2c132ab12c2bf59407aecd443b34a9",
+  "source_branch": "codex/spec229-p2293-provider",
+  "changes": [
+    "Added the PostgreSQL-owned retrieval_instance_routes registry with tenant/environment uniqueness and bounded provider fanout.",
+    "Added fail-closed explicit route validation/resolution and capacity forecasting using the existing SPEC limits.",
+    "Added an unregistered Cloudflare AI Search REST provider adapter with mandatory tenant, authorized ACL-scope and source-type prefilters plus returned-result scope checks.",
+    "Kept the provider adapter disconnected from RetrievalBroker until P229.4 projection metadata and canonical hydration contracts are implemented. No consumer behavior or default provider changed."
+  ],
+  "verification": {
+    "command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest --no-cache run server/services/retrievalInstanceRoutes.test.ts server/services/retrievalInstanceRoutesMigration.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/retrievalBroker.test.ts server/routers/library.test.ts",
+    "result": "PASS: 9 test files, 84 passed, 28 todo",
+    "format": "PASS: Prettier on modified TypeScript service/test files and Drizzle journal",
+    "patch": "PASS: git diff --check",
+    "limitations": [
+      "The app ESLint executable is not installed in the isolated worktree dependency set; ESLint was not run.",
+      "Repository-wide typecheck was not run under the local RAM restriction.",
+      "No disposable Cloudflare account/token or authorized runtime was available; no provider observations, costs, or capacity provisioning were claimed.",
+      "This evidence does not establish P229.3 acceptance, P229.8 calibration, or production verification."
+    ]
+  },
+  "security": {
+    "tenant_acl_prefilter": "covered by provider contract tests",
+    "response_scope_validation": "covered for tenant, ACL scope, source class, and explicit instance route",
+    "database_owner": "existing PostgreSQL/Drizzle schema",
+    "production_profile_changed": false,
+    "production_index_changed": false,
+    "secrets_read_or_persisted": false
+  },
+  "next_action": "Integrate this safe P229.3 foundation through the protected PR path; then implement P229.4 projection/ACL hydration before connecting AI Search results to the existing RetrievalBroker. Keep profiles requiring provider runtime NOT_EVALUABLE until actual authorized observations are collected."
+}
