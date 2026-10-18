@@ -15,7 +15,7 @@ function response(result: unknown, status = 200): Response {
 }
 
 describe("CloudflareAiSearchEvaluationClient", () => {
-  it("creates a private keyword-only trigram profile with the tenant filter fields", async () => {
+  it("creates a private keyword-only trigram profile with the canonical metadata fields", async () => {
     const fetchImpl = vi.fn(async () => response({ id: config.instanceId }));
     const client = new CloudflareAiSearchEvaluationClient({ ...config, fetchImpl });
 
@@ -26,6 +26,8 @@ describe("CloudflareAiSearchEvaluationClient", () => {
     expect(init?.method).toBe("POST");
     const body = JSON.parse(String(init?.body));
     expect(body.index_method).toEqual({ vector: false, keyword: true });
+    expect(body.embedding_model).toBe("@cf/baai/bge-m3");
+    expect(body).not.toHaveProperty("fusion_method");
     expect(body.indexing_options).toEqual({ keyword_tokenizer: "trigram", use_ocr: false });
     expect(body.retrieval_options).toEqual({ keyword_match_mode: "or" });
     expect(body.cache).toBe(false);
@@ -46,8 +48,8 @@ describe("CloudflareAiSearchEvaluationClient", () => {
       key: "spec229-eval-bcbf0c7d4e0bdac0-example.md",
       content: "Authorized repository fixture content",
       metadata: {
-        tenant_id: "repo-development",
         acl_scope: "tenant_shared:spec229-repository",
+        source_type: "library",
         source_id: "specs/example.md",
         source_revision: `sha256:${"b".repeat(64)}`,
         source_digest: "b".repeat(64),
@@ -70,11 +72,11 @@ describe("CloudflareAiSearchEvaluationClient", () => {
     const file = form.get("file") as File;
     expect(file.name).toBe("spec229-eval-bcbf0c7d4e0bdac0-example.md");
     expect(await file.text()).toBe("Authorized repository fixture content");
-    expect(JSON.parse(String(form.get("metadata"))).tenant_id).toBe("repo-development");
+    expect(JSON.parse(String(form.get("metadata"))).source_type).toBe("library");
     expect(form.get("wait_for_completion")).toBe("true");
   });
 
-  it("executes keyword-only search with fail-closed tenant and ACL filters", async () => {
+  it("executes keyword-only search with fail-closed ACL filters", async () => {
     const fetchImpl = vi.fn(async () => response({
       chunks: [{
         id: "chunk-1",
@@ -82,7 +84,10 @@ describe("CloudflareAiSearchEvaluationClient", () => {
         text: "Repository result",
         item: {
           key: "spec229-eval-bcbf0c7d4e0bdac0-example.md",
-          metadata: { tenant_id: "repo-development" },
+          metadata: {
+            acl_scope: "tenant_shared:spec229-repository",
+            source_type: "library",
+          },
         },
       }],
       search_query: "source query",
@@ -101,7 +106,6 @@ describe("CloudflareAiSearchEvaluationClient", () => {
       max_num_results: 50,
       match_threshold: 0,
       filters: {
-        tenant_id: "repo-development",
         acl_scope: "tenant_shared:spec229-repository",
       },
     });
@@ -116,8 +120,69 @@ describe("CloudflareAiSearchEvaluationClient", () => {
     const [, scopedInit] = fetchImpl.mock.calls[1];
     const scopedBody = JSON.parse(String(scopedInit?.body));
     expect(scopedBody.ai_search_options.retrieval.filters).toEqual({
-      tenant_id: "repo-foreign-control",
       acl_scope: "tenant_shared:foreign-control",
+    });
+  });
+
+  it("creates the SPEC hybrid reranker profile with both indexes and pinned models", async () => {
+    const fetchImpl = vi.fn(async () => response({ id: config.instanceId }));
+    const client = new CloudflareAiSearchEvaluationClient({ ...config, fetchImpl });
+
+    await client.createComparisonInstance("hybrid_reranker");
+
+    const body = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(body.index_method).toEqual({ vector: true, keyword: true });
+    expect(body.fusion_method).toBe("rrf");
+    expect(body.reranking).toBe(true);
+    expect(body.reranking_model).toBe("@cf/baai/bge-reranker-base");
+    expect(body.rewrite_query).toBe(false);
+  });
+
+  it("runs Profile H through the existing provider with ACL filters, rewrite context, and reviewed variants", async () => {
+    const fetchImpl = vi.fn(async () => response({ chunks: [{
+      id: "chunk-1",
+      score: 0.9,
+      text: "Repository result",
+      item: {
+        key: "spec229-eval-bcbf0c7d4e0bdac0-example.md",
+        metadata: {
+          acl_scope: "tenant_shared:spec229-repository",
+          source_type: "library",
+        },
+      },
+    }] }));
+    const client = new CloudflareAiSearchEvaluationClient({
+      ...config,
+      namespace: "smartaihub-dev",
+      fetchImpl,
+    });
+
+    const result = await client.searchComparison({
+      query: "follow-up query",
+      profile: "multi_query",
+      messages: [
+        { role: "user", content: "previous question" },
+        { role: "assistant", content: "prior context" },
+        { role: "user", content: "follow-up query" },
+      ],
+      multiQueryVariants: ["reviewed alternate query"],
+    });
+
+    expect(result.chunks).toHaveLength(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(firstBody.messages.at(-1)).toEqual({ role: "user", content: "follow-up query" });
+    expect(firstBody.ai_search_options).toMatchObject({
+      query_rewrite: { enabled: true },
+      reranking: { enabled: true },
+      retrieval: {
+        retrieval_type: "hybrid",
+        fusion_method: "rrf",
+        filters: {
+          acl_scope: { $in: ["tenant_shared:spec229-repository"] },
+          source_type: { $in: ["library"] },
+        },
+      },
     });
   });
 
@@ -133,8 +198,8 @@ describe("CloudflareAiSearchEvaluationClient", () => {
       key: "spec229-eval-../outside.md",
       content: "x",
       metadata: {
-        tenant_id: "repo-development",
         acl_scope: "tenant_shared:spec229-repository",
+        source_type: "library",
         source_id: "outside.md",
         source_revision: `sha256:${"c".repeat(64)}`,
         source_digest: "c".repeat(64),
@@ -144,8 +209,8 @@ describe("CloudflareAiSearchEvaluationClient", () => {
       key: "spec229-eval-long-scope.md",
       content: "x",
       metadata: {
-        tenant_id: "repo-development",
         acl_scope: "x".repeat(65),
+        source_type: "library",
         source_id: "long-scope.md",
         source_revision: `sha256:${"c".repeat(64)}`,
         source_digest: "c".repeat(64),

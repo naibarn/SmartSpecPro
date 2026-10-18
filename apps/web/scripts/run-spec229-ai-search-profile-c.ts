@@ -10,6 +10,7 @@ import {
 } from "../server/services/cloudflareAiSearchEvaluation";
 import {
   calculateRetrievalBenchmarkMetrics,
+  type RetrievalBenchmarkLatencyProfile,
   SPEC_229_RELEASE_CRITERIA,
   retrievalBenchmarkGoldCaseSchema,
 } from "../server/services/libraryRetrievalBenchmark";
@@ -20,6 +21,9 @@ import {
 import { retrievalBenchmarkRunBundleSchema } from "../server/services/libraryRetrievalBenchmarkRunBundle";
 import {
   goldDatasetCandidateSchema,
+  countGoldDataset,
+  evaluateGoldDataset,
+  isHeldOutReleaseEvaluationEligible,
   validateGoldDataset,
   type GoldDatasetCandidate,
 } from "../server/services/libraryRetrievalGoldDataset";
@@ -28,9 +32,25 @@ type Candidate = GoldDatasetCandidate;
 
 type Source = { path: string; digest: string; content: string };
 
-const PROFILE = "ai_search_bm25" as const;
+const PROFILE_CHOICES = {
+  C: "ai_search_bm25",
+  D: "ai_search_vector",
+  E: "hybrid_rrf",
+  F: "hybrid_reranker",
+  G: "conditional_rewrite",
+  H: "multi_query",
+} as const;
+const profileKey = (process.env.SPEC229_AI_SEARCH_PROFILE ?? "C").toUpperCase() as keyof typeof PROFILE_CHOICES;
+if (!Object.hasOwn(PROFILE_CHOICES, profileKey)) {
+  throw new Error("SPEC229_AI_SEARCH_PROFILE must be one of C, D, E, F, G, H");
+}
+const PROFILE = PROFILE_CHOICES[profileKey];
+const LATENCY_PROFILE: RetrievalBenchmarkLatencyProfile | undefined =
+  PROFILE === "hybrid_reranker" ? "hybrid_rerank" :
+    PROFILE === "conditional_rewrite" || PROFILE === "multi_query"
+      ? "rewrite_hybrid_rerank" : undefined;
 const RUN_ID = randomUUID();
-const INSTANCE_ID = `spec229-eval-profile-c-${RUN_ID.slice(0, 8)}`;
+const INSTANCE_ID = `spec229-eval-profile-${profileKey.toLowerCase()}-${RUN_ID.slice(0, 8)}`;
 const repoRoot = resolve(process.cwd(), "../..");
 const corpusRoot = resolve(process.env.SPEC229_CORPUS_ROOT ?? repoRoot);
 const configuredCandidatePath = process.env.SPEC229_GOLD_CANDIDATE_PATH;
@@ -78,7 +98,7 @@ function collectorProvenance(): { gitSha: string; patchSha256: string } {
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required for an actual profile C run`);
+  if (!value) throw new Error(`${name} is required for an actual AI Search comparison run`);
   return value;
 }
 
@@ -86,6 +106,7 @@ function assertRuntimeAndSource(): {
   sourceSha: string;
   accountId: string;
   apiToken: string;
+  namespace: string;
 } {
   if (process.env.SPEC229_EVAL_DISPOSABLE !== "1") {
     throw new Error(
@@ -104,10 +125,15 @@ function assertRuntimeAndSource(): {
   if (actualSha !== sourceSha || status) {
     throw new Error("Evaluation corpus must be a clean worktree pinned to SOURCE_SHA");
   }
+  const namespace = required("SPEC229_EVAL_NAMESPACE");
+  if (namespace !== "smartaihub-dev" && namespace !== "smartaihub-staging") {
+    throw new Error("SPEC229_EVAL_NAMESPACE must name an authorized non-production namespace");
+  }
   return {
     sourceSha,
     accountId: required("SPEC229_EVAL_ACCOUNT_ID"),
     apiToken: required("SPEC229_EVAL_AI_SEARCH_API_TOKEN"),
+    namespace,
   };
 }
 
@@ -124,6 +150,18 @@ function loadAuthorizedSources(): { candidates: Candidate[]; sources: Source[] }
     )
   ) {
     throw new Error("Expected the existing repository-only development cohort");
+  }
+  if (
+    (PROFILE === "conditional_rewrite" || PROFILE === "multi_query") &&
+    candidates.some(candidate => !candidate.conversationContext?.length)
+  ) {
+    throw new Error("Selected profile requires reviewed follow-up conversationContext for every candidate");
+  }
+  if (
+    PROFILE === "multi_query" &&
+    candidates.some(candidate => !candidate.multiQueryVariants?.length)
+  ) {
+    throw new Error("Profile H requires reviewed multiQueryVariants for every candidate");
   }
 
   const paths = [...new Set(candidates.map(candidate => candidate.source.path))].sort();
@@ -211,13 +249,13 @@ function validateResultOwnership(chunk: AiSearchEvaluationChunk, source: Source)
   const metadata = chunk.item.metadata;
   if (
     !metadata ||
-    metadata.tenant_id !== SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId ||
     metadata.acl_scope !== SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope ||
+    metadata.source_type !== "library" ||
     metadata.source_id !== source.path ||
     metadata.source_revision !== `sha256:${source.digest}` ||
     metadata.source_digest !== source.digest
   ) {
-    throw new Error("SPEC229_PROFILE_C_EVIDENCE_OWNERSHIP_OR_PROVENANCE_MISMATCH");
+    throw new Error("SPEC229_EVIDENCE_OWNERSHIP_OR_PROVENANCE_MISMATCH");
   }
 }
 
@@ -228,6 +266,7 @@ async function main() {
   const api = new CloudflareAiSearchEvaluationClient({
     accountId: runtime.accountId,
     apiToken: runtime.apiToken,
+    namespace: runtime.namespace,
     instanceId: INSTANCE_ID,
   });
   const sourceByKey = new Map<string, Source>();
@@ -237,8 +276,8 @@ async function main() {
       key,
       content: source.content,
       metadata: {
-        tenant_id: SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId,
         acl_scope: SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope,
+        source_type: "library",
         source_id: source.path,
         source_revision: `sha256:${source.digest}`,
         source_digest: source.digest,
@@ -246,20 +285,20 @@ async function main() {
     };
   });
   const createCanary = (kind: "foreign_tenant" | "same_tenant_private") => {
-    const content = `SPEC229_PROFILE_C_${kind.toUpperCase()}_CANARY_${RUN_ID} unique retrieval guard fixture`;
+    const content = `SPEC229_PROFILE_${profileKey}_${kind.toUpperCase()}_CANARY_${RUN_ID} unique retrieval guard fixture`;
     const digest = sha256Hex(content);
     const tenantId = kind === "foreign_tenant" ? "repo-foreign-control" : "repo-development";
     const aclScope = kind === "foreign_tenant"
       ? "tenant_shared:foreign-control"
       : "tenant_shared:spec229-private-control";
     return {
-      query: `SPEC229_PROFILE_C_${kind.toUpperCase()}_CANARY_${RUN_ID}`,
+      query: `SPEC229_PROFILE_${profileKey}_${kind.toUpperCase()}_CANARY_${RUN_ID}`,
       document: {
         key: createItemKey(`__synthetic__/${kind}-${RUN_ID}.md`),
         content,
         metadata: {
-          tenant_id: tenantId,
           acl_scope: aclScope,
+          source_type: "library",
           source_id: `synthetic:${kind}:${RUN_ID}`,
           source_revision: `sha256:${digest}`,
           source_digest: digest,
@@ -278,7 +317,7 @@ async function main() {
   let run: Record<string, unknown> | undefined;
 
   try {
-    await api.createKeywordOnlyInstance();
+    await api.createComparisonInstance(PROFILE);
     instanceCreated = true;
     const indexDocument = async (document: AiSearchEvaluationDocument, expectedSource?: Source) => {
       const receipt = await api.uploadDocument(document);
@@ -320,23 +359,36 @@ async function main() {
       if (!receipt.chunksCount || receipt.chunksCount < 1) {
         throw new Error("AI Search security canary did not produce an indexed chunk");
       }
-      const visibleToControlScope = await api.searchKeyword(
-        control.query,
-        50,
-        control.scope,
-      );
+      const canaryMessages = [
+        { role: "user" as const, content: "Find the unique evaluation guard fixture" },
+        { role: "user" as const, content: control.query },
+      ];
+      const visibleToControlScope = await api.searchComparison({
+        query: control.query,
+        profile: PROFILE,
+        maxResults: 50,
+        scope: control.scope,
+        messages: canaryMessages,
+        multiQueryVariants: [`unique ${control.query} evaluation guard fixture`],
+      });
       if (!visibleToControlScope.chunks.some(chunk => chunk.item.key === receipt.key)) {
         throw new Error("AI Search positive security control could not retrieve its canary");
       }
-      const visibleToRepositoryScope = await api.searchKeyword(control.query);
+      const visibleToRepositoryScope = await api.searchComparison({
+        query: control.query,
+        profile: PROFILE,
+        maxResults: 50,
+        messages: canaryMessages,
+        multiQueryVariants: [`unique ${control.query} evaluation guard fixture`],
+      });
       const leakedCanary = visibleToRepositoryScope.chunks.some(
         chunk => chunk.item.key === receipt.key,
       );
       if (leakedCanary) {
-        throw new Error("SPEC229_PROFILE_C_ACL_LEAK_DETECTED");
+        throw new Error("SPEC229_EVALUATION_ACL_LEAK_DETECTED");
       }
       securityControlResults.push({
-        case: control.document.metadata.tenant_id === "repo-development"
+        case: control.scope.aclScope === SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope
           ? "same_tenant_unshared_acl"
           : "cross_tenant",
         positiveControl: "PASS",
@@ -372,7 +424,16 @@ async function main() {
       let chunks: AiSearchEvaluationChunk[] = [];
       let apiUsage: Record<string, unknown> | null = null;
       try {
-        const result = await api.searchKeyword(candidate.query, 50);
+        const messages = candidate.conversationContext?.length
+          ? [...candidate.conversationContext, { role: "user" as const, content: candidate.query }]
+          : undefined;
+        const result = await api.searchComparison({
+          query: candidate.query,
+          profile: PROFILE,
+          maxResults: 50,
+          ...(messages ? { messages } : {}),
+          ...(candidate.multiQueryVariants ? { multiQueryVariants: candidate.multiQueryVariants } : {}),
+        });
         chunks = result.chunks;
         apiUsage = result.usage ?? null;
       } catch (error) {
@@ -396,7 +457,7 @@ async function main() {
       for (const chunk of chunks) {
         const source = sourceByKey.get(chunk.item.key);
         if (!source) {
-          throw new Error("SPEC229_PROFILE_C_EVIDENCE_KEY_NOT_IN_DISPOSABLE_CORPUS");
+          throw new Error("SPEC229_EVIDENCE_KEY_NOT_IN_DISPOSABLE_CORPUS");
         }
         validateResultOwnership(chunk, source);
         hitPaths.add(source.path);
@@ -437,6 +498,7 @@ async function main() {
       observations.push({
         caseId: candidate.caseId,
         comparisonProfile: PROFILE,
+        ...(LATENCY_PROFILE ? { latencyProfile: LATENCY_PROFILE } : {}),
         answerSupported: candidate.benchmarkGold.supportsAnswer && relevantHit,
         coveredClaims: relevantHit ? candidate.benchmarkGold.requiredClaims : [],
         evidence,
@@ -464,6 +526,14 @@ async function main() {
       benchmarkCases,
       observations,
     );
+    const heldOutIds = new Set(
+      candidates.filter(isHeldOutReleaseEvaluationEligible).map(candidate => candidate.caseId),
+    );
+    const heldOutObservations = observations.filter(observation => heldOutIds.has(observation.caseId));
+    const latencyRuns = LATENCY_PROFILE
+      ? { [LATENCY_PROFILE]: heldOutObservations }
+      : {};
+    const releaseEvaluation = evaluateGoldDataset(candidates, heldOutObservations, latencyRuns);
     run = {
       schemaVersion: "spec229-local-observation-run-v1",
       runId: RUN_ID,
@@ -471,26 +541,34 @@ async function main() {
       collectorGitSha: collector.gitSha,
       collectorPatchSha256: collector.patchSha256,
       profile: PROFILE,
-      runtime: "disposable non-production Cloudflare AI Search keyword-only profile",
+      candidateDataset: {
+        sha256: sha256Hex(readFileSync(candidatePath)),
+        candidateCount: candidates.length,
+        heldOutEligibleCount: heldOutIds.size,
+        reviewCounts: countGoldDataset(candidates),
+      },
+      runtime: "disposable non-production Cloudflare AI Search comparison profile via existing provider adapter",
       providerConfiguration: {
         provider: "cloudflare_ai_search",
-        namespace: "default",
+        namespace: runtime.namespace,
         instanceId: INSTANCE_ID,
         instanceProfile: {
-          indexMethod: { vector: false, keyword: true },
+          embeddingModel: "@cf/baai/bge-m3",
+          indexMethod: {
+            vector: PROFILE !== "ai_search_bm25",
+            keyword: PROFILE !== "ai_search_vector",
+          },
+          fusionMethod: ["hybrid_rrf", "hybrid_reranker", "conditional_rewrite", "multi_query"].includes(PROFILE) ? "rrf" : null,
           tokenizer: "trigram",
           keywordMatchMode: "or",
           maxResults: 50,
           matchThreshold: 0,
-          reranking: false,
-          queryRewrite: false,
+          reranking: ["hybrid_reranker", "conditional_rewrite", "multi_query"].includes(PROFILE),
+          queryRewrite: ["conditional_rewrite", "multi_query"].includes(PROFILE),
           cache: false,
           publicEndpoint: false,
         },
-        retrievalFilter: {
-          tenant_id: SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId,
-          acl_scope: SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope,
-        },
+        retrievalFilter: { acl_scope: SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope, source_type: "library" },
       },
       corpus: {
         tenantId: SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId,
@@ -510,12 +588,14 @@ async function main() {
         schemaVersion: "spec229-observation-bundle-v1",
         releaseComparisonProfile: PROFILE,
         comparisonRuns: { [PROFILE]: observations },
-        latencyRuns: {},
+        latencyRuns,
       }),
       developmentMetrics,
+      releaseEvaluation,
       releaseGate: {
-        status: "NOT_EVALUABLE",
-        reason: "development candidate pool is not a release-approved held-out reviewed cohort",
+        status: releaseEvaluation.releaseStatus,
+        counts: releaseEvaluation.counts,
+        criteria: releaseEvaluation.releaseCriteria,
         canonicalReleaseCriteria: SPEC_229_RELEASE_CRITERIA,
       },
       traces,
@@ -545,7 +625,7 @@ async function main() {
 
 main().catch(error => {
   process.stderr.write(
-    `${error instanceof Error ? error.message : "SPEC-229 profile C evaluation failed"}\n`,
+    `${error instanceof Error ? error.message : "SPEC-229 AI Search comparison evaluation failed"}\n`,
   );
   process.exitCode = 1;
 });

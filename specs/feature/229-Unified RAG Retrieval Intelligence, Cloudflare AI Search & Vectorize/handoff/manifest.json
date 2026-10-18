@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "17ee750b94357f0291702917bf2d809575fbd556",
+    "expected_canonical_sha": "96c996fb506e265762f9670f95a278533698a2bd",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "After PR #1106 merges, collect actual Profile A observations using the refreshed 560-candidate cohort on a disposable local PostgreSQL runtime; keep B-H and all §27 release criteria NOT_EVALUABLE until authorized provider observations and the full release gate are available.",
-    "next_ready_workunit": "P229.8_PROFILE_A_DISPOSABLE_RUNTIME",
-    "reactivation_predicate": "Run Profile A on the exact merged canonical SHA using only pg_virtualenv/isolated PostgreSQL; Profiles B-H remain dependent on an authorized non-production Cloudflare runtime and dedicated evaluation index.",
-    "resume_point": "PR #1106 repairs preflight ordering and held-out observation filtering in run-spec229-legacy-baseline.ts; source commit 8bb2244cbf05ec8ed387ee1d64f9159d6dde48fe; focused tests passed 99/99 in split runs; runtime evidence pending merge.",
-    "waiting_predicate": "Profile A needs only disposable local PostgreSQL and exact-SHA repository corpus. Profiles B-H require provider credentials/index configuration injected through authorized runtime without reading or copying secret values."
+    "next_action": "After the implementation PR integrates, run Profiles C-H against an authorized non-production Cloudflare AI Search namespace using existing secret injection and a clean SOURCE_SHA-pinned worktree. Run C,D,E,F,G,H separately with SPEC229_AI_SEARCH_PROFILE; Profile B still requires the dedicated non-production 1024D Vectorize index and its authorized Workers AI/Vectorize credentials. G/H require reviewed conversationContext and multiQueryVariants. Keep P229.8 NOT_EVALUABLE until all required real observations and §27 gates pass.",
+    "next_ready_workunit": "P229.8_AUTHORIZED_AI_SEARCH_PROFILE_OBSERVATIONS",
+    "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
+    "resume_point": "PR source commit a10c321a26c67a5672b75b445cdbae375a6a7912 adds selectable C-H collection through the existing CloudflareAiSearchProvider, profile-specific latency evaluation, held-out release evaluation, and bounded reviewed context/variant fields. Focused verification: 6 files / 59 tests PASS, scoped tsc PASS, esbuild PASS. Profile A actual local observation is recorded separately at handoff/evidence/p2298-profile-a-actual-observations-20261018.json. No Cloudflare/Vectorize credentials were present, so C-H were not executed.",
+    "waiting_predicate": "Local Profile A baseline and collector implementation are complete. Actual Cloudflare Profiles C-H need authorized non-production account/API token/namespace injection; B additionally needs the dedicated evaluation 1024D Vectorize index and Workers AI/Vectorize credentials. Current environment has none of these variables, so no provider calls were made."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -97,7 +97,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 98,
+  "generation": 101,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -146,7 +146,8 @@
       "fd16c16449dfc11c618197814c8e760dd24c9bc3",
       "fd16c164498fa22121a6669424a0347ddd0e015b",
       "456ded1310a697ec909055507565e2863b2bfd74",
-      "8bb2244cbf05ec8ed387ee1d64f9159d6dde48fe"
+      "8bb2244cbf05ec8ed387ee1d64f9159d6dde48fe",
+      "a10c321a26c67a5672b75b445cdbae375a6a7912"
     ],
     "mapping": [],
     "source_paths": [
@@ -200,21 +201,23 @@
       "apps/web/server/services/ragProjectionIndexer.ts",
       "apps/web/server/services/ragProjectionRegistry.ts",
       "apps/web/scripts/run-spec229-legacy-baseline.ts",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-runner-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-runner-20261018.json",
+      "handoff/evidence/p2298-profile-a-actual-observations-20261018.json",
+      "handoff/evidence/p2298-profile-c-h-runner-implementation-20261018.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "17ee750b94357f0291702917bf2d809575fbd556",
+    "canonical_sha": "96c996fb506e265762f9670f95a278533698a2bd",
     "integrated": true,
-    "integrated_at": "2026-10-18T06:34:39Z",
-    "intended_pr": "PR #1105 integrated refreshed source anchors and deterministic non-production cohort at 17ee750b; Profile A runner repair is PR #1106.",
-    "pending_pr": 1106,
-    "pending_source_branch": "codex/spec229-profile-a-heldout-eval",
-    "pending_source_sha": "8bb2244cbf05ec8ed387ee1d64f9159d6dde48fe",
-    "pending_workunit": "P229.8_PROFILE_A_DISPOSABLE_RUNTIME"
+    "integrated_at": "2026-10-18T06:44:30Z",
+    "intended_pr": "PR #1107 implements the reusable C-H evaluation runner and records Profile A actual local observations; required protected checks are pending.",
+    "pending_pr": 1107,
+    "pending_source_branch": "codex/spec229-profile-c-h-execution",
+    "pending_source_sha": "3cb5876691841c22d8cac28bac7d91dc8077051a",
+    "pending_workunit": "P229.8_AI_SEARCH_PROFILE_C_H_EXECUTION"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -432,7 +435,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T06:40:51.680510Z",
+  "updated_at": "2026-10-18T07:12:40.918094Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -458,13 +461,15 @@
       "handoff/evidence/p229-4-library-projection-sync-20261018.json",
       "handoff/evidence/p229-8-ai-search-comparison-profiles-20261018.json",
       "handoff/evidence/p229-8-source-refresh-dev-cohort-20261018.json",
-      "handoff/evidence/p229-8-profile-a-runner-20261018.json"
+      "handoff/evidence/p229-8-profile-a-runner-20261018.json",
+      "handoff/evidence/p2298-profile-a-actual-observations-20261018.json",
+      "handoff/evidence/p2298-profile-c-h-runner-implementation-20261018.json"
     ],
-    "freshness": "FRESH",
+    "freshness": "STALE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "8bb2244cbf05ec8ed387ee1d64f9159d6dde48fe",
+    "sha": "a10c321a26c67a5672b75b445cdbae375a6a7912",
     "status": "PENDING"
   }
 }

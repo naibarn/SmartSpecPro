@@ -1,0 +1,190 @@
+{
+  "evidence_id": "SPEC229-P2298-PROFILE-A-OBSERVATION-20261018",
+  "workunit": "P229.8 executable Profile A observation",
+  "status": "ACTUAL_DEVELOPMENT_OBSERVATION; P229.8_ACCEPTANCE_NOT_EVALUABLE",
+  "source_sha": "96c996fb506e265762f9670f95a278533698a2bd",
+  "run_id": "33b94fdd-cf12-4dd8-bc40-5f15c4f9de00",
+  "collector_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "profile": "legacy_baseline",
+  "runtime": "isolated local PostgreSQL + existing libraryService.searchLibraryItems keyword fallback",
+  "provider_configuration": {
+    "vectorProvider": "chromadb",
+    "externalProviderCalls": false
+  },
+  "candidate_dataset": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v1.json",
+    "sha256": "eeeee577663e815473b48062c5c2329ff1ab814a31fa9ba4cd46e4fca6adf9c7",
+    "counts": {
+      "candidateQueries": 560,
+      "unreviewed": 0,
+      "independentlyReviewed": 560,
+      "machineReviewed": 560,
+      "humanReviewed": 0,
+      "humanAccepted": 0,
+      "reviewAccepted": 560,
+      "reviewDisagreements": 0,
+      "adjudicated": 0,
+      "acceptedForGold": 560,
+      "pendingAdjudication": 0,
+      "releaseApproved": 560,
+      "humanSourceUseApproved": 0,
+      "ownerDelegatedPolicySourceUseApproved": 560,
+      "heldOutReleaseApproved": 503,
+      "developmentOnly": 0
+    },
+    "cohort": "owner-authorized non-production held-out evaluation cohort",
+    "certification": "P229.8 requires every §27 comparison and latency/cost profile to pass"
+  },
+  "corpus": {
+    "tenantId": "repo-development",
+    "sourceSha": "96c996fb506e265762f9670f95a278533698a2bd",
+    "sourceCount": 276,
+    "revision": "sha256:b8574730de8ad9309957dc20e35d28c543efad29c2401cb8bbdc7d192c19e417"
+  },
+  "usage": {
+    "costMicros": 0,
+    "provenance": "measured local-only execution; no external provider or model calls"
+  },
+  "metrics": {
+    "caseCount": 503,
+    "evidenceRecall": 0.478873,
+    "recallAt5": 0.171026,
+    "recallAt10": 0.28169,
+    "recallAt20": 0.380282,
+    "recallAt50": 0.478873,
+    "hitAt5": 0.171026,
+    "hitAt10": 0.28169,
+    "hitAt20": 0.380282,
+    "hitAt50": 0.478873,
+    "mrrAt10": 0.110441,
+    "nDCGAt10": 0.1499,
+    "exactIdentifierHitAt5": 0.27381,
+    "thaiRecallAt20": 0.56701,
+    "englishRecallAt20": 0.257862,
+    "mixedRecallAt20": 0.634146,
+    "evidenceCoverage": 0.478873,
+    "citationPrecision": null,
+    "citationAvailability": 0,
+    "freshnessCorrectness": 1,
+    "authorityCorrectness": 1,
+    "aclLeakage": 0,
+    "crossTenantLeakage": 0,
+    "unauthorizedEvidenceLeakage": 0,
+    "unsafePartialOrOutageAnswers": 0,
+    "staleOrRevokedEvidenceAccepted": 0,
+    "noAnswerPrecision": 0.022642,
+    "noAnswerRecall": 1,
+    "partialOrOutageResults": 0,
+    "p50LatencyMs": 472.865,
+    "p95LatencyMs": 504.836,
+    "p99LatencyMs": 516.422,
+    "meanCostMicros": 0
+  },
+  "release_criteria": [
+    {
+      "id": "crossTenantLeakage",
+      "threshold": "= 0",
+      "value": 0,
+      "status": "PASS"
+    },
+    {
+      "id": "unauthorizedEvidenceLeakage",
+      "threshold": "= 0",
+      "value": 0,
+      "status": "PASS"
+    },
+    {
+      "id": "exactIdentifierHitAt5",
+      "threshold": ">= 0.99",
+      "value": 0.27381,
+      "status": "FAIL"
+    },
+    {
+      "id": "overallRecallAt20",
+      "threshold": ">= 0.95",
+      "value": 0.380282,
+      "status": "FAIL"
+    },
+    {
+      "id": "thaiRecallAt20",
+      "threshold": ">= 0.92",
+      "value": 0.56701,
+      "status": "FAIL"
+    },
+    {
+      "id": "englishRecallAt20",
+      "threshold": ">= 0.95",
+      "value": 0.257862,
+      "status": "FAIL"
+    },
+    {
+      "id": "nDCGAt10",
+      "threshold": ">= 0.85",
+      "value": 0.1499,
+      "status": "FAIL"
+    },
+    {
+      "id": "mrrAt10",
+      "threshold": ">= 0.85",
+      "value": 0.110441,
+      "status": "FAIL"
+    },
+    {
+      "id": "citationPrecision",
+      "threshold": ">= 0.95",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "freshnessCorrectness",
+      "threshold": ">= 0.98",
+      "value": 1,
+      "status": "PASS"
+    },
+    {
+      "id": "noAnswerPrecision",
+      "threshold": ">= 0.9",
+      "value": 0.022642,
+      "status": "FAIL"
+    },
+    {
+      "id": "noAnswerRecall",
+      "threshold": ">= 0.9",
+      "value": 1,
+      "status": "PASS"
+    },
+    {
+      "id": "simpleExactKeywordP95Ms",
+      "threshold": "<= 800ms",
+      "value": 504.836,
+      "status": "PASS"
+    },
+    {
+      "id": "hybridRerankP95Ms",
+      "threshold": "<= 1500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "rewriteHybridRerankP95Ms",
+      "threshold": "<= 2500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    }
+  ],
+  "release_status": "NOT_EVALUABLE",
+  "private_artifact": {
+    "path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-96c996fb.json",
+    "bytes": 41170492,
+    "sha256": "4206e3866e95910a41186a3681f93ad3f745afb683316b624c5150c5bd0e6644",
+    "mode": "0600",
+    "contains_query_level_observations": true,
+    "not_copied_to_repository": true
+  },
+  "limitations": [
+    "Local legacy keyword fallback only; this is not an observation for comparison profiles B-H.",
+    "No citations were emitted by this search path.",
+    "Metrics are real for this exact local run but do not certify the release gate.",
+    "No production data, production index, or external provider credentials were used."
+  ]
+}

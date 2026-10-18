@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: After PR #1106 integrates, run exact-SHA Profile A in a disposable local PostgreSQL runtime and store actual observations. Profiles B-H and P229.8 release certification remain unresolved until actual provider observations and §27 criteria pass.
-- Manifest generation: 98
+- Manifest generation: 101
 
 ## Source-declared status and relationship claims
 

@@ -1,3 +1,6 @@
+import { CloudflareAiSearchProvider, type AiSearchProviderCandidate } from "./cloudflareAiSearchProvider";
+import { getAiSearchComparisonOptions, type AiSearchComparisonProfile } from "./retrievalComparisonProfiles";
+
 /**
  * Narrow Cloudflare AI Search REST client for SPEC-229 disposable evaluation
  * runs. Production retrieval must continue to enter through RetrievalBroker.
@@ -15,8 +18,8 @@ export interface AiSearchEvaluationDocument {
   key: string;
   content: string;
   metadata: {
-    tenant_id: string;
     acl_scope: string;
+    source_type: "library";
     source_id: string;
     source_revision: string;
     source_digest: string;
@@ -104,21 +107,35 @@ export class CloudflareAiSearchEvaluationClient {
    * disposable non-production run flag. The instance has no public endpoint.
    */
   async createKeywordOnlyInstance(): Promise<void> {
+    return this.createComparisonInstance("ai_search_bm25");
+  }
+
+  async createComparisonInstance(profile: AiSearchComparisonProfile): Promise<void> {
+    const options = getAiSearchComparisonOptions(profile);
+    const vector = options.retrievalType !== "keyword";
+    const keyword = options.retrievalType !== "vector";
     await this.request("POST", "/instances", {
       id: this.config.instanceId,
       cache: false,
       custom_metadata: [
-        { field_name: "tenant_id", data_type: "text" },
         { field_name: "acl_scope", data_type: "text" },
+        { field_name: "source_type", data_type: "text" },
         { field_name: "source_id", data_type: "text" },
         { field_name: "source_revision", data_type: "text" },
         { field_name: "source_digest", data_type: "text" },
       ],
-      index_method: { vector: false, keyword: true },
+      embedding_model: "@cf/baai/bge-m3",
+      index_method: { vector, keyword },
+      ...(options.fusionMethod
+        ? { fusion_method: options.fusionMethod }
+        : {}),
       indexing_options: { keyword_tokenizer: "trigram", use_ocr: false },
       retrieval_options: { keyword_match_mode: "or" },
-      rewrite_query: false,
-      reranking: false,
+      chunk_size: 384,
+      chunk_overlap: 15,
+      rewrite_query: options.queryRewrite,
+      reranking: options.reranking,
+      reranking_model: "@cf/baai/bge-reranker-base",
       max_num_results: 50,
       score_threshold: 0,
       public_endpoint_params: {
@@ -213,10 +230,7 @@ export class CloudflareAiSearchEvaluationClient {
         query_rewrite: { enabled: false },
         reranking: { enabled: false, match_threshold: 0 },
         retrieval: {
-          filters: {
-            tenant_id: scope.tenantId,
-            acl_scope: scope.aclScope,
-          },
+          filters: { acl_scope: scope.aclScope },
           keyword_match_mode: "or",
           match_threshold: 0,
           max_num_results: maxResults,
@@ -266,6 +280,45 @@ export class CloudflareAiSearchEvaluationClient {
     };
   }
 
+  async searchComparison(input: {
+    query: string;
+    profile: AiSearchComparisonProfile;
+    maxResults?: number;
+    scope?: { tenantId: string; aclScope: string };
+    messages?: Array<{ role: "user" | "assistant"; content: string }>;
+    multiQueryVariants?: string[];
+  }): Promise<AiSearchEvaluationSearchResult> {
+    const scope = input.scope ?? SPEC229_AI_SEARCH_EVALUATION_SCOPE;
+    const options = getAiSearchComparisonOptions(input.profile);
+    const provider = new CloudflareAiSearchProvider({
+      accountId: this.config.accountId,
+      apiToken: this.config.apiToken,
+      fetchImpl: this.fetchImpl,
+    });
+    const providerInput = {
+      namespace: this.namespace,
+      instanceIds: [this.config.instanceId],
+      tenantId: scope.tenantId,
+      authorizedAclScopes: [scope.aclScope],
+      sourceClasses: ["library"],
+      query: input.query,
+      retrievalType: options.retrievalType,
+      maxResults: input.maxResults ?? 50,
+      keywordMatchMode: "or" as const,
+      ...(options.fusionMethod ? { fusionMethod: options.fusionMethod } : {}),
+      queryRewrite: options.queryRewrite,
+      reranking: options.reranking,
+      ...(input.messages ? { messages: input.messages } : {}),
+    };
+    const candidates = options.multiQuery
+      ? await provider.searchMany({
+          ...providerInput,
+          queries: [input.query, ...(input.multiQueryVariants ?? [])],
+        })
+      : await provider.search(providerInput);
+    return { chunks: candidates.map(toEvaluationChunk) };
+  }
+
   async deleteItem(itemId: string): Promise<void> {
     if (!itemId || itemId.includes("/")) {
       throw new Error("AI Search evaluation item ID is invalid");
@@ -289,11 +342,10 @@ export class CloudflareAiSearchEvaluationClient {
     if (!document.content.trim()) {
       throw new Error("AI Search evaluation document is empty");
     }
-    assertShortFilterValue("tenant_id", document.metadata.tenant_id);
     assertShortFilterValue("acl_scope", document.metadata.acl_scope);
     if (
-      !document.metadata.tenant_id ||
       !document.metadata.acl_scope ||
+      document.metadata.source_type !== "library" ||
       !/^[a-f0-9]{64}$/.test(document.metadata.source_digest) ||
       !document.metadata.source_revision.startsWith("sha256:")
     ) {
@@ -333,6 +385,19 @@ export class CloudflareAiSearchEvaluationClient {
     }
     return envelope.result;
   }
+}
+
+function toEvaluationChunk(candidate: AiSearchProviderCandidate): AiSearchEvaluationChunk {
+  return {
+    id: candidate.chunkId,
+    score: candidate.fusionScore ?? candidate.score,
+    text: candidate.text,
+    item: {
+      key: candidate.key,
+      metadata: candidate.metadata,
+      ...(candidate.timestamp === undefined ? {} : { timestamp: candidate.timestamp }),
+    },
+  };
 }
 
 export const SPEC229_AI_SEARCH_EVALUATION_SCOPE = {

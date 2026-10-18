@@ -49,6 +49,11 @@ const releaseUseApprovalEvidenceSchema = z.discriminatedUnion("approverType", [
 export const goldDatasetCandidateSchema = z.object({
   caseId: z.string().min(1),
   query: z.string().min(1),
+  conversationContext: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(10_000),
+  })).max(19).optional(),
+  multiQueryVariants: z.array(z.string().min(1).max(1_000)).min(1).max(7).optional(),
   expectedAnswer: z.string().min(1),
   language: z.enum(["thai", "english", "mixed"]),
   classes: z.array(z.string().min(1)).min(1),
@@ -131,7 +136,7 @@ export function buildNonProductionReleaseCohort(
     throw new Error("Owner source-use approval timestamp must be valid ISO time");
   }
 
-  const cohort = candidates.map(candidate => {
+  const cohort: GoldDatasetCandidate[] = candidates.map(candidate => {
     if (
       !candidate.source.license.startsWith("MIT (repository LICENSE") ||
       !/owner[\s-]+authorized/i.test(candidate.source.allowedUseEvidence) ||
@@ -474,6 +479,8 @@ export function buildGoldDatasetReviewQueue(
       .map(item => ({
         caseId: item.caseId,
         query: item.query,
+        conversationContext: item.conversationContext ?? null,
+        multiQueryVariants: item.multiQueryVariants ?? [],
         expectedAnswer: item.expectedAnswer,
         language: item.language,
         classes: [...item.classes].sort(),
@@ -740,6 +747,7 @@ export function evaluateGoldDataset(
     query: item.query,
     ...item.benchmarkGold,
     language: item.language,
+    gradedRelevantEvidence: [],
   }));
   const metrics = calculateRetrievalBenchmarkMetrics(cases, rows);
   const latencyP95ForProfile = (

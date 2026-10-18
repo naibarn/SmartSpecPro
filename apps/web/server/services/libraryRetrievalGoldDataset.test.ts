@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { P2298_CANDIDATE_SEEDS } from "./libraryRetrievalGoldCandidateSeeds";
 import {
   countGoldDataset,
+  goldDatasetCandidateSchema,
   assignDeterministicSplits,
   buildGoldDatasetReviewQueue,
   bootstrapMean95,
@@ -67,6 +68,27 @@ describe("SPEC-229 gold dataset pipeline", () => {
       humanReviewStatus: "PENDING_HUMAN_REVIEW",
       sourceUseApprovalStatus: "PENDING_OWNER_SOURCE_USE_APPROVAL",
     });
+  });
+
+  it("validates and exposes reviewed follow-up context and multi-query variants", () => {
+    const candidate = goldDatasetCandidateSchema.parse({
+      ...P2298_CANDIDATE_SEEDS[0],
+      classes: [...P2298_CANDIDATE_SEEDS[0].classes, "follow_up"],
+      conversationContext: [
+        { role: "user", content: "Earlier user question" },
+        { role: "assistant", content: "Earlier assistant reply" },
+      ],
+      multiQueryVariants: ["reviewed alternate query"],
+    });
+    const queue = buildGoldDatasetReviewQueue([candidate]);
+    expect(queue.entries[0]).toMatchObject({
+      conversationContext: candidate.conversationContext,
+      multiQueryVariants: ["reviewed alternate query"],
+    });
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...candidate,
+      multiQueryVariants: Array.from({ length: 8 }, (_, index) => `variant ${index}`),
+    })).toThrow();
   });
 
   it("never evaluates release criteria using only development or calibration rows", () => {
