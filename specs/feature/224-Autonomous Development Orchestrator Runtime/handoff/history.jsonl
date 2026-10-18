@@ -90,3 +90,4 @@
 {"changes": ["continuation.next_action", "continuation.next_ready_workunit", "continuation.resume_point", "continuation.waiting_predicate", "integration", "verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 94, "observed_at": "2026-10-15T17:01:49.107618Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point", "verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 95, "observed_at": "2026-10-15T17:10:39.923253Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.next_action", "continuation.next_ready_workunit", "implementation.checkpoint_shas", "verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 96, "observed_at": "2026-10-18T07:38:57.781859Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.next_ready_workunit"], "event_type": "CURRENT_TRANSITION", "generation": 97, "observed_at": "2026-10-18T07:39:35.179034Z", "provenance": "OBSERVED"}

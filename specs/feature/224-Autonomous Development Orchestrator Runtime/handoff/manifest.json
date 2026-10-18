@@ -896,8 +896,8 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Create and promote the protected PR for e2e535af7aa274e937e0f4adf04fdbf9ff262456 through required checks. After integration, resume only when Platform/Security source-trust approval and authenticated live Runtime/Tenant Owner authorities are available; recheck Jobs/Attempts/lease/fencing/idempotency before one dispatch.",
-    "next_ready_workunit": "PR_PENDING: SPEC-224 Windows Runner capability availability reconciliation; source branch codex/spec224-windows-profile-admission-20261018 at e2e535af7aa274e937e0f4adf04fdbf9ff262456; focused tests 24/24 and independent review passed. No live acceptance performed.",
+    "next_action": "Monitor required checks and promote PR #1108 with the protected integration executor only after it is current and green. After merge, resume live acceptance when Platform/Security source-trust approval and authenticated Runtime/Tenant Owner authority are available; recheck Jobs/Attempts/lease/fencing/idempotency before one dispatch.",
+    "next_ready_workunit": "PR_1108_CHECKS_PENDING: SPEC-224 Windows Runner capability availability reconciliation; head 29b172aa7d61f2fa9bb63ff31465da6487233f27; candidate source e2e535af7aa274e937e0f4adf04fdbf9ff262456. Await protected checks and merge. Live acceptance remains open.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
     "resume_point": "PR #972 code remediation is integrated at 1fa15ebd72a0801c889f340b0c5fecfccc371511; its handoff receipt is protected PR #973. Post-integration focused verification then passed on exact canonical origin/main SHA 21ab41c5f9421306a51458591741f60645af8263: disposable PostgreSQL continuation/process-boundary recovery 5/5, guarded Registered Runner loopback E2E 1/1, and deterministic Fast Lane quota/multi-day injected-clock E2E 4/4. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/post-integration-runner-recovery-20261016.md. Mock/injected-clock results are not live provider acceptance. No protected Runner grant/token/profile was available; Live Codex dispatch, independent final verification and live settlement remain open. SPEC-224 remains PARTIAL.",
     "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 96,
+  "generation": 97,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2693,7 +2693,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T07:38:57.781859Z",
+  "updated_at": "2026-10-18T07:39:35.179034Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
