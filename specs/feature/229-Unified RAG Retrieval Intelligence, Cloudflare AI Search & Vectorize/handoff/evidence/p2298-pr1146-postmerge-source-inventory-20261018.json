@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "spec229-postmerge-and-cohort-source-scout-v1",
+  "evidenceId": "SPEC229-P2298-POSTMERGE-AND-SOURCE-INVENTORY-20261018",
+  "workunit": "PR #1146 post-merge verification and P229.8 untouched-source inventory",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "14d6f4fff0d7d21966cbcefc697d00c85dc79d7a",
+  "pullRequest": 1146,
+  "mergeSha": "14d6f4fff0d7d21966cbcefc697d00c85dc79d7a",
+  "sourceCommitSha": "9d0623c175f5f82d7c49fb7af6855ea48dd26ef2",
+  "prChecks": {
+    "progressive_integration_gate": "PASS",
+    "local-contract": "PASS",
+    "Mocked SPEC-308 browser simulation": "PASS",
+    "build-preview": "SKIPPED by workflow"
+  },
+  "postMergeVerification": {
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalObservedEvidence.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+    "testFilesPassed": 5,
+    "testsPassed": 41,
+    "testsFailed": 0,
+    "exactSha": true,
+    "scope": "focused unit tests on exact merged main SHA; no provider/production verification"
+  },
+  "sourceInventoryScout": {
+    "reviewer": "candidate_queries agent",
+    "method": "read-only git show/git ls-tree source inventory at exact canonical SHA",
+    "candidateAndSeedArtifacts": 16,
+    "candidateRows": 3279,
+    "distinctSourceGroups": 875,
+    "sourceGroupsTreatedAsPreviouslyUsed": 875,
+    "unmentionedMarkdownPathsBeforeContentAndRightsScreen": 115,
+    "portablePackMarkdown": 53,
+    "unmentionedFeatureSpecMarkdown": 62,
+    "keywordSupportCountsNotValidatedGoldClasses": {
+      "tenant_acl": 61,
+      "config_log": 49,
+      "filename": 58,
+      "lifecycle_terms": 53,
+      "api_path": 29,
+      "error_code_pattern": 30,
+      "thai": 33,
+      "ocr_mentions": 4,
+      "uuid_literal": 1
+    },
+    "disposition": "NO NEW COHORT GENERATED; pool has not been individually screened for superseded/retired/embedded third-party content; observed keywords do not establish gold labels or required class coverage; source diversity and no-answer/lifecycle controls need further audited inventory and explicit synthetic controls",
+    "repositoryLicense": "MIT",
+    "licenseSha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+    "nextInventory": "screen untouched code/test fixtures and synthetic control sources, then construct only rows with source-grounded expected evidence and reviewed class labels"
+  },
+  "providerRuntime": {
+    "providerCalls": 0,
+    "resourcesProvisioned": 0,
+    "costMicros": null,
+    "reason": "no registered nonproduction runner or secure token injection path was available; Admin UI token values were not retrieved"
+  },
+  "acceptance": {
+    "P2298": "NOT_EVALUABLE",
+    "globalSPEC229": "INCOMPLETE",
+    "productionVerified": false
+  }
+}

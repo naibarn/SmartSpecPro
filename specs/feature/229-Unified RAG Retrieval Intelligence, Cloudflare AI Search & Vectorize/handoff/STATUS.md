@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.
-- Manifest generation: 131
+- Next action: The first untouched-Markdown inventory found 115 candidate paths but did not establish a class-complete 500-query cohort. Extend the read-only source inventory into code/test fixtures and explicitly modeled synthetic security/lifecycle controls; independently verify source rights, labels, anchors and no leakage. In parallel, secure a registered non-production runtime through the existing secret boundary, then collect actual profile observations.
+- Manifest generation: 132
 
 ## Source-declared status and relationship claims
 
