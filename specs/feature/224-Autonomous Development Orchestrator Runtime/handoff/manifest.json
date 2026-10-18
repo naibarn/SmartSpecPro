@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "46beb979c8851060fc01e25781ac6880cf5721c8",
+    "expected_canonical_sha": "d1c95490c21ec3265d578e83713fa18b2a15dba5",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Live acceptance remains blocked pending Platform/Security approval and provisioning of exact non-production source-trust identities, plus authenticated Runtime/Tenant Owner readback of Runner, workspace crosswalk, tenant/project, existing jobs/attempts, lease/fencing/idempotency and grant scope. Recovery-grant issue/bind/validate/revoke routes are now represented in code; a Tenant Owner may use the existing authenticated owner flow only after fresh identity/scope confirmation. Do not issue a grant or dispatch until every live gate passes.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: PR #1108 capability availability reconciliation is integrated at 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Live acceptance awaits Platform/Security source-trust provisioning and authenticated Runtime/Tenant Owner authority; do not repeat prior Windows workspace/Runner setup.",
-    "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
-    "resume_point": "PR #1111 merged through the protected executor at canonical origin/main SHA 46beb979c8851060fc01e25781ac6880cf5721c8 (PR head 2e7abaa1b70494c7677e31db1ec3ed99e63ae425); progressive integration gate passed and preview was skipped by policy. Authenticated recovery-grant revoke route now exists with strict request validation and server-resolved Tenant Owner context; service retains owner, grant-scope, execution-fence and audit checks. Focused Python pytest could not run in local environment (pytest module missing); py_compile and diff checks passed. Prior capability mapping fix remains integrated in PR #1108. No fresh backend authority interface was available in this session: current Runner/Workspace crosswalk, Certification, owner/session, grants and live jobs/leases remain unverified. No grant or dispatch occurred. Next action is fresh authenticated Runtime/Tenant Owner readback and approved Platform/Security source-trust provisioning; then prepare/authorize one DevelopmentRun and verify one dispatch only if all existing gates pass.",
-    "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
+    "next_action": "A Platform/Database Administrator with the existing SmartAIHub exact admin role must open /admin/settings → Infrastructure → Monitoring → SPEC-224 Database Identity and click Collect evidence. Share only the displayed non-secret diagnostic result. Verify its backend revision/instance, DB fingerprint/name/schema/role, migration 0395 state, enum labels, concurrency evidence and failed-run trace correlation before deciding on any targeted recovery.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authorized Platform/Database Admin must invoke the integrated read-only diagnostic on the backend that produced the run-creation error; no DB target has been verified by this session.",
+    "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
+    "resume_point": "PR #1113 merged through the normal integration controller at origin/main d1c95490c21ec3265d578e83713fa18b2a15dba5 (PR head 1fc792bb0f0cb0d21543154f0fbf5035a7e15eb2). Exact-admin diagnostics UI/API is available in source; focused tests 4/4, local-contract, progressive_integration_gate and Mocked SPEC-308 browser simulation passed; build-preview was skipped by policy. No live Admin invocation, DB mutation, canonical Run creation, Windows dispatch or Final Verify occurred. Resume only after a real Admin supplies the sanitized target-specific result.",
+    "waiting_predicate": "Wait for one authorized Platform/Database Admin action: /admin/settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence, then provide the displayed sanitized result. Do not provide session cookies or credentials. Revalidate target identity and authorization before any schema operation or run creation."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 100,
+  "generation": 101,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1350,11 +1350,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "46beb979c8851060fc01e25781ac6880cf5721c8",
+    "canonical_sha": "d1c95490c21ec3265d578e83713fa18b2a15dba5",
     "integrated": true,
-    "integrated_at": "2026-10-18T07:54:02Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1111",
-    "source_sha": "2e7abaa1b70494c7677e31db1ec3ed99e63ae425"
+    "integrated_at": "2026-10-18T08:06:02Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1113",
+    "source_sha": "1fc792bb0f0cb0d21543154f0fbf5035a7e15eb2"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T07:54:20.140318Z",
+  "updated_at": "2026-10-18T08:07:28.369684Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
