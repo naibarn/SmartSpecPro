@@ -15,7 +15,7 @@ const sourceRoot = resolve(process.argv[2] ?? process.env.SPEC229_CORPUS_ROOT ??
 const expectedSourceSha = process.argv[3] ?? process.env.SOURCE_SHA;
 const outputPath = resolve(
   repoRoot,
-  process.argv[4] ?? "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v1.json",
+  process.argv[4] ?? "apps/web/server/services/libraryRetrievalGoldCandidates.release.dev.v2.json",
 );
 const approvalTimestamp = process.argv[5] ?? process.env.SPEC229_NONPRODUCTION_APPROVED_AT;
 const inputPath = resolve(

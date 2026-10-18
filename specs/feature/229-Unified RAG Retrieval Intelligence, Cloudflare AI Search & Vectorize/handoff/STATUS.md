@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: After PR #1106 integrates, run exact-SHA Profile A in a disposable local PostgreSQL runtime and store actual observations. Profiles B-H and P229.8 release certification remain unresolved until actual provider observations and §27 criteria pass.
-- Manifest generation: 101
+- Next action: P229.8 corrected release-cohort identity is implemented on the pending branch and Profile A has an actual exact-corpus observation; its quality gates fail. After integrating this fix, execute actual non-production Profiles B-H and hybrid/rewrite latency profiles using existing secure provider injection. Current environment lacks the required AI Search account/token/namespace and dedicated disposable Vectorize 1024D index plus Workers AI/Vectorize credentials. Keep P229.8 NOT_EVALUABLE until all §27 criteria pass on actual observations.
+- Manifest generation: 103
 
 ## Source-declared status and relationship claims
 
