@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "spec229-development-candidate-review-v1",
+  "dataset": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.integrity-v1.json",
+    "sha256": "1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63",
+    "candidateCount": 500,
+    "split": "development",
+    "useApproval": "development_only",
+    "uniqueSourceGroups": 50
+  },
+  "review": {
+    "reviewerId": "candidate_review",
+    "reviewerType": "agent",
+    "reviewerVersion": "independent-row-review-v1",
+    "reviewMethod": "row-by-row semantic, source-span, digest, and class-label verification against canonical repository sources; reviewer agent was distinct from the candidate generator",
+    "acceptedAsDevelopmentCandidate": 451,
+    "rejected": 49,
+    "needsAdjudication": 0,
+    "humanReviewed": 0,
+    "humanAccepted": 0,
+    "releaseApproved": 0,
+    "sourceUseCertifiedForRelease": 0
+  },
+  "limitations": [
+    "This is a machine review of development candidates, not human review or release gold acceptance.",
+    "The cohort is not held out and must not be used for final certification.",
+    "The cohort does not cover the complete required failure taxonomy; missing categories must be supplied from eligible, untouched source groups.",
+    "No provider retrieval observations or §27 release calibration are represented by this artifact."
+  ]
+}
