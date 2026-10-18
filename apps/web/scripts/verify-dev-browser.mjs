@@ -73,6 +73,25 @@ try {
     console.log(
       `[dev:web:verify] Fresh login ${attempt + 1}/3 HTTP ${response.status()}`
     );
+    if (!attempt) {
+      result.tenantWebsite = await page.evaluate(async () => {
+        const current = await fetch("/api/tenant/current");
+        const { tenant } = await current.json();
+        const home = await fetch("/api/tenant/public-pages/home");
+        const body = await home.json();
+        const assets = [];
+        for (const path of new Set([tenant.logoUrl, tenant.websiteLogoUrl, tenant.faviconUrl].filter(Boolean))) {
+          const response = await fetch(path);
+          assets.push({ path, status: response.status });
+        }
+        return { tenantStatus: current.status, domain: tenant.primaryDomain, homeStatus: home.status,
+          sectionCount: body.sections?.length || 0, assets };
+      });
+      if (result.tenantWebsite.homeStatus !== 200 ||
+          result.tenantWebsite.domain !== url.hostname ||
+          result.tenantWebsite.assets.some(asset => asset.status !== 200))
+        throw new Error("Development tenant Home/branding verification failed");
+    }
     if (!attempt)
       await page.screenshot({
         path: `${evidence}/public-login-first-load.png`,
