@@ -27,6 +27,12 @@ class CanonicalAdvanced(DeployError):
 
 
 MAX_CANONICAL_BUILD_ATTEMPTS = 2
+REQUIRED_TRPC_PROCEDURES = {
+    "infrastructure.getSpec224DatabaseDiagnostics": (
+        "infrastructure.ts",
+        "getSpec224DatabaseDiagnostics: exactAdminProcedure",
+    ),
+}
 
 
 def artifact_manifest(root: Path, *, excluded_names: set[str] | None = None) -> dict[str, object]:
@@ -97,9 +103,15 @@ def write_json_atomic(path: Path, payload: dict[str, object]) -> None:
 def release_status(path: Path, target: Path | None, canonical_revision: str) -> dict[str, object]:
     status: dict[str, object] = {
         "canonical_revision": canonical_revision,
+        "backend_runtime_revision": None,
         "release": None,
         "target_matches_release": None if target is None else False,
     }
+    if target is not None:
+        try:
+            status["backend_runtime_revision"] = active_backend_revision(target.parent.parent)
+        except DeployError as exc:
+            status["backend_runtime_error"] = str(exc)
     try:
         release = json.loads(path.read_text(encoding="utf-8"))
         target_manifest = (
@@ -116,9 +128,44 @@ def release_status(path: Path, target: Path | None, canonical_revision: str) -> 
             and sha256(target / "index.html") == release.get("index_sha256")
             and artifact_manifest(target, excluded_names={"release-manifest.json"}).get("artifact_digest")
             == release.get("public_artifact_digest")
+            and release.get("frontend_source_revision") == release.get("backend_source_revision")
+            and release.get("backend_source_revision") == status.get("backend_runtime_revision")
         )
     status["is_current_canonical"] = release.get("source_revision") == canonical_revision
     return status
+
+
+def active_backend_revision(service_root: Path) -> str:
+    """Resolve the source revision backing the active Node service checkout."""
+    revision = run_git(service_root.parent.parent, "rev-parse", "HEAD")
+    if len(revision) not in {40, 64} or any(character not in "0123456789abcdef" for character in revision.lower()):
+        raise DeployError("Active backend checkout does not resolve to a full source revision")
+    return revision
+
+
+def require_compatible_release(service_root: Path, frontend_revision: str) -> str:
+    backend_revision = active_backend_revision(service_root)
+    if backend_revision != frontend_revision:
+        raise DeployError(
+            "Frontend publication blocked: the active backend revision "
+            f"({backend_revision}) does not match the canonical frontend revision ({frontend_revision}); "
+            "promote a compatible backend through the authorized runtime release workflow first"
+        )
+    return backend_revision
+
+
+def validate_trpc_compatibility(public_root: Path, service_root: Path) -> None:
+    """Fail closed when the published client calls a procedure absent from its backend."""
+    public_files = [path for path in public_root.rglob("*") if path.is_file() and not path.is_symlink()]
+    router_root = service_root / "server/routers"
+    for procedure, (router_name, registration) in REQUIRED_TRPC_PROCEDURES.items():
+        if not any(procedure.encode() in path.read_bytes() for path in public_files):
+            continue
+        router_path = router_root / router_name
+        if not router_path.is_file() or registration not in router_path.read_text(encoding="utf-8"):
+            raise DeployError(
+                f"Frontend calls {procedure}, but the active backend router does not register it"
+            )
 
 
 def acquire_production_deploy_lock(path: Path):
@@ -451,6 +498,9 @@ def main() -> int:
 
         service_root = service_web_root()
         destination = service_root / "dist/public"
+        require_compatible_release(
+            service_root, remote_canonical_tip(repo, remote, canonical_ref)
+        )
 
         # Serialize the complete build-to-publish transaction across every
         # checkout/session on this host. The lock lives beside Task Control's
@@ -537,6 +587,8 @@ def main() -> int:
             artifact = build["artifact"]
             if not source.is_dir():
                 raise DeployError("Canonical artifact is missing public assets")
+            validate_trpc_compatibility(source, service_root)
+            backend_revision = require_compatible_release(service_root, source_revision)
             backup_root = Path.home() / ".cache/codex/deploy-backups"
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
             backup = backup_root / f"smartspec-web-main-{stamp}"
@@ -593,6 +645,8 @@ def main() -> int:
             release = {
                 "release_id": f"{source_revision}:{artifact['artifact_digest']}",
                 "source_revision": source_revision,
+                "frontend_source_revision": source_revision,
+                "backend_source_revision": backend_revision,
                 "canonical_ref": canonical_ref,
                 "artifact_digest": artifact["artifact_digest"],
                 "artifact_file_count": artifact["artifact_file_count"],
