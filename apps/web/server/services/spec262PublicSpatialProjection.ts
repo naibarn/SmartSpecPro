@@ -1,5 +1,5 @@
-import { projectSpec262SpatialLocation, type Spec262SpatialEntityClass } from "../../../../packages/shared/src/emergency/geospatialPrivacy";
-import { normalizeEmergencyAlertGeometry } from "../../../../packages/shared/src/emergency/alertGeometry";
+import { projectSpec262SpatialLocation, type Spec262SpatialEntityClass } from "@smartspec/shared/src/emergency/geospatialPrivacy";
+import { normalizeEmergencyAlertGeometry } from "@smartspec/shared/src/emergency/alertGeometry";
 
 const spatialEntityClasses = new Set<Spec262SpatialEntityClass>([
   "ordinary-public-feature", "protected-household", "sensitive-facility", "critical-infrastructure", "responder-journey",

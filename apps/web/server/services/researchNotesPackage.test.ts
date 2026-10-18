@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { validateSpaasPackage } from "../../../../packages/spaas-standard/src/index";
-import type { ManifestSupportContext, PackageEntry } from "../../../../packages/spaas-standard/src/model";
+import { validateSpaasPackage } from "@smartspec/spaas-standard";
+import type { ManifestSupportContext, PackageEntry } from "@smartspec/spaas-standard";
 
 const packageRoot = join(process.cwd(), "mini-apps/research-notes/package");
 const operationsRoot = join(process.cwd(), "mini-apps/research-notes/operations");

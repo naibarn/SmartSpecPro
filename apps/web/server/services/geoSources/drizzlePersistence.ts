@@ -12,7 +12,7 @@ import type {
   HydroStationWrite,
   ImmutableCaptureWrite,
 } from "./refreshPipeline";
-import { createHydrologyTrendReader, type HydroEventTimeQuery, type HydroTrendSample } from "../../../../../packages/shared/src/geospatial/hydrologyTimeSeries";
+import { createHydrologyTrendReader, type HydroEventTimeQuery, type HydroTrendSample } from "../@smartspec/shared/src/geospatial/hydrologyTimeSeries";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const HASH = /^[a-f0-9]{64}$/;

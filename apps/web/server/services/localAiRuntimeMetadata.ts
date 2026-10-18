@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { MessageRuntimeMetadata } from "../../../../packages/local-ai-core/src/index";
+import type { MessageRuntimeMetadata } from "@smartspec/local-ai-core";
 import {
   LOCAL_AI_TASK_CLASSES,
   LOCAL_AI_VOICE_INPUT_MODES,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 
 const MAX_RUNTIME_METADATA_STRING_LENGTH = 160;
 

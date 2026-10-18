@@ -1,7 +1,7 @@
 import type {
   LocalAiCatalogEntry,
   LocalAiPlatform,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 
 const BASE_LOCAL_AI_CATALOG: LocalAiCatalogEntry[] = [
   {

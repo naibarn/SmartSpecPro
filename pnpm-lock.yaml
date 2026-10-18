@@ -311,6 +311,9 @@ importers:
       '@smartspec/shared':
         specifier: file:../../packages/shared
         version: link:../../packages/shared
+      '@smartspec/spaas-standard':
+        specifier: file:../../packages/spaas-standard
+        version: link:../../packages/spaas-standard
       '@smartspec/skills':
         specifier: file:../../packages/skills
         version: file:packages/skills

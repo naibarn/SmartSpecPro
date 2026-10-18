@@ -15,44 +15,44 @@ import {
   sql,
 } from "drizzle-orm";
 import { z } from "zod";
-import { matchSpec260ApiRouteWithParams } from "../../../../packages/shared/src/emergencyRouteManifest";
-import { composeLocalSituationFeed, type LocalSituationFeedSourceRecord } from "../../../../packages/shared/src/emergency/feedSemantics";
+import { matchSpec260ApiRouteWithParams } from "@smartspec/shared/src/emergencyRouteManifest";
+import { composeLocalSituationFeed, type LocalSituationFeedSourceRecord } from "@smartspec/shared/src/emergency/feedSemantics";
 import {
   canTransitionStoredEmergencyNeed,
   canTransitionStoredEmergencyTask,
-} from "../../../../packages/shared/src/emergency/contracts";
-import { parseEmergencyMapBounds } from "../../../../packages/shared/src/emergency/mapBounds";
+} from "@smartspec/shared/src/emergency/contracts";
+import { parseEmergencyMapBounds } from "@smartspec/shared/src/emergency/mapBounds";
 import {
   canDomainAdminReviewIntelligenceSource,
   isAdminIntelligenceRegistryRoute,
-} from "../../../../packages/shared/src/emergency/intelligenceRegistryAuthorization";
-import { resolveEmergencyNeedFulfillment } from "../../../../packages/shared/src/emergency/needFulfillment";
+} from "@smartspec/shared/src/emergency/intelligenceRegistryAuthorization";
+import { resolveEmergencyNeedFulfillment } from "@smartspec/shared/src/emergency/needFulfillment";
 import {
   generalizeEmergencyPublicCoordinate,
   PUBLIC_LOCATION_GRID_DEGREES,
-} from "../../../../packages/shared/src/emergency/publicLocation";
-import { verifyEmergencyEvidenceIntegrity } from "../../../../packages/shared/src/emergency/evidenceIntegrity";
-import { prepareEmergencyHelperAvailability } from "../../../../packages/shared/src/emergency/helperAvailability";
-import { discloseEmergencyFields } from "../../../../packages/shared/src/emergency/disclosureGrant";
+} from "@smartspec/shared/src/emergency/publicLocation";
+import { verifyEmergencyEvidenceIntegrity } from "@smartspec/shared/src/emergency/evidenceIntegrity";
+import { prepareEmergencyHelperAvailability } from "@smartspec/shared/src/emergency/helperAvailability";
+import { discloseEmergencyFields } from "@smartspec/shared/src/emergency/disclosureGrant";
 import {
   decodeSpec260EmergencyMessageCursor,
   encodeSpec260EmergencyMessageCursor,
 } from "./spec260EmergencyMessageCursor";
-import { evaluateEmergencyTriage } from "../../../../packages/shared/src/emergency/triage";
-import { requiredEmergencyCaseReviews } from "../../../../packages/shared/src/emergency/reviewQueue";
+import { evaluateEmergencyTriage } from "@smartspec/shared/src/emergency/triage";
+import { requiredEmergencyCaseReviews } from "@smartspec/shared/src/emergency/reviewQueue";
 import {
   canTransitionEmergencyIntelClaim,
   countIndependentEmergencyIntelSources,
-} from "../../../../packages/shared/src/emergency/intelligenceClaims";
+} from "@smartspec/shared/src/emergency/intelligenceClaims";
 import {
   canCreateEmergencyFederationShare,
   projectFederatedCase,
-} from "../../../../packages/shared/src/emergency/federation";
+} from "@smartspec/shared/src/emergency/federation";
 import {
   getEmergencyProtocolPack,
   satisfiesEmergencyProtocolSafetyClass,
-} from "../../../../packages/shared/src/emergency/protocolPacks";
-import { parseGeospatialWatch } from "../../../../packages/shared/src/emergency/geospatialWatches";
+} from "@smartspec/shared/src/emergency/protocolPacks";
+import { parseGeospatialWatch } from "@smartspec/shared/src/emergency/geospatialWatches";
 import {
   emergencyAssignments,
   emergencyAuditEvents,

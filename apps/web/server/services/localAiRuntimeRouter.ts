@@ -6,11 +6,11 @@ import type {
   LocalAiSyncedPreferences,
   LocalAiTaskClass,
   RuntimeDecisionEnvelope,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import {
   resolveConversationLocalAiMode,
   resolveConversationPreferredProfileId,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 
 function pickEligibleProfileId(
   catalog: LocalAiCatalogEntry[],

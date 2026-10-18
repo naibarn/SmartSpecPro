@@ -6,7 +6,7 @@ import {
   LOCAL_AI_EXECUTION_MODES,
   LOCAL_AI_VOICE_INPUT_MODES,
   LOCAL_AI_VOICE_READBACK_MODES,
-} from "../../../../../packages/local-ai-core/src/index";
+} from "../@smartspec/local-ai-core";
 
 const updatePreferencesSchema = z.object({
   translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),

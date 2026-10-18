@@ -4,8 +4,8 @@ import type {
   LocalAiPlatform,
   LocalAiPolicy,
   LocalAiSyncedPreferences,
-} from "../../../../packages/local-ai-core/src/index";
-import { DEFAULT_LOCAL_AI_SYNCED_PREFERENCES } from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
+import { DEFAULT_LOCAL_AI_SYNCED_PREFERENCES } from "@smartspec/local-ai-core";
 import { users } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { resolveLocalAiPolicy } from "./localAiPolicy";

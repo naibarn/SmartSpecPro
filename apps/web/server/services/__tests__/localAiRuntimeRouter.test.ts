@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_LOCAL_AI_SYNCED_PREFERENCES } from "../../../../../packages/local-ai-core/src/index";
+import { DEFAULT_LOCAL_AI_SYNCED_PREFERENCES } from "../@smartspec/local-ai-core";
 import { decideLocalAiRuntime } from "../localAiRuntimeRouter";
 
 const baseCapability = {

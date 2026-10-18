@@ -3,7 +3,7 @@ import type {
   LocalAiPlatform,
   LocalAiPolicy,
   LocalAiPolicyCatalogResponse,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import type { TenantFeatureFlags as AppTenantFeatureFlags } from "../../shared/featureFlags";
 import { listLocalAiCatalog } from "./localAiCatalog";
 

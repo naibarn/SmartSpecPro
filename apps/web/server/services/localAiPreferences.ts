@@ -2,14 +2,14 @@ import { z } from "zod";
 import type {
   LocalAiSyncedPreferences,
   LocalAiVoiceInputMode,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import {
   DEFAULT_LOCAL_AI_SYNCED_PREFERENCES,
   LOCAL_AI_EXECUTION_MODES,
   LOCAL_AI_HANDS_FREE_MODES,
   LOCAL_AI_VOICE_INPUT_MODES,
   LOCAL_AI_VOICE_READBACK_MODES,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import { isKnownLocalAiProfileId } from "./localAiCatalog";
 
 const nullableShortString = z

@@ -17,12 +17,12 @@ import type {
   LocalSkillSignalSummary,
   LocalSkillStagedFileDescriptor,
   ResolvedLocalSkillPolicy,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import {
   LOCAL_SCRIPT_RUNTIME_KINDS,
   LOCAL_SCRIPT_SUPPORTED_OUTPUT_KINDS,
   LOCAL_SKILL_EXECUTION_TIERS,
-} from "../../../../packages/local-ai-core/src/index";
+} from "@smartspec/local-ai-core";
 import {
   resolveSkillBundleDir,
   resolveSkillDirCandidates,
