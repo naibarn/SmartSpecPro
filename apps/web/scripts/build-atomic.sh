@@ -381,6 +381,6 @@ if [ "${#OLD_DIRS[@]}" -gt 2 ]; then
 fi
 
 echo "[build-atomic] Done. dist/public/index.html mtime: $(date -r "${LIVE_DIR}/public/index.html")"
-echo "[build-atomic] NOTE: static files are served fresh per-request; no restart needed for frontend-only changes."
-echo "[build-atomic] If server/*.ts (backend) code changed, run: sudo systemctl restart smartspec-web.service"
+echo "[build-atomic] Built workspace artifact: ${LIVE_DIR}. Service promotion has not occurred."
+echo "[build-atomic] Publish the compatible frontend/backend pair with: pnpm run release:web:linux"
 echo "[build-atomic] Total elapsed: $(($(date +%s) - BUILD_STARTED_AT))s. Log: ${BUILD_LOG}"

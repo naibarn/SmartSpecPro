@@ -33,6 +33,10 @@ fi
 
 STAGING_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smartspec-backend-package.XXXXXX")"
 PUBLISH_STAGE="$WEB_ROOT/dist/.backend-runtime-stage-$$"
+if [[ -e "$PUBLISH_STAGE" || -L "$PUBLISH_STAGE" ]]; then
+  echo "Backend publish staging path already exists; preserving it: $PUBLISH_STAGE" >&2
+  exit 2
+fi
 cleanup() {
   rm -rf -- "$STAGING_ROOT"
   if [[ -d "$PUBLISH_STAGE" ]]; then
@@ -88,7 +92,11 @@ const metadata = {
 writeFileSync(path, `${JSON.stringify(metadata, null, 2)}\n`, { mode: 0o444 });
 JS
 
-mkdir "$PUBLISH_STAGE"
-cp -a "$PACKAGE_ROOT/." "$PUBLISH_STAGE/"
+# The verified package is private to this attempt and is no longer needed at
+# its temporary path. Moving it avoids copying the entire dependency tree a
+# second time. On different filesystems mv copies into the private publish
+# stage first; the final rename below still publishes atomically.
+echo "[backend-package] Moving verified runtime into the artifact staging path..."
+mv "$PACKAGE_ROOT" "$PUBLISH_STAGE"
 mv "$PUBLISH_STAGE" "$WEB_ROOT/dist/backend-runtime"
 echo "PACKAGED_BACKEND_SOURCE_SHA=$SOURCE_SHA"
