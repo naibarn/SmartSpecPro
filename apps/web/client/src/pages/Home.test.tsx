@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../locales/en/publicSite.json";
 import th from "../locales/th/publicSite.json";
 
@@ -69,7 +69,14 @@ vi.mock("@/contexts/TenantContext", () => ({
 import Home from "./Home";
 
 describe("public homepage", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
+    // jsdom has no viewport observer; production animations use this browser API.
+    vi.stubGlobal("IntersectionObserver", class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
     testState.language = "en";
     testState.seoProps = [];
     testState.tenantPageOptions = [];
@@ -109,7 +116,7 @@ describe("public homepage", () => {
     expect(screen.getByText(en["homePublic.seriesFlowTitle"])).toBeTruthy();
     expect(
       screen.getAllByText(en["homePublic.illustrationDisclosure"])
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(
       screen.getByRole("link", { name: en["homePublic.flagshipCta"] })
     ).toHaveAttribute("href", "/login?returnUrl=%2Fdrama-series");
