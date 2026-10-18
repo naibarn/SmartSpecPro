@@ -28,14 +28,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+    "expected_canonical_sha": "e32446393a7bc52b3026b06fa41231c32602f43e",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Promote the safe P229.4 registry/indexer checkpoint through protected CI. Then wire projection creation, ACL change/revoke/delete cleanup, and canonical candidate hydration into existing Library indexing and RetrievalBroker paths. Do not migrate consumers or claim real profile observations before authorized runtime access.",
-    "next_ready_workunit": "P229.4_LIBRARY_INGESTION_ACL_REVOCATION_AND_BROKER_HYDRATION: connect the new projection lifecycle to the existing Library indexing and ACL lifecycle, then bind returned provider identities to current tenant/ACL/revision/digest canonical hydration in RetrievalBroker with stale/revoked regressions.",
-    "reactivation_predicate": "Continue from current origin/main after PR #1100; refresh exact canonical SHA before each checkpoint. Run actual A-H provider profiles only after authorized disposable PostgreSQL DATABASE_URL, isolated corpus source SHA, and required Cloudflare/Workers AI/Vectorize credentials are securely injected; no production index, tenant data, or secret readback.",
-    "resume_point": "Canonical origin/main is 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.3 route/provider checkpoint is merged and has exact-SHA focused evidence (9 files/84 tests). P229.4 code checkpoint source is f5caedbc43e1b6def11db6a4cb07cba4b5042645 (12 files/100 passed, 28 todo); it adds projection state/indexer/provider operations but is not connected to Library ingestion or RetrievalBroker. Local PostgreSQL requires a credential not injected; provider credentials are unset. No actual provider observations/costs; P229.8 remains NOT_EVALUABLE.",
+    "next_action": "Wait for required protected checks on PR #1102 and integrate only through the normal merge path. Then connect the existing Library indexing/ACL lifecycle to the existing projection indexer and revoke/delete tombstones. No production provider route or P229.8 certification claim.",
+    "next_ready_workunit": "P229.4_LIBRARY_PROJECTION_INGESTION_ACL_REVOCATION",
+    "reactivation_predicate": "Resume from canonical origin/main after PR #1102. Implement existing Library lifecycle hooks only after checking exact ingestion completion and permission-change owners. Actual A-H observations still require authorized disposable database/corpus and injected non-production provider credentials; never inspect secret values.",
+    "resume_point": "Canonical origin/main e32446393a7bc52b3026b06fa41231c32602f43e; PR #1102 source 1470efedd49b6e634858c5d8c471fa1f653acb4b. Broker uses routed AI Search only in explicit development/staging, validates opaque tenant-hashed ACL filters and rehydrates the canonical Library document from the tenant-scoped projection ledger. Focused test command passed 49 tests. Remaining P229.4: automatic ingestion, ACL replacement/revocation/delete cleanup; P229.8 remains NOT_EVALUABLE.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 85,
+  "generation": 86,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -196,14 +196,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
+    "canonical_sha": "e32446393a7bc52b3026b06fa41231c32602f43e",
     "integrated": true,
     "integrated_at": "2026-10-18T04:56:31Z",
-    "intended_pr": "PR #1100 merged at 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.4 additive projection/indexer/provider checkpoint is PR #1101: https://github.com/naibarn/SmartSpecPro/pull/1101.",
-    "pending_pr": 1101,
-    "pending_source_branch": "codex/spec229-p2294-projection-main",
-    "pending_source_sha": "a922e465ecb2d9e65540bbaf84b8f147500c0e7a",
-    "pending_workunit": "P229.4_RAG_PROJECTION_AND_ACL_PROJECTIONS: additive projection lifecycle/indexer and provider contract. Library ingestion/ACL cleanup/Broker binding and live provider execution remain for follow-on."
+    "intended_pr": "PR #1102 adds the non-production AI Search RetrievalBroker route, PostgreSQL identity hydration, and canonical Library ACL/revision/digest revalidation.",
+    "pending_pr": 1102,
+    "pending_source_branch": "codex/spec229-p2294-broker-hydration",
+    "pending_source_sha": "1470efedd49b6e634858c5d8c471fa1f653acb4b",
+    "pending_workunit": "P229.4_BROKER_HYDRATION_WITH_OPAQUE_TENANT_ACL_SCOPES"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -417,7 +417,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T05:06:24.681557Z",
+  "updated_at": "2026-10-18T05:28:07.103241Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",

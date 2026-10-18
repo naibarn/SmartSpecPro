@@ -66,6 +66,7 @@ import {
   type LibraryContentVersion,
 } from "../../drizzle/schema";
 import { getUserGroups as getGroupsServiceUserGroups } from "./groupsService";
+import { buildAuthorizedLibraryAiSearchScopes } from "./ragProjectionRegistry";
 import {
   calculateLibraryUploadCreditCost,
   deductCredits,
@@ -657,6 +658,7 @@ export interface LibraryDocumentListResponse {
 
 export interface LibraryMarkdownContentResult {
   item_id: number;
+  title: string;
   content: string;
   updated_at: string;
   canonicalRevision: string;
@@ -5652,12 +5654,28 @@ export async function getLibraryMarkdownContent(
 
   return {
     item_id: item.id,
+    title: item.title,
     content: canonicalContent,
     updated_at: item.updatedAt.toISOString(),
     canonicalRevision,
     canonicalDigest,
     canonicalSourceUri: item.sourceUrl,
   };
+}
+
+/** Derive provider ACL filters from the authenticated Library actor. */
+export async function getLibraryActorAiSearchScopes(
+  actor: LibraryActor,
+  dbClient?: DbClient
+): Promise<string[]> {
+  const tenantId = normalizeLibraryTenantId(actor.tenantId);
+  const groups = await getUserGroups(actor.userId, tenantId, dbClient);
+  return buildAuthorizedLibraryAiSearchScopes({
+    tenantId,
+    userId: actor.userId,
+    role: actor.role,
+    groupIds: groups.map(group => group.id),
+  });
 }
 
 async function createContentVersion(

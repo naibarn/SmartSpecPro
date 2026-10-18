@@ -22,19 +22,13 @@ const projectionItem = {
   key: `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`,
   content: "canonical projection body",
   metadata: {
-    tenant_id: "tenant-a",
     acl_scope: "tenant_shared:1234567890abcdef",
     source_type: "library_document",
-    source_id: "document-a",
-    source_revision: `sha256:${"c".repeat(64)}`,
-    projection_hash: "c".repeat(64),
-    embedding_profile: "bge-m3-1024-v1",
   },
 };
 
 function response(
   metadata = {
-    tenant_id: "tenant-a",
     acl_scope: "tenant_shared:1234567890abcdef",
     source_type: "library",
   }
@@ -59,7 +53,7 @@ function response(
 }
 
 describe("Cloudflare AI Search provider adapter", () => {
-  it("uses the explicit route and applies tenant, ACL, and source filters before retrieval", async () => {
+  it("uses the explicit route and applies opaque tenant-scoped ACL and source filters before retrieval", async () => {
     const fetchImpl = vi.fn(async () => response());
     const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
 
@@ -84,7 +78,6 @@ describe("Cloudflare AI Search provider adapter", () => {
       match_threshold: 0,
       keyword_match_mode: "or",
       filters: {
-        tenant_id: "tenant-a",
         acl_scope: { $in: ["tenant_shared:1234567890abcdef"] },
         source_type: { $in: ["library"] },
       },
@@ -115,20 +108,17 @@ describe("Cloudflare AI Search provider adapter", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("rejects cross-tenant, unshared ACL and unexpected source-class results", async () => {
+  it("rejects unshared tenant-scoped ACL and unexpected source-class results", async () => {
     for (const metadata of [
       {
-        tenant_id: "tenant-b",
-        acl_scope: "tenant_shared:1234567890abcdef",
+        acl_scope: "tenant_shared:other-tenant-scope",
         source_type: "library",
       },
       {
-        tenant_id: "tenant-a",
         acl_scope: "user_private:other",
         source_type: "library",
       },
       {
-        tenant_id: "tenant-a",
         acl_scope: "tenant_shared:1234567890abcdef",
         source_type: "memory",
       },
@@ -242,9 +232,8 @@ describe("Cloudflare AI Search provider adapter", () => {
     expect(init?.body).toBeInstanceOf(FormData);
     const form = init?.body as FormData;
     expect(JSON.parse(String(form.get("metadata")))).toMatchObject({
-      tenant_id: "tenant-a",
       acl_scope: "tenant_shared:1234567890abcdef",
-      source_revision: `sha256:${"c".repeat(64)}`,
+      source_type: "library_document",
     });
     await expect(
       provider.upsertItem({
@@ -252,6 +241,42 @@ describe("Cloudflare AI Search provider adapter", () => {
         content: "x".repeat(3_500_001),
       })
     ).rejects.toThrow("AI_SEARCH_PROJECTION_SPLIT_REQUIRED");
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("accepts the five reserved metadata fields and rejects unsupported provenance fields", async () => {
+    const fetchImpl = vi.fn();
+    const provider = new CloudflareAiSearchProvider({ ...config, fetchImpl });
+
+    fetchImpl.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: { id: "item-5-fields", key: projectionItem.key },
+        }),
+        { status: 200 }
+      )
+    );
+    await expect(
+      provider.upsertItem({
+        ...projectionItem,
+        metadata: {
+          ...projectionItem.metadata,
+          project_id: "project-a",
+          status: "ready",
+          language: "en",
+        },
+      })
+    ).resolves.toMatchObject({ id: "item-5-fields" });
+    await expect(
+      provider.upsertItem({
+        ...projectionItem,
+        metadata: {
+          ...projectionItem.metadata,
+          source_revision: "revision-7",
+        } as never,
+      })
+    ).rejects.toThrow("AI_SEARCH_PROJECTION_METADATA_INVALID");
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 

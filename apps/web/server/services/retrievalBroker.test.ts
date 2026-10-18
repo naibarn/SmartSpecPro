@@ -1,21 +1,47 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 const {
   mockSearchLibraryItems,
   mockGetMarkdownContent,
   mockGetProviderConfig,
   mockResolveProvider,
+  mockGetActorScopes,
+  mockResolveAiSearchRoute,
+  mockResolveProjectionByKey,
+  mockAiSearchProviderSearch,
 } = vi.hoisted(() => ({
     mockSearchLibraryItems: vi.fn(),
     mockGetMarkdownContent: vi.fn(),
     mockGetProviderConfig: vi.fn(),
     mockResolveProvider: vi.fn(),
+    mockGetActorScopes: vi.fn(),
+    mockResolveAiSearchRoute: vi.fn(),
+    mockResolveProjectionByKey: vi.fn(),
+    mockAiSearchProviderSearch: vi.fn(),
   }));
 
 vi.mock("./libraryService", () => ({
   resolveLibraryVectorIndexName: vi.fn(() => "library-index"),
   getLibraryMarkdownContent: mockGetMarkdownContent,
+  getLibraryActorAiSearchScopes: mockGetActorScopes,
   searchLibraryItems: mockSearchLibraryItems,
+}));
+
+vi.mock("../db", () => ({ getDb: vi.fn(() => ({ mocked: true })) }));
+vi.mock("./retrievalInstanceRoutes", () => ({
+  RetrievalInstanceRouteError: class RetrievalInstanceRouteError extends Error {
+    constructor(readonly code: string) { super(code); }
+  },
+  resolveRetrievalInstanceRoute: mockResolveAiSearchRoute,
+}));
+vi.mock("./ragProjectionRegistry", () => ({
+  resolveIndexedRagProjectionByKey: mockResolveProjectionByKey,
+}));
+vi.mock("./cloudflareAiSearchProvider", () => ({
+  CloudflareAiSearchProvider: class {
+    search(input: unknown) { return mockAiSearchProviderSearch(input); }
+  },
 }));
 
 vi.mock("./vectorProvider", () => ({
@@ -61,6 +87,17 @@ const row = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
+  vi.stubEnv("CF_ACCOUNT_ID", "");
+  vi.stubEnv("CLOUDFLARE_AI_API_KEY", "");
+  mockGetActorScopes.mockResolvedValue(["tenant_shared:1234567890abcdef"]);
+  mockResolveAiSearchRoute.mockResolvedValue({
+    namespace: "smartaihub-dev",
+    instanceIds: ["tenant-a-rag"],
+    profileVersion: "p229-dev-v1",
+  });
+  mockAiSearchProviderSearch.mockResolvedValue([]);
+  mockResolveProjectionByKey.mockResolvedValue(null);
   mockGetMarkdownContent.mockResolvedValue({
     item_id: 12,
     content: "# Build guide\nCurrent canonical text.",
@@ -88,6 +125,8 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("retrieveLibraryEvidenceV2", () => {
   it("builds citations from the ACL-checked canonical source rather than provider metadata", async () => {
     const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
@@ -110,6 +149,138 @@ describe("retrieveLibraryEvidenceV2", () => {
     });
     expect(result.evidenceQuality).toBe("weak");
     expect(result.degradationReasons).toContain("QUALITY_GATE_NOT_CERTIFIED");
+  });
+
+  it("uses a routed non-production AI Search profile and canonical ledger hydration", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    const markdown = "# Build guide\nThe policy guide covers integrity controls.";
+    const digest = createHash("sha256").update(markdown, "utf8").digest("hex");
+    const revision = `sha256:${digest}`;
+    const projectionKey = `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`;
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12, title: "Build guide", content: markdown, updated_at: row.updated_at,
+      canonicalRevision: revision, canonicalDigest: digest,
+      canonicalSourceUri: "https://canonical.example.test/build-guide",
+    });
+    mockAiSearchProviderSearch.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.88, fusionScore: 0.031,
+      text: "untrusted provider text must not be hydrated", key: projectionKey,
+      instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:1234567890abcdef", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-a", sourceType: "library_document", sourceId: "12",
+      sourceVersion: revision, projectionPart: "whole", projectionHash: digest,
+      projectionKey, aclScope: "tenant_shared:1234567890abcdef",
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "policy guide" }, actor);
+
+    expect(mockResolveAiSearchRoute).toHaveBeenCalledWith(expect.anything(), {
+      tenantId: "tenant-a", environment: "dev", sourceClasses: ["library_document"],
+    });
+    expect(mockAiSearchProviderSearch).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-a", authorizedAclScopes: ["tenant_shared:1234567890abcdef"],
+      instanceIds: ["tenant-a-rag"], retrievalType: "hybrid", fusionMethod: "rrf",
+      reranking: true, queryRewrite: false,
+    }));
+    expect(mockResolveProjectionByKey).toHaveBeenCalledWith(expect.anything(), {
+      tenantId: "tenant-a", instanceId: "tenant-a-rag", projectionKey,
+      authorizedAclScopes: ["tenant_shared:1234567890abcdef"],
+    });
+    expect(result).toMatchObject({
+      providerProfile: { provider: "cloudflare_ai_search", profileId: "ai-search:p229-dev-v1" },
+      evidenceQuality: "weak", degraded: true,
+      evidence: [{ retrievalProvider: "cloudflare_ai_search", retrievalMode: "hybrid",
+        text: markdown, sourceRevision: revision, sourceDigest: digest,
+        aclVerified: true, provenanceVerified: true, citation: { lineStart: 1, lineEnd: 2 } }],
+    });
+    expect(result.evidence[0]?.text).not.toContain("untrusted provider text");
+    expect(mockSearchLibraryItems).not.toHaveBeenCalled();
+  });
+
+  it("drops a cross-tenant provider candidate before canonical source hydration", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    mockAiSearchProviderSearch.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.88, text: "cross tenant content",
+      key: "rag/candidate/key.md", instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:1234567890abcdef", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-b", sourceType: "library_document", sourceId: "12",
+      sourceVersion: "revision-1", projectionPart: "whole", projectionHash: "d".repeat(64),
+      aclScope: "tenant_shared:1234567890abcdef",
+    });
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+    expect(result.evidence).toEqual([]);
+    expect(result.degraded).toBe(true);
+    expect(result.degradationReasons).toContain("UNREGISTERED_OR_UNAUTHORIZED_PROJECTION_DROPPED");
+    expect(mockGetMarkdownContent).not.toHaveBeenCalled();
+  });
+
+  it("drops a candidate whose ACL metadata disagrees with the tenant-scoped registry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    const projectionKey = `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`;
+    mockAiSearchProviderSearch.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.88, key: projectionKey,
+      instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:attacker-scope", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-a", sourceType: "library_document", sourceId: "12",
+      sourceVersion: "revision-1", projectionPart: "whole", projectionHash: "d".repeat(64),
+      aclScope: "tenant_shared:1234567890abcdef",
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence).toEqual([]);
+    expect(result.degradationReasons).toContain("UNREGISTERED_OR_UNAUTHORIZED_PROJECTION_DROPPED");
+    expect(mockGetMarkdownContent).not.toHaveBeenCalled();
+  });
+
+  it("does not activate the development provider route without an explicit non-production environment", async () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+
+    await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(mockResolveAiSearchRoute).not.toHaveBeenCalled();
+    expect(mockSearchLibraryItems).toHaveBeenCalled();
+  });
+
+  it("drops AI Search candidates whose canonical revision or digest is stale", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "test-ai-search-token");
+    const projectionKey = `rag/${"a".repeat(20)}/library_document/${"b".repeat(32)}/${"c".repeat(24)}/${"d".repeat(24)}/whole.md`;
+    mockAiSearchProviderSearch.mockResolvedValue([{
+      chunkId: "provider-chunk-1", score: 0.88, text: "stale provider text",
+      key: projectionKey, instanceId: "tenant-a-rag",
+      metadata: { acl_scope: "tenant_shared:1234567890abcdef", source_type: "library_document" },
+    }]);
+    mockResolveProjectionByKey.mockResolvedValue({
+      tenantId: "tenant-a", sourceType: "library_document", sourceId: "12",
+      sourceVersion: "sha256:old", projectionPart: "whole", projectionHash: "d".repeat(64),
+      projectionKey, aclScope: "tenant_shared:1234567890abcdef",
+    });
+    mockGetMarkdownContent.mockResolvedValue({
+      item_id: 12, title: "Build guide", content: "# Build guide\nCurrent canonical text.",
+      updated_at: row.updated_at, canonicalRevision: "sha256:new", canonicalDigest: "e".repeat(64),
+    });
+
+    const result = await retrieveLibraryEvidenceV2({ query: "guide" }, actor);
+
+    expect(result.evidence).toEqual([]);
+    expect(result.degradationReasons).toContain("STALE_EVIDENCE_DROPPED");
+    expect(mockGetMarkdownContent).toHaveBeenCalledWith(12, actor);
   });
 
   it("anchors against full canonical Markdown before enforcing the context token budget", async () => {

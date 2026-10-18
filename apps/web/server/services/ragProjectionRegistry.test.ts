@@ -10,9 +10,12 @@ import {
   ensureRagProjection,
   libraryAllowedScopeToAiSearchScope,
   markRagProjectionIndexed,
+  markRagProjectionDeleted,
   RagProjectionError,
   resolveIndexedRagProjection,
+  resolveIndexedRagProjectionByKey,
   RAG_PROJECTION_LIMITS,
+  listRagProjectionItemsForSource,
 } from "./ragProjectionRegistry";
 
 const input = {
@@ -77,6 +80,9 @@ describe("SPEC-229 canonical RAG projection registry", () => {
     );
     expect(libraryAllowedScopeToAiSearchScope("tenant-b", "u:123")).not.toBe(
       userScope
+    );
+    expect(libraryAllowedScopeToAiSearchScope("tenant-a", "p:global")).not.toBe(
+      libraryAllowedScopeToAiSearchScope("tenant-b", "p:global")
     );
 
     const authorized = buildAuthorizedLibraryAiSearchScopes({
@@ -177,6 +183,65 @@ describe("SPEC-229 canonical RAG projection registry", () => {
     expect(where).toHaveBeenCalledOnce();
   });
 
+  it("tombstones only the exact provider receipt after delete-pending", async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: "projection-id" }]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+    const db = { update } as unknown as DrizzleDB;
+
+    await expect(
+      markRagProjectionDeleted(db, {
+        tenantId: input.tenantId,
+        projectionKey: buildRagProjectionKey(input),
+        instanceId: input.instanceId,
+        providerItemId: "provider-item-1",
+      })
+    ).resolves.toBe(true);
+
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "deleted",
+        deletedAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+      })
+    );
+    expect(where).toHaveBeenCalledOnce();
+  });
+
+  it("does not tombstone a replacement when a stale delete receipt completes", async () => {
+    const returning = vi.fn().mockResolvedValue([]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+    const db = { update } as unknown as DrizzleDB;
+
+    await expect(
+      markRagProjectionDeleted(db, {
+        tenantId: input.tenantId,
+        projectionKey: buildRagProjectionKey(input),
+        instanceId: input.instanceId,
+        providerItemId: "old-provider-item",
+      })
+    ).resolves.toBe(false);
+  });
+
+  it("lists lifecycle items only under exact tenant and canonical source", async () => {
+    const rows = [{ ...buildRagProjectionRecord(input), id: "projection-id" }];
+    const where = vi.fn(() => Promise.resolve(rows));
+    const from = vi.fn(() => ({ where }));
+    const select = vi.fn(() => ({ from }));
+    const db = { select } as unknown as DrizzleDB;
+    await expect(
+      listRagProjectionItemsForSource(db, {
+        tenantId: input.tenantId,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+      })
+    ).resolves.toEqual(rows);
+    expect(where).toHaveBeenCalledOnce();
+  });
+
   it("requires authorized ACL scopes before provider item resolution", async () => {
     const { db } = selectDb([]);
     await expect(
@@ -197,5 +262,26 @@ describe("SPEC-229 canonical RAG projection registry", () => {
         authorizedAclScopes: [input.aclScope],
       })
     ).resolves.toBeNull();
+  });
+
+  it("resolves provider projection keys only through current tenant and ACL ledger rows", async () => {
+    const { db, where } = selectDb([]);
+    await expect(
+      resolveIndexedRagProjectionByKey(db, {
+        tenantId: input.tenantId,
+        instanceId: input.instanceId,
+        projectionKey: buildRagProjectionKey(input),
+        authorizedAclScopes: [input.aclScope],
+      })
+    ).resolves.toBeNull();
+    expect(where).toHaveBeenCalledOnce();
+    await expect(
+      resolveIndexedRagProjectionByKey(db, {
+        tenantId: input.tenantId,
+        instanceId: input.instanceId,
+        projectionKey: buildRagProjectionKey(input),
+        authorizedAclScopes: [],
+      })
+    ).rejects.toThrow("RAG_PROJECTION_AUTHORIZED_SCOPES_REQUIRED");
   });
 });
