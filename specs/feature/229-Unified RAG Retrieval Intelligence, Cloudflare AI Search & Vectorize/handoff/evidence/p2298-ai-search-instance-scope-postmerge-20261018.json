@@ -1,0 +1,23 @@
+{
+  "workunit": "P229.8_AI_SEARCH_INSTANCE_SCOPE_CONTRACT_FIX_POSTMERGE",
+  "source_sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+  "canonical_base_sha": "e0ee4a8a18f9b898047f993414629bdbfb40d70a",
+  "pull_request": 1126,
+  "merge_sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+  "observed_at": "2026-10-18T09:22:10Z",
+  "verification": {
+    "command": "skills/canonical-checkout-sync/scripts/run-certified-command.sh <lease> <id> <generation> -- bash -lc \"... vitest run --maxWorkers=1 server/services/cloudflareAiSearchProvider.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts\"",
+    "lease_source_sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+    "result": "PASS",
+    "test_files": 2,
+    "tests_passed": 17,
+    "git_status_after_test": "CLEAN",
+    "handoff_validation": "PASS"
+  },
+  "provider_runtime": {
+    "status": "NOT_EVALUABLE",
+    "actual_provider_calls": 0,
+    "reason": "No authorized non-production Cloudflare provider credentials or registered runner were present; no provider observations were fabricated."
+  },
+  "acceptance_boundary": "Exact-SHA post-merge focused verification passes for the AI Search request-shape fix. This does not certify P229.8; Profiles B-H actual observations and a new reviewed held-out cohort remain outstanding."
+}
