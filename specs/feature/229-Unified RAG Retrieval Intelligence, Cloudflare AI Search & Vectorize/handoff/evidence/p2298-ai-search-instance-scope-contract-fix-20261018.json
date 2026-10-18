@@ -2,7 +2,7 @@
   "workunit": "P229.8_AI_SEARCH_INSTANCE_SCOPE_CONTRACT_FIX",
   "source_sha": "92220d19dfc7e0ff09a5f290c07407e5494d343a",
   "canonical_base_sha": "65de5b552597f9cbfa0eed960db67d413ff9ded4",
-  "pull_request": null,
+  "pull_request": 1126,
   "observed_at": "2026-10-18T09:16:00Z",
   "finding": {
     "status": "CONFIRMED_CONTRACT_DEFECT",

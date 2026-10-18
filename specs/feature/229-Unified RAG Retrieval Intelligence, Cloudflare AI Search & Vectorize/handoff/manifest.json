@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 111,
+  "generation": 112,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -233,7 +233,7 @@
     "integrated": true,
     "integrated_at": "2026-10-18T08:44:25Z",
     "intended_pr": "PR #1120 merged as 9bad3970d83e797ac6051418cdcce5879293dc16; scoped Profile A implementation, evidence, and exact-SHA post-merge focused verification recorded.",
-    "pending_pr": null,
+    "pending_pr": 1126,
     "pending_source_branch": "codex/spec229-ai-search-instance-scope",
     "pending_source_sha": "92220d19dfc7e0ff09a5f290c07407e5494d343a",
     "pending_workunit": "P229.8_AI_SEARCH_INSTANCE_SCOPE_CONTRACT_FIX"
@@ -464,7 +464,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T09:17:01.377910Z",
+  "updated_at": "2026-10-18T09:17:56.293839Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
