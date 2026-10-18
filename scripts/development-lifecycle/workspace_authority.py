@@ -220,6 +220,13 @@ def load_workspace_policy(repo: Path, policy_path: Path | None = None) -> dict[s
     path = (policy_path or root / ".development-repository.toml").expanduser().resolve()
     try:
         source = tomllib.loads(path.read_text(encoding="utf-8"))["repository"]
+        if not isinstance(source, dict):
+            raise WorkspaceAuthorityError("REPOSITORY_POLICY_INVALID: repository must be a table")
+        try:
+            source = _CANONICAL_SOURCE._select_platform_values(source)
+        except _CANONICAL_SOURCE.LifecycleError as exc:
+            raise WorkspaceAuthorityError(str(exc)) from exc
+        platform = source["_platform"]
         repository_id = _safe_id(str(source["repository_id"]), "REPOSITORY_ID_INVALID")
         policy: dict[str, Any] = {
             "project_id": _safe_id(str(source.get("project_id", repository_id)), "PROJECT_ID_INVALID"),
@@ -228,9 +235,17 @@ def load_workspace_policy(repo: Path, policy_path: Path | None = None) -> dict[s
             "canonical_ref": _safe_id(str(source["canonical_ref"]), "CANONICAL_REF_INVALID"),
         }
         if "canonical_user_workspace" in source:
-            policy["canonical_user_workspace"] = str(Path(str(source["canonical_user_workspace"])).expanduser().resolve())
+            canonical = Path(str(source["canonical_user_workspace"])).expanduser()
+            if not canonical.is_absolute() and platform == "windows":
+                raise WorkspaceAuthorityError(
+                    "PLATFORM_POLICY_REQUIRED: repository.platforms.windows.canonical_user_workspace"
+                )
+            policy["canonical_user_workspace"] = str(canonical.resolve())
         if "recovery_root" in source:
-            policy["recovery_root"] = str(Path(str(source["recovery_root"])).expanduser().resolve())
+            recovery = Path(str(source["recovery_root"])).expanduser()
+            if not recovery.is_absolute() and platform == "windows":
+                raise WorkspaceAuthorityError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.recovery_root")
+            policy["recovery_root"] = str(recovery.resolve())
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
         raise WorkspaceAuthorityError(f"REPOSITORY_POLICY_INVALID: {path}: {exc}") from exc
     if not policy["canonical_ref"].startswith("refs/heads/"):

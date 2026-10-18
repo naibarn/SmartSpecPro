@@ -77,12 +77,39 @@ def _inside(path: Path, parent: Path) -> bool:
         return False
 
 
+def _platform_name() -> str:
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    return "linux"
+
+
+def _select_platform_values(values: dict[str, Any]) -> dict[str, Any]:
+    """Overlay explicit per-platform roots while retaining shared repository identity."""
+    platforms = values.get("platforms", {})
+    if not isinstance(platforms, dict):
+        raise LifecycleError("REPOSITORY_POLICY_INVALID: platforms must be a table")
+    platform = _platform_name()
+    overrides = platforms.get(platform, {})
+    if not isinstance(overrides, dict):
+        raise LifecycleError(f"REPOSITORY_POLICY_INVALID: repository.platforms.{platform} must be a table")
+    selected = dict(values)
+    selected.update(overrides)
+    selected["_platform"] = platform
+    return selected
+
+
 def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
     path = (policy_path or repo / ".development-repository.toml").resolve()
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         values = data["repository"]
+        if not isinstance(values, dict):
+            raise LifecycleError("REPOSITORY_POLICY_INVALID: repository must be a table")
+        values = _select_platform_values(values)
+        platform = values["_platform"]
         policy = {
             "repository_id": str(values["repository_id"]).strip(),
             "remote": str(values["remote"]).strip(),
@@ -102,6 +129,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
         raise LifecycleError("REPOSITORY_POLICY_INVALID: canonical_ref must be a fully qualified branch ref")
     source_root = Path(policy["source_root"]).expanduser()
     if not source_root.is_absolute():
+        if platform == "windows":
+            raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.source_root")
         raise LifecycleError("REPOSITORY_POLICY_INVALID: source_root must be absolute")
     source_root = source_root.resolve()
     if _inside(source_root, repo):
@@ -109,6 +138,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     policy["source_root"] = str(source_root)
     lease_root = Path(policy["lease_root"]).expanduser()
     if not lease_root.is_absolute():
+        if platform == "windows":
+            raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.lease_root")
         raise LifecycleError("REPOSITORY_POLICY_INVALID: lease_root must be absolute")
     lease_root = lease_root.resolve()
     if _inside(lease_root, repo):
@@ -118,6 +149,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     for configured in policy["source_fallback_roots"]:
         candidate = Path(configured).expanduser()
         if not candidate.is_absolute():
+            if platform == "windows":
+                raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.source_fallback_roots")
             raise LifecycleError("REPOSITORY_POLICY_INVALID: source_fallback_roots must be absolute")
         candidate = candidate.resolve()
         if _inside(candidate, repo):
