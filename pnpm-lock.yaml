@@ -632,6 +632,9 @@ importers:
       tiptap-markdown:
         specifier: ^0.9.0
         version: 0.9.0(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))
+      tsx:
+        specifier: ^4.19.1
+        version: 4.23.0
       vaul:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -762,9 +765,6 @@ importers:
       tailwindcss:
         specifier: ^4.1.14
         version: 4.3.2
-      tsx:
-        specifier: ^4.19.1
-        version: 4.23.0
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0

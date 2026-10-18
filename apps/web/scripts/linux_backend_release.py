@@ -1,0 +1,733 @@
+#!/usr/bin/env python3
+"""Prepare and promote a canonical SmartSpec Web release on Linux systemd.
+
+Use `pnpm run build:canonical` first, then prepare its ledger result with:
+  python3 apps/web/scripts/linux_backend_release.py prepare --build-result <result.json>
+Production activation is the explicit root action:
+  sudo python3 apps/web/scripts/linux_backend_release.py promote --artifact <artifact-dir>
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import pwd
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Protocol
+
+
+SERVICE = "smartspec-web.service"
+PROCEDURE = "infrastructure.getSpec224DatabaseDiagnostics"
+ADMIN_REGISTRATION = "getSpec224DatabaseDiagnostics: exactAdminProcedure"
+RELEASE_ROOT = Path("/home/dev/production-releases")
+RUNTIME_DATA_ROOT = RELEASE_ROOT / "smartspec-web-data"
+CURRENT_LINK = RELEASE_ROOT / "smartspec-web-current"
+SYSTEMD_DROPIN = Path("/etc/systemd/system/smartspec-web.service.d/96-canonical-release.conf")
+
+
+class ReleaseError(RuntimeError):
+    pass
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def artifact_manifest(root: Path, *, excluded: set[str] | None = None) -> dict[str, Any]:
+    rows: list[tuple[str, str, int]] = []
+    links: list[tuple[str, str]] = []
+    excluded = excluded or set()
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        if path.name in excluded:
+            continue
+        if path.is_symlink():
+            resolved = path.resolve(strict=True)
+            if not resolved.is_relative_to(root.resolve()):
+                raise ReleaseError(f"Artifact symlink escapes release root: {relative}")
+            links.append((relative, os.readlink(path)))
+        elif path.is_file():
+            rows.append((relative, sha256(path), path.stat().st_size))
+    canonical = "\n".join(
+        [f"F\0{path}\0{digest}\0{size}" for path, digest, size in rows]
+        + [f"L\0{path}\0{target}" for path, target in links]
+    )
+    return {
+        "artifact_digest": f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}",
+        "artifact_file_count": len(rows),
+        "artifact_symlink_count": len(links),
+    }
+
+
+def build_artifact_manifest(root: Path) -> dict[str, Any]:
+    """Match the canonical build ledger's deterministic regular-file digest."""
+    rows: list[tuple[str, str, int]] = []
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        rows.append((path.relative_to(root).as_posix(), sha256(path), path.stat().st_size))
+    canonical = "\n".join(f"{path}\0{digest}\0{size}" for path, digest, size in rows)
+    return {
+        "artifact_digest": f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}",
+        "artifact_file_count": len(rows),
+    }
+
+
+def write_json_atomic(path: Path, value: dict[str, Any], *, mode: int = 0o644) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(value, stream, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(name, mode)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def validate_procedure_pair(public_root: Path, backend_root: Path) -> None:
+    client_calls_procedure = any(
+        PROCEDURE.encode() in path.read_bytes()
+        for path in public_root.rglob("*")
+        if path.is_file() and not path.is_symlink()
+    )
+    router = backend_root / "server/routers/infrastructure.ts"
+    if client_calls_procedure and (
+        not router.is_file() or ADMIN_REGISTRATION not in router.read_text(encoding="utf-8")
+    ):
+        raise ReleaseError(f"Frontend procedure is not registered behind exact-admin guard: {PROCEDURE}")
+
+
+def canonical_tip(workspace: Path, remote: str, ref: str) -> str:
+    git_prefix = ["git", "-c", f"safe.directory={workspace.resolve()}", "-C", str(workspace)]
+    if os.geteuid() == 0:
+        owner = pwd.getpwuid(workspace.stat().st_uid).pw_name
+        command = ["runuser", "-u", owner, "--", "git", "-C", str(workspace)]
+    else:
+        command = git_prefix
+    result = subprocess.run(
+        [*command, "ls-remote", "--exit-code", remote, ref],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise ReleaseError("Cannot verify current canonical source tip")
+    rows = [line.split("\t", 1)[0] for line in result.stdout.splitlines() if "\t" in line]
+    if len(rows) != 1:
+        raise ReleaseError("Canonical source ref returned an invalid result")
+    return rows[0]
+
+
+def validate_build_result(path: Path) -> tuple[dict[str, Any], Path, Path]:
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReleaseError("Canonical build ledger record is unreadable") from exc
+    artifact = record.get("artifact")
+    workspace_value = record.get("isolated_workspace")
+    if (
+        record.get("status") != "BUILD_PASSED"
+        or record.get("source_verified") is not True
+        or record.get("canonical_ref") != "refs/heads/main"
+        or record.get("source_revision") != record.get("canonical_tip_after_build")
+        or not isinstance(artifact, dict)
+        or not isinstance(workspace_value, str)
+        or not isinstance(artifact.get("artifact_path"), str)
+    ):
+        raise ReleaseError("Release requires a successful pinned origin/main build record")
+    workspace = Path(workspace_value).resolve()
+    source_sha = str(record["source_revision"])
+    if len(source_sha) not in {40, 64} or any(c not in "0123456789abcdef" for c in source_sha):
+        raise ReleaseError("Canonical source SHA is invalid")
+    if subprocess.run(
+        ["git", "-c", f"safe.directory={workspace}", "-C", str(workspace), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip() != source_sha:
+        raise ReleaseError("Build workspace no longer matches its recorded source SHA")
+    dirty = subprocess.run(
+        ["git", "-c", f"safe.directory={workspace}", "-C", str(workspace), "status", "--porcelain=v1", "--untracked-files=all", "--",
+         ".", ":(exclude)apps/web/dist", ":(exclude)apps/web/dist/**"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    if dirty:
+        raise ReleaseError("Build workspace has source changes outside generated dist")
+    import tomllib
+    policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
+    repository_key = hashlib.sha256(str(policy["repository_id"]).encode()).hexdigest()[:20]
+    configured_source_root = Path(str(policy["source_root"])).expanduser().resolve()
+    configured_ledger_root = configured_source_root / ".development-build-results" / repository_key
+    if not workspace.is_relative_to(configured_source_root) or not path.resolve().is_relative_to(configured_ledger_root):
+        raise ReleaseError("Build evidence is outside the configured canonical source/artifact authority")
+    root = Path(artifact["artifact_path"]).resolve()
+    if root != (workspace / "apps/web/dist").resolve() or not root.is_dir():
+        raise ReleaseError("Canonical artifact path is outside the pinned source workspace")
+    actual = build_artifact_manifest(root)
+    if actual != {key: artifact.get(key) for key in actual}:
+        raise ReleaseError("Canonical build artifact digest does not match the ledger")
+    backend = root / "backend-runtime"
+    public = root / "public"
+    if not (backend / "server/_core/index.ts").is_file() or not (public / "index.html").is_file():
+        raise ReleaseError("Build artifact is missing frontend or backend runtime files")
+    metadata_path = backend / "release-build.json"
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReleaseError("Backend artifact source metadata is missing") from exc
+    if any(metadata.get(key) != source_sha for key in ("sourceSha", "frontendSourceSha", "backendSourceSha")):
+        raise ReleaseError("Frontend and backend artifact revisions are incompatible")
+    if not (backend / "node_modules/tsx/package.json").is_file():
+        raise ReleaseError("Backend artifact does not contain its production TypeScript runtime")
+    validate_procedure_pair(public, backend)
+    return record, root, workspace
+
+
+def _freeze(root: Path) -> None:
+    for path in sorted(root.rglob("*"), reverse=True):
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            path.chmod(0o555)
+        elif path.is_file():
+            path.chmod(0o444)
+    root.chmod(0o555)
+
+
+def prepare_artifact(build_result_path: Path, artifact_store: Path) -> dict[str, Any]:
+    record, source_root, workspace = validate_build_result(build_result_path)
+    source_sha = str(record["source_revision"])
+    policy_path = workspace / ".development-repository.toml"
+    if not policy_path.is_file():
+        raise ReleaseError("Pinned build workspace is missing repository release policy")
+    import tomllib
+    policy = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
+    if canonical_tip(workspace, str(policy["remote"]), str(policy["canonical_ref"])) != source_sha:
+        raise ReleaseError("Stale source rejected: origin/main moved after this build")
+
+    release_digest = artifact_manifest(source_root)
+    release_id = f"smartspec-web-{source_sha}-{release_digest['artifact_digest'][7:19]}"
+    manifest = {
+        "schemaVersion": 1,
+        "releaseId": release_id,
+        "sourceSha": source_sha,
+        "frontendSourceSha": source_sha,
+        "backendSourceSha": source_sha,
+        "canonicalRef": "refs/heads/main",
+        "canonicalBuildResult": str(build_result_path.resolve()),
+        "canonicalBuildArtifactDigest": record["artifact"]["artifact_digest"],
+        "releaseArtifactDigest": release_digest["artifact_digest"],
+        "releaseArtifactFileCount": release_digest["artifact_file_count"],
+        "releaseArtifactSymlinkCount": release_digest["artifact_symlink_count"],
+        "publicArtifactDigest": build_artifact_manifest(source_root / "public")["artifact_digest"],
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+    }
+    artifact_store.mkdir(parents=True, exist_ok=True)
+    target = artifact_store / release_id
+    lock_path = artifact_store / ".artifact-publish.lock"
+    with lock_path.open("a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if target.exists():
+            existing = validate_published_artifact(target)
+            if existing.get("releaseArtifactDigest") != release_digest["artifact_digest"]:
+                raise ReleaseError("Immutable artifact ID already exists with different contents")
+            return {"status": "ARTIFACT_READY", "release_id": release_id, "artifact_path": str(target), "manifest": existing}
+        staging = artifact_store / f".{release_id}.{uuid.uuid4().hex}.tmp"
+        try:
+            shutil.copytree(source_root, staging, symlinks=True)
+            write_json_atomic(staging / "release-manifest.json", manifest, mode=0o444)
+            _freeze(staging)
+            os.replace(staging, target)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
+    return {"status": "ARTIFACT_READY", "release_id": release_id, "artifact_path": str(target), "manifest": manifest}
+
+
+def validate_published_artifact(artifact_path: Path) -> dict[str, Any]:
+    manifest_path = artifact_path / "release-manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReleaseError("Immutable release artifact manifest is unavailable") from exc
+    actual = artifact_manifest(artifact_path, excluded={"release-manifest.json"})
+    if actual["artifact_digest"] != manifest.get("releaseArtifactDigest"):
+        raise ReleaseError("Immutable release artifact digest mismatch")
+    if manifest.get("frontendSourceSha") != manifest.get("backendSourceSha"):
+        raise ReleaseError("Frontend/backend release revisions do not match")
+    source_sha = manifest.get("sourceSha")
+    if not isinstance(source_sha, str) or len(source_sha) not in {40, 64} or any(c not in "0123456789abcdef" for c in source_sha):
+        raise ReleaseError("Release source SHA is invalid")
+    if manifest.get("canonicalRef") != "refs/heads/main":
+        raise ReleaseError("Release is not pinned to origin/main")
+    expected_id = f"smartspec-web-{source_sha}-{str(manifest.get('releaseArtifactDigest', ''))[7:19]}"
+    if manifest.get("releaseId") != expected_id:
+        raise ReleaseError("Release artifact ID is not bound to its source revision and digest")
+    validate_procedure_pair(artifact_path / "public", artifact_path / "backend-runtime")
+    return manifest
+
+
+class Runtime(Protocol):
+    def assert_supported_target(self) -> None: ...
+    def daemon_reload(self) -> None: ...
+    def restart(self) -> None: ...
+    def verify(self, release_path: Path, source_sha: str) -> dict[str, Any]: ...
+    def verify_rollback(self, previous_working_directory: str) -> dict[str, Any]: ...
+    def working_directory(self) -> str: ...
+
+
+class SystemdRuntime:
+    def __init__(self, service: str = SERVICE, *, timeout: int = 60):
+        if service != SERVICE:
+            raise ReleaseError("Only the approved smartspec-web.service target is supported")
+        self.service, self.timeout = service, timeout
+
+    def _run(self, *args: str) -> str:
+        result = subprocess.run(["systemctl", *args], capture_output=True, text=True, check=False)
+        if result.returncode:
+            raise ReleaseError(f"systemctl {' '.join(args)} failed: {result.stderr.strip()}")
+        return result.stdout.strip()
+
+    def daemon_reload(self) -> None:
+        self._run("daemon-reload")
+
+    def assert_supported_target(self) -> None:
+        if self._run("show", self.service, "--property=ActiveState", "--value") != "active":
+            raise ReleaseError("smartspec-web.service must be active before promotion")
+        if self._run("show", self.service, "--property=User", "--value") != "dev":
+            raise ReleaseError("smartspec-web.service owner differs from the approved Linux runtime")
+        exec_start = self._run("show", self.service, "--property=ExecStart", "--value")
+        if "--import tsx" not in exec_start or "server/_core/index.ts" not in exec_start:
+            raise ReleaseError("smartspec-web.service entrypoint differs from the approved Node runtime")
+
+    def restart(self) -> None:
+        self._run("restart", self.service)
+
+    def working_directory(self) -> str:
+        return self._run("show", self.service, "--property=WorkingDirectory", "--value")
+
+    def _main_pid(self) -> int:
+        return int(self._run("show", self.service, "--property=MainPID", "--value"))
+
+    def verify(self, release_path: Path, source_sha: str) -> dict[str, Any]:
+        deadline = time.monotonic() + self.timeout
+        last_error = "service_not_ready"
+        while time.monotonic() < deadline:
+            try:
+                if self._run("is-active", self.service) != "active":
+                    raise ReleaseError("systemd service is not active")
+                pid = self._main_pid()
+                process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
+                if process_cwd != release_path.resolve():
+                    raise ReleaseError("serving process cwd does not match promoted release")
+                environ = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
+                runtime_release = next((item.split(b"=", 1)[1].decode() for item in environ if item.startswith(b"RELEASE=")), None)
+                if runtime_release != source_sha:
+                    raise ReleaseError("serving process RELEASE value does not match promoted revision")
+                with urllib.request.urlopen("http://127.0.0.1:3000/healthz", timeout=2) as response:
+                    if response.status != 200:
+                        raise ReleaseError("health endpoint did not return HTTP 200")
+                request = urllib.request.Request(
+                    "http://127.0.0.1:3000/trpc/" + PROCEDURE + "?input=%7B%22json%22%3Anull%7D"
+                )
+                try:
+                    with urllib.request.urlopen(request, timeout=3) as response:
+                        route_status = response.status
+                except urllib.error.HTTPError as exc:
+                    route_status = exc.code
+                if route_status not in {401, 403}:
+                    raise ReleaseError(f"Admin diagnostics route did not deny anonymous access (HTTP {route_status})")
+                return {
+                    "status": "HEALTHY",
+                    "service": self.service,
+                    "pid": pid,
+                    "workingDirectory": str(process_cwd),
+                    "runtimeRevision": runtime_release,
+                    "healthHttp": 200,
+                    "anonymousDiagnosticsHttp": route_status,
+                }
+            except (OSError, ValueError, urllib.error.URLError, ReleaseError) as exc:
+                last_error = str(exc)
+                time.sleep(1)
+        raise ReleaseError(f"Promotion health check timed out: {last_error}")
+
+    def verify_rollback(self, previous_working_directory: str) -> dict[str, Any]:
+        deadline = time.monotonic() + self.timeout
+        while time.monotonic() < deadline:
+            try:
+                if self._run("is-active", self.service) == "active":
+                    pid = self._main_pid()
+                    process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
+                    expected_cwd = Path(previous_working_directory).resolve(strict=False)
+                    if process_cwd != expected_cwd:
+                        raise ReleaseError("rollback process cwd does not match the previous runtime")
+                    with urllib.request.urlopen("http://127.0.0.1:3000/healthz", timeout=2) as response:
+                        if response.status == 200:
+                            return {"status": "ROLLED_BACK_HEALTHY", "workingDirectory": str(process_cwd)}
+            except (OSError, ValueError, urllib.error.URLError, ReleaseError):
+                pass
+            time.sleep(1)
+        raise ReleaseError("Rollback service health check failed")
+
+
+def atomic_symlink(target: Path, link: Path) -> None:
+    link.parent.mkdir(parents=True, exist_ok=True)
+    temporary = link.with_name(f".{link.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.symlink_to(target, target_is_directory=True)
+        os.replace(temporary, link)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _atomic_write_text(path: Path, content: str, *, mode: int = 0o644) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(name, mode)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def _make_readonly(root: Path) -> None:
+    for path in sorted(root.rglob("*"), reverse=True):
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            path.chmod(0o555)
+        elif path.is_file():
+            path.chmod(0o444)
+    root.chmod(0o555)
+
+
+def _prepare_runtime_data(
+    staging: Path,
+    previous_working_directory: str,
+    runtime_data_root: Path,
+) -> dict[str, str]:
+    """Keep runtime writes outside immutable versioned code directories.
+
+    Existing writable paths remain the source of truth. New paths use the
+    release authority's stable data directory, so later promotions reuse them.
+    """
+    previous = Path(previous_working_directory).resolve(strict=False)
+    runtime_data_root.mkdir(parents=True, exist_ok=True)
+    mappings: dict[str, str] = {}
+    for name in ("data", "logs", "media_storage", "tmp", "uploads", "workspace"):
+        packaged_path = staging / name
+        if packaged_path.exists() or packaged_path.is_symlink():
+            raise ReleaseError(f"Backend artifact unexpectedly contains mutable runtime path: {name}")
+
+        stable_path = runtime_data_root / name
+        previous_path = previous / name
+        if stable_path.is_symlink():
+            raise ReleaseError(f"Persistent runtime data path must not be a symlink: {stable_path}")
+        if previous_path.is_dir():
+            data_target = previous_path.resolve()
+        else:
+            if not stable_path.exists():
+                stable_path.mkdir(parents=True, exist_ok=True, mode=0o750)
+                try:
+                    account = pwd.getpwnam("dev")
+                    os.chown(stable_path, account.pw_uid, account.pw_gid)
+                except KeyError:
+                    pass
+            data_target = stable_path
+        if not data_target.is_dir():
+            raise ReleaseError(f"Persistent runtime data path is not a directory: {stable_path}")
+        packaged_path.symlink_to(data_target, target_is_directory=True)
+        mappings[name] = str(data_target.resolve())
+
+    logs = runtime_data_root / "logs"
+    for filename in ("server-debug.log", "automation-start-trace.log"):
+        target = staging / filename
+        if target.exists() or target.is_symlink():
+            raise ReleaseError(f"Backend artifact unexpectedly contains mutable runtime file: {filename}")
+        target_path = logs / filename
+        if not logs.exists():
+            logs.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(target_path)
+        mappings[filename] = str(target_path.resolve(strict=False))
+    return mappings
+
+
+def _make_writable(root: Path) -> None:
+    if not root.exists():
+        return
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            path.chmod(path.stat().st_mode | 0o700)
+        elif path.is_file():
+            path.chmod(path.stat().st_mode | 0o200)
+    root.chmod(root.stat().st_mode | 0o700)
+
+
+def _restore_link(link: Path, prior_target: str | None) -> None:
+    if prior_target is None:
+        link.unlink(missing_ok=True)
+    else:
+        atomic_symlink(Path(prior_target), link)
+
+
+def _next_generation(receipt_root: Path, service: str) -> int:
+    values = []
+    for path in (receipt_root / "production-deployments").glob("*.json"):
+        try:
+            item = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if item.get("service") == service:
+            values.append(int(item.get("generation", 0)))
+    return max(values, default=0) + 1
+
+
+def promote_artifact(
+    artifact_path: Path,
+    *,
+    release_root: Path,
+    dropin_path: Path,
+    current_link: Path,
+    lock_path: Path,
+    receipt_root: Path,
+    runtime_data_root: Path,
+    runtime: Runtime,
+    current_tip: Callable[[dict[str, Any]], str],
+    require_root: bool = True,
+) -> dict[str, Any]:
+    if require_root and os.geteuid() != 0:
+        raise ReleaseError("Production promotion requires explicit root authorization via sudo")
+    if current_link.exists() and not current_link.is_symlink():
+        raise ReleaseError("Current release pointer exists but is not a symlink")
+    runtime.assert_supported_target()
+    manifest = validate_published_artifact(artifact_path)
+    source_sha = manifest["sourceSha"]
+    if current_tip(manifest) != source_sha:
+        raise ReleaseError("Stale source rejected: release SHA is not current origin/main")
+    build_path = Path(manifest["canonicalBuildResult"])
+    build, _, workspace = validate_build_result(build_path)
+    if build.get("source_revision") != source_sha:
+        raise ReleaseError("Release manifest does not match canonical build evidence")
+    if build["artifact"].get("artifact_digest") != manifest.get("canonicalBuildArtifactDigest"):
+        raise ReleaseError("Release manifest does not match the canonical artifact ledger digest")
+    canonical_root = Path(build["artifact"]["artifact_path"]).resolve()
+    if artifact_manifest(canonical_root) != artifact_manifest(artifact_path, excluded={"release-manifest.json"}):
+        raise ReleaseError("Published release artifact differs from the canonical build artifact")
+
+    release_id = manifest["releaseId"]
+    release_root.mkdir(parents=True, exist_ok=True)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if current_tip(manifest) != source_sha:
+            raise ReleaseError("Canonical source advanced while waiting for deployment fence")
+        if current_link.is_symlink():
+            active_target = current_link.resolve()
+            try:
+                active_manifest = json.loads((active_target / "release-manifest.json").read_text(encoding="utf-8"))
+                if active_manifest.get("release_id") == release_id and active_manifest.get("source_revision") == source_sha:
+                    return {"status": "ALREADY_PROMOTED", "release_id": release_id,
+                            "source_sha": source_sha, "runtime": runtime.verify(active_target, source_sha)}
+            except (OSError, ValueError, ReleaseError):
+                pass
+        generation = _next_generation(receipt_root, SERVICE)
+        target = release_root / f"{release_id}-g{generation}"
+        if not target.exists():
+            staging = release_root / f".{release_id}-g{generation}.{uuid.uuid4().hex}.tmp"
+            try:
+                shutil.copytree(artifact_path / "backend-runtime", staging, symlinks=True)
+                _make_writable(staging)
+                previous_working_directory = runtime.working_directory()
+                runtime_data_mappings = _prepare_runtime_data(
+                    staging, previous_working_directory, runtime_data_root
+                )
+                index_path = staging / "dist/public/index.html"
+                public_digest = build_artifact_manifest(staging / "dist/public")
+                release_status = {
+                    "release_id": release_id,
+                    "source_revision": source_sha,
+                    "frontend_source_revision": manifest["frontendSourceSha"],
+                    "backend_source_revision": manifest["backendSourceSha"],
+                    "canonical_ref": manifest["canonicalRef"],
+                    "artifact_digest": manifest["canonicalBuildArtifactDigest"],
+                    "artifact_file_count": build["artifact"]["artifact_file_count"],
+                    "build_public_artifact_digest": manifest["publicArtifactDigest"],
+                    "public_artifact_digest": public_digest["artifact_digest"],
+                    "public_file_count": public_digest["artifact_file_count"],
+                    "index_sha256": sha256(index_path),
+                    "generation": generation,
+                    "deployed_at": datetime.now(timezone.utc).isoformat(),
+                    "release_mode": "linux_systemd_fullstack",
+                    "runtime_data_paths": runtime_data_mappings,
+                }
+                write_json_atomic(staging / "release-manifest.json", release_status, mode=0o444)
+                write_json_atomic(staging / "dist/public/release-manifest.json", release_status, mode=0o444)
+                _make_readonly(staging)
+                os.replace(staging, target)
+            finally:
+                if staging.exists():
+                    _make_writable(staging)
+                    shutil.rmtree(staging)
+        else:
+            installed_manifest = json.loads((target / "release-manifest.json").read_text(encoding="utf-8"))
+            if installed_manifest.get("artifact_digest") != manifest["canonicalBuildArtifactDigest"]:
+                raise ReleaseError("Versioned runtime path already contains a different artifact")
+
+        previous_link = os.readlink(current_link) if current_link.is_symlink() else None
+        previous_working_directory = runtime.working_directory()
+        previous_dropin = dropin_path.read_text(encoding="utf-8") if dropin_path.exists() else None
+        policy_path = workspace / ".development-repository.toml"
+        import tomllib
+        config = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
+        repository_key = hashlib.sha256(config["repository_id"].encode()).hexdigest()[:20]
+        shared_state = Path(config["lease_root"]).expanduser() / repository_key
+        current_status_path = shared_state / "production-release.json"
+        previous_status = current_status_path.read_bytes() if current_status_path.exists() else None
+        receipt_path = receipt_root / "production-deployments" / f"{release_id}-{generation}.json"
+        dropin = (
+            "[Service]\n"
+            f"WorkingDirectory={current_link}\n"
+            f"Environment=RELEASE={source_sha}\n"
+        )
+        activation_started = False
+        try:
+            _atomic_write_text(dropin_path, dropin)
+            runtime.daemon_reload()
+            atomic_symlink(target, current_link)
+            activation_started = True
+            runtime.restart()
+            health = runtime.verify(target, source_sha)
+            if current_tip(manifest) != source_sha:
+                raise ReleaseError("Canonical source advanced during activation")
+            release_status = json.loads((target / "release-manifest.json").read_text(encoding="utf-8"))
+            receipt = {
+                **release_status,
+                "status": "DEPLOYED_VERIFIED",
+                "service": SERVICE,
+                "release_path": str(target),
+                "deployment_receipt": str(receipt_path),
+                "fencing_generation": generation,
+                "authorization": "explicit root invocation for pinned origin/main SHA",
+                "runtime_verification": health,
+            }
+            write_json_atomic(current_status_path, release_status)
+            write_json_atomic(receipt_path, receipt)
+            return receipt
+        except Exception as exc:
+            rollback_errors: list[str] = []
+            try:
+                _restore_link(current_link, previous_link)
+                if previous_dropin is None:
+                    dropin_path.unlink(missing_ok=True)
+                else:
+                    _atomic_write_text(dropin_path, previous_dropin)
+                runtime.daemon_reload()
+                if activation_started:
+                    runtime.restart()
+                rollback = runtime.verify_rollback(previous_working_directory)
+            except Exception as rollback_exc:
+                rollback_errors.append(str(rollback_exc))
+                rollback = {"status": "ROLLBACK_FAILED"}
+            if previous_status is None:
+                current_status_path.unlink(missing_ok=True)
+            else:
+                current_status_path.parent.mkdir(parents=True, exist_ok=True)
+                fd, name = tempfile.mkstemp(prefix=".production-release.", dir=current_status_path.parent)
+                try:
+                    with os.fdopen(fd, "wb") as stream:
+                        stream.write(previous_status)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.replace(name, current_status_path)
+                finally:
+                    Path(name).unlink(missing_ok=True)
+            write_json_atomic(receipt_path, {
+                "status": "ROLLED_BACK" if rollback.get("status") == "ROLLED_BACK_HEALTHY" else "ROLLBACK_FAILED",
+                "service": SERVICE,
+                "release_id": release_id,
+                "source_revision": source_sha,
+                "generation": generation,
+                "fencing_generation": generation,
+                "authorization": "explicit root invocation for pinned origin/main SHA",
+                "failure_class": "activation_or_health_check_failed",
+                "rollback": rollback,
+            })
+            raise ReleaseError(
+                f"Promotion failed and rollback={rollback.get('status')}: {exc}; "
+                + ("; ".join(rollback_errors) if rollback_errors else "")
+            ) from exc
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="action", required=True)
+    prepare = commands.add_parser("prepare", help="publish a verified build into the canonical artifact store")
+    prepare.add_argument("--build-result", required=True, type=Path)
+    promote = commands.add_parser("promote", help="promote one immutable artifact to smartspec-web.service")
+    promote.add_argument("--artifact", required=True, type=Path)
+    args = parser.parse_args(argv)
+    try:
+        if args.action == "prepare":
+            build, _, workspace = validate_build_result(args.build_result)
+            default_store = Path(args.build_result).parent / "artifacts"
+            result = prepare_artifact(args.build_result, default_store)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        manifest = validate_published_artifact(args.artifact)
+        build = json.loads(Path(manifest["canonicalBuildResult"]).read_text(encoding="utf-8"))
+        workspace = Path(build["isolated_workspace"])
+        policy_path = workspace / ".development-repository.toml"
+        import tomllib
+        policy = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
+        receipt_root = Path(args.artifact).parent.parent
+        key = hashlib.sha256(policy["repository_id"].encode()).hexdigest()[:20]
+        lock_path = Path(policy["lease_root"]).expanduser() / key / "production-release.lock"
+        runtime = SystemdRuntime()
+        result = promote_artifact(
+            args.artifact,
+            release_root=RELEASE_ROOT,
+            dropin_path=SYSTEMD_DROPIN,
+            current_link=CURRENT_LINK,
+            lock_path=lock_path,
+            receipt_root=receipt_root,
+            runtime_data_root=RUNTIME_DATA_ROOT,
+            runtime=runtime,
+            current_tip=lambda item: canonical_tip(workspace, str(policy["remote"]), str(policy["canonical_ref"])),
+        )
+        print(json.dumps(result, sort_keys=True))
+        return 0
+    except (ReleaseError, OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        print(f"linux backend release stopped: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

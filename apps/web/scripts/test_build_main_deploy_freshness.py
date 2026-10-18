@@ -119,6 +119,23 @@ class ReleaseIntegrityTests(unittest.TestCase):
             with self.assertRaisesRegex(module.DeployError, "Frontend publication blocked"):
                 module.require_compatible_release(self.workspace / "apps/web", self.revision)
 
+    def test_immutable_fullstack_release_cannot_be_updated_frontend_only(self):
+        service_root = self.root / "versioned-release"
+        service_root.mkdir()
+        (service_root / "release-manifest.json").write_text(
+            json.dumps({"release_mode": "linux_systemd_fullstack"}), encoding="utf-8"
+        )
+        with self.assertRaisesRegex(module.DeployError, "Frontend-only publication is disabled"):
+            module.reject_static_publish_for_fullstack_release(service_root)
+
+    def test_backend_revision_is_read_from_versioned_release_manifest(self):
+        service_root = self.root / "versioned-release"
+        service_root.mkdir()
+        (service_root / "release-manifest.json").write_text(
+            json.dumps({"backend_source_revision": self.revision}), encoding="utf-8"
+        )
+        self.assertEqual(module.active_backend_revision(service_root), self.revision)
+
     def test_missing_trpc_procedure_blocks_frontend_backend_release_pair(self):
         public = self.root / "built-public"
         backend = self.root / "backend"

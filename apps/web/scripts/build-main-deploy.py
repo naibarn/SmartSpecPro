@@ -137,6 +137,15 @@ def release_status(path: Path, target: Path | None, canonical_revision: str) -> 
 
 def active_backend_revision(service_root: Path) -> str:
     """Resolve the source revision backing the active Node service checkout."""
+    release_manifest = service_root / "release-manifest.json"
+    if release_manifest.is_file():
+        try:
+            manifest = json.loads(release_manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DeployError("Active backend release manifest is unreadable") from exc
+        revision = manifest.get("backend_source_revision")
+        if isinstance(revision, str) and len(revision) in {40, 64}:
+            return revision
     revision = run_git(service_root.parent.parent, "rev-parse", "HEAD")
     if len(revision) not in {40, 64} or any(character not in "0123456789abcdef" for character in revision.lower()):
         raise DeployError("Active backend checkout does not resolve to a full source revision")
@@ -152,6 +161,21 @@ def require_compatible_release(service_root: Path, frontend_revision: str) -> st
             "promote a compatible backend through the authorized runtime release workflow first"
         )
     return backend_revision
+
+
+def reject_static_publish_for_fullstack_release(service_root: Path) -> None:
+    manifest_path = service_root / "release-manifest.json"
+    if not manifest_path.is_file():
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DeployError("Active backend release manifest is unreadable") from exc
+    if manifest.get("release_mode") == "linux_systemd_fullstack":
+        raise DeployError(
+            "Frontend-only publication is disabled for an immutable full-stack release; "
+            "build and promote a compatible frontend/backend artifact together"
+        )
 
 
 def validate_trpc_compatibility(public_root: Path, service_root: Path) -> None:
@@ -498,6 +522,7 @@ def main() -> int:
 
         service_root = service_web_root()
         destination = service_root / "dist/public"
+        reject_static_publish_for_fullstack_release(service_root)
         require_compatible_release(
             service_root, remote_canonical_tip(repo, remote, canonical_ref)
         )
