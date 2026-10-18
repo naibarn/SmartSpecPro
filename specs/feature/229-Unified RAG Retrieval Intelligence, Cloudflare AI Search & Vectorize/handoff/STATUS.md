@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Implement a minimal deterministic development-cohort builder using allowed repository fixtures and synthetic controls; have independent reviewer and adjudicator validate actual query/evidence pairs, no leakage, and source permissions. No release-approved cohort can be claimed until the complete review contract and untouched split criteria are satisfied.
-- Manifest generation: 137
+- Next action: Implement the next development cohort generation and validation slice for explicit synthetic control cases plus screened fixture facts, with independent review and no release approval. Confirm authorized Admin UI-to-runner credential path and actual cloud resources before provider execution.
+- Manifest generation: 139
 
 ## Source-declared status and relationship claims
 

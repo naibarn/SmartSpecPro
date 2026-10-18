@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "spec229-postmerge-verification-v1",
+  "evidenceId": "SPEC229-P2298-PR1151-POSTMERGE-20261018",
+  "workunit": "PR #1151 canonical handoff integration",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3",
+  "pullRequest": 1151,
+  "mergeSha": "1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3",
+  "sourceCommitSha": "ae7c6139502fbc8922f922c6fc54f9b140f89ee6",
+  "checks": {
+    "progressive_integration_gate": "PASS",
+    "build-preview": "SKIPPED by workflow"
+  },
+  "verification": {
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalObservedEvidence.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+    "testFilesPassed": 5,
+    "testsPassed": 41,
+    "testsFailed": 0,
+    "exactSha": true
+  },
+  "providerRuntime": {
+    "providerCalls": 0,
+    "resourcesProvisioned": 0,
+    "costMicros": null
+  },
+  "acceptance": {
+    "P2298": "NOT_EVALUABLE",
+    "globalSPEC229": "INCOMPLETE",
+    "productionVerified": false
+  }
+}
