@@ -27,6 +27,14 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
     }
   });
 
+  it("admits the registered workspace authority audit through the canonical worker path", () => {
+    expect(isPostgresNodeJobType("workspace.authority.audit")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(
+      "workspace.authority.audit",
+      "feature-186-v1",
+    )).toBeDefined();
+  });
+
   it("routes Research Notes summaries to the server-owned canonical worker executor", () => {
     expect(isPostgresNodeJobType("research_notes.summarize")).toBe(true);
     expect(defaultJobExecutorRegistry.resolve("research_notes.summarize", "mini-app-research-v1")).toBeDefined();

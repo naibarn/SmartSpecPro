@@ -10,6 +10,7 @@ LEGACY_HEARTBEAT_FILE="${SMARTSPEC_NODE_WORKER_LEGACY_HEARTBEAT_FILE:-${PROJECT_
 STATE_FILE="${SMARTSPEC_NODE_WORKER_WATCHDOG_STATE:-/run/smartspec-node-worker-watchdog.restarts}"
 CHECK_INTERVAL="${SMARTSPEC_NODE_WORKER_WATCHDOG_INTERVAL_SECONDS:-10}"
 HEARTBEAT_STALE_MS=30000
+HEARTBEAT_FUTURE_TOLERANCE_MS=1000
 STARTUP_GRACE_MS=60000
 DISPATCH_BACKLOG_STALE_MS=120000
 RESTART_WINDOW_SECONDS=600
@@ -76,6 +77,7 @@ WITH queued AS (
       '\''webhook.dispatch'\'', '\''webhook.api_delivery'\'', '\''embedding.generate'\'',
       '\''capacity.assessment'\'', '\''channel.delivery'\'', '\''automation.execute'\'',
       '\''database.backup'\'', '\''database.backup.maintenance'\'', '\''worker.heartbeat_retention'\'',
+      '\''workspace.authority.audit'\'',
       '\''library.trash_purge'\'', '\''storyboard.skill.run'\'', '\''skill.execute'\'',
       '\''scheduled.skill.execute'\'', '\''notification.escalation'\'', '\''notification.digest'\'',
       '\''notification.retention'\'', '\''notification.webhook_delivery'\'', '\''memory.archive_cleanup'\'',
@@ -112,6 +114,7 @@ WITH queued AS (
       '\''webhook.dispatch'\'', '\''webhook.api_delivery'\'', '\''embedding.generate'\'',
       '\''capacity.assessment'\'', '\''channel.delivery'\'', '\''automation.execute'\'',
       '\''database.backup'\'', '\''database.backup.maintenance'\'', '\''worker.heartbeat_retention'\'',
+      '\''workspace.authority.audit'\'',
       '\''library.trash_purge'\'', '\''storyboard.skill.run'\'', '\''skill.execute'\'',
       '\''scheduled.skill.execute'\'', '\''notification.escalation'\'', '\''notification.digest'\'',
       '\''notification.retention'\'', '\''notification.webhook_delivery'\'', '\''memory.archive_cleanup'\'',
@@ -190,6 +193,10 @@ check_once() {
     now_ms=$(( $(date +%s) * 1000 ))
     if [ "$heartbeat_ms" -ge 0 ]; then
         heartbeat_age=$((now_ms - heartbeat_ms))
+        if [ "$heartbeat_age" -lt 0 ] \
+            && [ "$heartbeat_age" -ge "$((-HEARTBEAT_FUTURE_TOLERANCE_MS))" ]; then
+            heartbeat_age=0
+        fi
     else
         heartbeat_age=-1
     fi
