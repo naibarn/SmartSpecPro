@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "spec229-postmerge-verification-v1",
+  "evidenceId": "SPEC229-P2298-PROFILE-A-OBSERVED-EVIDENCE-POSTMERGE-20261018",
+  "workunit": "P229.8 Profile A observed evidence integrity regression guard",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
+  "pullRequest": 1145,
+  "mergeSha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
+  "sourceCommitSha": "d94986453950b88cc4d835fed920e6241888f855",
+  "verification": {
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalObservedEvidence.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts",
+    "result": "PASS",
+    "testFilesPassed": 5,
+    "testsPassed": 40,
+    "testsFailed": 0,
+    "exactSha": true,
+    "runAtUtc": "2026-10-18T11:56:44Z",
+    "scope": "focused unit verification on the exact merged canonical SHA; not provider or production verification"
+  },
+  "profileAObservationIntegrity": {
+    "authorization": "derived from Library result status, observed ACL access source, and actor/candidate tenant equality",
+    "revisionAndDigest": "copied from returned Library item metadata; unknown/invalid values remain unknown/omitted",
+    "lifecycle": "revoked/deleted omitted because the search result does not establish lifecycle state; release metrics fail closed for missing lifecycle evidence",
+    "cost": "not changed by this workunit; the legacy collector is local-only and makes no external provider calls"
+  },
+  "providerRuntime": {
+    "cloudflareProviderCalls": 0,
+    "resourcesProvisioned": 0,
+    "costMicros": null,
+    "reason": "no local database connection or registered non-production evaluation runner is available; the Admin UI credential is server-side and this session did not retrieve it or use the production Actions environment"
+  },
+  "acceptance": {
+    "P2298": "NOT_EVALUABLE",
+    "globalSPEC229": "INCOMPLETE",
+    "productionVerified": false
+  },
+  "cohortReview": {
+    "artifactPath": "apps/web/server/services/libraryRetrievalGoldCandidates.unseen-v2.json",
+    "artifactSha256": "ac1b1db4282b1cd63626d1f852d47284b7c1a4aff80feceece855ebd63afb6a0",
+    "reviewReportPath": "handoff/evidence/p2298-unseen-v2-final-review-20261018.json",
+    "reviewReportSha256": "7e023776abfe0e3a5c9f4ffdae3fa13b2c2164c4db382f78cc7dd15ae0a973df",
+    "reviewerType": "agent",
+    "rowCount": 511,
+    "acceptedCandidateMachineOnly": 500,
+    "rejectedCandidateMachineOnly": 11,
+    "humanReviewed": 0,
+    "releaseApproved": 0,
+    "heldOutReleaseApproved": 0,
+    "sourceGroupOverlapWithUnseenV1": 511,
+    "missingRequiredClasses": [
+      "exact_id",
+      "uuid",
+      "spec_id",
+      "follow_up",
+      "ambiguous",
+      "typo",
+      "multi_hop",
+      "stale_conflict",
+      "no_answer",
+      "acl_attack",
+      "deleted_revoked",
+      "ocr",
+      "long_document"
+    ],
+    "disposition": "DEVELOPMENT_ONLY; NOT AN UNTOUCHED HELD-OUT COHORT"
+  }
+}
