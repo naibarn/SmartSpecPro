@@ -84,8 +84,8 @@ and identified explicitly in the launcher revision.
 
 The development launcher reads `~/.config/smartspec-dev/web.env`, or the path
 specified by `SMARTSPEC_DEV_ENV_FILE`. It requires `SMARTSPEC_ENVIRONMENT=development`,
-a dedicated database whose name ends in `_dev_web`, separate authentication and
-encryption keys, a separate `CONTROL_PLANE_API_KEY` and `CONTROL_PLANE_URL`,
+an isolated database ending in `_dev_web` by default (or the explicit shared-production mode below), authentication and
+encryption keys matching the selected data, a separate `CONTROL_PLANE_API_KEY` and `CONTROL_PLANE_URL`,
 and a port other than 3000. It sets `DOTENV_CONFIG_PATH` so the
 application does not load the production `.env` as a fallback. The launcher records the source SHA (with a dirty marker for edited source)
 in backend diagnostics and Vite release identity. Frontend edits
@@ -97,8 +97,8 @@ origin so browser login passes the existing CSRF/CORS checks. The web service's
 `~/.config/smartspec-dev/process.env` sets PATH to the installed Node 22 binary.
 The dedicated Redis instance listens only on loopback port 6391. The separate
 Python backend listens on loopback port 8100 with `python.env`; both APIs use
-the dedicated dev database. The Python launcher also rejects a production DB
-name and disables discovery of the production dotenv file. Its working directory
+the configured dev database. The Python launcher requires explicit shared-production mode for a production DB
+name and disables implicit discovery of the production dotenv file. Its working directory
 and media files live outside the production tree. Python readiness is checked
 at `/health/ready`; detailed `/health` reports missing test LLM credentials
 until a development provider is configured. The development
@@ -164,3 +164,32 @@ The target update is transactional, fenced against concurrent syncs, and verifie
 field by field before commit. Existing dev data is backed up privately before
 updates; unrelated dev content is retained. A receipt and backup path are recorded
 under `~/.local/share/smartspec-dev/evidence/tenant-config-sync.json`.
+
+## Shared production data debugging
+
+When explicitly authorized by the owner, both dev env files can use:
+
+```dotenv
+SMARTSPEC_DEV_DATABASE_MODE=shared-production
+SMARTSPEC_SHARED_DATABASE_NAME=smartspec
+```
+
+Set each `DATABASE_URL` to the existing production connection (Python uses the
+`postgresql+asyncpg` scheme), with matching existing auth/encryption keys kept in
+the private environment files. Set `SMARTSPEC_DEV_TENANT_DOMAIN=smartaihub.app`
+in `web.env`. The `APP_URL` stays `https://aimarkethubs.com`; only that debug
+hostname resolves to the existing production tenant. No tenant record or DNS
+change is needed. Ports, Redis, cookies, logs and runtime processes stay separate.
+
+This mode uses live production users and data: request-driven edits affect
+production immediately. Production retains ownership of schedulers, startup
+recovery and background processing. Dev skips skill auto-sync, background jobs,
+Python schema creation, default seeding and startup schema/config watchers.
+No migrations run during the switch. The isolated database is retained for rollback.
+
+Restart only the two dev APIs after updating their private env files, then run
+`pnpm run dev:web:verify`. In shared mode this command performs public navigation
+and anonymous guard checks without using synthetic credentials or mutating
+production accounts. Authenticated acceptance requires an existing production
+account/session. Do not run `dev:tenant:sync` in this mode: the data is already
+shared, and the sync tool intentionally accepts isolated target databases only.

@@ -196,22 +196,31 @@ async def lifespan(app: FastAPI):
         if not settings.DEBUG:
             raise
 
-    # Initialize services
-    try:
-        await init_db()
-        logger.info("Database initialized successfully")
-
-        # Seed default admin user and tenant on first startup
+    shared_production_debug = (
+        settings.ENVIRONMENT == "development"
+        and os.getenv("SMARTSPEC_DEV_DATABASE_MODE") == "shared-production"
+    )
+    # Shared production data must not be changed by dev schema creation or seeding.
+    if not shared_production_debug:
+        # Initialize services
         try:
-            from app.core.seed import run_seed
+            await init_db()
+            logger.info("Database initialized successfully")
 
-            await run_seed()
-            logger.info("Database seeding completed")
-        except Exception as seed_error:
-            logger.warning("Database seeding skipped", error=str(seed_error))
+            # Seed default admin user and tenant on first startup
+            try:
+                from app.core.seed import run_seed
 
-    except Exception as e:
-        logger.warning("Database initialization failed", error=str(e))
+                await run_seed()
+                logger.info("Database seeding completed")
+            except Exception as seed_error:
+                logger.warning("Database seeding skipped", error=str(seed_error))
+
+        except Exception as e:
+            logger.warning("Database initialization failed", error=str(e))
+
+    else:
+        logger.info("Shared production debug: schema initialization and seed disabled")
 
     # Initialize LLM Proxy
     try:
@@ -240,29 +249,31 @@ async def lifespan(app: FastAPI):
             else:
                 await _check_gateway_reachability(gateway_url)
 
-    # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
-    try:
-        from app.core.checkpointer import get_postgres_checkpointer
+    # Production owns startup schema setup and background config watchers.
+    if not shared_production_debug:
+        # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
+        try:
+            from app.core.checkpointer import get_postgres_checkpointer
 
-        await get_postgres_checkpointer()
-        logger.info("PostgreSQL checkpointer initialized successfully")
-    except Exception as e:
-        logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
+            await get_postgres_checkpointer()
+            logger.info("PostgreSQL checkpointer initialized successfully")
+        except Exception as e:
+            logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
 
-    # Initialize MCP Client Manager + Config Watcher
-    try:
-        import asyncio as _asyncio
-        from app.services.mcp_client_manager import get_mcp_client_manager
-        from app.services.mcp_config_watcher import McpConfigWatcher
+        # Initialize MCP Client Manager + Config Watcher
+        try:
+            import asyncio as _asyncio
+            from app.services.mcp_client_manager import get_mcp_client_manager
+            from app.services.mcp_config_watcher import McpConfigWatcher
 
-        app.state.mcp_client_manager = get_mcp_client_manager()
-        app.state.mcp_config_watcher = McpConfigWatcher()
-        app.state.mcp_watcher_task = _asyncio.create_task(
-            app.state.mcp_config_watcher.start()
-        )
-        logger.info("MCP client manager and config watcher started")
-    except Exception as e:
-        logger.warning("MCP subsystem initialization failed", error=str(e))
+            app.state.mcp_client_manager = get_mcp_client_manager()
+            app.state.mcp_config_watcher = McpConfigWatcher()
+            app.state.mcp_watcher_task = _asyncio.create_task(
+                app.state.mcp_config_watcher.start()
+            )
+            logger.info("MCP client manager and config watcher started")
+        except Exception as e:
+            logger.warning("MCP subsystem initialization failed", error=str(e))
 
     logger.info("Application startup complete")
 

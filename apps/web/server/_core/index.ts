@@ -1,5 +1,6 @@
 import "dotenv/config";
 import "./nodeVersionGuard";
+import { isSharedProductionDebug } from "./sharedProductionDebug";
 import { initSentry, Sentry } from "../services/sentry";
 
 // Initialize Sentry BEFORE Express app creation (captures startup errors)
@@ -2358,6 +2359,9 @@ async function main() {
     }
   });
 
+  // The production process owns timers, recovery, sync and scheduled jobs.
+  // A debug process sharing its database serves requests without duplicating them.
+  if (!isSharedProductionDebug()) {
   // Initialize skill registry - auto-sync skills from folder to database
   try {
     await initializeSkillRegistry();
@@ -2845,6 +2849,10 @@ async function main() {
     console.error("[Startup] Failed to initialize AutoTeam recovery scan:", error);
   }
 
+  } else {
+    console.log("[Startup] Shared production debug: background processing and skill auto-sync disabled");
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -2889,6 +2897,7 @@ async function main() {
 
   server.listen(port, host, () => {
     console.log(`SmartAIHub Web listening on http://${host}:${port}`);
+    if (isSharedProductionDebug()) return;
 
     // Start background scheduler to resolve pending media images
     import("../services/aiPresentationService")

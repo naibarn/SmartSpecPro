@@ -17,8 +17,17 @@ try {
   if (config.SMARTSPEC_ENVIRONMENT !== "development")
     throw new Error("Dev environment marker is missing");
   const database = new URL(config.DATABASE_URL);
-  if (!database.pathname.endsWith("_dev_web"))
-    throw new Error("Use a dedicated database ending in _dev_web");
+  const mode = config.SMARTSPEC_DEV_DATABASE_MODE || "isolated";
+  if (!["isolated", "shared-production"].includes(mode))
+    throw new Error("Unknown development database mode");
+  if (mode === "shared-production") {
+    if (!config.SMARTSPEC_SHARED_DATABASE_NAME ||
+        database.pathname !== `/${config.SMARTSPEC_SHARED_DATABASE_NAME}` ||
+        !config.SMARTSPEC_DEV_TENANT_DOMAIN)
+      throw new Error("Shared database name and source tenant domain must be explicit");
+  } else if (!database.pathname.endsWith("_dev_web")) {
+    throw new Error("Use a dedicated database ending in _dev_web or configure shared-production mode");
+  }
   if (!config.JWT_SECRET || !config.LLM_ENCRYPTION_KEY)
     throw new Error("Dev authentication/encryption keys are missing");
   if (!config.PORT || config.PORT === "3000")
@@ -42,7 +51,7 @@ const dirty = execFileSync(
 ).trim();
 const revision = `${sourceSha}${dirty ? "-dirty" : ""}`;
 console.log(
-  `[dev:web] revision=${revision} port=${config.PORT} configuration=${envFile}`
+  `[dev:web] revision=${revision} port=${config.PORT} databaseMode=${config.SMARTSPEC_DEV_DATABASE_MODE || "isolated"} configuration=${envFile}`
 );
 const child = spawn(
   process.execPath,

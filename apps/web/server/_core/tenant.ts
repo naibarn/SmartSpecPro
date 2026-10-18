@@ -7,6 +7,7 @@ import type { Request, Response, NextFunction } from "express";
 import { getDb } from "../db";
 import { tenants, type Tenant } from "../../drizzle/schema";
 import { eq, or } from "drizzle-orm";
+import { getDebugTenantDomain } from "./sharedProductionDebug";
 
 // Cache for tenant lookups (5 minutes TTL)
 const tenantCache = new Map<string, { tenant: Tenant | null; timestamp: number }>();
@@ -21,6 +22,7 @@ export interface TenantRequest extends Request {
  * Get tenant from cache or database
  */
 export async function getTenantByDomain(domain: string): Promise<Tenant | null> {
+  domain = getDebugTenantDomain(domain);
   // Check cache
   const cached = tenantCache.get(domain);
   if (cached && cached.tenant && Date.now() - cached.timestamp < CACHE_TTL) {

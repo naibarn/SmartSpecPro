@@ -15,8 +15,9 @@ const config = parse(readFileSync(configFile));
 if (config.SMARTSPEC_ENVIRONMENT !== "development")
   throw new Error("Development environment required");
 const url = new URL(config.APP_URL);
-const credentials = parse(readFileSync(`${configRoot}/admin-login.txt`));
-const guard = JSON.parse(readFileSync(`${configRoot}/guard-login.json`));
+const sharedProduction = config.SMARTSPEC_DEV_DATABASE_MODE === "shared-production";
+const credentials = sharedProduction ? null : parse(readFileSync(`${configRoot}/admin-login.txt`));
+const guard = sharedProduction ? null : JSON.parse(readFileSync(`${configRoot}/guard-login.json`));
 const evidence =
   process.env.SMARTSPEC_DEV_EVIDENCE_DIR ||
   `${homedir()}/.local/share/smartspec-dev/evidence`;
@@ -74,22 +75,26 @@ try {
       `[dev:web:verify] Fresh login ${attempt + 1}/3 HTTP ${response.status()}`
     );
     if (!attempt) {
-      result.tenantWebsite = await page.evaluate(async () => {
+      result.tenantWebsite = await page.evaluate(async sharedProduction => {
         const current = await fetch("/api/tenant/current");
         const { tenant } = await current.json();
         const home = await fetch("/api/tenant/public-pages/home");
         const body = await home.json();
         const assets = [];
         for (const path of new Set([tenant.logoUrl, tenant.websiteLogoUrl, tenant.faviconUrl].filter(Boolean))) {
+          if (sharedProduction && path.startsWith("/api/storage/files/")) {
+            assets.push({ path, status: "AUTHENTICATED_STORAGE" });
+            continue;
+          }
           const response = await fetch(path);
           assets.push({ path, status: response.status });
         }
         return { tenantStatus: current.status, domain: tenant.primaryDomain, homeStatus: home.status,
           sectionCount: body.sections?.length || 0, assets };
-      });
+      }, sharedProduction);
       if (result.tenantWebsite.homeStatus !== 200 ||
-          result.tenantWebsite.domain !== url.hostname ||
-          result.tenantWebsite.assets.some(asset => asset.status !== 200))
+          result.tenantWebsite.domain !== (sharedProduction ? config.SMARTSPEC_DEV_TENANT_DOMAIN : url.hostname) ||
+          result.tenantWebsite.assets.some(asset => asset.status !== 200 && asset.status !== "AUTHENTICATED_STORAGE"))
         throw new Error("Development tenant Home/branding verification failed");
     }
     if (!attempt)
@@ -146,6 +151,17 @@ try {
     console.log(`[dev:web:verify] Home → Login + back/forward: ${scenario.locale}, ${scenario.savedLanguage || "English default"} PASS`);
     await context.close();
   }
+  if (sharedProduction) {
+    const { page } = await open();
+    await page.goto(`${url.origin}/login`);
+    result.anonymousStatus = await page.evaluate(async () =>
+      (await fetch("/trpc/infrastructure.getSpec224DatabaseDiagnostics")).status);
+    result.databaseMode = "shared-production";
+    result.authenticatedProductionTest = "NOT_RUN_NO_PRODUCTION_CREDENTIALS";
+    result.passed = result.coldLoads.every(row => row.status === 200 && !row.errors.length) &&
+      result.spaTransitions.length === 3 && result.spaTransitions.every(row => !row.errors.length) &&
+      [401,403].includes(result.anonymousStatus);
+  } else {
   const { page, context } = await open();
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -239,6 +255,7 @@ try {
     !errors.length &&
     result.domainAdminGuard.loginStatus === 200 &&
     result.domainAdminGuard.diagnosticsStatus === 403;
+  }
   if (!result.passed) throw new Error("Public development acceptance failed");
 } catch (error) {
   result.passed = false;
