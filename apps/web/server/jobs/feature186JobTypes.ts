@@ -22,6 +22,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "automation.execute",
   "auto-team.recovery.scan",
   "auto-team.recovery.evaluate",
+  "workspace.authority.audit",
   "database.backup",
   "database.backup.maintenance",
   "worker.heartbeat_retention",
