@@ -210,8 +210,8 @@ export class CloudflareAiSearchProvider {
           cache: { enabled: false },
           query_rewrite: { enabled: input.queryRewrite ?? false },
           reranking: { enabled: input.reranking ?? false },
+          instance_ids: input.instanceIds,
           retrieval: {
-            instance_ids: input.instanceIds,
             retrieval_type: input.retrievalType,
             max_num_results: input.maxResults,
             match_threshold: 0,
