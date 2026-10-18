@@ -2738,6 +2738,13 @@
       "when": 1792278000000,
       "tag": "0404_spec224_legacy_reservation_kind_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 405,
+      "version": "7",
+      "when": 1792299300000,
+      "tag": "0405_spec229_retrieval_instance_routes",
+      "breakpoints": true
     }
   ]
 }
