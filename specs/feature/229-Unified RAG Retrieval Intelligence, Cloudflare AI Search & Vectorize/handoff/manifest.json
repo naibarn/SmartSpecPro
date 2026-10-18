@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "14d6f4fff0d7d21966cbcefc697d00c85dc79d7a",
+    "expected_canonical_sha": "13547c452ea11645b41d60677137c50004510a03",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "PR #1148 is open for normal required checks and integration. After merge, continue the source inventory into code/test fixtures and synthetic lifecycle controls; do not pad the cohort. Separately secure a registered nonproduction runtime from existing Admin UI credential management without extracting secrets.",
-    "next_ready_workunit": "P229.8_UNTOUCHED_SOURCE_INVENTORY_AND_SECURE_PROVIDER_RUNTIME",
+    "next_action": "Build the next development cohort only from per-file-screened untouched sources plus explicitly synthetic controls for absent no-answer/follow-up/multi-hop/P229 lifecycle classes; keep source-specific subsystem fixtures marked development-only and do not count them as P229 behavior evidence. In parallel, identify the existing authorized Admin UI to runner secret-bridge or register the nonproduction runtime; do not export token values.",
+    "next_ready_workunit": "P229.8_DETERMINISTIC_COHORT_GENERATOR_FROM_VETTED_FIXTURES",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "Canonical base 14d6f4fff0d7d21966cbcefc697d00c85dc79d7a. PR #1148 source 75bd476bdae6ccf741765f780065d1e5345fe66c records the exact-SHA postmerge verification for PR #1146 and source inventory. No new cohort is included. P229.8 remains NOT_EVALUABLE.",
-    "waiting_predicate": "Provider execution resumes only after a registered isolated nonproduction runner can receive account ID, AI Search token, Vectorize token, Workers AI API key and dedicated spec229-eval resources through secure runtime injection; cohort execution resumes after untouched code/test/synthetic source groups are screened and supply all required §27 classes with validated evidence."
+    "resume_point": "Canonical main is 13547c452ea11645b41d60677137c50004510a03. PR #1148 merged, and the exact-SHA retrieval evidence suite passed 5 files / 41 tests. Source inventory: 115 untouched Markdown candidates before screening; 52 of 119 candidate code/test fixture paths inspected. UUID/OCR/long-context fixture facts can seed development-only cases; no-answer, follow-up, multi-hop, and P229-specific ACL/stale/deleted behavior remain unsupported. No cohort was generated, no provider was called, and no Cloudflare resource was provisioned. P229.8 remains NOT_EVALUABLE.",
+    "waiting_predicate": "Release cohort work resumes with a vetted source inventory and synthetic controls that provide deterministic expected evidence for every §27 required class; provider execution resumes only in a registered isolated nonproduction runtime using secure injection from the existing Admin UI credential boundary."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -56,9 +56,14 @@
         "digest": "f711391dd90111ad920e973b515040f43409c39abfa7b4b390f9f5ef9b06d040",
         "kind": "POST_INTEGRATION_VERIFICATION",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-pr1146-postmerge-source-inventory-20261018.json"
+      },
+      {
+        "digest": "7ed1bd49f8bab43f2229247ee53b9362dd15884988d9cd908aa1651f8b269d22",
+        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-code-test-source-inventory-20261018.json"
       }
     ],
-    "next_action": "PR #1148 contains the verified merge receipt and a source inventory showing the untouched Markdown pool is not enough to certify class completeness without further per-file rights/content review. After integration, inspect code/test fixtures and synthetic controls, then independently review only evidence-backed candidates.",
+    "next_action": "Use the inspected but narrowly scoped UUID/OCR/long-context fixtures only for development tests matching their actual content. Do not count ACL/memory or SPEC-224 fixtures as P229 retrieval behavior. Next, add deterministic synthetic controls for missing classes, validate them against canonical source/license/digest and anchors, then independent-review and freeze only after class coverage and no-leakage checks.",
     "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
     "residual_requirements": [
       "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -102,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 133,
+  "generation": 134,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -227,14 +232,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "14d6f4fff0d7d21966cbcefc697d00c85dc79d7a",
+    "canonical_sha": "13547c452ea11645b41d60677137c50004510a03",
     "integrated": true,
-    "integrated_at": "2026-10-18T12:07:13Z",
-    "intended_pr": "PR #1148 records the PR #1146 merge receipt, exact-SHA focused verification, and read-only untouched Markdown source inventory; P229.8 remains NOT_EVALUABLE.",
-    "pending_pr": "PR #1148",
-    "pending_source_branch": "codex/spec229-p2298-cohort-source-inventory-20261018",
-    "pending_source_sha": "75bd476bdae6ccf741765f780065d1e5345fe66c",
-    "pending_workunit": "P229.8_POSTMERGE_SOURCE_INVENTORY_AND_HANDOFF"
+    "integrated_at": "2026-10-18T12:13:30Z",
+    "intended_pr": "PR #1148 merged at 13547c452ea11645b41d60677137c50004510a03; source inventory evidence and exact-SHA focused verification recorded.",
+    "pending_pr": "",
+    "pending_source_branch": "",
+    "pending_source_sha": "",
+    "pending_workunit": ""
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -283,9 +288,14 @@
           "digest": "f711391dd90111ad920e973b515040f43409c39abfa7b4b390f9f5ef9b06d040",
           "kind": "POST_INTEGRATION_VERIFICATION",
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-pr1146-postmerge-source-inventory-20261018.json"
+        },
+        {
+          "digest": "7ed1bd49f8bab43f2229247ee53b9362dd15884988d9cd908aa1651f8b269d22",
+          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-code-test-source-inventory-20261018.json"
         }
       ],
-      "next_action": "PR #1148 contains the verified merge receipt and a source inventory showing the untouched Markdown pool is not enough to certify class completeness without further per-file rights/content review. After integration, inspect code/test fixtures and synthetic controls, then independently review only evidence-backed candidates.",
+      "next_action": "Use the inspected but narrowly scoped UUID/OCR/long-context fixtures only for development tests matching their actual content. Do not count ACL/memory or SPEC-224 fixtures as P229 retrieval behavior. Next, add deterministic synthetic controls for missing classes, validate them against canonical source/license/digest and anchors, then independent-review and freeze only after class coverage and no-leakage checks.",
       "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
       "residual_requirements": [
         "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -457,7 +467,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T12:11:57.932920Z",
+  "updated_at": "2026-10-18T12:17:04.910567Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -499,13 +509,14 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-machine-review-postmerge-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-profile-a-observed-evidence-postmerge-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-pr1146-postmerge-source-inventory-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-pr1146-postmerge-source-inventory-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-code-test-source-inventory-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "14d6f4fff0d7d21966cbcefc697d00c85dc79d7a",
+    "sha": "13547c452ea11645b41d60677137c50004510a03",
     "status": "PASS",
     "task_regressions": []
   }

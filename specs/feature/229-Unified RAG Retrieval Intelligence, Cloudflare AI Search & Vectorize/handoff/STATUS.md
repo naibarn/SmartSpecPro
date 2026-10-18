@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: PR #1148 contains the verified merge receipt and a source inventory showing the untouched Markdown pool is not enough to certify class completeness without further per-file rights/content review. After integration, inspect code/test fixtures and synthetic controls, then independently review only evidence-backed candidates.
-- Manifest generation: 133
+- Next action: Use the inspected but narrowly scoped UUID/OCR/long-context fixtures only for development tests matching their actual content. Do not count ACL/memory or SPEC-224 fixtures as P229 retrieval behavior. Next, add deterministic synthetic controls for missing classes, validate them against canonical source/license/digest and anchors, then independent-review and freeze only after class coverage and no-leakage checks.
+- Manifest generation: 134
 
 ## Source-declared status and relationship claims
 
