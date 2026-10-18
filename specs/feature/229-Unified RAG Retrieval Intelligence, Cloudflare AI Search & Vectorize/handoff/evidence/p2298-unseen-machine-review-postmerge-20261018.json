@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "spec229-workunit-evidence-v1",
+  "workUnit": "SPEC229_P229_8_UNSEEN_COHORT_MACHINE_REVIEW",
+  "canonicalSha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
+  "pullRequest": 1143,
+  "verification": {
+    "profile": "quick",
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalGoldDataset.test.ts",
+    "result": "PASS",
+    "testFiles": 1,
+    "tests": 15,
+    "gitDiffCheck": "PASS"
+  },
+  "candidateArtifact": {
+    "path": "apps/web/server/services/libraryRetrievalGoldCandidates.unseen-v1.json",
+    "sha256": "51d16560be55914c0333b1421cdcc67333218d99ce734bdb92981c0c464a4dce",
+    "inputCandidateSha256": "f8a19211f0077cdb48302ef82279f105aa99f3847c2e963099613586f633381f",
+    "independentReviewSha256": "f7e028184d9feef0a824c191691f52fbf44076a6e79e077cfdb90b7f67e08ae9",
+    "candidateCount": 549,
+    "machineReview": {
+      "acceptedCandidate": 487,
+      "rejected": 13,
+      "needsAdjudication": 49,
+      "humanReviewed": 0,
+      "humanAccepted": 0,
+      "releaseApproved": 0
+    },
+    "split": {
+      "heldOut": 510,
+      "development": 39
+    },
+    "limitations": [
+      "All candidates remain development_only.",
+      "The held-out labels are contaminated by exact-title/source cues and repeated query templates.",
+      "Required SPEC §27 query classes are absent, including Thai-only, UUID, error-code, follow-up, ambiguous, typo, multi-hop, stale/conflict, no-answer, deleted/revoked, OCR, and long-document classes.",
+      "No retrieval observations or release calibration were run."
+    ]
+  },
+  "p2298": "NOT_EVALUABLE",
+  "spec229": "INCOMPLETE"
+}
