@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a8a2f85d7d3f7b40737fd63d36706b4b6026e0d8",
+    "expected_canonical_sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Integrate the fail-closed control schema/metric changes, isolated AI Search evaluation namespace lifecycle, provider-returned provenance observations, and development-only integrity cohort. Then provision real non-production provider profiles only through authorized secret injection and collect A-H plus latency/cost observations; do not count the candidate pool as reviewed gold.",
+    "next_action": "PR #1138 evaluation control integrity fix is integrated at db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f and passes 6 focused suites / 54 tests on that exact SHA. Continue source-group review and construct a release cohort only where answers, evidence and classes are supported. Execute provider profiles only through authorized secure runtime injection; until then keep provider-backed gates NOT_EVALUABLE.",
     "next_ready_workunit": "P229.8_EVALUATION_CONTROL_INTEGRITY_AND_DISPOSABLE_PROVIDER_SCOPING",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "PR #1126 merged to canonical origin/main at 9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170. Exact-SHA post-merge focused verification passed: 2 files / 17 tests for the Cloudflare AI Search instance_ids contract fix. Profile A diagnostic WorkUnit remains passed; no actual B-H provider observations or untouched reviewed held-out certification cohort are available. P229.8 remains NOT_EVALUABLE.",
-    "waiting_predicate": "Provider-backed execution waits for a secure runtime injection path with AI Search Edit+Run, Vectorize Write for a dedicated 1024D evaluation index, and Workers AI invocation scope. Candidate set remains development-only until semantic and source-use adjudication and full §27 class coverage."
+    "resume_point": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f. Exact-SHA post-merge focused tests passed: 6 files / 54 tests. Independent review passed. Existing 500-item integrity cohort remains development-only and does not meet reviewed held-out release acceptance. No provider-backed B-H observations or certified untouched held-out cohort are available; P229.8 remains NOT_EVALUABLE.",
+    "waiting_predicate": "Provider-backed execution can resume when a non-production runner can securely access an authorized Cloudflare credential with AI Search Edit+Run, Vectorize Write for a dedicated 1024D evaluation index, and Workers AI invocation scope. The Admin UI stores credentials encrypted, but current evaluation scripts only accept secure runtime injection and cannot consume the database token directly."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 116,
+  "generation": 118,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -162,7 +162,8 @@
       "d20868bdaed7f7bec8b6e60b6b51bcecfff577f5",
       "9bad3970d83e797ac6051418cdcce5879293dc16",
       "92220d19dfc7e0ff09a5f290c07407e5494d343a",
-      "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170"
+      "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+      "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f"
     ],
     "mapping": [],
     "source_paths": [
@@ -230,14 +231,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a8a2f85d7d3f7b40737fd63d36706b4b6026e0d8",
+    "canonical_sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
     "integrated": true,
-    "integrated_at": "2026-10-18T09:22:10Z",
-    "intended_pr": "PR #1126 merged as 9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170; Cloudflare AI Search instance scope contract fix; exact-SHA post-merge tests passed.",
-    "pending_pr": "PR #1138",
-    "pending_source_branch": "codex/spec229-eval-integrity-20261018",
-    "pending_source_sha": "b532afdd7779bcb208f054419f9d3cf65aaf2613",
-    "pending_workunit": "P229.8_EVALUATION_CONTROL_INTEGRITY_AND_DISPOSABLE_PROVIDER_SCOPING"
+    "integrated_at": "2026-10-18T10:51:01Z",
+    "intended_pr": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f; fail-closed evaluation control integrity; exact-SHA post-merge focused tests passed.",
+    "pending_pr": null,
+    "pending_source_branch": null,
+    "pending_source_sha": null,
+    "pending_workunit": null
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -465,7 +466,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T10:46:34.080182Z",
+  "updated_at": "2026-10-18T10:52:40.623581Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -499,13 +500,14 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-local-quality-improvement-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json",
       "handoff/evidence/p2298-ai-search-instance-scope-contract-fix-20261018.json",
-      "handoff/evidence/p2298-ai-search-instance-scope-postmerge-20261018.json"
+      "handoff/evidence/p2298-ai-search-instance-scope-postmerge-20261018.json",
+      "handoff/evidence/p2298-control-integrity-postmerge-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
+    "sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
     "status": "PASS",
     "task_regressions": []
   }
