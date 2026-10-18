@@ -51,6 +51,15 @@ if [[ -L "$SELF_LINK" ]]; then
 fi
 mkdir -p "$PACKAGE_ROOT/dist/public"
 cp -a "$WEB_ROOT/dist/public/." "$PACKAGE_ROOT/dist/public/"
+# The frontend build keeps downloadable release files as a workspace symlink.
+# Materialize them in the immutable artifact so runtime paths never escape it.
+RELEASES_PATH="$PACKAGE_ROOT/dist/public/releases"
+if [[ -L "$RELEASES_PATH" ]]; then
+  RELEASES_SOURCE="$(realpath -e "$RELEASES_PATH")"
+  rm -- "$RELEASES_PATH"
+  mkdir -p "$RELEASES_PATH"
+  cp -a "$RELEASES_SOURCE/." "$RELEASES_PATH/"
+fi
 
 node --input-type=module - "$PACKAGE_ROOT/release-build.json" "$SOURCE_SHA" <<'JS'
 import { writeFileSync } from "node:fs";
