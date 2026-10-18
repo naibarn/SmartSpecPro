@@ -6,3 +6,9 @@ canonical_user_workspace = "/home/dev/projects/SmartSpecPro"
 source_root = "/mnt/SmartSpecDev/.cache/codex/canonical-sources"
 lease_root = "/mnt/SmartSpecDev/.cache/codex/canonical-leases"
 build_target = "smartspec-web"
+
+[repository.platforms.windows]
+canonical_user_workspace = 'D:\Smart AI Hub\Spec224Runtime\canonical-workspace\SmartSpecPro'
+source_root = 'D:\Smart AI Hub\Spec224Runtime\canonical-sources'
+lease_root = 'D:\Smart AI Hub\Spec224Runtime\canonical-leases'
+recovery_root = 'D:\Smart AI Hub\Spec224Runtime\recovery'
