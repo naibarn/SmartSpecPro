@@ -1964,12 +1964,40 @@ async function findDuplicateUploadedLibraryItem(
   return rows[0] ?? null;
 }
 
+const thaiWordSegmenter =
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter("th", { granularity: "word" })
+    : null;
+
 function tokenize(value: string): string[] {
-  return value
+  const segments = value
+    .normalize("NFKC")
     .toLowerCase()
-    .split(/[^a-z0-9]+/g)
-    .map(token => token.trim())
-    .filter(token => token.length > 1);
+    .match(/[\p{Script=Thai}]+|[\p{L}\p{N}]+/gu) ?? [];
+
+  return segments.flatMap(segment => {
+    if (/^\p{Script=Thai}+$/u.test(segment)) {
+      // Segment query text with Thai word boundaries. Content matching below
+      // uses substring checks, so the segmenter never processes whole documents.
+      if (thaiWordSegmenter) {
+        return Array.from(thaiWordSegmenter.segment(segment))
+          .filter(part => part.isWordLike)
+          .map(part => part.segment)
+          .filter(token => token.length > 1);
+      }
+
+      // Keep Thai queries searchable on runtimes without ICU segmentation.
+      const bigrams: string[] = [];
+      let previous = "";
+      for (const character of segment) {
+        if (previous) bigrams.push(`${previous}${character}`);
+        previous = character;
+      }
+      return bigrams;
+    }
+
+    return segment.length > 1 ? [segment] : [];
+  });
 }
 
 function computeTokenOverlapScore(
@@ -1977,23 +2005,40 @@ function computeTokenOverlapScore(
   content: string
 ): number {
   if (!queryTokens.length) return 0;
-  const contentTokens = new Set(tokenize(content));
-  if (!contentTokens.size) return 0;
+  const normalizedContent = content.normalize("NFKC").toLowerCase();
+  const thaiQueryTokens = queryTokens.filter(token =>
+    /^\p{Script=Thai}+$/u.test(token)
+  );
+  const asciiQueryTokens = queryTokens.filter(token =>
+    !/^\p{Script=Thai}+$/u.test(token)
+  );
+  // Mixed-script queries keep the established Latin/code ranking. Pure Thai
+  // queries use the Thai token path; development observations showed that
+  // adding Thai tokens to mixed queries destabilized otherwise correct ranks.
+  const thaiMatchWeight = asciiQueryTokens.length > 0 ? 0 : 1;
+  const contentTokens = asciiQueryTokens.length > 0
+    ? new Set(
+        normalizedContent
+          .split(/[^a-z0-9]+/g)
+          .filter(token => token.length > 1)
+      )
+    : null;
 
-  let hits = 0;
-  for (const token of queryTokens) {
-    if (contentTokens.has(token)) hits += 1;
-  }
-
-  return hits / queryTokens.length;
+  const thaiHits =
+    thaiMatchWeight === 0
+      ? 0
+      : thaiQueryTokens.filter(token => normalizedContent.includes(token)).length;
+  const asciiHits = asciiQueryTokens.filter(token =>
+    contentTokens?.has(token)
+  ).length;
+  const weightedTotal =
+    asciiQueryTokens.length + thaiQueryTokens.length * thaiMatchWeight;
+  return (asciiHits + thaiHits * thaiMatchWeight) / weightedTotal;
 }
 
 function normalizeSearchPhrase(value: unknown): string {
   return typeof value === "string"
-    ? value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
+    ? tokenize(value).join(" ")
     : "";
 }
 
@@ -2011,6 +2056,8 @@ function computeLibraryExactFieldBoost(
     item.title,
     item.sourceUrl ?? "",
     metadata.file_name,
+    metadata.fileName,
+    metadata.canonicalPath,
     metadata.logical_path,
     metadata.logicalPath,
     ...(Array.isArray(metadata.aliases) ? metadata.aliases : []),
@@ -2021,6 +2068,21 @@ function computeLibraryExactFieldBoost(
 
   if (fields.some(field => field === normalizedQuery)) {
     return 1.25;
+  }
+
+  // Repository Spec IDs are represented by their numeric directory prefix
+  // (for example `225-...`), while user queries commonly say `Spec 225`.
+  // Match the structured identifier explicitly so generic words such as
+  // "repository", "title", and "specification" cannot outrank its source.
+  const canonicalPath =
+    typeof metadata.canonicalPath === "string" ? metadata.canonicalPath : "";
+  const specIds = [...query.matchAll(/\b(?:spec|specification)\s*[-#:]?\s*(\d{2,4})\b/gi)];
+  if (
+    specIds.some((match) =>
+      new RegExp(`(?:^|/)${match[1]}(?:[-_/]|$)`, "i").test(canonicalPath)
+    )
+  ) {
+    return 4;
   }
 
   if (fields.some(field => field.includes(normalizedQuery))) {

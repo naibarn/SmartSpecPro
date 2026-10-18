@@ -192,6 +192,143 @@ describe("searchLibraryItems", () => {
     expect(response.results.find((r) => r.item_id === 2)?.source_url).toBe("https://cdn.example.com/demo.mp4");
   });
 
+  it("retrieves Thai text using the runtime word segmenter", async () => {
+    const items = [
+      {
+        id: 21,
+        tenantId: 50,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "unrelated.md",
+        description: "English-only reference text",
+        status: "ready",
+        visibility: "private",
+        metadata: { canonicalPath: "docs/unrelated.md" },
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: baseDate,
+        updatedAt: baseDate,
+      },
+      {
+        id: 22,
+        tenantId: 50,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "thai-search.md",
+        description: "ระบบค้นหาเอกสารภาษาไทยรองรับการค้นหา",
+        status: "ready",
+        visibility: "private",
+        metadata: { canonicalPath: "docs/thai-search.md" },
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 1_000),
+        updatedAt: baseDate,
+      },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]));
+
+    const response = await searchLibraryItems(
+      { query: "ระบบค้นหาเอกสารภาษาไทย", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 50, role: "user" },
+    );
+
+    expect(response.results.map(result => result.item_id)).toEqual([22]);
+  });
+
+  it("ranks the matching repository Spec ID ahead of generic query terms", async () => {
+    const items = [
+      {
+        id: 31,
+        tenantId: 50,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "spec.md",
+        description: "Repository specification title and overview",
+        status: "ready",
+        visibility: "private",
+        metadata: { canonicalPath: "specs/feature/224-unrelated-spec/spec.md" },
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: new Date(baseDate.getTime() + 1_000),
+        updatedAt: baseDate,
+      },
+      {
+        id: 32,
+        tenantId: 50,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "spec.md",
+        description: "Repository specification title and overview",
+        status: "ready",
+        visibility: "private",
+        metadata: { canonicalPath: "specs/feature/225-exact-id-target/spec.md" },
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: baseDate,
+        updatedAt: baseDate,
+      },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]));
+
+    const response = await searchLibraryItems(
+      { query: "In repository Spec 225, what title is given to the specification?", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 50, role: "user" },
+    );
+
+    expect(response.results[0]?.item_id).toBe(32);
+  });
+
+  it("returns no evidence for an unmatched query", async () => {
+    const items = [
+      {
+        id: 41,
+        tenantId: 50,
+        ownerUserId: 7,
+        itemType: "document",
+        source: "upload",
+        title: "retrieval-guide.md",
+        description: "The guide describes tenant isolation and citations.",
+        status: "ready",
+        visibility: "private",
+        metadata: { canonicalPath: "docs/retrieval-guide.md" },
+        sourceUrl: null,
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: baseDate,
+        updatedAt: baseDate,
+      },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]));
+
+    const response = await searchLibraryItems(
+      { query: "unmatched-identifier-qzxv-8841", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 50, role: "user" },
+    );
+
+    expect(response.total).toBe(0);
+    expect(response.results).toEqual([]);
+  });
+
   it("enforces tenant/ACL visibility and prevents private leakage", async () => {
     const items = [
       {
