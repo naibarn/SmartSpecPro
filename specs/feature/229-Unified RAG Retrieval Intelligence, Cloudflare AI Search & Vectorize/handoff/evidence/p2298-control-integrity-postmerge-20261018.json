@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "spec229-workunit-verification-v1",
+  "workUnit": "P229.8_EVALUATION_CONTROL_INTEGRITY_AND_DISPOSABLE_PROVIDER_SCOPING",
+  "scope": "evaluation control schema, aggregation, Vectorize Profile B run identity and fail-closed ACL canary result persistence",
+  "canonicalRef": "refs/heads/main",
+  "canonicalSha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+  "pullRequest": 1138,
+  "pullRequestHeadSha": "926569949351879bbeaafbe7a965e463a8b89e9a",
+  "mergeSha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+  "mergedAt": "2026-10-18T10:51:01Z",
+  "verification": {
+    "focusedTests": {
+      "command": "node <vitest.mjs> run server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/cloudflareAiSearchProvider.test.ts",
+      "result": "PASS",
+      "testFiles": 6,
+      "testsPassed": 54,
+      "testsFailed": 0,
+      "postMergeCanonicalSha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f"
+    },
+    "syntaxTransforms": {
+      "result": "PASS",
+      "changedTypeScriptFiles": 6,
+      "tool": "esbuild TypeScript transform"
+    },
+    "patchCheck": "PASS",
+    "independentReview": "PASS",
+    "requiredPullRequestChecks": {
+      "progressive_integration_gate": "PASS",
+      "local-contract": "PASS",
+      "Mocked SPEC-308 browser simulation": "PASS",
+      "build-preview": "SKIPPED by workflow"
+    }
+  },
+  "evaluationOutcome": {
+    "P2298Acceptance": "NOT_EVALUABLE",
+    "providerObservationsAdded": false,
+    "releaseCohortCertified": false,
+    "productionVerified": false,
+    "reason": "This WorkUnit repairs fail-closed benchmark integrity; it does not provide provider-backed A-H observations or a certified held-out cohort."
+  }
+}
