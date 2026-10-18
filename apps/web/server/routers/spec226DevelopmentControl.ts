@@ -944,6 +944,7 @@ export const spec226DevelopmentControlRouter = router({
   requestAuthorizationApproval: protectedProcedure
     .input(
       providerInput.extend({
+        profileId: z.string().trim().min(1).max(255),
         deadline: z.string().datetime({ offset: true }),
         budgetCapMinorUnits: z.number().int().positive().max(10_000_000),
         currency: z.string().regex(/^[A-Za-z]{3}$/),
