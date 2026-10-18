@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "preinstall": "node scripts/check-node-version.mjs",
-    "dev:web": "turbo run dev --filter=@smartspec/web",
+    "dev:web": "pnpm --filter @smartspec/web dev",
     "dev:desktop": "bash ./scripts/desktop-app.sh dev",
     "build:desktop": "bash ./scripts/desktop-app.sh build",
     "build:desktop:local": "node ./scripts/desktop-build-local.mjs",

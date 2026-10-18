@@ -1,0 +1,7 @@
+tunnel: REPLACE_WITH_DEDICATED_DEV_TUNNEL_ID
+credentials-file: /home/dev/.cloudflared/REPLACE_WITH_DEDICATED_DEV_TUNNEL_ID.json
+protocol: http2
+ingress:
+  - hostname: aimarkethubs.com
+    service: http://127.0.0.1:3100
+  - service: http_status:404

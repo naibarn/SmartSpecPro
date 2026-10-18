@@ -164,7 +164,6 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as const,
   };
 
   const resolvedViteConfig =
@@ -179,8 +178,14 @@ export async function setupVite(app: Express, server: Server) {
 
   const vite = await createViteServer({
     ...resolvedViteConfig,
+    envDir: process.env.SMARTSPEC_DEV_ENV_FILE
+      ? path.dirname(process.env.SMARTSPEC_DEV_ENV_FILE)
+      : resolvedViteConfig.envDir,
     configFile: false,
-    server: serverOptions,
+    server: {
+      ...serverOptions,
+      allowedHosts: resolvedViteConfig.server?.allowedHosts ?? ["localhost", "127.0.0.1"],
+    },
     appType: "custom",
   });
 

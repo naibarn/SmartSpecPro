@@ -1,0 +1,12 @@
+[Unit]
+Description=Private Redis for SmartSpec development
+
+[Service]
+Environment=LD_LIBRARY_PATH=%h/.local/share/smartspec-dev/redis/usr/lib/x86_64-linux-gnu
+ExecStart=%h/.local/share/smartspec-dev/redis/usr/bin/redis-server --bind 127.0.0.1 --port 6391 --save "" --appendonly no
+Restart=on-failure
+RestartSec=5
+MemoryMax=256M
+
+[Install]
+WantedBy=default.target

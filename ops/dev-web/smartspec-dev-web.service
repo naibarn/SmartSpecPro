@@ -1,0 +1,17 @@
+[Unit]
+Description=SmartSpec isolated development web server
+After=network-online.target smartspec-dev-redis.service
+Wants=smartspec-dev-redis.service
+
+[Service]
+WorkingDirectory=%h/projects/SmartSpecPro/apps/web
+EnvironmentFile=%h/.config/smartspec-dev/process.env
+Environment=SMARTSPEC_DEV_ENV_FILE=%h/.config/smartspec-dev/web.env
+ExecStart=/usr/bin/env node scripts/dev-web.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+MemoryMax=6G
+
+[Install]
+WantedBy=default.target

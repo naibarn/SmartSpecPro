@@ -10,7 +10,7 @@
     "node": ">=22.22.0 <23"
   },
   "scripts": {
-    "dev": "NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
+    "dev": "node scripts/dev-web.mjs",
     "dev:tsx": "NODE_ENV=development tsx watch server/_core/index.ts",
     "dev:no-watch": "NODE_ENV=development node --import tsx server/_core/index.ts",
     "build": "bash scripts/build-atomic.sh",

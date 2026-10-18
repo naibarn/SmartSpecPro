@@ -65,17 +65,39 @@ switches the versioned runtime first and restarts only `smartspec-web.service`.
 
 ## Development and browser testing
 
-`pnpm run dev:web` starts the development server from the current checkout for
-local work. It does not publish to either public hostname. The repository's
-Cloudflare staging Worker is a local/dry-run target (`workers_dev` only, no
-custom hostname, activation disabled); it is not a public development site.
+`aimarkethubs.com` is the development hostname. It connects through its own
+named Cloudflare Tunnel to the development web service on `127.0.0.1:3100`.
+The production tunnel and service remain independently managed.
 
-`aimarkethubs.com` currently has no A, AAAA, or CNAME answer in public DNS, and
-there is no route or development-service configuration for that hostname in
-this repository. Therefore a browser cannot reach it yet. A public dev site
-needs a separate dev service and non-production environment, plus an approved
-Cloudflare Tunnel/ingress and DNS record pointing `aimarkethubs.com` to that
-dev service. It must not point at the production service or database. Until
-that ingress exists, use the local URL printed by `pnpm run dev:web` for
-development checks; use `smartaihub.app` only after the production release
-command and the status/browser checks above.
+```bash
+pnpm run dev:web                         # foreground, current checkout
+systemctl --user restart smartspec-dev-web.service
+systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service
+```
+
+The development launcher reads `~/.config/smartspec-dev/web.env`, or the path
+specified by `SMARTSPEC_DEV_ENV_FILE`. It requires `SMARTSPEC_ENVIRONMENT=development`,
+a dedicated database whose name ends in `_dev_web`, separate authentication and
+encryption keys, and a port other than 3000. It sets `DOTENV_CONFIG_PATH` so the
+application does not load the production `.env` as a fallback. Frontend edits
+use Vite HMR; restart the development service after backend edits.
+
+Systemd user service templates are in `ops/dev-web/`. The web service's
+`~/.config/smartspec-dev/process.env` sets PATH to the installed Node 22 binary.
+The dedicated Redis instance listens only on loopback port 6391. The development
+database has its own restricted login role, a schema-only snapshot, and synthetic
+test accounts; production data and provider credentials are not copied.
+Development feature integrations need their own test credentials and backend.
+
+Configure the Cloudflare DNS record in the account owning `aimarkethubs.com`:
+CNAME `@` to `<dev-tunnel-id>.cfargotunnel.com`, proxied, TTL Auto. The tunnel's
+ingress accepts only `aimarkethubs.com` and forwards it to port 3100; other
+hostnames receive 404. Use `cloudflared tunnel ingress validate` against the
+dev config before starting its service. Do not use `tunnel route dns` with a
+certificate scoped to a different zone: it can create a record under that zone.
+
+Open `https://aimarkethubs.com/login` in a new private window, confirm it renders
+on the first load, log in with the synthetic development Admin, and test Admin
+Collect evidence. Check browser errors and compare runtime identity before
+considering the public dev environment verified. DNS, tunnel connectivity, local
+HTTP readiness, and authenticated browser verification are separate observations.
