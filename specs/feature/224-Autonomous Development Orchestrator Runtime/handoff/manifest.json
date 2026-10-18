@@ -892,14 +892,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "32120b2d34b48cd5bc622e11c29cd3c066a3a231",
+    "expected_canonical_sha": "46beb979c8851060fc01e25781ac6880cf5721c8",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "PR #1111 (source 4a48df5f28c6b305c730ae49c0f93372ef2e2399) adds the authenticated Tenant Owner recovery-grant revoke route. Await required protected checks, then merge through promote_ready_pr.py. Focused pytest is pending because pytest is unavailable in the isolated environment; py_compile and diff checks passed. Live acceptance still requires fresh authenticated Runtime/Tenant Owner evidence and Platform/Security source-trust authority; do not dispatch.",
+    "next_action": "Live acceptance remains blocked pending Platform/Security approval and provisioning of exact non-production source-trust identities, plus authenticated Runtime/Tenant Owner readback of Runner, workspace crosswalk, tenant/project, existing jobs/attempts, lease/fencing/idempotency and grant scope. Recovery-grant issue/bind/validate/revoke routes are now represented in code; a Tenant Owner may use the existing authenticated owner flow only after fresh identity/scope confirmation. Do not issue a grant or dispatch until every live gate passes.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: PR #1108 capability availability reconciliation is integrated at 32120b2d34b48cd5bc622e11c29cd3c066a3a231. Live acceptance awaits Platform/Security source-trust provisioning and authenticated Runtime/Tenant Owner authority; do not repeat prior Windows workspace/Runner setup.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
-    "resume_point": "SPEC-224 PR #1111 is open from codex/spec224-recovery-grant-revoke-20261018 at 4a48df5f28c6b305c730ae49c0f93372ef2e2399, based on canonical 19ddb53616fb91f26dd773125f8f2b499c67993a. Revoke endpoint is server-authenticated and delegates owner/scope/fence/audit checks to ApprovalDBService. py_compile and git diff --check passed; focused pytest unavailable (module missing). No grant was issued and no dispatch occurred. Next: required protected PR checks and normal protected merge; then refresh authenticated runtime evidence and continue only if all admission gates pass.",
+    "resume_point": "PR #1111 merged through the protected executor at canonical origin/main SHA 46beb979c8851060fc01e25781ac6880cf5721c8 (PR head 2e7abaa1b70494c7677e31db1ec3ed99e63ae425); progressive integration gate passed and preview was skipped by policy. Authenticated recovery-grant revoke route now exists with strict request validation and server-resolved Tenant Owner context; service retains owner, grant-scope, execution-fence and audit checks. Focused Python pytest could not run in local environment (pytest module missing); py_compile and diff checks passed. Prior capability mapping fix remains integrated in PR #1108. No fresh backend authority interface was available in this session: current Runner/Workspace crosswalk, Certification, owner/session, grants and live jobs/leases remain unverified. No grant or dispatch occurred. Next action is fresh authenticated Runtime/Tenant Owner readback and approved Platform/Security source-trust provisioning; then prepare/authorize one DevelopmentRun and verify one dispatch only if all existing gates pass.",
     "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 99,
+  "generation": 100,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1350,11 +1350,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "32120b2d34b48cd5bc622e11c29cd3c066a3a231",
+    "canonical_sha": "46beb979c8851060fc01e25781ac6880cf5721c8",
     "integrated": true,
-    "integrated_at": "2026-10-18T07:43:58Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1108",
-    "source_sha": "b8934a794d2cf50c67e2c433ade6f73cf2487288"
+    "integrated_at": "2026-10-18T07:54:02Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1111",
+    "source_sha": "2e7abaa1b70494c7677e31db1ec3ed99e63ae425"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T07:51:23.634070Z",
+  "updated_at": "2026-10-18T07:54:20.140318Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
