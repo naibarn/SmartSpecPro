@@ -63,6 +63,23 @@ describe("Library retrieval development benchmark", () => {
       .toMatchObject({ freshnessCorrectness: null, freshnessControlCoverage: null, securityControlsComplete: false });
   });
 
+  it("does not treat evidence with unknown lifecycle state as fresh", () => {
+    const gold = [DEVELOPMENT_GOLD_CASES[0]];
+    const observations = [{
+      ...DEVELOPMENT_OBSERVATIONS[0],
+      evidence: [{
+        evidenceId: "doc-a",
+        tenantId: "tenant-a",
+        revision: "r2",
+        digest: sha256("# Authorized guide\nThe approved amount is 42."),
+        authorityRank: 3,
+        authorized: true,
+      }],
+    }];
+    expect(calculateRetrievalBenchmarkMetrics(gold, observations))
+      .toMatchObject({ freshnessCorrectness: 0, staleOrRevokedEvidenceAccepted: 0 });
+  });
+
   it("keeps canonical SPEC §27 release criteria unchanged and separately identifiable", () => {
     expect(SPEC_229_RELEASE_CRITERIA).toMatchObject({
       crossTenantLeakage: 0,
