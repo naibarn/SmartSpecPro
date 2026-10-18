@@ -80,6 +80,13 @@ class IsolatedSystemdRuntime:
 
 
 class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
+    def test_production_web_entrypoint_does_not_eagerly_load_vite(self):
+        vite_source = (SCRIPT.parent.parent / "server/_core/vite.ts").read_text()
+        self.assertNotRegex(vite_source, r'import\s+.*\sfrom\s+["\']vite["\']')
+        self.assertNotRegex(vite_source, r'import\s+.*\sfrom\s+["\']\.\./\.\./vite\.config["\']')
+        self.assertIn('import("vite")', vite_source)
+        self.assertIn('import("../../vite.config")', vite_source)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)

@@ -4,8 +4,6 @@ import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 import zlib from "zlib";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
 import { injectPublicSeoSnapshot, injectTenantIdentitySeo } from "../services/publicSeoPrerender";
 import { isApiRequestPath } from "./apiPathGuard";
 
@@ -157,6 +155,12 @@ export function injectRequestSeo(html: string, url: string, req: express.Request
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Keep Vite and its development config out of the production runtime graph.
+  // Linux release artifacts intentionally install production dependencies only.
+  const [{ createServer: createViteServer }, { default: viteConfig }] = await Promise.all([
+    import("vite"),
+    import("../../vite.config"),
+  ]);
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
