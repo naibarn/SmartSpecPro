@@ -64,6 +64,10 @@ const EVAL_TENANT = "repo-development";
 const EVAL_ACL_SCOPE = "tenant_shared:spec229-repository";
 const MAX_FILTER_VALUE_BYTES = 64;
 
+export function isAllowedSpec229EvaluationNamespace(namespace: string): boolean {
+  return /^spec229-eval-[a-z0-9-]{1,48}$/.test(namespace);
+}
+
 function assertShortFilterValue(field: string, value: string): void {
   if (Buffer.byteLength(value, "utf8") > MAX_FILTER_VALUE_BYTES) {
     throw new Error(`AI Search evaluation ${field} exceeds 64 UTF-8 bytes`);
@@ -78,6 +82,7 @@ export class CloudflareAiSearchEvaluationClient {
   private readonly fetchImpl: typeof fetch;
   private readonly namespace: string;
   private readonly basePath: string;
+  private readonly accountPath: string;
 
   constructor(private readonly config: CloudflareAiSearchEvaluationConfig) {
     if (!/^[a-f0-9]{32}$/i.test(config.accountId)) {
@@ -96,10 +101,34 @@ export class CloudflareAiSearchEvaluationClient {
       throw new Error("Cloudflare AI Search namespace is invalid");
     }
     this.fetchImpl = config.fetchImpl ?? fetch;
+    this.accountPath = `${API_BASE}/accounts/${encodeURIComponent(config.accountId)}`;
     this.basePath =
-      `${API_BASE}/accounts/${encodeURIComponent(config.accountId)}` +
+      `${this.accountPath}` +
       `/ai-search/namespaces/${encodeURIComponent(this.namespace)}` +
       `/instances/${encodeURIComponent(config.instanceId)}`;
+  }
+
+  async createDisposableNamespace(): Promise<void> {
+    if (!/^spec229-eval-[a-z0-9-]{1,48}$/.test(this.namespace)) {
+      throw new Error("Only an isolated SPEC-229 evaluation namespace can be created");
+    }
+    await this.namespaceRequest("POST", "", {
+      name: this.namespace,
+      description: "Disposable non-production SPEC-229 retrieval evaluation namespace",
+      public_endpoint_params: {
+        enabled: false,
+        search_endpoint: { disabled: true },
+        chat_completions_endpoint: { disabled: true },
+        mcp: { disabled: true },
+      },
+    });
+  }
+
+  async deleteDisposableNamespace(): Promise<void> {
+    if (!/^spec229-eval-[a-z0-9-]{1,48}$/.test(this.namespace)) {
+      throw new Error("Only an isolated SPEC-229 evaluation namespace can be deleted");
+    }
+    await this.namespaceRequest("DELETE", "");
   }
 
   /**
@@ -384,6 +413,34 @@ export class CloudflareAiSearchEvaluationClient {
       throw new Error(`Cloudflare AI Search request failed (${response.status})`);
     }
     return envelope.result;
+  }
+
+  private async namespaceRequest<T = unknown>(
+    method: string,
+    suffix: string,
+    body?: Record<string, unknown>,
+  ): Promise<T> {
+    const response = await this.fetchImpl(
+      `${this.accountPath}/ai-search/namespaces${method === "POST" ? "" : `/${encodeURIComponent(this.namespace)}${suffix}`}`,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.config.apiToken}`,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      },
+    );
+    let envelope: CloudflareEnvelope<T>;
+    try {
+      envelope = await response.json() as CloudflareEnvelope<T>;
+    } catch {
+      throw new Error(`Cloudflare AI Search namespace request failed (${response.status})`);
+    }
+    if (!response.ok || envelope.success === false) {
+      throw new Error(`Cloudflare AI Search namespace request failed (${response.status})`);
+    }
+    return envelope.result as T;
   }
 }
 

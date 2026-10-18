@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CloudflareAiSearchEvaluationClient } from "../cloudflareAiSearchEvaluation";
+import { CloudflareAiSearchEvaluationClient, isAllowedSpec229EvaluationNamespace } from "../cloudflareAiSearchEvaluation";
 
 const config = {
   accountId: "a".repeat(32),
@@ -15,6 +15,50 @@ function response(result: unknown, status = 200): Response {
 }
 
 describe("CloudflareAiSearchEvaluationClient", () => {
+  it("allows only isolated SPEC-229 evaluation namespaces", () => {
+    expect(isAllowedSpec229EvaluationNamespace("smartaihub-dev")).toBe(false);
+    expect(isAllowedSpec229EvaluationNamespace("smartaihub-staging")).toBe(false);
+    expect(isAllowedSpec229EvaluationNamespace("spec229-eval-profile-c")).toBe(true);
+    expect(isAllowedSpec229EvaluationNamespace("smartaihub-prod")).toBe(false);
+    expect(isAllowedSpec229EvaluationNamespace("spec229-eval-prod/../../shared")).toBe(false);
+  });
+
+  it("creates and deletes only its own non-public disposable namespace", async () => {
+    const fetchImpl = vi.fn(async () => response({ name: "spec229-eval-profile-c-run1" }));
+    const client = new CloudflareAiSearchEvaluationClient({
+      ...config,
+      namespace: "spec229-eval-profile-c-run1",
+      fetchImpl,
+    });
+
+    await client.createDisposableNamespace();
+    await client.deleteDisposableNamespace();
+
+    expect(fetchImpl.mock.calls[0][0]).toContain("/ai-search/namespaces");
+    expect(fetchImpl.mock.calls[0][1]?.method).toBe("POST");
+    expect(JSON.parse(String(fetchImpl.mock.calls[0][1]?.body))).toMatchObject({
+      name: "spec229-eval-profile-c-run1",
+      public_endpoint_params: {
+        enabled: false,
+        search_endpoint: { disabled: true },
+        chat_completions_endpoint: { disabled: true },
+        mcp: { disabled: true },
+      },
+    });
+    expect(fetchImpl.mock.calls[1][0]).toContain("/ai-search/namespaces/spec229-eval-profile-c-run1");
+    expect(fetchImpl.mock.calls[1][1]?.method).toBe("DELETE");
+  });
+
+  it("refuses to create or delete shared namespaces", async () => {
+    const client = new CloudflareAiSearchEvaluationClient({
+      ...config,
+      namespace: "smartaihub-staging",
+      fetchImpl: vi.fn(async () => response({})),
+    });
+    await expect(client.createDisposableNamespace()).rejects.toThrow("Only an isolated SPEC-229");
+    await expect(client.deleteDisposableNamespace()).rejects.toThrow("Only an isolated SPEC-229");
+  });
+
   it("creates a private keyword-only trigram profile with the canonical metadata fields", async () => {
     const fetchImpl = vi.fn(async () => response({ id: config.instanceId }));
     const client = new CloudflareAiSearchEvaluationClient({ ...config, fetchImpl });

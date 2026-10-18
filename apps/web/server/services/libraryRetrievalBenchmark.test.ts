@@ -33,6 +33,9 @@ describe("Library retrieval development benchmark", () => {
       citationAvailability: 0.25,
       freshnessCorrectness: 0.571429,
       authorityCorrectness: 0.857143,
+      aclControlCoverage: null,
+      freshnessControlCoverage: null,
+      securityControlsComplete: false,
       aclLeakage: 2,
       crossTenantLeakage: 1,
       unauthorizedEvidenceLeakage: 1,
@@ -46,6 +49,17 @@ describe("Library retrieval development benchmark", () => {
       p99LatencyMs: null,
       meanCostMicros: null,
     });
+  });
+
+  it("does not report freshness as successful when no evidence was checked", () => {
+    const noEvidenceCases = [DEVELOPMENT_GOLD_CASES[0]];
+    const noEvidenceObservations = [{
+      ...DEVELOPMENT_OBSERVATIONS[0],
+      evidence: [],
+      citations: [],
+    }];
+    expect(calculateRetrievalBenchmarkMetrics(noEvidenceCases, noEvidenceObservations))
+      .toMatchObject({ freshnessCorrectness: null, freshnessControlCoverage: null, securityControlsComplete: false });
   });
 
   it("keeps canonical SPEC §27 release criteria unchanged and separately identifiable", () => {
