@@ -1,0 +1,37 @@
+{
+  "schema_version": "spec229.postmerge-evidence.v1",
+  "workunit": "P229.4_BROKER_HYDRATION_WITH_OPAQUE_TENANT_ACL_SCOPES",
+  "pr": 1102,
+  "pr_url": "https://github.com/naibarn/SmartSpecPro/pull/1102",
+  "source_commit": "1470efedd49b6e634858c5d8c471fa1f653acb4b",
+  "handoff_commit": "ed9b0cd6d9b14ff961034d557b7d1eba4a39f8de",
+  "merge_sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+  "canonical_ref": "refs/heads/main",
+  "required_ci": {
+    "Mocked SPEC-308 browser simulation": "PASS",
+    "local-contract": "PASS",
+    "progressive_integration_gate": "PASS",
+    "build-preview": "SKIPPED_BY_WORKFLOW_CONDITION"
+  },
+  "postmerge_verification": {
+    "canonical_sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+    "focused_command": "JWT_SECRET=<test-only> vitest --no-cache run server/services/retrievalBroker.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/ragProjectionIndexer.test.ts server/services/ragProjectionRegistry.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts",
+    "focused_result": "PASS: 10 test files, 81 tests",
+    "library_markdown_contract_command": "JWT_SECRET=<test-only> vitest --no-cache run server/services/libraryService.test.ts -t 'returns canonical normalized Markdown with content-addressed revision after tenant and ACL checks'",
+    "library_markdown_contract_result": "PASS: 1 test, 78 skipped by name filter",
+    "broader_library_service_suite": {
+      "result": "6 pre-existing failures; exact parent SHA e32446393a7bc52b3026b06fa41231c32602f43e reproduces the same 6 failures",
+      "remaining_tests": "36 passed, 37 todo",
+      "classification": "BASELINE_FAILURES_NOT_INTRODUCED_BY_PR_1102"
+    },
+    "full_typecheck": "NOT_RUN_PER_REPOSITORY_RESOURCE_POLICY"
+  },
+  "implementation": {
+    "mode": "additive development/staging route only; production and unspecified NODE_ENV retain legacy path",
+    "tenant_isolation": "tenant-hashed opaque ACL scopes are filtered before provider search; PostgreSQL registry resolution is tenant/instance/ACL scoped; Library canonical hydration rechecks current ACL, immutable revision and digest",
+    "provider_metadata": "uses SPEC-229 §14.2 reserved fields within the five-custom-field cap; source identity and revision remain in PostgreSQL registry",
+    "evidence_quality": "remains weak until P229.8 certification"
+  },
+  "acceptance_boundary": "The Broker candidate-hydration checkpoint passed. This does not close P229.4: automatic projection creation from Library ingestion, ACL replacement/revocation and deletion cleanup remain open. No real AI Search retrieval observations, release cohort approval, P229.8 certification or production verification are claimed.",
+  "runtime_observations": "NOT_COLLECTED: non-production DATABASE_URL, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_AI_API_KEY were not present in the execution environment; no credentials were read or used."
+}

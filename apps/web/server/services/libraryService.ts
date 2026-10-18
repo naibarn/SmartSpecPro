@@ -99,6 +99,7 @@ import {
   type LibraryKnowledgeRefreshReason,
 } from "./libraryKnowledgeBackfillService";
 import { dispatchLibraryKnowledgeRefreshWorker } from "./libraryKnowledgeRefreshWorker";
+import { queueLibraryDocumentRagProjectionSync } from "./libraryRagProjectionSync";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { getTraceId } from "./traceContext";
 import {
@@ -1643,6 +1644,21 @@ async function maybeDispatchLibraryKnowledgeRefreshWorker(input: {
   }
 
   try {
+    try {
+      // The projection queue is independently durable, so it still reconciles
+      // ACL revocations when the legacy Library job was throttled (job id 0).
+      await queueLibraryDocumentRagProjectionSync({
+        tenantId: input.tenantId,
+        libraryItemId: input.libraryItemId,
+        sourceJobId: input.jobId,
+      });
+    } catch (error) {
+      console.warn("[library] failed to queue RAG projection sync", {
+        tenantId: input.tenantId,
+        libraryItemId: input.libraryItemId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
     await dispatchLibraryKnowledgeRefreshWorker({
       jobIds: [input.jobId],
       libraryItemId: input.libraryItemId,
@@ -3630,6 +3646,13 @@ export async function uploadLibraryFile(
         sourceMetadata: {
           ingestion: "document_upload",
           fileType,
+          ...(extractedText
+            ? buildLibraryKnowledgeRefreshMetadata({
+              reason: "item_update",
+              actorUserId: actor.userId,
+              fieldKeys: ["markdown_source"],
+            })
+            : {}),
         },
         allowThrottle: !input.strictIndexing,
       },
@@ -4126,6 +4149,11 @@ export async function replaceLibraryFile(
           ingestion: "file_replace",
           fileType,
           previousVersion: versionNumber,
+          ...buildLibraryKnowledgeRefreshMetadata({
+            reason: "item_update",
+            actorUserId: actor.userId,
+            fieldKeys: ["markdown_source"],
+          }),
         },
         allowThrottle: !input.strictIndexing,
       },
@@ -4384,6 +4412,11 @@ export async function updateLibraryItem(
   }
 
   const updatedFieldKeys = Object.keys(input);
+  // The existing inline worker must observe recomputed ACL scopes before it
+  // reconciles the non-production search projection.
+  if (input.visibility !== undefined) {
+    await recomputeAndPropagateScopes(itemId, actorTenantId, db);
+  }
   await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: updated[0].id,
@@ -4404,11 +4437,6 @@ export async function updateLibraryItem(
     },
     db
   );
-
-  // Recompute allowed_scopes if visibility changed
-  if (input.visibility !== undefined) {
-    await recomputeAndPropagateScopes(itemId, actorTenantId, db);
-  }
 
   return toLibraryItemDto(updated[0]);
 }

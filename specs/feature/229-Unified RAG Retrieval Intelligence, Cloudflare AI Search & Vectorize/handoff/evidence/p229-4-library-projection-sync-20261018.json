@@ -1,0 +1,52 @@
+{
+  "workunit": "P229.4_LIBRARY_PROJECTION_INGESTION_ACL_REVOCATION",
+  "source_sha": "fd16c164498fa22121a6669424a0347ddd0e015b",
+  "canonical_base_sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+  "pull_request": 1103,
+  "observed_at": "2026-10-18T05:55:08Z",
+  "implementation": {
+    "status": "PASS",
+    "scope": [
+      "Canonical Library Markdown projection reconciliation through the existing provider, route, registry, and worker_jobs/outbox control plane.",
+      "Allowlist-gated non-production evaluation tenant and Library item IDs; production and non-allowlisted items fail closed before database/provider access.",
+      "Projection lifecycle reacts to existing Library ingestion, file replacement, visibility/share permission changes, and soft-delete metadata.",
+      "Obsolete revision/ACL/shard projections are marked delete_pending before provider deletion; provider failures remain retryable.",
+      "Projection identity includes retrieval instance so shard receipts are independent."
+    ],
+    "compatibility": "No production retrieval default or Vectorize 768D profile changed. Existing Library knowledge refresh continues if projection queue dispatch fails."
+  },
+  "verification": {
+    "focused_suites": {
+      "command": "JWT_SECRET=<test-only-value> node_modules/.bin/vitest --no-cache run server/services/ragProjectionRegistry.test.ts server/services/ragProjectionIndexer.test.ts server/services/retrievalInstanceRoutes.test.ts server/services/libraryRagProjectionSync.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/__tests__/jobControlPlaneGateway.test.ts drizzle/schema.test.ts",
+      "result": "PASS",
+      "files": 7,
+      "tests_passed": 140
+    },
+    "library_contract": {
+      "command": "JWT_SECRET=<test-only-value> node_modules/.bin/vitest --no-cache run server/services/libraryService.test.ts -t 'canonical normalized Markdown|withholds Markdown|blocks update|rejects unsafe thumbnailUrl'",
+      "result": "PASS",
+      "tests_passed": 5,
+      "tests_skipped_by_filter": 74
+    },
+    "diff_check": "PASS",
+    "typecheck": "NOT RUN per repository resource policy"
+  },
+  "runtime_observation": {
+    "status": "NOT_EVALUABLE",
+    "actual_provider_retrievals": 0,
+    "database_or_provider_calls": 0,
+    "local_environment_presence_check": {
+      "NODE_ENV": false,
+      "DATABASE_URL": false,
+      "Cloudflare_account_id": false,
+      "Cloudflare_AI_provider_key": false,
+      "SPEC229_nonproduction_tenant_allowlist": false,
+      "SPEC229_nonproduction_library_item_allowlist": false
+    },
+    "local_app_env_files": [
+      ".env.example"
+    ],
+    "reason": "No local isolated database/provider runtime or explicit synthetic evaluation tenant/item allowlist was configured. No credentials were read."
+  },
+  "acceptance_boundary": "P229.4 code and focused regression acceptance pass for the implemented projection lifecycle slice. Database migration application, actual provider indexing/deletion, runtime A-H observations, P229.8 release calibration, production verification, and overall SPEC-229 acceptance remain NOT_EVALUABLE or incomplete."
+}

@@ -1,7 +1,7 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 
-import { ragProjectionItems } from "../../drizzle/schema";
+import { ragProjectionItems } from "../../drizzle/schema.ts";
 import type { DrizzleDB } from "../db";
 import {
   buildRagProjectionKey,
@@ -10,6 +10,7 @@ import {
   ensureRagProjection,
   libraryAllowedScopeToAiSearchScope,
   markRagProjectionIndexed,
+  markRagProjectionItemDeletePending,
   markRagProjectionDeleted,
   RagProjectionError,
   resolveIndexedRagProjection,
@@ -60,6 +61,7 @@ describe("SPEC-229 canonical RAG projection registry", () => {
     expect(key).toMatch(/^rag\/[a-f0-9]{20}\/library_document\//);
     expect(key).not.toContain(input.tenantId);
     expect(key).not.toContain(input.sourceId);
+    expect(buildRagProjectionKey({ ...input, instanceId: "other-shard" })).not.toBe(key);
     expect(buildRagProjectionRecord(input)).toMatchObject({
       tenantId: input.tenantId,
       sourceVersion: input.sourceVersion,
@@ -166,6 +168,31 @@ describe("SPEC-229 canonical RAG projection registry", () => {
     ).rejects.toThrow("RAG_PROJECTION_IMMUTABLE_REVISION_DIGEST_CONFLICT");
   });
 
+  it("keeps identical source and ACL projections distinct across routed shards", async () => {
+    const inserted: Array<Record<string, unknown>> = [];
+    const makeDb = () => {
+      const returning = vi.fn().mockImplementation(async () => [
+        { ...inserted.at(-1), status: "queued" },
+      ]);
+      const onConflictDoUpdate = vi.fn(() => ({ returning }));
+      const values = vi.fn((record: Record<string, unknown>) => {
+        inserted.push(record);
+        return { onConflictDoUpdate };
+      });
+      const insert = vi.fn(() => ({ values }));
+      const selectDbMock = selectDb([]);
+      Object.assign(selectDbMock.db, { insert });
+      return selectDbMock.db;
+    };
+
+    await ensureRagProjection(makeDb(), input);
+    await ensureRagProjection(makeDb(), { ...input, instanceId: "tenant-pool-02-rag-v2" });
+
+    expect(inserted).toHaveLength(2);
+    expect(inserted[0].projectionKey).not.toBe(inserted[1].projectionKey);
+    expect(inserted[0].instanceId).not.toBe(inserted[1].instanceId);
+  });
+
   it("uses expected digest and state predicates to reject stale worker completion", async () => {
     const returning = vi.fn().mockResolvedValue([]);
     const where = vi.fn(() => ({ returning }));
@@ -206,6 +233,26 @@ describe("SPEC-229 canonical RAG projection registry", () => {
         updatedAt: expect.any(Date),
       })
     );
+    expect(where).toHaveBeenCalledOnce();
+  });
+
+  it("marks only the exact tenant, shard, key, and provider receipt delete-pending", async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: "projection-id" }]);
+    const where = vi.fn(() => ({ returning }));
+    const set = vi.fn(() => ({ where }));
+    const update = vi.fn(() => ({ set }));
+    const db = { update } as unknown as DrizzleDB;
+
+    await expect(markRagProjectionItemDeletePending(db, {
+      tenantId: input.tenantId,
+      projectionKey: buildRagProjectionKey(input),
+      instanceId: input.instanceId,
+      providerItemId: "provider-item-1",
+    })).resolves.toBe(true);
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({
+      status: "delete_pending",
+      updatedAt: expect.any(Date),
+    }));
     expect(where).toHaveBeenCalledOnce();
   });
 

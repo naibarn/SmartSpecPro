@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Complete the P229.4 integration gap after the additive registry/indexer checkpoint: connect to existing Library ingestion and ACL revocation paths, then revalidate provider candidates through RetrievalBroker canonical tenant/ACL/revision/digest hydration.
-- Manifest generation: 86
+- Next action: After PR #1103 merges, provision the isolated non-production database/provider runtime and exact synthetic evaluation corpus allowlist, apply migration 0407, and run real projection indexing, ACL revocation, deletion, and A-H observations. P229.8 remains NOT_EVALUABLE until reviewed held-out cohort and §27 observations pass.
+- Manifest generation: 91
 
 ## Source-declared status and relationship claims
 

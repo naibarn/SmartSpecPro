@@ -633,6 +633,80 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "library.rag_projection_sync",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    await reporter.assertActive(lease);
+    const input = context.input as { libraryItemId?: unknown };
+    if (!Number.isSafeInteger(input.libraryItemId) || Number(input.libraryItemId) <= 0) {
+      throw Object.assign(new Error("LIBRARY_RAG_PROJECTION_INPUT_INVALID"), {
+        class: "permanent" as const,
+      });
+    }
+    const { syncLibraryDocumentRagProjection } =
+      await import("./libraryRagProjectionSync");
+    let result: {
+      status: "disabled" | "route_missing" | "synced";
+      indexed: number;
+      deleted: number;
+    };
+    try {
+      result = await syncLibraryDocumentRagProjection(
+        context.tenantId,
+        Number(input.libraryItemId),
+        undefined,
+        undefined,
+        async progress => {
+          await reporter.heartbeat(lease);
+          await reporter.progress(lease, {
+            progress: Math.min(99, Math.floor((progress.completed / Math.max(progress.total, 1)) * 100)),
+            stage: `rag_projection_${progress.stage}`,
+            measured: {
+              completedOperations: progress.completed,
+              totalOperations: progress.total,
+            },
+          });
+        },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const status = Number(message.split(":").at(-1));
+      const candidate = error as {
+        name?: unknown;
+        code?: unknown;
+        cause?: { code?: unknown };
+      } | null;
+      const code = String(candidate?.cause?.code ?? candidate?.code ?? candidate?.name ?? "").toUpperCase();
+      if (
+        message === "RETRIEVAL_ROUTE_CAPACITY_BLOCKED" ||
+        (message.startsWith("AI_SEARCH_PROVIDER_REQUEST_FAILED:") &&
+          (status === 408 || status === 429 || status >= 500)) ||
+        /timeout|temporarily unavailable|connection reset/i.test(message) ||
+        ["ABORTERROR", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH"].includes(code)
+      ) {
+        throw Object.assign(error instanceof Error ? error : new Error("RAG_PROVIDER_UNAVAILABLE"), {
+          class: "retryable" as const,
+        });
+      }
+      if (/^RAG_PROJECTION_(SPLIT_REQUIRED|SIZE_HARD_LIMIT|.*_INVALID|.*_REQUIRED)$/.test(message)) {
+        throw Object.assign(error instanceof Error ? error : new Error("RAG_PROJECTION_INPUT_INVALID"), {
+          class: "permanent" as const,
+        });
+      }
+      throw error;
+    }
+    if (result.status !== "synced") {
+      throw Object.assign(new Error(`LIBRARY_RAG_PROJECTION_${result.status.toUpperCase()}`), {
+        class: "retryable" as const,
+      });
+    }
+    await reporter.assertActive(lease);
+    return { output: { indexed: result.indexed, deleted: result.deleted } };
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "capacity.assessment",
   executionClass: "short",
   contractVersions: new Set(["feature-186-v1"]),
