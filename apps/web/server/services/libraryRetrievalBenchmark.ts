@@ -311,10 +311,15 @@ export function calculateRetrievalBenchmarkMetrics(
       if (item.tenantId !== gold.tenantId) crossTenantLeakage += 1;
       if (!item.authorized) unauthorizedEvidenceLeakage += 1;
       if (item.tenantId !== gold.tenantId || !item.authorized) aclLeakage += 1;
+      // expectedRevision belongs to the gold source identity. A retrieved
+      // distractor is not stale merely because it has its own current revision.
+      const isExpectedEvidence = relevantIds.includes(item.evidenceId);
       if (
         item.revoked ||
         item.deleted ||
-        (gold.expectedRevision && item.revision !== gold.expectedRevision)
+        (isExpectedEvidence &&
+          gold.expectedRevision &&
+          item.revision !== gold.expectedRevision)
       ) {
         staleAccepted += 1;
       }
@@ -322,7 +327,9 @@ export function calculateRetrievalBenchmarkMetrics(
       if (
         !item.revoked &&
         !item.deleted &&
-        (!gold.expectedRevision || item.revision === gold.expectedRevision)
+        (!isExpectedEvidence ||
+          !gold.expectedRevision ||
+          item.revision === gold.expectedRevision)
       ) {
         freshnessCorrect += 1;
       }

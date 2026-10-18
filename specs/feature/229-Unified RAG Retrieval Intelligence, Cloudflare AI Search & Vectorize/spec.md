@@ -2,7 +2,7 @@
 
 **Status:** Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists  
 **Spec ID:** 229  
-**Revision:** 3.0 — R2 canonical + 15-round production audit + media vector lifecycle  
+**Revision:** 3.1 — owner-delegated non-production evaluation source-use policy
 **Target repository path:** `specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md`  
 **Target:** SmartAIHub / SmartSpecPro  
 **Date:** 2026-09-22  
@@ -1890,6 +1890,12 @@ P229.15 media HOT/WARM/COLD lifecycle + archive search + rehydration
 P229.16 Skill/domain-authority contract acceptance + migrated consumers
 P229.17 capacity/shard/partial-result/model-lifecycle hardening
 ```
+
+## 38.1 Versioned evaluation source-use amendment (revision 3.1)
+
+“Reviewed” requires an independent reviewer distinct from the query generator; the reviewer may be an agent or a human and the method must remain explicit in the dataset. Human review and acceptance must never be inferred from machine review. Source-use approval is a separate decision from answer/evidence review. For non-production evaluation only, the repository may use the versioned `SPEC229_NONPRODUCTION_REPO_SOURCE` owner-delegated policy when the source is repository-backed, its pinned digest matches, the root MIT `LICENSE` digest matches the policy, and its use evidence excludes tenant production data. This policy does not authorize production use, third-party sources, tenant data, or a release claim by itself. Human source-use approvals remain valid and must identify the approver and scope.
+
+Rationale: the dataset schema required a human approver for source-use while §27 did not require human-only review or human-only source-use approval. The contract now records owner-delegated machine source-use separately and binds it to a versioned, narrow non-production policy and exact source identity/digest. Impact: previously collected agent-reviewed candidates remain machine-reviewed; no human labels are added, and existing candidates are not promoted to release-approved by this amendment. Regression coverage rejects a mismatched digest, unapproved license, or out-of-scope source. This policy does not change any §27 threshold or release eligibility requirement.
 
 Certification infrastructure SHOULD begin no later than P229.4, not at the end.
 

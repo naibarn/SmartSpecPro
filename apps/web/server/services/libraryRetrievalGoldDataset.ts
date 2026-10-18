@@ -11,6 +11,9 @@ import {
   type RetrievalBenchmarkMetrics,
 } from "./libraryRetrievalBenchmark";
 
+const SPEC229_REPOSITORY_LICENSE_SHA256 =
+  "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6";
+
 export const goldDatasetReviewSchema = z.object({
   reviewerId: z.string().min(1),
   reviewerVersion: z.string().min(1),
@@ -22,6 +25,26 @@ export const goldDatasetReviewSchema = z.object({
   rationale: z.string().min(1),
 });
 
+const releaseUseApprovalEvidenceSchema = z.discriminatedUnion("approverType", [
+  z.object({
+    approverType: z.literal("human"),
+    approverId: z.string().min(1),
+    approvedAt: z.string().datetime(),
+    scope: z.string().min(1),
+  }),
+  z.object({
+    approverType: z.literal("owner_delegated_policy"),
+    policyId: z.literal("SPEC229_NONPRODUCTION_REPO_SOURCE"),
+    policyVersion: z.literal(1),
+    authorizationRef: z.literal("owner-directive:SPEC229_NONPRODUCTION_EVAL"),
+    approvedAt: z.string().datetime(),
+    sourcePath: z.string().min(1),
+    sourceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    repositoryLicenseSha256: z.literal(SPEC229_REPOSITORY_LICENSE_SHA256),
+    scope: z.literal("non-production retrieval evaluation"),
+  }),
+]);
+
 export const goldDatasetCandidateSchema = z.object({
   caseId: z.string().min(1),
   query: z.string().min(1),
@@ -31,14 +54,7 @@ export const goldDatasetCandidateSchema = z.object({
   sourceGroupId: z.string().min(1),
   split: z.enum(["development", "calibration", "held_out"]),
   useApproval: z.enum(["development_only", "release_approved"]),
-  useApprovalEvidence: z
-    .object({
-      approverId: z.string().min(1),
-      approverType: z.literal("human"),
-      approvedAt: z.string().datetime(),
-      scope: z.string().min(1),
-    })
-    .optional(),
+  useApprovalEvidence: releaseUseApprovalEvidenceSchema.optional(),
   source: z.object({
     path: z.string().min(1),
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -123,6 +139,8 @@ export interface GoldDatasetCounts {
   acceptedForGold: number;
   pendingAdjudication: number;
   releaseApproved: number;
+  humanSourceUseApproved: number;
+  ownerDelegatedPolicySourceUseApproved: number;
   heldOutReleaseApproved: number;
   developmentOnly: number;
 }
@@ -185,10 +203,31 @@ export function validateGoldDataset(
   const normalizedQueries = new Set<string>();
   const claimSplits = new Map<string, string>();
   for (const item of parsed) {
-    if (item.useApproval === "release_approved" && !item.useApprovalEvidence) {
+    if (
+      item.useApproval === "release_approved" &&
+      !isSourceUseApprovalValid(item)
+    ) {
       throw new Error(
-        `Release-approved source requires human use-approval evidence: ${item.caseId}`
+        `Release-approved source requires auditable source-use approval evidence: ${item.caseId}`
       );
+    }
+    if (item.useApprovalEvidence?.approverType === "owner_delegated_policy") {
+      if (!repositoryRoot) {
+        throw new Error(
+          `Owner-delegated source-use approval requires repository source verification: ${item.caseId}`
+        );
+      }
+      const licensePath = resolve(realpathSync(repositoryRoot), "LICENSE");
+      const licenseContent = readFileSync(licensePath, "utf8");
+      if (
+        !licenseContent.startsWith("MIT License") ||
+        sha256(licenseContent) !==
+          item.useApprovalEvidence.repositoryLicenseSha256
+      ) {
+        throw new Error(
+          `Owner-delegated source-use approval requires the pinned repository MIT license: ${item.caseId}`
+        );
+      }
     }
     if (item.sourceGroupId !== item.source.path) {
       throw new Error(
@@ -309,8 +348,28 @@ export function isReleaseEvaluationEligible(
   return (
     reviewState(item) === "accepted" &&
     item.useApproval === "release_approved" &&
-    Boolean(item.useApprovalEvidence) &&
+    isSourceUseApprovalValid(item) &&
     Boolean(item.benchmarkGold.expectedRevision)
+  );
+}
+
+function isSourceUseApprovalValid(item: GoldDatasetCandidate): boolean {
+  const approval = item.useApprovalEvidence;
+  if (!approval) return false;
+  if (approval.approverType === "human") return true;
+  return (
+    approval.policyId === "SPEC229_NONPRODUCTION_REPO_SOURCE" &&
+    approval.policyVersion === 1 &&
+    approval.authorizationRef ===
+      "owner-directive:SPEC229_NONPRODUCTION_EVAL" &&
+    approval.scope === "non-production retrieval evaluation" &&
+    approval.sourcePath === item.source.path &&
+    approval.sourceSha256 === item.source.sha256 &&
+    approval.repositoryLicenseSha256 ===
+      SPEC229_REPOSITORY_LICENSE_SHA256 &&
+    item.source.license.startsWith("MIT (repository LICENSE") &&
+    /owner[\s-]+authorized/i.test(item.source.allowedUseEvidence) &&
+    /no tenant production/i.test(item.source.allowedUseEvidence)
   );
 }
 
@@ -324,14 +383,14 @@ export function buildGoldDatasetReviewQueue(
   candidates: GoldDatasetCandidate[]
 ) {
   return {
-    schemaVersion: "spec229-human-review-queue-v1" as const,
+    schemaVersion: "spec229-independent-review-queue-v2" as const,
     instructions: {
       candidateReview:
-        "Record a human review with accept_candidate, reject, or needs_adjudication; include reviewer identity, version, timestamp, and rationale.",
+        "Record an independent human or agent review with the actual reviewerType, identity, version, timestamp, and rationale; the reviewer must differ from the generator. Machine review is never human review.",
       adjudication:
-        "When reviewers disagree or request adjudication, record an adjudication by a reviewer who is neither the query generator nor a prior reviewer.",
+        "When reviewers disagree or request adjudication, record an independent human or agent adjudication with actual reviewerType; the adjudicator must differ from the query generator and prior reviewers.",
       sourceUseApproval:
-        "Record owner source/use approval separately from answer review; never infer it from a candidate review.",
+        "Record source/use approval separately from answer review. Use the versioned owner-delegated policy only for eligible repository MIT sources in non-production evaluation; never infer source-use approval from a candidate review.",
     },
     entries: candidates
       .map(item => ({
@@ -430,6 +489,16 @@ export function countGoldDataset(
       item => reviewState(item) === "pending"
     ).length,
     releaseApproved: goldEligible.length,
+    humanSourceUseApproved: candidates.filter(
+      item =>
+        item.useApprovalEvidence?.approverType === "human" &&
+        isSourceUseApprovalValid(item)
+    ).length,
+    ownerDelegatedPolicySourceUseApproved: candidates.filter(
+      item =>
+        item.useApprovalEvidence?.approverType === "owner_delegated_policy" &&
+        isSourceUseApprovalValid(item)
+    ).length,
     heldOutReleaseApproved: goldEligible.filter(
       item => item.split === "held_out"
     ).length,

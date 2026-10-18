@@ -1,0 +1,296 @@
+{
+  "evidence_id": "SPEC229-P2298-EXECUTABLE-LOCAL-EVAL-20261018",
+  "workunit": "P229.8 executable local legacy baseline and source-use policy contract",
+  "workunit_status": "IMPLEMENTATION_AND_LOCAL_BASELINE_PASS",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "base_canonical_sha": "f97df2f18b35c1335ffe9d845b2b65244b3b7e97",
+  "system_sha": "f97df2f18b35c1335ffe9d845b2b65244b3b7e97",
+  "run": {
+    "run_id": "f33f5649-0f7e-4181-a152-d1e8c0c22762",
+    "collector_patch_sha256": "69485e846032b00d254038c068c3a72c82f95b6b2d6e25967809dd3dabb90574",
+    "profile": "legacy_baseline",
+    "runtime": "isolated local PostgreSQL + existing libraryService.searchLibraryItems keyword fallback",
+    "provider_configuration": {
+      "vectorProvider": "chromadb",
+      "externalProviderCalls": false
+    },
+    "evaluation_method": {
+      "answerSupport": "expected evidence identity intersection; no answer generation",
+      "citations": "not emitted by the legacy Library search path",
+      "cohort": "development-only; not held out or release approved"
+    },
+    "corpus": {
+      "tenantId": "repo-development",
+      "sourceSha": "f97df2f18b35c1335ffe9d845b2b65244b3b7e97",
+      "sourceCount": 276,
+      "revision": "sha256:08f53bb43a7553a77ff9cbff0cdc9b07f1882584bde88b9130f18bd970fa01ec"
+    },
+    "query_count": 560,
+    "retrieval_result_count": 27148,
+    "provider_observation_counts": {
+      "keyword_fallback": 560
+    },
+    "usage": {
+      "costMicros": 0,
+      "provenance": "measured local-only execution; no external provider or model calls"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "/home/dev/.local/share/codex/spec229-eval-runs/legacy-baseline-f97df2f18b35c1335ffe9d845b2b65244b3b7e97-v3.json",
+      "bytes": 43980123,
+      "sha256": "8d86e28f2c8dfa8296dc926d86148b8c9ff6278bb7dc32763880c70cd6849c8a",
+      "mode": "0o600"
+    },
+    {
+      "path": "/home/dev/.local/share/codex/spec229-eval-runs/legacy-baseline-f97df2f18b35c1335ffe9d845b2b65244b3b7e97-v3.observations.json",
+      "bytes": 19264060,
+      "sha256": "0841287a62dcc4f77ade19584cd077c6cef6571db6cd135246952b8a4bb92621",
+      "mode": "0o600"
+    },
+    {
+      "path": "/home/dev/.local/share/codex/spec229-eval-runs/legacy-baseline-f97df2f18b35c1335ffe9d845b2b65244b3b7e97-v3-benchmark-report-final.json",
+      "bytes": 37623,
+      "sha256": "4f2e8e7fe5227684669b42b9e224d0adfc8c8562a1c515fbb62b1110368d16e2",
+      "mode": "0o600"
+    },
+    {
+      "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-current-dev-cohort-validation-20261018.json",
+      "bytes": 11517,
+      "sha256": "2913a40aad3aecf4065c3e2568768c95ea722987755294b1acf14d64fdf8de85",
+      "mode": "0o644"
+    }
+  ],
+  "development_cohort_counts": {
+    "candidateQueries": 560,
+    "unreviewed": 0,
+    "independentlyReviewed": 560,
+    "machineReviewed": 560,
+    "humanReviewed": 0,
+    "humanAccepted": 0,
+    "reviewAccepted": 560,
+    "reviewDisagreements": 0,
+    "adjudicated": 0,
+    "acceptedForGold": 0,
+    "pendingAdjudication": 0,
+    "releaseApproved": 0,
+    "heldOutReleaseApproved": 0,
+    "developmentOnly": 560
+  },
+  "development_baseline_metrics": {
+    "caseCount": 560,
+    "evidenceRecall": 0.490975,
+    "recallAt5": 0.169675,
+    "recallAt10": 0.294224,
+    "recallAt20": 0.386282,
+    "recallAt50": 0.490975,
+    "hitAt5": 0.169675,
+    "hitAt10": 0.294224,
+    "hitAt20": 0.386282,
+    "hitAt50": 0.490975,
+    "mrrAt10": 0.108997,
+    "nDCGAt10": 0.151584,
+    "exactIdentifierHitAt5": 0.27027,
+    "thaiRecallAt20": 0.571429,
+    "englishRecallAt20": 0.265537,
+    "mixedRecallAt20": 0.636364,
+    "evidenceCoverage": 0.490975,
+    "citationPrecision": null,
+    "citationAvailability": 0,
+    "freshnessCorrectness": 1,
+    "authorityCorrectness": 1,
+    "aclLeakage": 0,
+    "crossTenantLeakage": 0,
+    "unauthorizedEvidenceLeakage": 0,
+    "unsafePartialOrOutageAnswers": 0,
+    "staleOrRevokedEvidenceAccepted": 0,
+    "noAnswerPrecision": 0.020833,
+    "noAnswerRecall": 1,
+    "partialOrOutageResults": 0,
+    "p50LatencyMs": 472.477,
+    "p95LatencyMs": 505.197,
+    "p99LatencyMs": 517.92,
+    "meanCostMicros": 0
+  },
+  "comparison_profile_coverage": {
+    "legacy_baseline": "COMPLETE",
+    "vectorize_dense": "NOT_PROVIDED",
+    "ai_search_bm25": "NOT_PROVIDED",
+    "ai_search_vector": "NOT_PROVIDED",
+    "hybrid_rrf": "NOT_PROVIDED",
+    "hybrid_reranker": "NOT_PROVIDED",
+    "conditional_rewrite": "NOT_PROVIDED",
+    "multi_query": "NOT_PROVIDED"
+  },
+  "latency_profile_coverage": {
+    "simple_exact_keyword": "COMPLETE",
+    "hybrid_rerank": "NOT_PROVIDED",
+    "rewrite_hybrid_rerank": "NOT_PROVIDED"
+  },
+  "release_criteria_15": [
+    {
+      "id": "crossTenantLeakage",
+      "threshold": "= 0",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "unauthorizedEvidenceLeakage",
+      "threshold": "= 0",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "exactIdentifierHitAt5",
+      "threshold": ">= 0.99",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "overallRecallAt20",
+      "threshold": ">= 0.95",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "thaiRecallAt20",
+      "threshold": ">= 0.92",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "englishRecallAt20",
+      "threshold": ">= 0.95",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "nDCGAt10",
+      "threshold": ">= 0.85",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "mrrAt10",
+      "threshold": ">= 0.85",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "citationPrecision",
+      "threshold": ">= 0.95",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "freshnessCorrectness",
+      "threshold": ">= 0.98",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "noAnswerPrecision",
+      "threshold": ">= 0.9",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "noAnswerRecall",
+      "threshold": ">= 0.9",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "simpleExactKeywordP95Ms",
+      "threshold": "<= 800ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "hybridRerankP95Ms",
+      "threshold": "<= 1500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    },
+    {
+      "id": "rewriteHybridRerankP95Ms",
+      "threshold": "<= 2500ms",
+      "value": null,
+      "status": "NOT_EVALUABLE"
+    }
+  ],
+  "held_out_gold_query_count": {
+    "required": 500,
+    "actual": 0,
+    "status": "NOT_EVALUABLE"
+  },
+  "runtime_commands": {
+    "reproducible_launcher": "bash apps/web/scripts/run-spec229-local-eval.sh /path/to/clean-canonical-corpus-worktree <40-char-sha> /path/to/private-output.json",
+    "launcher_verification": "bash -n apps/web/scripts/run-spec229-local-eval.sh: PASS; full 560-query observed run used the same SQL schema and runner with manually provisioned task-owned local PostgreSQL bound to 127.0.0.1.",
+    "harness_evaluation": "pnpm --filter @smartspec/web exec tsx scripts/run-retrieval-gold-dataset.ts --repo-root <clean-corpus-worktree> --dataset-file <clean-corpus-worktree>/apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json --observations-file <private-observation-bundle> --system-sha f97df2f18b35c1335ffe9d845b2b65244b3b7e97"
+  },
+  "verification": {
+    "focused_tests": "PASS: 4 files, 25 tests",
+    "shell_syntax": "PASS",
+    "git_diff_check": "PASS",
+    "full_typecheck": "NOT_RUN per repository memory/resource rule"
+  },
+  "source_use_authorization": {
+    "scope": "non-production evaluation of synthetic and repository documents with recorded MIT license; no production tenant or third-party private data",
+    "implementation": "SPEC-229 revision 3.1 machine policy evidence is source-path and SHA bound; no candidate was promoted by the change",
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "human_source_use_approved": 0,
+    "policy_source_use_approved": 0
+  },
+  "limitations": [
+    "The cohort is development-only and all 560 questions were exercised by this baseline; it is not held out.",
+    "The observed path was keyword_fallback (no Cloudflare or model calls); zero cost is a measured local no-provider run only.",
+    "Citation precision is unavailable because the legacy search path emits no citations.",
+    "Profiles B–H and hybrid/rewrite latency profiles have no actual observations.",
+    "No production runtime, index, data, credentials or deployment was used."
+  ],
+  "production_verified": false,
+  "next_action": "Implement and test the next SPEC-ordered non-production profile only where an existing authorized provider/runtime is available; otherwise leave its observations NOT_EVALUABLE and continue with the independent profile/configuration work.",
+  "current_spec_revision": "3.1",
+  "current_spec_sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
+  "policy_contract": {
+    "id": "SPEC229_NONPRODUCTION_REPO_SOURCE",
+    "version": 1,
+    "repository_license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+    "policy_usage": "unit-tested only; no candidate source-use approval is inferred or issued by this workunit"
+  },
+  "baseline_observation_dataset_sha256": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc",
+  "current_development_cohort_validation": {
+    "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-current-dev-cohort-validation-20261018.json",
+    "sha256": "2913a40aad3aecf4065c3e2568768c95ea722987755294b1acf14d64fdf8de85",
+    "system_sha": "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1",
+    "dataset_sha256": "5b681a519c550fd2137ea55b3cf3a1aa173f9534b41eb5f9dd4f557ef761f732",
+    "candidate_queries": 560,
+    "independently_reviewed": 560,
+    "machine_reviewed": 560,
+    "human_reviewed": 0,
+    "review_accepted": 560,
+    "release_approved": 0,
+    "held_out_release_approved": 0,
+    "candidate_required_classes_missing": [],
+    "release_criteria_count": 15,
+    "release_criteria_statuses": [
+      "NOT_EVALUABLE"
+    ],
+    "status": "DEVELOPMENT_CANDIDATES_NOT_CERTIFIED"
+  },
+  "source_revision_revalidation": {
+    "changed_source_cases": [
+      "b09-011",
+      "b09-012",
+      "b09-013",
+      "b09-014",
+      "b09-049",
+      "b09-050"
+    ],
+    "source_digests_and_quote_anchors_rebound_to_current_repo_revision": true,
+    "current_dataset_validation": "PASS",
+    "baseline_observations_remain_bound_to_prior_canonical_dataset_sha": "72ec82fab6b95543664d1d903b51ea67edd14d107485c98789a7a1256d564efc"
+  }
+}
