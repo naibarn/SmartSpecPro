@@ -35,6 +35,7 @@ import {
   WorkspaceAuthorityActionError,
   type WorkspaceAuthorityAction,
 } from "../services/workspaceAuthoritySafeActions";
+import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -732,7 +733,13 @@ export const spec226DevelopmentControlRouter = router({
           traceId,
           tenantId: scope.tenantId,
           userId: scope.actorId,
-          metadata: { runId, action: "start_workspace_run", accepted: false, errorCode: errorCode(error) },
+          metadata: {
+            runId,
+            action: "start_workspace_run",
+            accepted: false,
+            errorCode: errorCode(error),
+            backendRuntime: getSpec224BackendRuntimeIdentity(),
+          },
         });
         return asTrpcError(error);
       }

@@ -55,6 +55,7 @@ import { auditLogger } from "../services/auditLogger";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
+import { getSpec224DatabaseDiagnostics } from "../services/spec224DatabaseDiagnostics";
 import { composeProjectWikiHostedRoutePreflight } from "../services/projectWikiHostedRoutePreflight";
 import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
 import {
@@ -529,6 +530,12 @@ export const infrastructureRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     return getInternalRuntimeEvidence({ db });
+  }),
+
+  getSpec224DatabaseDiagnostics: exactAdminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    return getSpec224DatabaseDiagnostics({ db });
   }),
 
   getProjectWikiHostedRoutePreflight: exactAdminProcedure
