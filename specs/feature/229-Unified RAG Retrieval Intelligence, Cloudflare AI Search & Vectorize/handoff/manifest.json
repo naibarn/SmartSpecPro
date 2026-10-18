@@ -32,10 +32,10 @@
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Use the source inventory to build development-only, evidence-grounded cases from screened fixtures and explicit synthetic controls; keep P229 behavior claims separate from subsystem fixture behavior. In parallel, discover a secure bridge from Admin UI credentials to an authorized isolated runner without extracting tokens. Do not claim release cohort or provider observations yet.",
+    "next_action": "PR #1152 is open for required checks and normal integration. Then continue with development cohort controls and authenticated nonproduction runtime discovery; do not claim release acceptance.",
     "next_ready_workunit": "P229.8_DEVELOPMENT_COHORT_BUILDER_AND_SECURE_RUNTIME_DISCOVERY",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "Canonical main is 1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3. PR #1151 merged; focused retrieval suite passed 5 files / 41 tests on this exact SHA. Source inventories are recorded and identify only narrow fixture-backed opportunities; no new cohort, actual provider calls, Cloudflare resources, or production verification exist. P229.8 remains NOT_EVALUABLE.",
+    "resume_point": "Canonical base 1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3. PR #1152 source 38049e72e0aa6ffc4390ccf9239008683d73d2ec records PR #1151 postmerge evidence and exact-SHA retrieval tests. P229.8 remains NOT_EVALUABLE.",
     "waiting_predicate": "Provider profiles run only when credentials can be securely injected into a registered nonproduction runner with dedicated isolated Vectorize 1024D/AI Search resources; cohort generation runs only for evidence-backed classes with validated provenance, anchors, review, and contamination controls."
   },
   "continuation_assessment": {
@@ -117,7 +117,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 138,
+  "generation": 139,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -245,11 +245,11 @@
     "canonical_sha": "1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3",
     "integrated": true,
     "integrated_at": "2026-10-18T12:21:53Z",
-    "intended_pr": "PR #1151 merged at 1cd50a603c986e55fe0ccca2fcb1c20a0dd68df3; exact-SHA focused tests passed 5 files / 41 tests; P229.8 remains NOT_EVALUABLE.",
-    "pending_pr": "",
-    "pending_source_branch": "",
-    "pending_source_sha": "",
-    "pending_workunit": ""
+    "intended_pr": "PR #1152 records PR #1151 merge receipt and exact-SHA verification; P229.8 remains NOT_EVALUABLE.",
+    "pending_pr": "PR #1152",
+    "pending_source_branch": "codex/spec229-pr1151-postmerge-receipt-20261018",
+    "pending_source_sha": "38049e72e0aa6ffc4390ccf9239008683d73d2ec",
+    "pending_workunit": "P229.8_PR1151_POSTMERGE_RECEIPT"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -487,7 +487,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T12:23:17.991721Z",
+  "updated_at": "2026-10-18T12:23:55.499433Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
