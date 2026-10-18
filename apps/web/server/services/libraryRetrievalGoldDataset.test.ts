@@ -56,6 +56,58 @@ describe("SPEC-229 gold dataset pipeline", () => {
         }],
       },
     })).toThrow("Stale controls require distinct current and target revisions");
+    const activeFreshness = {
+      ...expectation,
+      controlId: "freshness-current-1",
+      kind: "freshness" as const,
+      targetTenantId: "tenant-a",
+      callerTenantId: "tenant-a",
+      expectedVisibility: "visible" as const,
+      expectedLifecycle: "active" as const,
+      currentRevision: "r2",
+      targetRevision: "r2",
+      currentDigest: "a".repeat(64),
+      targetDigest: "a".repeat(64),
+    };
+    expect(goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: { ...seed.benchmarkGold, controlExpectations: [activeFreshness] },
+    }).benchmarkGold.controlExpectations).toHaveLength(1);
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, currentDigest: undefined, targetDigest: undefined }],
+      },
+    })).toThrow("Freshness controls require pinned current and target revisions and digests");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, expectedVisibility: "blocked" }],
+      },
+    })).toThrow("Active freshness controls must prove the pinned current revision is visible");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, targetRevision: "r1", targetDigest: "b".repeat(64) }],
+      },
+    })).toThrow("Active freshness controls must pin the same current and target revision and digest");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{
+          ...activeFreshness,
+          kind: "lifecycle",
+          expectedLifecycle: "stale",
+          expectedVisibility: "blocked",
+          targetRevision: "r1",
+          targetDigest: undefined,
+        }],
+      },
+    })).toThrow("Lifecycle controls must target revoked, deleted, or tombstoned evidence");
   });
 
   it("validates the new integrity cohort without promoting it to release gold", () => {

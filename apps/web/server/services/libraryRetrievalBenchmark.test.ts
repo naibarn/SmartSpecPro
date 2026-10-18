@@ -35,6 +35,7 @@ describe("Library retrieval development benchmark", () => {
       authorityCorrectness: 0.857143,
       aclControlCoverage: null,
       freshnessControlCoverage: null,
+      lifecycleControlCoverage: null,
       securityControlsComplete: false,
       aclLeakage: 2,
       crossTenantLeakage: 1,

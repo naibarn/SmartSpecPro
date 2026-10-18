@@ -114,6 +114,18 @@ export const goldDatasetCandidateSchema = z.object({
       context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "controlId"], message: "Control IDs must be unique within a candidate" });
     }
     controlIds.add(control.controlId);
+    if (control.kind === "acl" && control.expectedLifecycle !== "active") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "ACL controls must target active evidence; use lifecycle controls for revoked or deleted evidence" });
+    }
+    if (control.kind === "freshness" && !["active", "stale"].includes(control.expectedLifecycle)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "Freshness controls may only target active or stale revisions" });
+    }
+    if (control.kind === "freshness" && control.expectedLifecycle === "active" && control.expectedVisibility !== "visible") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedVisibility"], message: "Active freshness controls must prove the pinned current revision is visible" });
+    }
+    if (control.kind === "lifecycle" && !["revoked", "deleted", "tombstoned"].includes(control.expectedLifecycle)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "Lifecycle controls must target revoked, deleted, or tombstoned evidence" });
+    }
     if (control.kind === "acl" && control.targetTenantId !== control.callerTenantId && control.expectedVisibility !== "blocked") {
       context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedVisibility"], message: "Cross-tenant ACL controls must expect blocked visibility" });
     }
@@ -122,6 +134,20 @@ export const goldDatasetCandidateSchema = z.object({
     }
     if (control.expectedLifecycle === "stale" && (!control.currentRevision || !control.targetRevision || control.currentRevision === control.targetRevision)) {
       context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale controls require distinct current and target revisions" });
+    }
+    if (control.kind === "freshness" || control.expectedLifecycle === "stale") {
+      const pinned = control.currentRevision && control.targetRevision && control.currentDigest && control.targetDigest;
+      if (!pinned) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Freshness controls require pinned current and target revisions and digests" });
+      } else if (control.kind === "freshness" && control.expectedLifecycle === "active" && (
+        control.currentRevision !== control.targetRevision || control.currentDigest !== control.targetDigest
+      )) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Active freshness controls must pin the same current and target revision and digest" });
+      } else if (control.expectedLifecycle === "stale" && (
+        control.currentRevision === control.targetRevision || control.currentDigest === control.targetDigest
+      )) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale controls must pin different current and target revisions and digests" });
+      }
     }
     if (control.currentDigest && control.targetDigest && control.currentDigest === control.targetDigest && control.expectedLifecycle === "stale") {
       context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale revision digests must differ when both are supplied" });
@@ -951,9 +977,12 @@ export function evaluateGoldDataset(
       id: "freshnessCorrectness",
       threshold: `>= ${SPEC_229_RELEASE_CRITERIA.freshnessCorrectness}`,
       value: metrics.freshnessCorrectness,
-      pass: metrics.freshnessControlCoverage === null || !metrics.securityControlsComplete
+      pass: metrics.freshnessControlCoverage === null ||
+        metrics.lifecycleControlCoverage === null ||
+        !metrics.securityControlsComplete
         ? null
-        : metrics.freshnessControlCoverage === 1 && atLeast(
+        : metrics.freshnessControlCoverage === 1 &&
+          metrics.lifecycleControlCoverage === 1 && atLeast(
             metrics.freshnessCorrectness,
             SPEC_229_RELEASE_CRITERIA.freshnessCorrectness
           ),

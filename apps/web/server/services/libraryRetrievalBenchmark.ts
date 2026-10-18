@@ -173,6 +173,7 @@ export interface RetrievalBenchmarkMetrics {
   authorityCorrectness: number;
   aclControlCoverage: number | null;
   freshnessControlCoverage: number | null;
+  lifecycleControlCoverage: number | null;
   securityControlsComplete: boolean;
   aclLeakage: number;
   crossTenantLeakage: number;
@@ -257,6 +258,8 @@ export function calculateRetrievalBenchmarkMetrics(
   let aclControlPassed = 0;
   let freshnessControlExpected = 0;
   let freshnessControlPassed = 0;
+  let lifecycleControlExpected = 0;
+  let lifecycleControlPassed = 0;
   let securityControlsComplete = true;
   let noAnswerTruePositive = 0;
   let noAnswerFalsePositive = 0;
@@ -280,8 +283,10 @@ export function calculateRetrievalBenchmarkMetrics(
     for (const expectation of expectations) {
       const result = results.find(item => item.controlId === expectation.controlId);
       const isAcl = expectation.kind === "acl";
+      const isFreshness = expectation.kind === "freshness";
       if (isAcl) aclControlExpected += 1;
-      else freshnessControlExpected += 1;
+      else if (isFreshness) freshnessControlExpected += 1;
+      else lifecycleControlExpected += 1;
       const matched = Boolean(result &&
         result.kind === expectation.kind &&
         result.targetEvidenceId === expectation.targetEvidenceId &&
@@ -310,7 +315,8 @@ export function calculateRetrievalBenchmarkMetrics(
       if (!result) securityControlsComplete = false;
       if (matched) {
         if (isAcl) aclControlPassed += 1;
-        else freshnessControlPassed += 1;
+        else if (isFreshness) freshnessControlPassed += 1;
+        else lifecycleControlPassed += 1;
       }
       if (expectation.kind === "acl" && result?.observedVisibility === "visible") {
         if (expectation.targetTenantId !== expectation.callerTenantId) crossTenantLeakage += 1;
@@ -490,8 +496,8 @@ export function calculateRetrievalBenchmarkMetrics(
       citationRequiredCases
     ),
     freshnessCorrectness: safeRatio(
-      freshnessCorrect + freshnessControlPassed,
-      freshnessTotal + freshnessControlExpected
+      freshnessCorrect,
+      freshnessTotal
     ),
     authorityCorrectness: safeRatio(authorityCorrect, authorityTotal) ?? 1,
     aclControlCoverage: aclControlExpected === 0
@@ -500,8 +506,11 @@ export function calculateRetrievalBenchmarkMetrics(
     freshnessControlCoverage: freshnessControlExpected === 0
       ? null
       : safeRatio(freshnessControlPassed, freshnessControlExpected),
+    lifecycleControlCoverage: lifecycleControlExpected === 0
+      ? null
+      : safeRatio(lifecycleControlPassed, lifecycleControlExpected),
     securityControlsComplete: securityControlsComplete &&
-      aclControlExpected > 0 && freshnessControlExpected > 0,
+      aclControlExpected > 0 && freshnessControlExpected > 0 && lifecycleControlExpected > 0,
     aclLeakage,
     crossTenantLeakage,
     unauthorizedEvidenceLeakage,

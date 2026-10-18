@@ -373,6 +373,79 @@ describe("SPEC-229 synthetic benchmark controls", () => {
     expect(evaluation.releaseStatus).toBe("NOT_EVALUABLE");
   });
 
+  it("does not count lifecycle controls as freshness and requires all control families", () => {
+    const candidates = releaseCohort().map(candidate => ({
+      ...candidate,
+      benchmarkGold: {
+        ...candidate.benchmarkGold,
+        controlExpectations: candidate.benchmarkGold.controlExpectations?.filter(control => control.kind !== "lifecycle"),
+      },
+    }));
+    const observations = positiveObservations(candidates);
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+
+    expect(evaluation.metrics?.freshnessControlCoverage).toBe(1);
+    expect(evaluation.metrics?.lifecycleControlCoverage).toBeNull();
+    expect(evaluation.metrics?.securityControlsComplete).toBe(false);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "NOT_EVALUABLE" });
+  });
+
+  it("fails freshness/lifecycle acceptance when a revoked document is actually visible", () => {
+    const candidates = releaseCohort();
+    const observations = positiveObservations(candidates);
+    const revokedControl = observations[0].controlResults?.find(result => result.controlId === "lifecycle-revoked");
+    if (!revokedControl) throw new Error("Expected deterministic revoked lifecycle control");
+    revokedControl.observedVisibility = "visible";
+    revokedControl.providerItemId = "revoked-provider-item";
+
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+    expect(evaluation.metrics?.lifecycleControlCoverage).toBeLessThan(1);
+    expect(evaluation.metrics?.staleOrRevokedEvidenceAccepted).toBeGreaterThan(0);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "FAIL" });
+    expect(evaluation.releaseStatus).toBe("FAIL");
+  });
+
+  it("does not let passing freshness controls dilute stale retrieved evidence", () => {
+    const candidates = releaseCohort();
+    const staleEvidenceCaseIndex = candidates.findIndex(candidate => candidate.benchmarkGold.supportsAnswer);
+    if (staleEvidenceCaseIndex < 0) throw new Error("Expected a supported-answer case in freshness regression fixture");
+    const repeatedPassingControls = Array.from({ length: 100 }, (_, index) => ({
+      controlId: `freshness-active-${index}`,
+      kind: "freshness" as const,
+      targetEvidenceId: `active-revision-${index}`,
+      targetTenantId: "tenant-a",
+      callerTenantId: "tenant-a",
+      expectedVisibility: "visible" as const,
+      expectedLifecycle: "active" as const,
+      currentRevision: "r1",
+      targetRevision: "r1",
+      currentDigest: digest,
+      targetDigest: digest,
+    }));
+    candidates[staleEvidenceCaseIndex].benchmarkGold.controlExpectations = [
+      ...(candidates[staleEvidenceCaseIndex].benchmarkGold.controlExpectations ?? []),
+      ...repeatedPassingControls,
+    ];
+    const observations = positiveObservations(candidates);
+    let staleEvidenceCount = 0;
+    for (const observation of observations) {
+      const evidence = observation.evidence[0];
+      if (evidence && staleEvidenceCount < 9) {
+        evidence.revoked = true;
+        staleEvidenceCount += 1;
+      }
+    }
+    if (staleEvidenceCount !== 9) throw new Error("Expected at least nine retrieved rows in freshness regression fixture");
+
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+    expect(evaluation.metrics?.freshnessCorrectness).toBeLessThan(0.98);
+    expect(evaluation.metrics?.freshnessControlCoverage).toBe(1);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "FAIL" });
+  });
+
   it("rejects freshness control results with a mismatched source digest", () => {
     const candidates = releaseCohort();
     const observations = positiveObservations(candidates);

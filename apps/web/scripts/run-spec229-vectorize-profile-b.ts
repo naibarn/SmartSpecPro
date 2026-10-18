@@ -200,6 +200,9 @@ async function main() {
   const sourceByVectorId = new Map<string, { path: string; digest: string }>();
   const indexedIds: string[] = [];
   const securityControlResults: Array<Record<string, unknown>> = [];
+  let securityControlFailed = false;
+  let securityControlLeakDetected = false;
+  let positiveControlPassed = false;
   let cleanupStatus: "complete" | "failed" = "complete";
   let outputRun: Record<string, unknown> | undefined;
 
@@ -215,7 +218,7 @@ async function main() {
           vectorIndex: INDEX_NAME,
           namespace: EVAL_NAMESPACE,
           sourceFamily: "spec229-eval-library",
-          sourceId: chunk.source.path,
+          sourceId: `${EVAL_RUN_ID}:${chunk.source.path}`,
           chunkOrSegmentId: String(chunk.chunkIndex),
           sourceRevision: `sha256:${chunk.source.digest}`,
           embeddingVersion: "bge-m3-1024-spec229-v1",
@@ -310,8 +313,12 @@ async function main() {
       if (positiveControlMatches.some(match => match.id === canaryVectors[0].id)) break;
       await new Promise(resolvePromise => setTimeout(resolvePromise, 500));
     } while (Date.now() < canaryDeadline);
-    const positiveControlPassed = positiveControlMatches.some(match => match.id === canaryVectors[0].id);
+    positiveControlPassed = positiveControlMatches.some(match => match.id === canaryVectors[0].id);
     const crossTenantLeakage = foreignControlMatches.some(match => match.id === canaryVectors[1].id);
+    securityControlLeakDetected = crossTenantLeakage;
+    const sourceCorpusDigest = sha256(
+      sources.map(source => `${source.path}\0${source.digest}\n`).join("")
+    );
     const responseDigest = sha256(JSON.stringify({
       positive: positiveControlMatches.map(match => match.id),
       foreign: foreignControlMatches.map(match => match.id),
@@ -323,12 +330,11 @@ async function main() {
       negativeControl: crossTenantLeakage ? "FAIL" : "PASS",
       crossTenantLeakage,
       responseDigest,
-      corpusRevision: `sha256:${sha256(canaryTexts.join("\n"))}`,
+      corpusRevision: `sha256:${sourceCorpusDigest}`,
+      controlCorpusDigest: sha256(canaryTexts.join("\n")),
       observedAt: new Date().toISOString(),
     });
-    if (!positiveControlPassed || crossTenantLeakage) {
-      throw new Error("SPEC229_PROFILE_B_ACL_CANARY_FAILED");
-    }
+    securityControlFailed = !positiveControlPassed || crossTenantLeakage;
     await adapter.delete({ indexName: INDEX_NAME, ids: canaryVectors.map(vector => vector.id) });
     const canaryIds = new Set(canaryVectors.map(vector => vector.id));
     for (let index = indexedIds.length - 1; index >= 0; index -= 1) {
@@ -337,7 +343,7 @@ async function main() {
 
     const observations = [];
     const traces = [];
-    for (const [index, candidate] of candidates.entries()) {
+    for (const [index, candidate] of (securityControlFailed ? [] : candidates).entries()) {
       const started = performance.now();
       let providerState: "complete" | "outage" = "complete";
       let failureCode: string | null = null;
@@ -500,6 +506,11 @@ async function main() {
         revision: `sha256:${corpusDigest}`,
       },
       securityControls: securityControlResults,
+      securityGateStatus: securityControlLeakDetected
+        ? "FAIL"
+        : positiveControlPassed
+          ? "PASS"
+          : "NOT_EVALUABLE",
       usage: {
         costMicros: null,
         provenance:
@@ -514,6 +525,7 @@ async function main() {
       traces,
     };
     outputRun = run;
+    if (securityControlFailed) process.exitCode = 1;
   } finally {
     for (let offset = 0; offset < indexedIds.length; offset += 500) {
       try {
