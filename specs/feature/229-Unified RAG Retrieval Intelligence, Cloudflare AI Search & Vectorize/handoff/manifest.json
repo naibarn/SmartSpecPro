@@ -32,10 +32,10 @@
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Generate/review a cohort from source groups not used in prior retrieval tuning, covering all §27 categories, and prove exact artifact identity; separately establish an isolated non-production runtime with securely injected scoped Cloudflare credentials, then collect real profile observations without changing thresholds.",
+    "next_action": "PR #1146 is open for the post-merge evidence record, independent v2 cohort review, and focused regression test. After required checks, promote normally and verify canonical main. Then continue only with a truly untouched, class-complete cohort and authorized isolated Cloudflare runtime; P229.8 remains NOT_EVALUABLE.",
     "next_ready_workunit": "P229.8_NEW_SOURCE_GROUP_COHORT_AND_NONPRODUCTION_PROVIDER_RUNTIME",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "PR #1145 merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3; exact-SHA focused verification passed 5 files / 40 tests. Profile A collector now derives authorization from returned Library status/ACL path and tenant scope; missing lifecycle data is not asserted false. Independent review of unseen-v2 artifact SHA ac1b1db4... found 511/511 source groups overlap unseen-v1, 13 required §27 classes absent, and lexical answer overlap; all rows remain development-only, with 500 machine-accepted candidates, 11 rejected, 0 human/release approvals, and 0 held-out release-approved. Do not use v2 for certification. P229.8 remains NOT_EVALUABLE.",
+    "resume_point": "PR #1145 merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3 and its exact-SHA focused verification passed 5 files / 40 tests. PR #1146 source 7ced84ae031d194479531df68a0acf0a88690b22 records the new review evidence and test. Independent review found unseen-v2 is not certification eligible: 511/511 source groups overlap unseen-v1, 13 §27 classes are absent, and no human/release approvals exist. P229.8 remains NOT_EVALUABLE.",
     "waiting_predicate": "Provider execution resumes only when a registered isolated non-production runtime has securely injected scoped evaluation credentials and a dedicated AI Search namespace and Vectorize 1024D index; do not use the existing production GitHub Actions environment. Cloudflare credentials remain in the Admin UI server boundary and were not extracted."
   },
   "continuation_assessment": {
@@ -53,7 +53,7 @@
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json"
       }
     ],
-    "next_action": "PR #1145 is merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3 and exact-SHA focused verification passed 5 files / 40 tests. Independent review found unseen-v2 is development-only: 511/511 source groups overlap unseen-v1, 13 required §27 classes are missing, and there are 0 human/release approvals. Do not use it for certification. Continue with an untouched, class-complete cohort and authorized isolated provider execution; P229.8 remains NOT_EVALUABLE.",
+    "next_action": "PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.",
     "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
     "residual_requirements": [
       "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -97,7 +97,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 130,
+  "generation": 131,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -225,11 +225,11 @@
     "canonical_sha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
     "integrated": true,
     "integrated_at": "2026-10-18T11:56:08Z",
-    "intended_pr": "PR #1145 merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3; Profile A evidence integrity fix only, P229.8 remains NOT_EVALUABLE.",
-    "pending_pr": "",
-    "pending_source_branch": "",
-    "pending_source_sha": "",
-    "pending_workunit": ""
+    "intended_pr": "PR #1146 records the exact-SHA PR #1145 verification, unseen-v2 independent review findings, and a missing-lifecycle freshness regression test; P229.8 remains NOT_EVALUABLE.",
+    "pending_pr": "PR #1146",
+    "pending_source_branch": "codex/spec229-provider-controls-20261018",
+    "pending_source_sha": "7ced84ae031d194479531df68a0acf0a88690b22",
+    "pending_workunit": "P229.8_EVIDENCE_INTEGRITY_POSTMERGE_AND_COHORT_REVIEW"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -275,7 +275,7 @@
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json"
         }
       ],
-      "next_action": "PR #1145 is merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3 and exact-SHA focused verification passed 5 files / 40 tests. Independent review found unseen-v2 is development-only: 511/511 source groups overlap unseen-v1, 13 required §27 classes are missing, and there are 0 human/release approvals. Do not use it for certification. Continue with an untouched, class-complete cohort and authorized isolated provider execution; P229.8 remains NOT_EVALUABLE.",
+      "next_action": "PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.",
       "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
       "residual_requirements": [
         "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -447,7 +447,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T12:02:00.605059Z",
+  "updated_at": "2026-10-18T12:02:36.555171Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",

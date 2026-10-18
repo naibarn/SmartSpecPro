@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: PR #1145 is merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3 and exact-SHA focused verification passed 5 files / 40 tests. Independent review found unseen-v2 is development-only: 511/511 source groups overlap unseen-v1, 13 required §27 classes are missing, and there are 0 human/release approvals. Do not use it for certification. Continue with an untouched, class-complete cohort and authorized isolated provider execution; P229.8 remains NOT_EVALUABLE.
-- Manifest generation: 130
+- Next action: PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.
+- Manifest generation: 131
 
 ## Source-declared status and relationship claims
 
