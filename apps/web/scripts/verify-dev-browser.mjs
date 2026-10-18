@@ -165,6 +165,17 @@ try {
   if (result.loginStatus !== 200)
     throw new Error(`Admin login HTTP ${result.loginStatus}`);
   await page.waitForTimeout(1000);
+  // A successful auth response alone does not prove the post-login UI renders.
+  await page.goto(`${url.origin}/dashboard`, { waitUntil: "domcontentloaded" });
+  await page.getByTestId("dashboard-quick-links").waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForTimeout(1000);
+  result.dashboard = { rendered: true, errors: [...errors] };
+  await page.screenshot({ path: `${evidence}/public-dashboard-after-login.png`, fullPage: true });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByTestId("dashboard-quick-links").waitFor({ state: "visible", timeout: 30000 });
+  result.dashboard.reloadPassed = true;
+  if (errors.length) throw new Error(`Dashboard runtime errors: ${errors.join("; ")}`);
+  console.log("[dev:web:verify] Authenticated Dashboard + reload PASS");
   await page.goto(`${url.origin}/admin/settings?tab=infrastructure`, {
     waitUntil: "domcontentloaded",
   });
@@ -222,6 +233,7 @@ try {
     result.spaTransitions.length === 3 &&
     result.spaTransitions.every(row => !row.errors.length && row.formVisible) &&
     [401, 403].includes(result.anonymousStatus) &&
+    result.dashboard?.rendered && result.dashboard?.reloadPassed &&
     result.collectStatus === 200 &&
     !!result.diagnostics &&
     !errors.length &&

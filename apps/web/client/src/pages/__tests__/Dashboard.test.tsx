@@ -935,18 +935,14 @@ describe("Dashboard", () => {
     expect(setLocationMock).toHaveBeenCalledWith("/video-studio");
   });
 
-  it("surfaces Emergency first in the dashboard quick links and shows current public alerts", () => {
-    render(<Dashboard />);
-
+  it("renders quick links without restoring the intentionally hidden Emergency navigation", () => {
+    // PR #1057 hid Emergency entries; dormant fallback icon references must
+    // still be defined when Dashboard constructs its quick-action map.
+    expect(() => render(<Dashboard />)).not.toThrow();
     const quickLinks = screen.getByTestId("dashboard-quick-links");
-    const quickActionButtons = within(quickLinks).getAllByRole("button");
-    const emergencyButton = quickActionButtons.find(button => /emergency|ภัยฉุกเฉิน/i.test(button.textContent ?? ""));
-    expect(emergencyButton).toBeDefined();
-    expect(quickActionButtons[0]).toBe(emergencyButton);
-    expect(screen.getByTestId("emergency-public-entry-dashboard")).toBeInTheDocument();
-
-    fireEvent.click(emergencyButton!);
-    expect(setLocationMock).toHaveBeenCalledWith("/dashboard/emergency");
+    expect(within(quickLinks).getAllByRole("button").length).toBeGreaterThan(0);
+    expect(within(quickLinks).queryByRole("button", { name: /emergency|ภัยฉุกเฉิน/i })).toBeNull();
+    expect(screen.queryByTestId("emergency-public-entry-dashboard")).toBeNull();
   });
 
   it("does not surface the retired Workflow Studio dashboard action", () => {

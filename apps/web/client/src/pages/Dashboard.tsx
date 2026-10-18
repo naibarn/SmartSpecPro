@@ -71,6 +71,7 @@ import {
   MonitorPlay,
   Send,
   ShieldCheck,
+  ShieldAlert,
   Download,
   ClipboardCheck,
 } from "lucide-react";
