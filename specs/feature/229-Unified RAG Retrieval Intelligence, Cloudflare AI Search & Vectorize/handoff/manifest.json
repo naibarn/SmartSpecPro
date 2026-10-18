@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "9bad3970d83e797ac6051418cdcce5879293dc16",
+    "expected_canonical_sha": "e0ee4a8a18f9b898047f993414629bdbfb40d70a",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Profile A diagnostic improvement is integrated and exact-SHA focused tests pass. Continue with already implemented Profiles B-H when authorized non-production AI Search account/token/namespace and a dedicated disposable Vectorize 1024D index plus Workers AI/Vectorize credentials are securely injected. Capture real observations and actual usage/cost provenance; do not simulate provider results. Separately obtain a new eligible untouched reviewed held-out cohort (the prior 503-query set is contaminated for post-change certification) and evaluate all unchanged §27 criteria. Keep P229.8 NOT_EVALUABLE and do not migrate finance until all required gates pass.",
+    "next_action": "The Cloudflare AI Search instance_ids request-shape defect is fixed and focused adapter/evaluation tests pass on 7fbb0d26f9fdf731f6c2c427e3fbbf6c68eb8d18. Integrate this contract fix through normal checks. Then resume actual Profiles B-H only when a dedicated authorized non-production account/namespace and secure provider credentials are injected; prepare a new untouched reviewed held-out cohort before certification. Keep P229.8 NOT_EVALUABLE.",
     "next_ready_workunit": "P229.8_AUTHORIZED_PROVIDER_PROFILE_OBSERVATIONS",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
     "resume_point": "PR #1120 merged to canonical origin/main at 9bad3970d83e797ac6051418cdcce5879293dc16. Exact-SHA post-merge focused verification passed: 7 files / 69 tests; evidence is p229-8-profile-a-postmerge-verification-20261018.json. Profile A paired development evaluation (57 queries, 276 pinned sources) improved exact-ID Hit@5 from 0.235294 to 0.588235, MRR@10 from 0.108104 to 0.252207, and nDCG@10 from 0.183594 to 0.298986, with R@20 and language-slice recalls unchanged; CIs overlap. Prior 503-query set remains diagnostic only. P229.8 remains NOT_EVALUABLE and no production verification is claimed.",
-    "waiting_predicate": "Authorized provider configuration must be injected through the existing secure runtime: AI Search account, API token and disposable namespace; a dedicated spec229-eval-* Vectorize 1024D index plus Workers AI and Vectorize tokens; disposable evaluation mode. No production data/index or credentials may be used."
+    "waiting_predicate": "Authorized non-production Cloudflare AI Search namespace/account/token and disposable mode are securely available; Profile B additionally needs a dedicated spec229-eval-* Vectorize 1024D index plus Workers AI and Vectorize API tokens. A new eligible untouched reviewed held-out cohort is required for release certification."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 107,
+  "generation": 109,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -160,7 +160,8 @@
       "a10c321a26c67a5672b75b445cdbae375a6a7912",
       "77ed7096f62e2992bfcd8bfb0f8f40918149a66b",
       "d20868bdaed7f7bec8b6e60b6b51bcecfff577f5",
-      "9bad3970d83e797ac6051418cdcce5879293dc16"
+      "9bad3970d83e797ac6051418cdcce5879293dc16",
+      "7fbb0d26f9fdf731f6c2c427e3fbbf6c68eb8d18"
     ],
     "mapping": [],
     "source_paths": [
@@ -220,21 +221,22 @@
       "apps/web/server/services/libraryService.ts",
       "apps/web/server/services/librarySearchService.test.ts",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-local-quality-improvement-20261018.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-ai-search-instance-scope-contract-fix-20261018.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9bad3970d83e797ac6051418cdcce5879293dc16",
+    "canonical_sha": "e0ee4a8a18f9b898047f993414629bdbfb40d70a",
     "integrated": true,
     "integrated_at": "2026-10-18T08:44:25Z",
     "intended_pr": "PR #1120 merged as 9bad3970d83e797ac6051418cdcce5879293dc16; scoped Profile A implementation, evidence, and exact-SHA post-merge focused verification recorded.",
     "pending_pr": null,
-    "pending_source_branch": null,
-    "pending_source_sha": null,
-    "pending_workunit": null
+    "pending_source_branch": "codex/spec229-ai-search-instance-scope",
+    "pending_source_sha": "7fbb0d26f9fdf731f6c2c427e3fbbf6c68eb8d18",
+    "pending_workunit": "P229.8_AI_SEARCH_INSTANCE_SCOPE_CONTRACT_FIX"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -462,7 +464,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T08:45:26.580879Z",
+  "updated_at": "2026-10-18T09:16:24.060272Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -494,13 +496,14 @@
       "handoff/evidence/p2298-profile-a-corrected-evidence-20261018.json",
       "handoff/evidence/p2298-postmerge-verification-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-local-quality-improvement-20261018.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json",
+      "handoff/evidence/p2298-ai-search-instance-scope-contract-fix-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "9bad3970d83e797ac6051418cdcce5879293dc16",
+    "sha": "7fbb0d26f9fdf731f6c2c427e3fbbf6c68eb8d18",
     "status": "PASS",
     "task_regressions": []
   }
