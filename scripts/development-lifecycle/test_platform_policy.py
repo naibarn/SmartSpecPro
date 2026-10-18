@@ -71,6 +71,28 @@ class PlatformPolicyResolutionTests(unittest.TestCase):
             ):
                 canonical_source.load_policy(self.repo, self.policy)
 
+    def test_platform_overrides_cannot_change_repository_identity_or_canonical_ref(self) -> None:
+        self.policy.write_text(
+            "[repository]\n"
+            'repository_id = "shared-repository"\n'
+            'remote = "https://example.invalid/shared.git"\n'
+            'canonical_ref = "refs/heads/main"\n'
+            'source_root = "/mnt/linux/source"\n'
+            'lease_root = "/mnt/linux/lease"\n'
+            "[repository.platforms.windows]\n"
+            'repository_id = "attacker-repository"\n'
+            'remote = "https://example.invalid/attacker.git"\n'
+            'canonical_ref = "refs/heads/attacker"\n',
+            encoding="utf-8",
+        )
+
+        with patch.object(canonical_source, "git", return_value=str(self.repo)):
+            with self.assertRaisesRegex(
+                canonical_source.LifecycleError,
+                r"unsupported keys: canonical_ref, remote, repository_id",
+            ):
+                canonical_source.load_policy(self.repo, self.policy)
+
     def test_workspace_authority_uses_windows_workspace_and_recovery_roots(self) -> None:
         workspace = self.root / "canonical-workspace"
         recovery = self.root / "recovery"

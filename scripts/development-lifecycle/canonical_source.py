@@ -85,8 +85,17 @@ def _platform_name() -> str:
     return "linux"
 
 
+_PLATFORM_PATH_KEYS = frozenset({
+    "source_root",
+    "lease_root",
+    "source_fallback_roots",
+    "canonical_user_workspace",
+    "recovery_root",
+})
+
+
 def _select_platform_values(values: dict[str, Any]) -> dict[str, Any]:
-    """Overlay explicit per-platform roots while retaining shared repository identity."""
+    """Overlay approved platform paths without changing shared repository identity."""
     platforms = values.get("platforms", {})
     if not isinstance(platforms, dict):
         raise LifecycleError("REPOSITORY_POLICY_INVALID: platforms must be a table")
@@ -94,6 +103,13 @@ def _select_platform_values(values: dict[str, Any]) -> dict[str, Any]:
     overrides = platforms.get(platform, {})
     if not isinstance(overrides, dict):
         raise LifecycleError(f"REPOSITORY_POLICY_INVALID: repository.platforms.{platform} must be a table")
+    unsupported = sorted(set(overrides) - _PLATFORM_PATH_KEYS)
+    if unsupported:
+        names = ", ".join(unsupported)
+        raise LifecycleError(
+            f"REPOSITORY_POLICY_INVALID: repository.platforms.{platform} may override only approved path keys; "
+            f"unsupported keys: {names}"
+        )
     selected = dict(values)
     selected.update(overrides)
     selected["_platform"] = platform
