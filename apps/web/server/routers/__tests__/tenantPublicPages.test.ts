@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import request from "supertest";
+import cookieParser from "cookie-parser";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +12,8 @@ const dbState = vi.hoisted(() => ({
   where: null as unknown,
   orderBy: null as unknown,
   limit: null as unknown,
+  session: null as { openId: string } | null,
+  accountFeatureFlags: {} as Record<string, boolean>,
 }));
 
 vi.mock("../../db", () => ({
@@ -40,12 +43,23 @@ vi.mock("../../db", () => ({
   },
 }));
 
+vi.mock("../../_core/sdk", () => ({
+  sdk: {
+    verifySession: vi.fn(async () => dbState.session),
+  },
+}));
+
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn(async () => dbState.accountFeatureFlags),
+}));
+
 import { registerTenantRoutes } from "../tenant";
 
 const tenantId = "tenant-smartaihub";
 
 function appWithTenant(): Express {
   const app = express();
+  app.use(cookieParser());
   app.use((req, _res, next) => {
     (
       req as typeof req & { tenant: { id: string; primaryDomain: string } }
@@ -67,6 +81,31 @@ describe("GET /api/tenant/public-pages/:pageKey", () => {
     dbState.where = null;
     dbState.orderBy = null;
     dbState.limit = null;
+    dbState.session = null;
+    dbState.accountFeatureFlags = {};
+  });
+
+  it("keeps public branding but resolves feature flags from the authenticated account tenant", async () => {
+    dbState.session = { openId: "uat-owner" };
+    dbState.resultSets = [[{ currentTenantId: "tenant-uat" }]];
+    dbState.accountFeatureFlags = { verticalDramaSeries: true };
+
+    const response = await request(appWithTenant())
+      .get("/api/tenant/current")
+      .set("Cookie", "app_session_id=valid-session");
+
+    expect(response.status).toBe(200);
+    expect(response.body.tenant.id).toBe(tenantId);
+    expect(response.body.tenant.featureFlags).toEqual({
+      verticalDramaSeries: true,
+    });
+  });
+
+  it("keeps public feature flags for an unauthenticated visitor", async () => {
+    const response = await request(appWithTenant()).get("/api/tenant/current");
+
+    expect(response.status).toBe(200);
+    expect(response.body.tenant.featureFlags).toEqual({});
   });
 
   it("queries only published rows owned by the current tenant and selects deterministically", async () => {

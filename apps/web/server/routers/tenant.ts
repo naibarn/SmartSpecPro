@@ -7,10 +7,12 @@ import type { Express } from "express";
 import type { TenantRequest } from "../_core/tenant";
 import { getTenantTheme, getTenantSeo, clearTenantCache, sanitizeRetiredPublicClaims } from "../_core/tenant";
 import { db } from "../db";
-import { tenants, tenantPages, themePresets, seoMetadata } from "../../drizzle/schema";
+import { tenants, tenantPages, themePresets, seoMetadata, users } from "../../drizzle/schema";
 import { eq, and, asc, desc, inArray, isNull } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
+import { COOKIE_NAME } from "../../shared/const";
 import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { SmartAiHubContentManifestSchema } from "../../shared/smartaihubContentManifest";
 import { importSmartAiHubContentManifest } from "../services/smartaihubContentImport";
 import { buildSmartAiHubRelatedLinks } from "../../shared/smartaihubDiscovery";
@@ -43,6 +45,28 @@ export function registerTenantRoutes(app: Express) {
 
       const theme = getTenantTheme(req.tenant);
       const seo = getTenantSeo(req.tenant);
+      let featureFlags =
+        (req.tenant.featureFlags as Record<string, boolean> | null) ?? {};
+
+      // Branding follows the request hostname, while authenticated feature
+      // access follows the user's account tenant. Keep those contexts separate
+      // so a tenant user on a shared/custom host does not get denied based on
+      // the host's unrelated feature flags.
+      const sessionCookie = req.cookies?.[COOKIE_NAME];
+      if (typeof sessionCookie === "string" && sessionCookie.length > 0) {
+        const session = await sdk.verifySession(sessionCookie);
+        if (session?.openId) {
+          const dbInstance = await db.instance;
+          const [user] = await dbInstance
+            .select({ currentTenantId: users.currentTenantId })
+            .from(users)
+            .where(eq(users.openId, session.openId))
+            .limit(1);
+          if (user?.currentTenantId) {
+            featureFlags = await getTenantFeatureFlags(user.currentTenantId);
+          }
+        }
+      }
 
       res.json(sanitizeBrandingDeep({
         tenant: {
@@ -57,7 +81,7 @@ export function registerTenantRoutes(app: Express) {
           seo,
           settings: req.tenant.settings || {},
           contactInfo: req.tenant.contactInfo || {},
-          featureFlags: (req.tenant.featureFlags as Record<string, boolean> | null) ?? {},
+          featureFlags,
         },
       }));
     } catch (error) {
