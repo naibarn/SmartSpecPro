@@ -87,6 +87,13 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertIn('import("vite")', vite_source)
         self.assertIn('import("../../vite.config")', vite_source)
 
+    def test_runtime_imported_tooling_is_in_production_dependencies(self):
+        manifest = json.loads((SCRIPT.parent.parent / "package.json").read_text())
+        dependencies = manifest.get("dependencies", {})
+        for package in ("typescript", "@playwright/test", "@smartspec/spaas-standard"):
+            with self.subTest(package=package):
+                self.assertIn(package, dependencies)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
