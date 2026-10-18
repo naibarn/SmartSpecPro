@@ -1,0 +1,35 @@
+{
+  "evidence_id": "SPEC229-P2298-AI-SEARCH-PROFILE-C-H-RUNNER-20261018",
+  "workunit": "P229.8 executable C-H AI Search profile collector",
+  "status": "IMPLEMENTATION_AND_FOCUSED_VERIFICATION_PASS; ACTUAL_PROVIDER_OBSERVATIONS_NOT_EVALUABLE",
+  "source_sha": "a10c321a26c67a5672b75b445cdbae375a6a7912",
+  "profiles": {
+    "C": "AI Search BM25 / trigram",
+    "D": "AI Search vector / BGE-M3",
+    "E": "hybrid RRF",
+    "F": "hybrid RRF + reranker; measured hybrid_rerank latency",
+    "G": "hybrid RRF + conditional rewrite; measured rewrite_hybrid_rerank latency; requires reviewed conversationContext",
+    "H": "G + existing provider multi-query/RRF; requires reviewed conversationContext and multiQueryVariants"
+  },
+  "implementation": [
+    "Uses CloudflareAiSearchProvider and getAiSearchComparisonOptions; no new retrieval engine.",
+    "Creates a private disposable spec229-eval-* instance in an explicit non-production namespace.",
+    "Filters retrieval by ACL scope and source class before top-K; revalidates source identity, immutable revision, and SHA-256 after retrieval.",
+    "Evaluates actual held-out observations using the existing SPEC §27 evaluator; records profile-specific latency rows and all release criteria.",
+    "Candidate context and variants are bounded by schema and included in existing review packets; G/H fail closed if missing."
+  ],
+  "verification": {
+    "focused_tests": {
+      "command": "pnpm exec vitest run server/services/cloudflareAiSearchProvider.test.ts server/services/retrievalBroker.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/retrievalComparisonProfiles.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts --pool=forks --maxWorkers=2",
+      "result": "PASS: 6 files, 59 tests"
+    },
+    "scoped_typescript": "PASS: targeted tsc --noEmit over runner, evaluation client, gold dataset, profile mapping, and existing AI Search provider",
+    "runner_bundle": "PASS: esbuild bundle completed",
+    "diff_check": "PASS"
+  },
+  "actual_observations": {
+    "C_through_H": "NOT_EVALUABLE: no authorized account/token/disposable flag/runtime namespace variables are present in this execution environment; no provider requests were made.",
+    "release_certification": "NOT_EVALUABLE; this implementation evidence is not a provider observation or release certification."
+  },
+  "prior_profile_a_evidence": "handoff/evidence/p2298-profile-a-actual-observations-20261018.json"
+}
