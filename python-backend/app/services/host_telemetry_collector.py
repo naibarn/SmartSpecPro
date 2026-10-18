@@ -55,10 +55,18 @@ def collect_metrics() -> dict[str, Any]:
     services = {
         "web": _service_status("smartspec-web.service"),
         "backend": _service_status("smartspec-backend.service"),
+        "node_worker": _service_status("smartspec-node-worker.service"),
+        "python_job_worker": _service_status("smartspec-python-job-worker.service"),
     }
     restart_counts = {
         "web": _as_nonnegative_int(_systemd_value("smartspec-web.service", "NRestarts")),
         "backend": _as_nonnegative_int(_systemd_value("smartspec-backend.service", "NRestarts")),
+        "node_worker": _as_nonnegative_int(
+            _systemd_value("smartspec-node-worker.service", "NRestarts")
+        ),
+        "python_job_worker": _as_nonnegative_int(
+            _systemd_value("smartspec-python-job-worker.service", "NRestarts")
+        ),
     }
     return {
         "memoryUsedMb": round(memory.used / 1024 / 1024),
