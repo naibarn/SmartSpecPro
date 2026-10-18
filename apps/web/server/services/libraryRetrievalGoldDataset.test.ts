@@ -147,6 +147,75 @@ describe("SPEC-229 gold dataset pipeline", () => {
     expect(parsed.some(isHeldOutReleaseEvaluationEligible)).toBe(false);
   });
 
+  it("preserves independent machine review for the unseen development cohort without certifying it", () => {
+    const candidatePath = resolve(
+      process.cwd(),
+      "server/services/libraryRetrievalGoldCandidates.unseen-v1.json",
+    );
+    const reviewPath = resolve(
+      process.cwd(),
+      "../../specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v1-independent-machine-review-20261018.json",
+    );
+    const parsed = (JSON.parse(readFileSync(candidatePath, "utf8")) as unknown[])
+      .map(candidate => goldDatasetCandidateSchema.parse(candidate));
+    const review = JSON.parse(readFileSync(reviewPath, "utf8")) as {
+      subject: { artifactSha256: string };
+      reviewer: { reviewerId: string; reviewerType: string; reviewerVersion: string };
+      summary: { decisionCounts: Record<string, number>; humanReviewedCount: number; releaseApprovedCount: number };
+      rows: Array<{ caseId: string; decision: string; evidence: { sourcePath: string; sourceSha256: string; lineStart: number; lineEnd: number; quoteSha256: string } }>;
+    };
+    const sourceRows = new Map(review.rows.map(row => [row.caseId, row]));
+
+    validateGoldDataset(parsed, resolve(process.cwd(), "../.."));
+    expect(parsed).toHaveLength(549);
+    expect(review.subject.artifactSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(review.reviewer.reviewerType).toBe("agent");
+    expect(review.rows).toHaveLength(parsed.length);
+    for (const candidate of parsed) {
+      const row = sourceRows.get(candidate.caseId);
+      if (!row) throw new Error(`Missing independent review for ${candidate.caseId}`);
+      expect(candidate.reviews).toContainEqual(expect.objectContaining({
+        reviewerId: review.reviewer.reviewerId,
+        reviewerVersion: review.reviewer.reviewerVersion,
+        reviewerType: "agent",
+        decision: row.decision === "accept_candidate_machine_only"
+          ? "accept_candidate"
+          : row.decision,
+      }));
+      expect(candidate.source).toMatchObject({
+        path: row.evidence.sourcePath,
+        sha256: row.evidence.sourceSha256,
+        lineStart: row.evidence.lineStart,
+        lineEnd: row.evidence.lineEnd,
+        quoteSha256: row.evidence.quoteSha256,
+      });
+    }
+    expect(countGoldDataset(parsed)).toMatchObject({
+      candidateQueries: 549,
+      independentlyReviewed: 549,
+      machineReviewed: 549,
+      reviewAccepted: 487,
+      pendingAdjudication: 49,
+      humanReviewed: 0,
+      humanAccepted: 0,
+      releaseApproved: 0,
+      heldOutReleaseApproved: 0,
+    });
+    expect(review.summary).toMatchObject({
+      decisionCounts: {
+        accept_candidate_machine_only: 487,
+        reject: 13,
+        needs_adjudication: 49,
+      },
+      humanReviewedCount: 0,
+      releaseApprovedCount: 0,
+    });
+    expect(parsed.some(isReleaseEvaluationEligible)).toBe(false);
+    expect(parsed.some(isHeldOutReleaseEvaluationEligible)).toBe(false);
+    expect(missingRequiredQueryClasses(parsed)).toContain("thai");
+    expect(missingRequiredQueryClasses(parsed)).toContain("stale_conflict");
+  });
+
   it("validates pinned source digests and source spans for development candidates", () => {
     validateGoldDataset(
       P2298_CANDIDATE_SEEDS,
