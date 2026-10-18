@@ -149,9 +149,16 @@ describe("Windows profile binding at canonical admission", () => {
     const capability = {
       platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc" },
       runnerVersion: "0.2.31", observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z",
-      toolInventory: [{ adapterId: "codex.v1", installState: "installed", configurationState: "configured",
-        authState: "authenticated", healthState: "healthy", trustState: "ready", availabilityState: "available",
-        authorizationEvidenceRef: "TEST_ONLY" }],
+      capabilities: ["agent.external_task", "tool.execute.codex"],
+      toolInventory: [
+        { toolId: "git", adapterId: "git.v1", observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z",
+          installState: "installed", configurationState: "configured", healthState: "healthy",
+          trustState: "ready", availabilityState: "available" },
+        { toolId: "codex", adapterId: "codex.v1", observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z",
+          installState: "installed", configurationState: "configured", authState: "authenticated",
+          healthState: "healthy", trustState: "ready", availabilityState: "available",
+          authorizationEvidenceRef: "TEST_ONLY" },
+      ],
       workspaces: [{ workspaceId: "ws-owned", gitHead: source, dirty: false, projectId: "TEST_ONLY", repositoryId: "TEST_ONLY" }],
     };
     const input = { profileId: "spec224-recovery-windows-x64-codex-nonprod", sourceCommit: source,
@@ -164,6 +171,12 @@ describe("Windows profile binding at canonical admission", () => {
 
     expect(spec224ProfileRunnerTargetMatches({ ...input, canonicalInputJson: { workspaceRef: "ws-owned" } })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, sourceCommit: "b".repeat(40) })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: {
+      ...capability, capabilities: [],
+    } })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: {
+      ...capability, toolInventory: capability.toolInventory.slice(1),
+    } })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: { ...capability,
       platform: { ...capability.platform, os: "linux" } } })).toBe(false);
     // This predicate adds only a Windows target constraint; it does not replace

@@ -896,10 +896,10 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "A Platform/Database Administrator with the existing SmartAIHub exact admin role must open /admin/settings → Infrastructure → Monitoring → SPEC-224 Database Identity and click Collect evidence. Share only the displayed non-secret diagnostic result. Verify its backend revision/instance, DB fingerprint/name/schema/role, migration 0395 state, enum labels, concurrency evidence and failed-run trace correlation before deciding on any targeted recovery.",
+    "next_action": "PR candidate codex/spec224-trust-test-fixture-refresh-20261018 at source bb3613224b2e9ba9e2539571e57e270d5ad8c241 is based on latest canonical origin/main c26cbb69d173689a2d831911d5cc047661fd3a4d. It refreshes the Windows Runner snapshot test fixture to include fresh git.v1/codex.v1 inventories and normalized tool.execute.codex + agent.external_task capabilities. Focused verifier and runtime admission suites passed 20/20; independent review confirmed the fixture contract. Source trust remains deny-only pending authenticated Platform/Security approval and verified authority resources.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authorized Platform/Database Admin must invoke the integrated read-only diagnostic on the backend that produced the run-creation error; no DB target has been verified by this session.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "PR #1113 merged through the normal integration controller at origin/main d1c95490c21ec3265d578e83713fa18b2a15dba5 (PR head 1fc792bb0f0cb0d21543154f0fbf5035a7e15eb2). Exact-admin diagnostics UI/API is available in source; focused tests 4/4, local-contract, progressive_integration_gate and Mocked SPEC-308 browser simulation passed; build-preview was skipped by policy. No live Admin invocation, DB mutation, canonical Run creation, Windows dispatch or Final Verify occurred. Resume only after a real Admin supplies the sanitized target-specific result.",
+    "resume_point": "After PR #1117 hit a base race because main advanced, the test-only fixture change was replayed onto latest origin/main c26cbb69d173689a2d831911d5cc047661fd3a4d at bb3613224b2e9ba9e2539571e57e270d5ad8c241. No unrelated files are included. The focused remote verifier and runtime admission tests pass 20/20; independent review confirmed the Runner tool inventory and normalized capabilities. No owner approval record or production Spec224RemoteTrustAuthority adapter exists, and admission still denies REMOTE_TEST_TRUSTED. Continue with normal protected integration; do not activate trust, issue a grant, or dispatch before the exact external authorities are approved and verified.",
     "waiting_predicate": "Wait for one authorized Platform/Database Admin action: /admin/settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence, then provide the displayed sanitized result. Do not provide session cookies or credentials. Revalidate target identity and authorization before any schema operation or run creation."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 101,
+  "generation": 102,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T08:07:28.369684Z",
+  "updated_at": "2026-10-18T08:14:13.573306Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
