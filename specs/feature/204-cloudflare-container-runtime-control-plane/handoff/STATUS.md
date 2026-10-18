@@ -2,11 +2,11 @@
 # 204 — Spec 204 - Cloudflare Container Runtime Control Plane
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 139 unresolved of 139
+- Requirements: 0 pass / 161 unresolved of 161
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

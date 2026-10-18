@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       }
@@ -22,13 +22,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54"
+    "expected_spec_digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Promote the scoped SPEC-204/205 Runner image and Linux artifact documentation checkpoint through its normal protected PR path. After merge, record the canonical SHA here; the image/binary baseline measurements and host-specific runtime acceptance remain pending and must not be reported as passed.",
+    "next_ready_workunit": "SPEC204_205_RUNNER_IMAGE_PORTABILITY_DOCS",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Task branch codex/spec204-205-runner-image-20261018 from canonical source 65de5b552597f9cbfa0eed960db67d413ff9ded4. Scope: SPEC-204 image build/minimal base/multi-stage/layer cache/performance baseline protocol; SPEC-205 Rust release optimization/Linux binary portability/minimal dependencies/readiness and host-supported lifecycle acceptance. Focused SPEC validation and global projection check passed; pending: commit, protected PR, merge, record exact canonical SHA. Performance baseline has not been measured; numeric limits and host acceptance remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
-    "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+    "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.088208Z",
+      "last_evidence_at": "2026-10-18T09:07:03.061908Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-09-18T20:52:49+07:00"
@@ -101,10 +101,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.088208Z"
+    "updated_at": "2026-10-18T09:07:03.061908Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +114,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.088208Z",
+    "reconciled_at": "2026-10-18T09:07:03.061908Z",
     "sources": [
       {
-        "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       },
@@ -129,11 +129,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
-        "source_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "source_digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "value": "Proposed / Ready for implementation planning"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +160,14 @@
         "excerpt": "**Status:** Proposed / Ready for implementation planning",
         "line": 5,
         "source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
-        "source_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "source_digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "value": "Proposed / Ready for implementation planning"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
+        "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md"
       }
@@ -178,11 +183,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 139,
-    "unresolved": 139
+    "total": 161,
+    "unresolved": 161
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.088208Z",
+  "updated_at": "2026-10-18T09:08:23.449961Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

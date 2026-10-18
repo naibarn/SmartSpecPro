@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -136,7 +136,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
-    "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
+    "expected_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c"
   },
   "continuation": {
     "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745 through the existing runner-desktop-release workflow (platform=windows), then install/accept that candidate on the Windows host and capture fresh session, WSS reconnect, capability acknowledgement, Codex readiness, and workspace binding evidence. Do not reconnect/reinstall the currently active installation as a diagnostic. Keep SPEC-224 protected dispatch DENY.",
@@ -277,7 +277,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -380,13 +380,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 27,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-    "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+    "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.102236Z",
+      "last_evidence_at": "2026-10-18T09:07:03.333190Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-10-05T06:44:29+07:00"
@@ -585,10 +585,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.102236Z",
+    "reconciled_at": "2026-10-18T09:07:03.333190Z",
     "sources": [
       {
-        "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -946,11 +946,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "source_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -1154,14 +1159,14 @@
         "excerpt": "**Status:** Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "source_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -1322,16 +1327,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 162,
-    "unresolved": 162
+    "total": 187,
+    "unresolved": 187
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T14:50:14.605871Z",
+  "updated_at": "2026-10-18T09:07:03.333190Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
