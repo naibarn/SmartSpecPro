@@ -19776,7 +19776,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalBenchmark.test.ts",
-      "sha256": "f36aebc8f2dfc5df7ff88d24dbd689ec2b1615f2473598b41477922f12b53d54",
+      "sha256": "c05ef83c8f7470b85a5530efe5779fe0de189a4a2c6b3dc87645fd6f2d01d473",
       "lineStart": 12,
       "lineEnd": 12,
       "quoteSha256": "21638283b6ee64ffcc5b196b1b3cfbbaa437f2976955fa6aeeecd3e668818522",
@@ -19809,7 +19809,7 @@
         "b09-claim-011"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:f36aebc8f2dfc5df7ff88d24dbd689ec2b1615f2473598b41477922f12b53d54",
+      "expectedRevision": "sha256:c05ef83c8f7470b85a5530efe5779fe0de189a4a2c6b3dc87645fd6f2d01d473",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -19828,7 +19828,7 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalBenchmark.test.ts",
-      "sha256": "f36aebc8f2dfc5df7ff88d24dbd689ec2b1615f2473598b41477922f12b53d54",
+      "sha256": "c05ef83c8f7470b85a5530efe5779fe0de189a4a2c6b3dc87645fd6f2d01d473",
       "lineStart": 51,
       "lineEnd": 51,
       "quoteSha256": "9a9e3625c507fc02f423420d6980666a1a52b69d481d8b0ca58e85c38fac5ff4",
@@ -19861,7 +19861,7 @@
         "b09-claim-012"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:f36aebc8f2dfc5df7ff88d24dbd689ec2b1615f2473598b41477922f12b53d54",
+      "expectedRevision": "sha256:c05ef83c8f7470b85a5530efe5779fe0de189a4a2c6b3dc87645fd6f2d01d473",
       "shouldCite": true,
       "exactIdentifier": true
     }
@@ -19879,9 +19879,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
-      "lineStart": 20,
-      "lineEnd": 20,
+      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "lineStart": 21,
+      "lineEnd": 21,
       "quoteSha256": "dfa943ea8d24ed030820167a38713df23b8c87601c57819572a494db22120749",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -19912,7 +19912,7 @@
         "b09-claim-013"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
+      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -19930,9 +19930,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
-      "lineStart": 42,
-      "lineEnd": 42,
+      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "lineStart": 43,
+      "lineEnd": 43,
       "quoteSha256": "666dd75685154cc0f5ffb445196bc10304717e4c889c1a8202c8616c986aa0d7",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -19963,7 +19963,7 @@
         "b09-claim-014"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
+      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -21722,9 +21722,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
-      "lineStart": 63,
-      "lineEnd": 63,
+      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "lineStart": 72,
+      "lineEnd": 72,
       "quoteSha256": "8f2e0ba71ca73101a0ca5c9bef32abde53db70d63d8fc79fc417f976f6d12b92",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -21755,7 +21755,7 @@
         "b09-claim-049"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
+      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -21773,9 +21773,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/libraryRetrievalGoldDataset.test.ts",
-      "sha256": "269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
-      "lineStart": 138,
-      "lineEnd": 138,
+      "sha256": "e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
+      "lineStart": 198,
+      "lineEnd": 198,
       "quoteSha256": "0decc3b101f6e56c25188a90e4b299314bc16e3c429d904d6a67882ef2a5a806",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test source; test data is for development and contains no tenant production corpus."
@@ -21806,7 +21806,7 @@
         "b09-claim-050"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:269b8be94a615b67ba1627df8c039394c193ccfa21ccd8003d276fdf667a52f8",
+      "expectedRevision": "sha256:e9234014ef611226574655a834828202f6f16e332ac0357020884cf9b3164137",
       "shouldCite": true,
       "exactIdentifier": false
     }
