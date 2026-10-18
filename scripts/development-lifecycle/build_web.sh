@@ -16,3 +16,4 @@ pnpm dlx wrangler@4.151.1 deploy \
   --dry-run \
   --outdir "$WRANGLER_OUTDIR"
 node apps/cloudflare/scripts/package-staging-artifact.mjs
+bash apps/web/scripts/package-linux-backend.sh
