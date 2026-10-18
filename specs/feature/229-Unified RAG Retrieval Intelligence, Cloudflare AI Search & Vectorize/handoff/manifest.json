@@ -35,7 +35,7 @@
     "next_action": "After PR #1099 passes required checks and merges, continue with P229.3 provider/capacity routing through the existing RetrievalBroker and tenant provider configuration. Profile C implementation is isolated evaluation-only; actual Profile C/B observations remain unrun until authorized non-production provider credentials and a clean pinned source worktree are injected.",
     "next_ready_workunit": "P229.3_AI_SEARCH_PROVIDER_AND_CAPACITY_ROUTING: implement only the missing canonical Cloudflare AI Search provider/configuration and capacity-routing integration through existing tenant configuration and RetrievalBroker contracts; preserve default/768D behavior and add focused tests before any consumer migration.",
     "reactivation_predicate": "Run Profile C only when SPEC229_EVAL_DISPOSABLE=1, SPEC229_EVAL_ACCOUNT_ID, SPEC229_EVAL_AI_SEARCH_API_TOKEN, and a clean corpus worktree pinned by SOURCE_SHA are injected from an authorized non-production runtime. Run Profile B only when its authorized Workers AI/Vectorize variables and dedicated 1024D spec229-eval-* index are also present. No production secret or index may be used.",
-    "resume_point": "Canonical origin/main SHA 0a17118f85892f26dbc30af2a1fc028becbb08be includes merged PR #1097 (6d269bdd4c1076d479663077b090dc53a5e9e431) and #1098. Profile C implementation commit 5ab5363e218220249356fd21b702e716239404d7 is pending PR #1099. Focused verification passes 12 files/86 tests. No provider credentials were available; no actual provider observations were collected. P229.8 remains NOT_EVALUABLE. Resume after the protected merge with P229.3 provider/capacity integration.",
+    "resume_point": "Canonical origin/main SHA 0a17118f85892f26dbc30af2a1fc028becbb08be includes merged PR #1097 and #1098. Profile C implementation and metric calculation are pending PR #1099 at 151a39101b37e833a237f591eda14d276f6c8aa6. Focused verification passes 12 files/86 tests. No provider credentials are available; no actual provider observations were collected. P229.8 remains NOT_EVALUABLE. Resume after the protected merge with P229.3 provider/capacity integration.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 76,
+  "generation": 77,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -133,7 +133,8 @@
       "355c014ed73d565311bd3d85c691067946dae562",
       "6d269bdd4c1076d479663077b090dc53a5e9e431",
       "0a17118f85892f26dbc30af2a1fc028becbb08be",
-      "5ab5363e218220249356fd21b702e716239404d7"
+      "5ab5363e218220249356fd21b702e716239404d7",
+      "151a39101b37e833a237f591eda14d276f6c8aa6"
     ],
     "mapping": [],
     "source_paths": [
@@ -190,8 +191,8 @@
     "intended_pr": "PR #1097 merged at 6d269bdd4c1076d479663077b090dc53a5e9e431; PR #1098 merged at canonical main 0a17118f85892f26dbc30af2a1fc028becbb08be; PR #1099 is the pending Profile C evaluation implementation.",
     "pending_pr": 1099,
     "pending_source_branch": "codex/spec229-p2293-ai-search",
-    "pending_source_sha": "5ab5363e218220249356fd21b702e716239404d7",
-    "pending_workunit": "P229_PROFILE_C_AI_SEARCH_BM25: disposable private Cloudflare AI Search keyword-only evaluation runner and mocked REST contract tests; actual provider observations are not run."
+    "pending_source_sha": "151a39101b37e833a237f591eda14d276f6c8aa6",
+    "pending_workunit": "P229_PROFILE_C_AI_SEARCH_BM25: isolated keyword-only BM25 evaluation runner, tenant/ACL canaries, actual-observation bundle and in-run development metric calculation; provider observations are not run."
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -405,7 +406,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T04:32:37.415869Z",
+  "updated_at": "2026-10-18T04:36:47.648374Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
