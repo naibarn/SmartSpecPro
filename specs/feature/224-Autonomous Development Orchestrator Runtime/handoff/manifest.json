@@ -896,8 +896,8 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Discover through the authorized control plane an owner-issued isolated Runner registration and SPEC-224 admission/recovery authority, including required non-production runtime profile/token and a durable protected-start grant bound to fresh Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. Then resume Live Agents SDK + Codex subscription turn, process crash/restart, quota wait/resume, durable receipt reconciliation, and independent final verification. Do not create or widen authority in this task. Keep Revision 24 Hosted Mini-App/Gateway acceptance separate.",
-    "next_ready_workunit": "WAITING_EXTERNAL: owner-authorized isolated protected Runner admission binding and required non-production SPEC-224 runtime profile/token. Technical repairs are integrated at canonical SHA 1fa15ebd72a0801c889f340b0c5fecfccc371511; continuation recovery suite 5/5 and Registered Runner loopback E2E 1/1 passed on code SHA 11a2aa39df31f12d0668fd192da3731a0d29fcbc.",
+    "next_action": "Create and promote the protected PR for e2e535af7aa274e937e0f4adf04fdbf9ff262456 through required checks. After integration, resume only when Platform/Security source-trust approval and authenticated live Runtime/Tenant Owner authorities are available; recheck Jobs/Attempts/lease/fencing/idempotency before one dispatch.",
+    "next_ready_workunit": "PR_PENDING: SPEC-224 Windows Runner capability availability reconciliation; source branch codex/spec224-windows-profile-admission-20261018 at e2e535af7aa274e937e0f4adf04fdbf9ff262456; focused tests 24/24 and independent review passed. No live acceptance performed.",
     "reactivation_predicate": "Protected Live Runner acceptance may resume when an owner-authorized isolated Runner registration and dispatch grant are available with fresh binding for Runner identity, capability snapshot, source revision, workspace, allowed operations, lease/fencing and expiry. The existing guarded test harness can provision its own labeled disposable PostgreSQL 15.17 target; no fixed port or unknown-ownership volume is required. Recheck authorization at dispatch. Keep hosted Mini-App/Gateway acceptance on its separate Revision 24 non-production authority path.",
     "resume_point": "PR #972 code remediation is integrated at 1fa15ebd72a0801c889f340b0c5fecfccc371511; its handoff receipt is protected PR #973. Post-integration focused verification then passed on exact canonical origin/main SHA 21ab41c5f9421306a51458591741f60645af8263: disposable PostgreSQL continuation/process-boundary recovery 5/5, guarded Registered Runner loopback E2E 1/1, and deterministic Fast Lane quota/multi-day injected-clock E2E 4/4. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/post-integration-runner-recovery-20261016.md. Mock/injected-clock results are not live provider acceptance. No protected Runner grant/token/profile was available; Live Codex dispatch, independent final verification and live settlement remain open. SPEC-224 remains PARTIAL.",
     "waiting_predicate": "Resume protected Live Runner acceptance only when an owner-authorized non-production Runner registration and SPEC-224 protected start grant are available with current identity/capability/source/workspace/allowed-operations/lease/fencing/expiry bindings, and the required SPEC224_PROFILE_ID and SPEC224_TEST_RUNNER_TOKEN are provisioned through the authorized runtime path. Re-evaluate all authorization gates before dispatch. Continue any independent permitted work; do not use Production or widen grant scope. Hosted Mini-App/Gateway remains a separate Revision 24 authority path."
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 95,
+  "generation": 96,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1164,7 +1164,8 @@
       "7fa2103c437462de3ff5e5ddac66fdc4a6d725a0",
       "1d080e1e0a44470cbf0ae5da6a615f432c35fce4",
       "265b7f79ed26e7df9931bf80f6b0e0099b10ae12",
-      "4a5a2317004d79f4a5c3cce15fc616dc1564fb25"
+      "4a5a2317004d79f4a5c3cce15fc616dc1564fb25",
+      "e2e535af7aa274e937e0f4adf04fdbf9ff262456"
     ],
     "mapping": [
       {
@@ -2692,7 +2693,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-15T17:10:39.923253Z",
+  "updated_at": "2026-10-18T07:38:57.781859Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2890,6 +2891,13 @@
         "scope": "Exact canonical origin/main SHA 21ab41c5f9421306a51458591741f60645af8263: existing deterministic Fast Lane PostgreSQL E2E passed 4/4, including three-day injected-clock provider-capacity wait/resume of the same WorkUnit, distinct call ID, budget resume, usage settlement and stale fencing denial. Mocked/injected-clock evidence only; not a Live Codex quota reset.",
         "source_sha": "21ab41c5f9421306a51458591741f60645af8263",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_WINDOWS_CAPABILITY_AVAILABILITY_FOCUSED_TESTS",
+        "path": "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts; apps/web/server/services/__tests__/runnerContracts.test.ts",
+        "scope": "Exact candidate source SHA; focused profile/wire-contract Vitest passed 2 files/24 tests. Independent read-only review confirmed availability normalization leaves owner approval/goal grant and fenced Recovery Grant authorization checks intact. No live Runner admission or dispatch evidenced.",
+        "source_sha": "e2e535af7aa274e937e0f4adf04fdbf9ff262456",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
