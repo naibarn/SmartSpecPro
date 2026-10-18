@@ -357,6 +357,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             "#!/bin/sh\n"
             "for target in \"$@\"; do :; done\n"
             "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\"\n"
+            "mkdir -p \"$target/node_modules/.pnpm/node_modules/@smartspec\"\n"
+            "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
             "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n",
             encoding="utf-8",
@@ -375,6 +377,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         runtime = web / "dist/backend-runtime"
         self.assertTrue((runtime / "server/_core/index.ts").is_file())
         self.assertTrue((runtime / "node_modules/tsx/package.json").is_file())
+        self.assertFalse((runtime / "node_modules/.pnpm/node_modules/@smartspec/web").exists())
+        self.assertFalse((runtime / "node_modules/.pnpm/node_modules/@smartspec/web").is_symlink())
         self.assertTrue((runtime / "dist/public/index.html").is_file())
         metadata = json.loads((runtime / "release-build.json").read_text())
         self.assertEqual(metadata["sourceSha"], subprocess.check_output(

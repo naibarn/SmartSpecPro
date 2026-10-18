@@ -42,6 +42,13 @@ trap cleanup EXIT
 PACKAGE_ROOT="$STAGING_ROOT/runtime"
 
 pnpm --filter @smartspec/web --prod deploy --legacy "$PACKAGE_ROOT"
+# pnpm deploy creates a self-reference to the workspace package in the
+# virtual-store links. That points back into this temporary build checkout and
+# would make the supposedly immutable runtime depend on its source workspace.
+SELF_LINK="$PACKAGE_ROOT/node_modules/.pnpm/node_modules/@smartspec/web"
+if [[ -L "$SELF_LINK" ]]; then
+  rm -- "$SELF_LINK"
+fi
 mkdir -p "$PACKAGE_ROOT/dist/public"
 cp -a "$WEB_ROOT/dist/public/." "$PACKAGE_ROOT/dist/public/"
 
