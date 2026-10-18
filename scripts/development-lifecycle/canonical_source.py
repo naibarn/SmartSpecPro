@@ -8,9 +8,10 @@ root (or --policy). The developer checkout is never reset, cleaned, or switched.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import errno
-import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -25,6 +26,33 @@ import tomllib
 import uuid
 from pathlib import Path
 from typing import Any, Sequence
+
+
+_FILE_LOCK_SPEC = importlib.util.spec_from_file_location(
+    "canonical_source_portable_file_lock", Path(__file__).with_name("portable_file_lock.py")
+)
+if _FILE_LOCK_SPEC is None or _FILE_LOCK_SPEC.loader is None:
+    raise ImportError("portable lifecycle file lock is unavailable")
+_FILE_LOCK_MODULE = importlib.util.module_from_spec(_FILE_LOCK_SPEC)
+_FILE_LOCK_SPEC.loader.exec_module(_FILE_LOCK_MODULE)
+FileLock = _FILE_LOCK_MODULE.FileLock
+
+
+@contextlib.contextmanager
+def _nonblocking_file_lock(path: Path):
+    try:
+        lock = FileLock(path).acquire(blocking=False)
+    except BlockingIOError as exc:
+        raise LifecycleError("SOURCE_LEASE_ACTIVE") from exc
+    except OSError as exc:
+        raise _os_resource_failure(path, exc) from exc
+    try:
+        yield lock
+    finally:
+        try:
+            lock.release()
+        except OSError as exc:
+            raise _os_resource_failure(path, exc) from exc
 
 
 class LifecycleError(RuntimeError):
@@ -49,12 +77,55 @@ def _inside(path: Path, parent: Path) -> bool:
         return False
 
 
+def _platform_name() -> str:
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    return "linux"
+
+
+_PLATFORM_PATH_KEYS = frozenset({
+    "source_root",
+    "lease_root",
+    "source_fallback_roots",
+    "canonical_user_workspace",
+    "recovery_root",
+})
+
+
+def _select_platform_values(values: dict[str, Any]) -> dict[str, Any]:
+    """Overlay approved platform paths without changing shared repository identity."""
+    platforms = values.get("platforms", {})
+    if not isinstance(platforms, dict):
+        raise LifecycleError("REPOSITORY_POLICY_INVALID: platforms must be a table")
+    platform = _platform_name()
+    overrides = platforms.get(platform, {})
+    if not isinstance(overrides, dict):
+        raise LifecycleError(f"REPOSITORY_POLICY_INVALID: repository.platforms.{platform} must be a table")
+    unsupported = sorted(set(overrides) - _PLATFORM_PATH_KEYS)
+    if unsupported:
+        names = ", ".join(unsupported)
+        raise LifecycleError(
+            f"REPOSITORY_POLICY_INVALID: repository.platforms.{platform} may override only approved path keys; "
+            f"unsupported keys: {names}"
+        )
+    selected = dict(values)
+    selected.update(overrides)
+    selected["_platform"] = platform
+    return selected
+
+
 def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
     path = (policy_path or repo / ".development-repository.toml").resolve()
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         values = data["repository"]
+        if not isinstance(values, dict):
+            raise LifecycleError("REPOSITORY_POLICY_INVALID: repository must be a table")
+        values = _select_platform_values(values)
+        platform = values["_platform"]
         policy = {
             "repository_id": str(values["repository_id"]).strip(),
             "remote": str(values["remote"]).strip(),
@@ -74,6 +145,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
         raise LifecycleError("REPOSITORY_POLICY_INVALID: canonical_ref must be a fully qualified branch ref")
     source_root = Path(policy["source_root"]).expanduser()
     if not source_root.is_absolute():
+        if platform == "windows":
+            raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.source_root")
         raise LifecycleError("REPOSITORY_POLICY_INVALID: source_root must be absolute")
     source_root = source_root.resolve()
     if _inside(source_root, repo):
@@ -81,6 +154,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     policy["source_root"] = str(source_root)
     lease_root = Path(policy["lease_root"]).expanduser()
     if not lease_root.is_absolute():
+        if platform == "windows":
+            raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.lease_root")
         raise LifecycleError("REPOSITORY_POLICY_INVALID: lease_root must be absolute")
     lease_root = lease_root.resolve()
     if _inside(lease_root, repo):
@@ -90,6 +165,8 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     for configured in policy["source_fallback_roots"]:
         candidate = Path(configured).expanduser()
         if not candidate.is_absolute():
+            if platform == "windows":
+                raise LifecycleError("PLATFORM_POLICY_REQUIRED: repository.platforms.windows.source_fallback_roots")
             raise LifecycleError("REPOSITORY_POLICY_INVALID: source_fallback_roots must be absolute")
         candidate = candidate.resolve()
         if _inside(candidate, repo):
@@ -109,16 +186,24 @@ def _filesystem_evidence(path: Path) -> dict[str, Any]:
     while not probe.exists() and probe != probe.parent:
         probe = probe.parent
     try:
-        stats = os.statvfs(probe)
         usage = shutil.disk_usage(probe)
         device = probe.stat().st_dev
-        mount = probe
-        while mount.parent != mount and mount.parent.stat().st_dev == device:
-            mount = mount.parent
+        if os.name == "nt":
+            mount = Path(probe.anchor)
+            available_bytes = usage.free
+            available_inodes = None  # NTFS allocates file records dynamically; no POSIX inode counter exists.
+        else:
+            stats = os.statvfs(probe)
+            mount = probe
+            while mount.parent != mount and mount.parent.stat().st_dev == device:
+                mount = mount.parent
+            available_bytes = stats.f_bavail * stats.f_frsize
+            available_inodes = stats.f_favail
         return {
             "path": str(path), "mount_path": str(mount), "device": device,
-            "available_bytes": stats.f_bavail * stats.f_frsize,
-            "available_inodes": stats.f_favail,
+            "available_bytes": available_bytes,
+            "available_inodes": available_inodes,
+            "inode_capacity_not_applicable": os.name == "nt",
             "total_bytes": usage.total,
             "writable": os.access(probe, os.W_OK | os.X_OK),
         }
@@ -149,11 +234,19 @@ def _os_resource_failure(path: Path, exc: OSError) -> LifecycleError:
     )
 
 
-def _open_lock(path: Path) -> Any:
+@contextlib.contextmanager
+def _file_lock(path: Path):
     try:
-        return path.open("a+")
+        lock = FileLock(path).acquire()
     except OSError as exc:
         raise _os_resource_failure(path, exc) from exc
+    try:
+        yield lock
+    finally:
+        try:
+            lock.release()
+        except OSError as exc:
+            raise _os_resource_failure(path, exc) from exc
 
 
 def _registered_worktrees(repo: Path) -> set[Path]:
@@ -180,14 +273,14 @@ def _admit_roots(policy: dict[str, Any], repo: Path | None = None) -> tuple[list
             rejected.append({**evidence, "reason": "EACCES"})
         elif evidence["available_bytes"] < MIN_SOURCE_BYTES:
             rejected.append({**evidence, "reason": "ENOSPC", "required_bytes": MIN_SOURCE_BYTES})
-        elif evidence["available_inodes"] < MIN_SOURCE_INODES:
+        elif evidence["available_inodes"] is not None and evidence["available_inodes"] < MIN_SOURCE_INODES:
             rejected.append({**evidence, "reason": "INODE_EXHAUSTION", "required_inodes": MIN_SOURCE_INODES})
         else:
             admitted.append((root, evidence))
     if repo is not None:
         common_dir = Path(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         metadata = _filesystem_evidence(common_dir)
-        if metadata.get("error") or not metadata.get("writable") or metadata.get("available_bytes", 0) < 16 * 1024 * 1024 or metadata.get("available_inodes", 0) < 128:
+        if metadata.get("error") or not metadata.get("writable") or metadata.get("available_bytes", 0) < 16 * 1024 * 1024 or (metadata.get("available_inodes") is not None and metadata["available_inodes"] < 128):
             rejected.append({**metadata, "reason": "GIT_METADATA_CAPACITY", "required_bytes": 16 * 1024 * 1024, "required_inodes": 128})
             admitted = []
     return admitted, rejected
@@ -475,7 +568,7 @@ def prepare_source(
         reason = "RESOURCE_BLOCKED" if rejected and all(item.get("reason") in {"ENOSPC", "INODE_EXHAUSTION", "EACCES", "EROFS", "GIT_METADATA_CAPACITY"} for item in rejected) else "WORKSPACE_ADMISSION_FAILED"
         raise LifecycleError(f"{reason}: no authorized source filesystem passed preflight; evidence={json.dumps(rejected, sort_keys=True)}")
     lease_evidence = _filesystem_evidence(Path(policy["lease_root"]))
-    if lease_evidence.get("error") or not lease_evidence.get("writable") or lease_evidence.get("available_inodes", 0) < 1000:
+    if lease_evidence.get("error") or not lease_evidence.get("writable") or (lease_evidence.get("available_inodes") is not None and lease_evidence["available_inodes"] < 1000):
         raise LifecycleError(f"RESOURCE_BLOCKED: lease registry root is not writable/admissible; evidence={json.dumps(lease_evidence, sort_keys=True)}")
     lease_dir = Path(policy["lease_root"]) / _hash(policy["repository_id"])[:20]
     try:
@@ -486,13 +579,8 @@ def prepare_source(
         raise LifecycleError(f"{code}: errno={exc.errno} {exc.__class__.__name__}: {exc}; evidence={json.dumps(evidence, sort_keys=True)}") from exc
     state_path = lease_dir / f"{revision}-{purpose}.json"
     active_path = lease_dir / f"{revision}-{purpose}.active"
-    with _open_lock(state_path.with_suffix(".lock")) as state_lock:
-        fcntl.flock(state_lock, fcntl.LOCK_EX)
-        with _open_lock(active_path) as active_lock:
-            try:
-                fcntl.flock(active_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise LifecycleError("SOURCE_LEASE_ACTIVE") from exc
+    with _file_lock(state_path.with_suffix(".lock")):
+        with _nonblocking_file_lock(active_path):
 
             workspace: Path | None = None
             for candidate_root, _evidence in admitted:
@@ -602,13 +690,8 @@ def run_with_lease(
     lease_file = lease_file.resolve()
     lease_lock_path = lease_file.with_suffix(".lock")
     active_path = lease_file.parent / (lease_file.name.removesuffix(".json") + ".active")
-    with active_path.open("a+") as active_lock:
-        try:
-            fcntl.flock(active_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
-            raise LifecycleError("SOURCE_LEASE_ACTIVE") from exc
-        with lease_lock_path.open("a+") as state_lock:
-            fcntl.flock(state_lock, fcntl.LOCK_EX)
+    with _nonblocking_file_lock(active_path):
+        with _file_lock(lease_lock_path):
             try:
                 lease = json.loads(lease_file.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
@@ -627,8 +710,7 @@ def run_with_lease(
 
         def heartbeat() -> None:
             while not stop.wait(30):
-                with lease_lock_path.open("a+") as state_lock:
-                    fcntl.flock(state_lock, fcntl.LOCK_EX)
+                with _file_lock(lease_lock_path):
                     current = json.loads(lease_file.read_text(encoding="utf-8"))
                     if current.get("lease_id") != lease_id or current.get("fencing_generation") != generation:
                         stop.set()
@@ -643,8 +725,7 @@ def run_with_lease(
         finally:
             stop.set()
             thread.join(timeout=1)
-            with lease_lock_path.open("a+") as state_lock:
-                fcntl.flock(state_lock, fcntl.LOCK_EX)
+            with _file_lock(lease_lock_path):
                 current = json.loads(lease_file.read_text(encoding="utf-8"))
                 if current.get("lease_id") == lease_id and current.get("fencing_generation") == generation:
                     current["expires_at"] = 0
@@ -739,8 +820,7 @@ def build_canonical(
 
     # One build at a time per repository. Resolve the canonical tip only after
     # obtaining the lock so queued builds do not start from an older snapshot.
-    with global_lock_path.open("a+") as build_lock:
-        fcntl.flock(build_lock, fcntl.LOCK_EX)
+    with _file_lock(global_lock_path):
         required = [
             git(repo, "rev-parse", f"{revision}^{{commit}}", check=False)
             for revision in required_revisions

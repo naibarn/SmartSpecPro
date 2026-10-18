@@ -50,12 +50,6 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
     ports: ['5432'], type: 'docker',
     description: 'Database - stores all application data'
   },
-  {
-    id: 'smartspec-redis', name: 'redis', displayName: 'Redis',
-    ports: ['6379'], type: 'docker',
-    description: 'Cache & message broker for background tasks'
-  },
-
   // Applications (can be Docker or host processes)
   {
     id: 'smartspec-web', name: 'smartspec-web', displayName: 'SmartAIHub Web',

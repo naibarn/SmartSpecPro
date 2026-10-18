@@ -29,9 +29,24 @@ repository_id = "stable-project-repository-id"
 remote = "origin"
 canonical_ref = "refs/heads/main" # example only; set from this repository's policy
 source_root = "~/.cache/codex/canonical-sources"
+
+[repository.platforms.windows]
+canonical_user_workspace = "C:/Users/example/SmartSpecPro"
+source_root = "C:/Users/example/AppData/Local/SmartSpecPro/canonical-sources"
+lease_root = "C:/Users/example/AppData/Local/SmartSpecPro/canonical-leases"
+source_fallback_roots = ["D:/SmartSpecPro/canonical-sources"]
+recovery_root = "C:/Users/example/AppData/Local/SmartSpecPro/workspace-recovery"
 ```
 
 `canonical_ref` is policy data; it may name `refs/heads/develop`, `refs/heads/trunk`, or another protected ref. Do not infer `main`. `source_root` must be outside the developer checkout. Another project supplies its own policy and gets a distinct workspace and lease namespace.
+
+The optional `repository.platforms.<platform>` table overrides only the paths
+configured for the current OS (`windows`, `macos`, or `linux`); repository
+identity and canonical-ref policy remain shared. Windows roots must be native
+absolute paths and approved for the Runner user's ACL. A POSIX path is never
+translated into a guessed Windows path. If a configured root is not valid on
+Windows, policy loading fails closed with the missing Windows key so the
+Workspace Owner can provision and approve it.
 
 ## Prepare exact source
 
