@@ -222,8 +222,14 @@ def restore_previous_public_tree(backup: Path, destination: Path) -> None:
         files: dict[Path, Path] = {}
         for current, directory_names, file_names in os.walk(root, followlinks=False):
             current_path = Path(current)
+            symlink_directories = [
+                name for name in directory_names if (current_path / name).is_symlink()
+            ]
+            for name in symlink_directories:
+                source_link = current_path / name
+                files[source_link.relative_to(root)] = source_link
             directory_names[:] = [
-                name for name in directory_names if not (current_path / name).is_symlink()
+                name for name in directory_names if name not in symlink_directories
             ]
             for name in file_names:
                 source_file = current_path / name
@@ -245,7 +251,10 @@ def restore_previous_public_tree(backup: Path, destination: Path) -> None:
         destination_file = destination / relative
         destination_file.parent.mkdir(parents=True, exist_ok=True)
         if source_file.is_symlink():
-            destination_file.unlink(missing_ok=True)
+            if destination_file.is_dir() and not destination_file.is_symlink():
+                shutil.rmtree(destination_file)
+            else:
+                destination_file.unlink(missing_ok=True)
             destination_file.symlink_to(os.readlink(source_file))
         else:
             if destination_file.is_symlink():
@@ -400,6 +409,24 @@ def publish_public_tree(
 
     destination_root = destination.resolve()
     copied = 0
+
+    # Legacy deployments may expose the shared release archive directory through
+    # a symlink outside dist/public. Never write through that link. Replace it
+    # with the canonical artifact's self-contained release assets instead.
+    source_releases = source / "releases"
+    destination_releases = destination / "releases"
+    if destination_releases.is_symlink():
+        if not source_releases.is_dir() or source_releases.is_symlink():
+            raise DeployError("Canonical artifact is missing materialized releases assets")
+        staging_releases = destination / f".releases-publish-{uuid.uuid4().hex}"
+        try:
+            shutil.copytree(source_releases, staging_releases, symlinks=True)
+            destination_releases.unlink()
+            os.replace(staging_releases, destination_releases)
+        finally:
+            if staging_releases.exists():
+                shutil.rmtree(staging_releases)
+
     for current, directory_names, file_names in os.walk(source, followlinks=False):
         current_path = Path(current)
         directory_names[:] = [
@@ -415,11 +442,13 @@ def publish_public_tree(
             ):
                 continue
             target_file = destination / relative
-            target_file.parent.mkdir(parents=True, exist_ok=True)
             if (
                 not target_file.parent.resolve().is_relative_to(destination_root)
                 or target_file.is_symlink()
             ):
+                raise DeployError(f"Asset path escapes the publish directory: {relative}")
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            if not target_file.parent.resolve().is_relative_to(destination_root):
                 raise DeployError(f"Asset path escapes the publish directory: {relative}")
             source_hash = sha256(source_file)
             if target_file.is_file():
