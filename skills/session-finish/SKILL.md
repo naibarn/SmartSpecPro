@@ -9,7 +9,7 @@ Follow the shared [development lifecycle contract](../development-lifecycle/SKIL
 
 Use this skill whenever a session reaches a safe checkpoint, is about to pause/stop/handoff, approaches quota or context exhaustion, or completes implementation. Task completion is **not** required. Safe valuable progress must not remain only on a session branch, local worktree, sandbox, or chat context.
 
-**A user instruction to stop this task, switch to another requested subtask, or handle something else is an immediate mandatory trigger.** Treat the changes already made for the current subtask as checkpoint candidates at that point. Do not defer them because the parent task is unfinished or because unrelated work, full verification, UAT, preview, or production checks remain. After the FAST INTEGRATION GATE passes, commit only task-owned paths and integrate them into `origin/main` immediately: push directly when current repository rules allow it, otherwise push/open the established PR. Merge through the existing protected path as soon as required reviews/checks pass; if they are pending or fail, keep the PR open, record the exact blocker, and continue independent work. Never bypass protection to satisfy the checkpoint.
+**A user instruction to stop, switch subtasks, or handle something else triggers a checkpoint immediately.** Treat safe changes from the current subtask as ready to checkpoint. Do not wait for the parent task, unrelated work, full verification, UAT, preview or production checks. After the FAST INTEGRATION GATE, commit only task-owned paths and push to `origin/main` when allowed. Use a PR only when branch protection requires it. Merge through the protected path when its required conditions pass; meanwhile continue independent work. Never bypass protection.
 
 ## Required lifecycle
 
@@ -20,8 +20,8 @@ implement / partial progress
   → commit
   → integrate into configured canonical ref
   → record confirmed canonical SHA and task HandOff
-  → schedule workspace sync/retirement separately (non-blocking)
-  → heavy test / full typecheck / integration / UAT
+  → workspace sync separately when useful (non-blocking)
+  → additional checks when requested or useful for the change
   → if a problem appears, repair on current canonical state and promote that repair
 ```
 
@@ -40,12 +40,12 @@ Run inexpensive scoped checks that establish these facts. Do not wait for full t
 2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate.
    Before declaring the session complete, inspect Git state with `python3 skills/development-lifecycle/git_capabilities.py inspect`. An intentional merge/rebase/cherry-pick must be completed or handed off explicitly; unresolved paths block completion. For conflict resolution, use the shared helper with explicit owned paths and verify its staged-before/intended/staged-after sets. Do not absorb pre-existing staged paths outside task ownership. Record the expected branch, commit SHA, remote push result where required, and worktree status in the handoff; a clean-looking status alone is not proof of integration.
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
-4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.
+4. Commit the largest safe task-owned checkpoint and push it to the configured canonical branch when allowed. Use the normal PR path only when required by repository protection. Do not wait for the whole task to complete. If only a subset can safely integrate, promote it and preserve the unsafe/incomplete remainder.
 5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
-6. Record the integrated SHA and task HandOff **immediately after confirming the merge**. Workspace synchronization is separate housekeeping: when appropriate, attempt a non-destructive convergence of a registered canonical user workspace through `scripts/development-lifecycle/workspace_authority.py`. For Spec 224 execution evidence, bind the exact development run ID and task registration as required by that acceptance path. If the user workspace is dirty, stale, missing or separately owned, preserve it, record a follow-up, and **continue development from the clean canonical source**; do not revoke a verified merge or block independent next WorkUnits.
+6. Confirm the integrated SHA. Workspace synchronization is separate housekeeping and must not delay the next task. Preserve a dirty or separately owned user workspace; use a clean canonical source for subsequent work if needed.
 7. Record task source SHA, integrated SHA, optional workspace sync receipt, recovery linkage and retirement status in the existing HandOff. Retire an owned temporary worktree only after verified integration or durable archival and an ownership-safe dry run. Dirty, unpushed, leased or unknown worktrees stay preserved as a housekeeping obligation, not an integration failure.
-8. Run post-integration verification through CI, a dedicated runner, or an admitted safe resource window. Track each obligation against the integrated SHA with an owner, status, and next action.
-9. If verification finds a regression, create a repair task from current configured canonical ref, fix it there, pass the same fast gate, promote a new commit to configured canonical ref, then converge the registered canonical workspace again. Preserve history; do not hide the fix in a side branch.
+8. Run post-integration checks when they are required for the requested outcome or useful for the change. Do not build/deploy automatically after every merge. Track any important outstanding check against the integrated SHA in the task's existing handoff.
+9. If verification finds a regression, repair it from current canonical source, pass the same fast gate, and promote a new checkpoint. Preserve history; do not hide the fix in a side branch.
 
 ## Mandatory checkpoint triggers
 

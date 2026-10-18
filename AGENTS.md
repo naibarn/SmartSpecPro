@@ -14,7 +14,8 @@
   the implementation SHA is integrated into `origin/main`, or locally when the
   user explicitly requests it and resource admission allows it. Never make a
   heavy local typecheck a prerequisite for integrating a fast-gate-passing change.
-  Required repository checks still apply and must use an authorized CI runner.
+  Run CI checks when repository protection or the requested outcome requires
+  them; optional CI must not delay a safe development checkpoint.
 - If you discover issues directly related to the requested work, required
   verification, task-caused failing tests, data safety, security, or correctness,
   report and address them as part of the task.
@@ -174,26 +175,25 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 
 ## Parallel Codex Development Workflow
 
-Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$session-finish` for detailed ownership, promotion, checkpoint and handoff procedures. `origin/main` is the integrated development baseline, not a release-readiness signal.
+Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$session-finish` for checkpoint and integration details. `origin/main` is the current shared development baseline; it does not certify production readiness.
 
-### Development loop
+### Default development flow
 
-`Deep Plan → Deep Implement → Focused Check → Commit → Protected Merge Main → Build Debian → Debug → Gap Closure`
+`sync latest main → implement → focused check → commit and push/integrate → continue`
 
-Use the existing task WorkUnit/Spec HandOff and Deep Implement section state. Record the owner/workspace, current base and commit, completed and in-progress sections, exact Main SHA after merge, checks actually run, open gaps and next action. Persist an in-flight step before lengthy work; resume from verified state without replaying completed work. Keep state writes atomic through the existing tools. Do not create a competing progress ledger.
+Start from the latest `origin/main`. If the current checkout is behind and clean, fast-forward it. If it is dirty or cannot be safely updated, preserve it and automatically use a clean canonical checkout; do not ask the user to reconcile it. Never build from an arbitrary stale checkout.
 
-Direct coding and debugging on Debian may run without `worker_jobs`. Use `worker_jobs` plus outbox for hosted background jobs and the long-running skill, LLM, media, agent and external-worker work identified by project policy.
+For a coherent safe change, commit and integrate promptly, including when a subtask ends or the user switches tasks. Push directly to `main` when repository rules permit. Use a PR only when branch protection or an explicit repository rule requires it; do not create extra review steps. Never bypass actual required checks or force-push. A check blocks only the PR/action to which repository protection applies; continue independent work.
 
-Run focused checks for the changed slice and all actual GitHub required checks before merge. UI/UX slices do not wait for full SPEC acceptance, full UAT or production verification when the slice is ready and required checks pass. After protected merge, record the exact reachable Main SHA, build Debian from that SHA through the configured build workflow, debug any build/runtime defect, and continue gap closure. A build or test failure is evidence to diagnose and repair, not a reason to ask whether to continue. Track non-blocking acceptance and production gaps in HandOff for later closure.
+Run a focused check appropriate to the changed files. Do not wait for full tests, UAT, task completion, unrelated work, or a build to checkpoint safe code. Do not automatically build or deploy after every merge: build when requested, when needed to diagnose a relevant issue, or when entering the separate release workflow. Build from the latest canonical revision using the configured canonical builder. If a build fails, diagnose and repair the relevant issue; unrelated development can continue. Record only useful remaining work in the existing HandOff; do not create extra ledgers or status gates.
 
-### Main checkout and visible-release evidence
+### Workspace and release evidence
 
-- At task start, compare the registered user workspace with the configured canonical ref. If it is dirty or behind, preserve it and implement from a registered task worktree based on the latest canonical SHA; do not keep adding uncommitted sessions to the shared `main` checkout.
-- After every merge, verify the merge SHA is reachable from the freshly fetched canonical ref, then attempt `workspace_authority.py converge` for the registered user workspace. If convergence reports dirty or otherwise blocked, record the exact workspace path, HEAD, dirty count, and blocker. Do not call that checkout current, and continue from a fresh canonical task worktree.
-- Report integration, build, publication, and serving as separate states. `BUILD_PASSED` or `BUNDLE_BUILT` proves only an artifact for its recorded source SHA and digest; it does not prove that static assets were published or that a service/browser is serving them.
-- Do not claim a UI fix is visible until the actual target URL serves the expected frontend revision and a focused browser check confirms the changed behavior. Do not claim a backend fix is live until the serving process revision and route behavior are verified. If publication or production authorization is unavailable, report the artifact as built and the runtime as unverified.
+- Preserve dirty or separately owned work. Workspace convergence is housekeeping and must not delay integration from a clean canonical checkout.
+- Keep integration, build, publication, and serving claims distinct. Claim a user-visible or runtime fix only after checking the actual target environment. A build alone does not prove deployment.
+- Production release, database mutation, external publication, or other irreversible operations use their existing authorization and safety controls. Those controls do not block ordinary development or code integration.
 
-Every user-directed stop, pause, handoff, or switch to another subtask is an immediate checkpoint trigger for all safe valuable changes already made in that task. Do not wait for the parent task, adjacent tasks, full verification, UAT, or production checks to finish. Run the FAST INTEGRATION GATE, then commit owned paths and integrate them into `origin/main` immediately using the repository's normal authorized path: push to `main` when current repository rules allow it, otherwise push/open a PR. Merge as soon as existing required reviews and checks pass; never bypass protection. If they are pending or fail, leave the PR open with the exact blocker and continue independent work. Preserve dirty work owned by others; do not stage it, overwrite it, reset it, or remove its worktree. Do not force-push. Production actions still require their existing authorization and gates.
+At a checkpoint, stage only task-owned paths, run the fast gate (valid patch, no conflict, no accidental secret), commit, and push/integrate through the path repository rules allow. If branch protection requires a PR, open it without delaying unrelated work and merge when its required conditions pass. Never stage or overwrite another owner's changes, force-push, bypass protection, or perform production actions without their existing authorization.
 
 <!-- ASTRYX:START -->
 Astryx v0.6.3 · 164 components
