@@ -81,6 +81,22 @@ the policy's explicit-path fallback.
 
 ## Outcome Completion
 
+### Autonomous non-production approval across SPECs
+
+- Development, test, and non-production work across every SPEC uses
+  Autonomous Approval by Policy as the default when an existing authority
+  evaluates and authorizes the exact tenant, project, environment, profile,
+  actor, operation, resource scope, budget, and expiry.
+- Do not add a second approval engine or stop for a human checkpoint when an
+  applicable policy authority can issue the durable decision. Use the existing
+  authority and audit record for the action.
+- This default does not grant Cloud/provider IAM, Tenant Owner, Platform or
+  Security Owner permissions. It does not authorize production changes,
+  unbounded costs, trust exceptions, or invented identities, credentials,
+  evidence, approvals, certifications, or grants. If the existing authority
+  cannot authorize the exact action, continue independent engineering and stop
+  only that action at the missing external authority boundary.
+
 Use `skills/orchestra/references/autonomous-completion-contract.md` for recovery and closure. Debug and retry fixable technical failures automatically; continue independent work and keep non-blocking gaps in the existing WorkUnit/Spec HandOff. Stop only the affected path for a real external authority/product decision, critical security or data-safety issue, unauthorized irreversible action, or a required repository check that has not passed. Claim completion only from the required evidence.
 
 ## Orchestra
