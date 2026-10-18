@@ -10,6 +10,7 @@
 WEBHOOK_URL="${ALERT_WEBHOOK_URL:-}"
 CHECK_INTERVAL=300 # ตรวจสอบทุกๆ 5 นาที (300 วินาที)
 PROJECT_NAME="SmartAIHub-Production"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # รายการบริการและ URL ที่ต้องตรวจสอบ
 declare -A SERVICES=(
@@ -64,6 +65,15 @@ EOF
 check_health() {
     echo "--- Starting Health Check: $(date) ---"
     local issues=""
+
+    # The canonical Python health task no longer runs on the retired Celery
+    # transport. Keep the existing host monitor as the recurring telemetry
+    # source and record each sample through the internal metrics endpoint.
+    local telemetry_python="$PROJECT_ROOT/python-backend/.venv/bin/python"
+    if [ ! -x "$telemetry_python" ]; then telemetry_python="python3"; fi
+    if ! "$telemetry_python" "$PROJECT_ROOT/scripts/push_host_telemetry.py"; then
+        echo -e "${YELLOW}[WARN]${NC} Host telemetry push failed."
+    fi
 
     # 1. ตรวจสอบ HTTP Services
     for name in "${!SERVICES[@]}"; do
