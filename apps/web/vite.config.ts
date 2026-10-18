@@ -149,6 +149,8 @@ export default defineConfig(() => {
         ".smartspec.local",
         ".smartspec.pro",
         ".smartaihub.app",
+        "aimarkethubs.com",
+        ".aimarkethubs.com",
         "smartspec-web",
         "tauri.localhost",
       ],
