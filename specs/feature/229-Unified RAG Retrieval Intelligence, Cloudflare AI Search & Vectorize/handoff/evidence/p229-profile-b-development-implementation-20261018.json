@@ -1,0 +1,53 @@
+{
+  "evidence_id": "SPEC229-P229-PROFILE-B-NONPRODUCTION-IMPLEMENTATION-20261018",
+  "workunit": "P229 profile B non-production Vectorize dense collector",
+  "workunit_status": "IMPLEMENTED_AND_FOCUSED_TESTS_PASS_RUNTIME_NOT_RUN",
+  "canonical_sha_at_start": "672bce69ea433dc4ec6cebe41a98c08854dece17",
+  "feature_commit_sha": "4796cd948976658ab84111b27544bd39be83bf2a",
+  "pr_head_sha": "ccce3295fd7ceca0ffc8dfe02a4411a3dfc4ae96",
+  "pr": "https://github.com/naibarn/SmartSpecPro/pull/1097",
+  "p2298_acceptance_status": "NOT_EVALUABLE",
+  "profile_b": {
+    "implementation": "Implemented through the existing Cloudflare Vectorize adapter and Workers AI endpoint with a direct 1024D evaluation-only opt-in.",
+    "production_768d_behavior": "Unchanged; default capability remains 768D and evaluation calls require a dedicated spec229-eval-* index.",
+    "tenant_isolation": "Single synthetic repo-development tenant, tenant namespace/filter, per-run unique type filter, and source identity map; ownership mismatch aborts the run.",
+    "freshness": "Vector IDs bind source path, chunk ID, source revision digest, profile index, and embedding version; each run filters its own records and cleans only IDs written by that run.",
+    "error_behavior": "Transient query provider failures record outage observations. Non-transient config, ownership, cross-tenant, and 1024D contract failures abort without producing a complete run.",
+    "latency": "Per-query latency measures embedding request plus Vectorize query; component timings are included in traces.",
+    "cost": "NOT_EVALUABLE: provider response did not expose billable token usage; no estimate or zero-cost claim is recorded.",
+    "actual_observations": 0,
+    "held_out_release_cohort": false,
+    "release_approved": false
+  },
+  "dataset": {
+    "source": "Existing 560-query development candidate pool validated by the canonical gold-dataset validator.",
+    "source_use": "Repository MIT source policy permits development evaluation only; no tenant production data or third-party source is used.",
+    "human_reviewed": 0,
+    "release_approved": 0,
+    "held_out": 0
+  },
+  "verification": {
+    "focused_tests": {
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/vectorizeContract.test.ts server/services/__tests__/vectorProvider.test.ts server/__tests__/vectorize-embeddings.test.ts server/__tests__/vectorize-search.test.ts server/__tests__/vectorize-indexing.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts",
+      "result": "PASS: 9 files, 75 tests"
+    },
+    "patch_hygiene": "PASS: git diff --check",
+    "profile_runner_guard": "PASS_EXPECTED_FAIL_CLOSED: with disposable mode enabled but no SPEC229_EVAL_VECTORIZE_INDEX, the runner stops before network access.",
+    "report_envelope_smoke": "PASS_FORMAT_ONLY: the existing evaluator accepted an empty run envelope and correctly returned NOT_EVALUABLE; this is not a retrieval observation.",
+    "typecheck": "NOT_RUN: repository local typecheck is restricted by AGENTS.md RAM policy.",
+    "eslint": "NOT_RUN: repository ESLint configuration is unavailable in this workspace; installed CLI reports no configuration file."
+  },
+  "runtime_readiness": {
+    "provider_observations": "NOT_RUN",
+    "required_runtime_inputs": [
+      "SPEC229_EVAL_ACCOUNT_ID",
+      "SPEC229_EVAL_WORKERS_AI_API_KEY",
+      "SPEC229_EVAL_VECTORIZE_API_TOKEN",
+      "SPEC229_EVAL_VECTORIZE_INDEX (pre-created 1024D cosine index with spec229-eval-* name)",
+      "SPEC229_EVAL_DISPOSABLE=1",
+      "SOURCE_SHA and a clean SPEC229_CORPUS_ROOT pinned to that SHA"
+    ],
+    "availability_check": "Cloudflare evaluation variables are unset in the session, no local .dev.vars/.env.local is present, Wrangler CLI is unavailable, repository Actions secret names contain no Cloudflare evaluation credentials, and the only GitHub environment discovered is production (not used). No secret values were read or copied."
+  },
+  "acceptance_boundary": "Profile B code and mocked adapter contracts are implemented and tested. Profile B real-provider observations, cost measurement, held-out release cohort, and P229.8 certification remain unevaluated. This evidence does not claim production verification or SPEC-229 acceptance."
+}

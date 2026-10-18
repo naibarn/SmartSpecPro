@@ -28,14 +28,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
+    "expected_canonical_sha": "672bce69ea433dc4ec6cebe41a98c08854dece17",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Continue with SPEC-ordered profile B non-production implementation after this checkpoint; preserve the 560-row development cohort and current source digests, and do not claim calibration or acceptance.",
-    "next_ready_workunit": "P229_PROFILE_B_NONPRODUCTION_VECTORIZE_DENSE: implement a separate non-production 1024D path without changing the production 768D profile; add adapter/config/integration regression tests, then capture real observations only when authorized provider runtime is configured.",
-    "reactivation_predicate": "Profile B code and tests pass, and an isolated authorized runtime is available for real profile B observations; continue independently with AI Search and composition profiles.",
-    "resume_point": "Canonical base origin/main is 8b224d657454dcf9e4978296cc379b1a33b94c70. Latest implementation checkpoint 90855c990555e13c8c5f49b4ad21d39d8b8ae5f1 on codex/spec229-executable-eval includes source-bound dataset revision updates and exact-SHA current cohort validation. P229.8 remains NOT_EVALUABLE; the 560 queries are development-only and not held out.",
+    "next_action": "After PR #1097 passes required gates and merges, continue with the missing AI Search BM25 comparison profile C through the existing RetrievalBroker/provider boundaries. Profile B runtime observations remain pending dedicated non-production credentials and an isolated 1024D cosine index; do not claim P229.8 certification.",
+    "next_ready_workunit": "P229_PROFILE_C_AI_SEARCH_BM25: inventory and implement the missing Cloudflare AI Search BM25 profile adapter and reproducible benchmark execution using existing broker contracts; add provider contract/integration tests and capture real observations only when authorized development runtime credentials exist.",
+    "reactivation_predicate": "Profile B real observations may run only when SPEC229_EVAL_ACCOUNT_ID, SPEC229_EVAL_WORKERS_AI_API_KEY, SPEC229_EVAL_VECTORIZE_API_TOKEN, a pre-created spec229-eval-* 1024D cosine index, and a clean pinned corpus worktree are available through non-production secret injection. Continue Profile C independently.",
+    "resume_point": "Canonical origin/main is 672bce69ea433dc4ec6cebe41a98c08854dece17 and includes PR #1089 merge 355c014ed73d565311bd3d85c691067946dae562. Profile B implementation is on codex/spec229-profile-b-nonproduction at PR head ccce3295fd7ceca0ffc8dfe02a4411a3dfc4ae96 (implementation commit 4796cd948976658ab84111b27544bd39be83bf2a); focused tests passed 9 files/75 tests. No Cloudflare evaluation credentials or isolated index are available, so actual B observations/cost are not collected. P229.8 and release criteria remain NOT_EVALUABLE.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -53,7 +53,7 @@
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
-    "next_action": "Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.",
+    "next_action": "Continue with Profile C AI Search BM25 implementation through the current provider/broker boundary; Profile B code is tested, while provider observations remain unevaluated until the dedicated non-production runtime is available.",
     "rationale": "The owner explicitly directed autonomous implementation and evidence collection. Local profile A is now executable; remaining profiles and held-out release evaluation remain open.",
     "residual_requirements": [
       "Implement and execute §27 comparison profiles B–H in non-production.",
@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 73,
+  "generation": 74,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -129,7 +129,8 @@
       "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
       "41faa3a5f",
       "90855c990555e13c8c5f49b4ad21d39d8b8ae5f1",
-      "5085625d411ccc8a78b1d5b5b18a6bd81a3a4ce1"
+      "5085625d411ccc8a78b1d5b5b18a6bd81a3a4ce1",
+      "355c014ed73d565311bd3d85c691067946dae562"
     ],
     "mapping": [],
     "source_paths": [
@@ -153,21 +154,29 @@
       "handoff/evidence/p229-8-calibration-readiness-postmerge-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-anchors-benchmark-20261017.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-gold-pipeline-20261017.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-benchmark-postmerge-20261018.json",
+      "apps/web/scripts/run-spec229-vectorize-profile-b.ts",
+      "apps/web/server/services/vectorize.ts",
+      "apps/web/server/services/vectorizeContract.ts",
+      "apps/web/server/services/vectorProvider.ts",
+      "apps/web/server/services/__tests__/vectorizeContract.test.ts",
+      "apps/web/server/services/__tests__/vectorProvider.test.ts",
+      "apps/web/server/__tests__/vectorize-embeddings.test.ts",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-profile-b-development-implementation-20261018.json"
     ],
     "started": true,
     "status": "IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
+    "canonical_sha": "672bce69ea433dc4ec6cebe41a98c08854dece17",
     "integrated": true,
-    "integrated_at": "2026-10-17T22:34:33Z",
-    "intended_pr": "https://github.com/naibarn/SmartSpecPro/pull/1089; merge only after required checks and current-head verification pass.",
-    "pending_pr": 1089,
-    "pending_source_branch": "codex/spec229-executable-eval",
-    "pending_source_sha": "5085625d411ccc8a78b1d5b5b18a6bd81a3a4ce1",
-    "pending_workunit": "P229.8 executable local baseline, candidate source revalidation, and versioned non-production source-use policy"
+    "integrated_at": "2026-10-18T04:01:51Z",
+    "intended_pr": "PR #1089 merged at 355c014ed73d565311bd3d85c691067946dae562; PR #1097 (https://github.com/naibarn/SmartSpecPro/pull/1097) is the pending Profile B implementation integration.",
+    "pending_pr": 1097,
+    "pending_source_branch": "codex/spec229-profile-b-nonproduction",
+    "pending_source_sha": "ccce3295fd7ceca0ffc8dfe02a4411a3dfc4ae96",
+    "pending_workunit": "P229_PROFILE_B_NONPRODUCTION_VECTORIZE_DENSE: isolated 1024D BGE-M3 adapter path, reproducible development collector, profile provenance, and regression tests; provider observations remain unrun."
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -213,7 +222,7 @@
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
         }
       ],
-      "next_action": "Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.",
+      "next_action": "Continue with Profile C AI Search BM25 implementation through the current provider/broker boundary; Profile B code is tested, while provider observations remain unevaluated until the dedicated non-production runtime is available.",
       "rationale": "The owner explicitly directed autonomous implementation and evidence collection. Local profile A is now executable; remaining profiles and held-out release evaluation remain open.",
       "residual_requirements": [
         "Implement and execute §27 comparison profiles B–H in non-production.",
@@ -381,7 +390,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T00:28:54.341129Z",
+  "updated_at": "2026-10-18T04:15:07.809793Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
