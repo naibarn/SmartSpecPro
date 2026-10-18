@@ -39,7 +39,7 @@ describe("i18n/languageDetector", () => {
     expect(languageDetector.detect()).toBe("en");
   });
 
-  it("ignores invalid localStorage values and falls back to navigator", () => {
+  it("ignores invalid localStorage values and defaults to English", () => {
     localStorageMock.getItem.mockReturnValueOnce("invalid-lang");
     // Mock navigator.language to return a known fallback
     vi.stubGlobal("navigator", { language: "en-US" });
@@ -64,27 +64,33 @@ describe("i18n/languageDetector", () => {
     expect(result).toBe("en");
   });
 
-  it("maps navigator.language 'th-TH' to 'th'", () => {
+  it("defaults to English for a Thai browser without a saved preference", () => {
     localStorageMock.getItem.mockReturnValueOnce(null);
     vi.stubGlobal("navigator", { language: "th-TH" });
-    expect(languageDetector.detect()).toBe("th");
+    expect(languageDetector.detect()).toBe("en");
   });
 
-  it("maps navigator.language 'zh' to 'zh-Hans'", () => {
+  it("defaults to English for a Chinese browser without a saved preference", () => {
     localStorageMock.getItem.mockReturnValueOnce(null);
     vi.stubGlobal("navigator", { language: "zh" });
-    expect(languageDetector.detect()).toBe("zh-Hans");
+    expect(languageDetector.detect()).toBe("en");
   });
 
-  it("maps navigator.language 'pt-BR' to 'pt-BR'", () => {
+  it("defaults to English for a Portuguese browser without a saved preference", () => {
     localStorageMock.getItem.mockReturnValueOnce(null);
     vi.stubGlobal("navigator", { language: "pt-BR" });
-    expect(languageDetector.detect()).toBe("pt-BR");
+    expect(languageDetector.detect()).toBe("en");
   });
 
   it("falls back to 'en' when navigator.language is unsupported", () => {
     localStorageMock.getItem.mockReturnValueOnce(null);
     vi.stubGlobal("navigator", { language: "xx-XX" });
+    expect(languageDetector.detect()).toBe("en");
+  });
+
+  it("defaults to English when storage is unavailable", () => {
+    localStorageMock.getItem.mockImplementationOnce(() => { throw new Error("Storage denied"); });
+    vi.stubGlobal("navigator", { language: "th-TH" });
     expect(languageDetector.detect()).toBe("en");
   });
 

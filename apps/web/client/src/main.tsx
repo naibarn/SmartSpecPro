@@ -31,6 +31,7 @@ import "@astryxdesign/core/astryx.css";
 import "@astryxdesign/theme-neutral/theme.css";
 import "./index.css";
 import { i18nReady } from "@/i18n";
+import { removePrerenderedSeoHeadMetadata } from "@/components/Seo";
 
 const SMARTAIHUB_CLIENT_BUILD_ID = "storyboard-review-duration-hotfix-20260627-2";
 
@@ -621,6 +622,7 @@ const trpcClient = trpc.createClient({
 i18nReady.then(() => {
   const rootEl = document.getElementById("root");
   if (!rootEl) return;
+  removePrerenderedSeoHeadMetadata();
   createRoot(rootEl).render(
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>

@@ -25,6 +25,8 @@ const result = {
   scope: "PUBLIC_DEV_TUNNEL",
   url: url.origin,
   coldLoads: [],
+  spaTransitions: [],
+  testedAt: new Date().toISOString(),
   dns: "system",
 };
 const args = [];
@@ -42,9 +44,10 @@ try {
 }
 const browser = await chromium.launch({ headless: true, args });
 const contexts = [];
-const open = async () => {
+const open = async (options = {}) => {
   const context = await browser.newContext({
-    viewport: { width: 1600, height: 1100 },
+    viewport: { width: 1187, height: 996 },
+    ...options,
   });
   contexts.push(context);
   return { context, page: await context.newPage() };
@@ -74,6 +77,54 @@ try {
       await page.screenshot({
         path: `${evidence}/public-login-first-load.png`,
       });
+    await context.close();
+  }
+  // The regression needs a mounted Home SEO tree and a client-side route
+  // change. Direct /login cold loads alone cannot exercise its unmount.
+  for (const scenario of [
+    { locale: "en-US", savedLanguage: null, expectedLanguage: "en" },
+    { locale: "th-TH", savedLanguage: null, expectedLanguage: "en" },
+    { locale: "th-TH", savedLanguage: "th", expectedLanguage: "th" },
+  ]) {
+    const { context, page } = await open({ locale: scenario.locale });
+    if (scenario.savedLanguage) {
+      await context.addInitScript(language => {
+        localStorage.setItem("smartspec_locale", language);
+      }, scenario.savedLanguage);
+    }
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(url.origin, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.waitForFunction(() => !!document.head.querySelector('link[rel="canonical"]'));
+    await page.waitForTimeout(2000);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await page.evaluate(() => {
+        history.pushState(null, "", "/login");
+        dispatchEvent(new PopStateEvent("popstate"));
+      });
+      await page.locator('input[type="email"]').waitFor({ state: "visible", timeout: 15000 });
+      await page.locator('input[type="email"]').fill("navigation-check@example.invalid");
+      await page.waitForTimeout(500);
+      const language = await page.locator("html").getAttribute("lang");
+      if (language !== scenario.expectedLanguage)
+        throw new Error(`Unexpected language ${language} for ${scenario.locale}`);
+      if (attempt === 0) {
+        await page.screenshot({ path: `${evidence}/spa-login-${scenario.locale}-${scenario.savedLanguage || "default"}.png` });
+      }
+      await page.goBack();
+      await page.waitForFunction(() => location.pathname === "/");
+      await page.waitForTimeout(500);
+      await page.goForward();
+      await page.locator('input[type="email"]').waitFor({ state: "visible", timeout: 15000 });
+      if (attempt < 2) {
+        await page.goBack();
+        await page.waitForFunction(() => location.pathname === "/");
+        await page.waitForTimeout(500);
+      }
+    }
+    result.spaTransitions.push({ ...scenario, attempts: 3, backForward: true, formVisible: true, errors });
+    if (errors.length) throw new Error(`SPA navigation errors: ${errors.join("; ")}`);
+    console.log(`[dev:web:verify] Home → Login + back/forward: ${scenario.locale}, ${scenario.savedLanguage || "English default"} PASS`);
     await context.close();
   }
   const { page, context } = await open();
@@ -149,6 +200,8 @@ try {
   }, guard);
   result.passed =
     result.coldLoads.every(row => row.status === 200 && !row.errors.length) &&
+    result.spaTransitions.length === 3 &&
+    result.spaTransitions.every(row => !row.errors.length && row.formVisible) &&
     [401, 403].includes(result.anonymousStatus) &&
     result.collectStatus === 200 &&
     !!result.diagnostics &&

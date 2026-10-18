@@ -46,11 +46,11 @@ type RemoteSeoResponse = {
   relatedLinks?: Array<{ href: string; label: string; description: string }>;
 };
 
-/** Remove head metadata injected for no-JS crawlers once the route owns Helmet. */
+/** Bootstrap only: remove static crawler metadata before React can adopt it. */
 export function removePrerenderedSeoHeadMetadata(): void {
   document.head
     .querySelectorAll(
-      'link[rel="canonical"][data-seo-prerender="true"], meta[property="og:url"][data-seo-prerender="true"], meta[name="description"][data-seo-prerender="true"]',
+      '[data-seo-prerender="true"], title[data-rh="true"], meta[data-rh="true"], link[data-rh="true"]',
     )
     .forEach((element) => element.remove());
 
@@ -60,7 +60,8 @@ export function removePrerenderedSeoHeadMetadata(): void {
 }
 
 function keepOneHeadValue(selector: string, attribute: string, value: string): void {
-  const elements = Array.from(document.head.querySelectorAll<HTMLElement>(selector));
+  const elements = Array.from(document.head.querySelectorAll<HTMLElement>(selector))
+    .filter(isStaticSeoMetadata);
   const keeper = elements.find((element) => element.getAttribute(attribute) === value)
     || elements[elements.length - 1];
 
@@ -73,7 +74,12 @@ function keepOneHeadValue(selector: string, attribute: string, value: string): v
   });
 }
 
-/** Make the active route's Helmet values authoritative over stale static head tags. */
+function isStaticSeoMetadata(element: Element): boolean {
+  return element.getAttribute("data-rh") === "true" ||
+    element.getAttribute("data-seo-prerender") === "true";
+}
+
+/** Legacy bootstrap normalization; never deduplicate React-owned route nodes. */
 export function reconcileActiveSeoHeadMetadata({
   title,
   description,
@@ -89,11 +95,11 @@ export function reconcileActiveSeoHeadMetadata({
 }): void {
   if (typeof document === "undefined") return;
 
-  const titleElements = Array.from(document.head.querySelectorAll("title"));
+  const titleElements = Array.from(document.head.querySelectorAll("title"))
+    .filter(isStaticSeoMetadata);
   const matchingTitle = titleElements.find((element) => element.textContent === title);
-  const titleElement = matchingTitle || titleElements[titleElements.length - 1] || document.createElement("title");
-  titleElement.textContent = title;
-  if (!titleElement.parentElement) document.head.append(titleElement);
+  const titleElement = matchingTitle || titleElements[titleElements.length - 1];
+  if (titleElement) titleElement.textContent = title;
   titleElements.forEach((element) => {
     if (element !== titleElement) element.remove();
   });
@@ -110,7 +116,8 @@ export function reconcileActiveSeoHeadMetadata({
   if (keywords.length > 0) {
     keepOneHeadValue('meta[name="keywords"]', "content", keywords.join(", "));
   } else {
-    document.head.querySelectorAll('meta[name="keywords"]').forEach((element) => element.remove());
+    Array.from(document.head.querySelectorAll('meta[name="keywords"]'))
+      .filter(isStaticSeoMetadata).forEach((element) => element.remove());
   }
 }
 
@@ -258,17 +265,6 @@ export function Seo({
       ].filter(Boolean),
     };
   }, [canonicalUrl, description, image, keywords, jsonLd, remoteSeo, resolvedPath, tenant?.name, tenant?.seo, title, useTenantDefaults]);
-
-  useEffect(() => {
-    removePrerenderedSeoHeadMetadata();
-    reconcileActiveSeoHeadMetadata({
-      title: merged.title,
-      description: merged.description,
-      canonicalUrl: merged.canonicalUrl,
-      noIndex,
-      keywords: merged.keywords,
-    });
-  }, [merged, noIndex]);
 
   return (
     <Helmet>

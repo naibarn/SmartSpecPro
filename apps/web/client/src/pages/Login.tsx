@@ -23,6 +23,7 @@ import {
   setUser as setDesktopAuthUser,
   signInDesktopWithBrowser,
 } from '@/services/authService';
+import { Seo } from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -559,6 +560,14 @@ export default function Login() {
       translate="no"
       className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex"
     >
+      <Seo
+        title="Sign in | SmartAIHub"
+        description="Sign in to your SmartAIHub account."
+        canonicalPath="/login"
+        noIndex
+        fetchTenantSeo={false}
+        useTenantDefaults={false}
+      />
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Background Pattern */}

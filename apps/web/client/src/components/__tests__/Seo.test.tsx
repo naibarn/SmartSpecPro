@@ -114,6 +114,8 @@ describe("Seo", () => {
       <meta data-seo-prerender="true" property="og:url" content="https://smartaihub.app/features" />
     `;
 
+    removePrerenderedSeoHeadMetadata();
+
     const view = render(
       <HelmetProvider>
         <Seo
@@ -161,6 +163,26 @@ describe("Seo", () => {
       expect(document.head.querySelector('link[rel="canonical"]')?.getAttribute("href"))
         .toBe("https://smartaihub.app/blog");
     });
+  });
+
+  it("leaves React-owned head nodes intact until React unmounts the route", async () => {
+    const view = render(
+      <HelmetProvider>
+        <Seo title="Home" description="Home" canonicalPath="/" fetchTenantSeo={false} />
+      </HelmetProvider>
+    );
+    await waitFor(() => expect(document.title).toBe("Home"));
+    // React 19 may hoist equal metadata from overlapping route instances.
+    // Deduplicating those nodes imperatively corrupts its unmount ownership.
+    view.rerender(
+      <HelmetProvider>
+        <Seo title="Home" description="Home" canonicalPath="/" fetchTenantSeo={false} />
+        <Seo title="Home" description="Home" canonicalPath="/" fetchTenantSeo={false} />
+      </HelmetProvider>
+    );
+    await waitFor(() => expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(2));
+    expect(() => view.rerender(<HelmetProvider><p>Login form</p></HelmetProvider>)).not.toThrow();
+    expect(view.getByText("Login form")).toBeTruthy();
   });
 
   it("can keep tenant defaults and unapproved social imagery off a public page", async () => {
