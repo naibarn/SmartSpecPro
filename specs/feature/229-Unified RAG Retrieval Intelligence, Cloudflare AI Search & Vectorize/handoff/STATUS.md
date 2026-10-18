@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Generate only development cases whose expected facts are supported by screened fixtures (UUID, synthetic OCR receipt, long context). Do not use unrelated ACL/session/SPEC-224 test behavior as P229 evidence. Add modeled synthetic controls for no-answer, follow-up, multi-hop, and P229-specific ACL/lifecycle gates, then independently review and validate them.
-- Manifest generation: 135
+- Next action: Implement a minimal deterministic development-cohort builder using allowed repository fixtures and synthetic controls; have independent reviewer and adjudicator validate actual query/evidence pairs, no leakage, and source permissions. No release-approved cohort can be claimed until the complete review contract and untouched split criteria are satisfied.
+- Manifest generation: 136
 
 ## Source-declared status and relationship claims
 
