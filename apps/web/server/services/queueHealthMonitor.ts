@@ -4,6 +4,7 @@
  */
 
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
 import { getDb } from "../db";
 import { workerHeartbeats, workerJobs } from "../../drizzle/schema";
 
@@ -11,6 +12,28 @@ const MONITOR_INTERVAL_MS = 60_000;
 const BACKLOG_WARNING_THRESHOLD = 100;
 const BACKLOG_CRITICAL_THRESHOLD = 1_000;
 const LIVE_HEARTBEAT_WINDOW_MS = 120_000;
+const DEFAULT_NODE_WORKER_HEARTBEAT_FILE = "/home/dev/projects/SmartSpecPro/logs/smartspec-node-worker.heartbeat";
+
+export function isFreshNodeWorkerHeartbeat(content: string, now = Date.now()): boolean {
+  const [timestamp, phase, pid] = content.trim().split("\t");
+  const heartbeatAt = Number(timestamp);
+  return Number.isFinite(heartbeatAt)
+    && heartbeatAt > 0
+    && now - heartbeatAt >= 0
+    && now - heartbeatAt <= LIVE_HEARTBEAT_WINDOW_MS
+    && (phase === "starting" || phase === "alive")
+    && Number.isInteger(Number(pid))
+    && Number(pid) > 0;
+}
+
+async function hasLiveNodeWorkerHeartbeat(): Promise<boolean> {
+  try {
+    const path = process.env.FEATURE_186_NODE_WORKER_HEARTBEAT_FILE ?? DEFAULT_NODE_WORKER_HEARTBEAT_FILE;
+    return isFreshNodeWorkerHeartbeat(await readFile(path, "utf8"));
+  } catch {
+    return false;
+  }
+}
 
 export interface QueueHealthStatus {
   healthy: boolean;
@@ -70,6 +93,11 @@ async function refreshWorkerJobHealth(): Promise<void> {
   }
   const workersByRuntime = new Map<string, number>();
   for (const worker of workerSummary) workersByRuntime.set(worker.runtimeType, Number(worker.count));
+  // The canonical node worker currently publishes its liveness to this file;
+  // do not classify its queued jobs as consumerless when that heartbeat is fresh.
+  if ((workersByRuntime.get("node_job_worker") ?? 0) === 0 && await hasLiveNodeWorkerHeartbeat()) {
+    workersByRuntime.set("node_job_worker", 1);
+  }
   const backlogByRuntime = new Map<string, number>();
   for (const [runtimeType, counts] of countsByRuntime) {
     backlogByRuntime.set(runtimeType, (counts.get("queued") ?? 0) + (counts.get("retry_scheduled") ?? 0));
