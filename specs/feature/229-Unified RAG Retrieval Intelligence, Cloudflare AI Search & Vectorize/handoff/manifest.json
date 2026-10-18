@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 83,
+  "generation": 84,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -199,10 +199,10 @@
     "canonical_sha": "0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b",
     "integrated": true,
     "integrated_at": "2026-10-18T04:56:31Z",
-    "intended_pr": "PR #1100 merged at 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.4 projection lifecycle checkpoint is being prepared on codex/spec229-p2294-projection-main.",
-    "pending_pr": null,
+    "intended_pr": "PR #1100 merged at 0cd8fffe159f5f0b6d7caf5ca05f9810c3c5b79b. P229.4 additive projection/indexing/provider checkpoint is PR #1101: https://github.com/naibarn/SmartSpecPro/pull/1101.",
+    "pending_pr": 1101,
     "pending_source_branch": "codex/spec229-p2294-projection-main",
-    "pending_source_sha": "f5caedbc43e1b6def11db6a4cb07cba4b5042645",
+    "pending_source_sha": "83a7b3d13ef8717380e8f1f7a32b5761cdb81752",
     "pending_workunit": "P229.4_RAG_PROJECTION_AND_ACL_PROJECTIONS: additive projection lifecycle/indexer and provider contract. Library ingestion/ACL cleanup/Broker binding and live provider execution remain for follow-on."
   },
   "lifecycle": {
@@ -417,7 +417,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T05:05:16.764807Z",
+  "updated_at": "2026-10-18T05:05:53.168971Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
