@@ -88,6 +88,161 @@ class Spec224RecoveryGrantIssue(BaseModel):
     scope: dict
 
 
+class Spec224DevelopmentPolicyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=255)
+    definition: dict
+
+
+class Spec224DevelopmentResourceScope(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: StrictStr = Field(..., min_length=1, max_length=80)
+    id: StrictStr = Field(..., min_length=1, max_length=255)
+
+
+class Spec224DevelopmentPolicyDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
+    policy_id: StrictStr | None = Field(default=None, alias="policyId", min_length=1, max_length=36)
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=255)
+    environment: StrictStr = Field(..., min_length=1, max_length=64)
+    profile_id: StrictStr = Field(..., alias="profileId", min_length=1, max_length=255)
+    operation: StrictStr = Field(..., min_length=1, max_length=255)
+    run_id: StrictStr = Field(..., alias="runId", min_length=1, max_length=255)
+    provider: Literal["codex"]
+    execution_id: StrictStr = Field(..., alias="executionId", min_length=1, max_length=255)
+    attempt_id: StrictStr = Field(..., alias="attemptId", min_length=1, max_length=255)
+    workspace_id: StrictStr = Field(..., alias="workspaceId", min_length=1, max_length=255)
+    authorization_grant_ref: StrictStr = Field(..., alias="authorizationGrantRef", min_length=1, max_length=255)
+    runner_id: StrictStr = Field(..., alias="runnerId", min_length=1, max_length=255)
+    runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
+    capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
+    capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+    resource_scopes: list[Spec224DevelopmentResourceScope] = Field(..., alias="resourceScopes", min_length=1, max_length=32)
+    budget_minor_units: StrictInt = Field(..., alias="budgetMinorUnits", ge=0)
+    currency: StrictStr = Field(..., min_length=3, max_length=3)
+    expires_at: datetime = Field(..., alias="expiresAt")
+
+
+@router.post("/spec224/development-policies")
+async def create_spec224_development_policy(
+    request: Spec224DevelopmentPolicyCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create an immutable bounded policy under the authenticated tenant owner."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    try:
+        rule = await ApprovalDBService(db).create_spec224_development_policy(
+            tenant_id=tenant_id,
+            project_id=request.project_id,
+            actor_id=int(current_user.id),
+            definition=request.definition,
+        )
+        return {
+            "policyId": rule.id,
+            "tenantId": rule.tenant_id,
+            "projectId": rule.project_id,
+            "schemaVersion": rule.conditions["schemaVersion"],
+            "definition": rule.conditions["definition"],
+            "active": rule.is_active,
+            "createdAt": rule.created_at,
+        }
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/internal/spec224/development-policy-decisions")
+async def decide_spec224_development_policy(
+    request: Spec224DevelopmentPolicyDecisionRequest,
+    current_user: User = Depends(get_current_user),
+    current_tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create a policy-backed ApprovalRequest for the authenticated actor and exact scope."""
+    if not current_tenant_id or request.tenant_id != current_tenant_id:
+        raise HTTPException(status_code=403, detail="SPEC224_POLICY_TENANT_CONTEXT_MISMATCH")
+    tenant_id = request.tenant_id
+    scope_request = {
+        "tenantId": tenant_id,
+        "projectId": request.project_id,
+        "environment": request.environment,
+        "profileId": request.profile_id,
+        "operation": request.operation,
+        "runId": request.run_id,
+        "provider": request.provider,
+        "executionId": request.execution_id,
+        "attemptId": request.attempt_id,
+        "workspaceId": request.workspace_id,
+        "authorizationGrantRef": request.authorization_grant_ref,
+        "runnerId": request.runner_id,
+        "runnerSessionId": request.runner_session_id,
+        "capabilitySnapshotId": request.capability_snapshot_id,
+        "capabilitySnapshotRevision": request.capability_snapshot_revision,
+        "resourceScopes": [scope.model_dump() for scope in request.resource_scopes],
+        "budgetMinorUnits": request.budget_minor_units,
+        "currency": request.currency.upper(),
+        "expiresAt": request.expires_at.isoformat(),
+    }
+    try:
+        approval = await ApprovalDBService(db).decide_spec224_development_policy(
+            policy_id=request.policy_id,
+            tenant_id=tenant_id,
+            project_id=request.project_id,
+            actor_id=int(current_user.id),
+            idempotency_key=request.idempotency_key,
+            request=scope_request,
+        )
+        decision = (approval.extra_data or {}).get("spec224DevelopmentPolicyDecisionV1", {})
+        return {
+            "approvalRequestId": approval.id,
+            "status": approval.status.value,
+            "decision": decision,
+            "tenantId": approval.tenant_id,
+            "projectId": approval.project_id,
+            "executionId": approval.execution_id,
+            "requesterId": approval.requester_id,
+            "expiresAt": approval.expires_at,
+            "payload": approval.payload,
+        }
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = 409 if "IDEMPOTENCY" in str(exc) else 422
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+
+@router.post("/spec224/development-policies/{policy_id}/revoke")
+async def revoke_spec224_development_policy(
+    policy_id: str,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Revoke a tenant-owned policy; repeated revocation is idempotent."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    try:
+        rule = await ApprovalDBService(db).revoke_spec224_development_policy(
+            policy_id=policy_id,
+            tenant_id=tenant_id,
+            actor_id=int(current_user.id),
+        )
+        return {"policyId": rule.id, "active": rule.is_active}
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc).endswith("NOT_FOUND") else 422, detail=str(exc)) from exc
+
+
 class CloudflareStagingGrantIssue(BaseModel):
     """Admin request for one exact, versioned staging deployment grant."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

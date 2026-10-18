@@ -18,14 +18,20 @@ from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.approval import (
+    ApprovalRule,
     ApprovalRequest,
     ApprovalResponse,
     ApprovalStatus,
     ApprovalType,
 )
 from app.models.audit_log import AuditLog
-from app.models.tenant import Tenant
+from app.models.tenant import Tenant, TenantUser
 from app.models.user import Role, User
+from app.services.spec224_development_policy import (
+    SPEC224_DEVELOPMENT_POLICY_SCHEMA,
+    evaluate_development_policy,
+    validate_policy_definition,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -343,6 +349,277 @@ class ApprovalDBService:
         """
         self.db = db_session
         self._logger = logger.bind(service="approval_db")
+
+    async def _require_spec224_policy_owner(self, tenant_id: str, actor_id: int) -> Tenant:
+        tenant_result = await self.db.execute(
+            select(Tenant).where(Tenant.id == tenant_id).with_for_update()
+        )
+        tenant = tenant_result.scalar_one_or_none()
+        if tenant is None:
+            raise ValueError("SPEC224_POLICY_TENANT_NOT_FOUND")
+        if tenant.owner_id != actor_id:
+            raise PermissionError("SPEC224_POLICY_TENANT_OWNER_REQUIRED")
+        return tenant
+
+    async def create_spec224_development_policy(
+        self, *, tenant_id: str, project_id: str, actor_id: int, definition: dict,
+    ) -> ApprovalRule:
+        if not tenant_id or not project_id or len(project_id) > 255:
+            raise ValueError("SPEC224_POLICY_SCOPE_INVALID")
+        await self._require_spec224_policy_owner(tenant_id, actor_id)
+        policy = validate_policy_definition(definition)
+        try:
+            expires_at = datetime.fromisoformat(policy["expiresAt"].replace("Z", "+00:00"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("SPEC224_POLICY_EXPIRY_INVALID") from exc
+        now = datetime.now(timezone.utc)
+        if expires_at.tzinfo is None or expires_at <= now or expires_at > now + timedelta(days=30):
+            raise ValueError("SPEC224_POLICY_EXPIRY_OUT_OF_RANGE")
+        policy_id = str(uuid4())
+        rule = ApprovalRule(
+            id=policy_id,
+            name=f"SPEC-224 non-production policy {project_id[:60]}",
+            description="Owner-authored bounded SPEC-224 development approval policy.",
+            tenant_id=tenant_id,
+            project_id=project_id,
+            trigger_type=ApprovalType.CODE_EXECUTION,
+            conditions={
+                "schemaVersion": SPEC224_DEVELOPMENT_POLICY_SCHEMA,
+                "ownerUserId": actor_id,
+                "definition": policy,
+            },
+            approver_roles=[],
+            approver_users=[],
+            required_approvals=0,
+            timeout_minutes=max(5, min(1440, int((expires_at - now).total_seconds() // 60))),
+            timeout_action="reject",
+            auto_approve_conditions={},
+            priority=0,
+            is_active=True,
+        )
+        self.db.add(rule)
+        self.db.add(AuditLog(
+            user_id=str(actor_id),
+            user_role="tenant_owner",
+            action="spec224.development_policy.created",
+            resource_type="spec224_development_policy",
+            resource_id=policy_id,
+            details={"tenantId": tenant_id, "projectId": project_id, "schemaVersion": SPEC224_DEVELOPMENT_POLICY_SCHEMA},
+        ))
+        await self.db.commit()
+        await self.db.refresh(rule)
+        return rule
+
+    async def revoke_spec224_development_policy(
+        self, *, policy_id: str, tenant_id: str, actor_id: int,
+    ) -> ApprovalRule:
+        await self._require_spec224_policy_owner(tenant_id, actor_id)
+        result = await self.db.execute(
+            select(ApprovalRule).where(
+                ApprovalRule.id == policy_id,
+                ApprovalRule.tenant_id == tenant_id,
+                ApprovalRule.trigger_type == ApprovalType.CODE_EXECUTION,
+            ).with_for_update()
+        )
+        rule = result.scalar_one_or_none()
+        if rule is None or not isinstance(rule.conditions, dict) or rule.conditions.get("schemaVersion") != SPEC224_DEVELOPMENT_POLICY_SCHEMA:
+            raise ValueError("SPEC224_POLICY_NOT_FOUND")
+        if rule.is_active:
+            rule.is_active = False
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            approval_result = await self.db.execute(
+                select(ApprovalRequest).where(
+                    ApprovalRequest.tenant_id == tenant_id,
+                    ApprovalRequest.project_id == rule.project_id,
+                    ApprovalRequest.status == ApprovalStatus.APPROVED,
+                    ApprovalRequest.expires_at > now,
+                    ApprovalRequest.correlation_key.like(f"spec224-policy:{policy_id}:%"),
+                ).with_for_update()
+            )
+            revoked_approvals = list(approval_result.scalars().all())
+            for approval in revoked_approvals:
+                approval.status = ApprovalStatus.CANCELLED
+                approval.revoked_at = now
+                approval.resolved_at = now
+            self.db.add(AuditLog(
+                user_id=str(actor_id),
+                user_role="tenant_owner",
+                action="spec224.development_policy.revoked",
+                resource_type="spec224_development_policy",
+                resource_id=policy_id,
+                details={
+                    "tenantId": tenant_id,
+                    "projectId": rule.project_id,
+                    "revokedApprovalCount": len(revoked_approvals),
+                },
+            ))
+            await self.db.commit()
+            await self.db.refresh(rule)
+        else:
+            await self.db.rollback()
+        return rule
+
+    async def decide_spec224_development_policy(
+        self, *,
+        policy_id: str | None,
+        tenant_id: str,
+        project_id: str,
+        actor_id: int,
+        idempotency_key: str,
+        request: dict,
+        now: datetime | None = None,
+    ) -> ApprovalRequest:
+        if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 160:
+            raise ValueError("SPEC224_POLICY_IDEMPOTENCY_KEY_INVALID")
+        query = select(ApprovalRule).where(
+            ApprovalRule.tenant_id == tenant_id,
+            ApprovalRule.project_id == project_id,
+            ApprovalRule.trigger_type == ApprovalType.CODE_EXECUTION,
+            ApprovalRule.is_active.is_(True),
+        )
+        if policy_id:
+            query = query.where(ApprovalRule.id == policy_id)
+        result = await self.db.execute(query)
+        candidates = [
+            row for row in result.scalars().all()
+            if isinstance(row.conditions, dict)
+            and row.conditions.get("schemaVersion") == SPEC224_DEVELOPMENT_POLICY_SCHEMA
+        ]
+        if not candidates:
+            raise ValueError("SPEC224_POLICY_NOT_ACTIVE")
+        if len(candidates) != 1:
+            raise ValueError("SPEC224_POLICY_AMBIGUOUS")
+        rule = candidates[0]
+        tenant_owner_user_id = int(rule.conditions.get("ownerUserId") or 0)
+        tenant = await self._require_spec224_policy_owner(tenant_id, tenant_owner_user_id)
+        actor_result = await self.db.execute(
+            select(User.id).where(
+                User.id == actor_id,
+                User.isDisabled.is_(False),
+                User.is_banned.is_(False),
+            )
+        )
+        if actor_result.scalar_one_or_none() is None:
+            raise PermissionError("SPEC224_POLICY_ACTOR_NOT_AUTHENTICATED")
+        member_result = await self.db.execute(
+            select(TenantUser.id).where(
+                TenantUser.tenant_id == tenant_id,
+                TenantUser.user_id == actor_id,
+                TenantUser.is_active.is_(True),
+            )
+        )
+        if actor_id != tenant.owner_id and member_result.scalar_one_or_none() is None:
+            raise PermissionError("SPEC224_POLICY_ACTOR_TENANT_MEMBERSHIP_REQUIRED")
+        result = await self.db.execute(
+            select(ApprovalRule).where(
+                ApprovalRule.id == rule.id,
+                ApprovalRule.tenant_id == tenant_id,
+                ApprovalRule.project_id == project_id,
+                ApprovalRule.trigger_type == ApprovalType.CODE_EXECUTION,
+                ApprovalRule.is_active.is_(True),
+            ).with_for_update()
+        )
+        rule = result.scalar_one_or_none()
+        if rule is None or not isinstance(rule.conditions, dict):
+            raise ValueError("SPEC224_POLICY_NOT_ACTIVE")
+        if rule.conditions.get("schemaVersion") != SPEC224_DEVELOPMENT_POLICY_SCHEMA:
+            raise ValueError("SPEC224_POLICY_SCHEMA_INVALID")
+        if int(rule.conditions.get("ownerUserId") or 0) != tenant_owner_user_id:
+            raise ValueError("SPEC224_POLICY_OWNER_BINDING_INVALID")
+        policy = rule.conditions.get("definition")
+        if not isinstance(policy, dict):
+            raise ValueError("SPEC224_POLICY_DEFINITION_INVALID")
+        decision = evaluate_development_policy(
+            policy=policy,
+            policy_id=rule.id,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            actor_id=actor_id,
+            request=request,
+            now=now,
+        )
+        if decision.get("decision") != "APPROVE":
+            raise PermissionError(str(decision.get("reason", "SPEC224_POLICY_DENIED")))
+
+        canonical_request = {
+            **request,
+            "tenantId": tenant_id,
+            "projectId": project_id,
+            "actorId": actor_id,
+            "policyId": rule.id,
+            "policyVersion": decision["policyVersion"],
+        }
+        action_digest = hashlib.sha256(
+            json.dumps(canonical_request, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        correlation_key = f"spec224-policy:{rule.id}:" + hashlib.sha256(
+            f"{tenant_id}:{idempotency_key}".encode("utf-8")
+        ).hexdigest()
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": correlation_key},
+        )
+        existing = await self.get_request_by_correlation(correlation_key, tenant_id)
+        if existing:
+            extra = existing.extra_data if isinstance(existing.extra_data, dict) else {}
+            prior = extra.get("spec224DevelopmentPolicyDecisionV1")
+            if existing.action_digest != action_digest or not isinstance(prior, dict):
+                raise ValueError("SPEC224_POLICY_IDEMPOTENCY_CONFLICT")
+            return existing
+
+        request_id = str(uuid5(NAMESPACE_URL, correlation_key))
+        audit_id = str(uuid4())
+        decision_time = now or datetime.now(timezone.utc)
+        decision_time = decision_time.replace(tzinfo=timezone.utc) if decision_time.tzinfo is None else decision_time.astimezone(timezone.utc)
+        decision_record = {
+            "schemaVersion": "spec224.development-policy-decision.v1",
+            "policyId": rule.id,
+            "policyVersion": decision["policyVersion"],
+            "policyOwnerUserId": int(rule.conditions["ownerUserId"]),
+            "actorUserId": actor_id,
+            "decisionActor": "service:spec224-development-policy-authority",
+            "decision": "APPROVED",
+            "scope": canonical_request,
+            "decidedAt": decision_time.isoformat().replace("+00:00", "Z"),
+            "expiresAt": decision["expiresAt"],
+            "auditRef": audit_id,
+        }
+        approval = ApprovalRequest(
+            id=request_id,
+            request_type=ApprovalType.CODE_EXECUTION,
+            title="SPEC-224 policy-approved development operation",
+            description="Approved by a tenant-owned bounded non-production policy.",
+            tenant_id=tenant_id,
+            project_id=project_id,
+            execution_id=str(request.get("executionId") or "") or None,
+            requester_id=actor_id,
+            requester_type="user",
+            status=ApprovalStatus.APPROVED,
+            payload=canonical_request,
+            extra_data={"spec224DevelopmentPolicyDecisionV1": decision_record},
+            action_digest=action_digest,
+            correlation_key=correlation_key,
+            risk_level="low",
+            risk_factors=["spec224_nonproduction_policy"],
+            required_approvers=0,
+            current_approvals=0,
+            expires_at=datetime.fromisoformat(decision["expiresAt"].replace("Z", "+00:00")).replace(tzinfo=None),
+            timeout_action="reject",
+            resolved_at=decision_time.replace(tzinfo=None),
+        )
+        self.db.add(approval)
+        self.db.add(AuditLog(
+            id=audit_id,
+            user_id=str(actor_id),
+            user_role="spec224_development_policy",
+            action="spec224.development_policy.decision_approved",
+            resource_type="approval_request",
+            resource_id=request_id,
+            details={"tenantId": tenant_id, "projectId": project_id, "policyId": rule.id, "policyVersion": decision["policyVersion"], "decisionActor": decision_record["decisionActor"]},
+        ))
+        await self.db.commit()
+        await self.db.refresh(approval)
+        return approval
 
     async def create_cloudflare_staging_grant_request(
         self, *, tenant_id: str, requester_id: int, idempotency_key: str, payload: dict,
