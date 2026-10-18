@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { calculateRetrievalBenchmarkMetrics } from "./libraryRetrievalBenchmark";
 import { mapObservedLibraryEvidence } from "./libraryRetrievalObservedEvidence";
 
 describe("mapObservedLibraryEvidence", () => {
@@ -28,6 +29,35 @@ describe("mapObservedLibraryEvidence", () => {
     });
     expect(evidence).not.toHaveProperty("revoked");
     expect(evidence).not.toHaveProperty("deleted");
+  });
+
+  it("does not let missing lifecycle observations inflate freshness metrics", () => {
+    const evidence = mapObservedLibraryEvidence(base);
+    const metrics = calculateRetrievalBenchmarkMetrics(
+      [{
+        caseId: "observed-library-result",
+        query: "where is the guide?",
+        tenantId: "tenant-a",
+        supportsAnswer: true,
+        requiredEvidenceIds: ["docs/guide.md"],
+        requiredClaims: [],
+        minimumAuthorityRank: 1,
+        expectedRevision: "sha256:current-revision",
+        shouldCite: false,
+      }],
+      [{
+        caseId: "observed-library-result",
+        answerSupported: true,
+        coveredClaims: [],
+        evidence: [evidence],
+        citations: [],
+        providerState: "complete",
+        latencyMs: 10,
+      }],
+    );
+
+    expect(metrics.freshnessCorrectness).toBe(0);
+    expect(metrics.securityControlsComplete).toBe(false);
   });
 
   it.each([
