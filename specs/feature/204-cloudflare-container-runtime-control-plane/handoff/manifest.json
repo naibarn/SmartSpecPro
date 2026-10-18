@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "b2f90c550cf5d246e3b534671808094e1023afb7",
     "expected_spec_digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706"
   },
   "continuation": {
-    "next_action": "Promote the scoped SPEC-204/205 Runner image and Linux artifact documentation checkpoint through its normal protected PR path. After merge, record the canonical SHA here; the image/binary baseline measurements and host-specific runtime acceptance remain pending and must not be reported as passed.",
-    "next_ready_workunit": "SPEC204_205_RUNNER_IMAGE_PORTABILITY_DOCS",
+    "next_action": "Collect the SPEC-204 §8.1.2 baseline on an authorized Cloudflare Container host and the oldest supported Linux VM profile before approving numeric performance limits; record binary/image sizes, first pull, cold/warm p50/p95, time-to-first-job, samples, and host-supported crash/sleep/restart/replacement results. Do not claim these measurements passed until evidence is attached.",
+    "next_ready_workunit": "RUNNER_IMAGE_PERFORMANCE_BASELINE_AND_HOST_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Task branch codex/spec204-205-runner-image-20261018 from canonical source 65de5b552597f9cbfa0eed960db67d413ff9ded4. Scope: SPEC-204 image build/minimal base/multi-stage/layer cache/performance baseline protocol; SPEC-205 Rust release optimization/Linux binary portability/minimal dependencies/readiness and host-supported lifecycle acceptance. Focused SPEC validation and global projection check passed; pending: commit, protected PR, merge, record exact canonical SHA. Performance baseline has not been measured; numeric limits and host acceptance remain open.",
+    "resume_point": "Documentation checkpoint merged in PR #1123 at canonical main SHA b2f90c550cf5d246e3b534671808094e1023afb7. SPEC-204 now owns the single baseline/performance protocol; SPEC-205 references it and defines Rust release optimization, same Linux binary portability, minimal dependencies, and readiness/lifecycle acceptance. Documentation validation passed. Actual binary/image measurements, numeric limits, and Cloudflare/VM host acceptance remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
     "digest": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "b2f90c550cf5d246e3b534671808094e1023afb7",
+    "integrated": true,
+    "integrated_at": "2026-10-18T09:11:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 161
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T09:08:23.449961Z",
+  "updated_at": "2026-10-18T09:11:21.244615Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
