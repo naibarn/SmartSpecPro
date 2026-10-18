@@ -103,6 +103,19 @@ async function main() {
   const candidateSha = sha256(readFileSync(candidatePath));
   const candidateCounts = countGoldDataset(candidates);
   const heldOutCohortReady = isReleaseCohortReady(candidateCounts);
+  const requestedQuerySplit = process.env.SPEC229_EVAL_QUERY_SPLIT;
+  if (
+    requestedQuerySplit !== undefined &&
+    requestedQuerySplit !== "development"
+  ) {
+    throw new Error("SPEC229_EVAL_QUERY_SPLIT only supports the non-certifying development split");
+  }
+  const queryCandidates = requestedQuerySplit === "development"
+    ? candidates.filter(item => item.split === requestedQuerySplit)
+    : candidates;
+  if (queryCandidates.length === 0) {
+    throw new Error(`No candidates found for ${requestedQuerySplit ?? "the full"} evaluation cohort`);
+  }
 
   const sourcePaths = [...new Set(candidates.map(item => item.source.path))].sort();
   const sources = sourcePaths.map(sourcePath => {
@@ -167,7 +180,7 @@ async function main() {
   const actor: LibraryActor = { userId: EVAL_USER, tenantId: EVAL_TENANT, role: "user" };
   const observations: Array<Record<string, unknown>> = [];
   const traces: Array<Record<string, unknown>> = [];
-  for (const [index, candidate] of candidates.entries()) {
+  for (const [index, candidate] of queryCandidates.entries()) {
     const started = performance.now();
     const response = await searchLibraryItems({
       query: candidate.query,
@@ -220,14 +233,16 @@ async function main() {
       resultCount: ranked.length,
       results: ranked,
     });
-    if ((index + 1) % 50 === 0) process.stderr.write(`SPEC-229 ${PROFILE}: ${index + 1}/${candidates.length} queries\n`);
+    if ((index + 1) % 50 === 0) process.stderr.write(`SPEC-229 ${PROFILE}: ${index + 1}/${queryCandidates.length} queries\n`);
   }
 
   const corpusDigest = sha256(sources.map(source => `${source.path}\0${source.digest}\n`).join(""));
   const heldOutCaseIds = new Set(
-    candidates.filter(isHeldOutReleaseEvaluationEligible).map(item => item.caseId),
+    queryCandidates.filter(isHeldOutReleaseEvaluationEligible).map(item => item.caseId),
   );
-  const releaseObservations = heldOutCohortReady
+  const releaseObservations = requestedQuerySplit === "development"
+    ? observations
+    : heldOutCohortReady
     ? observations.filter(item => heldOutCaseIds.has(String(item.caseId)))
     : observations;
   const run = {
@@ -243,7 +258,12 @@ async function main() {
       path: relative(repoRoot, candidatePath),
       sha256: candidateSha,
       counts: candidateCounts,
-      cohort: heldOutCohortReady
+      executedQueries: queryCandidates.length,
+      executedSplit: requestedQuerySplit ?? "all",
+      executedSplitCounts: countGoldDataset(queryCandidates),
+      cohort: requestedQuerySplit === "development"
+        ? "development-only; not eligible for release evaluation"
+        : heldOutCohortReady
         ? "owner-authorized non-production held-out evaluation cohort"
         : "development-only; not eligible for release evaluation",
       certification: "P229.8 requires every §27 comparison and latency/cost profile to pass",
@@ -252,7 +272,9 @@ async function main() {
     evaluationMethod: {
       answerSupport: "expected evidence identity intersection; no answer generation",
       citations: "not emitted by the legacy Library search path",
-      cohort: heldOutCohortReady
+      cohort: requestedQuerySplit === "development"
+        ? "only the development split was executed against the full pinned source corpus; non-certifying"
+        : heldOutCohortReady
         ? "metrics are calculated only over eligible held-out candidates; human review count remains explicit"
         : "metrics are development-only because no eligible held-out cohort is supplied",
     },
@@ -263,7 +285,10 @@ async function main() {
       comparisonRuns: { [PROFILE]: releaseObservations },
       latencyRuns: { [LATENCY_PROFILE]: releaseObservations },
     },
-    releaseEvaluation: evaluateGoldDataset(candidates, releaseObservations),
+    releaseEvaluation: evaluateGoldDataset(
+      requestedQuerySplit === "development" ? queryCandidates : candidates,
+      releaseObservations,
+    ),
     traces,
   };
   const serialized = `${JSON.stringify(run, null, 2)}\n`;

@@ -1,0 +1,140 @@
+{
+  "evidence_id": "SPEC229-P2298-PROFILE-A-LOCAL-QUALITY-IMPROVEMENT-20261018",
+  "workunit": "P229.8 Profile A diagnostic-driven retrieval quality improvement",
+  "status": "DEVELOPMENT_WORKUNIT_PASS; P229.8_ACCEPTANCE_NOT_EVALUABLE",
+  "source_sha": "77ed7096f62e2992bfcd8bfb0f8f40918149a66b",
+  "reference_checkpoint": "715d57e00a17a708307c2f0b9ecbdd83de105a18",
+  "collector_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "implementation": {
+    "changes": [
+      "The legacy Library scorer now tokenizes Thai-only query text with the runtime Thai word segmenter and matches those terms against canonicalized document text; mixed-script queries preserve the existing Latin/code ranking because development observations showed Thai token contribution displaced a correct mixed query result.",
+      "Natural-language Spec N queries receive an explicit ranking boost only when N matches the numeric prefix of metadata.canonicalPath. Existing tenant and ACL filtering remains before scoring.",
+      "The local Profile A runner can execute the development split against the full pinned candidate source corpus and labels that run non-certifying; all-candidate validation and source hydration remain unchanged."
+    ],
+    "backward_compatibility": "No schema, database, provider, vector profile, or consumer contract changed."
+  },
+  "diagnosis": {
+    "candidate_dataset_sha256": "1b2a25c475860be3abd332055cc7c8a22cd63227b40cce40c7b584909135d045",
+    "candidate_count": 560,
+    "held_out_count": 503,
+    "development_count": 57,
+    "case_id_integrity": "560 unique candidate IDs and traces; all 503 raw comparison observations have unique IDs matching exactly the held-out split; 57 development rows were not included in the old raw release comparison.",
+    "source_integrity": "For the 503-query raw diagnostic run, all 264 returned source identities existed in the pinned corpus; zero evidence digest/revision mismatches and zero expected-revision mismatches were found.",
+    "failure_taxonomy": [
+      {
+        "cause": "ASCII-only query tokenization",
+        "evidence": "10 held-out queries labelled Thai contain no ASCII tokens; all 10 returned zero results, including 8 answerable cases. The legacy Profile A path applies JavaScript keyword scoring and has no PostgreSQL text-search configuration in this call path."
+      },
+      {
+        "cause": "Natural-language exact identifier not ranked structurally",
+        "evidence": "118 of 168 exact-identifier cases missed the required source within top 5 (baseline exact-ID Hit@5 0.297619). A generic natural-language query containing Spec N did not match the full canonical path field."
+      },
+      {
+        "cause": "Keyword-only semantic paraphrase misses",
+        "evidence": "190 held-out semantic-paraphrase answerable cases missed required evidence within top 20; Profiles D-H provide the already implemented semantic/hybrid paths."
+      },
+      {
+        "cause": "No-answer metric is a retrieval-support proxy",
+        "evidence": "The runner does not generate an answer; answerSupported means a required gold source was retrieved. In the 503-query diagnostic set there are 6 true no-answer cases and 222 answerable queries without a retrieved gold source, producing precision 0.026316 and recall 1.0. This is not an observed LLM abstention rate."
+      },
+      {
+        "cause": "Citation and relevance-label limitations",
+        "evidence": "The legacy search path emits no citations, so citation precision is unavailable. nDCG/MRR use binary document-source identity labels because gradedRelevantEvidence is absent; no source/ID/revision label mismatch was found."
+      }
+    ],
+    "legacy_release_observation": {
+      "run_id": "bb04cd9e-50df-4201-8453-ec6c3b822b25",
+      "artifact_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-19ddb536-corrected-cohort.json",
+      "artifact_sha256": "662e01844be74db9785fd3ab8f82a879adac8a637495483923b03847ca43a8b3",
+      "corpus_source_sha": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+      "corpus_source_count": 276,
+      "corpus_revision": "sha256:84e30e535795d15ff9c648d9cb32b4700e70d4e89095d52f0eaebbb8b340c6e8",
+      "cohort_disposition": "DIAGNOSTIC_ONLY: this 503-query split had already been inspected before this change and is not eligible for post-change certification."
+    }
+  },
+  "paired_development_observations": {
+    "profile": "legacy_baseline / simple_exact_keyword",
+    "runtime": "Existing local disposable PostgreSQL runner; no external provider calls",
+    "executed_queries": 57,
+    "candidate_pool_sha256": "1b2a25c475860be3abd332055cc7c8a22cd63227b40cce40c7b584909135d045",
+    "corpus_source_sha": "19ddb53616fb91f26dd773125f8f2b499c67993a",
+    "corpus_source_count": 276,
+    "corpus_revision": "sha256:84e30e535795d15ff9c648d9cb32b4700e70d4e89095d52f0eaebbb8b340c6e8",
+    "baseline": {
+      "run_id": "5cda3be4-c377-4832-a264-2d7f0c7a0747",
+      "artifact_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-baseline-development-57-full-corpus.json",
+      "artifact_sha256": "715a61914397735c4d188aec78f77246c6673288aa265f2a143dad252348fe6e",
+      "metrics": {
+        "recall_at_20": 0.508772,
+        "nDCG_at_10": 0.183594,
+        "MRR_at_10": 0.108104,
+        "exact_identifier_hit_at_5": 0.235294,
+        "thai_recall_at_20": 0.6,
+        "english_recall_at_20": 0.444444,
+        "mixed_recall_at_20": 0.666667,
+        "p95_latency_ms": 498.76
+      }
+    },
+    "after": {
+      "run_id": "c2282e2d-2f15-4499-a8c9-2171bee07c13",
+      "source_sha": "77ed7096f62e2992bfcd8bfb0f8f40918149a66b",
+      "artifact_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-post-rebase-development-57-full-corpus.json",
+      "artifact_sha256": "629fdf857187d3627b68e2faf5e16050634dfea86a4ef56023bd1b4c37ee793a",
+      "collector_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "metrics": {
+        "recall_at_20": 0.508772,
+        "nDCG_at_10": 0.298986,
+        "MRR_at_10": 0.252207,
+        "exact_identifier_hit_at_5": 0.588235,
+        "thai_recall_at_20": 0.6,
+        "english_recall_at_20": 0.444444,
+        "mixed_recall_at_20": 0.666667,
+        "p95_latency_ms": 491.712
+      }
+    },
+    "confidence_intervals": {
+      "method": "Repository bootstrapMean95 deterministic percentile bootstrap, 2,000 replicates; interval reported only when n >= 30.",
+      "baseline": {
+        "recall_at_20": {"n": 57, "ci95": [0.385965, 0.631579]},
+        "nDCG_at_10": {"n": 57, "ci95": [0.124696, 0.250507]},
+        "MRR_at_10": {"n": 57, "ci95": [0.067801, 0.157853]},
+        "english_recall_at_20": {"n": 36, "ci95": [0.277778, 0.611111]},
+        "thai_recall_at_20": {"n": 15, "ci95": null},
+        "mixed_recall_at_20": {"n": 6, "ci95": null},
+        "exact_identifier_hit_at_5": {"n": 17, "ci95": null}
+      },
+      "after": {
+        "recall_at_20": {"n": 57, "ci95": [0.368421, 0.631579]},
+        "nDCG_at_10": {"n": 57, "ci95": [0.201877, 0.397932]},
+        "MRR_at_10": {"n": 57, "ci95": [0.161543, 0.359127]},
+        "english_recall_at_20": {"n": 36, "ci95": [0.277778, 0.611111]},
+        "thai_recall_at_20": {"n": 15, "ci95": null},
+        "mixed_recall_at_20": {"n": 6, "ci95": null},
+        "exact_identifier_hit_at_5": {"n": 17, "ci95": null}
+      }
+    },
+    "evaluation_status": "DEVELOPMENT_ONLY; the evaluator returned NOT_EVALUABLE for every release criterion and held-out count because only split=development was executed."
+  },
+  "profile_readiness": {
+    "A": "Implemented and executed locally on 57 development queries; no citation generation; diagnostic comparison only.",
+    "B": "Implementation exists in the Vectorize adapter/runner. Not executable here: requires authorized Cloudflare account, Workers AI and Vectorize credentials plus a dedicated disposable 1024D spec229-eval-* index.",
+    "C": "BM25/trigram AI Search implementation exists. Not executable here: requires authorized non-production AI Search account/token and disposable namespace.",
+    "D": "AI Search vector implementation exists through the current provider; same external account/token/namespace dependency.",
+    "E": "Hybrid RRF implementation exists; same external dependency.",
+    "F": "Hybrid reranker implementation exists; same external dependency and reranker response observations.",
+    "G": "Conditional rewrite implementation exists; same external dependency and reviewed conversationContext in cohort.",
+    "H": "Multi-query/RRF implementation exists; same external dependency and reviewed multiQueryVariants in cohort.",
+    "missing_implementation": [],
+    "actual_provider_observations": 0,
+    "cost_observations": "NOT_EVALUABLE for external profiles; providers do not return measured billable cost in current contracts. Local A measured zero external cost."
+  },
+  "verification": {
+    "profile_a_tests": "PASS: JWT_SECRET=<test-only-value> vitest run server/services/librarySearchService.test.ts --pool=forks --maxWorkers=2; 1 file, 10 tests.",
+    "profile_b_to_h_regression": "PASS: 6 focused files, 59 tests covering AI Search provider, broker, evaluation, comparison profiles, gold dataset, and run bundle.",
+    "runtime_execution": "PASS: local disposable PostgreSQL run executed all 57 development queries against the full 276-source corpus; releaseEvaluation.status=NOT_EVALUABLE as intended.",
+    "security_and_provenance": "PASS on recorded runs: single synthetic repo-development tenant; no production data/provider credentials; source revisions/digests matched; tenant/ACL search filtering unchanged.",
+    "typecheck": "NOT_RUN: repository-wide TypeScript checks are prohibited in this shared implementation session; test/runtime transform checks passed.",
+    "production_verification": "NOT_RUN"
+  },
+  "acceptance_boundary": "The Profile A development WorkUnit passes its functional regressions and paired development comparison: exact-ID Hit@5, MRR@10 and nDCG@10 improve without Recall@20, Thai/English/mixed recall or local P95 regression. This is not held-out certification. The prior 503-query set is diagnostic; a new untouched >=500 reviewed held-out cohort and real authorized Profiles B-H plus latency/cost observations are required before P229.8 can pass. Keep evidence weak and consequential consumers unmigrated."
+}
