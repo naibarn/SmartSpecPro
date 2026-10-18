@@ -94,7 +94,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 80,
+  "generation": 81,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -193,10 +193,10 @@
     "canonical_sha": "60e3a759710442308168e7264c1752515a67ac01",
     "integrated": true,
     "integrated_at": "2026-10-18T04:41:27Z",
-    "intended_pr": "PR #1099 merged at 60e3a759710442308168e7264c1752515a67ac01; P229.3 route/capacity registry and unregistered AI Search provider adapter are prepared in codex/spec229-p2293-provider.",
-    "pending_pr": null,
+    "intended_pr": "PR #1099 merged at 60e3a759710442308168e7264c1752515a67ac01. P229.3 implementation checkpoint is PR #1100: https://github.com/naibarn/SmartSpecPro/pull/1100.",
+    "pending_pr": 1100,
     "pending_source_branch": "codex/spec229-p2293-provider",
-    "pending_source_sha": "d05d4e5ebf2c132ab12c2bf59407aecd443b34a9",
+    "pending_source_sha": "bf435364d2e31a24ae104333699d9ef083309a32",
     "pending_workunit": "P229.3_AI_SEARCH_PROVIDER_AND_CAPACITY_ROUTING: additive PostgreSQL route registry, explicit capacity-aware route resolver, and fail-closed AI Search REST adapter; no broker consumer migration or provider observation is claimed."
   },
   "lifecycle": {
@@ -412,7 +412,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T04:50:52.151408Z",
+  "updated_at": "2026-10-18T04:51:37.320497Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
