@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: After PR #1104 merges, implement A/B evaluation execution through existing legacy/Vectorize paths, then collect actual observations with the isolated authorized development corpus. Keep P229.8 NOT_EVALUABLE until release cohort and §27 criteria pass.
-- Manifest generation: 96
+- Next action: After PR #1106 integrates, run exact-SHA Profile A in a disposable local PostgreSQL runtime and store actual observations. Profiles B-H and P229.8 release certification remain unresolved until actual provider observations and §27 criteria pass.
+- Manifest generation: 98
 
 ## Source-declared status and relationship claims
 

@@ -12,28 +12,17 @@ import {
   groupMembers,
 } from "../drizzle/schema";
 import { searchLibraryItems, type LibraryActor } from "../server/services/libraryService";
+import {
+  countGoldDataset,
+  evaluateGoldDataset,
+  goldDatasetCandidateSchema,
+  isHeldOutReleaseEvaluationEligible,
+  isReleaseCohortReady,
+  validateGoldDataset,
+  type GoldDatasetCandidate,
+} from "../server/services/libraryRetrievalGoldDataset";
 
-type Candidate = {
-  caseId: string;
-  query: string;
-  language: "thai" | "english" | "mixed";
-  source: {
-    path: string;
-    sha256: string;
-    license: string;
-    allowedUseEvidence: string;
-  };
-  benchmarkGold: {
-    tenantId: string;
-    supportsAnswer: boolean;
-    requiredEvidenceIds: string[];
-    requiredClaims: string[];
-    expectedRevision: string;
-    minimumAuthorityRank: number;
-    shouldCite: boolean;
-    exactIdentifier: boolean;
-  };
-};
+type Candidate = GoldDatasetCandidate;
 
 const PROFILE = "legacy_baseline" as const;
 const LATENCY_PROFILE = "simple_exact_keyword" as const;
@@ -103,19 +92,18 @@ async function main() {
     { encoding: "utf8" },
   ).trim();
   if (corpusWorktreeStatus) throw new Error("Corpus worktree must be clean and pinned to SOURCE_SHA");
-  process.env.VECTORDB_PROVIDER = "chromadb";
-  const db = getDb();
-  await db.select({ id: libraryItems.id }).from(libraryItems).limit(0);
-  await db.delete(groupMembers);
-  await db.delete(userGroups);
-  await db.delete(libraryPermissions);
-  await db.delete(libraryChunks);
-  await db.delete(libraryItems);
 
-  const candidates = JSON.parse(readFileSync(candidatePath, "utf8")) as Candidate[];
+  const candidates = goldDatasetCandidateSchema.array().parse(
+    JSON.parse(readFileSync(candidatePath, "utf8")) as unknown,
+  );
+  validateGoldDataset(candidates, corpusRoot);
   if (!candidates.length || candidates.some(item => item.benchmarkGold.tenantId !== EVAL_TENANT)) {
     throw new Error("Expected the existing single-tenant repository development cohort");
   }
+  const candidateSha = sha256(readFileSync(candidatePath));
+  const candidateCounts = countGoldDataset(candidates);
+  const heldOutCohortReady = isReleaseCohortReady(candidateCounts);
+
   const sourcePaths = [...new Set(candidates.map(item => item.source.path))].sort();
   const sources = sourcePaths.map(sourcePath => {
     if (isAbsolute(sourcePath) || sourcePath.split(/[\\/]/).includes("..")) {
@@ -139,6 +127,15 @@ async function main() {
     if (sha256(content) !== metadata.sha256) throw new Error(`Stale candidate source: ${sourcePath}`);
     return { path: sourcePath, digest: metadata.sha256, content: content.toString("utf8") };
   });
+
+  process.env.VECTORDB_PROVIDER = "chromadb";
+  const db = getDb();
+  await db.select({ id: libraryItems.id }).from(libraryItems).limit(0);
+  await db.delete(groupMembers);
+  await db.delete(userGroups);
+  await db.delete(libraryPermissions);
+  await db.delete(libraryChunks);
+  await db.delete(libraryItems);
 
   const insertedItems = await db.insert(libraryItems).values(sources.map(source => ({
     tenantId: EVAL_TENANT,
@@ -227,6 +224,12 @@ async function main() {
   }
 
   const corpusDigest = sha256(sources.map(source => `${source.path}\0${source.digest}\n`).join(""));
+  const heldOutCaseIds = new Set(
+    candidates.filter(isHeldOutReleaseEvaluationEligible).map(item => item.caseId),
+  );
+  const releaseObservations = heldOutCohortReady
+    ? observations.filter(item => heldOutCaseIds.has(String(item.caseId)))
+    : observations;
   const run = {
     schemaVersion: "spec229-local-observation-run-v1",
     runId: RUN_ID,
@@ -236,19 +239,31 @@ async function main() {
     profile: PROFILE,
     runtime: "isolated local PostgreSQL + existing libraryService.searchLibraryItems keyword fallback",
     providerConfiguration: { vectorProvider: "chromadb", externalProviderCalls: false },
+    candidateDataset: {
+      path: relative(repoRoot, candidatePath),
+      sha256: candidateSha,
+      counts: candidateCounts,
+      cohort: heldOutCohortReady
+        ? "owner-authorized non-production held-out evaluation cohort"
+        : "development-only; not eligible for release evaluation",
+      certification: "P229.8 requires every §27 comparison and latency/cost profile to pass",
+    },
     corpus: { tenantId: EVAL_TENANT, sourceSha: corpusSha, sourceCount: sources.length, revision: `sha256:${corpusDigest}` },
     evaluationMethod: {
       answerSupport: "expected evidence identity intersection; no answer generation",
       citations: "not emitted by the legacy Library search path",
-      cohort: "development-only; not held out or release approved",
+      cohort: heldOutCohortReady
+        ? "metrics are calculated only over eligible held-out candidates; human review count remains explicit"
+        : "metrics are development-only because no eligible held-out cohort is supplied",
     },
     usage: { costMicros: 0, provenance: "measured local-only execution; no external provider or model calls" },
     observationBundle: {
       schemaVersion: "spec229-observation-bundle-v1",
       releaseComparisonProfile: PROFILE,
-      comparisonRuns: { [PROFILE]: observations },
-      latencyRuns: { [LATENCY_PROFILE]: observations },
+      comparisonRuns: { [PROFILE]: releaseObservations },
+      latencyRuns: { [LATENCY_PROFILE]: releaseObservations },
     },
+    releaseEvaluation: evaluateGoldDataset(candidates, releaseObservations),
     traces,
   };
   const serialized = `${JSON.stringify(run, null, 2)}\n`;
