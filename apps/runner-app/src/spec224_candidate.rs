@@ -851,6 +851,46 @@ mod tests {
     }
 
     #[test]
+    fn same_path_candidates_preserve_winner_and_rejected_candidate_without_overwrite() {
+        let (_temp, workspace, data, fingerprint) = fixture();
+        let first = Candidate::create(
+            &workspace,
+            &data,
+            "parallel-agent-one",
+            &fingerprint,
+            vec!["src.txt".into()],
+        )
+        .unwrap();
+        let second = Candidate::create(
+            &workspace,
+            &data,
+            "parallel-agent-two",
+            &fingerprint,
+            vec!["src.txt".into()],
+        )
+        .unwrap();
+        let second_root = second.root.clone();
+        fs::write(first.root.join("src.txt"), "agent-one").unwrap();
+        fs::write(second.root.join("src.txt"), "agent-two").unwrap();
+
+        first.apply().unwrap();
+        assert_eq!(
+            fs::read_to_string(workspace.join("src.txt")).unwrap(),
+            "agent-one"
+        );
+        assert_eq!(second.apply().unwrap_err(), "SPEC224_CAS_CONFLICT");
+        assert_eq!(
+            fs::read_to_string(workspace.join("src.txt")).unwrap(),
+            "agent-one"
+        );
+        assert_eq!(
+            fs::read_to_string(second_root.join("src.txt")).unwrap(),
+            "agent-two"
+        );
+        assert!(second_root.exists());
+    }
+
+    #[test]
     fn journal_rollback_restores_pre_apply_bytes_after_interruption() {
         let (_temp, workspace, data, fingerprint) = fixture();
         let candidate = Candidate::create(
