@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Use the inspected but narrowly scoped UUID/OCR/long-context fixtures only for development tests matching their actual content. Do not count ACL/memory or SPEC-224 fixtures as P229 retrieval behavior. Next, add deterministic synthetic controls for missing classes, validate them against canonical source/license/digest and anchors, then independent-review and freeze only after class coverage and no-leakage checks.
-- Manifest generation: 134
+- Next action: Generate only development cases whose expected facts are supported by screened fixtures (UUID, synthetic OCR receipt, long context). Do not use unrelated ACL/session/SPEC-224 test behavior as P229 evidence. Add modeled synthetic controls for no-answer, follow-up, multi-hop, and P229-specific ACL/lifecycle gates, then independently review and validate them.
+- Manifest generation: 135
 
 ## Source-declared status and relationship claims
 
