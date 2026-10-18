@@ -28,7 +28,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3f10850c07c54a05b13256a9464a719168c82628",
+    "expected_canonical_sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 123,
+  "generation": 126,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -163,7 +163,8 @@
       "9bad3970d83e797ac6051418cdcce5879293dc16",
       "92220d19dfc7e0ff09a5f290c07407e5494d343a",
       "9d42f8b98f5d70c7c3bed599ab14c03c4e4e0170",
-      "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f"
+      "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+      "507714969bb1df7deacedb11b0f12d78c4ab4f80"
     ],
     "mapping": [],
     "source_paths": [
@@ -231,14 +232,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3f10850c07c54a05b13256a9464a719168c82628",
+    "canonical_sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
     "integrated": true,
-    "integrated_at": "2026-10-18T11:06:34Z",
-    "intended_pr": "PR #1142 merged as 3f10850c07c54a05b13256a9464a719168c82628; pending SPEC229_P229_8_FRESHNESS_UNKNOWN_FAIL_CLOSED checkpoint.",
-    "pending_pr": null,
-    "pending_source_branch": "codex/spec229-integrity-20261018",
-    "pending_source_sha": "94cf9237bf10944a3e20ed67262c411d2090af92",
-    "pending_workunit": "SPEC229_P229_8_FRESHNESS_UNKNOWN_FAIL_CLOSED"
+    "integrated_at": "2026-10-18T11:19:57Z",
+    "intended_pr": "PR #1144 tracks machine-review preservation for the unseen development cohort; it does not certify P229.8.",
+    "pending_pr": "PR #1144",
+    "pending_source_branch": "codex/spec229-unseen-review-20261018",
+    "pending_source_sha": "cb88e3bfba8b106d67eb441dfca3c439b656a489",
+    "pending_workunit": "SPEC229_P229_8_UNSEEN_COHORT_MACHINE_REVIEW"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -466,7 +467,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:15:01.371664Z",
+  "updated_at": "2026-10-18T11:21:39.879013Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -502,13 +503,16 @@
       "handoff/evidence/p2298-ai-search-instance-scope-contract-fix-20261018.json",
       "handoff/evidence/p2298-ai-search-instance-scope-postmerge-20261018.json",
       "handoff/evidence/p2298-control-integrity-postmerge-20261018.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-independent-review-postmerge-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-independent-review-postmerge-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-freshness-unknown-fail-closed-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v1-independent-machine-review-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-machine-review-postmerge-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
+    "sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
     "status": "PASS",
     "task_regressions": []
   }
