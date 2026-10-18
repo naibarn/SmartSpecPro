@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: Continue with Profile C AI Search BM25 implementation through the current provider/broker boundary; Profile B code is tested, while provider observations remain unevaluated until the dedicated non-production runtime is available.
-- Manifest generation: 77
+- Next action: Integrate the safe P229.3 route/capacity and provider adapter checkpoint. Then implement P229.4 projection/ACL metadata and canonical identity revalidation before connecting AI Search to the existing RetrievalBroker; do not migrate consumers before those controls exist.
+- Manifest generation: 80
 
 ## Source-declared status and relationship claims
 
