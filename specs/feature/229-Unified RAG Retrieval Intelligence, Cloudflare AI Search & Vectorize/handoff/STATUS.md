@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: Complete the P229.4 integration gap after the additive registry/indexer checkpoint: connect to existing Library ingestion and ACL revocation paths, then revalidate provider candidates through RetrievalBroker canonical tenant/ACL/revision/digest hydration.
-- Manifest generation: 85
+- Manifest generation: 86
 
 ## Source-declared status and relationship claims
 
