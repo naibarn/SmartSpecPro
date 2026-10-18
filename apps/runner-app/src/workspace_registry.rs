@@ -294,6 +294,7 @@ mod tests {
     }
 }
 use crate::config::RunnerConfig;
+use crate::process::background_command;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::borrow::Cow;
@@ -304,7 +305,6 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredWorkspace {
@@ -409,7 +409,7 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
     if !workspace.is_dir() {
         return None;
     }
-    let listed = Command::new("git")
+    let listed = background_command("git")
         .args([
             "ls-files",
             "--cached",
@@ -558,7 +558,7 @@ fn inspect_git_workspace(workspace: &Path) -> GitWorkspaceInspection {
     if !workspace.is_dir() {
         return GitWorkspaceInspection::default();
     }
-    let git_dir = Command::new("git")
+    let git_dir = background_command("git")
         .args(["rev-parse", "--git-dir"])
         .current_dir(workspace)
         .output();
@@ -573,7 +573,7 @@ fn inspect_git_workspace(workspace: &Path) -> GitWorkspaceInspection {
         .filter(|value| valid_git_head(value));
     let git_branch = git_output(workspace, &["symbolic-ref", "--quiet", "--short", "HEAD"])
         .filter(|value| valid_git_branch(value));
-    let dirty = Command::new("git")
+    let dirty = background_command("git")
         .args(["status", "--porcelain", "--untracked-files=normal"])
         .current_dir(workspace)
         .output()
@@ -587,7 +587,7 @@ fn inspect_git_workspace(workspace: &Path) -> GitWorkspaceInspection {
 }
 
 fn git_output(workspace: &Path, args: &[&str]) -> Option<String> {
-    let output = Command::new("git")
+    let output = background_command("git")
         .args(args)
         .current_dir(workspace)
         .output()

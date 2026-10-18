@@ -1,6 +1,21 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Suppress background console windows without changing explicit GUI launches.
+pub(crate) fn hide_console_window(_command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        _command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+}
+
+pub(crate) fn background_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    let mut command = Command::new(program);
+    hide_console_window(&mut command);
+    command
+}
+
 /// Builds the host command used for a discovered local CLI. Windows package
 /// managers commonly expose Node CLIs as `.cmd` or `.ps1` shims, which cannot
 /// be passed directly to `CreateProcess` as a program.
@@ -278,6 +293,23 @@ impl ManagedProcess {
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_background_command_has_no_console_window() {
+        let root = std::env::var_os("SystemRoot").unwrap();
+        let powershell = PathBuf::from(root).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+        let output = background_command(powershell).args([
+            "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+            "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class ConsoleProbe { [DllImport(\"kernel32.dll\")] public static extern IntPtr GetConsoleWindow(); }'; [ConsoleProbe]::GetConsoleWindow().ToInt64()",
+        ]).output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "0");
+    }
 
     struct FakeHandle {
         terminated: Arc<Mutex<bool>>,

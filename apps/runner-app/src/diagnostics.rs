@@ -383,14 +383,12 @@ fn scan_capability_tools(
                         }
                         Err(error) => {
                             let reason = crate::adapters::probe_failure_reason(&error);
-                            let version = probe_candidate(tool, Duration::from_secs(1))
-                                .ok()
-                                .map(|probe| probe.version);
+                            // A failed readiness check must not launch the browser
+                            // again merely to collect an optional version string.
                             let _ = apply_probe(
                                 tool,
                                 AdapterProbeResult {
-                                    version: version
-                                        .unwrap_or_else(|| "version_unavailable".into()),
+                                    version: "version_unavailable".into(),
                                     authenticated: true,
                                     healthy: false,
                                     available: false,

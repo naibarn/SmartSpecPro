@@ -1,5 +1,5 @@
 use crate::discovery::{ToolCandidate, ToolKind, TrustState};
-use crate::process::{command_for_cli, ProcessSpec};
+use crate::process::{command_for_cli, hide_console_window, ProcessSpec};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::io::Read as _;
@@ -334,10 +334,14 @@ pub fn probe_browser_candidate(
     timeout: Duration,
     grant: &BrowserAuthorizationGrant,
 ) -> Result<AuthenticatedBrowserProbe, String> {
-    if !matches!(candidate.kind, ToolKind::Browser)
+    if !approved_manifest(candidate)
+        || !matches!(candidate.kind, ToolKind::Browser)
         || candidate.adapter_id.as_deref() != Some("browser.v1")
     {
         return Err("RUNNER_BROWSER_ADAPTER_REQUIRED".into());
+    }
+    if timeout.is_zero() || timeout > Duration::from_secs(10) {
+        return Err("RUNNER_ADAPTER_PROBE_TIMEOUT_INVALID".into());
     }
     validate_browser_authorization_grant(
         grant,
@@ -346,10 +350,6 @@ pub fn probe_browser_candidate(
         &grant.tenant_id,
         current_time_ms(),
     )?;
-    let version_probe = run_version_probe(candidate, timeout.min(Duration::from_secs(10)))?;
-    if !version_probe.healthy || !version_probe.available {
-        return Err("RUNNER_BROWSER_VERSION_PROBE_FAILED".into());
-    }
     let executable = candidate
         .executable_path
         .as_ref()
@@ -361,6 +361,7 @@ pub fn probe_browser_candidate(
     }
     let mut browser =
         BrowserProbeProcess::launch(executable, timeout, Arc::new(AtomicBool::new(false)))?;
+    let browser_version = browser.version.clone();
     let probe = browser.run_cdp_probe(
         &fixture_url,
         timeout,
@@ -368,7 +369,7 @@ pub fn probe_browser_candidate(
         &grant.runner_session_id,
         &grant.tenant_id,
         &candidate.discovery_source,
-        &version_probe.version,
+        &browser_version,
     );
     let cleanup = browser.cleanup();
     let (_dom, _accessibility, _screenshot, mut evidence) = match probe {
@@ -389,7 +390,7 @@ pub fn probe_browser_candidate(
     evidence.cleanup_succeeded = true;
     Ok(AuthenticatedBrowserProbe {
         result: AdapterProbeResult {
-            version: version_probe.version.clone(),
+            version: browser_version,
             authenticated: true,
             healthy: true,
             available: true,
@@ -619,7 +620,8 @@ fn execute_browser_candidate_cancellable(
     if cancel.load(Ordering::SeqCst) {
         return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
     }
-    if !matches!(candidate.kind, ToolKind::Browser)
+    if !approved_manifest(candidate)
+        || !matches!(candidate.kind, ToolKind::Browser)
         || candidate.adapter_id.as_deref() != Some("browser.v1")
     {
         return Err("RUNNER_BROWSER_ADAPTER_REQUIRED".into());
@@ -631,14 +633,6 @@ fn execute_browser_candidate_cancellable(
         &grant.tenant_id,
         current_time_ms(),
     )?;
-    let version_probe = run_version_probe_cancellable(
-        candidate,
-        timeout.min(Duration::from_secs(10)),
-        Some(cancel),
-    )?;
-    if !version_probe.healthy || !version_probe.available {
-        return Err("RUNNER_BROWSER_VERSION_PROBE_FAILED".into());
-    }
     let executable = candidate
         .executable_path
         .as_ref()
@@ -653,6 +647,7 @@ fn execute_browser_candidate_cancellable(
         return Err("RUNNER_BROWSER_FIXTURE_URL_INVALID".into());
     }
     let mut browser = BrowserProbeProcess::launch(executable, timeout, Arc::clone(cancel))?;
+    let browser_version = browser.version.clone();
     let operation = browser.run_cdp_operation(
         &fixture_url,
         timeout,
@@ -660,7 +655,7 @@ fn execute_browser_candidate_cancellable(
         &grant.runner_id,
         &grant.runner_session_id,
         &grant.tenant_id,
-        &version_probe.version,
+        &browser_version,
     );
     let cleanup = browser.cleanup();
     let mut evidence = match operation {
@@ -692,7 +687,7 @@ fn run_version_probe(
 fn run_version_probe_cancellable(
     candidate: &ToolCandidate,
     timeout: Duration,
-    cancel: Option<&AtomicBool>,
+    cancel: Option<&Arc<AtomicBool>>,
 ) -> Result<AdapterProbeResult, String> {
     if !approved_manifest(candidate) {
         return Err("RUNNER_ADAPTER_NOT_APPROVED".into());
@@ -704,6 +699,24 @@ fn run_version_probe_cancellable(
         .executable_path
         .as_ref()
         .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())?;
+    // GUI browsers must never receive a bare --version: on Windows that can
+    // open the user's normal browser/profile. Read the version from the same
+    // isolated headless CDP lifecycle used by authenticated browser probes.
+    if matches!(candidate.kind, ToolKind::Browser) {
+        let cancel = cancel
+            .cloned()
+            .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
+        let mut browser = BrowserProbeProcess::launch(program, timeout, cancel)?;
+        let version = browser.version.clone();
+        browser.cleanup()?;
+        return Ok(AdapterProbeResult {
+            version,
+            authenticated: false,
+            healthy: true,
+            available: true,
+            reason_codes: vec!["version_probe_ok".into(), "auth_probe_required".into()],
+        });
+    }
     let mut command = command_for_cli(program, &["--version".into()])?;
     command
         .stdin(std::process::Stdio::null())
@@ -1193,15 +1206,8 @@ fn read_bounded_output<R: std::io::Read>(stream: R, limit: u64) -> Vec<u8> {
     output
 }
 
-fn hide_console_window(_command: &mut Command) {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        _command.creation_flags(0x0800_0000);
-    }
-}
-
 struct BrowserProbeProcess {
+    version: String,
     child: Child,
     profile_dir: std::path::PathBuf,
     socket: Option<tungstenite::WebSocket<tungstenite::stream::MaybeTlsStream<TcpStream>>>,
@@ -1234,6 +1240,33 @@ where
     Err("RUNNER_BROWSER_CLEANUP_FAILED".to_string())
 }
 
+fn browser_probe_command(executable: &Path, port: u16, profile_dir: &Path) -> Command {
+    let mut command = Command::new(executable);
+    command
+        .args([
+            "--headless=new",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--remote-allow-origins=*",
+        ])
+        .arg(format!("--remote-debugging-port={port}"))
+        .arg(format!("--user-data-dir={}", profile_dir.display()))
+        .arg("about:blank")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    #[cfg(unix)]
+    command.arg("--no-sandbox");
+    hide_console_window(&mut command);
+    command
+}
+
 impl BrowserProbeProcess {
     fn launch(
         executable: &Path,
@@ -1252,34 +1285,17 @@ impl BrowserProbeProcess {
         ));
         std::fs::create_dir_all(&profile_dir)
             .map_err(|_| "RUNNER_BROWSER_PROFILE_CREATE_FAILED")?;
-        let mut command = Command::new(executable);
-        command
-            .args([
-                "--headless=new",
-                "--disable-gpu",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--remote-allow-origins=*",
-            ])
-            .arg(format!("--remote-debugging-port={port}"))
-            .arg(format!("--user-data-dir={}", profile_dir.display()))
-            .arg("about:blank")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        #[cfg(unix)]
-        {
-            use std::os::unix::process::CommandExt;
-            command.process_group(0);
-        }
-        #[cfg(unix)]
-        command.arg("--no-sandbox");
-        let mut child = command
-            .spawn()
-            .map_err(|_| "RUNNER_BROWSER_LAUNCH_FAILED")?;
+        let mut command = browser_probe_command(executable, port, &profile_dir);
+        let mut child = match command.spawn() {
+            Ok(child) => child,
+            Err(_) => {
+                let _ = std::fs::remove_dir_all(&profile_dir);
+                return Err("RUNNER_BROWSER_LAUNCH_FAILED".into());
+            }
+        };
         let deadline = Instant::now() + timeout;
         let version_url = format!("http://127.0.0.1:{port}/json/version");
-        let websocket_url = loop {
+        let (websocket_url, browser_version) = loop {
             if cancel.load(Ordering::SeqCst) {
                 let _ = terminate_browser_process(&mut child);
                 let _ = remove_profile_dir_with_retry(&profile_dir, |path| {
@@ -1294,7 +1310,13 @@ impl BrowserProbeProcess {
             }
             if let Ok(version) = read_debugger_version(&version_url, Duration::from_millis(250)) {
                 if let Some(url) = version.get("webSocketDebuggerUrl").and_then(Value::as_str) {
-                    break url.to_string();
+                    if let Some(browser_version) = version
+                        .get("Browser")
+                        .and_then(Value::as_str)
+                        .filter(|value| !value.trim().is_empty() && value.len() <= 256)
+                    {
+                        break (url.to_string(), browser_version.to_string());
+                    }
                 }
             }
             std::thread::sleep(Duration::from_millis(25));
@@ -1312,6 +1334,7 @@ impl BrowserProbeProcess {
             let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
         }
         Ok(Self {
+            version: browser_version,
             child,
             profile_dir,
             socket: Some(socket),
@@ -2205,6 +2228,133 @@ mod tests {
     }
 
     #[test]
+    fn browser_background_command_always_uses_headless_and_isolated_profile() {
+        let command =
+            browser_probe_command(Path::new("chrome"), 12345, Path::new("isolated-profile"));
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        for required in [
+            "--headless=new",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--remote-debugging-port=12345",
+            "--user-data-dir=isolated-profile",
+            "about:blank",
+        ] {
+            assert!(args.iter().any(|arg| arg == required), "missing {required}");
+        }
+        assert!(!args.iter().any(|arg| arg == "--version"));
+    }
+
+    #[test]
+    #[ignore = "requires explicit SAH_TEST_BROWSER_EXECUTABLE; isolated headless browser only"]
+    fn browser_real_headless_version_refresh_does_not_authenticate_and_cleans_up() {
+        let executable =
+            std::path::PathBuf::from(std::env::var("SAH_TEST_BROWSER_EXECUTABLE").unwrap());
+        let mut candidate = crate::discovery::scan_known_tools(
+            crate::config::RunnerProfile::LocalDevice,
+            &["browser".into()],
+        )
+        .into_iter()
+        .find(|tool| tool.tool_id == "browser")
+        .unwrap();
+        candidate.executable_path = Some(executable.clone());
+        for _ in 0..3 {
+            let result = probe_candidate(&candidate, Duration::from_secs(10)).unwrap();
+            assert!(result.version.contains("Chrome/"));
+            assert!(result.healthy && result.available);
+            assert!(!result.authenticated);
+        }
+        let mut browser = BrowserProbeProcess::launch(
+            &executable,
+            Duration::from_secs(5),
+            Arc::new(AtomicBool::new(false)),
+        )
+        .unwrap();
+        let profile = browser.profile_dir.clone();
+        assert!(profile.is_dir());
+        browser.cleanup().unwrap();
+        assert!(!profile.exists());
+        assert!(browser.child.try_wait().unwrap().is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn browser_refresh_never_launches_bare_version_or_default_profile() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let executable = temp.path().join("chrome");
+        let calls = temp.path().join("calls");
+        // A GUI executable that records each invocation but never exposes CDP.
+        std::fs::write(
+            &executable,
+            format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'END\\n' >> '{}'\nexec sleep 30\n",
+            calls.display(), calls.display(),
+        ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let candidate = crate::discovery::scan_path_entries(
+            crate::config::RunnerProfile::LocalDevice,
+            &[temp.path().to_path_buf()],
+        )
+        .into_iter()
+        .find(|tool| matches!(tool.kind, ToolKind::Browser))
+        .unwrap();
+        assert!(probe_candidate(&candidate, Duration::from_millis(100)).is_err());
+        assert!(probe_browser_candidate(
+            &candidate,
+            Duration::from_millis(100),
+            &valid_browser_grant()
+        )
+        .is_err());
+        let mut revoked = valid_browser_grant();
+        revoked.revoked = true;
+        assert!(probe_browser_candidate(&candidate, Duration::from_millis(100), &revoked).is_err());
+        let mut unapproved = candidate.clone();
+        unapproved.adapter_id = Some("unapproved-browser.v1".into());
+        assert!(probe_browser_candidate(
+            &unapproved,
+            Duration::from_millis(100),
+            &valid_browser_grant()
+        )
+        .is_err());
+        let calls = std::fs::read_to_string(calls).unwrap();
+        // Rejected grants/manifests must not start a third process.
+        assert_eq!(calls.lines().filter(|line| *line == "END").count(), 2);
+        assert!(!calls.lines().any(|line| line == "--version"));
+        assert_eq!(
+            calls
+                .lines()
+                .filter(|line| *line == "--headless=new")
+                .count(),
+            2
+        );
+        assert_eq!(
+            calls
+                .lines()
+                .filter(|line| *line == "--no-first-run")
+                .count(),
+            2
+        );
+        assert_eq!(
+            calls.lines().filter(|line| *line == "about:blank").count(),
+            2
+        );
+        let profiles: Vec<_> = calls
+            .lines()
+            .filter_map(|line| line.strip_prefix("--user-data-dir="))
+            .collect();
+        assert_eq!(profiles.len(), 2);
+        assert_ne!(profiles[0], profiles[1]);
+        assert!(profiles.iter().all(|path| !Path::new(path).exists()));
+    }
+
+    #[test]
     fn browser_grant_requires_current_runner_session_and_tenant_binding() {
         let grant = valid_browser_grant();
         assert!(validate_browser_authorization_grant(
@@ -2373,6 +2523,7 @@ mod tests {
             .stderr(Stdio::null());
         let child = command.spawn().unwrap();
         let mut browser = BrowserProbeProcess {
+            version: "test-browser".into(),
             child,
             profile_dir: profile_dir.clone(),
             socket: None,
@@ -2405,6 +2556,7 @@ mod tests {
             .stderr(Stdio::null());
         let child = command.spawn().unwrap();
         let mut browser = BrowserProbeProcess {
+            version: "test-browser".into(),
             child,
             profile_dir: profile_path.clone(),
             socket: None,
