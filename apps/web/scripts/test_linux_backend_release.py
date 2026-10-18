@@ -344,6 +344,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(repo), "config", "user.name", "Release Test"], check=True)
         subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-qm", "package fixture"], check=True)
+        generated_stage = repo / "apps/cloudflare/.staging-artifact"
+        generated_stage.mkdir(parents=True)
+        (generated_stage / "bundle-manifest.json").write_text('{"fixture":true}\n')
         fake_bin = self.root / "fake-bin"
         fake_bin.mkdir()
         fake_pnpm = fake_bin / "pnpm"
@@ -374,6 +377,17 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(metadata["sourceSha"], subprocess.check_output(
             ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True
         ).strip())
+        (web / "package.json").write_text('{"name":"@smartspec/web","sourceEdit":true}\n')
+        rejected_source_edit = subprocess.run(
+            ["bash", "apps/web/scripts/package-linux-backend.sh"],
+            cwd=repo,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(rejected_source_edit.returncode, 2)
+        self.assertIn("clean pinned source checkout", rejected_source_edit.stderr)
 
     def test_concurrent_retry_is_fenced_and_does_not_restart_twice(self):
         artifact = self.prepare()
