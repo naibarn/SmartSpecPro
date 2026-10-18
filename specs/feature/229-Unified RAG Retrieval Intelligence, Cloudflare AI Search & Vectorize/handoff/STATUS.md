@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: Implement a minimal deterministic development-cohort builder using allowed repository fixtures and synthetic controls; have independent reviewer and adjudicator validate actual query/evidence pairs, no leakage, and source permissions. No release-approved cohort can be claimed until the complete review contract and untouched split criteria are satisfied.
-- Manifest generation: 136
+- Manifest generation: 137
 
 ## Source-declared status and relationship claims
 
