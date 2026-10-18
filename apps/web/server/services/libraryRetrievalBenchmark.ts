@@ -429,8 +429,8 @@ export function calculateRetrievalBenchmarkMetrics(
       }
       freshnessTotal += 1;
       if (
-        item.revoked !== true &&
-        item.deleted !== true &&
+        item.revoked === false &&
+        item.deleted === false &&
         (!isExpectedEvidence ||
           !gold.expectedRevision ||
           item.revision === gold.expectedRevision)

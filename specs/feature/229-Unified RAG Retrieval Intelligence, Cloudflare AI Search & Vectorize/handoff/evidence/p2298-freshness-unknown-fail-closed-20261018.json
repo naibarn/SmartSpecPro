@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "spec229-workunit-evidence-v1",
+  "workUnit": "SPEC229_P229_8_FRESHNESS_UNKNOWN_FAIL_CLOSED",
+  "baseCanonicalSha": "3f10850c07c54a05b13256a9464a719168c82628",
+  "testedSourceSha": "9e4e617b0f187c8042c5afcd2af680c2070739a3",
+  "change": "Freshness correctness now requires explicit revoked=false and deleted=false observations; missing lifecycle state no longer counts as current evidence.",
+  "verification": {
+    "profile": "quick",
+    "command": "pnpm --dir apps/web exec vitest run server/services/libraryRetrievalBenchmark.test.ts server/services/libraryRetrievalBenchmarkControls.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts",
+    "result": "PASS",
+    "testFiles": 3,
+    "tests": 21,
+    "gitDiffCheck": "PASS"
+  },
+  "providerExecution": "NOT_RUN: no approved secure Cloudflare credential injection is connected to this isolated runner",
+  "releaseCertification": "NOT_EVALUABLE: this change only closes permissive metric interpretation; it provides no provider observations or release cohort"
+}
