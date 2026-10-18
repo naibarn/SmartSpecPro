@@ -35,7 +35,7 @@
     "next_action": "The 560-candidate development cohort has an actual A legacy-baseline run only; it is not held out and all 15 release criteria remain NOT_EVALUABLE. Continue with profile B implementation, then C–H in canonical dependency order.",
     "next_ready_workunit": "P229_PROFILE_B_NONPRODUCTION_VECTORIZE_DENSE: implement a separate non-production 1024D path without changing the production 768D profile; add adapter/config/integration regression tests, then capture real observations only when authorized provider runtime is configured.",
     "reactivation_predicate": "Profile B code and tests pass, and an isolated authorized runtime is available for real profile B observations; continue independently with AI Search and composition profiles.",
-    "resume_point": "Canonical base is origin/main 8b224d657454dcf9e4978296cc379b1a33b94c70. Worktree codex/spec229-executable-eval contains unintegrated P229.8 local runtime/source policy slice. Exact local baseline run and report are in handoff/evidence/p2298-executable-local-eval-20261018.json; see external SHA-bound run artifacts listed there. P229.8 remains NOT_EVALUABLE.",
+    "resume_point": "Canonical origin/main base 8b224d657454dcf9e4978296cc379b1a33b94c70. Implementation checkpoint 41faa3a5f is committed on codex/spec229-executable-eval and awaits protected PR integration. Focused verification passed 4 files/25 tests; evidence is handoff/evidence/p2298-executable-local-eval-20261018.json. A legacy baseline was measured for 560 development-only queries. Continue with SPEC-ordered profile B after this checkpoint; P229.8 remains NOT_EVALUABLE.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -93,7 +93,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 70,
+  "generation": 71,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -126,7 +126,8 @@
       "41be8c787888f0575e691a17ec6cab82a3b4eb08",
       "013098beb6f44f65f985820b01b7f73cee898a56",
       "9a75751e9aee5e538605125fcc7ccfa089122db7",
-      "a496735cd6d9c724e0ab93e2c263e0fde4d974f9"
+      "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
+      "41faa3a5f"
     ],
     "mapping": [],
     "source_paths": [
@@ -159,7 +160,11 @@
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "a496735cd6d9c724e0ab93e2c263e0fde4d974f9",
     "integrated": true,
-    "integrated_at": "2026-10-17T22:34:33Z"
+    "integrated_at": "2026-10-17T22:34:33Z",
+    "intended_pr": "Create PR for checkpoint 41faa3a5f; required checks must pass before merge.",
+    "pending_source_branch": "codex/spec229-executable-eval",
+    "pending_source_sha": "41faa3a5f",
+    "pending_workunit": "P229.8 executable local baseline, corrected freshness metrics, and versioned source-use policy"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -373,7 +378,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T00:25:13.176703Z",
+  "updated_at": "2026-10-18T00:25:48.645696Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",

@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
 - Next action: Continue with the SPEC-ordered non-production Vectorize dense profile implementation; use external provider only through authorized configuration and leave its observations NOT_EVALUABLE until actually run.
-- Manifest generation: 70
+- Manifest generation: 71
 
 ## Source-declared status and relationship claims
 
