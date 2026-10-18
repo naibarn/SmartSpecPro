@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import {
   ragProjectionItems,
@@ -365,6 +365,70 @@ export async function markRagProjectionDeletePending(
 }
 
 /**
+ * Finish provider cleanup only for the exact receipt that was deleted. The
+ * tenant, projection key, instance and provider item fence concurrent
+ * reindexing from allowing an old delete worker to tombstone a replacement.
+ */
+export async function markRagProjectionDeleted(
+  db: DrizzleDB,
+  input: {
+    tenantId: string;
+    projectionKey: string;
+    instanceId: string;
+    providerItemId: string | null;
+  }
+): Promise<boolean> {
+  requireText(input.tenantId, "RAG_PROJECTION_TENANT_INVALID", 36);
+  requireText(input.projectionKey, "RAG_PROJECTION_KEY_INVALID", 256);
+  requireText(input.instanceId, "RAG_PROJECTION_INSTANCE_INVALID", 64);
+  if (input.providerItemId !== null) {
+    requireText(
+      input.providerItemId,
+      "RAG_PROJECTION_PROVIDER_ITEM_INVALID",
+      256
+    );
+  }
+  const providerItemCondition =
+    input.providerItemId === null
+      ? isNull(ragProjectionItems.providerItemId)
+      : eq(ragProjectionItems.providerItemId, input.providerItemId);
+  const rows = await db
+    .update(ragProjectionItems)
+    .set({ status: "deleted", deletedAt: new Date(), updatedAt: new Date() })
+    .where(
+      and(
+        eq(ragProjectionItems.tenantId, input.tenantId),
+        eq(ragProjectionItems.projectionKey, input.projectionKey),
+        eq(ragProjectionItems.provider, "cloudflare_ai_search"),
+        eq(ragProjectionItems.instanceId, input.instanceId),
+        providerItemCondition,
+        eq(ragProjectionItems.status, "delete_pending")
+      )
+    )
+    .returning({ id: ragProjectionItems.id });
+  return rows.length === 1;
+}
+
+export async function listRagProjectionItemsForSource(
+  db: DrizzleDB,
+  input: { tenantId: string; sourceType: string; sourceId: string }
+) {
+  requireText(input.tenantId, "RAG_PROJECTION_TENANT_INVALID", 36);
+  requireText(input.sourceType, "RAG_PROJECTION_SOURCE_TYPE_INVALID", 48);
+  requireText(input.sourceId, "RAG_PROJECTION_SOURCE_ID_INVALID", 256);
+  return db
+    .select()
+    .from(ragProjectionItems)
+    .where(
+      and(
+        eq(ragProjectionItems.tenantId, input.tenantId),
+        eq(ragProjectionItems.sourceType, input.sourceType),
+        eq(ragProjectionItems.sourceId, input.sourceId)
+      )
+    );
+}
+
+/**
  * Candidate resolution is tenant- and ACL-scoped and yields identity only.
  * The owning domain must still re-read canonical source and current ACL before
  * exposing any text or citation.
@@ -404,6 +468,55 @@ export async function resolveIndexedRagProjection(
         eq(ragProjectionItems.provider, input.provider),
         eq(ragProjectionItems.instanceId, input.instanceId),
         eq(ragProjectionItems.providerItemId, input.providerItemId),
+        eq(ragProjectionItems.status, "indexed"),
+        inArray(ragProjectionItems.aclScope, input.authorizedAclScopes)
+      )
+    )
+    .limit(1);
+  return projection ?? null;
+}
+
+/** Resolve an AI Search key through PostgreSQL before trusting candidate identity. */
+export async function resolveIndexedRagProjectionByKey(
+  db: DrizzleDB,
+  input: {
+    tenantId: string;
+    instanceId: string;
+    projectionKey: string;
+    authorizedAclScopes: string[];
+  }
+) {
+  requireText(input.tenantId, "RAG_PROJECTION_TENANT_INVALID", 36);
+  requireText(input.instanceId, "RAG_PROJECTION_INSTANCE_INVALID", 64);
+  requireText(input.projectionKey, "RAG_PROJECTION_KEY_INVALID", 256);
+  if (!input.authorizedAclScopes.length) {
+    throw new RagProjectionError("RAG_PROJECTION_AUTHORIZED_SCOPES_REQUIRED");
+  }
+  for (const scope of input.authorizedAclScopes) {
+    requireText(scope, "RAG_PROJECTION_ACL_SCOPE_INVALID", 64);
+  }
+  const [projection] = await db
+    .select({
+      id: ragProjectionItems.id,
+      tenantId: ragProjectionItems.tenantId,
+      sourceType: ragProjectionItems.sourceType,
+      sourceId: ragProjectionItems.sourceId,
+      sourceVersion: ragProjectionItems.sourceVersion,
+      projectionPart: ragProjectionItems.projectionPart,
+      projectionHash: ragProjectionItems.projectionHash,
+      projectionKey: ragProjectionItems.projectionKey,
+      aclScope: ragProjectionItems.aclScope,
+      embeddingProfile: ragProjectionItems.embeddingProfile,
+      instanceId: ragProjectionItems.instanceId,
+      providerItemId: ragProjectionItems.providerItemId,
+    })
+    .from(ragProjectionItems)
+    .where(
+      and(
+        eq(ragProjectionItems.tenantId, input.tenantId),
+        eq(ragProjectionItems.provider, "cloudflare_ai_search"),
+        eq(ragProjectionItems.instanceId, input.instanceId),
+        eq(ragProjectionItems.projectionKey, input.projectionKey),
         eq(ragProjectionItems.status, "indexed"),
         inArray(ragProjectionItems.aclScope, input.authorizedAclScopes)
       )

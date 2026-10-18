@@ -2,6 +2,14 @@ import { Buffer } from "node:buffer";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
 const MAX_FILTER_STRING_BYTES = 64;
+const MAX_CUSTOM_METADATA_FIELDS = 5;
+const ALLOWED_CUSTOM_METADATA_FIELDS = new Set([
+  "acl_scope",
+  "source_type",
+  "project_id",
+  "status",
+  "language",
+]);
 
 export type AiSearchRetrievalType = "keyword" | "vector" | "hybrid";
 
@@ -43,13 +51,11 @@ export interface AiSearchProjectionItemInput {
   key: string;
   content: string;
   metadata: {
-    tenant_id: string;
     acl_scope: string;
     source_type: string;
-    source_id: string;
-    source_revision: string;
-    projection_hash: string;
-    embedding_profile: string;
+    project_id?: string;
+    status?: string;
+    language?: string;
   };
 }
 
@@ -74,6 +80,30 @@ function assertFilterValue(field: string, value: string): void {
     Buffer.byteLength(value, "utf8") > MAX_FILTER_STRING_BYTES
   ) {
     throw new Error(`AI_SEARCH_FILTER_VALUE_INVALID:${field}`);
+  }
+}
+
+function validateProjectionMetadata(
+  metadata: AiSearchProjectionItemInput["metadata"]
+): void {
+  const entries = Object.entries(metadata);
+  if (
+    entries.length < 2 ||
+    entries.length > MAX_CUSTOM_METADATA_FIELDS ||
+    entries.some(
+      ([key, value]) =>
+        !ALLOWED_CUSTOM_METADATA_FIELDS.has(key) ||
+        typeof value !== "string" ||
+        !value.trim()
+    )
+  ) {
+    throw new Error("AI_SEARCH_PROJECTION_METADATA_INVALID");
+  }
+  assertFilterValue("acl_scope", metadata.acl_scope);
+  assertFilterValue("source_type", metadata.source_type);
+  for (const field of ["project_id", "status", "language"] as const) {
+    const value = metadata[field];
+    if (value !== undefined) assertFilterValue(field, value);
   }
 }
 
@@ -165,7 +195,8 @@ export class CloudflareAiSearchProvider {
               ? { fusion_method: input.fusionMethod }
               : {}),
             filters: {
-              tenant_id: input.tenantId,
+              // Every authorized ACL scope is tenant-hashed, so this keeps
+              // tenant isolation without consuming a sixth custom metadata field.
               acl_scope: { $in: input.authorizedAclScopes },
               source_type: { $in: input.sourceClasses },
             },
@@ -206,11 +237,9 @@ export class CloudflareAiSearchProvider {
       }
       const metadata = chunk.item.metadata;
       const instanceId = chunk.instance_id;
-      const tenantId = metadata.tenant_id;
       const aclScope = metadata.acl_scope;
       const sourceClass = metadata.source_type;
       if (
-        tenantId !== input.tenantId ||
         (typeof instanceId === "string" &&
           !input.instanceIds.includes(instanceId)) ||
         typeof aclScope !== "string" ||
@@ -295,17 +324,7 @@ export class CloudflareAiSearchProvider {
           : "AI_SEARCH_PROJECTION_CONTENT_EMPTY"
       );
     }
-    assertFilterValue("tenant_id", input.metadata.tenant_id);
-    assertFilterValue("acl_scope", input.metadata.acl_scope);
-    assertFilterValue("source_type", input.metadata.source_type);
-    if (
-      !input.metadata.source_id.trim() ||
-      !input.metadata.source_revision.trim() ||
-      !/^[a-f0-9]{64}$/.test(input.metadata.projection_hash) ||
-      !input.metadata.embedding_profile.trim()
-    ) {
-      throw new Error("AI_SEARCH_PROJECTION_METADATA_INVALID");
-    }
+    validateProjectionMetadata(input.metadata);
 
     const url =
       `${API_BASE}/accounts/${encodeURIComponent(this.config.accountId)}` +

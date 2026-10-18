@@ -3,13 +3,21 @@ import { randomUUID } from "node:crypto";
 import {
   resolveLibraryVectorIndexName,
   getLibraryMarkdownContent,
+  getLibraryActorAiSearchScopes,
   searchLibraryItems,
   type LibraryItemStatus,
   type LibraryActor,
   type LibrarySearchFilters,
   type LibrarySearchResultV1,
 } from "./libraryService";
+import { getDb } from "../db";
 import { estimateTokens } from "../utils/tokenEstimator";
+import { CloudflareAiSearchProvider } from "./cloudflareAiSearchProvider";
+import {
+  resolveRetrievalInstanceRoute,
+  RetrievalInstanceRouteError,
+} from "./retrievalInstanceRoutes";
+import { resolveIndexedRagProjectionByKey } from "./ragProjectionRegistry";
 import {
   buildLibraryCitationAnchorUri,
   createLibraryCitationAnchor,
@@ -444,6 +452,283 @@ async function hydrateLibraryEvidence(params: {
   return { evidence, partial: partial || truncated, degradationReasons: [...degradationReasons] };
 }
 
+type ResolvedAiSearchRoute = Awaited<
+  ReturnType<typeof resolveRetrievalInstanceRoute>
+>;
+
+async function resolveNonProductionAiSearchRoute(tenantId: string): Promise<
+  | {
+      accountId: string;
+      apiToken: string;
+      route: ResolvedAiSearchRoute;
+    }
+  | { error: string }
+  | null
+> {
+  const nodeEnvironment = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  if (nodeEnvironment !== "development" && nodeEnvironment !== "staging") {
+    return null;
+  }
+  const accountId = (
+    process.env.CLOUDFLARE_ACCOUNT_ID ??
+    process.env.CF_ACCOUNT_ID ??
+    ""
+  ).trim();
+  const apiToken = (process.env.CLOUDFLARE_AI_API_KEY ?? "").trim();
+  if (!/^[a-f0-9]{32}$/i.test(accountId) || !apiToken) return null;
+  const environment = nodeEnvironment === "staging" ? "staging" : "dev";
+  try {
+    const route = await resolveRetrievalInstanceRoute(getDb(), {
+      tenantId,
+      environment,
+      sourceClasses: ["library_document"],
+    });
+    return { accountId, apiToken, route };
+  } catch (error) {
+    if (
+      error instanceof RetrievalInstanceRouteError &&
+      error.code === "RETRIEVAL_ROUTE_NOT_CONFIGURED"
+    ) {
+      return null;
+    }
+    const code =
+      error instanceof RetrievalInstanceRouteError
+        ? error.code
+        : "RETRIEVAL_ROUTE_UNAVAILABLE";
+    return { error: code };
+  }
+}
+
+async function retrieveFromAiSearch(params: {
+  query: string;
+  actor: LibraryActor;
+  tenantId: string;
+  retrievalTraceId: string;
+  plan: RetrievalResponseV2["plan"];
+  maxCandidates: number;
+  maxEvidence: number;
+  maxContextTokens: number;
+  resolved: NonNullable<
+    Awaited<ReturnType<typeof resolveNonProductionAiSearchRoute>>
+  >;
+}): Promise<RetrievalResponseV2> {
+  if ("error" in params.resolved) {
+    return {
+      retrievalTraceId: params.retrievalTraceId,
+      plan: params.plan,
+      providerProfile: {
+        provider: "cloudflare_ai_search",
+        profileId: "route_unavailable",
+      },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: [params.resolved.error],
+    };
+  }
+  const { accountId, apiToken, route } = params.resolved;
+  const profileId = `ai-search:${route.profileVersion}`;
+  const degradationReasons = new Set<string>();
+  const evidence: RetrievalEvidenceV2[] = [];
+  const seenSourceVersions = new Set<string>();
+  let remainingTokens = params.maxContextTokens;
+  let truncated = false;
+  let candidates: Awaited<ReturnType<CloudflareAiSearchProvider["search"]>>;
+  let authorizedAclScopes: string[];
+  try {
+    authorizedAclScopes = await getLibraryActorAiSearchScopes(params.actor);
+    const provider = new CloudflareAiSearchProvider({ accountId, apiToken });
+    candidates = await provider.search({
+      namespace: route.namespace,
+      instanceIds: route.instanceIds,
+      tenantId: params.tenantId,
+      authorizedAclScopes,
+      sourceClasses: ["library_document"],
+      query: params.query,
+      retrievalType: "hybrid",
+      maxResults: Math.min(params.maxCandidates, 50),
+      keywordMatchMode: "or",
+      fusionMethod: "rrf",
+      queryRewrite: false,
+      reranking: true,
+    });
+  } catch {
+    return {
+      retrievalTraceId: params.retrievalTraceId,
+      plan: params.plan,
+      providerProfile: { provider: "cloudflare_ai_search", profileId },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["RETRIEVAL_PROVIDER_UNAVAILABLE"],
+    };
+  }
+
+  let projectionDb;
+  try {
+    projectionDb = getDb();
+  } catch {
+    return {
+      retrievalTraceId: params.retrievalTraceId,
+      plan: params.plan,
+      providerProfile: { provider: "cloudflare_ai_search", profileId },
+      evidence: [],
+      evidenceQuality: "no_evidence",
+      degraded: true,
+      partial: false,
+      degradationReasons: ["PROJECTION_REGISTRY_UNAVAILABLE"],
+    };
+  }
+
+  for (const candidate of candidates.slice(0, params.maxEvidence)) {
+    if (remainingTokens <= 0) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
+      break;
+    }
+    let projection;
+    try {
+      const instanceId =
+        candidate.instanceId ??
+        (route.instanceIds.length === 1 ? route.instanceIds[0] : "");
+      projection = await resolveIndexedRagProjectionByKey(projectionDb, {
+        tenantId: params.tenantId,
+        instanceId,
+        projectionKey: candidate.key,
+        authorizedAclScopes,
+      });
+    } catch {
+      degradationReasons.add("PROJECTION_REGISTRY_REVALIDATION_FAILED");
+      continue;
+    }
+    if (
+      !projection ||
+      projection.tenantId !== params.tenantId ||
+      projection.sourceType !== "library_document" ||
+      candidate.metadata.acl_scope !== projection.aclScope ||
+      candidate.metadata.source_type !== projection.sourceType
+    ) {
+      degradationReasons.add("UNREGISTERED_OR_UNAUTHORIZED_PROJECTION_DROPPED");
+      continue;
+    }
+    const itemId = Number(projection.sourceId);
+    if (
+      !Number.isSafeInteger(itemId) ||
+      itemId <= 0 ||
+      String(itemId) !== projection.sourceId
+    ) {
+      degradationReasons.add("PROJECTION_SOURCE_ID_INVALID");
+      continue;
+    }
+
+    let canonical;
+    try {
+      canonical = await getLibraryMarkdownContent(itemId, params.actor);
+    } catch {
+      degradationReasons.add("CANONICAL_SOURCE_REVALIDATION_FAILED");
+      continue;
+    }
+    if (!canonical) {
+      degradationReasons.add("ACL_OR_SOURCE_REVOKED_AFTER_SEARCH");
+      continue;
+    }
+    const markdown = normalizeCanonicalMarkdown(canonical.content);
+    if (
+      canonical.canonicalRevision !== projection.sourceVersion ||
+      projection.projectionPart !== "whole" ||
+      sha256(markdown) !== projection.projectionHash
+    ) {
+      degradationReasons.add("STALE_EVIDENCE_DROPPED");
+      continue;
+    }
+    const dedupeKey = `${itemId}:${projection.sourceVersion}:${projection.projectionHash}`;
+    if (seenSourceVersions.has(dedupeKey)) continue;
+    seenSourceVersions.add(dedupeKey);
+
+    const text = truncateTextToTokenBudget(markdown, remainingTokens);
+    if (!text) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_EXHAUSTED");
+      break;
+    }
+    const anchor = createLibraryCitationAnchor({
+      documentId: itemId,
+      query: params.query,
+      markdown,
+      digest: canonical.canonicalDigest,
+    });
+    const sourceUri = normalizeCitationSourceUri(canonical.canonicalSourceUri);
+    evidence.push({
+      evidenceId: `library:${params.tenantId}:${itemId}:${canonical.canonicalRevision}:${canonical.canonicalDigest.slice(0, 12)}`,
+      sourceType: "library_item",
+      sourceId: String(itemId),
+      itemId,
+      sourceRevision: canonical.canonicalRevision,
+      sourceDigest: canonical.canonicalDigest,
+      canonicalRef: {
+        kind: "library_item",
+        id: String(itemId),
+        revision: canonical.canonicalRevision,
+        digest: canonical.canonicalDigest,
+      },
+      title: canonical.title,
+      text,
+      ...(sourceUri ? { sourceUri } : {}),
+      ...(anchor
+        ? {
+            citation: {
+              lineStart: anchor.lineStart,
+              lineEnd: anchor.lineEnd,
+              revision: anchor.revision,
+              digest: anchor.digest,
+              quoteHash: anchor.quoteHash,
+              anchorUri: buildLibraryCitationAnchorUri(anchor),
+            },
+          }
+        : {}),
+      retrievalProvider: "cloudflare_ai_search",
+      providerProfileId: profileId,
+      providerProfileVersion: route.profileVersion,
+      retrievalMode: "hybrid",
+      scores: { fused: candidate.fusionScore ?? candidate.score },
+      aclScope: projection.aclScope,
+      aclVerified: true,
+      provenanceVerified: true,
+      freshnessState: "current",
+      updatedAt: canonical.canonicalRevision,
+      tombstoned: false,
+      domainEligibility: "unknown",
+    });
+    remainingTokens = Math.max(0, remainingTokens - estimateTokens(text));
+    if (text.length < markdown.length) {
+      truncated = true;
+      degradationReasons.add("CONTEXT_BUDGET_TRUNCATED");
+    }
+  }
+
+  const partial =
+    evidence.length < Math.min(candidates.length, params.maxEvidence);
+  if (partial && candidates.length > evidence.length) {
+    degradationReasons.add("CONTENT_HYDRATION_PARTIAL");
+  }
+  if (evidence.length > 0) degradationReasons.add("QUALITY_GATE_NOT_CERTIFIED");
+  return {
+    retrievalTraceId: params.retrievalTraceId,
+    plan: params.plan,
+    providerProfile: { provider: "cloudflare_ai_search", profileId },
+    evidence,
+    evidenceQuality: evidence.length === 0 ? "no_evidence" : "weak",
+    degraded: evidence.length > 0 || truncated || degradationReasons.size > 0,
+    partial: partial || truncated,
+    ...(degradationReasons.size > 0
+      ? { degradationReasons: [...degradationReasons] }
+      : {}),
+  };
+}
+
+
 /**
  * The first SAH-RETRIEVAL-2 runtime adapter. Identity and ACL are derived from
  * the authenticated LibraryActor; caller supplied tenant/user/scope values are
@@ -490,6 +775,33 @@ export async function retrieveLibraryEvidenceV2(
     };
   }
   const queryClass = request.queryClass;
+  const aiSearchPlan = {
+    requestId: request.requestId,
+    purpose: request.purpose,
+    queryClass,
+    sourceClasses: request.sourceClasses,
+    evidenceBudget: { maxCandidates, maxEvidence, maxContextTokens },
+  };
+  const aiSearchSupportsRequest =
+    request.projectId === undefined &&
+    !request.status?.length &&
+    Object.keys(input.filters ?? {}).length === 0;
+  if (aiSearchSupportsRequest) {
+    const aiSearchRoute = await resolveNonProductionAiSearchRoute(tenantId);
+    if (aiSearchRoute) {
+      return retrieveFromAiSearch({
+        query,
+        actor,
+        tenantId,
+        retrievalTraceId,
+        plan: aiSearchPlan,
+        maxCandidates,
+        maxEvidence,
+        maxContextTokens,
+        resolved: aiSearchRoute,
+      });
+    }
+  }
   let providerConfig: Awaited<ReturnType<typeof getEffectiveVectorProviderConfig>>;
   let provider: string;
   try {

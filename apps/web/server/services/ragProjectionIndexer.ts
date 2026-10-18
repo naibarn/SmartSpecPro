@@ -81,13 +81,8 @@ export async function indexRagProjectionItem(
       key: projectionKey,
       content: input.canonicalContent,
       metadata: {
-        tenant_id: input.tenantId,
         acl_scope: input.aclScope,
         source_type: input.sourceType,
-        source_id: input.sourceId,
-        source_revision: input.sourceVersion,
-        projection_hash: projectionHash,
-        embedding_profile: input.embeddingProfile,
       },
     });
   } catch (error) {

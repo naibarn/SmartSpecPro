@@ -86,10 +86,8 @@ describe("SPEC-229 RAG projection index lifecycle", () => {
         key: "rag/deterministic/key",
         content,
         metadata: expect.objectContaining({
-          tenant_id: "tenant-a",
           acl_scope: input.aclScope,
-          source_revision: "revision-7",
-          projection_hash: projectionHash,
+          source_type: "library_document",
         }),
       })
     );
