@@ -4096,6 +4096,15 @@ export const vectorProjectionStatusEnum = pgEnum("vector_projection_status", [
   "deleted",
   "failed",
 ]);
+export const ragProjectionStatusEnum = pgEnum("rag_projection_status", [
+  "queued",
+  "indexing",
+  "indexed",
+  "stale",
+  "delete_pending",
+  "deleted",
+  "failed",
+]);
 export const libraryContextPackStatusEnum = pgEnum(
   "library_context_pack_status",
   ["draft", "active", "archived"]
@@ -4525,6 +4534,93 @@ export type RetrievalInstanceRoute =
   typeof retrievalInstanceRoutes.$inferSelect;
 export type InsertRetrievalInstanceRoute =
   typeof retrievalInstanceRoutes.$inferInsert;
+
+/**
+ * Provider projection lifecycle only. Canonical source, content, tenant ACL,
+ * and revision remain owned by the source domain and PostgreSQL records them.
+ */
+export const ragProjectionItems = pgTable(
+  "rag_projection_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sourceType: varchar("source_type", { length: 48 }).notNull(),
+    sourceId: varchar("source_id", { length: 256 }).notNull(),
+    sourceVersion: varchar("source_version", { length: 160 }).notNull(),
+    projectionPart: varchar("projection_part", { length: 128 })
+      .notNull()
+      .default("whole"),
+    aclScope: varchar("acl_scope", { length: 64 }).notNull(),
+    projectionKey: varchar("projection_key", { length: 256 }).notNull(),
+    projectionHash: varchar("projection_hash", { length: 64 }).notNull(),
+    projectionBytes: integer("projection_bytes").notNull(),
+    provider: varchar("provider", { length: 32 })
+      .notNull()
+      .default("cloudflare_ai_search"),
+    instanceId: varchar("instance_id", { length: 64 }).notNull(),
+    providerItemId: varchar("provider_item_id", { length: 256 }),
+    embeddingProfile: varchar("embedding_profile", { length: 96 }).notNull(),
+    status: ragProjectionStatusEnum("status").notNull().default("queued"),
+    indexedAt: timestamp("indexed_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    lastError: varchar("last_error", { length: 96 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("rag_projection_items_key_unique").on(
+      t.tenantId,
+      t.projectionKey
+    ),
+    uniqueIndex("rag_projection_items_identity_unique").on(
+      t.tenantId,
+      t.sourceType,
+      t.sourceId,
+      t.sourceVersion,
+      t.projectionPart,
+      t.aclScope,
+      t.embeddingProfile
+    ),
+    uniqueIndex("rag_projection_items_provider_item_unique")
+      .on(t.provider, t.instanceId, t.providerItemId)
+      .where(sql`${t.providerItemId} IS NOT NULL`),
+    index("rag_projection_items_tenant_source_idx").on(
+      t.tenantId,
+      t.sourceType,
+      t.sourceId,
+      t.sourceVersion
+    ),
+    index("rag_projection_items_tenant_status_idx").on(
+      t.tenantId,
+      t.status
+    ),
+    check(
+      "rag_projection_items_acl_scope_bytes_check",
+      sql`octet_length(${t.aclScope}) <= 64`
+    ),
+    check(
+      "rag_projection_items_projection_hash_check",
+      sql`${t.projectionHash} ~ '^[0-9a-f]{64}$'`
+    ),
+    check(
+      "rag_projection_items_projection_bytes_check",
+      sql`${t.projectionBytes} BETWEEN 1 AND 4000000`
+    ),
+    check(
+      "rag_projection_items_provider_check",
+      sql`${t.provider} = 'cloudflare_ai_search'`
+    ),
+  ]
+);
+
+export type RagProjectionItem = typeof ragProjectionItems.$inferSelect;
+export type InsertRagProjectionItem = typeof ragProjectionItems.$inferInsert;
 
 export const libraryContentVersions = pgTable(
   "library_content_versions",

@@ -24,7 +24,11 @@ describe("SPEC-229 retrieval instance route migration", () => {
     expect(migration).toContain(
       "jsonb_typeof(\"source_class_routes\") = 'object'"
     );
-    expect(journal.entries.at(-1)).toMatchObject({
+    expect(
+      journal.entries.find(
+        entry => entry.tag === "0405_spec229_retrieval_instance_routes"
+      )
+    ).toMatchObject({
       idx: 405,
       tag: "0405_spec229_retrieval_instance_routes",
     });

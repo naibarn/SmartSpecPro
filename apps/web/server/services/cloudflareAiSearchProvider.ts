@@ -14,6 +14,7 @@ export interface CloudflareAiSearchProviderConfig {
 export interface AiSearchProviderCandidate {
   chunkId: string;
   score: number;
+  fusionScore?: number;
   text: string;
   key: string;
   instanceId?: string;
@@ -32,6 +33,30 @@ export interface AiSearchProviderRequest {
   maxResults: number;
   keywordMatchMode?: "and" | "or";
   fusionMethod?: "max" | "rrf";
+  queryRewrite?: boolean;
+  reranking?: boolean;
+}
+
+export interface AiSearchProjectionItemInput {
+  namespace: string;
+  instanceId: string;
+  key: string;
+  content: string;
+  metadata: {
+    tenant_id: string;
+    acl_scope: string;
+    source_type: string;
+    source_id: string;
+    source_revision: string;
+    projection_hash: string;
+    embedding_profile: string;
+  };
+}
+
+export interface AiSearchProjectionItemReceipt {
+  id: string;
+  key: string;
+  status?: string;
 }
 
 type CloudflareEnvelope<T> = {
@@ -128,8 +153,8 @@ export class CloudflareAiSearchProvider {
         query: input.query,
         ai_search_options: {
           cache: { enabled: false },
-          query_rewrite: { enabled: false },
-          reranking: { enabled: false },
+          query_rewrite: { enabled: input.queryRewrite ?? false },
+          reranking: { enabled: input.reranking ?? false },
           retrieval: {
             instance_ids: input.instanceIds,
             retrieval_type: input.retrievalType,
@@ -207,5 +232,166 @@ export class CloudflareAiSearchProvider {
           : {}),
       };
     });
+  }
+
+  /**
+   * Run already-planned query variants through the same tenant/ACL filters and
+   * fuse by reciprocal rank. Query generation remains owned by the Broker.
+   */
+  async searchMany(
+    input: Omit<AiSearchProviderRequest, "query"> & { queries: string[] }
+  ): Promise<AiSearchProviderCandidate[]> {
+    if (
+      !Array.isArray(input.queries) ||
+      input.queries.length < 1 ||
+      input.queries.length > 8 ||
+      input.queries.some(query => typeof query !== "string" || !query.trim())
+    ) {
+      throw new Error("AI_SEARCH_MULTI_QUERY_INVALID");
+    }
+    const fused = new Map<
+      string,
+      { candidate: AiSearchProviderCandidate; score: number }
+    >();
+    for (const query of [...new Set(input.queries)]) {
+      const candidates = await this.search({
+        ...input,
+        query,
+        fusionMethod: "rrf",
+      });
+      candidates.forEach((candidate, index) => {
+        const key = `${candidate.instanceId ?? ""}:${candidate.key}:${candidate.chunkId}`;
+        const rankScore = 1 / (60 + index + 1);
+        const existing = fused.get(key);
+        fused.set(key, {
+          candidate: existing?.candidate ?? candidate,
+          score: (existing?.score ?? 0) + rankScore,
+        });
+      });
+    }
+    return [...fused.values()]
+      .sort((left, right) => right.score - left.score)
+      .slice(0, input.maxResults)
+      .map(({ candidate, score }) => ({ ...candidate, fusionScore: score }));
+  }
+
+  async upsertItem(
+    input: AiSearchProjectionItemInput
+  ): Promise<AiSearchProjectionItemReceipt> {
+    this.validateNamespaceAndInstance(input.namespace, input.instanceId);
+    if (
+      !input.key.startsWith("rag/") ||
+      input.key.length > 256 ||
+      input.key.includes("..") ||
+      input.key.startsWith("/")
+    ) {
+      throw new Error("AI_SEARCH_PROJECTION_KEY_INVALID");
+    }
+    const contentBytes = Buffer.byteLength(input.content, "utf8");
+    if (contentBytes < 1 || contentBytes > 3_500_000) {
+      throw new Error(
+        contentBytes > 3_500_000
+          ? "AI_SEARCH_PROJECTION_SPLIT_REQUIRED"
+          : "AI_SEARCH_PROJECTION_CONTENT_EMPTY"
+      );
+    }
+    assertFilterValue("tenant_id", input.metadata.tenant_id);
+    assertFilterValue("acl_scope", input.metadata.acl_scope);
+    assertFilterValue("source_type", input.metadata.source_type);
+    if (
+      !input.metadata.source_id.trim() ||
+      !input.metadata.source_revision.trim() ||
+      !/^[a-f0-9]{64}$/.test(input.metadata.projection_hash) ||
+      !input.metadata.embedding_profile.trim()
+    ) {
+      throw new Error("AI_SEARCH_PROJECTION_METADATA_INVALID");
+    }
+
+    const url =
+      `${API_BASE}/accounts/${encodeURIComponent(this.config.accountId)}` +
+      `/ai-search/namespaces/${encodeURIComponent(input.namespace)}` +
+      `/instances/${encodeURIComponent(input.instanceId)}/items`;
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([input.content], { type: "text/markdown; charset=utf-8" }),
+      input.key
+    );
+    form.append("metadata", JSON.stringify(input.metadata));
+    form.append("wait_for_completion", "true");
+    const result = await this.readResult<unknown>(
+      await this.fetchImpl(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.config.apiToken}` },
+        body: form,
+      })
+    );
+    if (
+      !isRecord(result) ||
+      typeof result.id !== "string" ||
+      typeof result.key !== "string" ||
+      result.key !== input.key
+    ) {
+      throw new Error("AI_SEARCH_PROVIDER_UPLOAD_RESPONSE_INVALID");
+    }
+    return {
+      id: result.id,
+      key: result.key,
+      ...(typeof result.status === "string" ? { status: result.status } : {}),
+    };
+  }
+
+  async deleteItem(input: {
+    namespace: string;
+    instanceId: string;
+    providerItemId: string;
+  }): Promise<void> {
+    this.validateNamespaceAndInstance(input.namespace, input.instanceId);
+    if (!input.providerItemId.trim() || input.providerItemId.includes("/")) {
+      throw new Error("AI_SEARCH_PROVIDER_ITEM_ID_INVALID");
+    }
+    const url =
+      `${API_BASE}/accounts/${encodeURIComponent(this.config.accountId)}` +
+      `/ai-search/namespaces/${encodeURIComponent(input.namespace)}` +
+      `/instances/${encodeURIComponent(input.instanceId)}/items/${encodeURIComponent(input.providerItemId)}`;
+    await this.readResult(
+      await this.fetchImpl(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${this.config.apiToken}` },
+      })
+    );
+  }
+
+  private validateNamespaceAndInstance(
+    namespace: string,
+    instanceId: string
+  ): void {
+    if (
+      !new Set(["smartaihub-dev", "smartaihub-staging", "smartaihub-prod"]).has(
+        namespace
+      )
+    ) {
+      throw new Error("AI_SEARCH_NAMESPACE_INVALID");
+    }
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(instanceId)) {
+      throw new Error("AI_SEARCH_INSTANCE_ROUTE_INVALID");
+    }
+  }
+
+  private async readResult<T>(response: Response): Promise<T> {
+    let envelope: CloudflareEnvelope<T>;
+    try {
+      envelope = (await response.json()) as CloudflareEnvelope<T>;
+    } catch {
+      throw new Error(`AI_SEARCH_PROVIDER_REQUEST_FAILED:${response.status}`);
+    }
+    if (
+      !response.ok ||
+      envelope.success === false ||
+      envelope.result === undefined
+    ) {
+      throw new Error(`AI_SEARCH_PROVIDER_REQUEST_FAILED:${response.status}`);
+    }
+    return envelope.result;
   }
 }
