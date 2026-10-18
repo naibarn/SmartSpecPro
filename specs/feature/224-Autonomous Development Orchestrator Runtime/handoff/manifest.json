@@ -892,15 +892,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0a20b653c2cebc8052dea6832fb994ff9518a7c4",
+    "expected_canonical_sha": "b8b433963d624aac0dbb771b725470e90daec72c",
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Policy governance is now encoded in AGENTS.md on source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3, pending protected integration. Existing SPEC-224 Development Policy Authority (#1129) and policy-bound Recovery Grant (#1132) are verified on current origin/main; no duplicate engine was added. Continue with Source Trust only after the authenticated Owner Approval Record and exact issuer/signing/storage/revocation resources are available, then refresh Windows Runtime/Runner bindings. No grant or dispatch has been issued.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authenticated Platform/Security non-production Source Trust approval plus exact provider identities/resources/permissions; then fresh Windows Runner, profile, crosswalk, Tenant scope and lease evidence.",
+    "next_action": "Source Trust remains the next ready work unit. Obtain the authenticated Platform/Security non-production approval and exact provider resource identities/permissions; only then implement and wire the production adapter through the existing verifier. Refresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before one dispatch. No live grant or dispatch has occurred.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authenticated non-production Source Trust approval and exact issuer/signing/storage/revocation resource bindings; then fresh authenticated Windows Runtime/Tenant admission evidence.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "Source base origin/main SHA 0ae2318b44b124584f7e97bfdc30978635e5a4e3. Source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3 adds the repository-wide non-production Autonomous Approval by Policy governance rule without creating a second engine. Existing policy and Recovery Grant implementations remain those from PRs #1129/#1132. Remote verifier remains isolated from Runtime Admission; no authenticated Source Trust approval, issuer/KMS/key, R2/S3 resource, Windows live snapshot, grant or dispatch was available/created. The isolated Worktree Authority task workspace is workspace:68ea8e0e-7d02-455e-88c6-7e8e0c03ed5c.",
-    "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify canonical signed-evidence envelope fields and current Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency using authenticated runtime authority."
+    "resume_point": "Repository-wide Autonomous Approval by Policy governance merged in PR #1147 at canonical SHA b8b433963d624aac0dbb771b725470e90daec72c (source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3). Existing SPEC-224 tenant Development Policy Authority (#1129) and policy-bound Recovery Grant (#1132) remain the only approval/grant implementations; no duplicate engine was created. Source Trust verifier contract exists and has isolated positive/negative tests, but no production authority adapter or Runtime Admission invocation is configured. No owner approval/resource IDs, Windows live snapshot, grant, or dispatch was available/created.",
+    "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 113,
+  "generation": 114,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -1350,11 +1350,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0a20b653c2cebc8052dea6832fb994ff9518a7c4",
+    "canonical_sha": "b8b433963d624aac0dbb771b725470e90daec72c",
     "integrated": true,
-    "integrated_at": "2026-10-18T10:12:25Z",
-    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1132",
-    "source_sha": "e25853430d66af89b81191b403bce087967a5f5c"
+    "integrated_at": "2026-10-18T12:12:32Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
+    "source_sha": "5a320640c88e228d0959767ccd6ff6d2cb6f55e3"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T12:05:33.207714Z",
+  "updated_at": "2026-10-18T12:14:06.536009Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
