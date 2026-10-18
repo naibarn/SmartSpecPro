@@ -896,11 +896,11 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "PR #1132 is merged at 0a20b653c2cebc8052dea6832fb994ff9518a7c4 and reachable from origin/main. Continue live acceptance only after the authenticated Platform/Security Source Trust approval/resource package is present and current Windows Runner/profile/session/crosswalk/lease/Tenant authority evidence is available. No grant or dispatch is authorized by this evidence alone.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: exact authenticated Source Trust owner approval/resources and fresh Windows Runtime/Tenant binding evidence. Engineering policy grant issuance and workspace crosswalk are integrated; Source Trust remains deny-only.",
+    "next_action": "Policy governance is now encoded in AGENTS.md on source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3, pending protected integration. Existing SPEC-224 Development Policy Authority (#1129) and policy-bound Recovery Grant (#1132) are verified on current origin/main; no duplicate engine was added. Continue with Source Trust only after the authenticated Owner Approval Record and exact issuer/signing/storage/revocation resources are available, then refresh Windows Runtime/Runner bindings. No grant or dispatch has been issued.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authenticated Platform/Security non-production Source Trust approval plus exact provider identities/resources/permissions; then fresh Windows Runner, profile, crosswalk, Tenant scope and lease evidence.",
     "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "SPEC224_DEV_POLICY_GRANTS_20261018 integrated by PR #1132: source head e25853430d66af89b81191b403bce087967a5f5c, merge SHA 0a20b653c2cebc8052dea6832fb994ff9518a7c4, verified reachable from origin/main. Required checks passed: progressive_integration_gate, local-contract (current head and preceding handoff commit), Mocked SPEC-308 browser simulation; build-preview skipped. Local focused evidence: Python 34/34, Vitest 14/14, py_compile, scoped esbuild, diff hygiene; independent read-only review found no remaining issue. Integrated feature permits policy-backed exact-scope Recovery Grant issuance/validation and enforces canonical Workspace Authority crosswalk plus revoke-compatible authority locks. No actual grant was issued, no Runner dispatch occurred, and no Source Trust resource was activated. Owner approval request still has no authenticated response; GitHub search found no approval issue/PR. Cloud resource existence remains UNKNOWN because account inventory access is unavailable. Next: exact Platform/Security decision and resource IDs/permissions/budget, then fresh Windows Runtime Owner/Tenant bindings before one dispatch.",
-    "waiting_predicate": "Resume Source Trust integration when an authenticated Platform/Security Owner Approval Record supplies exact issuer workload/owner/entrypoint/environment, signing operation/key ID/fingerprint and rotation/revocation, evidence storage provider/account/bucket/prefix and split writer/verifier permissions with isolation/readback, trust scope/TTL/clock skew/replay/revocation/retention/incident owner, bounded cost/resource limits, canonical binding fields, and durable audit reference. Resume live dispatch only when Windows Runner/session/profile certification/capability/workspace crosswalk, current job/attempt/lease/fencing/idempotency and Tenant authority bindings are independently read back and valid."
+    "resume_point": "Source base origin/main SHA 0ae2318b44b124584f7e97bfdc30978635e5a4e3. Source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3 adds the repository-wide non-production Autonomous Approval by Policy governance rule without creating a second engine. Existing policy and Recovery Grant implementations remain those from PRs #1129/#1132. Remote verifier remains isolated from Runtime Admission; no authenticated Source Trust approval, issuer/KMS/key, R2/S3 resource, Windows live snapshot, grant or dispatch was available/created. The isolated Worktree Authority task workspace is workspace:68ea8e0e-7d02-455e-88c6-7e8e0c03ed5c.",
+    "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify canonical signed-evidence envelope fields and current Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency using authenticated runtime authority."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 112,
+  "generation": 113,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T10:12:45.453894Z",
+  "updated_at": "2026-10-18T12:05:33.207714Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
