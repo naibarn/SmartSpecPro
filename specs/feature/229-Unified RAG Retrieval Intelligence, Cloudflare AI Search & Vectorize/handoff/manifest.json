@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+    "expected_canonical_sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Provision an isolated non-production PostgreSQL + AI Search runtime with a synthetic evaluation tenant/Library item allowlist and securely injected provider configuration; then apply migration 0407 and run exact-SHA projection indexing/ACL revoke/delete observations. Do not use tenant production data. P229.8 and A-H actual observations remain NOT_EVALUABLE.",
-    "next_ready_workunit": "P229.4_NONPRODUCTION_RUNTIME_VERIFICATION",
-    "reactivation_predicate": "Resume from PR #1103 source fd16c164498fa22121a6669424a0347ddd0e015b after canonical merge. Runtime verification becomes executable only when an isolated non-production DATABASE_URL, valid AI Search route/provider configuration, securely injected provider credentials, and exact synthetic SPEC229_NONPRODUCTION_EVALUATION_TENANT_ID / SPEC229_NONPRODUCTION_EVALUATION_LIBRARY_ITEM_IDS are available. Never inspect credential values or production tenant data.",
-    "resume_point": "P229.4 projection lifecycle implementation is on PR #1103 at source SHA fd16c164498fa22121a6669424a0347ddd0e015b. Focused tests pass: 7 suites/140 tests, plus 5 filtered Library contract tests. No provider/database calls were made. Local environment presence check found no DB/provider configuration or synthetic evaluation allowlist; P229.4 runtime and P229.8 remain NOT_EVALUABLE.",
-    "waiting_predicate": "Isolated non-production database and provider runtime plus explicit synthetic tenant/item allowlist are securely configured; then apply migration 0407 and collect actual index/search/delete observations."
+    "next_action": "Merge PR #1104 through required checks, then implement A/B evaluation execution via the existing legacy/vector provider paths. Collect actual comparison and latency/cost observations only in an isolated authorized runtime; P229.8 remains NOT_EVALUABLE.",
+    "next_ready_workunit": "P229.8_PROFILE_A_B_EXECUTION",
+    "reactivation_predicate": "Resume from PR #1104 source 456ded1310a697ec909055507565e2863b2bfd74 after canonical merge. A/B evaluation becomes executable when a development/staging database, isolated synthetic evaluation tenant/items, and required provider/index configuration are provisioned; never inspect secrets or production tenant data.",
+    "resume_point": "PR #1104 implements AI Search profiles C-H through existing adapters and a tenant/item allowlist-gated Broker path. Focused tests pass 4 files/40 tests. No provider calls or runtime observations were collected. PR and CI remain pending.",
+    "waiting_predicate": "PR #1104 required checks pass and merges; for actual observations, the isolated non-production DB/provider runtime and synthetic evaluation allowlist are configured."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -53,15 +53,17 @@
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
       }
     ],
-    "next_action": "After PR #1103 merges, provision the isolated non-production database/provider runtime and exact synthetic evaluation corpus allowlist, apply migration 0407, and run real projection indexing, ACL revocation, deletion, and A-H observations. P229.8 remains NOT_EVALUABLE until reviewed held-out cohort and §27 observations pass.",
+    "next_action": "After PR #1104 merges, implement A/B evaluation execution through existing legacy/Vectorize paths, then collect actual observations with the isolated authorized development corpus. Keep P229.8 NOT_EVALUABLE until release cohort and §27 criteria pass.",
     "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
     "residual_requirements": [
       "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
-      "Implement/run actual comparison profiles A-H and all three latency/cost profiles in authorized non-production runtime.",
       "Evaluate §27 release criteria with a reviewed held-out cohort; P229.8 remains NOT_EVALUABLE until actual observations and cohort eligibility are evidenced.",
       "Apply migration 0407 and verify shard-specific projection identity against isolated non-production PostgreSQL.",
-      "Collect actual AI Search indexing/deletion/retrieval observations for the synthetic allowlisted corpus; current local runtime configuration is absent.",
-      "Complete source-reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification."
+      "Complete source-reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification.",
+      "Implement and test A/B evaluation execution against existing legacy and dedicated 1024D evaluation adapters without changing production Vectorize 768D.",
+      "Collect actual A-H provider results and all three latency/cost profiles with a reproducible isolated corpus and record provenance.",
+      "Apply migration 0407 and verify projection ACL/revision/delete lifecycle in isolated non-production PostgreSQL.",
+      "Complete the reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification."
     ]
   },
   "dependencies": {
@@ -95,13 +97,13 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 91,
+  "generation": 94,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-18T00:24:53.798462Z",
+      "last_evidence_at": "2026-10-18T06:01:29.349687Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -142,7 +144,8 @@
       "f5caedbc43e1b6def11db6a4cb07cba4b5042645",
       "c067fd19ae54a31dfa928fe0e136732c1b103d54",
       "fd16c16449dfc11c618197814c8e760dd24c9bc3",
-      "fd16c164498fa22121a6669424a0347ddd0e015b"
+      "fd16c164498fa22121a6669424a0347ddd0e015b",
+      "456ded1310a697ec909055507565e2863b2bfd74"
     ],
     "mapping": [],
     "source_paths": [
@@ -201,14 +204,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+    "canonical_sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
     "integrated": true,
-    "integrated_at": "2026-10-18T05:32:07Z",
-    "intended_pr": "PR #1103 integrates the non-production Library projection lifecycle and shard-safe receipt identity; runtime/provider verification remains pending.",
-    "pending_pr": 1103,
-    "pending_source_branch": "codex/spec229-p2294-library-projection-sync",
-    "pending_source_sha": "fd16c164498fa22121a6669424a0347ddd0e015b",
-    "pending_workunit": "P229.4_LIBRARY_PROJECTION_INGESTION_ACL_REVOCATION"
+    "integrated_at": "2026-10-18T05:59:36Z",
+    "intended_pr": "PR #1104 adds tenant/item allowlist-gated execution for AI Search comparison profiles C-H through existing adapters; no actual provider observations are claimed.",
+    "pending_pr": 1104,
+    "pending_source_branch": "codex/spec229-p2298-profile-execution",
+    "pending_source_sha": "456ded1310a697ec909055507565e2863b2bfd74",
+    "pending_workunit": "P229.8_AI_SEARCH_COMPARISON_PROFILE_EXECUTION_C_H"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -254,15 +257,17 @@
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
         }
       ],
-      "next_action": "After PR #1103 merges, provision the isolated non-production database/provider runtime and exact synthetic evaluation corpus allowlist, apply migration 0407, and run real projection indexing, ACL revocation, deletion, and A-H observations. P229.8 remains NOT_EVALUABLE until reviewed held-out cohort and §27 observations pass.",
+      "next_action": "After PR #1104 merges, implement A/B evaluation execution through existing legacy/Vectorize paths, then collect actual observations with the isolated authorized development corpus. Keep P229.8 NOT_EVALUABLE until release cohort and §27 criteria pass.",
       "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
       "residual_requirements": [
         "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
-        "Implement/run actual comparison profiles A-H and all three latency/cost profiles in authorized non-production runtime.",
         "Evaluate §27 release criteria with a reviewed held-out cohort; P229.8 remains NOT_EVALUABLE until actual observations and cohort eligibility are evidenced.",
         "Apply migration 0407 and verify shard-specific projection identity against isolated non-production PostgreSQL.",
-        "Collect actual AI Search indexing/deletion/retrieval observations for the synthetic allowlisted corpus; current local runtime configuration is absent.",
-        "Complete source-reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification."
+        "Complete source-reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification.",
+        "Implement and test A/B evaluation execution against existing legacy and dedicated 1024D evaluation adapters without changing production Vectorize 768D.",
+        "Collect actual A-H provider results and all three latency/cost profiles with a reproducible isolated corpus and record provenance.",
+        "Apply migration 0407 and verify projection ACL/revision/delete lifecycle in isolated non-production PostgreSQL.",
+        "Complete the reviewed held-out cohort and evaluate all §27 release criteria before P229.8 certification."
       ]
     },
     "disposition": {
@@ -326,7 +331,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-18T00:24:53.798462Z",
+    "reconciled_at": "2026-10-18T06:01:29.349687Z",
     "sources": [
       {
         "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -424,7 +429,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T05:55:27.252553Z",
+  "updated_at": "2026-10-18T06:06:47.609153Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -447,13 +452,14 @@
       "handoff/evidence/p229-profile-c-ai-search-development-implementation-20261018.json",
       "handoff/evidence/p229-3-ai-search-provider-capacity-postmerge-20261018.json",
       "handoff/evidence/p229-4-broker-hydration-postmerge-20261018.json",
-      "handoff/evidence/p229-4-library-projection-sync-20261018.json"
+      "handoff/evidence/p229-4-library-projection-sync-20261018.json",
+      "handoff/evidence/p229-8-ai-search-comparison-profiles-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "b53825acd47ff431c6415d4793a6a7a68f4164b5",
+    "sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
     "status": "PASS"
   }
 }

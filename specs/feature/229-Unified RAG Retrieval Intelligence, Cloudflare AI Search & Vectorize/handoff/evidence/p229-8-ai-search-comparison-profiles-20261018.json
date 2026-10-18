@@ -1,0 +1,34 @@
+{
+  "workunit": "P229.8_AI_SEARCH_COMPARISON_PROFILE_EXECUTION_C_H",
+  "source_sha": "456ded1310a697ec909055507565e2863b2bfd74",
+  "canonical_base_sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
+  "pull_request": 1104,
+  "observed_at": "2026-10-18T06:05:30Z",
+  "implementation": {
+    "status": "PASS",
+    "profiles": {
+      "C_ai_search_bm25": "Implemented through existing AI Search provider and Broker with keyword retrieval.",
+      "D_ai_search_vector": "Implemented through existing AI Search provider and Broker with vector retrieval.",
+      "E_hybrid_rrf": "Implemented through existing AI Search provider and Broker with RRF and reranking disabled.",
+      "F_hybrid_reranker": "Implemented through existing AI Search provider and Broker with RRF and reranking enabled.",
+      "G_conditional_rewrite": "Implemented through the existing provider using follow-up messages only; malformed or mismatched message history fails closed.",
+      "H_multi_query": "Implemented through the existing bounded searchMany/RRF provider path; rewritten variants retain tenant/ACL filters."
+    },
+    "security": "Profile calls require NODE_ENV development/staging and an exact SPEC229 evaluation tenant/item allowlist. Returned candidate source IDs outside the allowlist are discarded before canonical Markdown hydration. The normal Broker profile behavior is unchanged.",
+    "provider_contract": "Cloudflare AI Search query rewriting uses the messages request format; no new retrieval engine or infrastructure was added."
+  },
+  "verification": {
+    "command": "JWT_SECRET=<test-only-value> node_modules/.bin/vitest --no-cache run server/services/retrievalComparisonProfiles.test.ts server/services/retrievalBroker.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/libraryRetrievalBenchmarkProfiles.test.ts",
+    "result": "PASS",
+    "files": 4,
+    "tests_passed": 40,
+    "diff_check": "PASS",
+    "typecheck": "NOT RUN per repository resource policy"
+  },
+  "runtime_observation": {
+    "status": "NOT_EVALUABLE",
+    "actual_provider_retrievals": 0,
+    "reason": "No isolated evaluation tenant/item allowlist, database URL, or Cloudflare provider credentials are present in this local runtime. No provider calls were made."
+  },
+  "acceptance_boundary": "C-H profile execution paths and security gates pass focused tests. A/B execution integration, actual provider observations, latency/cost calibration, reviewed held-out cohort, P229.8 release certification, and production verification remain incomplete or NOT_EVALUABLE."
+}
