@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { parse } from "dotenv";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,14 +23,26 @@ try {
     throw new Error("Dev authentication/encryption keys are missing");
   if (!config.PORT || config.PORT === "3000")
     throw new Error("Use a separate dev port");
+  if (!config.CONTROL_PLANE_API_KEY || config.CONTROL_PLANE_API_KEY.length < 24)
+    throw new Error("A separate development control-plane key is missing");
 } catch (error) {
   console.error(
     `[dev:web] ${error.message}. Configure ${envFile}; see docs/WEB_RELEASE_WORKFLOW.md.`
   );
   process.exit(1);
 }
+const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+  cwd: appRoot,
+  encoding: "utf8",
+}).trim();
+const dirty = execFileSync(
+  "git",
+  ["status", "--porcelain", "--untracked-files=no"],
+  { cwd: appRoot, encoding: "utf8" }
+).trim();
+const revision = `${sourceSha}${dirty ? "-dirty" : ""}`;
 console.log(
-  `[dev:web] Development runtime on port ${config.PORT}; configuration: ${envFile}`
+  `[dev:web] revision=${revision} port=${config.PORT} configuration=${envFile}`
 );
 const child = spawn(
   process.execPath,
@@ -58,6 +70,9 @@ const child = spawn(
       NODE_OPTIONS: "--max-old-space-size=4096",
       DOTENV_CONFIG_PATH: envFile,
       SMARTSPEC_DEV_ENV_FILE: envFile,
+      COMMIT_SHA: revision,
+      RELEASE: revision,
+      VITE_RELEASE: revision,
     },
   }
 );

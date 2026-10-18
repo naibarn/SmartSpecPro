@@ -27,7 +27,9 @@
     "mcp:smoke": "npm --workspace apps/web run mcp:smoke",
     "mcp:failure-harness": "npm --workspace apps/web run mcp:failure-harness",
     "mcp:readiness": "npm --workspace apps/web run mcp:readiness",
-    "astryx": "npm --workspace apps/web run astryx --"
+    "astryx": "npm --workspace apps/web run astryx --",
+    "dev:web:restart": "systemctl --user restart smartspec-dev-web.service",
+    "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service"
   },
   "engines": {
     "node": ">=22.22.0 <23"

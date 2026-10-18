@@ -113,7 +113,9 @@
     "test:mini-app-factory-cross-process-resume": "bash scripts/test-mini-app-factory-cross-process-resume.sh",
     "test:mini-app-factory-stage-worker-runtime": "bash scripts/test-mini-app-factory-stage-worker-runtime.sh",
     "test:research-notes-background-worker-runtime": "bash scripts/test-research-notes-background-worker-runtime.sh",
-    "test:research-notes-package-context": "bash scripts/validate-research-notes-package-context.sh"
+    "test:research-notes-package-context": "bash scripts/validate-research-notes-package-context.sh",
+    "dev:web:restart": "systemctl --user restart smartspec-dev-web.service",
+    "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.6.3",

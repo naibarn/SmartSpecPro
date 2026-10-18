@@ -71,15 +71,17 @@ The production tunnel and service remain independently managed.
 
 ```bash
 pnpm run dev:web                         # foreground, current checkout
-systemctl --user restart smartspec-dev-web.service
-systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service
+pnpm run dev:web:restart                 # managed background service
+pnpm run dev:web:status
 ```
 
 The development launcher reads `~/.config/smartspec-dev/web.env`, or the path
 specified by `SMARTSPEC_DEV_ENV_FILE`. It requires `SMARTSPEC_ENVIRONMENT=development`,
 a dedicated database whose name ends in `_dev_web`, separate authentication and
-encryption keys, and a port other than 3000. It sets `DOTENV_CONFIG_PATH` so the
-application does not load the production `.env` as a fallback. Frontend edits
+encryption keys, a separate `CONTROL_PLANE_API_KEY` and `CONTROL_PLANE_URL`,
+and a port other than 3000. It sets `DOTENV_CONFIG_PATH` so the
+application does not load the production `.env` as a fallback. The launcher records the source SHA (with a dirty marker for edited source)
+in backend diagnostics and Vite release identity. Frontend edits
 use Vite HMR; restart the development service after backend edits.
 
 Systemd user service templates are in `ops/dev-web/`. The web service's
