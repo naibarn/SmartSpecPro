@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,8 +78,19 @@ export function VerticalDramaPromptExpansionDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [interactiveJobId, setInteractiveJobId] = useState<string | null>(null);
   const [interactiveJobScope, setInteractiveJobScope] = useState<string>("");
+  const generationLockRef = useRef(false);
+  const preserveOnReopenRef = useRef(false);
+  const lastPromptRef = useRef(prompt);
   useEffect(() => {
     if (!open) return;
+    const promptChanged = lastPromptRef.current !== prompt;
+    lastPromptRef.current = prompt;
+    if (preserveOnReopenRef.current && !promptChanged) {
+      preserveOnReopenRef.current = false;
+      return;
+    }
+    preserveOnReopenRef.current = false;
+    generationLockRef.current = false;
     setPreview(null);
     setRunId(null);
     setDraftPrompt("");
@@ -107,6 +118,7 @@ export function VerticalDramaPromptExpansionDialog({
         }
         const previewResult = result.preview as ExpansionPreview | undefined;
         if (!previewResult || result.runId == null) {
+          generationLockRef.current = false;
           setErrorMessage(
             lang === "th"
               ? "งานขยายโจทย์ไม่มีผลลัพธ์ที่สมบูรณ์"
@@ -114,6 +126,7 @@ export function VerticalDramaPromptExpansionDialog({
           );
           return;
         }
+        generationLockRef.current = false;
         setErrorMessage(null);
         setPreview(previewResult);
         setRunId(result.runId);
@@ -125,6 +138,7 @@ export function VerticalDramaPromptExpansionDialog({
         );
       },
       onError: error => {
+        generationLockRef.current = false;
         const message = formatPromptExpansionError(error.message, lang);
         setErrorMessage(message);
         toast.error(message);
@@ -143,6 +157,9 @@ export function VerticalDramaPromptExpansionDialog({
       staleTime: 0,
     }
   ) ?? { data: undefined };
+  const isGeneratingPreview =
+    previewMutation.isPending || Boolean(interactiveJobId);
+  const interactiveJobStatus = interactiveJobQuery.data?.status;
   useEffect(() => {
     const job = interactiveJobQuery.data;
     if (!job || !interactiveJobId) return;
@@ -166,17 +183,24 @@ export function VerticalDramaPromptExpansionDialog({
           )
         );
       }
+      generationLockRef.current = false;
       setInteractiveJobId(null);
       setInteractiveJobScope("");
-    } else if (job.status === "failed") {
-      const message = formatPromptExpansionError(
-        job.error ?? "Prompt expansion failed",
-        lang
-      );
+    } else if (job.status === "failed" || job.status === "canceled") {
+      const message =
+        job.status === "canceled"
+          ? lang === "th"
+            ? "งานขยายโจทย์ถูกยกเลิก จึงไม่มีผลลัพธ์"
+            : "Prompt expansion was canceled; no result was produced."
+          : formatPromptExpansionError(
+              job.error ?? "Prompt expansion failed",
+              lang
+            );
       setErrorMessage(
         `${message}${job.traceId ? ` (trace: ${job.traceId})` : ""}`
       );
       toast.error(message);
+      generationLockRef.current = false;
       setInteractiveJobId(null);
       setInteractiveJobScope("");
     }
@@ -205,6 +229,7 @@ export function VerticalDramaPromptExpansionDialog({
       },
     });
   const startPreview = () => {
+    if (generationLockRef.current) return;
     if (prompt.trim().length > PROMPT_EXPANSION_PREMISE_LIMIT) {
       setErrorMessage(
         lang === "th"
@@ -213,6 +238,7 @@ export function VerticalDramaPromptExpansionDialog({
       );
       return;
     }
+    generationLockRef.current = true;
     previewMutation.mutate({
       prompt,
       locale: lang,
@@ -221,6 +247,17 @@ export function VerticalDramaPromptExpansionDialog({
       draftSessionId,
       idempotencyKey: `vd-prompt-expansion-${seriesId ?? "draft"}-${Date.now()}`,
     });
+  };
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isGeneratingPreview) {
+      preserveOnReopenRef.current = true;
+      toast.info(
+        lang === "th"
+          ? "งานยังประมวลผลต่อในเบื้องหลัง เปิดหน้าต่างนี้อีกครั้งเพื่อติดตามผล"
+          : "The job will keep running in the background. Reopen this dialog to follow its progress."
+      );
+    }
+    onOpenChange(nextOpen);
   };
   const apply = () => {
     if (!preview || runId == null) return;
@@ -247,7 +284,7 @@ export function VerticalDramaPromptExpansionDialog({
     });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -272,6 +309,31 @@ export function VerticalDramaPromptExpansionDialog({
               {prompt.length.toLocaleString()} /{" "}
               {PROMPT_EXPANSION_PREMISE_LIMIT.toLocaleString()} ตัวอักษร
             </p>
+            {isGeneratingPreview && (
+              <section
+                className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3"
+                role="status"
+                aria-live="polite"
+              >
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
+                <section className="grid gap-1 text-sm">
+                  <p className="font-medium">
+                    {interactiveJobStatus === "queued"
+                      ? lang === "th"
+                        ? "รับงานแล้ว กำลังรอคิวประมวลผล"
+                        : "Request received; waiting in the queue"
+                      : lang === "th"
+                        ? "กำลังคิดและสร้างผลลัพธ์จาก AI"
+                        : "Generating the AI preview"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {lang === "th"
+                      ? "ใช้เวลาสักครู่ ปุ่มถูกล็อกไว้เพื่อป้องกันการส่งงานซ้ำ ปิดหน้าต่างได้โดยงานจะยังทำต่อ"
+                      : "This may take a moment. The button is locked to prevent duplicate jobs; closing this dialog will not stop the job."}
+                  </p>
+                </section>
+              </section>
+            )}
             {errorMessage && (
               <div
                 className="max-h-48 max-w-full overflow-y-auto break-words whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
@@ -288,15 +350,21 @@ export function VerticalDramaPromptExpansionDialog({
               type="button"
               onClick={startPreview}
               disabled={
-                previewMutation.isPending ||
+                isGeneratingPreview ||
                 !prompt.trim() ||
                 prompt.length > PROMPT_EXPANSION_PREMISE_LIMIT
               }
             >
-              {previewMutation.isPending && (
+              {isGeneratingPreview && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {lang === "th" ? "คิดและแสดงผลก่อน" : "Generate preview"}
+              {isGeneratingPreview
+                ? lang === "th"
+                  ? "กำลังสร้างผลลัพธ์..."
+                  : "Generating preview..."
+                : lang === "th"
+                  ? "คิดและแสดงผลก่อน"
+                  : "Generate preview"}
             </Button>
           </section>
         ) : (
@@ -453,9 +521,15 @@ export function VerticalDramaPromptExpansionDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
-            {lang === "th" ? "ยกเลิก" : "Cancel"}
+            {isGeneratingPreview
+              ? lang === "th"
+                ? "ปิดหน้าต่าง"
+                : "Close dialog"
+              : lang === "th"
+                ? "ยกเลิก"
+                : "Cancel"}
           </Button>
           {preview && (
             <Button

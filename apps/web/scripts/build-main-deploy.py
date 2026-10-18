@@ -299,6 +299,9 @@ def bootstrap_controller(repo: Path, temporary: Path) -> tuple[Path, Path, str, 
         controller_text = run_git(
             repo, "show", f"{source_sha}:scripts/development-lifecycle/canonical_source.py"
         )
+        file_lock_text = run_git(
+            repo, "show", f"{source_sha}:scripts/development-lifecycle/portable_file_lock.py"
+        )
     finally:
         subprocess.run(
             ["git", "-C", str(repo), "update-ref", "-d", bootstrap_ref],
@@ -308,8 +311,10 @@ def bootstrap_controller(repo: Path, temporary: Path) -> tuple[Path, Path, str, 
         )
     policy_path = temporary / "repository.toml"
     controller_path = temporary / "canonical_source.py"
+    file_lock_path = temporary / "portable_file_lock.py"
     policy_path.write_text(policy_text + "\n", encoding="utf-8")
     controller_path.write_text(controller_text, encoding="utf-8")
+    file_lock_path.write_text(file_lock_text, encoding="utf-8")
     policy = tomllib.loads(policy_text)["repository"]
     if policy.get("remote") != "origin" or policy.get("canonical_ref") != "refs/heads/main":
         raise DeployError("origin/main differs from the repository's configured canonical ref")

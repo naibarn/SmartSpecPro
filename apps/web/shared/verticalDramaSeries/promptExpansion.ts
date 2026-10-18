@@ -173,6 +173,20 @@ export function evaluatePromptExpansionQuality(input: {
   return { ok: failures.length === 0, checks, failureReasons: failures };
 }
 
+/** Bind the premise-specific quality checks to the LLM retry validation. */
+export function createPromptExpansionQualitySchema(originalPrompt: string) {
+  return promptExpansionModelOutputSchema.superRefine((output, context) => {
+    const quality = evaluatePromptExpansionQuality({ originalPrompt, output });
+    for (const failureReason of quality.failureReasons) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: failureReason,
+        path: ["expandedPrompt"],
+      });
+    }
+  });
+}
+
 export function hashPrompt(prompt: string): string {
   return sha256Hex(prompt.trim());
 }

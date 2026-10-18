@@ -71,7 +71,6 @@ import {
   MonitorPlay,
   Send,
   ShieldCheck,
-  ShieldAlert,
   Download,
   ClipboardCheck,
 } from "lucide-react";
@@ -479,7 +478,7 @@ export default function Dashboard() {
     "main",
     menuOverrides,
     tenantFlags
-  );
+  ).filter(item => !item.id.startsWith("emergency"));
   const adminMenuItems = getResolvedMenuItems(
     userRole,
     "admin",

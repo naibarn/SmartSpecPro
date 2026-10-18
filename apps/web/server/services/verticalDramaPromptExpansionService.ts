@@ -6,11 +6,11 @@ import { parseSkillFile } from "@smartspec/skills";
 import { db } from "../db";
 import { verticalDramaPromptExpansionRuns } from "../../drizzle/schema";
 import {
+  createPromptExpansionQualitySchema,
   evaluatePromptExpansionQuality,
   hashPrompt,
   parsePromptExpansionModelOutput,
   promptExpansionExecutionSchema,
-  promptExpansionModelOutputSchema,
   promptExpansionPreviewSchema,
   PromptExpansionOutputError,
   PROMPT_EXPANSION_PREMISE_LIMIT,
@@ -324,6 +324,7 @@ export async function runRealPromptExpansion(
   const userPrompt = [
     `Locale: ${input.locale ?? "th"}`,
     "Expand this creator premise into a complete, editable story treatment.",
+    `The expandedPrompt must be at least ${prompt.length + Math.max(120, Math.ceil(prompt.length * 0.2))} characters total (at least ${Math.max(120, Math.ceil(prompt.length * 0.2))} characters longer than the creator premise). Do not merely summarize or paraphrase the premise.`,
     "The result must preserve every explicit fact and must not invent real-world facts.",
     "For profile=story, make the treatment cover protagonist backgrounds and goals, how the protagonists meet, relationship progression, obstacles, the central conflict, the biggest reveal or pressure point, climax, and ending direction.",
     "This is a premise/treatment layer, not an episode draft: do not write scene-by-scene shots, dialogue, camera directions, or production instructions.",
@@ -392,8 +393,8 @@ export async function runRealPromptExpansion(
       // fail clearly instead of holding the request until a 524.
       timeoutMs: PROMPT_EXPANSION_LLM_TIMEOUT_MS,
       maxSchemaRetries: 2,
-      schemaRetryContract: "Return the complete JSON object again with top-level keys brief, expandedPrompt, sources, warnings, and slots. For story, all storyTreatment fields (including unresolvedHooks, tone, audience, assumptions, and exclusions) must be nested under brief.storyTreatment, never directly under brief. Every slot must match {slotKey,title,description,semanticRole,mediaType,required:true,evidenceStatus,rationale}; required is mandatory JSON boolean. Do not return a patch, prose, markdown, omit expandedPrompt, omit sources/warnings, omit slots.required, or return an empty slots array.",
-      schema: promptExpansionModelOutputSchema,
+      schemaRetryContract: `Return the complete JSON object again and fix every validation issue. expandedPrompt must contain at least ${prompt.length + Math.max(120, Math.ceil(prompt.length * 0.2))} characters total; it must add at least ${Math.max(120, Math.ceil(prompt.length * 0.2))} characters beyond the premise. For story, all storyTreatment fields (including unresolvedHooks, tone, audience, assumptions, and exclusions) must be nested under brief.storyTreatment, never directly under brief. Every slot must match {slotKey,title,description,semanticRole,mediaType,required:true,evidenceStatus,rationale}; required is mandatory JSON boolean. Do not return a patch, prose, markdown, omit expandedPrompt, omit sources/warnings, omit slots.required, or return an empty slots array.`,
+      schema: createPromptExpansionQualitySchema(prompt),
       label: "Vertical Drama prompt expansion",
     });
   } catch (error) {
