@@ -71,8 +71,9 @@ describe("Cloudflare AI Search provider adapter", () => {
       Authorization: "Bearer private-token",
     });
     const body = JSON.parse(String(init?.body));
+    expect(body.ai_search_options.instance_ids).toEqual(["tenant-pool-01-rag-v2"]);
+    expect(body.ai_search_options.retrieval).not.toHaveProperty("instance_ids");
     expect(body.ai_search_options.retrieval).toMatchObject({
-      instance_ids: ["tenant-pool-01-rag-v2"],
       retrieval_type: "hybrid",
       max_num_results: 20,
       match_threshold: 0,
@@ -174,6 +175,7 @@ describe("Cloudflare AI Search provider adapter", () => {
     expect(firstBody.ai_search_options).toMatchObject({
       query_rewrite: { enabled: true },
       reranking: { enabled: true },
+      instance_ids: ["tenant-pool-01-rag-v2"],
       retrieval: { retrieval_type: "vector" },
     });
 
