@@ -1,0 +1,38 @@
+{
+  "evidence_id": "SPEC229-P2298-PROFILE-A-POSTMERGE-VERIFICATION-20261018",
+  "workunit": "P229.8 Profile A diagnostic-driven retrieval quality improvement",
+  "status": "PASS; P229.8_ACCEPTANCE_NOT_EVALUABLE",
+  "pull_request": 1120,
+  "pull_request_url": "https://github.com/naibarn/SmartSpecPro/pull/1120",
+  "source_sha": "72dff1ad8deed21c39b30c4bdabd27e44c6d5d86",
+  "merge_sha": "9bad3970d83e797ac6051418cdcce5879293dc16",
+  "canonical_ref": "origin/main",
+  "canonical_sha": "9bad3970d83e797ac6051418cdcce5879293dc16",
+  "verification": {
+    "profile": "quick focused regression",
+    "command": "cd apps/web && JWT_SECRET=<test-only value of at least 32 characters> pnpm exec vitest run --configLoader native server/services/librarySearchService.test.ts server/services/cloudflareAiSearchProvider.test.ts server/services/retrievalBroker.test.ts server/services/libraryRetrievalGoldDataset.test.ts server/services/__tests__/cloudflareAiSearchEvaluation.test.ts server/services/retrievalComparisonProfiles.test.ts server/services/libraryRetrievalBenchmarkRunBundle.test.ts --pool=forks --maxWorkers=2",
+    "result": "PASS: 7 test files, 69 tests",
+    "completed_at": "2026-10-18T15:44:55+07:00",
+    "scope": "Executed from detached checkout at exact merge SHA after verifying merge SHA is reachable from origin/main.",
+    "note": "One initial invocation used a test-only JWT value shorter than the repository minimum and failed during module initialization before tests ran; rerun with a >=32-character test-only value passed all tests."
+  },
+  "pull_request_checks": [
+    {
+      "name": "progressive_integration_gate",
+      "result": "SUCCESS"
+    },
+    {
+      "name": "local-contract",
+      "result": "SUCCESS"
+    },
+    {
+      "name": "Mocked SPEC-308 browser simulation",
+      "result": "SUCCESS"
+    },
+    {
+      "name": "build-preview",
+      "result": "SKIPPED"
+    }
+  ],
+  "acceptance_boundary": "This verifies the scoped Profile A change only. The 57-query cohort is development-only; the prior 503-query cohort is diagnostic and contaminated for post-change certification. Profiles B-H have no actual provider observations. This is not P229.8 certification or production verification."
+}
