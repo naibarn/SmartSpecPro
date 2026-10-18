@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+    "expected_canonical_sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "PR for P229.8 integrity-v1 independent candidate review is prepared at source commit 9e949e3aef1695fb5cdbdc4afdc5f171d47f4614; run required repository checks and integrate through normal review. Keep the dataset development-only. Then continue required category completion from eligible untouched source groups and provider execution only through the authorized secure runtime.",
+    "next_action": "Continue SPEC-229 P229.8 only with the remaining acceptance gaps: complete the required untouched query classes/cohort without reusing diagnostic source groups; implement or verify provider-backed lifecycle controls from actual corpus state; execute profiles only through an authorized secure non-production Cloudflare runner, then evaluate §27 thresholds unchanged.",
     "next_ready_workunit": "P229.8_UNTOUCHED_COHORT_CATEGORY_COMPLETION_AND_PROVIDER_EXECUTION",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "Base canonical SHA 8decbb2c3fe58967bc7290348be424bce3c3866e; source commit 9e949e3aef1695fb5cdbdc4afdc5f171d47f4614 records row-level machine review for 500 development-only candidates. Review: 451 accepted as development candidates, 49 rejected; 0 human reviewed/accepted, 0 release-approved, 0 held-out approved. Dataset SHA-256 1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63. Gold dataset focused test passed 14/14 on the exact source tree. Not a certification cohort; provider observations remain unavailable.",
-    "waiting_predicate": "Provider observations may start once an authorized non-production runner securely injects scoped Cloudflare access (AI Search Edit+Run; dedicated evaluation Vectorize 1024D Write; Workers AI invoke) without exposing credential values in repository/log/chat. Cohort category work remains executable before that predicate."
+    "resume_point": "PR #1140 merged to origin/main at exact SHA 793ee9f947c41cd650e0a3d62e4105613cd58f7a. Post-merge focused verification passed 6 files / 54 tests; progressive integration, local-contract, and SPEC-308 browser simulation checks passed. Candidate artifact SHA-256 1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63 contains 500 development-only candidates: 451 machine-accepted as development candidates and 49 machine-rejected; 0 human-reviewed, 0 release-approved, 0 held-out release-approved. P229.8 remains NOT_EVALUABLE and global SPEC-229 INCOMPLETE.",
+    "waiting_predicate": "Provider execution resumes when an authorized non-production runner securely injects AI Search Edit+Run, Vectorize Write scoped to a dedicated spec229-eval-* 1024D index, and Workers AI Read/Write credentials. Account token in Admin UI is encrypted but not bridged to this runner; no credential value was read. Non-provider cohort work can proceed independently."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 120,
+  "generation": 122,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -231,14 +231,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+    "canonical_sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
     "integrated": true,
-    "integrated_at": "2026-10-18T10:51:01Z",
-    "intended_pr": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f; fail-closed evaluation control integrity; exact-SHA post-merge focused tests passed.",
-    "pending_pr": "PR #1140: https://github.com/naibarn/SmartSpecPro/pull/1140",
-    "pending_source_branch": "codex/spec229-gold-review-20261018",
-    "pending_source_sha": "9e949e3aef1695fb5cdbdc4afdc5f171d47f4614",
-    "pending_workunit": "P229.8_INTEGRITY_V1_INDEPENDENT_CANDIDATE_REVIEW"
+    "integrated_at": "2026-10-18T11:06:34Z",
+    "intended_pr": "PR #1140 merged as 793ee9f947c41cd650e0a3d62e4105613cd58f7a; exact-SHA focused post-merge verification passed 6 files / 54 tests. P229.8 remains NOT_EVALUABLE.",
+    "pending_pr": null,
+    "pending_source_branch": null,
+    "pending_source_sha": null,
+    "pending_workunit": null
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -466,7 +466,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:02:20.092057Z",
+  "updated_at": "2026-10-18T11:07:36.883338Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -501,13 +501,14 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p229-8-profile-a-postmerge-verification-20261018.json",
       "handoff/evidence/p2298-ai-search-instance-scope-contract-fix-20261018.json",
       "handoff/evidence/p2298-ai-search-instance-scope-postmerge-20261018.json",
-      "handoff/evidence/p2298-control-integrity-postmerge-20261018.json"
+      "handoff/evidence/p2298-control-integrity-postmerge-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-independent-review-postmerge-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f",
+    "sha": "793ee9f947c41cd650e0a3d62e4105613cd58f7a",
     "status": "PASS",
     "task_regressions": []
   }
