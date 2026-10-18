@@ -196,6 +196,8 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "apps/web/server/services/jobOutboxPublisher.ts",
     "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
     "apps/web/server/services/spec224AuthorizationService.ts",
+    "apps/web/server/services/runnerContracts.ts",
+    "apps/web/server/services/spec224ExecutionProfile.ts",
     "apps/web/drizzle/schema.ts",
     "apps/web/drizzle/spec224-fresh-baseline/schema.ts",
     "apps/web/tsconfig.json",
@@ -208,6 +210,7 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "python-backend/tests/integration/test_spec224_approval_postgres.py",
     "python-backend/tests/integration/test_spec224_recovery_grant_postgres.py",
     "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts",
+    "apps/web/server/services/__tests__/runnerContracts.test.ts",
     "apps/web/server/services/__tests__/spec224SourceBundle.test.ts",
     "packages/remotion-render/src/renderVideoJobEntry.ts",
     "packages/remotion-render/src/remotionRenderVideoSchema.ts",
@@ -333,20 +336,37 @@ export function matchesSpec224WindowsRunnerTarget(
   const firstDifference = actual.findIndex((part, index) => part !== required[index]);
   if (firstDifference >= 0 && actual[firstDifference] < required[firstDifference]) return false;
   if (!(Date.parse(String(snapshot.observedAt)) <= now) || !(Date.parse(String(snapshot.expiresAt)) > now)) return false;
-  const codexReady = Array.isArray(snapshot.toolInventory) && snapshot.toolInventory.some(value => {
-    const tool = record(value);
-    return tool?.adapterId === "codex.v1" && tool.installState === "installed" &&
-      tool.configurationState === "configured" && tool.authState === "authenticated" &&
-      tool.healthState === "healthy" && tool.trustState === "ready" && tool.availabilityState === "available" &&
-      typeof tool.authorizationEvidenceRef === "string" && Boolean(tool.authorizationEvidenceRef.trim());
+  const windowsProfile = SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE;
+  const inventoryFresh = (value: Record<string, unknown>): boolean =>
+    Date.parse(String(value.observedAt)) <= now && Date.parse(String(value.expiresAt)) > now;
+  const toolInventory = Array.isArray(snapshot.toolInventory)
+    ? snapshot.toolInventory.map(record).filter((value): value is Record<string, unknown> => value !== null)
+    : [];
+  const toolReady = (requiredTool: string): boolean => toolInventory.some(tool => {
+    const matchesTool = requiredTool === "codex"
+      ? tool.adapterId === windowsProfile.runnerTarget!.adapterId
+      : tool.toolId === requiredTool || tool.adapterId === `${requiredTool}.v1`;
+    const authenticated = requiredTool !== "codex" || (
+      tool.authState === "authenticated" && typeof tool.authorizationEvidenceRef === "string" &&
+      Boolean(tool.authorizationEvidenceRef.trim())
+    );
+    return matchesTool && inventoryFresh(tool) && tool.installState === "installed" &&
+      tool.configurationState === "configured" && authenticated && tool.healthState === "healthy" &&
+      tool.trustState === "ready" && tool.availabilityState === "available";
   });
+  const requiredToolsReady = windowsProfile.runnerTarget!.requiredTools.every(toolReady);
+  const capabilities = new Set(Array.isArray(snapshot.capabilities)
+    ? snapshot.capabilities.filter((value): value is string => typeof value === "string")
+    : []);
+  const requiredCapabilitiesPresent = windowsProfile.requiredRunnerCapabilities.every(capability =>
+    capabilities.has(capability));
   const workspaceBound = Array.isArray(snapshot.workspaces) && snapshot.workspaces.some(value => {
     const workspace = record(value);
     return workspace?.workspaceId === expected.workspaceRef && workspace.gitHead === expected.sourceCommit &&
       workspace.dirty === false && typeof workspace.projectId === "string" && Boolean(workspace.projectId.trim()) &&
       typeof workspace.repositoryId === "string" && Boolean(workspace.repositoryId.trim());
   });
-  return Boolean(codexReady && workspaceBound);
+  return Boolean(requiredToolsReady && requiredCapabilitiesPresent && workspaceBound);
 }
 
 type ExecutionProfileInput = Omit<Spec224ExecutionProfile, "profileDigest">;
