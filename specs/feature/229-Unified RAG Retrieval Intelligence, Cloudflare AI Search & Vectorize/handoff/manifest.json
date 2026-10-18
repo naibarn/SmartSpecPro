@@ -28,15 +28,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
+    "expected_canonical_sha": "f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Merge PR #1104 through required checks, then implement A/B evaluation execution via the existing legacy/vector provider paths. Collect actual comparison and latency/cost observations only in an isolated authorized runtime; P229.8 remains NOT_EVALUABLE.",
-    "next_ready_workunit": "P229.8_PROFILE_A_B_EXECUTION",
-    "reactivation_predicate": "Resume from PR #1104 source 456ded1310a697ec909055507565e2863b2bfd74 after canonical merge. A/B evaluation becomes executable when a development/staging database, isolated synthetic evaluation tenant/items, and required provider/index configuration are provisioned; never inspect secrets or production tenant data.",
-    "resume_point": "PR #1104 implements AI Search profiles C-H through existing adapters and a tenant/item allowlist-gated Broker path. Focused tests pass 4 files/40 tests. No provider calls or runtime observations were collected. PR and CI remain pending.",
-    "waiting_predicate": "PR #1104 required checks pass and merges; for actual observations, the isolated non-production DB/provider runtime and synthetic evaluation allowlist are configured."
+    "next_action": "After PR #1105 integrates, run Profile A against a disposable local PostgreSQL runtime using the refreshed cohort and record actual retrieval/latency evidence. Keep Profiles B-H and all §27 release criteria NOT_EVALUABLE until an authorized provider runtime is available.",
+    "next_ready_workunit": "P229.8_PROFILE_A_DISPOSABLE_RUNTIME",
+    "reactivation_predicate": "Proceed with Profile A using pg_virtualenv or another existing disposable local runtime after the PR merges. Continue B-H only when scoped non-production provider credentials/index configuration are available without reading or copying secret values.",
+    "resume_point": "PR #1105 source 4cd29e9b51aa4eb999b79188bb634e9e183212c7 refreshes 14 stale candidates, binds expected revision to source digest, and prepares 503 reproducible held-out development cases. Exact focused tests passed 12 files/99 tests; this does not certify release quality.",
+    "waiting_predicate": "Profile A requires only an isolated disposable local PostgreSQL runtime and the pinned canonical corpus. Profiles B-H require authorized non-production Cloudflare AI Search/Vectorize credentials and dedicated evaluation indexes, injected at runtime."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -97,7 +97,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 94,
+  "generation": 96,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -204,14 +204,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
+    "canonical_sha": "f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa",
     "integrated": true,
     "integrated_at": "2026-10-18T05:59:36Z",
-    "intended_pr": "PR #1104 adds tenant/item allowlist-gated execution for AI Search comparison profiles C-H through existing adapters; no actual provider observations are claimed.",
-    "pending_pr": 1104,
-    "pending_source_branch": "codex/spec229-p2298-profile-execution",
-    "pending_source_sha": "456ded1310a697ec909055507565e2863b2bfd74",
-    "pending_workunit": "P229.8_AI_SEARCH_COMPARISON_PROFILE_EXECUTION_C_H"
+    "intended_pr": "PR #1105 refreshes stale source revision anchors, validates expectedRevision against source digest, and derives a deterministic non-production held-out cohort; no runtime observations or certification are claimed.",
+    "pending_pr": 1105,
+    "pending_source_branch": "codex/spec229-release-cohort-provenance",
+    "pending_source_sha": "4cd29e9b51aa4eb999b79188bb634e9e183212c7",
+    "pending_workunit": "P229.8_SOURCE_REVISION_COHORT_PREPARATION"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -429,7 +429,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T06:06:47.609153Z",
+  "updated_at": "2026-10-18T06:30:08.783193Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -453,13 +453,14 @@
       "handoff/evidence/p229-3-ai-search-provider-capacity-postmerge-20261018.json",
       "handoff/evidence/p229-4-broker-hydration-postmerge-20261018.json",
       "handoff/evidence/p229-4-library-projection-sync-20261018.json",
-      "handoff/evidence/p229-8-ai-search-comparison-profiles-20261018.json"
+      "handoff/evidence/p229-8-ai-search-comparison-profiles-20261018.json",
+      "handoff/evidence/p229-8-source-refresh-dev-cohort-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "6520d4d20657228f8d6d171b7c7b89a3f7ce80db",
-    "status": "PASS"
+    "sha": "f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa",
+    "status": "PENDING"
   }
 }
