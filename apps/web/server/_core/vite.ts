@@ -200,6 +200,7 @@ export async function setupVite(app: Express, server: Server) {
 
     // Skip static asset requests that Vite didn't serve (return 404 instead of 500)
     if (isStaticAssetRequest(url)) {
+      res.setHeader("Cache-Control", STATIC_NOT_FOUND_CACHE_CONTROL);
       return res.status(404).end();
     }
 

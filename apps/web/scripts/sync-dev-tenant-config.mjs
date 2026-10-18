@@ -89,7 +89,7 @@ try {
         const digest = hash(bytes), filename = `${digest}${extname(key)}`;
         mkdirSync(resolve(appRoot,'client/public/dev-tenant-assets'),{recursive:true});
         writeFileSync(resolve(appRoot,'client/public/dev-tenant-assets',filename),bytes);
-        const local = `/dev-tenant-assets/${filename}`; assetMap.set(assetPath,local);
+        const local = `/dev-tenant-assets/${filename}?v=${digest.slice(0,8)}`; assetMap.set(assetPath,local);
         assets.push({path:local,sha256:digest,bytes:bytes.length});
       }
     } finally { client.destroy(); }
