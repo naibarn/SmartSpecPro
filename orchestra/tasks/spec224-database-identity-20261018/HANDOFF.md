@@ -8,7 +8,7 @@
 - Scope: exact-admin, read-only diagnostics endpoint and a manual Admin UI action. It reports only backend runtime identity, a hashed non-secret DB fingerprint, database/schema/role, summarized migration state, `worker_runtime_type` labels, migration activity count and the latest failed `startWorkspaceRun` correlation.
 - The endpoint uses the existing `exactAdminProcedure`. It has no input, mutation, migration, grant or dispatch behavior. `startWorkspaceRun` behavior is unchanged; new failure audit records include allowlisted backend runtime identity fields.
 - Focused service tests: `spec224DatabaseDiagnostics.test.ts`, 4 passing. Browser UAT and live backend diagnostics have not run.
-- PR/required CI: not yet opened; intended next action is push branch, open protected PR, and wait on required checks.
+- PR: [#1113](https://github.com/naibarn/SmartSpecPro/pull/1113), opened through the normal workflow. The initial PR head `54647d793dcd0d494fa073dfe2085030a05cf3fe` passed `local-contract` (push and PR events), `progressive_integration_gate`, and Mocked SPEC-308 browser simulation; `build-preview` was skipped by workflow policy. Recheck the current PR head before merge.
 
 ## Exact authorized Admin action
 
