@@ -88,6 +88,14 @@ class Spec224RecoveryGrantIssue(BaseModel):
     scope: dict
 
 
+class Spec224PolicyRecoveryGrantIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    policy_approval_ref: StrictStr = Field(..., alias="policyApprovalRef", min_length=1, max_length=36)
+    scope: dict
+
+
 class Spec224DevelopmentPolicyCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -122,6 +130,11 @@ class Spec224DevelopmentPolicyDecisionRequest(BaseModel):
     runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
     capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
     capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+    source_commit_sha: StrictStr | None = Field(default=None, alias="sourceCommitSha", pattern=r"^[a-f0-9]{40,64}$")
+    source_sha256: StrictStr | None = Field(default=None, alias="sourceSha256", pattern=r"^[a-f0-9]{64}$")
+    source_tree_sha: StrictStr | None = Field(default=None, alias="sourceTreeSha", pattern=r"^[a-f0-9]{40,64}$")
+    source_manifest_digest: StrictStr | None = Field(default=None, alias="sourceManifestDigest", pattern=r"^[a-f0-9]{64}$")
+    workpackage_id: StrictStr | None = Field(default=None, alias="workpackageId", min_length=1, max_length=100)
     resource_scopes: list[Spec224DevelopmentResourceScope] = Field(..., alias="resourceScopes", min_length=1, max_length=32)
     budget_minor_units: StrictInt = Field(..., alias="budgetMinorUnits", ge=0)
     currency: StrictStr = Field(..., min_length=3, max_length=3)
@@ -187,6 +200,11 @@ async def decide_spec224_development_policy(
         "runnerSessionId": request.runner_session_id,
         "capabilitySnapshotId": request.capability_snapshot_id,
         "capabilitySnapshotRevision": request.capability_snapshot_revision,
+        **({"sourceCommitSha": request.source_commit_sha} if request.source_commit_sha else {}),
+        **({"sourceSha256": request.source_sha256} if request.source_sha256 else {}),
+        **({"sourceTreeSha": request.source_tree_sha} if request.source_tree_sha else {}),
+        **({"sourceManifestDigest": request.source_manifest_digest} if request.source_manifest_digest else {}),
+        **({"workpackageId": request.workpackage_id} if request.workpackage_id else {}),
         "resourceScopes": [scope.model_dump() for scope in request.resource_scopes],
         "budgetMinorUnits": request.budget_minor_units,
         "currency": request.currency.upper(),
@@ -291,6 +309,32 @@ async def issue_spec224_recovery_grant(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/spec224/recovery-grants/policy")
+async def issue_spec224_policy_recovery_grant(
+    request: Spec224PolicyRecoveryGrantIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Issue an exact recovery grant from a separately scoped active owner policy decision."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    try:
+        return await ApprovalDBService(db).issue_spec224_recovery_grant(
+            tenant_id=tenant_id,
+            owner_id=None,
+            actor_id=int(current_user.id),
+            policy_approval_ref=request.policy_approval_ref,
+            idempotency_key=request.idempotency_key,
+            scope=request.scope,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = 404 if str(exc).endswith("NOT_FOUND") else 422
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
 
 
 class Spec224RecoveryGrantRevoke(BaseModel):

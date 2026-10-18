@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api import approvals
-from app.api.approvals import Spec224RecoveryGrantIssue
+from app.api.approvals import Spec224PolicyRecoveryGrantIssue, Spec224RecoveryGrantIssue
 
 
 def issue_request(**overrides) -> Spec224RecoveryGrantIssue:
@@ -108,3 +108,67 @@ def test_issue_recovery_grant_route_requires_authenticated_user_and_tenant_conte
     assert approvals.get_current_user in dependencies
     assert approvals.get_current_tenant_id in dependencies
     assert approvals.get_db_session in dependencies
+
+
+@pytest.mark.asyncio
+async def test_policy_grant_uses_authenticated_actor_and_persisted_decision_reference(monkeypatch):
+    captured = {}
+
+    class Service:
+        def __init__(self, database):
+            captured["database"] = database
+
+        async def issue_spec224_recovery_grant(self, **kwargs):
+            captured.update(kwargs)
+            return {"grantId": "grant-policy-1", "authority": "development_policy"}
+
+    monkeypatch.setattr(approvals, "ApprovalDBService", Service)
+    database = object()
+    request = Spec224PolicyRecoveryGrantIssue.model_validate({
+        "idempotencyKey": "policy-grant-key-001",
+        "policyApprovalRef": "approval-policy-1",
+        "scope": {"scopeMarker": "validated-by-service"},
+    })
+    result = await approvals.issue_spec224_policy_recovery_grant(
+        request, SimpleNamespace(id=42), "tenant-a", database
+    )
+
+    assert result["grantId"] == "grant-policy-1"
+    assert captured == {
+        "database": database,
+        "tenant_id": "tenant-a",
+        "owner_id": None,
+        "actor_id": 42,
+        "policy_approval_ref": "approval-policy-1",
+        "idempotency_key": "policy-grant-key-001",
+        "scope": {"scopeMarker": "validated-by-service"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_policy_grant_requires_tenant_context_and_maps_denial(monkeypatch):
+    class Service:
+        def __init__(self, _database):
+            pass
+
+        async def issue_spec224_recovery_grant(self, **_kwargs):
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_INVALID")
+
+    monkeypatch.setattr(approvals, "ApprovalDBService", Service)
+    request = Spec224PolicyRecoveryGrantIssue.model_validate({
+        "idempotencyKey": "policy-grant-key-001",
+        "policyApprovalRef": "approval-policy-1",
+        "scope": {},
+    })
+    with pytest.raises(HTTPException) as exc:
+        await approvals.issue_spec224_policy_recovery_grant(
+            request, SimpleNamespace(id=42), None, object()
+        )
+    assert exc.value.status_code == 400
+
+    with pytest.raises(HTTPException) as exc:
+        await approvals.issue_spec224_policy_recovery_grant(
+            request, SimpleNamespace(id=42), "tenant-a", object()
+        )
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "SPEC224_POLICY_GRANT_DECISION_INVALID"

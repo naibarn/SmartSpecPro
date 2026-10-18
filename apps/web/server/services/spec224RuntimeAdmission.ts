@@ -358,6 +358,7 @@ export type Spec224CanonicalAdmissionSnapshot = {
     tenantId: string;
     workerJobId: string;
     actorId: number;
+    workspaceId: string;
     workPackageId: string;
     attempt: number;
     revision: number;
@@ -481,6 +482,7 @@ function runFromJob(job: {
 }): Spec224CanonicalAdmissionSnapshot["run"] {
   const progress = asObject(job.progressJson.spec224);
   const input = asObject(job.inputJson.spec224Run);
+  const manifest = asObject(job.inputJson.manifest);
   const run = progress ?? input;
   if (!run) return null;
   const revision = Number(run.projectionVersion);
@@ -500,6 +502,12 @@ function runFromJob(job: {
     tenantId: String(run.tenantId ?? ""),
     workerJobId: String(run.workerJobId ?? ""),
     actorId,
+    workspaceId:
+      typeof run.workspaceId === "string"
+        ? run.workspaceId
+        : typeof manifest?.workspaceId === "string"
+          ? manifest.workspaceId
+          : "",
     workPackageId: run.workPackageId,
     attempt: job.attempt,
     revision,
@@ -901,6 +909,7 @@ export function spec224GrantBindingMatchesSnapshot(
     [binding.runId, run.runId],
     [binding.workerJobId, run.workerJobId],
     [binding.workPackageId, run.workPackageId],
+    [binding.workspaceId, run.workspaceId],
     [binding.attestationId, attestation.attestationId],
     [binding.sourceCommit, attestation.sourceCommit],
     [binding.sourceTree, attestation.sourceTree],
@@ -938,6 +947,7 @@ export function spec224GrantBindingMatchesSnapshot(
     [admission.runId, run.runId],
     [admission.workerJobId, run.workerJobId],
     [admission.workPackageId, run.workPackageId],
+    [admission.workspaceId, run.workspaceId],
     [admission.attemptId, snapshot.currentAttemptId],
     [admission.attempt, snapshot.attempt],
     [admission.revision, run.revision],
@@ -961,6 +971,8 @@ export function spec224GrantBindingMatchesSnapshot(
     /^[0-9a-f-]{36}$/i.test(binding.grantId) &&
     typeof binding.operation === "string" &&
     typeof binding.path === "string" &&
+    typeof run.workspaceId === "string" &&
+    run.workspaceId.trim().length > 0 &&
     typeof runtime.runnerId === "string" &&
     runtime.runnerId.length > 0 &&
     typeof runtime.runnerSessionId === "string" &&
@@ -1619,6 +1631,44 @@ async function lockCanonicalGrantAuthorityRows(
     WHERE id = ${grantId} AND tenant_id = ${snapshot.tenantId}
     FOR SHARE
   `);
+  const authorityRows = await transaction.execute(sql`
+    SELECT
+      extra_data->'spec224RecoveryGrantV1'->'authority'->>'kind' AS authority_kind,
+      extra_data->'spec224RecoveryGrantV1'->'authority'->>'policyApprovalRef' AS policy_approval_ref,
+      extra_data->'spec224RecoveryGrantV1'->'authority'->>'policyId' AS policy_id
+    FROM "approval_requests"
+    WHERE id = ${grantId} AND tenant_id = ${snapshot.tenantId}
+  `) as unknown as Array<{
+    authority_kind: string | null;
+    policy_approval_ref: string | null;
+    policy_id: string | null;
+  }>;
+  const grantAuthority = authorityRows[0];
+  if (grantAuthority?.authority_kind === "development_policy") {
+    if (!grantAuthority.policy_approval_ref || !grantAuthority.policy_id) {
+      throw new Error("SPEC224_POLICY_GRANT_AUTHORITY_REFERENCE_INVALID");
+    }
+    await transaction.execute(sql`
+      SELECT 1 FROM approval_rules
+      WHERE id = ${grantAuthority.policy_id}
+        AND tenant_id = ${snapshot.tenantId}
+      FOR SHARE
+    `);
+    await transaction.execute(sql`
+      SELECT 1 FROM "approval_requests"
+      WHERE id = ${grantAuthority.policy_approval_ref}
+        AND tenant_id = ${snapshot.tenantId}
+      FOR SHARE
+    `);
+    await transaction.execute(sql`
+      SELECT id FROM "audit_logs"
+      WHERE resource_id = ${grantAuthority.policy_approval_ref}
+        AND resource_type = 'approval_request'
+        AND action = 'spec224.development_policy.decision_approved'
+      ORDER BY id
+      FOR SHARE
+    `);
+  }
   await transaction.execute(sql`
     SELECT id FROM "approval_responses"
     WHERE request_id = ${grantId}

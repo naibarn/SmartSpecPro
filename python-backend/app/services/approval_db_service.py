@@ -30,10 +30,15 @@ from app.models.user import Role, User
 from app.services.spec224_development_policy import (
     SPEC224_DEVELOPMENT_POLICY_SCHEMA,
     evaluate_development_policy,
+    policy_version,
     validate_policy_definition,
 )
 
 logger = structlog.get_logger(__name__)
+
+
+def _canonical_policy_scope(value: dict) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 _SPEC224_CANONICAL_UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -809,7 +814,7 @@ class ApprovalDBService:
             "allowedWriteSet", "allowedOperations", "forbiddenOperations",
             "runtimeScope", "environmentScope", "expiresAt",
         }
-        optional_keys = {"runtimeBinding", "admissionBinding"}
+        optional_keys = {"runtimeBinding", "admissionBinding", "workspaceId"}
         if set(value).difference(required_keys | optional_keys) or required_keys.difference(value):
             raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_KEYS_INVALID")
         commit = value.get("sourceCommit")
@@ -827,6 +832,12 @@ class ApprovalDBService:
             raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_INVALID")
         if environment != "isolated-non-production":
             raise ValueError("SPEC224_RECOVERY_GRANT_ENVIRONMENT_INVALID")
+        if "workspaceId" in value and (
+            not isinstance(value["workspaceId"], str)
+            or not value["workspaceId"].strip()
+            or len(value["workspaceId"]) > 255
+        ):
+            raise ValueError("SPEC224_RECOVERY_GRANT_WORKSPACE_BINDING_INVALID")
 
         source_files = value.get("sourceFiles")
         write_set = value.get("allowedWriteSet")
@@ -914,8 +925,16 @@ class ApprovalDBService:
                 "runnerId", "runnerSessionId", "capabilitySnapshotId",
                 "capabilitySnapshotRevision",
             }
-            if set(admission_binding) != expected_admission_keys:
+            if set(admission_binding).difference(expected_admission_keys | {"workspaceId"}) or expected_admission_keys.difference(admission_binding):
                 raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            if "workspaceId" in admission_binding and (
+                not isinstance(admission_binding["workspaceId"], str)
+                or not admission_binding["workspaceId"].strip()
+                or len(admission_binding["workspaceId"]) > 255
+            ):
+                raise ValueError("SPEC224_RECOVERY_GRANT_ADMISSION_BINDING_INVALID")
+            if "workspaceId" in value and admission_binding.get("workspaceId") != value["workspaceId"]:
+                raise ValueError("SPEC224_RECOVERY_GRANT_WORKSPACE_BINDING_MISMATCH")
             for key in (
                 "tenantId", "runId", "workerJobId", "workPackageId", "attemptId",
                 "profileId", "runnerId", "runnerSessionId", "capabilitySnapshotId",
@@ -988,6 +1007,7 @@ class ApprovalDBService:
             "expiresAt": expiry.isoformat().replace("+00:00", "Z"),
             **({"runtimeBinding": runtime_binding} if runtime_binding is not None else {}),
             **({"admissionBinding": normalized_admission_binding} if normalized_admission_binding is not None else {}),
+            **({"workspaceId": value["workspaceId"]} if "workspaceId" in value else {}),
         }
 
     @staticmethod
@@ -1015,18 +1035,231 @@ class ApprovalDBService:
                 or event.get("tenantId") != grant.get("tenantId")
                 or event.get("ownerId") != grant.get("ownerId")
                 or event.get("scopeDigest") != grant.get("scopeDigest")
+                or ("authority" in grant and event.get("authority") != grant.get("authority"))
             ):
                 return False
             previous = digest
         return True
 
-    async def issue_spec224_recovery_grant(
-        self, *, tenant_id: str, owner_id: int, idempotency_key: str, scope: dict,
+    async def _validate_spec224_policy_grant_authority(
+        self,
+        *,
+        policy_approval_ref: str,
+        tenant_id: str,
+        owner_id: int,
+        actor_id: int,
+        scope: dict,
+        scope_digest: str,
     ) -> dict:
-        """Issue a scoped grant only as an authenticated tenant-owner action.
+        """Resolve an active owner policy decision for this exact grant scope."""
+        if not policy_approval_ref or len(policy_approval_ref) > 36:
+            raise ValueError("SPEC224_POLICY_GRANT_APPROVAL_REF_INVALID")
+        candidate_result = await self.db.execute(
+            select(ApprovalRequest)
+            .where(
+                ApprovalRequest.id == policy_approval_ref,
+                ApprovalRequest.tenant_id == tenant_id,
+                ApprovalRequest.request_type == ApprovalType.CODE_EXECUTION,
+            )
+        )
+        candidate = candidate_result.scalar_one_or_none()
+        candidate_extra = candidate.extra_data if candidate and isinstance(candidate.extra_data, dict) else {}
+        candidate_decision = candidate_extra.get("spec224DevelopmentPolicyDecisionV1")
+        if not isinstance(candidate_decision, dict) or not isinstance(candidate_decision.get("policyId"), str):
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_INVALID")
+        # Lock in the same rule → decision order used by policy revocation.
+        rule_result = await self.db.execute(
+            select(ApprovalRule)
+            .where(
+                ApprovalRule.id == candidate_decision["policyId"],
+                ApprovalRule.tenant_id == tenant_id,
+                ApprovalRule.project_id == candidate.project_id,
+                ApprovalRule.is_active.is_(True),
+            )
+            .with_for_update(read=True)
+        )
+        rule = rule_result.scalar_one_or_none()
+        policy_result = await self.db.execute(
+            select(ApprovalRequest)
+            .where(
+                ApprovalRequest.id == policy_approval_ref,
+                ApprovalRequest.tenant_id == tenant_id,
+                ApprovalRequest.request_type == ApprovalType.CODE_EXECUTION,
+            )
+            .with_for_update(read=True)
+        )
+        policy_approval = policy_result.scalar_one_or_none()
+        extra = policy_approval.extra_data if policy_approval and isinstance(policy_approval.extra_data, dict) else {}
+        decision = extra.get("spec224DevelopmentPolicyDecisionV1")
+        if (
+            policy_approval is None
+            or policy_approval.status != ApprovalStatus.APPROVED
+            or policy_approval.revoked_at is not None
+            or policy_approval.requester_id != actor_id
+            or policy_approval.required_approvers != 0
+            or policy_approval.current_approvals != 0
+            or not isinstance(decision, dict)
+            or decision.get("schemaVersion") != "spec224.development-policy-decision.v1"
+            or decision.get("decision") != "APPROVED"
+            or decision.get("actorUserId") != actor_id
+            or decision.get("policyId") is None
+            or decision.get("policyVersion") is None
+            or decision.get("auditRef") is None
+        ):
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_INVALID")
+        if policy_approval.expires_at is None:
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_EXPIRED")
+        approval_expiry = policy_approval.expires_at
+        approval_expiry = approval_expiry.replace(tzinfo=timezone.utc) if approval_expiry.tzinfo is None else approval_expiry.astimezone(timezone.utc)
+        if approval_expiry <= datetime.now(timezone.utc):
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_EXPIRED")
 
-        The grant, ApprovalRequest/ApprovalResponse and AuditLog are committed in
-        one transaction. No service or client-supplied approval reference is trusted.
+        decision_scope = decision.get("scope")
+        if not isinstance(decision_scope, dict):
+            raise PermissionError("SPEC224_POLICY_GRANT_SCOPE_INVALID")
+        admission = scope.get("admissionBinding")
+        runtime = scope.get("runtimeBinding")
+        if (
+            not isinstance(admission, dict)
+            or not isinstance(runtime, dict)
+            or not isinstance(scope.get("workspaceId"), str)
+            or not scope["workspaceId"].strip()
+            or any(not isinstance(admission.get(key), str) or not admission[key] for key in (
+                "attemptId", "runnerId", "runnerSessionId", "capabilitySnapshotId",
+                "capabilitySnapshotRevision", "profileId", "sourceTree", "sourceManifestDigest", "workspaceId",
+            ))
+            or any(not isinstance(runtime.get(key), str) or not runtime[key] for key in ("runId", "workerJobId"))
+        ):
+            raise PermissionError("SPEC224_POLICY_GRANT_BINDING_REQUIRED")
+        expected_resource_scopes = {
+            _canonical_policy_scope({"kind": "development_run", "id": runtime["runId"]}),
+            _canonical_policy_scope({"kind": "worker_job", "id": runtime["workerJobId"]}),
+            _canonical_policy_scope({"kind": "attempt", "id": admission["attemptId"]}),
+            _canonical_policy_scope({"kind": "workspace", "id": scope["workspaceId"]}),
+            _canonical_policy_scope({"kind": "runner", "id": admission["runnerId"]}),
+            _canonical_policy_scope({"kind": "runner_session", "id": admission["runnerSessionId"]}),
+            _canonical_policy_scope({"kind": "capability_snapshot", "id": admission["capabilitySnapshotId"]}),
+            _canonical_policy_scope({"kind": "recovery_grant_scope", "id": scope_digest}),
+        }
+        resource_scopes = decision_scope.get("resourceScopes")
+        if not isinstance(resource_scopes, list) or {
+            _canonical_policy_scope(item) for item in resource_scopes if isinstance(item, dict)
+        } != expected_resource_scopes:
+            raise PermissionError("SPEC224_POLICY_GRANT_RESOURCE_SCOPE_MISMATCH")
+        expected_decision_fields = {
+            "tenantId": tenant_id,
+            "actorId": actor_id,
+            "operation": "spec224.recovery.grant.issue",
+            "profileId": admission["profileId"],
+            "runId": runtime["runId"],
+            "executionId": runtime["workerJobId"],
+            "attemptId": admission["attemptId"],
+            "workspaceId": scope["workspaceId"],
+            "runnerId": admission["runnerId"],
+            "runnerSessionId": admission["runnerSessionId"],
+            "capabilitySnapshotId": admission["capabilitySnapshotId"],
+            "capabilitySnapshotRevision": admission["capabilitySnapshotRevision"],
+            "sourceCommitSha": scope["sourceCommit"],
+            "sourceSha256": scope["sourceSha256"],
+            "workpackageId": scope["workpackageId"],
+            "sourceTreeSha": admission["sourceTree"],
+            "sourceManifestDigest": admission["sourceManifestDigest"],
+        }
+        if any(decision_scope.get(key) != value for key, value in expected_decision_fields.items()):
+            raise PermissionError("SPEC224_POLICY_GRANT_BINDING_MISMATCH")
+        grant_expiry = datetime.fromisoformat(scope["expiresAt"].replace("Z", "+00:00"))
+        if grant_expiry > approval_expiry:
+            raise PermissionError("SPEC224_POLICY_GRANT_EXPIRY_EXCEEDS_DECISION")
+        expected_action_digest = hashlib.sha256(
+            json.dumps(decision_scope, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if policy_approval.action_digest != expected_action_digest:
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_DIGEST_INVALID")
+        if policy_approval.payload != decision_scope:
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_PAYLOAD_MISMATCH")
+        decision_audit_result = await self.db.execute(
+            select(AuditLog).where(
+                AuditLog.id == decision.get("auditRef"),
+                AuditLog.user_id == str(actor_id),
+                AuditLog.user_role == "spec224_development_policy",
+                AuditLog.action == "spec224.development_policy.decision_approved",
+                AuditLog.resource_type == "approval_request",
+                AuditLog.resource_id == policy_approval.id,
+            )
+        )
+        decision_audit = decision_audit_result.scalar_one_or_none()
+        audit_details = decision_audit.details if decision_audit and isinstance(decision_audit.details, dict) else {}
+        if (
+            decision_audit is None
+            or audit_details.get("tenantId") != tenant_id
+            or audit_details.get("projectId") != policy_approval.project_id
+            or audit_details.get("policyId") != decision.get("policyId")
+            or audit_details.get("policyVersion") != decision.get("policyVersion")
+        ):
+            raise PermissionError("SPEC224_POLICY_GRANT_DECISION_AUDIT_INVALID")
+
+        conditions = rule.conditions if rule and isinstance(rule.conditions, dict) else {}
+        policy = conditions.get("definition")
+        if (
+            rule is None
+            or conditions.get("schemaVersion") != SPEC224_DEVELOPMENT_POLICY_SCHEMA
+            or conditions.get("ownerUserId") != owner_id
+            or decision.get("policyId") != rule.id
+            or policy_approval.project_id != decision_scope.get("projectId")
+            or decision.get("policyVersion") != policy_version(rule.id, tenant_id, rule.project_id, policy)
+        ):
+            raise PermissionError("SPEC224_POLICY_GRANT_POLICY_REVOKED_OR_CHANGED")
+        try:
+            validate_policy_definition(policy)
+        except (TypeError, ValueError) as exc:
+            raise PermissionError("SPEC224_POLICY_GRANT_POLICY_INVALID") from exc
+        actor_result = await self.db.execute(
+            select(TenantUser.id).where(
+                TenantUser.tenant_id == tenant_id,
+                TenantUser.user_id == actor_id,
+                TenantUser.is_active.is_(True),
+            )
+        )
+        if actor_id != owner_id and actor_result.scalar_one_or_none() is None:
+            raise PermissionError("SPEC224_POLICY_GRANT_ACTOR_MEMBERSHIP_REQUIRED")
+        active_actor_result = await self.db.execute(
+            select(User.id).where(
+                User.id == actor_id,
+                User.isDisabled.is_(False),
+                User.is_banned.is_(False),
+            )
+        )
+        if active_actor_result.scalar_one_or_none() is None:
+            raise PermissionError("SPEC224_POLICY_GRANT_ACTOR_INACTIVE")
+        owner_actor_result = await self.db.execute(
+            select(Tenant.owner_id).where(Tenant.id == tenant_id)
+        )
+        if owner_actor_result.scalar_one_or_none() != owner_id:
+            raise PermissionError("SPEC224_POLICY_GRANT_OWNER_BINDING_INVALID")
+        return {
+            "kind": "development_policy",
+            "policyApprovalRef": policy_approval.id,
+            "policyId": rule.id,
+            "policyVersion": decision["policyVersion"],
+            "actorUserId": actor_id,
+            "decisionAuditRef": decision["auditRef"],
+            "decisionActionDigest": expected_action_digest,
+        }
+
+    async def issue_spec224_recovery_grant(
+        self,
+        *,
+        tenant_id: str,
+        owner_id: int | None,
+        idempotency_key: str,
+        scope: dict,
+        actor_id: int | None = None,
+        policy_approval_ref: str | None = None,
+    ) -> dict:
+        """Issue a scoped grant as owner or from a separately scoped owner policy.
+
+        Policy-backed grants persist their real policy decision reference and do
+        not create a synthetic ApprovalResponse.
         """
         if not tenant_id or len(tenant_id) > 36 or not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{8,160}", idempotency_key):
             raise ValueError("SPEC224_RECOVERY_GRANT_REQUEST_INVALID")
@@ -1034,7 +1267,23 @@ class ApprovalDBService:
         canonical_scope = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         scope_digest = hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest()
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
-        if tenant_result.scalar_one_or_none() != owner_id:
+        canonical_owner_id = tenant_result.scalar_one_or_none()
+        if not isinstance(canonical_owner_id, int):
+            raise ValueError("SPEC224_RECOVERY_GRANT_TENANT_NOT_FOUND")
+        policy_authority = None
+        if policy_approval_ref:
+            owner_id = canonical_owner_id
+            if not isinstance(actor_id, int) or actor_id < 1 or "workspaceId" not in normalized:
+                raise ValueError("SPEC224_POLICY_GRANT_BINDING_REQUIRED")
+            policy_authority = await self._validate_spec224_policy_grant_authority(
+                policy_approval_ref=policy_approval_ref,
+                tenant_id=tenant_id,
+                owner_id=owner_id,
+                actor_id=actor_id,
+                scope=normalized,
+                scope_digest=scope_digest,
+            )
+        elif canonical_owner_id != owner_id or actor_id not in (None, owner_id):
             raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
         runtime_binding = normalized.get("runtimeBinding")
         if runtime_binding is not None and (
@@ -1052,12 +1301,21 @@ class ApprovalDBService:
         if disabled is None or disabled:
             raise PermissionError("SPEC224_RECOVERY_GRANT_OWNER_INACTIVE")
 
-        grant_id = str(uuid5(NAMESPACE_URL, f"smartaihub:spec224:recovery-grant:{tenant_id}:{owner_id}:{idempotency_key}"))
+        grant_identity = (
+            f"smartaihub:spec224:recovery-grant:{tenant_id}:policy:{policy_approval_ref}:{idempotency_key}"
+            if policy_approval_ref
+            else f"smartaihub:spec224:recovery-grant:{tenant_id}:{owner_id}:{idempotency_key}"
+        )
+        grant_id = str(uuid5(NAMESPACE_URL, grant_identity))
         existing = await self.db.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id).with_for_update())
         prior = existing.scalar_one_or_none()
         if prior:
             grant = (prior.extra_data or {}).get("spec224RecoveryGrantV1")
-            if not isinstance(grant, dict) or grant.get("scopeDigest") != scope_digest:
+            if (
+                not isinstance(grant, dict)
+                or grant.get("scopeDigest") != scope_digest
+                or grant.get("authority", {"kind": "tenant_owner"}) != (policy_authority or {"kind": "tenant_owner"})
+            ):
                 raise ValueError("SPEC224_RECOVERY_GRANT_IDEMPOTENCY_CONFLICT")
             return grant
 
@@ -1066,6 +1324,7 @@ class ApprovalDBService:
             "eventType": "issued", "grantId": grant_id, "version": 1,
             "tenantId": tenant_id, "ownerId": owner_id, "scopeDigest": scope_digest,
             "sourceCommit": normalized["sourceCommit"], "sourceSha256": normalized["sourceSha256"],
+            "authority": policy_authority or {"kind": "tenant_owner"},
             "issuedAt": now.isoformat().replace("+00:00", "Z"), "previousEventDigest": None,
         }
         event_text = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -1073,30 +1332,37 @@ class ApprovalDBService:
             "schemaVersion": "spec224.recovery-grant.v1", "grantId": grant_id, "version": 1,
             "tenantId": tenant_id, "ownerId": owner_id, "state": "active",
             "scope": normalized, "scopeDigest": scope_digest,
+            "authority": policy_authority or {"kind": "tenant_owner"},
             "issuedAt": event["issuedAt"], "revocation": None,
             "auditEvents": [{**event, "eventDigest": hashlib.sha256(event_text.encode("utf-8")).hexdigest()}],
         }
         request = ApprovalRequest(
             id=grant_id, request_type=ApprovalType.SECURITY_SENSITIVE,
             title=f"P-RECOVERY scoped grant {normalized['workpackageId']}",
-            description="Authenticated tenant-owner issuance of an exact non-production recovery grant.",
+            description="Exact non-production recovery grant issued by the tenant owner or active owner-authorized policy.",
             tenant_id=tenant_id, requester_id=owner_id, requester_type="user",
             status=ApprovalStatus.APPROVED, payload={"kind": "spec224_recovery_grant", "scopeDigest": scope_digest},
             extra_data={"spec224RecoveryGrantV1": grant}, action_digest=scope_digest,
             correlation_key=f"spec224-recovery-grant:{tenant_id}:{idempotency_key}"[:255],
-            risk_level="critical", required_approvers=1, current_approvals=1,
+            risk_level="critical",
+            required_approvers=0 if policy_authority else 1,
+            current_approvals=0 if policy_authority else 1,
             created_at=now.replace(tzinfo=None), resolved_at=now.replace(tzinfo=None),
         )
         self.db.add(request)
-        self.db.add(ApprovalResponse(
-            id=str(uuid4()), request_id=grant_id, approver_id=owner_id,
-            decision="approved", comment="Authenticated tenant-owner P-RECOVERY grant issuance.",
-            created_at=now.replace(tzinfo=None),
-        ))
+        if not policy_authority:
+            self.db.add(ApprovalResponse(
+                id=str(uuid4()), request_id=grant_id, approver_id=owner_id,
+                decision="approved", comment="Authenticated tenant-owner P-RECOVERY grant issuance.",
+                created_at=now.replace(tzinfo=None),
+            ))
+        issued_by = actor_id if policy_authority else owner_id
+        role = "spec224_development_policy" if policy_authority else "tenant_owner"
         self.db.add(AuditLog(
-            user_id=str(owner_id), user_role="tenant_owner", action="spec224.recovery_grant.issued",
+            user_id=str(issued_by), user_role=role, action="spec224.recovery_grant.issued",
             resource_type="spec224_recovery_grant", resource_id=grant_id,
-            details={"tenantId": tenant_id, "scopeDigest": scope_digest, "eventDigest": grant["auditEvents"][0]["eventDigest"]},
+            details={"tenantId": tenant_id, "scopeDigest": scope_digest, "eventDigest": grant["auditEvents"][0]["eventDigest"],
+                     "authorityKind": role, "policyApprovalRef": policy_approval_ref},
         ))
         await self.db.commit()
         return grant
@@ -1261,6 +1527,9 @@ class ApprovalDBService:
         )
         request = result.scalar_one_or_none()
         grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
+        grant_authority = grant.get("authority") if isinstance(grant, dict) else None
+        if grant_authority is None:
+            grant_authority = {"kind": "tenant_owner"}
         decision_result = "INVALID_NOT_FOUND"
 
         if isinstance(grant, dict) and grant.get("schemaVersion") == "spec224.recovery-grant.v1":
@@ -1273,8 +1542,9 @@ class ApprovalDBService:
                 or request.request_type != ApprovalType.SECURITY_SENSITIVE
                 or request.requester_id != grant.get("ownerId")
                 or request.requester_type != "user"
-                or request.required_approvers != 1
-                or request.current_approvals != 1
+                or not isinstance(grant_authority, dict)
+                or request.required_approvers != (0 if grant_authority.get("kind") == "development_policy" else 1)
+                or request.current_approvals != (0 if grant_authority.get("kind") == "development_policy" else 1)
                 or request.action_digest != grant.get("scopeDigest")
                 or not isinstance(request.payload, dict)
                 or request.payload.get("kind") != "spec224_recovery_grant"
@@ -1293,16 +1563,35 @@ class ApprovalDBService:
                 if owner_id != grant.get("ownerId") or owner_disabled is not False:
                     decision_result = "INVALID_OWNER"
                 else:
-                    approval_result = await self.db.execute(
-                        select(ApprovalResponse.approver_id)
-                        .where(
-                            ApprovalResponse.request_id == grant_id,
-                            ApprovalResponse.decision == "approved",
+                    authority = grant_authority
+                    policy_authority_valid = False
+                    if authority.get("kind") == "development_policy":
+                        try:
+                            checked_authority = await self._validate_spec224_policy_grant_authority(
+                                policy_approval_ref=authority.get("policyApprovalRef"),
+                                tenant_id=tenant_id,
+                                owner_id=owner_id,
+                                actor_id=authority.get("actorUserId"),
+                                scope=grant.get("scope") if isinstance(grant.get("scope"), dict) else {},
+                                scope_digest=grant.get("scopeDigest"),
+                            )
+                            policy_authority_valid = checked_authority == authority
+                        except (PermissionError, ValueError, TypeError, KeyError):
+                            policy_authority_valid = False
+                    elif authority.get("kind") == "tenant_owner":
+                        approval_result = await self.db.execute(
+                            select(ApprovalResponse.approver_id)
+                            .where(
+                                ApprovalResponse.request_id == grant_id,
+                                ApprovalResponse.decision == "approved",
+                            )
+                            .distinct()
                         )
-                        .distinct()
-                    )
-                    approver_ids = set(approval_result.scalars().all())
-                    if owner_id not in approver_ids:
+                        approver_ids = set(approval_result.scalars().all())
+                        policy_authority_valid = owner_id in approver_ids
+                    else:
+                        policy_authority_valid = False
+                    if not policy_authority_valid:
                         decision_result = "INVALID_AUTHORITY"
                     else:
                         audit_result = await self.db.execute(
@@ -1321,10 +1610,12 @@ class ApprovalDBService:
                         if (
                             not self._recovery_grant_audit_valid(grant)
                             or issuance_audit is None
-                            or issuance_audit.user_id != str(owner_id)
-                            or issuance_audit.user_role != "tenant_owner"
+                            or issuance_audit.user_id != str(authority.get("actorUserId", owner_id))
+                            or issuance_audit.user_role != ("spec224_development_policy" if authority.get("kind") == "development_policy" else "tenant_owner")
                             or audit_details.get("tenantId") != tenant_id
                             or audit_details.get("scopeDigest") != grant.get("scopeDigest")
+                            or audit_details.get("authorityKind") != issuance_audit.user_role
+                            or (authority.get("kind") == "development_policy" and audit_details.get("policyApprovalRef") != authority.get("policyApprovalRef"))
                             or audit_details.get("eventDigest")
                             != (grant.get("auditEvents") or [{}])[0].get("eventDigest")
                         ):
