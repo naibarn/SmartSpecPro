@@ -90,7 +90,9 @@ application does not load the production `.env` as a fallback. The launcher reco
 in backend diagnostics and Vite release identity. Frontend edits
 use Vite HMR; restart the development service after backend edits.
 
-Systemd user service templates are in `ops/dev-web/`. The web service's
+Systemd user service templates and the complete `web.env.example` are in
+`ops/dev-web/`. `SMARTSPEC_ALLOWED_ORIGINS` must contain the exact HTTPS dev
+origin so browser login passes the existing CSRF/CORS checks. The web service's
 `~/.config/smartspec-dev/process.env` sets PATH to the installed Node 22 binary.
 The dedicated Redis instance listens only on loopback port 6391. The development
 database has its own restricted login role, a schema-only snapshot, and synthetic
@@ -109,3 +111,18 @@ on the first load, log in with the synthetic development Admin, and test Admin
 Collect evidence. Check browser errors and compare runtime identity before
 considering the public dev environment verified. DNS, tunnel connectivity, local
 HTTP readiness, and authenticated browser verification are separate observations.
+
+Run the bounded public browser acceptance against the dev hostname:
+
+```bash
+pnpm run dev:web:verify
+```
+
+It opens three fresh browser contexts, signs in through the real login form,
+clicks Collect evidence, rejects anonymous/domain-admin diagnostics access,
+and checks that diagnostics contain no configured secrets. Synthetic test
+credentials are read from `~/.config/smartspec-dev/admin-login.txt` and
+`guard-login.json`; never put them in Git. Receipts and screenshots are written
+to `~/.local/share/smartspec-dev/evidence/`. If local DNS still caches an old
+negative answer, the check resolves the public address through Cloudflare DoH
+and records that fallback explicitly; TLS verification remains enabled.

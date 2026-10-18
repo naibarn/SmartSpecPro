@@ -29,7 +29,8 @@
     "mcp:readiness": "npm --workspace apps/web run mcp:readiness",
     "astryx": "npm --workspace apps/web run astryx --",
     "dev:web:restart": "bash scripts/restart-dev-web.sh .",
-    "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service"
+    "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service",
+    "dev:web:verify": "pnpm --filter @smartspec/web dev:web:verify"
   },
   "engines": {
     "node": ">=22.22.0 <23"
