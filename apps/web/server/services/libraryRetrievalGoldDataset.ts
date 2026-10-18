@@ -26,6 +26,21 @@ export const goldDatasetReviewSchema = z.object({
   rationale: z.string().min(1),
 });
 
+export const goldDatasetControlExpectationSchema = z.object({
+  controlId: z.string().min(1),
+  kind: z.enum(["acl", "freshness", "lifecycle"]),
+  targetEvidenceId: z.string().min(1),
+  targetTenantId: z.string().min(1),
+  callerTenantId: z.string().min(1),
+  expectedVisibility: z.enum(["visible", "blocked"]),
+  expectedLifecycle: z.enum(["active", "stale", "revoked", "deleted", "tombstoned"]),
+  currentRevision: z.string().min(1).optional(),
+  targetRevision: z.string().min(1).optional(),
+  currentDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  targetDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  maxAgeSeconds: z.number().int().positive().optional(),
+});
+
 const releaseUseApprovalEvidenceSchema = z.discriminatedUnion("approverType", [
   z.object({
     approverType: z.literal("human"),
@@ -89,7 +104,55 @@ export const goldDatasetCandidateSchema = z.object({
     expectedRevision: z.string().optional(),
     shouldCite: z.boolean(),
     exactIdentifier: z.boolean().default(false),
+    controlExpectations: z.array(goldDatasetControlExpectationSchema).optional(),
   }),
+}).superRefine((candidate, context) => {
+  const controls = candidate.benchmarkGold.controlExpectations ?? [];
+  const controlIds = new Set<string>();
+  for (const [index, control] of controls.entries()) {
+    if (controlIds.has(control.controlId)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "controlId"], message: "Control IDs must be unique within a candidate" });
+    }
+    controlIds.add(control.controlId);
+    if (control.kind === "acl" && control.expectedLifecycle !== "active") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "ACL controls must target active evidence; use lifecycle controls for revoked or deleted evidence" });
+    }
+    if (control.kind === "freshness" && !["active", "stale"].includes(control.expectedLifecycle)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "Freshness controls may only target active or stale revisions" });
+    }
+    if (control.kind === "freshness" && control.expectedLifecycle === "active" && control.expectedVisibility !== "visible") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedVisibility"], message: "Active freshness controls must prove the pinned current revision is visible" });
+    }
+    if (control.kind === "lifecycle" && !["revoked", "deleted", "tombstoned"].includes(control.expectedLifecycle)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedLifecycle"], message: "Lifecycle controls must target revoked, deleted, or tombstoned evidence" });
+    }
+    if (control.kind === "acl" && control.targetTenantId !== control.callerTenantId && control.expectedVisibility !== "blocked") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedVisibility"], message: "Cross-tenant ACL controls must expect blocked visibility" });
+    }
+    if (["revoked", "deleted", "tombstoned", "stale"].includes(control.expectedLifecycle) && control.expectedVisibility !== "blocked") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index, "expectedVisibility"], message: "Stale and inactive lifecycle controls must expect blocked visibility" });
+    }
+    if (control.expectedLifecycle === "stale" && (!control.currentRevision || !control.targetRevision || control.currentRevision === control.targetRevision)) {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale controls require distinct current and target revisions" });
+    }
+    if (control.kind === "freshness" || control.expectedLifecycle === "stale") {
+      const pinned = control.currentRevision && control.targetRevision && control.currentDigest && control.targetDigest;
+      if (!pinned) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Freshness controls require pinned current and target revisions and digests" });
+      } else if (control.kind === "freshness" && control.expectedLifecycle === "active" && (
+        control.currentRevision !== control.targetRevision || control.currentDigest !== control.targetDigest
+      )) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Active freshness controls must pin the same current and target revision and digest" });
+      } else if (control.expectedLifecycle === "stale" && (
+        control.currentRevision === control.targetRevision || control.currentDigest === control.targetDigest
+      )) {
+        context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale controls must pin different current and target revisions and digests" });
+      }
+    }
+    if (control.currentDigest && control.targetDigest && control.currentDigest === control.targetDigest && control.expectedLifecycle === "stale") {
+      context.addIssue({ code: "custom", path: ["benchmarkGold", "controlExpectations", index], message: "Stale revision digests must differ when both are supplied" });
+    }
+  }
 });
 
 export type GoldDatasetCandidate = z.infer<typeof goldDatasetCandidateSchema>;
@@ -841,13 +904,17 @@ export function evaluateGoldDataset(
       id: "crossTenantLeakage",
       threshold: "= 0",
       value: metrics.crossTenantLeakage,
-      pass: metrics.crossTenantLeakage === 0,
+      pass: metrics.aclControlCoverage === null || !metrics.securityControlsComplete
+        ? null
+        : metrics.crossTenantLeakage === 0 && metrics.aclControlCoverage === 1,
     },
     {
       id: "unauthorizedEvidenceLeakage",
       threshold: "= 0",
       value: metrics.unauthorizedEvidenceLeakage,
-      pass: metrics.unauthorizedEvidenceLeakage === 0,
+      pass: metrics.aclControlCoverage === null || !metrics.securityControlsComplete
+        ? null
+        : metrics.unauthorizedEvidenceLeakage === 0 && metrics.aclControlCoverage === 1,
     },
     {
       id: "exactIdentifierHitAt5",
@@ -910,10 +977,15 @@ export function evaluateGoldDataset(
       id: "freshnessCorrectness",
       threshold: `>= ${SPEC_229_RELEASE_CRITERIA.freshnessCorrectness}`,
       value: metrics.freshnessCorrectness,
-      pass: atLeast(
-        metrics.freshnessCorrectness,
-        SPEC_229_RELEASE_CRITERIA.freshnessCorrectness
-      ),
+      pass: metrics.freshnessControlCoverage === null ||
+        metrics.lifecycleControlCoverage === null ||
+        !metrics.securityControlsComplete
+        ? null
+        : metrics.freshnessControlCoverage === 1 &&
+          metrics.lifecycleControlCoverage === 1 && atLeast(
+            metrics.freshnessCorrectness,
+            SPEC_229_RELEASE_CRITERIA.freshnessCorrectness
+          ),
     },
     {
       id: "noAnswerPrecision",

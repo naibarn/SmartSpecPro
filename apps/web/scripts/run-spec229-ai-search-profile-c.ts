@@ -4,6 +4,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   CloudflareAiSearchEvaluationClient,
+  isAllowedSpec229EvaluationNamespace,
   SPEC229_AI_SEARCH_EVALUATION_SCOPE,
   type AiSearchEvaluationChunk,
   type AiSearchEvaluationDocument,
@@ -125,8 +126,8 @@ function assertRuntimeAndSource(): {
   if (actualSha !== sourceSha || status) {
     throw new Error("Evaluation corpus must be a clean worktree pinned to SOURCE_SHA");
   }
-  const namespace = required("SPEC229_EVAL_NAMESPACE");
-  if (namespace !== "smartaihub-dev" && namespace !== "smartaihub-staging") {
+  const namespace = process.env.SPEC229_EVAL_NAMESPACE?.trim() || INSTANCE_ID;
+  if (!isAllowedSpec229EvaluationNamespace(namespace)) {
     throw new Error("SPEC229_EVAL_NAMESPACE must name an authorized non-production namespace");
   }
   return {
@@ -245,18 +246,16 @@ function isTransientProviderFailure(error: unknown): boolean {
     /timeout|timed out|fetch failed|econnreset|econnrefused/i.test(message);
 }
 
-function validateResultOwnership(chunk: AiSearchEvaluationChunk, source: Source): void {
+function validateResultOwnership(chunk: AiSearchEvaluationChunk, source: Source): boolean {
   const metadata = chunk.item.metadata;
-  if (
+  return !(
     !metadata ||
     metadata.acl_scope !== SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope ||
     metadata.source_type !== "library" ||
     metadata.source_id !== source.path ||
     metadata.source_revision !== `sha256:${source.digest}` ||
     metadata.source_digest !== source.digest
-  ) {
-    throw new Error("SPEC229_EVIDENCE_OWNERSHIP_OR_PROVENANCE_MISMATCH");
-  }
+  );
 }
 
 async function main() {
@@ -313,10 +312,15 @@ async function main() {
   ];
   const createdItemIds: string[] = [];
   let instanceCreated = false;
+  let namespaceCreated = false;
   let cleanupStatus: "complete" | "failed" = "complete";
   let run: Record<string, unknown> | undefined;
 
   try {
+    if (runtime.namespace.startsWith("spec229-eval-")) {
+      await api.createDisposableNamespace();
+      namespaceCreated = true;
+    }
     await api.createComparisonInstance(PROFILE);
     instanceCreated = true;
     const indexDocument = async (document: AiSearchEvaluationDocument, expectedSource?: Source) => {
@@ -371,9 +375,7 @@ async function main() {
         messages: canaryMessages,
         multiQueryVariants: [`unique ${control.query} evaluation guard fixture`],
       });
-      if (!visibleToControlScope.chunks.some(chunk => chunk.item.key === receipt.key)) {
-        throw new Error("AI Search positive security control could not retrieve its canary");
-      }
+      const visibleToPositiveScope = visibleToControlScope.chunks.some(chunk => chunk.item.key === receipt.key);
       const visibleToRepositoryScope = await api.searchComparison({
         query: control.query,
         profile: PROFILE,
@@ -384,16 +386,25 @@ async function main() {
       const leakedCanary = visibleToRepositoryScope.chunks.some(
         chunk => chunk.item.key === receipt.key,
       );
-      if (leakedCanary) {
-        throw new Error("SPEC229_EVALUATION_ACL_LEAK_DETECTED");
-      }
+      const responseDigest = sha256Hex(JSON.stringify({
+        positive: visibleToControlScope.chunks.map(chunk => ({ id: chunk.id, key: chunk.item.key })),
+        negative: visibleToRepositoryScope.chunks.map(chunk => ({ id: chunk.id, key: chunk.item.key })),
+      }));
       securityControlResults.push({
-        case: control.scope.aclScope === SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope
+        controlId: control.scope.aclScope === SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope
           ? "same_tenant_unshared_acl"
           : "cross_tenant",
-        positiveControl: "PASS",
-        negativeControl: "PASS",
-        leakedResultCount: 0,
+        targetTenantId: control.scope.tenantId,
+        callerTenantId: SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId,
+        expectedPositiveVisible: true,
+        observedPositiveVisible: visibleToPositiveScope,
+        expectedNegativeBlocked: true,
+        observedNegativeBlocked: !leakedCanary,
+        leakedResultCount: leakedCanary ? 1 : 0,
+        targetDigest: sha256Hex(control.document.content),
+        corpusRevision: `sha256:${sha256Hex(sources.map(source => `${source.path}\0${source.digest}\n`).join(""))}`,
+        providerResponseDigest: responseDigest,
+        observedAt: new Date().toISOString(),
       });
     }
 
@@ -413,6 +424,7 @@ async function main() {
         shouldCite: candidate.benchmarkGold.shouldCite,
         language: candidate.language,
         exactIdentifier: candidate.benchmarkGold.exactIdentifier,
+        controlExpectations: candidate.benchmarkGold.controlExpectations,
       })
     );
     const observations = [];
@@ -446,11 +458,9 @@ async function main() {
         evidenceId: string;
         tenantId: string;
         revision: string;
-        digest: string;
+        digest?: string;
         authorityRank: number;
         authorized: boolean;
-        revoked: boolean;
-        deleted: boolean;
       }>();
       const citations = [];
       const hitPaths = new Set<string>();
@@ -459,22 +469,31 @@ async function main() {
         if (!source) {
           throw new Error("SPEC229_EVIDENCE_KEY_NOT_IN_DISPOSABLE_CORPUS");
         }
-        validateResultOwnership(chunk, source);
-        hitPaths.add(source.path);
+        const ownershipValid = validateResultOwnership(chunk, source);
+        if (ownershipValid) hitPaths.add(source.path);
         if (!evidenceByPath.has(source.path)) {
+          const metadata = chunk.item.metadata ?? {};
+          const actualRevision = typeof metadata.source_revision === "string"
+            ? metadata.source_revision
+            : "unknown";
+          const actualDigest = typeof metadata.source_digest === "string" &&
+            /^[a-f0-9]{64}$/.test(metadata.source_digest)
+            ? metadata.source_digest
+            : undefined;
           evidenceByPath.set(source.path, {
             evidenceId: source.path,
-            tenantId: SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId,
-            revision: `sha256:${source.digest}`,
-            digest: source.digest,
+            tenantId: metadata.acl_scope === SPEC229_AI_SEARCH_EVALUATION_SCOPE.aclScope
+              ? SPEC229_AI_SEARCH_EVALUATION_SCOPE.tenantId
+              : "unresolved-acl-scope",
+            revision: actualRevision,
+            ...(actualDigest ? { digest: actualDigest } : {}),
             authorityRank: 1,
-            authorized: true,
-            revoked: false,
-            deleted: false,
+            authorized: ownershipValid,
           });
         }
         if (
           citations.length > 0 ||
+          !ownershipValid ||
           !candidate.benchmarkGold.shouldCite ||
           !candidate.benchmarkGold.requiredEvidenceIds.includes(source.path)
         ) continue;
@@ -533,7 +552,31 @@ async function main() {
     const latencyRuns = LATENCY_PROFILE
       ? { [LATENCY_PROFILE]: heldOutObservations }
       : {};
-    const releaseEvaluation = evaluateGoldDataset(candidates, heldOutObservations, latencyRuns);
+    const computedReleaseEvaluation = evaluateGoldDataset(candidates, heldOutObservations, latencyRuns);
+    const aclLeakDetected = securityControlResults.some(result => result.observedNegativeBlocked === false);
+    const positiveControlsComplete = securityControlResults.length > 0 &&
+      securityControlResults.every(result => result.observedPositiveVisible === true);
+    const releaseEvaluation = aclLeakDetected
+      ? {
+          ...computedReleaseEvaluation,
+          releaseStatus: "FAIL" as const,
+          releaseCriteria: computedReleaseEvaluation.releaseCriteria.map(criterion =>
+            criterion.id === "crossTenantLeakage" || criterion.id === "unauthorizedEvidenceLeakage"
+              ? { ...criterion, value: Math.max(1, criterion.value ?? 0), status: "FAIL" as const }
+              : criterion,
+          ),
+        }
+      : !positiveControlsComplete
+        ? {
+            ...computedReleaseEvaluation,
+            releaseStatus: "NOT_EVALUABLE" as const,
+            releaseCriteria: computedReleaseEvaluation.releaseCriteria.map(criterion =>
+              criterion.id === "crossTenantLeakage" || criterion.id === "unauthorizedEvidenceLeakage"
+                ? { ...criterion, value: null, status: "NOT_EVALUABLE" as const }
+                : criterion,
+            ),
+          }
+        : computedReleaseEvaluation;
     run = {
       schemaVersion: "spec229-local-observation-run-v1",
       runId: RUN_ID,
@@ -608,12 +651,21 @@ async function main() {
         cleanupStatus = "failed";
       }
     }
+    if (namespaceCreated) {
+      try {
+        await api.deleteDisposableNamespace();
+      } catch {
+        cleanupStatus = "failed";
+      }
+    }
   }
 
   if (run) {
     run.cleanup = {
       status: cleanupStatus,
       instanceId: INSTANCE_ID,
+      namespace: runtime.namespace,
+      namespaceDeleted: namespaceCreated && cleanupStatus === "complete",
       createdItemIds,
     };
     const serialized = `${JSON.stringify(run, null, 2)}\n`;

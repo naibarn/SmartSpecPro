@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { P2298_CANDIDATE_SEEDS } from "./libraryRetrievalGoldCandidateSeeds";
 import {
@@ -19,6 +20,117 @@ import {
 import { retrievalBenchmarkObservationSchema } from "./libraryRetrievalBenchmark";
 
 describe("SPEC-229 gold dataset pipeline", () => {
+  it("validates tenant, lifecycle, and revision-pair control expectations", () => {
+    const seed = P2298_CANDIDATE_SEEDS[0]!;
+    const expectation = {
+      controlId: "acl-deny-1",
+      kind: "acl" as const,
+      targetEvidenceId: "foreign-doc",
+      targetTenantId: "tenant-b",
+      callerTenantId: "tenant-a",
+      expectedVisibility: "blocked" as const,
+      expectedLifecycle: "active" as const,
+    };
+    expect(goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: { ...seed.benchmarkGold, controlExpectations: [expectation] },
+    }).benchmarkGold.controlExpectations).toHaveLength(1);
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...expectation, expectedVisibility: "visible" }],
+      },
+    })).toThrow("Cross-tenant ACL controls must expect blocked visibility");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{
+          ...expectation,
+          controlId: "stale-1",
+          kind: "freshness",
+          targetTenantId: "tenant-a",
+          callerTenantId: "tenant-a",
+          expectedLifecycle: "stale",
+        }],
+      },
+    })).toThrow("Stale controls require distinct current and target revisions");
+    const activeFreshness = {
+      ...expectation,
+      controlId: "freshness-current-1",
+      kind: "freshness" as const,
+      targetTenantId: "tenant-a",
+      callerTenantId: "tenant-a",
+      expectedVisibility: "visible" as const,
+      expectedLifecycle: "active" as const,
+      currentRevision: "r2",
+      targetRevision: "r2",
+      currentDigest: "a".repeat(64),
+      targetDigest: "a".repeat(64),
+    };
+    expect(goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: { ...seed.benchmarkGold, controlExpectations: [activeFreshness] },
+    }).benchmarkGold.controlExpectations).toHaveLength(1);
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, currentDigest: undefined, targetDigest: undefined }],
+      },
+    })).toThrow("Freshness controls require pinned current and target revisions and digests");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, expectedVisibility: "blocked" }],
+      },
+    })).toThrow("Active freshness controls must prove the pinned current revision is visible");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{ ...activeFreshness, targetRevision: "r1", targetDigest: "b".repeat(64) }],
+      },
+    })).toThrow("Active freshness controls must pin the same current and target revision and digest");
+    expect(() => goldDatasetCandidateSchema.parse({
+      ...seed,
+      benchmarkGold: {
+        ...seed.benchmarkGold,
+        controlExpectations: [{
+          ...activeFreshness,
+          kind: "lifecycle",
+          expectedLifecycle: "stale",
+          expectedVisibility: "blocked",
+          targetRevision: "r1",
+          targetDigest: undefined,
+        }],
+      },
+    })).toThrow("Lifecycle controls must target revoked, deleted, or tombstoned evidence");
+  });
+
+  it("validates the new integrity cohort without promoting it to release gold", () => {
+    const candidatePath = resolve(
+      process.cwd(),
+      "server/services/libraryRetrievalGoldCandidates.integrity-v1.json",
+    );
+    const candidates = JSON.parse(readFileSync(candidatePath, "utf8")) as unknown[];
+    const parsed = candidates.map(candidate => goldDatasetCandidateSchema.parse(candidate));
+
+    validateGoldDataset(parsed, resolve(process.cwd(), "../.."));
+    expect(parsed).toHaveLength(500);
+    expect(parsed.every(candidate =>
+      candidate.split === "development" &&
+      candidate.useApproval === "development_only" &&
+      candidate.reviews.length === 1 &&
+      candidate.reviews[0]?.reviewerType === "agent" &&
+      candidate.reviews[0]?.decision === "needs_adjudication"
+    )).toBe(true);
+    expect(parsed.some(isReleaseEvaluationEligible)).toBe(false);
+    expect(parsed.some(isHeldOutReleaseEvaluationEligible)).toBe(false);
+  });
+
   it("validates pinned source digests and source spans for development candidates", () => {
     validateGoldDataset(
       P2298_CANDIDATE_SEEDS,

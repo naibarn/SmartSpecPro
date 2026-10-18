@@ -13,6 +13,20 @@ export const retrievalBenchmarkGoldCaseSchema = z.object({
   shouldCite: z.boolean(),
   language: z.enum(["thai", "english", "mixed"]).optional(),
   exactIdentifier: z.boolean().default(false),
+  controlExpectations: z.array(z.object({
+    controlId: z.string().min(1),
+    kind: z.enum(["acl", "freshness", "lifecycle"]),
+    targetEvidenceId: z.string().min(1),
+    targetTenantId: z.string().min(1),
+    callerTenantId: z.string().min(1),
+    expectedVisibility: z.enum(["visible", "blocked"]),
+    expectedLifecycle: z.enum(["active", "stale", "revoked", "deleted", "tombstoned"]),
+    currentRevision: z.string().min(1).optional(),
+    targetRevision: z.string().min(1).optional(),
+    currentDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    targetDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    maxAgeSeconds: z.number().int().positive().optional(),
+  })).optional(),
   gradedRelevantEvidence: z
     .array(z.object({ id: z.string(), relevance: z.number().min(0) }))
     .default([]),
@@ -51,13 +65,39 @@ export const retrievalBenchmarkObservationSchema = z.object({
       evidenceId: z.string(),
       tenantId: z.string(),
       revision: z.string(),
-      digest: z.string().regex(/^[a-f0-9]{64}$/),
+      digest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
       authorityRank: z.number().int().min(0),
       authorized: z.boolean(),
-      revoked: z.boolean().default(false),
-      deleted: z.boolean().default(false),
+      revoked: z.boolean().optional(),
+      deleted: z.boolean().optional(),
     })
   ),
+  controlResults: z.array(z.object({
+    controlId: z.string().min(1),
+    kind: z.enum(["acl", "freshness", "lifecycle"]),
+    targetEvidenceId: z.string().min(1),
+    targetTenantId: z.string().min(1),
+    callerTenantId: z.string().min(1),
+    expectedVisibility: z.enum(["visible", "blocked"]),
+    observedVisibility: z.enum(["visible", "blocked"]),
+    expectedLifecycle: z.enum(["active", "stale", "revoked", "deleted", "tombstoned"]),
+    observedLifecycle: z.enum(["active", "stale", "revoked", "deleted", "tombstoned"]),
+    expectedRevision: z.string().optional(),
+    observedCurrentRevision: z.string().optional(),
+    observedRevision: z.string().optional(),
+    expectedCurrentDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    observedCurrentDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    expectedTargetDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    observedDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    maxAgeSeconds: z.number().int().positive().optional(),
+    observedAgeSeconds: z.number().nonnegative().optional(),
+    providerRequestId: z.string().min(1),
+    providerItemId: z.string().min(1).optional(),
+    corpusRevision: z.string().min(1),
+    corpusDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    responseDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    observedAt: z.string().datetime(),
+  })).optional(),
   citations: z.array(
     z.object({
       evidenceId: z.string(),
@@ -129,8 +169,12 @@ export interface RetrievalBenchmarkMetrics {
   evidenceCoverage: number;
   citationPrecision: number | null;
   citationAvailability: number | null;
-  freshnessCorrectness: number;
+  freshnessCorrectness: number | null;
   authorityCorrectness: number;
+  aclControlCoverage: number | null;
+  freshnessControlCoverage: number | null;
+  lifecycleControlCoverage: number | null;
+  securityControlsComplete: boolean;
   aclLeakage: number;
   crossTenantLeakage: number;
   unauthorizedEvidenceLeakage: number;
@@ -210,6 +254,13 @@ export function calculateRetrievalBenchmarkMetrics(
   let unauthorizedEvidenceLeakage = 0;
   let unsafePartialOrOutageAnswers = 0;
   let staleAccepted = 0;
+  let aclControlExpected = 0;
+  let aclControlPassed = 0;
+  let freshnessControlExpected = 0;
+  let freshnessControlPassed = 0;
+  let lifecycleControlExpected = 0;
+  let lifecycleControlPassed = 0;
+  let securityControlsComplete = true;
   let noAnswerTruePositive = 0;
   let noAnswerFalsePositive = 0;
   let noAnswerFalseNegative = 0;
@@ -223,6 +274,59 @@ export function calculateRetrievalBenchmarkMetrics(
     const observed = retrievalBenchmarkObservationSchema.parse(
       observationsByCaseId.get(gold.caseId)
     );
+    const expectations = gold.controlExpectations ?? [];
+    const results = observed.controlResults ?? [];
+    const resultIds = new Set(results.map(result => result.controlId));
+    if (resultIds.size !== results.length || results.some(result =>
+      !expectations.some(expectation => expectation.controlId === result.controlId)
+    )) securityControlsComplete = false;
+    for (const expectation of expectations) {
+      const result = results.find(item => item.controlId === expectation.controlId);
+      const isAcl = expectation.kind === "acl";
+      const isFreshness = expectation.kind === "freshness";
+      if (isAcl) aclControlExpected += 1;
+      else if (isFreshness) freshnessControlExpected += 1;
+      else lifecycleControlExpected += 1;
+      const matched = Boolean(result &&
+        result.kind === expectation.kind &&
+        result.targetEvidenceId === expectation.targetEvidenceId &&
+        result.targetTenantId === expectation.targetTenantId &&
+        result.callerTenantId === expectation.callerTenantId &&
+        result.expectedVisibility === expectation.expectedVisibility &&
+        result.expectedLifecycle === expectation.expectedLifecycle &&
+        result.observedVisibility === expectation.expectedVisibility &&
+        result.observedLifecycle === expectation.expectedLifecycle &&
+        (!expectation.currentRevision || result.expectedRevision === expectation.currentRevision) &&
+        (!expectation.currentRevision || result.observedCurrentRevision === expectation.currentRevision) &&
+        (!expectation.targetRevision || result.observedRevision === expectation.targetRevision) &&
+        (!expectation.currentDigest || result.expectedCurrentDigest === expectation.currentDigest) &&
+        (!expectation.currentDigest || result.observedCurrentDigest === expectation.currentDigest) &&
+        (!expectation.targetDigest || (
+          result.expectedTargetDigest === expectation.targetDigest &&
+          result.observedDigest === expectation.targetDigest
+        )) &&
+        (!expectation.maxAgeSeconds || (
+          result.maxAgeSeconds === expectation.maxAgeSeconds &&
+          typeof result.observedAgeSeconds === "number" &&
+          result.observedAgeSeconds <= expectation.maxAgeSeconds
+        )) &&
+        (result.observedVisibility !== "visible" || Boolean(result.providerItemId))
+      );
+      if (!result) securityControlsComplete = false;
+      if (matched) {
+        if (isAcl) aclControlPassed += 1;
+        else if (isFreshness) freshnessControlPassed += 1;
+        else lifecycleControlPassed += 1;
+      }
+      if (expectation.kind === "acl" && result?.observedVisibility === "visible") {
+        if (expectation.targetTenantId !== expectation.callerTenantId) crossTenantLeakage += 1;
+        if (expectation.expectedVisibility === "blocked") unauthorizedEvidenceLeakage += 1;
+        if (expectation.expectedVisibility === "blocked") aclLeakage += 1;
+      }
+      if (expectation.kind !== "acl" &&
+        ["stale", "revoked", "deleted", "tombstoned"].includes(expectation.expectedLifecycle) &&
+        result?.observedVisibility === "visible") staleAccepted += 1;
+    }
     const evidenceById = new Map(
       observed.evidence.map(item => [item.evidenceId, item])
     );
@@ -315,8 +419,8 @@ export function calculateRetrievalBenchmarkMetrics(
       // distractor is not stale merely because it has its own current revision.
       const isExpectedEvidence = relevantIds.includes(item.evidenceId);
       if (
-        item.revoked ||
-        item.deleted ||
+        item.revoked === true ||
+        item.deleted === true ||
         (isExpectedEvidence &&
           gold.expectedRevision &&
           item.revision !== gold.expectedRevision)
@@ -325,8 +429,8 @@ export function calculateRetrievalBenchmarkMetrics(
       }
       freshnessTotal += 1;
       if (
-        !item.revoked &&
-        !item.deleted &&
+        item.revoked !== true &&
+        item.deleted !== true &&
         (!isExpectedEvidence ||
           !gold.expectedRevision ||
           item.revision === gold.expectedRevision)
@@ -391,8 +495,22 @@ export function calculateRetrievalBenchmarkMetrics(
       citationAvailableCases,
       citationRequiredCases
     ),
-    freshnessCorrectness: safeRatio(freshnessCorrect, freshnessTotal) ?? 1,
+    freshnessCorrectness: safeRatio(
+      freshnessCorrect,
+      freshnessTotal
+    ),
     authorityCorrectness: safeRatio(authorityCorrect, authorityTotal) ?? 1,
+    aclControlCoverage: aclControlExpected === 0
+      ? null
+      : safeRatio(aclControlPassed, aclControlExpected),
+    freshnessControlCoverage: freshnessControlExpected === 0
+      ? null
+      : safeRatio(freshnessControlPassed, freshnessControlExpected),
+    lifecycleControlCoverage: lifecycleControlExpected === 0
+      ? null
+      : safeRatio(lifecycleControlPassed, lifecycleControlExpected),
+    securityControlsComplete: securityControlsComplete &&
+      aclControlExpected > 0 && freshnessControlExpected > 0 && lifecycleControlExpected > 0,
     aclLeakage,
     crossTenantLeakage,
     unauthorizedEvidenceLeakage,

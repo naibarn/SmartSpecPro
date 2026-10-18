@@ -62,6 +62,13 @@ function releaseCohort() {
         expectedRevision: "r1",
         shouldCite: supportsAnswer,
         exactIdentifier: true,
+        ...(index === 0 ? { controlExpectations: [
+          { controlId: "acl-positive", kind: "acl" as const, targetEvidenceId: "same-tenant", targetTenantId: "tenant-a", callerTenantId: "tenant-a", expectedVisibility: "visible" as const, expectedLifecycle: "active" as const },
+          { controlId: "acl-negative", kind: "acl" as const, targetEvidenceId: "foreign-tenant", targetTenantId: "tenant-b", callerTenantId: "tenant-a", expectedVisibility: "blocked" as const, expectedLifecycle: "active" as const },
+          { controlId: "freshness-stale", kind: "freshness" as const, targetEvidenceId: "stale-revision", targetTenantId: "tenant-a", callerTenantId: "tenant-a", expectedVisibility: "blocked" as const, expectedLifecycle: "stale" as const, currentRevision: "r2", targetRevision: "r1", currentDigest: "a".repeat(64), targetDigest: "b".repeat(64) },
+          { controlId: "lifecycle-revoked", kind: "lifecycle" as const, targetEvidenceId: "revoked-doc", targetTenantId: "tenant-a", callerTenantId: "tenant-a", expectedVisibility: "blocked" as const, expectedLifecycle: "revoked" as const, currentRevision: "r1", targetRevision: "r1" },
+          { controlId: "lifecycle-deleted", kind: "lifecycle" as const, targetEvidenceId: "deleted-doc", targetTenantId: "tenant-a", callerTenantId: "tenant-a", expectedVisibility: "blocked" as const, expectedLifecycle: "deleted" as const, currentRevision: "r1", targetRevision: "r1" },
+        ] } : {}),
         gradedRelevantEvidence: [],
       },
     };
@@ -101,6 +108,34 @@ function positiveObservations(cases: ReturnType<typeof releaseCohort>) {
           },
         ]
       : [],
+    ...(item.benchmarkGold.controlExpectations ? {
+      controlResults: item.benchmarkGold.controlExpectations.map(expectation => ({
+        ...expectation,
+        expectedRevision: expectation.currentRevision,
+        observedCurrentRevision: expectation.currentRevision,
+        observedRevision: expectation.targetRevision,
+        ...(expectation.currentDigest ? {
+          expectedCurrentDigest: expectation.currentDigest,
+          observedCurrentDigest: expectation.currentDigest,
+        } : {}),
+        ...(expectation.targetDigest ? {
+          expectedTargetDigest: expectation.targetDigest,
+          observedDigest: expectation.targetDigest,
+        } : {}),
+        ...(expectation.maxAgeSeconds ? {
+          maxAgeSeconds: expectation.maxAgeSeconds,
+          observedAgeSeconds: Math.min(expectation.maxAgeSeconds, 1),
+        } : {}),
+        observedVisibility: expectation.expectedVisibility,
+        observedLifecycle: expectation.expectedLifecycle,
+        providerRequestId: `request-${expectation.controlId}`,
+        ...(expectation.expectedVisibility === "visible" ? { providerItemId: expectation.targetEvidenceId } : {}),
+        corpusRevision: "fixture-corpus-r1",
+        corpusDigest: digest,
+        responseDigest: digest,
+        observedAt: "2026-10-18T00:00:00.000Z",
+      })),
+    } : {}),
     providerState: "complete" as const,
   }));
 }
@@ -316,5 +351,112 @@ describe("SPEC-229 synthetic benchmark controls", () => {
         row => row.status !== "NOT_EVALUABLE"
       )
     ).toBe(true);
+  });
+
+  it("keeps ACL and freshness criteria NOT_EVALUABLE when provider controls are absent", () => {
+    const candidates = releaseCohort().map(candidate => ({
+      ...candidate,
+      benchmarkGold: { ...candidate.benchmarkGold, controlExpectations: undefined },
+    }));
+    const observations = positiveObservations(candidates).map(observation => ({
+      ...observation,
+      controlResults: undefined,
+    }));
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+
+    expect(evaluation.releaseCriteria.find(row => row.id === "crossTenantLeakage"))
+      .toMatchObject({ status: "NOT_EVALUABLE" });
+    expect(evaluation.releaseCriteria.find(row => row.id === "unauthorizedEvidenceLeakage"))
+      .toMatchObject({ status: "NOT_EVALUABLE" });
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "NOT_EVALUABLE" });
+    expect(evaluation.releaseStatus).toBe("NOT_EVALUABLE");
+  });
+
+  it("does not count lifecycle controls as freshness and requires all control families", () => {
+    const candidates = releaseCohort().map(candidate => ({
+      ...candidate,
+      benchmarkGold: {
+        ...candidate.benchmarkGold,
+        controlExpectations: candidate.benchmarkGold.controlExpectations?.filter(control => control.kind !== "lifecycle"),
+      },
+    }));
+    const observations = positiveObservations(candidates);
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+
+    expect(evaluation.metrics?.freshnessControlCoverage).toBe(1);
+    expect(evaluation.metrics?.lifecycleControlCoverage).toBeNull();
+    expect(evaluation.metrics?.securityControlsComplete).toBe(false);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "NOT_EVALUABLE" });
+  });
+
+  it("fails freshness/lifecycle acceptance when a revoked document is actually visible", () => {
+    const candidates = releaseCohort();
+    const observations = positiveObservations(candidates);
+    const revokedControl = observations[0].controlResults?.find(result => result.controlId === "lifecycle-revoked");
+    if (!revokedControl) throw new Error("Expected deterministic revoked lifecycle control");
+    revokedControl.observedVisibility = "visible";
+    revokedControl.providerItemId = "revoked-provider-item";
+
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+    expect(evaluation.metrics?.lifecycleControlCoverage).toBeLessThan(1);
+    expect(evaluation.metrics?.staleOrRevokedEvidenceAccepted).toBeGreaterThan(0);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "FAIL" });
+    expect(evaluation.releaseStatus).toBe("FAIL");
+  });
+
+  it("does not let passing freshness controls dilute stale retrieved evidence", () => {
+    const candidates = releaseCohort();
+    const staleEvidenceCaseIndex = candidates.findIndex(candidate => candidate.benchmarkGold.supportsAnswer);
+    if (staleEvidenceCaseIndex < 0) throw new Error("Expected a supported-answer case in freshness regression fixture");
+    const repeatedPassingControls = Array.from({ length: 100 }, (_, index) => ({
+      controlId: `freshness-active-${index}`,
+      kind: "freshness" as const,
+      targetEvidenceId: `active-revision-${index}`,
+      targetTenantId: "tenant-a",
+      callerTenantId: "tenant-a",
+      expectedVisibility: "visible" as const,
+      expectedLifecycle: "active" as const,
+      currentRevision: "r1",
+      targetRevision: "r1",
+      currentDigest: digest,
+      targetDigest: digest,
+    }));
+    candidates[staleEvidenceCaseIndex].benchmarkGold.controlExpectations = [
+      ...(candidates[staleEvidenceCaseIndex].benchmarkGold.controlExpectations ?? []),
+      ...repeatedPassingControls,
+    ];
+    const observations = positiveObservations(candidates);
+    let staleEvidenceCount = 0;
+    for (const observation of observations) {
+      const evidence = observation.evidence[0];
+      if (evidence && staleEvidenceCount < 9) {
+        evidence.revoked = true;
+        staleEvidenceCount += 1;
+      }
+    }
+    if (staleEvidenceCount !== 9) throw new Error("Expected at least nine retrieved rows in freshness regression fixture");
+
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+    expect(evaluation.metrics?.freshnessCorrectness).toBeLessThan(0.98);
+    expect(evaluation.metrics?.freshnessControlCoverage).toBe(1);
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "FAIL" });
+  });
+
+  it("rejects freshness control results with a mismatched source digest", () => {
+    const candidates = releaseCohort();
+    const observations = positiveObservations(candidates);
+    const first = observations[0];
+    if (!first.controlResults) throw new Error("Expected deterministic control fixture");
+    const stale = first.controlResults.find(result => result.controlId === "freshness-stale");
+    if (!stale) throw new Error("Expected stale revision control");
+    stale.observedDigest = "f".repeat(64);
+
+    const evaluation = evaluateGoldDataset(candidates, observations, latencyRuns(observations));
+    expect(evaluation.releaseCriteria.find(row => row.id === "freshnessCorrectness"))
+      .toMatchObject({ status: "FAIL" });
   });
 });

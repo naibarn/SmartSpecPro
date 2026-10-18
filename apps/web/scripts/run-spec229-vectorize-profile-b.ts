@@ -20,29 +20,10 @@ import { retrievalBenchmarkRunBundleSchema } from "../server/services/libraryRet
 import {
   goldDatasetCandidateSchema,
   validateGoldDataset,
+  type GoldDatasetCandidate,
 } from "../server/services/libraryRetrievalGoldDataset";
 
-type Candidate = {
-  caseId: string;
-  query: string;
-  language: "thai" | "english" | "mixed";
-  source: {
-    path: string;
-    sha256: string;
-    license: string;
-    allowedUseEvidence: string;
-  };
-  benchmarkGold: {
-    tenantId: string;
-    supportsAnswer: boolean;
-    requiredEvidenceIds: string[];
-    requiredClaims: string[];
-    expectedRevision: string;
-    minimumAuthorityRank: number;
-    shouldCite: boolean;
-    exactIdentifier: boolean;
-  };
-};
+type Candidate = Pick<GoldDatasetCandidate, "caseId" | "query" | "language" | "source" | "benchmarkGold">;
 
 const PROFILE = "vectorize_dense" as const;
 const EVAL_TENANT = "repo-development";
@@ -218,6 +199,10 @@ async function main() {
   const vectors: VectorEntry[] = [];
   const sourceByVectorId = new Map<string, { path: string; digest: string }>();
   const indexedIds: string[] = [];
+  const securityControlResults: Array<Record<string, unknown>> = [];
+  let securityControlFailed = false;
+  let securityControlLeakDetected = false;
+  let positiveControlPassed = false;
   let cleanupStatus: "complete" | "failed" = "complete";
   let outputRun: Record<string, unknown> | undefined;
 
@@ -233,7 +218,7 @@ async function main() {
           vectorIndex: INDEX_NAME,
           namespace: EVAL_NAMESPACE,
           sourceFamily: "spec229-eval-library",
-          sourceId: chunk.source.path,
+          sourceId: `${EVAL_RUN_ID}:${chunk.source.path}`,
           chunkOrSegmentId: String(chunk.chunkIndex),
           sourceRevision: `sha256:${chunk.source.digest}`,
           embeddingVersion: "bge-m3-1024-spec229-v1",
@@ -242,12 +227,14 @@ async function main() {
           id,
           values: embeddings[index],
           namespace: EVAL_NAMESPACE,
-          metadata: {
-            tenantId: EVAL_TENANT,
-            type: EVAL_VECTOR_TYPE,
-            createdAt: Date.now(),
-            title: chunk.source.path.split("/").at(-1) ?? chunk.source.path,
-            sourceUrl: chunk.source.path,
+        metadata: {
+          tenantId: EVAL_TENANT,
+          type: EVAL_VECTOR_TYPE,
+          createdAt: Date.now(),
+          title: chunk.source.path.split("/").at(-1) ?? chunk.source.path,
+          sourceUrl: chunk.source.path,
+          sourceRevision: `sha256:${chunk.source.digest}`,
+          sourceDigest: chunk.source.digest,
           },
         });
         sourceByVectorId.set(id, chunk.source);
@@ -268,9 +255,95 @@ async function main() {
       await adapter.index({ indexName: INDEX_NAME, vectors: batch });
     }
 
+    const canaryNonce = randomUUID();
+    const canaryTexts = [
+      `SPEC229 ${canaryNonce} same-tenant positive ACL control`,
+      `SPEC229 ${canaryNonce} foreign-tenant denied ACL control`,
+    ];
+    const canaryEmbeddings = await generateSpec229DenseEvaluationEmbeddings(
+      canaryTexts,
+      { accountId: runtime.accountId, apiKey: runtime.aiApiKey },
+    );
+    const canaryVectors: VectorEntry[] = canaryTexts.map((text, index) => {
+      const tenantId = index === 0 ? EVAL_TENANT : "repo-foreign-control";
+      const namespace = vectorizeNamespaceForTenant(tenantId);
+      const id = deterministicVectorId({
+        vectorIndex: INDEX_NAME,
+        namespace,
+        sourceFamily: "spec229-eval-acl-canary",
+        sourceId: `${tenantId}:${canaryNonce}`,
+        chunkOrSegmentId: String(index),
+        sourceRevision: `sha256:${sha256(text)}`,
+        embeddingVersion: "bge-m3-1024-spec229-v1",
+      });
+      indexedIds.push(id);
+      return {
+        id,
+        values: canaryEmbeddings[index],
+        namespace,
+        metadata: {
+          tenantId,
+          type: EVAL_VECTOR_TYPE,
+          createdAt: Date.now(),
+          sourceUrl: `synthetic:spec229-acl-canary:${tenantId}`,
+        },
+      };
+    });
+    await adapter.index({ indexName: INDEX_NAME, vectors: canaryVectors });
+    let positiveControlMatches: Awaited<ReturnType<typeof adapter.search>>["matches"] = [];
+    let foreignControlMatches: Awaited<ReturnType<typeof adapter.search>>["matches"] = [];
+    const canaryDeadline = Date.now() + 30_000;
+    do {
+      [positiveControlMatches, foreignControlMatches] = await Promise.all([
+        adapter.search({
+          indexName: INDEX_NAME,
+          vector: canaryEmbeddings[0],
+          topK: 20,
+          filter: { tenantId: EVAL_TENANT, type: EVAL_VECTOR_TYPE },
+          namespace: EVAL_NAMESPACE,
+        }).then(result => result.matches),
+        adapter.search({
+          indexName: INDEX_NAME,
+          vector: canaryEmbeddings[1],
+          topK: 20,
+          filter: { tenantId: EVAL_TENANT, type: EVAL_VECTOR_TYPE },
+          namespace: EVAL_NAMESPACE,
+        }).then(result => result.matches),
+      ]);
+      if (positiveControlMatches.some(match => match.id === canaryVectors[0].id)) break;
+      await new Promise(resolvePromise => setTimeout(resolvePromise, 500));
+    } while (Date.now() < canaryDeadline);
+    positiveControlPassed = positiveControlMatches.some(match => match.id === canaryVectors[0].id);
+    const crossTenantLeakage = foreignControlMatches.some(match => match.id === canaryVectors[1].id);
+    securityControlLeakDetected = crossTenantLeakage;
+    const sourceCorpusDigest = sha256(
+      sources.map(source => `${source.path}\0${source.digest}\n`).join("")
+    );
+    const responseDigest = sha256(JSON.stringify({
+      positive: positiveControlMatches.map(match => match.id),
+      foreign: foreignControlMatches.map(match => match.id),
+    }));
+    securityControlResults.push({
+      controlId: `vectorize-acl-${EVAL_RUN_ID}`,
+      canaryQueryLabels: ["same_tenant_positive", "cross_tenant_denied"],
+      positiveControl: positiveControlPassed ? "PASS" : "FAIL",
+      negativeControl: crossTenantLeakage ? "FAIL" : "PASS",
+      crossTenantLeakage,
+      responseDigest,
+      corpusRevision: `sha256:${sourceCorpusDigest}`,
+      controlCorpusDigest: sha256(canaryTexts.join("\n")),
+      observedAt: new Date().toISOString(),
+    });
+    securityControlFailed = !positiveControlPassed || crossTenantLeakage;
+    await adapter.delete({ indexName: INDEX_NAME, ids: canaryVectors.map(vector => vector.id) });
+    const canaryIds = new Set(canaryVectors.map(vector => vector.id));
+    for (let index = indexedIds.length - 1; index >= 0; index -= 1) {
+      if (canaryIds.has(indexedIds[index])) indexedIds.splice(index, 1);
+    }
+
     const observations = [];
     const traces = [];
-    for (const [index, candidate] of candidates.entries()) {
+    for (const [index, candidate] of (securityControlFailed ? [] : candidates).entries()) {
       const started = performance.now();
       let providerState: "complete" | "outage" = "complete";
       let failureCode: string | null = null;
@@ -334,11 +407,9 @@ async function main() {
           evidenceId: string;
           tenantId: string;
           revision: string;
-          digest: string;
+          digest?: string;
           authorityRank: number;
           authorized: boolean;
-          revoked: boolean;
-          deleted: boolean;
           score: number;
         }
       >();
@@ -347,23 +418,27 @@ async function main() {
       )) {
         const metadata = match.metadata as Record<string, unknown>;
         const source = sourceByVectorId.get(match.id);
-        if (
-          !source ||
-          metadata.type !== EVAL_VECTOR_TYPE ||
-          metadata.tenantId !== EVAL_TENANT
-        ) {
+        if (!source) {
           throw new Error("SPEC229_PROFILE_B_EVIDENCE_OWNERSHIP_MISMATCH");
         }
         if (!deduplicated.has(source.path)) {
+          const actualDigest = typeof metadata.sourceDigest === "string" &&
+            /^[a-f0-9]{64}$/.test(metadata.sourceDigest)
+            ? metadata.sourceDigest
+            : undefined;
+          const actualRevision = typeof metadata.sourceRevision === "string"
+            ? metadata.sourceRevision
+            : "unknown";
           deduplicated.set(source.path, {
             evidenceId: source.path,
             tenantId: String(metadata.tenantId ?? ""),
-            revision: `sha256:${source.digest}`,
-            digest: source.digest,
+            revision: actualRevision,
+            ...(actualDigest ? { digest: actualDigest } : {}),
             authorityRank: 1,
-            authorized: true,
-            revoked: false,
-            deleted: false,
+            authorized: metadata.tenantId === EVAL_TENANT &&
+              metadata.type === EVAL_VECTOR_TYPE &&
+              actualRevision === `sha256:${source.digest}` &&
+              actualDigest === source.digest,
             score: match.score,
           });
         }
@@ -430,6 +505,12 @@ async function main() {
         chunkCount: chunks.length,
         revision: `sha256:${corpusDigest}`,
       },
+      securityControls: securityControlResults,
+      securityGateStatus: securityControlLeakDetected
+        ? "FAIL"
+        : positiveControlPassed
+          ? "PASS"
+          : "NOT_EVALUABLE",
       usage: {
         costMicros: null,
         provenance:
@@ -444,6 +525,7 @@ async function main() {
       traces,
     };
     outputRun = run;
+    if (securityControlFailed) process.exitCode = 1;
   } finally {
     for (let offset = 0; offset < indexedIds.length; offset += 500) {
       try {
