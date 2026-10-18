@@ -17,6 +17,7 @@ import os
 import pwd
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -211,11 +212,11 @@ def _freeze(root: Path) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         if path.is_symlink():
             continue
-        if path.is_dir():
-            path.chmod(0o555)
-        elif path.is_file():
-            path.chmod(0o444)
-    root.chmod(0o555)
+        if path.is_dir() or path.is_file():
+            mode = stat.S_IMODE(path.stat().st_mode)
+            path.chmod(mode & ~0o222)
+    mode = stat.S_IMODE(root.stat().st_mode)
+    root.chmod(mode & ~0o222)
 
 
 def prepare_artifact(build_result_path: Path, artifact_store: Path) -> dict[str, Any]:
@@ -436,11 +437,11 @@ def _make_readonly(root: Path) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         if path.is_symlink():
             continue
-        if path.is_dir():
-            path.chmod(0o555)
-        elif path.is_file():
-            path.chmod(0o444)
-    root.chmod(0o555)
+        if path.is_dir() or path.is_file():
+            mode = stat.S_IMODE(path.stat().st_mode)
+            path.chmod(mode & ~0o222)
+    mode = stat.S_IMODE(root.stat().st_mode)
+    root.chmod(mode & ~0o222)
 
 
 def _prepare_runtime_data(

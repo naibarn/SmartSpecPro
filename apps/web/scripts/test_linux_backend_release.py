@@ -217,6 +217,26 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertTrue(status["target_matches_release"])
         self.assertEqual(status["backend_runtime_revision"], self.source_sha)
 
+    def test_immutable_artifacts_preserve_executable_runtime_binaries(self):
+        executable = self.backend / "node_modules/@esbuild/linux-x64/bin/esbuild"
+        executable.parent.mkdir(parents=True)
+        executable.write_bytes(b"fixture executable")
+        executable.chmod(0o755)
+        self.build_record["artifact"] = {
+            **release.build_artifact_manifest(self.dist), "artifact_path": str(self.dist)
+        }
+        self.build_result_path.write_text(json.dumps(self.build_record))
+
+        artifact = self.prepare()
+        artifact_executable = artifact / "backend-runtime/node_modules/@esbuild/linux-x64/bin/esbuild"
+        self.assertTrue(artifact_executable.stat().st_mode & 0o111)
+        self.assertFalse(artifact_executable.stat().st_mode & 0o222)
+
+        result = self.promote(artifact)
+        runtime_executable = Path(result["release_path"]) / "node_modules/@esbuild/linux-x64/bin/esbuild"
+        self.assertTrue(runtime_executable.stat().st_mode & 0o111)
+        self.assertFalse(runtime_executable.stat().st_mode & 0o222)
+
     def test_missing_procedure_registration_is_rejected_before_publication(self):
         router = self.backend / "server/routers/infrastructure.ts"
         router.write_text("export const infrastructureRouter = {};\n")
