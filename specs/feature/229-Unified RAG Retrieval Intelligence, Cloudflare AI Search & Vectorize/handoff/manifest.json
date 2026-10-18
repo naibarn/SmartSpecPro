@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 125,
+  "generation": 126,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -235,8 +235,8 @@
     "canonical_sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
     "integrated": true,
     "integrated_at": "2026-10-18T11:19:57Z",
-    "intended_pr": "PR #1143 merged as 507714969bb1df7deacedb11b0f12d78c4ab4f80; next checkpoint stores independent machine review for an unseen development cohort.",
-    "pending_pr": null,
+    "intended_pr": "PR #1144 tracks machine-review preservation for the unseen development cohort; it does not certify P229.8.",
+    "pending_pr": "PR #1144",
     "pending_source_branch": "codex/spec229-unseen-review-20261018",
     "pending_source_sha": "cb88e3bfba8b106d67eb441dfca3c439b656a489",
     "pending_workunit": "SPEC229_P229_8_UNSEEN_COHORT_MACHINE_REVIEW"
@@ -467,7 +467,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:21:09.967060Z",
+  "updated_at": "2026-10-18T11:21:39.879013Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
