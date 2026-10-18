@@ -32,11 +32,11 @@
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "PR #1138 evaluation control integrity fix is integrated at db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f and passes 6 focused suites / 54 tests on that exact SHA. Continue source-group review and construct a release cohort only where answers, evidence and classes are supported. Execute provider profiles only through authorized secure runtime injection; until then keep provider-backed gates NOT_EVALUABLE.",
-    "next_ready_workunit": "P229.8_EVALUATION_CONTROL_INTEGRITY_AND_DISPOSABLE_PROVIDER_SCOPING",
+    "next_action": "PR for P229.8 integrity-v1 independent candidate review is prepared at source commit 9e949e3aef1695fb5cdbdc4afdc5f171d47f4614; run required repository checks and integrate through normal review. Keep the dataset development-only. Then continue required category completion from eligible untouched source groups and provider execution only through the authorized secure runtime.",
+    "next_ready_workunit": "P229.8_UNTOUCHED_COHORT_CATEGORY_COMPLETION_AND_PROVIDER_EXECUTION",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f. Exact-SHA post-merge focused tests passed: 6 files / 54 tests. Independent review passed. Existing 500-item integrity cohort remains development-only and does not meet reviewed held-out release acceptance. No provider-backed B-H observations or certified untouched held-out cohort are available; P229.8 remains NOT_EVALUABLE.",
-    "waiting_predicate": "Provider-backed execution can resume when a non-production runner can securely access an authorized Cloudflare credential with AI Search Edit+Run, Vectorize Write for a dedicated 1024D evaluation index, and Workers AI invocation scope. The Admin UI stores credentials encrypted, but current evaluation scripts only accept secure runtime injection and cannot consume the database token directly."
+    "resume_point": "Base canonical SHA 8decbb2c3fe58967bc7290348be424bce3c3866e; source commit 9e949e3aef1695fb5cdbdc4afdc5f171d47f4614 records row-level machine review for 500 development-only candidates. Review: 451 accepted as development candidates, 49 rejected; 0 human reviewed/accepted, 0 release-approved, 0 held-out approved. Dataset SHA-256 1f0562ed89b43c9a1b1d5830cd328f9810484ff9a61d3722e23de0950be0ed63. Gold dataset focused test passed 14/14 on the exact source tree. Not a certification cohort; provider observations remain unavailable.",
+    "waiting_predicate": "Provider observations may start once an authorized non-production runner securely injects scoped Cloudflare access (AI Search Edit+Run; dedicated evaluation Vectorize 1024D Write; Workers AI invoke) without exposing credential values in repository/log/chat. Cohort category work remains executable before that predicate."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -107,7 +107,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 118,
+  "generation": 120,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -235,10 +235,10 @@
     "integrated": true,
     "integrated_at": "2026-10-18T10:51:01Z",
     "intended_pr": "PR #1138 merged as db306ebcbc2ac9e50f3d7caab49d7297c0a77a0f; fail-closed evaluation control integrity; exact-SHA post-merge focused tests passed.",
-    "pending_pr": null,
-    "pending_source_branch": null,
-    "pending_source_sha": null,
-    "pending_workunit": null
+    "pending_pr": "PR #1140: https://github.com/naibarn/SmartSpecPro/pull/1140",
+    "pending_source_branch": "codex/spec229-gold-review-20261018",
+    "pending_source_sha": "9e949e3aef1695fb5cdbdc4afdc5f171d47f4614",
+    "pending_workunit": "P229.8_INTEGRITY_V1_INDEPENDENT_CANDIDATE_REVIEW"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -466,7 +466,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T10:52:40.623581Z",
+  "updated_at": "2026-10-18T11:02:20.092057Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",

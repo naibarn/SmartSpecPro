@@ -123,10 +123,26 @@ describe("SPEC-229 gold dataset pipeline", () => {
     expect(parsed.every(candidate =>
       candidate.split === "development" &&
       candidate.useApproval === "development_only" &&
-      candidate.reviews.length === 1 &&
-      candidate.reviews[0]?.reviewerType === "agent" &&
-      candidate.reviews[0]?.decision === "needs_adjudication"
+      candidate.reviews.length === 2 &&
+      candidate.reviews[1]?.reviewerType === "agent" &&
+      candidate.reviews[1]?.reviewerVersion === "independent-row-review-v1" &&
+      ["accept_candidate", "reject"].includes(candidate.reviews[1]?.decision ?? "")
     )).toBe(true);
+    expect(parsed.filter(candidate =>
+      candidate.reviews[1]?.decision === "accept_candidate"
+    )).toHaveLength(451);
+    expect(parsed.filter(candidate =>
+      candidate.reviews[1]?.decision === "reject"
+    )).toHaveLength(49);
+    expect(countGoldDataset(parsed)).toMatchObject({
+      candidateQueries: 500,
+      reviewAccepted: 451,
+      pendingAdjudication: 0,
+      humanReviewed: 0,
+      humanAccepted: 0,
+      releaseApproved: 0,
+      heldOutReleaseApproved: 0,
+    });
     expect(parsed.some(isReleaseEvaluationEligible)).toBe(false);
     expect(parsed.some(isHeldOutReleaseEvaluationEligible)).toBe(false);
   });
