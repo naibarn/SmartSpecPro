@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 108 unresolved of 108
-- Next action: P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.
-- Manifest generation: 128
+- Next action: PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.
+- Manifest generation: 131
 
 ## Source-declared status and relationship claims
 

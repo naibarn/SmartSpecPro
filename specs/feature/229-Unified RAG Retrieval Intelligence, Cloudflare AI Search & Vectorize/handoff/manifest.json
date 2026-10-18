@@ -28,42 +28,32 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a0c78a429407c8a3b66e477479d885074f9b9e78",
+    "expected_canonical_sha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
     "expected_spec_digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
   },
   "continuation": {
-    "next_action": "Merge PR #1145 through required checks; then continue lifecycle canaries and secure provider execution. Keep P229.8 NOT_EVALUABLE until cohort and §27 evidence meet contract.",
-    "next_ready_workunit": "P229.8_PROVIDER_LIFECYCLE_CANARIES_AND_SECURE_RUNTIME",
+    "next_action": "PR #1146 is open for the post-merge evidence record, independent v2 cohort review, and focused regression test. After required checks, promote normally and verify canonical main. Then continue only with a truly untouched, class-complete cohort and authorized isolated Cloudflare runtime; P229.8 remains NOT_EVALUABLE.",
+    "next_ready_workunit": "P229.8_NEW_SOURCE_GROUP_COHORT_AND_NONPRODUCTION_PROVIDER_RUNTIME",
     "reactivation_predicate": "An authorized non-production AI Search namespace, account/token through secure runtime injection, disposable mode, and clean exact-SHA repository corpus become available; for Vectorize B, a dedicated spec229-eval-* 1024D index plus Workers AI and Vectorize credentials must also be injected.",
-    "resume_point": "Canonical base a0c78a429407c8a3b66e477479d885074f9b9e78. PR #1145 source d94986453950b88cc4d835fed920e6241888f855 corrects legacy Profile A evidence mapping; 23 focused tests pass. The unseen-v2 candidate artifact remains local and unintegrated because the original generator bytes/query equality cannot be independently verified. Current candidate dispositions are machine-only development records; no human/release approvals or held-out cohort exist. P229.8 remains NOT_EVALUABLE.",
-    "waiting_predicate": "Provider-backed execution resumes only through a registered non-production runtime with securely injected, scoped Cloudflare Vectorize/Workers AI and AI Search credentials; Admin UI token values remain server-side and are not exposed to local scripts. Cohort work may continue without provider credentials."
+    "resume_point": "PR #1145 merged at 0ae2318b44b124584f7e97bfdc30978635e5a4e3 and its exact-SHA focused verification passed 5 files / 40 tests. PR #1146 source 7ced84ae031d194479531df68a0acf0a88690b22 records the new review evidence and test. Independent review found unseen-v2 is not certification eligible: 511/511 source groups overlap unseen-v1, 13 §27 classes are absent, and no human/release approvals exist. P229.8 remains NOT_EVALUABLE.",
+    "waiting_predicate": "Provider execution resumes only when a registered isolated non-production runtime has securely injected scoped evaluation credentials and a dedicated AI Search namespace and Vectorize 1024D index; do not use the existing production GitHub Actions environment. Cloudflare credentials remain in the Admin UI server boundary and were not extracted."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
-      },
-      {
-        "digest": "5c6279242c0e25511719ddb552d86f8cf193ddc84b55265793aac4a74034af02",
-        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
-        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
-      },
-      {
-        "digest": "27637fd75c2ed0146640b0808cad730fbda9bd930225b5958acb83a62c347f84",
-        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
-        "path": "handoff/evidence/p2298-profile-a-corrected-evidence-20261018.json"
-      },
-      {
-        "digest": "3a35a14928192f83d3dace7cb3e0ec216757ebf717eb76c12af60b85713a7860",
+        "digest": "7e1c87eef42f4503941f704c84b5b675f920bd00b807393ce93ad484cfb979c7",
         "kind": "POST_INTEGRATION_VERIFICATION",
-        "path": "handoff/evidence/p2298-postmerge-verification-20261018.json"
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-profile-a-observed-evidence-postmerge-20261018.json"
+      },
+      {
+        "digest": "7e023776abfe0e3a5c9f4ffdae3fa13b2c2164c4db382f78cc7dd15ae0a973df",
+        "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+        "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json"
       }
     ],
-    "next_action": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
+    "next_action": "PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.",
     "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
     "residual_requirements": [
       "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -107,7 +97,7 @@
     "rationale": "The project owner has explicitly resumed SPEC-229 and authorized non-production implementation; §27 and its release gates remain normative.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 128,
+  "generation": 131,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
@@ -232,14 +222,14 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a0c78a429407c8a3b66e477479d885074f9b9e78",
+    "canonical_sha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
     "integrated": true,
-    "integrated_at": "2026-10-18T11:19:57Z",
-    "intended_pr": "PR #1145 contains a Profile A evidence integrity fix; it does not certify P229.8.",
-    "pending_pr": "PR #1145",
-    "pending_source_branch": "codex/spec229-cohort-repair-20261018",
-    "pending_source_sha": "d94986453950b88cc4d835fed920e6241888f855",
-    "pending_workunit": "P229.8_PROFILE_A_OBSERVED_EVIDENCE_INTEGRITY"
+    "integrated_at": "2026-10-18T11:56:08Z",
+    "intended_pr": "PR #1146 records the exact-SHA PR #1145 verification, unseen-v2 independent review findings, and a missing-lifecycle freshness regression test; P229.8 remains NOT_EVALUABLE.",
+    "pending_pr": "PR #1146",
+    "pending_source_branch": "codex/spec229-provider-controls-20261018",
+    "pending_source_sha": "7ced84ae031d194479531df68a0acf0a88690b22",
+    "pending_workunit": "P229.8_EVIDENCE_INTEGRITY_POSTMERGE_AND_COHORT_REVIEW"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -275,27 +265,17 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         {
-          "digest": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d",
-          "kind": "NORMATIVE_SPEC",
-          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
-        },
-        {
-          "digest": "5c6279242c0e25511719ddb552d86f8cf193ddc84b55265793aac4a74034af02",
-          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
-          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-executable-local-eval-20261018.json"
-        },
-        {
-          "digest": "27637fd75c2ed0146640b0808cad730fbda9bd930225b5958acb83a62c347f84",
-          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
-          "path": "handoff/evidence/p2298-profile-a-corrected-evidence-20261018.json"
-        },
-        {
-          "digest": "3a35a14928192f83d3dace7cb3e0ec216757ebf717eb76c12af60b85713a7860",
+          "digest": "7e1c87eef42f4503941f704c84b5b675f920bd00b807393ce93ad484cfb979c7",
           "kind": "POST_INTEGRATION_VERIFICATION",
-          "path": "handoff/evidence/p2298-postmerge-verification-20261018.json"
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-profile-a-observed-evidence-postmerge-20261018.json"
+        },
+        {
+          "digest": "7e023776abfe0e3a5c9f4ffdae3fa13b2c2164c4db382f78cc7dd15ae0a973df",
+          "kind": "IMPLEMENTATION_AND_RUNTIME_EVIDENCE",
+          "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json"
         }
       ],
-      "next_action": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
+      "next_action": "PR #1146 is open to record PR #1145 post-merge evidence and independent review of unseen-v2. The exact cohort fails untouched/class-complete eligibility; use only as development data. Continue with a separate uncontaminated cohort and secure non-production provider runtime after this checkpoint is integrated.",
       "rationale": "PR #1100 integrated the AI Search route/capacity/provider contract. The current P229.4 checkpoint builds only the projection lifecycle and provider operations; it deliberately does not route results to consumers without Library ACL lifecycle and canonical hydration wiring.",
       "residual_requirements": [
         "Wire AI Search results to existing RetrievalBroker with tenant/ACL/source revision/digest revalidation before text/citation exposure.",
@@ -467,7 +447,7 @@
     "unresolved": 108
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T11:52:09.986761Z",
+  "updated_at": "2026-10-18T12:02:36.555171Z",
   "verification": {
     "evidence": [
       "handoff/evidence/p229-1-broker-focused-20261017.json",
@@ -506,13 +486,15 @@
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-independent-review-postmerge-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-freshness-unknown-fail-closed-20261018.json",
       "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v1-independent-machine-review-20261018.json",
-      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-machine-review-postmerge-20261018.json"
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-machine-review-postmerge-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-profile-a-observed-evidence-postmerge-20261018.json",
+      "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/handoff/evidence/p2298-unseen-v2-final-review-20261018.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "507714969bb1df7deacedb11b0f12d78c4ab4f80",
+    "sha": "0ae2318b44b124584f7e97bfdc30978635e5a4e3",
     "status": "PASS",
     "task_regressions": []
   }
