@@ -112,6 +112,30 @@ class ReleaseIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(module.DeployError, "not at the current origin/main"):
             module.validate_deploy_checkout(self.workspace, self.workspace, "f" * 40)
 
+    def test_frontend_publication_requires_matching_active_backend_revision(self):
+        with patch.object(module, "active_backend_revision", return_value=self.revision):
+            self.assertEqual(module.require_compatible_release(self.workspace / "apps/web", self.revision), self.revision)
+        with patch.object(module, "active_backend_revision", return_value="f" * 40):
+            with self.assertRaisesRegex(module.DeployError, "Frontend publication blocked"):
+                module.require_compatible_release(self.workspace / "apps/web", self.revision)
+
+    def test_missing_trpc_procedure_blocks_frontend_backend_release_pair(self):
+        public = self.root / "built-public"
+        backend = self.root / "backend"
+        (public / "assets").mkdir(parents=True)
+        (backend / "server/routers").mkdir(parents=True)
+        procedure = "infrastructure.getSpec224DatabaseDiagnostics"
+        (public / "assets/app.js").write_text(procedure, encoding="utf-8")
+        router = backend / "server/routers/infrastructure.ts"
+        router.write_text("export const infrastructureRouter = {};", encoding="utf-8")
+        with self.assertRaisesRegex(module.DeployError, "does not register it"):
+            module.validate_trpc_compatibility(public, backend)
+        router.write_text(
+            "getSpec224DatabaseDiagnostics: exactAdminProcedure.query(() => null)",
+            encoding="utf-8",
+        )
+        module.validate_trpc_compatibility(public, backend)
+
     def test_dirty_source_worktree_is_rejected(self):
         (self.workspace / "source.txt").write_text("modified source\n", encoding="utf-8")
         with self.assertRaisesRegex(module.DeployError, "worktree is dirty"):
@@ -142,6 +166,8 @@ class ReleaseIntegrityTests(unittest.TestCase):
         index.write_text("<html>published</html>", encoding="utf-8")
         release = {
             "source_revision": self.revision,
+            "frontend_source_revision": self.revision,
+            "backend_source_revision": self.revision,
             "index_sha256": module.sha256(index),
             "public_artifact_digest": module.artifact_manifest(target)["artifact_digest"],
         }
@@ -149,10 +175,32 @@ class ReleaseIntegrityTests(unittest.TestCase):
         module.write_json_atomic(target / "release-manifest.json", release)
         status_file = self.root / "production-release.json"
         module.write_json_atomic(status_file, release)
-        status = module.release_status(status_file, target, self.revision)
+        with patch.object(module, "active_backend_revision", return_value=self.revision):
+            status = module.release_status(status_file, target, self.revision)
         self.assertTrue(status["target_matches_release"])
         index.write_text("<html>unexpected</html>", encoding="utf-8")
-        status = module.release_status(status_file, target, self.revision)
+        with patch.object(module, "active_backend_revision", return_value=self.revision):
+            status = module.release_status(status_file, target, self.revision)
+        self.assertFalse(status["target_matches_release"])
+
+    def test_status_rejects_release_when_backend_runtime_revision_differs(self):
+        target = self.root / "public"
+        target.mkdir()
+        index = target / "index.html"
+        index.write_text("<html>published</html>", encoding="utf-8")
+        release = {
+            "source_revision": self.revision,
+            "frontend_source_revision": self.revision,
+            "backend_source_revision": self.revision,
+            "index_sha256": module.sha256(index),
+            "public_artifact_digest": module.artifact_manifest(target)["artifact_digest"],
+        }
+        module.write_json_atomic(target / "release-manifest.json", release)
+        status_file = self.root / "production-release.json"
+        module.write_json_atomic(status_file, release)
+        with patch.object(module, "active_backend_revision", return_value="f" * 40):
+            status = module.release_status(status_file, target, self.revision)
+        self.assertEqual(status["backend_runtime_revision"], "f" * 40)
         self.assertFalse(status["target_matches_release"])
 
     def test_failed_publish_preserves_previous_index_and_retry_succeeds(self):
