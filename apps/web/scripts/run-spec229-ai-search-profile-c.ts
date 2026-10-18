@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, resolve, sep } from "node:path";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   CloudflareAiSearchEvaluationClient,
   SPEC229_AI_SEARCH_EVALUATION_SCOPE,
@@ -33,10 +33,20 @@ const RUN_ID = randomUUID();
 const INSTANCE_ID = `spec229-eval-profile-c-${RUN_ID.slice(0, 8)}`;
 const repoRoot = resolve(process.cwd(), "../..");
 const corpusRoot = resolve(process.env.SPEC229_CORPUS_ROOT ?? repoRoot);
-const candidatePath = resolve(
-  corpusRoot,
-  "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json",
-);
+const configuredCandidatePath = process.env.SPEC229_GOLD_CANDIDATE_PATH;
+const candidatePath = configuredCandidatePath
+  ? resolve(repoRoot, configuredCandidatePath)
+  : resolve(corpusRoot, "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json");
+if (configuredCandidatePath) {
+  const candidateRelative = relative(realpathSync(repoRoot), realpathSync(candidatePath));
+  if (
+    isAbsolute(candidateRelative) ||
+    candidateRelative === ".." ||
+    candidateRelative.startsWith(`..${sep}`)
+  ) {
+    throw new Error("SPEC229_GOLD_CANDIDATE_PATH must stay within the system repository");
+  }
+}
 const outputPath = process.argv[2] ? resolve(process.argv[2]) : undefined;
 
 function sha256Hex(value: string | Buffer): string {
@@ -457,7 +467,7 @@ async function main() {
     run = {
       schemaVersion: "spec229-local-observation-run-v1",
       runId: RUN_ID,
-      systemSha: runtime.sourceSha,
+      systemSha: collector.gitSha,
       collectorGitSha: collector.gitSha,
       collectorPatchSha256: collector.patchSha256,
       profile: PROFILE,

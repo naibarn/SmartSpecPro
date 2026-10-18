@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { normalizeCanonicalMarkdown, sha256 } from "./libraryCitationAnchor";
@@ -112,6 +113,80 @@ export const SPEC_229_REQUIRED_QUERY_CLASSES = Object.freeze([
   "code_config_log",
 ]);
 export const SPEC_229_MIN_RELEASE_GOLD_QUERIES = 500;
+export const SPEC_229_DEVELOPMENT_HELD_OUT_SPLIT_VERSION =
+  "spec229-heldout-v1";
+const SPEC_229_DEVELOPMENT_HELD_OUT_BUCKETS = 91;
+
+/**
+ * Builds a development-only, source-grouped held-out cohort under the
+ * owner-delegated repository source-use policy. Existing review records are
+ * preserved exactly; pending/rejected candidates do not count as gold.
+ */
+export function buildNonProductionReleaseCohort(
+  candidates: GoldDatasetCandidate[],
+  approvedAt: string,
+): GoldDatasetCandidate[] {
+  const approvalTime = new Date(approvedAt);
+  if (!Number.isFinite(approvalTime.getTime())) {
+    throw new Error("Owner source-use approval timestamp must be valid ISO time");
+  }
+
+  const cohort = candidates.map(candidate => {
+    if (
+      !candidate.source.license.startsWith("MIT (repository LICENSE") ||
+      !/owner[\s-]+authorized/i.test(candidate.source.allowedUseEvidence) ||
+      !/no tenant production/i.test(candidate.source.allowedUseEvidence)
+    ) {
+      throw new Error(
+        `Source is outside the owner-delegated non-production policy: ${candidate.caseId}`
+      );
+    }
+    const bucket = Number.parseInt(
+      createHash("sha256")
+        .update(`${candidate.sourceGroupId}|${SPEC_229_DEVELOPMENT_HELD_OUT_SPLIT_VERSION}`)
+        .digest("hex")
+        .slice(0, 8),
+      16,
+    ) % 100;
+    return {
+      ...candidate,
+      split: bucket < SPEC_229_DEVELOPMENT_HELD_OUT_BUCKETS
+        ? "held_out" as const
+        : "development" as const,
+      useApproval: "release_approved" as const,
+      useApprovalEvidence: {
+        approverType: "owner_delegated_policy" as const,
+        policyId: "SPEC229_NONPRODUCTION_REPO_SOURCE" as const,
+        policyVersion: 1 as const,
+        authorizationRef: "owner-directive:SPEC229_NONPRODUCTION_EVAL" as const,
+        approvedAt: approvalTime.toISOString(),
+        sourcePath: candidate.source.path,
+        sourceSha256: candidate.source.sha256,
+        repositoryLicenseSha256: SPEC229_REPOSITORY_LICENSE_SHA256,
+        scope: "non-production retrieval evaluation" as const,
+      },
+    };
+  });
+
+  const eligibleHeldOut = cohort.filter(isHeldOutReleaseEvaluationEligible);
+  if (eligibleHeldOut.length < SPEC_229_MIN_RELEASE_GOLD_QUERIES) {
+    throw new Error(
+      `Deterministic held-out split has ${eligibleHeldOut.length} eligible queries; ${SPEC_229_MIN_RELEASE_GOLD_QUERIES} required`
+    );
+  }
+  const coveredClasses = new Set(
+    eligibleHeldOut.flatMap(candidate => [candidate.language, ...candidate.classes]),
+  );
+  const missingClasses = SPEC_229_REQUIRED_QUERY_CLASSES.filter(
+    queryClass => !coveredClasses.has(queryClass),
+  );
+  if (missingClasses.length > 0) {
+    throw new Error(
+      `Deterministic held-out split is missing required classes: ${missingClasses.join(", ")}`
+    );
+  }
+  return cohort;
+}
 
 export function missingRequiredQueryClasses(
   candidates: GoldDatasetCandidate[]
@@ -171,8 +246,11 @@ export function validateGoldDatasetSource(
   }
   const source = readFileSync(realSourcePath, "utf8");
   const canonical = normalizeCanonicalMarkdown(source);
-  if (sha256(canonical) !== candidate.source.sha256)
+  const sourceDigest = sha256(canonical);
+  if (sourceDigest !== candidate.source.sha256)
     throw new Error(`Gold source digest mismatch: ${candidate.caseId}`);
+  if (candidate.benchmarkGold.expectedRevision !== `sha256:${sourceDigest}`)
+    throw new Error(`Gold source revision mismatch: ${candidate.caseId}`);
   const lines = canonical.split("\n");
   if (
     candidate.source.lineEnd < candidate.source.lineStart ||

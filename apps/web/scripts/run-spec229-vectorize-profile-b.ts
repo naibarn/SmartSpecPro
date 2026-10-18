@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, resolve, sep } from "node:path";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   deterministicVectorId,
   vectorizeNamespaceForTenant,
@@ -51,10 +51,20 @@ const EVAL_VECTOR_TYPE = `document:spec229-eval:${EVAL_RUN_ID}`;
 const EVAL_NAMESPACE = vectorizeNamespaceForTenant(EVAL_TENANT);
 const repoRoot = resolve(process.cwd(), "../..");
 const corpusRoot = resolve(process.env.SPEC229_CORPUS_ROOT ?? repoRoot);
-const candidatePath = resolve(
-  corpusRoot,
-  "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json"
-);
+const configuredCandidatePath = process.env.SPEC229_GOLD_CANDIDATE_PATH;
+const candidatePath = configuredCandidatePath
+  ? resolve(repoRoot, configuredCandidatePath)
+  : resolve(corpusRoot, "apps/web/server/services/libraryRetrievalGoldCandidates.dev.v1.json");
+if (configuredCandidatePath) {
+  const candidateRelative = relative(realpathSync(repoRoot), realpathSync(candidatePath));
+  if (
+    isAbsolute(candidateRelative) ||
+    candidateRelative === ".." ||
+    candidateRelative.startsWith(`..${sep}`)
+  ) {
+    throw new Error("SPEC229_GOLD_CANDIDATE_PATH must stay within the system repository");
+  }
+}
 const outputPath = process.argv[2] ? resolve(process.argv[2]) : undefined;
 const INDEX_NAME = process.env.SPEC229_EVAL_VECTORIZE_INDEX ?? "";
 
@@ -392,10 +402,14 @@ async function main() {
     const corpusDigest = sha256(
       sources.map(source => `${source.path}\0${source.digest}\n`).join("")
     );
+    const systemSha = execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
     const run = {
       schemaVersion: "spec229-local-observation-run-v1",
       runId: EVAL_RUN_ID,
-      systemSha: runtime.sourceSha,
+      systemSha,
+      collectorGitSha: systemSha,
       collectorPatchSha256: collectorDigest,
       profile: PROFILE,
       runtime:

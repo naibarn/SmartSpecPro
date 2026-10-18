@@ -17336,10 +17336,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 115,
-      "lineEnd": 130,
-      "quoteSha256": "28f4868165272cd2ff3abe760cfcf6807b72f6a58f720fac0d005691a708ce13",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 406,
+      "lineEnd": 422,
+      "quoteSha256": "798cdbf4aa97cb46c6922bfb9671905fc1a02f73d63a688c08ce6518571c58ca",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17354,6 +17354,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17367,7 +17375,7 @@
       ],
       "requiredClaims": ["b08-claim-010"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17383,10 +17391,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 133,
-      "lineEnd": 143,
-      "quoteSha256": "6d5b6b0bdadbd048bfdcd74b2ba6d5e093935db67d9163534f02bf183e909952",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 424,
+      "lineEnd": 435,
+      "quoteSha256": "f34ae8552d326455216658a24ec8f3d930ff271bb6e4cbce47772def688f7a0e",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17401,6 +17409,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17414,7 +17430,7 @@
       ],
       "requiredClaims": ["b08-claim-011"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17430,10 +17446,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 247,
-      "lineEnd": 254,
-      "quoteSha256": "3686540912d97a609d1512cd0f3509df7ae45b8544f4464db7ac5fdbafd263ea",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 533,
+      "lineEnd": 546,
+      "quoteSha256": "fe6c45c70abe4ca3b9d29a224ec1d9ba3204d76f1246955759e4d72302b997f1",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17448,6 +17464,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17461,7 +17485,7 @@
       ],
       "requiredClaims": ["b08-claim-012"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": true
     }
@@ -17477,10 +17501,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 262,
-      "lineEnd": 269,
-      "quoteSha256": "7042d358465e5e7eeb7770d2b7c7b376de7471bcb5a4509ae98ca79998753f0f",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 548,
+      "lineEnd": 561,
+      "quoteSha256": "52b0f324d4118a099aef2ba5148f7b8feebf5813fbfb17bd79136dc01d9542db",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17495,6 +17519,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17508,7 +17540,7 @@
       ],
       "requiredClaims": ["b08-claim-013"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": true
     }
@@ -17524,10 +17556,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 272,
-      "lineEnd": 281,
-      "quoteSha256": "b55515ca461f2061d8ecae9a8a5b372255a1f174dcf6087db91778e5a5548656",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 563,
+      "lineEnd": 573,
+      "quoteSha256": "47e4304f4be43ec3b63a4060cb96131368563706793f57e5ff8851e816acee11",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17542,6 +17574,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17555,7 +17595,7 @@
       ],
       "requiredClaims": ["b08-claim-014"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17571,9 +17611,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 284,
-      "lineEnd": 300,
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 575,
+      "lineEnd": 591,
       "quoteSha256": "ee1ccd6bfe733f7ac6e7b3a1e46d36eb2951c330032ca4289607044826f8aaa9",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
@@ -17589,6 +17629,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17602,7 +17650,7 @@
       ],
       "requiredClaims": ["b08-claim-015"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17618,9 +17666,9 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 302,
-      "lineEnd": 310,
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 593,
+      "lineEnd": 601,
       "quoteSha256": "3dff9af909b6a65fd4116c4a85e1bc3a5923df3e752ac700d0e9c9e0651e5e2d",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
@@ -17636,6 +17684,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17649,7 +17705,7 @@
       ],
       "requiredClaims": ["b08-claim-016"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17665,10 +17721,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 312,
-      "lineEnd": 322,
-      "quoteSha256": "9e6f7cf79880aa79e1d02514ac2f04fb7fdcd2a9a8f778e9edd6d4d34475af51",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 603,
+      "lineEnd": 614,
+      "quoteSha256": "9a95f0ee6ea1117684b4ac7fca9bda075c326a9fd82a75e79e947f1fa622a2ae",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17683,6 +17739,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17696,7 +17760,7 @@
       ],
       "requiredClaims": ["b08-claim-017"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": true
     }
@@ -17712,10 +17776,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 168,
-      "lineEnd": 172,
-      "quoteSha256": "b5a6b552dc0fcc7be505f26ed95a4540e196a42a1c67cd5f3a7890a0339631ff",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 459,
+      "lineEnd": 464,
+      "quoteSha256": "4200eb029adf456ef22c26a2780115be568070f6990fd313702c692088e95e44",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17730,6 +17794,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17743,7 +17815,7 @@
       ],
       "requiredClaims": ["b08-claim-018"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -17759,10 +17831,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/retrievalBroker.test.ts",
-      "sha256": "9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
-      "lineStart": 175,
-      "lineEnd": 180,
-      "quoteSha256": "ef4f534e07f21c6dc02d0ae123fc57ec149d2c5ded885435d3ab3228fee934b6",
+      "sha256": "eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
+      "lineStart": 466,
+      "lineEnd": 470,
+      "quoteSha256": "d494eb98f281be65a175d55e466644b852260f01bd14fe9752389d75ae26cb5c",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored synthetic test fixture; identifiers and document contents are test data, with no tenant production data."
     },
@@ -17777,6 +17849,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "All 50 fixture-backed candidates independently verified for source hashes/spans, answer support, taxonomy, uniqueness, and development-only status after two label corrections."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -17790,7 +17870,7 @@
       ],
       "requiredClaims": ["b08-claim-019"],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:9de7f78a5094bff8774bf2dc2c488d7d8249280278785f57eaf84c90d439aaa1",
+      "expectedRevision": "sha256:eb8c04cf3a4bc0b8bef3f7430c48e9c4dabaa03ea10dcfaa3b89f91a2a82ceb2",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -24383,7 +24463,7 @@
   {
     "caseId": "b11-001",
     "query": "การแบ่งเอกสารเป็นส่วน ๆ ตั้งเป้าหมายให้แต่ละส่วนมีขนาดประมาณกี่ token?",
-    "expectedAnswer": "แต่ละส่วนมีขนาดประมาณ 500 token",
+    "expectedAnswer": "ชุดทดสอบระบุเป้าหมายราว 500 token และตรวจด้วย chunk ตามจำนวนอักขระไม่เกินประมาณ 2,000 ตัว",
     "language": "thai",
     "classes": [
       "long_document"
@@ -24393,10 +24473,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/__tests__/vectorize-embeddings.test.ts",
-      "sha256": "ab69e2a8be8a6cec9eda241b87efe1191b158bac93e6064e3d1b3111f4b55316",
-      "lineStart": 24,
-      "lineEnd": 38,
-      "quoteSha256": "30c759210d8e3f3323b924463b27459caec1f884fca204b4e50372d2f3512f0a",
+      "sha256": "2b81c3bf4fcc6a2c9c39af8dee394569aeafeb487370ee27ab690b3e13106c08",
+      "lineStart": 30,
+      "lineEnd": 42,
+      "quoteSha256": "80eb1b845fbd2b58bb32ee76589350bbab8481880aba6b7bffeb659a16430d0c",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test fixture/source; all identities and values are test data with no tenant production corpus."
     },
@@ -24411,6 +24491,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -24426,7 +24514,7 @@
         "b11-claim-001"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:ab69e2a8be8a6cec9eda241b87efe1191b158bac93e6064e3d1b3111f4b55316",
+      "expectedRevision": "sha256:2b81c3bf4fcc6a2c9c39af8dee394569aeafeb487370ee27ab690b3e13106c08",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -24444,10 +24532,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/__tests__/vectorize-embeddings.test.ts",
-      "sha256": "ab69e2a8be8a6cec9eda241b87efe1191b158bac93e6064e3d1b3111f4b55316",
-      "lineStart": 45,
-      "lineEnd": 59,
-      "quoteSha256": "dd42c836b06789300b8f84d9b6990a1917f466f8afd586aba5b50f387641e0b0",
+      "sha256": "2b81c3bf4fcc6a2c9c39af8dee394569aeafeb487370ee27ab690b3e13106c08",
+      "lineStart": 51,
+      "lineEnd": 64,
+      "quoteSha256": "e750293004ea3da6fb245c262b5da44196e88884cfe9f984e8eaf3fa12dbb969",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test fixture/source; all identities and values are test data with no tenant production corpus."
     },
@@ -24462,6 +24550,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -24477,7 +24573,7 @@
         "b11-claim-002"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:ab69e2a8be8a6cec9eda241b87efe1191b158bac93e6064e3d1b3111f4b55316",
+      "expectedRevision": "sha256:2b81c3bf4fcc6a2c9c39af8dee394569aeafeb487370ee27ab690b3e13106c08",
       "shouldCite": true,
       "exactIdentifier": false
     }
@@ -26434,10 +26530,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/__tests__/vectorizeContract.test.ts",
-      "sha256": "1ee5587ff6d3ca179351c1a140401780b92ee5260f68ec560fba85162189acc1",
+      "sha256": "f5e7751f1ee5871fcb7726b593415d83671b428f4bb4c42b7528b329a4d4e574",
       "lineStart": 21,
-      "lineEnd": 37,
-      "quoteSha256": "ce27f51d299fa5e0be875820d6817a453649642c586e514d11d1d0aff31fd023",
+      "lineEnd": 27,
+      "quoteSha256": "a5ef8a7e36754c4a24e6e5b76cbd0a73b349ab898a27588c22ac080563b1863c",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test fixture/source; all identities and values are test data with no tenant production corpus."
     },
@@ -26452,6 +26548,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -26467,15 +26571,15 @@
         "b11-claim-041"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:1ee5587ff6d3ca179351c1a140401780b92ee5260f68ec560fba85162189acc1",
+      "expectedRevision": "sha256:f5e7751f1ee5871fcb7726b593415d83671b428f4bb4c42b7528b329a4d4e574",
       "shouldCite": true,
       "exactIdentifier": false
     }
   },
   {
     "caseId": "b11-042",
-    "query": "How does the Vectorize contract handle incomplete or cross-tenant projections?",
-    "expectedAnswer": "It rejects the projection contract.",
+    "query": "How does the Vectorize contract require a tenant identity and reject a non-tenant namespace?",
+    "expectedAnswer": "It requires a tenant identity and rejects the global namespace.",
     "language": "english",
     "classes": [
       "acl_attack"
@@ -26485,10 +26589,10 @@
     "useApproval": "development_only",
     "source": {
       "path": "apps/web/server/services/__tests__/vectorizeContract.test.ts",
-      "sha256": "1ee5587ff6d3ca179351c1a140401780b92ee5260f68ec560fba85162189acc1",
+      "sha256": "f5e7751f1ee5871fcb7726b593415d83671b428f4bb4c42b7528b329a4d4e574",
       "lineStart": 29,
-      "lineEnd": 45,
-      "quoteSha256": "6125cffa40fc64bdd7ece6c8cda6f72ce91e34883e2e20ddffabdd92b3d4a5a9",
+      "lineEnd": 46,
+      "quoteSha256": "5752ae61d0b49b38d37a52f360f0c733bffe5e5bf5c1d5561d7dcb1590eed749",
       "license": "MIT (repository LICENSE; Copyright (c) 2019 Zachary Rice)",
       "allowedUseEvidence": "Owner-authorized repository-authored test fixture/source; all identities and values are test data with no tenant production corpus."
     },
@@ -26503,6 +26607,14 @@
         "reviewerType": "agent",
         "decision": "accept_candidate",
         "rationale": "Independent read-only review confirmed source quote support, answer correctness, class labels, uniqueness, and development-only provenance."
+      },
+      {
+        "reviewerId": "p2298_stale_source_review",
+        "reviewerVersion": "independent-source-refresh-review-f2ee23e-v1",
+        "reviewerType": "agent",
+        "recordedAt": "2026-10-18T06:22:33.000Z",
+        "decision": "accept_candidate",
+        "rationale": "Independent re-review verified current source SHA-256, inclusive line span quote SHA-256, expectedRevision, and answer/query support against canonical f2ee23eb116a2a7fc9382f10c97fd10c5ab07cfa."
       }
     ],
     "disagreement": {
@@ -26518,7 +26630,7 @@
         "b11-claim-042"
       ],
       "minimumAuthorityRank": 1,
-      "expectedRevision": "sha256:1ee5587ff6d3ca179351c1a140401780b92ee5260f68ec560fba85162189acc1",
+      "expectedRevision": "sha256:f5e7751f1ee5871fcb7726b593415d83671b428f4bb4c42b7528b329a4d4e574",
       "shouldCite": true,
       "exactIdentifier": false
     }
