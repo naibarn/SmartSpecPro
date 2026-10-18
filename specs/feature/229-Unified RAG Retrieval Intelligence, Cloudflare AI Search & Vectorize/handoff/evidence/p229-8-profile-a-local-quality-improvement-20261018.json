@@ -2,9 +2,9 @@
   "evidence_id": "SPEC229-P2298-PROFILE-A-LOCAL-QUALITY-IMPROVEMENT-20261018",
   "workunit": "P229.8 Profile A diagnostic-driven retrieval quality improvement",
   "status": "DEVELOPMENT_WORKUNIT_PASS; P229.8_ACCEPTANCE_NOT_EVALUABLE",
-  "source_sha": "c26cbb69d173689a2d831911d5cc047661fd3a4d",
+  "source_sha": "77ed7096f62e2992bfcd8bfb0f8f40918149a66b",
   "reference_checkpoint": "715d57e00a17a708307c2f0b9ecbdd83de105a18",
-  "collector_patch_sha256": "3e2fccd9b87c6416673cef9c2f8bcacdfa00887571fc6c33f1d1187ad150b207",
+  "collector_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "implementation": {
     "changes": [
       "The legacy Library scorer now tokenizes Thai-only query text with the runtime Thai word segmenter and matches those terms against canonicalized document text; mixed-script queries preserve the existing Latin/code ranking because development observations showed Thai token contribution displaced a correct mixed query result.",
@@ -76,10 +76,11 @@
       }
     },
     "after": {
-      "run_id": "5066c421-75a3-4601-a6c7-65f4ce44825d",
-      "artifact_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-final-development-57-full-corpus.json",
-      "artifact_sha256": "a2d648ce1f178608c8490604dcea41635fa2fb8342e7f011b1ff1eaffe784e29",
-      "collector_patch_sha256": "3e2fccd9b87c6416673cef9c2f8bcacdfa00887571fc6c33f1d1187ad150b207",
+      "run_id": "c2282e2d-2f15-4499-a8c9-2171bee07c13",
+      "source_sha": "77ed7096f62e2992bfcd8bfb0f8f40918149a66b",
+      "artifact_path": "/home/dev/.local/share/codex/spec229-eval-runs/profile-a-post-rebase-development-57-full-corpus.json",
+      "artifact_sha256": "629fdf857187d3627b68e2faf5e16050634dfea86a4ef56023bd1b4c37ee793a",
+      "collector_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "metrics": {
         "recall_at_20": 0.508772,
         "nDCG_at_10": 0.298986,
@@ -88,7 +89,7 @@
         "thai_recall_at_20": 0.6,
         "english_recall_at_20": 0.444444,
         "mixed_recall_at_20": 0.666667,
-        "p95_latency_ms": 492.015
+        "p95_latency_ms": 491.712
       }
     },
     "confidence_intervals": {
@@ -103,9 +104,9 @@
         "exact_identifier_hit_at_5": {"n": 17, "ci95": null}
       },
       "after": {
-        "recall_at_20": {"n": 57, "ci95": [0.385965, 0.631579]},
-        "nDCG_at_10": {"n": 57, "ci95": [0.201056, 0.39996]},
-        "MRR_at_10": {"n": 57, "ci95": [0.159705, 0.36132]},
+        "recall_at_20": {"n": 57, "ci95": [0.368421, 0.631579]},
+        "nDCG_at_10": {"n": 57, "ci95": [0.201877, 0.397932]},
+        "MRR_at_10": {"n": 57, "ci95": [0.161543, 0.359127]},
         "english_recall_at_20": {"n": 36, "ci95": [0.277778, 0.611111]},
         "thai_recall_at_20": {"n": 15, "ci95": null},
         "mixed_recall_at_20": {"n": 6, "ci95": null},
