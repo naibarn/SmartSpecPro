@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import HermesInfrastructureSettingsCard from "./HermesInfrastructureSettingsCard";
 import CloudflareCredentialCenter from "./CloudflareCredentialCenter";
 import GoogleMapsSettingsPanel from "./GoogleMapsSettingsPanel";
+import Spec224DatabaseDiagnosticsPanel from "./Spec224DatabaseDiagnosticsPanel";
 import VerticalDramaEnhancedRuntimeSettingsPanel from "./VerticalDramaEnhancedRuntimeSettingsPanel";
 import {
   Server,
@@ -2124,6 +2125,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
           </Button>
         </div>
       </DashboardCard>
+      <Spec224DatabaseDiagnosticsPanel isThai={Boolean(isThai)} />
         </TabsContent>
 
         <TabsContent value="scale-tier">
