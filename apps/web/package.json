@@ -114,7 +114,7 @@
     "test:mini-app-factory-stage-worker-runtime": "bash scripts/test-mini-app-factory-stage-worker-runtime.sh",
     "test:research-notes-background-worker-runtime": "bash scripts/test-research-notes-background-worker-runtime.sh",
     "test:research-notes-package-context": "bash scripts/validate-research-notes-package-context.sh",
-    "dev:web:restart": "systemctl --user restart smartspec-dev-web.service",
+    "dev:web:restart": "bash ../../scripts/restart-dev-web.sh ../..",
     "dev:web:status": "systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service"
   },
   "dependencies": {

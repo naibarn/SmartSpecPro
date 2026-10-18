@@ -49,8 +49,9 @@ Check the release and backend/frontend identity reported by the status command:
 pnpm run release:status
 ```
 
-Confirm `source_revision`, `frontend_source_revision`, and
-`backend_source_revision` match the release SHA, and `target_matches_release`
+Confirm `release.source_revision`, `release.frontend_source_revision`,
+`release.backend_source_revision`, and `backend_runtime_revision` match the
+release SHA, and `target_matches_release`
 is `true`. The promotion command also prints its deployment receipt and
 runtime health verification.
 
@@ -74,6 +75,11 @@ pnpm run dev:web                         # foreground, current checkout
 pnpm run dev:web:restart                 # managed background service
 pnpm run dev:web:status
 ```
+
+The restart command fetches canonical history and fast-forwards a clean canonical
+checkout before restarting only the dev service, then checks health and the
+anonymous diagnostics guard. Edited or differently branched checkouts are preserved
+and identified explicitly in the launcher revision.
 
 The development launcher reads `~/.config/smartspec-dev/web.env`, or the path
 specified by `SMARTSPEC_DEV_ENV_FILE`. It requires `SMARTSPEC_ENVIRONMENT=development`,
