@@ -51,6 +51,25 @@ SELF_LINK="$PACKAGE_ROOT/node_modules/.pnpm/node_modules/@smartspec/web"
 if [[ -L "$SELF_LINK" ]]; then
   rm -- "$SELF_LINK"
 fi
+# The monorepo tsconfig extends ../../tsconfig.base.json. That file is not
+# part of a standalone release package, so keep only the app-local aliases
+# tsx needs at runtime and remove workspace-only aliases.
+node --input-type=module - "$PACKAGE_ROOT/tsconfig.json" <<'JS'
+import { readFileSync, writeFileSync } from "node:fs";
+const [path] = process.argv.slice(2);
+const source = JSON.parse(readFileSync(path, "utf8"));
+const sourcePaths = source.compilerOptions?.paths ?? {};
+const runtimeAliases = ["@/*", "@shared/*", "@db/*", "@server/*"];
+const paths = Object.fromEntries(
+  runtimeAliases
+    .filter(alias => Array.isArray(sourcePaths[alias]))
+    .map(alias => [alias, sourcePaths[alias]])
+);
+if (Object.keys(paths).length !== runtimeAliases.length) {
+  throw new Error("App-local runtime aliases are missing from tsconfig.json");
+}
+writeFileSync(path, `${JSON.stringify({ compilerOptions: { baseUrl: ".", paths } }, null, 2)}\n`);
+JS
 mkdir -p "$PACKAGE_ROOT/dist/public"
 cp -a "$WEB_ROOT/dist/public/." "$PACKAGE_ROOT/dist/public/"
 node --input-type=module - "$PACKAGE_ROOT/release-build.json" "$SOURCE_SHA" <<'JS'

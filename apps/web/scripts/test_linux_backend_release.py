@@ -360,6 +360,19 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (web / "scripts").mkdir(parents=True)
         (web / "dist/public").mkdir(parents=True)
         (web / "dist/public/index.html").write_text("<html>packaged frontend</html>")
+        (web / "tsconfig.json").write_text(json.dumps({
+            "extends": "../../tsconfig.base.json",
+            "compilerOptions": {
+                "baseUrl": ".",
+                "paths": {
+                    "@/*": ["./client/src/*"],
+                    "@shared/*": ["./shared/*"],
+                    "@db/*": ["./drizzle/*"],
+                    "@server/*": ["./server/*"],
+                    "@smartspec/local-ai-core": ["../../packages/local-ai-core/src/index.ts"],
+                },
+            },
+        }))
         release_files = web / "client/public/releases"
         release_files.mkdir(parents=True)
         (release_files / "desktop-release.zip").write_bytes(b"release-fixture")
@@ -385,6 +398,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             "for target in \"$@\"; do :; done\n"
             "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\"\n"
             "mkdir -p \"$target/node_modules/.pnpm/node_modules/@smartspec\"\n"
+            "cp \"$PWD/apps/web/tsconfig.json\" \"$target/tsconfig.json\"\n"
             "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
             "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n",
@@ -404,6 +418,12 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         runtime = web / "dist/backend-runtime"
         self.assertTrue((runtime / "server/_core/index.ts").is_file())
         self.assertTrue((runtime / "node_modules/tsx/package.json").is_file())
+        runtime_tsconfig = json.loads((runtime / "tsconfig.json").read_text())
+        self.assertNotIn("extends", runtime_tsconfig)
+        self.assertEqual(
+            set(runtime_tsconfig["compilerOptions"]["paths"]),
+            {"@/*", "@shared/*", "@db/*", "@server/*"},
+        )
         self.assertFalse((runtime / "node_modules/.pnpm/node_modules/@smartspec/web").exists())
         self.assertFalse((runtime / "node_modules/.pnpm/node_modules/@smartspec/web").is_symlink())
         self.assertFalse((runtime / "dist/public/releases").is_symlink())
