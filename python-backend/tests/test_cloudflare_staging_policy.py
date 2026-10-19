@@ -101,7 +101,7 @@ async def test_repeated_bootstrap_and_job_replay_denied():
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_live_owner_active_admin_required():
-    for row in [None, {"ownerId": 18, "isActive": True, "role": "admin"}, {"ownerId": 17, "isActive": False, "role": "admin"}, {"ownerId": 17, "isActive": True, "role": "user"}]:
+    for row in [None, {"ownerId": 18, "isActive": True, "role": "admin", "isDisabled": False}, {"ownerId": 17, "isActive": False, "role": "admin", "isDisabled": False}, {"ownerId": 17, "isActive": True, "role": "user", "isDisabled": False}, {"ownerId": 17, "isActive": True, "role": "admin", "isDisabled": True}]:
         db = AsyncMock()
         db.execute.return_value = SimpleNamespace(mappings=lambda: SimpleNamespace(one_or_none=lambda: row))
         with pytest.raises(PermissionError, match="ACTIVE_OWNER_ADMIN_REQUIRED"):

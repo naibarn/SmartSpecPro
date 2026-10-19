@@ -59,11 +59,11 @@ class CloudflareStagingPolicyAuthority:
         # Query canonical columns only; the older Python Tenant shape has unrelated
         # legacy columns and must not redirect owner checks to legacy owner_id.
         result = await self.db.execute(text(
-            'SELECT t."ownerId", t."isActive", u.role FROM tenants t JOIN users u ON u.id = :actor '
+            'SELECT t."ownerId", t."isActive", u.role, u."isDisabled" FROM tenants t JOIN users u ON u.id = :actor '
             'WHERE t.id = :tenant FOR UPDATE OF t'
         ), {"actor": actor_id, "tenant": tenant_id})
         owner = result.mappings().one_or_none()
-        if not owner or owner["ownerId"] != actor_id or not owner["isActive"] or owner["role"] != "admin":
+        if not owner or owner["ownerId"] != actor_id or not owner["isActive"] or owner["role"] != "admin" or owner["isDisabled"]:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_ACTIVE_OWNER_ADMIN_REQUIRED")
 
     async def _check_cloudflare_policy_bindings(self, tenant_id: str, project_id: str, policy: dict, expires_at: datetime):
