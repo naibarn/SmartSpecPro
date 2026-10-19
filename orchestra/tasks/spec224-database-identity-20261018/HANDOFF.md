@@ -3,6 +3,7 @@
 ## Current checkpoint
 
 - Latest verified source: `origin/main` `cf43f498a002e42e128837ab0f397f1b672fd930`.
+- Evidence checkpoint commit `a9cbe93e35b93fd3a725e313d1ae64b3ffb35faa` was pushed to `origin/main`; GitHub reports the same SHA for `main`.
 - PR #1113, which added exact-admin read-only diagnostics and future run-failure backend identity metadata, is integrated. The UI action is available under **Admin → Settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence** (`/admin/settings`). It uses the existing exact-admin authority; no new auth path was added.
 - A user-provided Admin screenshot on 2026-10-19 shows the current production Backend at revision `319fbc7a107341b466e5c1e0f4ddf50c630af6e4`, instance label `production:pid-3876410`, database `smartspec`, schema `public`, role `smartspec`, fingerprint `sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f`.
 - The observed current database has `0395_spec224_external_runtime_job_type` pending; `external_runtime` is absent from `worker_runtime_type`. The diagnostic reports 88 pending entries, 41 unknown applied hashes, reconciliation `FAILURE_HISTORY_UNAVAILABLE`, and zero observed active migration candidates.
