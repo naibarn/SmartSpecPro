@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+    "expected_canonical_sha": "fe130ce2b3eea1d216d111922c38adfaeafba99e",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Resume authenticated Episode 281 production smoke in an owner browser session and record its result; then continue P0 internal closure and reconcile DB catalog through the registered migration authority without editing Drizzle history. Durable FIFO release queue and automated migration-authority/catalog reconciliation remain open.",
-    "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
+    "next_action": "Deploy diagnostic-only checkpoint fe130ce2 from origin/main; verify immutable runtime/source digest and bridge readiness; ask owner to run one authenticated Enhanced prompt; use privacy-safe mismatch facts to fix the semantic contract and repeat production smoke. Do not claim completion until generation succeeds. Then continue SPEC-295 P0 internal gap closure and reconcile DB only through registered migration authority; no migration-history edits.",
+    "next_ready_workunit": "ENHANCED_BRIDGE_DIAGNOSE_AND_FIX",
     "reactivation_predicate": null,
-    "resume_point": "Production generation 11 is source 0a0d458b57d13b20a8171a974aad51383bbdbee5 with immutable artifact sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44. Bridge probe is healthy at SDK 0.22.2; the speaker cue validator and self-dirtying build staging issue are fixed. Owner browser must hard-refresh Episode 281 and run one Enhanced prompt generation. DB remains globally UNKNOWN; no migration was run.",
+    "resume_point": "Production generation 11 (source 0a0d458b57d13b20a8171a974aad51383bbdbee5, artifact sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44) was healthy but authenticated Episode 281 still fails with canonical dialogue line 1 not bound to มยุรี. Raw bridge prompt is not persisted. Diagnostic-only source checkpoint fe130ce2 is integrated and focused suite passed 49/49; deploy it and collect the next mismatch classification before changing validation logic. Production DB remains unchanged and globally UNKNOWN.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -147,7 +147,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 75,
+  "generation": 76,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -263,7 +263,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+    "canonical_sha": "fe130ce2b3eea1d216d111922c38adfaeafba99e",
     "integrated": true,
     "integrated_at": "2026-10-19T11:29:00+07:00"
   },
@@ -672,7 +672,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T04:27:53.383854Z",
+  "updated_at": "2026-10-19T06:51:27.944709Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -983,6 +983,13 @@
         "scope": "Canonical Linux release 7b3e2058: verified immutable artifact, web and PostgreSQL Node worker on the same release, fresh worker heartbeat, health/guard, Enhanced bridge SDK probe, and public asset digest. Authenticated Episode 281 acceptance remains pending.",
         "source_sha": "7b3e20583067978c00779382bba6eb70ff920109",
         "status": "PASS"
+      },
+      {
+        "kind": "ENHANCED_EPISODE_281_SEMANTIC_SMOKE_FAILED",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md",
+        "scope": "Authenticated owner screenshot after generation 11 confirms bridge executes but dialogue line 1 semantic validation still fails; raw prompt is not persisted, so exact mismatch is unavailable. Diagnostic-only checkpoint fe130ce2 adds privacy-safe mismatch facts; production deployment and retest pending.",
+        "source_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+        "status": "FAIL"
       }
     ],
     "freshness": "UNKNOWN",

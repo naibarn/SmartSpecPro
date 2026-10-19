@@ -186,3 +186,31 @@ character still fails. Focused suite: 49/49 passed.
   Resume by hard-refreshing Episode 281, clicking Enhanced once and reporting
   whether the prompt is generated or the exact new error. Do not claim
   end-to-end completion until this browser action passes.
+
+## Follow-up: latest authenticated smoke disproves the matcher fix — 2026-10-19
+
+The owner supplied a fresh screenshot after production generation 11. Enhanced is
+available and the call reaches the bridge, but it still fails with
+`canonical dialogue line 1 is not bound to speaker มยุรี`. Therefore the
+`4613ae0` matcher change did not resolve the production failure; the earlier
+statement that it was a likely fix was incorrect. This is semantic validation,
+not SDK readiness.
+
+The failed job record and service journal retain the generic validation error,
+but the bridge prompt and raw model output are held only in process memory and
+are not persisted. The exact cue format and mismatch cannot be reconstructed
+from the existing production evidence. No DB read/write or migration was
+performed for this investigation.
+
+- New diagnostic checkpoint: `fe130ce2b3eea1d216d111922c38adfaeafba99e`.
+- Focused validator suite: 49/49 passed. On the next failure, the error reports
+  only whether the expected speaker token/position or name was present in the
+  relevant cue; it does not persist prompt text or dialogue content.
+- This checkpoint is diagnostic only and is not claimed as a user-visible fix.
+- Next owner: release operator (Codex) to deploy the checkpoint, verify runtime
+  revision and health, then request one authenticated Enhanced generation from
+  the user. Use the resulting mismatch facts to repair and regression-test the
+  validator/bridge contract. If the same generic error remains, diagnose the
+  deployed revision before any further code change.
+- Acceptance remains open until Enhanced generation succeeds in production,
+  runtime/source/digest are verified, and no material new errors appear.
