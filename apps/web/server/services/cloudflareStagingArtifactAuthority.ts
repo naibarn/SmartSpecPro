@@ -77,9 +77,9 @@ export function createCanonicalBuildReceiptAuthority(resultsRoot: string): Cloud
             record.source_verified === true && artifact?.source_sha?.toLowerCase() === receipt.sourceSha.toLowerCase() &&
             artifact?.build_digest?.toLowerCase() === receipt.cloudflareBundleDigest.toLowerCase() &&
             artifact?.artifact_ref === `sha256:${receipt.cloudflareBundleDigest.toLowerCase()}` &&
-            ["BUNDLE_READY", "PUBLISHED"].includes(artifact?.status) ||
+            (["BUNDLE_READY", "PUBLISHED"].includes(artifact?.status) ||
             (artifact?.status === "PUBLISH_PENDING" &&
-              ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason));
+              ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason)));
         } catch {
           return false;
         }
@@ -191,6 +191,7 @@ function validateManifest(input: unknown, artifactDigest: string): ArtifactManif
       !SHA256.test(value.buildDigest ?? "") || !SHA256.test(artifactDigest) ||
       !SHA256.test(value.cloudflareBundleDigest ?? "") || !value.buildReceipt ||
       value.buildDigest?.toLowerCase() !== value.cloudflareBundleDigest?.toLowerCase() ||
+      value.buildDigest?.toLowerCase() !== artifactDigest.toLowerCase() ||
       !/^[a-z0-9._-]{8,120}$/i.test(value.buildId ?? "") ||
       value.canonicalTipAfterBuild?.toLowerCase() !== value.sourceSha?.toLowerCase() ||
       !safePath(value.mainModule ?? "") || !/^\d{4}-\d{2}-\d{2}$/.test(value.compatibilityDate ?? "") ||

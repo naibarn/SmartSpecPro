@@ -74,7 +74,27 @@ function bundleReceipt(value: Pick<CloudflareStagingBundle, "moduleFiles" | "ass
   return { ...receipt, cloudflareBundleDigest: sha256(Buffer.from(lines.join("\n"))) };
 }
 
+function canonicalBuildRecord() {
+  return {
+    status: "BUILD_PASSED", canonical_ref: "refs/heads/main", source_revision: sourceSha,
+    canonical_tip_after_build: sourceSha, source_verified: true, completed_at: 1,
+    cloudflare_staging_artifact: {
+      source_sha: sourceSha, build_digest: buildDigest, artifact_ref: `sha256:${buildDigest}`,
+      status: "PUBLISH_PENDING", reason: "artifact_publish_failed",
+    },
+  };
+}
+
 describe("Cloudflare staging artifact authority", () => {
+  it("rejects a valid manifest substituted under a different content address", async () => {
+    const { authority, objects } = fixture();
+    await authority.publish({ receipt, bundle });
+    const manifestKey = [...objects.keys()].find(key => key.endsWith("manifest.json"))!;
+    const otherDigest = "a".repeat(64);
+    objects.set(manifestKey.replace(buildDigest, otherDigest), objects.get(manifestKey)!);
+    expect(await authority.resolveBundle(`sha256:${otherDigest}`)).toBeNull();
+  });
+
   it("round-trips a large release asset using bounded immutable chunks and rejects tampering", async () => {
     const { authority, objects } = fixture();
     const bytes = Buffer.alloc(13 * 1024 * 1024, 7);
@@ -137,21 +157,7 @@ describe("Cloudflare staging artifact authority", () => {
   it("allows only retryable publish-pending canonical build receipts", async () => {
     const resultsRoot = await mkdtemp(join(tmpdir(), "cf-staging-receipt-"));
     try {
-      const record = {
-        status: "BUILD_PASSED",
-        canonical_ref: "refs/heads/main",
-        source_revision: sourceSha,
-        canonical_tip_after_build: sourceSha,
-        source_verified: true,
-        completed_at: 1,
-        cloudflare_staging_artifact: {
-          source_sha: sourceSha,
-          build_digest: buildDigest,
-          artifact_ref: `sha256:${buildDigest}`,
-          status: "PUBLISH_PENDING",
-          reason: "artifact_publish_failed",
-        },
-      };
+      const record = canonicalBuildRecord();
       const resultPath = join(resultsRoot, `${receipt.buildId}.json`);
       await writeFile(resultPath, JSON.stringify(record));
       const authority = createCanonicalBuildReceiptAuthority(resultsRoot);
@@ -163,6 +169,29 @@ describe("Cloudflare staging artifact authority", () => {
     } finally {
       await rm(resultsRoot, { recursive: true, force: true });
     }
+  });
+
+  it.each([
+    ["failed build", { status: "BUILD_FAILED" }, {}],
+    ["noncanonical ref", { canonical_ref: "refs/heads/untrusted" }, {}],
+    ["different source", { source_revision: "a".repeat(40) }, {}],
+    ["different tip", { canonical_tip_after_build: "a".repeat(40) }, {}],
+    ["unverified source", { source_verified: false }, {}],
+    ["different artifact source", {}, { source_sha: "a".repeat(40) }],
+    ["different digest", {}, { build_digest: "a".repeat(64) }],
+    ["different artifact ref", {}, { artifact_ref: `sha256:${"a".repeat(64)}` }],
+  ])("never skips canonical checks for retryable publication: %s", async (_name, recordChanges, artifactChanges) => {
+    const resultsRoot = await mkdtemp(join(tmpdir(), "cf-staging-receipt-"));
+    try {
+      const authority = createCanonicalBuildReceiptAuthority(resultsRoot);
+      for (const reason of ["artifact_publish_failed", "artifact_storage_unavailable"]) {
+        const record = canonicalBuildRecord();
+        await writeFile(join(resultsRoot, `${receipt.buildId}.json`), JSON.stringify({ ...record, ...recordChanges,
+          cloudflare_staging_artifact: { ...record.cloudflare_staging_artifact, reason, ...artifactChanges },
+        }));
+        expect(await authority.verify(receipt)).toBe(false);
+      }
+    } finally { await rm(resultsRoot, { recursive: true, force: true }); }
   });
 
   it("allows release assets from the approved public source tree and rejects other paths", () => {
