@@ -881,7 +881,15 @@ export function getEnhancedPromptSemanticValidationError(
       `${escapeRegExp(speaker)}${speakerAnchor};\\s*${escapeRegExp(speaker)}\\s+says\\s+with[^\\n]{0,4096}${escapeRegExp(text)}`,
       "i",
     );
-    if (!canonicalSpeech.test(prompt)) {
+    // Accept the skill's ordinary named-speaker forms too (for example,
+    // `Name says: "..."` or `Name speaks with urgency: "..."`). The source
+    // dialogue text and its canonical speaker must still occur in the same
+    // cue; a line attributed to another character remains invalid.
+    const namedSpeech = new RegExp(
+      `${escapeRegExp(speaker)}${speakerAnchor}\\s+(?:says|speaks|asks|replies|whispers|shouts|calls|answers)(?:\\s+[^\\n:.;!?]{0,160})?\\s*[:,—-]?\\s*[\\"“‘]${escapeRegExp(text)}[\\"”’]`,
+      "i",
+    );
+    if (!canonicalSpeech.test(prompt) && !namedSpeech.test(prompt)) {
       return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
     }
   }

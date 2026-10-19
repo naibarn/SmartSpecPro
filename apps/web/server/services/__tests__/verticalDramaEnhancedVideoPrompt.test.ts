@@ -701,6 +701,34 @@ describe("vertical drama Enhanced prompt boundary", () => {
     );
   });
 
+  it("accepts a canonical speaker cue without requiring the phrase 'says with'", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [{ speaker: "มยุรี", text: "ฉันจะกลับมา" }],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const result = {
+      prompt: 'มยุรี says: “ฉันจะกลับมา”',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(result, input)).toBeNull();
+    expect(getEnhancedPromptSemanticValidationError({
+      ...result,
+      prompt: 'พิมพ์ชนก says: “ฉันจะกลับมา”',
+    }, input)).toContain("not bound to speaker มยุรี");
+  });
+
   it("accepts compact canonical dialogue events bound by speaker ID", () => {
     const input = buildEnhancedSkillInput({
       shot: {
