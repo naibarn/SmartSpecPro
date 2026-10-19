@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `13`
-- Updated (UTC): `2026-10-19T17:57:48.129559+00:00`
+- State generation: `14`
+- Updated (UTC): `2026-10-19T18:03:21.432871+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
-- Latest recorded merged Main SHA: `f52718457bceca27aefb58d7d729768450932842`
+- Latest recorded merged Main SHA: `51dfab20b545a5e3a5f94900ca8e3fa2b4801e1f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-provision-release`
-- Next action: Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes.
+- Next action: Root verifier and automatic artifact publication are repaired, published and executor-readback/CI verified. Continue only exact authorized protected-ingress provisioning and compatible origin release; then actual login/tenant/rollback acceptance. Existing Worker grants do not cover Access/Tunnel/DNS or production cutover.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-cookie-session | checkpointed | — | — | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | Proceed with section-02 protected origin transport; cookie helper is integrated and CI/browser-fixture verified, live auth remains pending |
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
-| section-04-provision-release | in_progress | — | — | — | — | Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes. |
+| section-04-provision-release | in_progress | — | — | — | — | Root verifier and automatic artifact publication are repaired, published and executor-readback/CI verified. Continue only exact authorized protected-ingress provisioning and compatible origin release; then actual login/tenant/rollback acceptance. Existing Worker grants do not cover Access/Tunnel/DNS or production cutover. |
 | section-05-acceptance | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)

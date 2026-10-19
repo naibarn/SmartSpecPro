@@ -35,7 +35,7 @@
     },
     "section-04-provision-release": {
       "status": "in_progress",
-      "next_action": "Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes."
+      "next_action": "Root verifier and automatic artifact publication are repaired, published and executor-readback/CI verified. Continue only exact authorized protected-ingress provisioning and compatible origin release; then actual login/tenant/rollback acceptance. Existing Worker grants do not cover Access/Tunnel/DNS or production cutover."
     }
   },
   "pre_commit": {
@@ -47,12 +47,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 13,
-  "updated_at": "2026-10-19T17:57:48.129559+00:00",
+  "generation": 14,
+  "updated_at": "2026-10-19T18:03:21.432871+00:00",
   "progress": {
     "active_section": "section-04-provision-release",
-    "next_action": "Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes.",
-    "merged_main_sha": "f52718457bceca27aefb58d7d729768450932842",
+    "next_action": "Root verifier and automatic artifact publication are repaired, published and executor-readback/CI verified. Continue only exact authorized protected-ingress provisioning and compatible origin release; then actual login/tenant/rollback acceptance. Existing Worker grants do not cover Access/Tunnel/DNS or production cutover.",
+    "merged_main_sha": "51dfab20b545a5e3a5f94900ca8e3fa2b4801e1f",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
       "Section 02 live origin/proxy chain not provisioned or accepted",
