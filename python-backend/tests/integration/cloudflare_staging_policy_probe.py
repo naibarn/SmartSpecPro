@@ -38,6 +38,12 @@ async def main():
                     "expiresAt": grant["expiresAt"], "artifacts": [
                         {k: grant[k] for k in ("artifactRef", "sourceSha", "buildDigest")},
                         {k: grant["rollback" + k[0].upper() + k[1:]] for k in ("artifactRef", "sourceSha", "buildDigest")}]}
+                if grant["schemaVersion"] == "cloudflare.staging-origin-grant.v2":
+                    policy.pop("allowBootstrap")
+                    artifacts = policy.pop("artifacts")
+                    policy.update({"contractVersion": "cloudflare-staging-origin-v2", "releases": [
+                        {**artifacts[0], "configurationRef": grant["configurationRef"], "configurationDigest": grant["configurationDigest"]},
+                        {**artifacts[1], "configurationRef": grant["rollbackConfigurationRef"], "configurationDigest": grant["rollbackConfigurationDigest"]}]})
                 rule = await service.create_cloudflare_staging_policy(tenant_id=grant["tenantId"], project_id=grant["projectId"], actor_id=grant["requesterUserId"], definition=policy)
                 grant["actions"] = ["deploy"]
                 request = await service.create_cloudflare_staging_grant_request(tenant_id=grant["tenantId"], requester_id=grant["requesterUserId"],

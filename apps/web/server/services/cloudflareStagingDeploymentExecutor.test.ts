@@ -1,3 +1,4 @@
+import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT, CLOUDFLARE_STAGING_ORIGIN_GRANT } from "./cloudflareStagingOriginContract";
 import { describe, expect, it, vi } from "vitest";
 import {
   CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
@@ -509,5 +510,113 @@ describe("Cloudflare staging deployment executor", () => {
       diagnosticCode: "CLOUDFLARE_STAGING_CREDENTIAL_REVOKED",
     });
     expect(state.cloudflare.deploy).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("explicit Cloudflare origin v2 executor", () => {
+  const configurationDigest = "e".repeat(64);
+  const configurationRef = `cf-origin:${configurationDigest}`;
+  function originRuntime() {
+    const originGrant = { ...grant, schemaVersion: CLOUDFLARE_STAGING_ORIGIN_GRANT,
+      grantRef: "11111111-1111-4111-8111-111111111111", jobId: "22222222-2222-4222-8222-222222222222",
+      actions: ["deploy"] as ["deploy"], accountRef: "a".repeat(32), artifactRef: `sha256:${buildDigest}`,
+      rollbackDeploymentId: "33333333-3333-4333-8333-333333333333", rollbackArtifactRef: `sha256:${rollbackDigest}`,
+      configurationRef, configurationDigest, rollbackConfigurationRef: null, rollbackConfigurationDigest: null, revokedAt: null };
+    const configuredTarget = { ...target, accountRef: originGrant.accountRef, runtimePolicy: configurationRef };
+    const approvedArtifact = { ...artifact, artifactRef: originGrant.artifactRef };
+    const baseline = { artifactRef: originGrant.rollbackArtifactRef, sourceSha: rollbackSha, buildDigest: rollbackDigest, immutable: true as const };
+    const secrets = { token: "fixture-app-token".repeat(4), clientId: "fixture-access-id".repeat(2), secret: "fixture-access-secret".repeat(2) };
+    const resolveGrant = vi.fn(async () => originGrant);
+    const withOriginConfiguration = vi.fn(async ({ operation, configurationRef: selectedRef, configurationDigest: selectedDigest }: any) => {
+      if (selectedRef !== configurationRef || selectedDigest !== configurationDigest) throw new Error("CONFIG_REVOKED");
+      return operation({ configurationRef, configurationDigest, descriptor: {}, secrets });
+    });
+    const state = runtime({ resolveGrant, resolveTarget: async () => configuredTarget,
+      resolveArtifact: async ref => ref === approvedArtifact.artifactRef ? approvedArtifact : ref === baseline.artifactRef ? baseline : null,
+      withOriginConfiguration });
+    state.cloudflare.deploy.mockImplementation(async input => {
+      await (input as any).assertMutationAuthorized();
+      return { deploymentId: "deployment:new", url: "https://smartspec-cloudflare-staging.account.workers.dev",
+        sourceSha, buildDigest, configurationDigest };
+    });
+    state.cloudflare.rollback.mockImplementation(async input => {
+      await (input as any).assertMutationAuthorized();
+      return { deploymentId: "deployment:rollback", url: "https://smartspec-cloudflare-staging.account.workers.dev",
+        sourceSha: rollbackSha, buildDigest: rollbackDigest };
+    });
+    state.cloudflare.verifyRuntime.mockImplementation(async input => ({ ...input, reachable: true }));
+    const call: any = invocation().payload;
+    Object.assign(call.context, { contractVersion: CLOUDFLARE_STAGING_ORIGIN_CONTRACT, jobId: originGrant.jobId, projectId: originGrant.projectId });
+    Object.assign(call.context.input, { contractVersion: CLOUDFLARE_STAGING_ORIGIN_CONTRACT, grantRef: originGrant.grantRef,
+      artifactRef: approvedArtifact.artifactRef, projectId: originGrant.projectId, configurationRef, configurationDigest });
+    return { ...state, call, originGrant, configuredTarget, resolveGrant, withOriginConfiguration, secrets };
+  }
+
+  it("requires the exact canonical job/project/config grant and resolves secrets only inside deployment", async () => {
+    const f = originRuntime();
+    const identity = vi.spyOn(f.dependencies, "executorIdentity");
+    const result = await createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call);
+    expect(result.output).toMatchObject({ configurationRef, configurationDigest, buildDigest, grantRef: f.originGrant.grantRef,
+      rollbackConfigurationRef: null, rollbackConfigurationDigest: null });
+    expect(identity).toHaveBeenCalledWith(expect.objectContaining({ originAuthority: expect.objectContaining({ configurationDigest,
+      rollbackDeploymentId: f.originGrant.rollbackDeploymentId, accountRef: f.originGrant.accountRef }) }));
+    expect(f.cloudflare.deploy).toHaveBeenCalledWith(expect.objectContaining({ originConfiguration: expect.objectContaining({ secrets: f.secrets }) }));
+    expect(JSON.stringify(result)).not.toContain(f.secrets.secret);
+  });
+
+  it.each(["jobId", "projectId", "configurationDigest", "contractVersion"])("rejects %s substitution before credentials/provider writes", async field => {
+    const f = originRuntime();
+    if (field === "jobId") f.call.context[field] = "foreign";
+    else if (field === "projectId") f.call.context.input[field] = "foreign";
+    else f.call.context.input[field] = field === "contractVersion" ? CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT : "f".repeat(64);
+    const credential = vi.spyOn(f.dependencies, "withCredential");
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("CLOUDFLARE_STAGING_");
+    expect(credential).not.toHaveBeenCalled();
+    expect(f.cloudflare.deploy).not.toHaveBeenCalled();
+  });
+
+  it("rejects legacy grants and expired/revoked configuration before credentials", async () => {
+    const f = originRuntime();
+    f.withOriginConfiguration.mockRejectedValueOnce(new Error("CONFIG_REVOKED"));
+    const credential = vi.spyOn(f.dependencies, "withCredential");
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("CONFIG_REVOKED");
+    expect(credential).not.toHaveBeenCalled();
+    f.resolveGrant.mockResolvedValue({ ...f.originGrant, schemaVersion: "cloudflare.staging-deployment-grant.v1" } as never);
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("ORIGIN_GRANT_REQUIRED");
+    expect(f.cloudflare.deploy).not.toHaveBeenCalled();
+  });
+
+  it("rechecks rollback/config authority immediately before mutation", async () => {
+    const f = originRuntime();
+    let resolved = 0;
+    f.resolveGrant.mockImplementation(async () => (++resolved === 1 ? f.originGrant : {
+      ...f.originGrant, rollbackDeploymentId: "44444444-4444-4444-8444-444444444444",
+    }));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("AUTHORITY_CHANGED");
+    expect(f.cloudflare.verifyRuntime).not.toHaveBeenCalled();
+  });
+
+  it("does not accept asset-only receipts when the v2 config receipt is missing", async () => {
+    const f = originRuntime();
+    f.cloudflare.deploy.mockResolvedValueOnce({ deploymentId: "deployment:new", url: "https://smartspec-cloudflare-staging.account.workers.dev", sourceSha, buildDigest });
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("ORIGIN_RECEIPT_MISMATCH");
+  });
+
+  it("runs pre-authorized recovery when origin verification throws after a confirmed deployment", async () => {
+    const f = originRuntime();
+    f.cloudflare.verifyRuntime.mockRejectedValueOnce(new Error("PROVIDER_READ_UNAVAILABLE"));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("RUNTIME_VERIFICATION_FAILED");
+    expect(f.cloudflare.rollback).toHaveBeenCalledOnce();
+    expect(f.cloudflare.verifyRuntime).toHaveBeenCalledTimes(2);
+  });
+
+  it("automatically restores the explicitly origin-free recovery baseline without claiming origin health", async () => {
+    const f = originRuntime();
+    f.cloudflare.verifyRuntime.mockImplementation(async input => ({ ...input, reachable: input.buildDigest === rollbackDigest }));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("RUNTIME_VERIFICATION_FAILED");
+    expect(f.cloudflare.rollback).toHaveBeenCalledWith(expect.objectContaining({ deploymentId: f.originGrant.rollbackDeploymentId, buildDigest: rollbackDigest }));
+    expect(f.cloudflare.rollback).not.toHaveBeenCalledWith(expect.objectContaining({ configurationDigest }));
+    expect(f.cloudflare.verifyRuntime).toHaveBeenLastCalledWith(expect.not.objectContaining({ configurationDigest }));
   });
 });

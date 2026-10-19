@@ -533,7 +533,16 @@ export function createCloudflareStagingApiTransport(input: {
       if ((sourceSha !== undefined && match[1] !== sourceSha) || (buildDigest !== undefined && match[2] !== buildDigest)) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_MISMATCH");
       }
-      const rolledBackDeploymentId = await createDeployment(token, target, [{ version_id: version.version_id, percentage: 100 }], idempotencyKey);
+      let rolledBackDeploymentId: string;
+      const prior = (target.runtimePolicy || configurationDigest !== undefined)
+        ? await findDeploymentByIdempotencyKey(token, target, idempotencyKey) : null;
+      if (prior?.id) {
+        const checked = await verifyVersion(token, target, prior.id, match[1]!, match[2]!, configurationDigest);
+        if (checked.versionId !== version.version_id) throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_IDEMPOTENCY_MISMATCH");
+        rolledBackDeploymentId = prior.id;
+      } else {
+        rolledBackDeploymentId = await createDeployment(token, target, [{ version_id: version.version_id, percentage: 100 }], idempotencyKey);
+      }
       const subdomain = await getWorkersDevSubdomain(token, target);
       return {
         deploymentId: rolledBackDeploymentId,

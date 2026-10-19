@@ -471,6 +471,14 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect((await verify(f)).reachable).toBe(false);
   });
 
+  it("reconciles an origin rollback retry without creating another deployment", async () => {
+    const f = fixture({ prior: true });
+    const result = await f.api.rollback({ token: "provider-token", target: f.originTarget, deploymentId, sourceSha, buildDigest,
+      configurationDigest: f.config.configurationDigest, idempotencyKey: "cloudflare-staging:origin-job", assertMutationAuthorized: async () => {} });
+    expect(result.deploymentId).toBe(deploymentId);
+    expect(f.mutations).toHaveLength(0);
+  });
+
   it("requires the exact previous config for rollback, then reuses its immutable version", async () => {
     const f = fixture();
     const rollback = { token: "provider-token", target: f.originTarget, deploymentId, sourceSha, buildDigest,

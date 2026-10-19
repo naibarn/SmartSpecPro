@@ -27,7 +27,7 @@ from app.models.approval import (
 from app.models.audit_log import AuditLog
 from app.models.tenant import Tenant, TenantUser
 from app.models.user import Role, User
-from app.services.cloudflare_staging_policy import CloudflareStagingPolicyAuthority
+from app.services.cloudflare_staging_policy import CloudflareStagingPolicyAuthority, ORIGIN_GRANT, validate_origin_configuration_pair
 from app.services.spec224_development_policy import (
     SPEC224_DEVELOPMENT_POLICY_SCHEMA,
     evaluate_development_policy,
@@ -54,7 +54,7 @@ _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 
 def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
-    """Validate and normalize the single supported Cloudflare staging grant shape."""
+    """Validate exact artifact-only v1 or explicitly origin-bound v2 grants."""
     if not isinstance(value, dict):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_PAYLOAD_INVALID")
     required = {
@@ -63,6 +63,15 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         "buildDigest", "actions", "rollbackDeploymentId", "rollbackArtifactRef",
         "rollbackSourceSha", "rollbackBuildDigest", "expiresAt", "revokedAt",
     }
+    origin = value.get("schemaVersion") == ORIGIN_GRANT
+    if origin:
+        required |= {"configurationRef", "configurationDigest", "rollbackConfigurationRef", "rollbackConfigurationDigest", "accountRef", "jobId"}
+        validate_origin_configuration_pair(value.get("configurationRef"), value.get("configurationDigest"))
+        validate_origin_configuration_pair(value.get("rollbackConfigurationRef"), value.get("rollbackConfigurationDigest"), allow_none=True)
+        if value.get("actions") not in (["deploy"], ["rollback"]):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+        if not isinstance(value.get("rollbackDeploymentId"), str) or not _SPEC224_CANONICAL_UUID.fullmatch(value["rollbackDeploymentId"]):
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_ROLLBACK_INVALID")
     policy_fields = {"accountRef", "jobId"}
     if set(value) not in (required, required | policy_fields):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_FIELDS_INVALID")
@@ -71,7 +80,7 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         or not isinstance(value["jobId"], str) or not _SPEC224_CANONICAL_UUID.fullmatch(value["jobId"])
     ):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_POLICY_BINDING_INVALID")
-    if value["schemaVersion"] != _CF_STAGING_GRANT_SCHEMA:
+    if value["schemaVersion"] not in (_CF_STAGING_GRANT_SCHEMA, ORIGIN_GRANT):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_SCHEMA_INVALID")
     if value["targetId"] != _CF_STAGING_TARGET or value["environment"] != "staging":
         raise ValueError("CLOUDFLARE_STAGING_GRANT_TARGET_INVALID")

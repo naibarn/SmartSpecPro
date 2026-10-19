@@ -1,3 +1,4 @@
+import type { CloudflareStagingGrant } from "./cloudflareStagingDeploymentExecutor";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { createHash, generateKeyPairSync } from "node:crypto";
@@ -40,6 +41,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     typeof import("./cloudflareStagingArtifactAuthority").createCloudflareStagingArtifactAuthority
   >;
   let buildReceiptRoot: string;
+  const buildReceiptRoots: string[] = [];
   let originalEnv: Record<string, string | undefined>;
 
   beforeAll(async () => {
@@ -70,6 +72,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       schema.runnerNodes,
       schema.providerDeploymentTargets,
       schema.providerDeploymentCredentials,
+      schema.systemSettings,
       schema.tenantDataTransferPlans,
       schema.tenantIdentityActions,
     ]);
@@ -105,21 +108,21 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     if (closeDb) await closeDb();
     if (sql) await sql.end({ timeout: 5 });
     if (disposable) await disposable.close();
-    if (buildReceiptRoot)
-      await rm(buildReceiptRoot, { recursive: true, force: true });
+    for (const receiptRoot of buildReceiptRoots) await rm(receiptRoot, { recursive: true, force: true });
     for (const [key, value] of Object.entries(originalEnv ?? {})) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
   }, 20_000);
 
-  it("executes a persisted worker_jobs outbox envelope with DB-bound target, credential, executor, artifact and Cloudflare transport", async () => {
-    const tenantId = "cf-stage-db-test";
-    const projectId = "smartspec";
+  it.each(["artifact-v1", "origin-v2"])("executes %s through real owner policy, PostgreSQL outbox, encrypted credentials and provider transport", async mode => {
+    const originMode = mode === "origin-v2";
+    const tenantId = `cf-stage-db-test-${mode}`;
+    const projectId = `smartspec-${mode}`;
     const sourceSha = "a".repeat(40);
-    const rollbackSha = "c".repeat(40);
+    const rollbackSha = originMode ? sourceSha : "c".repeat(40);
     const accountId = "0123456789abcdef0123456789abcdef";
-    const executorId = "cf-staging-executor:integration-test";
+    const executorId = `cf-staging-executor:integration-test-${mode}`;
     const targetId = "smartspec-cloudflare-staging" as const;
     const [user] = await runtimeDb
       .insert(schema.users)
@@ -207,6 +210,15 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
           .join("\n")
       )
       .digest("hex");
+    const { saveCloudflareOriginConfiguration } = await import("./cloudflareOriginConfiguration");
+    const origin = originMode ? await saveCloudflareOriginConfiguration(runtimeDb, { identity, actorUserId: user!.id,
+      settings: { origin: "https://origin-staging.example.com", allowedPublicOrigins: ["https://smartspec-cloudflare-staging.disposable-account.workers.dev"],
+        accessApplicationId: "55555555-5555-4555-8555-555555555555", accessTeamName: "disposable-team", accessAudience: "disposable-app-aud",
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+      secrets: { token: "fixture-origin-app-token".repeat(2), clientId: "fixture-access-client-id", secret: "fixture-access-client-secret" },
+    }) : null;
+    if (origin) await runtimeDb.update(schema.providerDeploymentTargets).set({ runtimePolicy: origin.configurationRef })
+      .where((await import("drizzle-orm")).eq(schema.providerDeploymentTargets.id, targetResult.status === "CREATED" ? targetResult.target.id : "missing"));
     const receipt = {
       buildId: "disposable-test-build-0001",
       status: "BUILD_PASSED" as const,
@@ -236,6 +248,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       }),
       { mode: 0o600 }
     );
+    buildReceiptRoots.push(buildReceiptRoot);
     const storageMap = new Map<string, Uint8Array>();
     artifactAuthority = createCloudflareStagingArtifactAuthority({
       storage: {
@@ -268,10 +281,13 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     const versionId = "22222222-2222-4222-8222-222222222222";
     const deploymentId = "11111111-1111-4111-8111-111111111111";
     const cloudflareRequests: string[] = [];
+    let uploadedMetadata: { bindings?: Array<{ name: string; type: string; text?: string }> } | undefined;
     const fetchImpl: typeof fetch = async (input, init = {}) => {
       const url = String(input);
       cloudflareRequests.push(url);
+      if (url.endsWith("/versions") && init.method === "POST") uploadedMetadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
       if (!url.startsWith("https://api.cloudflare.com/client/v4/")) {
+        if (url.endsWith("/trpc/auth.me")) return Response.json({ result: { data: { json: null } } });
         if (url.endsWith("/healthz"))
           return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
         if (url.endsWith("/assets/app.js")) return new Response("export default {}", { headers: { "Content-Type": "application/javascript" } });
@@ -297,7 +313,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
                     ? {
                         id: versionId,
                         annotations: {
-                          "workers/message": `SmartAIHub staging ${sourceSha} ${bundleDigest}`,
+                          "workers/message": `SmartAIHub staging ${sourceSha} ${bundleDigest}${origin ? ` origin ${origin.configurationDigest}` : ""}`,
                         },
                       }
                     : null;
@@ -320,10 +336,10 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       resolveBundle: ref => artifactAuthority.resolveBundle(ref),
       fetchImpl,
     });
-    const rollbackDigest = "d".repeat(64);
-    let grant = {
+    const rollbackDigest = originMode ? publishedArtifact.buildDigest : "d".repeat(64);
+    let grant: CloudflareStagingGrant & { revokedAt: null } = {
       schemaVersion: "cloudflare.staging-deployment-grant.v1" as const,
-      grantRef: "a4dca6ee-3424-4c4e-86b6-f6aa5ed8f8c0",
+      grantRef: originMode ? "b4dca6ee-3424-4c4e-86b6-f6aa5ed8f8c0" : "a4dca6ee-3424-4c4e-86b6-f6aa5ed8f8c0",
       tenantId,
       requesterUserId: user!.id,
       projectId,
@@ -342,8 +358,11 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       revokedAt: null,
       revoked: false as const,
     };
+    const policyJobId = originMode ? "16c1af13-d332-49b5-89ef-81c7f1089ca4" : "06c1af13-d332-49b5-89ef-81c7f1089ca4";
+    if (origin) grant = { ...grant, schemaVersion: "cloudflare.staging-origin-grant.v2", actions: ["deploy"],
+      configurationRef: origin.configurationRef, configurationDigest: origin.configurationDigest,
+      rollbackConfigurationRef: null, rollbackConfigurationDigest: null, accountRef: accountId, jobId: policyJobId };
     const python = process.env.CLOUDFLARE_POLICY_TEST_PYTHON;
-    const policyJobId = "06c1af13-d332-49b5-89ef-81c7f1089ca4";
     async function policyProbe(data: Record<string, unknown>): Promise<{ grant: typeof grant | null }> {
       if (!python) throw new Error("POLICY_TEST_PYTHON_REQUIRED");
       return new Promise((resolveProbe, reject) => {
@@ -370,12 +389,12 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       expect(issued.grant).not.toBeNull();
       const [decision] = await sql`SELECT extra_data FROM approval_requests WHERE id = ${issued.grant!.grantRef}`;
       expect(decision!.extra_data.cloudflareStagingGrantIssuerV1).toBe("owner_staging_policy");
-      const [audits] = await sql`SELECT count(*)::int AS count FROM audit_logs WHERE action = 'cloudflare.staging_grant.policy_approved'`;
+      const [audits] = await sql`SELECT count(*)::int AS count FROM audit_logs WHERE action = 'cloudflare.staging_grant.policy_approved' AND details->>'tenantId' = ${tenantId}`;
       expect(audits!.count).toBe(1);
       grant = { ...issued.grant!, revoked: false };
     } else {
       await sql.unsafe(`
-        CREATE TABLE approval_requests (
+        CREATE TABLE IF NOT EXISTS approval_requests (
           id varchar(36) PRIMARY KEY,
           request_type varchar(50) NOT NULL,
           tenant_id varchar(36) NOT NULL,
@@ -474,14 +493,16 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
       CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
     } = await import("./cloudflareStagingDeploymentExecutor");
+    const contractVersion = originMode ? "cloudflare-staging-origin-v2" : CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT;
     const definition = {
-      contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+      contractVersion,
       tenantId,
       requestedByUserId: user!.id,
       jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
       executionClass: "long" as const,
       input: {
-        contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+        contractVersion,
+        ...(origin ? { projectId, configurationRef: origin.configurationRef, configurationDigest: origin.configurationDigest } : {}),
         action: "deploy",
         targetId,
         environment: "staging",
@@ -501,7 +522,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       },
       timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 60_000 },
     };
-    const job = await controlPlane.create(definition, python ? { canonicalJobId: policyJobId } : undefined);
+    const job = await controlPlane.create(definition, (python || originMode) ? { canonicalJobId: policyJobId } : undefined);
     expect(job.created).toBe(true);
     const [outbox] = await runtimeDb
       .select()
@@ -514,13 +535,13 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       );
     expect(outbox?.envelopeJson).toMatchObject({
       jobId: job.jobId,
-      contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+      contractVersion,
       businessAttempt: 1,
     });
 
     const registration = {
       jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
-      contractVersions: new Set([CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT]),
+      contractVersions: new Set([contractVersion]),
       executionClass: "long" as const,
       executor: createCloudflareStagingDeploymentExecutor(runtime),
     };
@@ -539,9 +560,12 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     const status = await controlPlane.getStatus(job.jobId, { tenantId });
     expect(status).toMatchObject({ status: "succeeded" });
     expect(JSON.stringify(status?.output)).toContain('"runtimeVerified":true');
-    expect(JSON.stringify(status?.output)).not.toContain(
-      "disposable-cloudflare-token"
-    );
+    expect(JSON.stringify(status?.output)).not.toContain("disposable-cloudflare-token");
+    if (origin) {
+      expect(status?.output).toMatchObject({ configurationRef: origin.configurationRef, configurationDigest: origin.configurationDigest });
+      expect(uploadedMetadata?.bindings).toContainEqual({ name: "AUTH_ORIGIN_ACCESS_CLIENT_SECRET", type: "secret_text", text: "fixture-access-client-secret" });
+      expect(JSON.stringify(status?.output)).not.toContain("fixture-access-client-secret");
+    }
     expect(
       cloudflareRequests.some(url => url.includes("/workers/subdomain"))
     ).toBe(true);
@@ -558,6 +582,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
             "https://smartspec-cloudflare-staging.disposable-account.workers.dev/healthz",
             "https://smartspec-cloudflare-staging.disposable-account.workers.dev/",
             "https://smartspec-cloudflare-staging.disposable-account.workers.dev/assets/app.js",
+            ...(origin ? ["https://smartspec-cloudflare-staging.disposable-account.workers.dev/trpc/auth.me"] : []),
           ].includes(url)
       )
     ).toEqual([]);

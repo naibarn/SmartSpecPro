@@ -98,11 +98,18 @@ export async function getCloudflareOriginConfiguration(db: DrizzleDB, input: {
 export async function withCloudflareOriginConfiguration<T>(db: DrizzleDB, input: {
   identity: DeploymentTargetIdentity; configurationRef: string; configurationDigest: string;
 }, operation: (value: { descriptor: Descriptor; secrets: OriginSecrets }) => Promise<T>): Promise<T> {
+  return withCloudflareOriginConfigurationForTransition(db, { ...input, activeConfigurationRef: input.configurationRef }, operation);
+}
+
+/** Server-only transition callback: an explicit grant must bind both references. */
+export async function withCloudflareOriginConfigurationForTransition<T>(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; configurationRef: string; configurationDigest: string; activeConfigurationRef: string;
+}, operation: (value: { descriptor: Descriptor; secrets: OriginSecrets }) => Promise<T>): Promise<T> {
   const { stored } = await readVersion(db, input.identity, input.configurationRef);
   const target = await resolveProviderDeploymentTarget(db, input.identity);
   if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now() ||
       digest(stored.descriptor) !== input.configurationDigest || target.status !== "CONFIGURED" ||
-      target.target.runtimePolicy !== input.configurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
+      target.target.runtimePolicy !== input.activeConfigurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
       target.target.workerRef !== targetId || target.target.deploymentTargetId !== targetId || target.target.containerApplicationRef) denied();
   return operation({ descriptor: stored.descriptor, secrets: stored.secrets });
 }

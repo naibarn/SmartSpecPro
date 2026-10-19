@@ -310,6 +310,15 @@ class CloudflareStagingPolicyGrantIssue(CloudflareStagingGrantIssue):
     account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
 
 
+class CloudflareStagingOriginPolicyGrantIssue(CloudflareStagingPolicyGrantIssue):
+    schema_version: Literal["cloudflare.staging-origin-grant.v2"] = Field(..., alias="schemaVersion")
+    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=1)
+    configuration_ref: StrictStr = Field(..., alias="configurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
+    configuration_digest: StrictStr = Field(..., alias="configurationDigest", pattern=r"^[a-f0-9]{64}$")
+    rollback_configuration_ref: StrictStr | None = Field(..., alias="rollbackConfigurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
+    rollback_configuration_digest: StrictStr | None = Field(..., alias="rollbackConfigurationDigest", pattern=r"^[a-f0-9]{64}$")
+
+
 @router.post("/cloudflare-staging-policies", status_code=201)
 async def create_cloudflare_staging_policy(
     data: CloudflareStagingPolicyCreate,
@@ -1389,7 +1398,7 @@ async def acknowledge_spec224_external_agent_decision(
 
 @router.post("/cloudflare-staging-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
 async def create_cloudflare_staging_policy_grant(
-    data: CloudflareStagingPolicyGrantIssue, current_user: User = Depends(get_current_user),
+    data: CloudflareStagingPolicyGrantIssue | CloudflareStagingOriginPolicyGrantIssue, current_user: User = Depends(get_current_user),
     tenant_id: str | None = Depends(get_current_tenant_id), db: AsyncSession = Depends(get_db_session),
 ):
     return await create_cloudflare_staging_grant_request(data, current_user, tenant_id, db)
@@ -1430,6 +1439,10 @@ async def create_cloudflare_staging_grant_request(
         "expiresAt": expires_at,
         "revokedAt": None,
     }
+    if isinstance(data, CloudflareStagingOriginPolicyGrantIssue):
+        grant_payload.update({"schemaVersion": data.schema_version, "configurationRef": data.configuration_ref,
+            "configurationDigest": data.configuration_digest, "rollbackConfigurationRef": data.rollback_configuration_ref,
+            "rollbackConfigurationDigest": data.rollback_configuration_digest})
     try:
         return await ApprovalDBService(db).create_cloudflare_staging_grant_request(
             tenant_id=tenant_id,

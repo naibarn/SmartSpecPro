@@ -29,6 +29,8 @@ describe("job transport adapters", () => {
     expect(postgres.supports(input)).toBe(true);
     expect(cloudflare.supports(input)).toBe(false);
     expect(postgres.supports({ ...input, contractVersion: "cloudflare-staging-deploy-v2" })).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: "cloudflare-staging-origin-v2" })).toBe(true);
+    expect(cloudflare.supports({ ...input, contractVersion: "cloudflare-staging-origin-v2" })).toBe(false);
   });
 
   it("rejects unsupported contract versions before publish", () => {

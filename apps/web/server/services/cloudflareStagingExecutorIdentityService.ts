@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT, cloudflareStagingOriginAuthoritySchema, type CloudflareStagingOriginAuthority } from "./cloudflareStagingOriginContract";
 import { eq } from "drizzle-orm";
 
 import { getDb } from "../db";
@@ -51,6 +52,8 @@ export type CloudflareStagingExecutorAttemptBinding = {
   artifactSha256: string;
   action: "deploy" | "rollback" | "bootstrap";
   idempotencyKey: string;
+  /** v2 authority is signed in full; it never follows from executor identity. */
+  originAuthority?: CloudflareStagingOriginAuthority;
 };
 
 /** Canonical bytes the registered Ed25519 executor must sign for each operation. */
@@ -77,6 +80,22 @@ function stableJson(value: unknown): string {
     .sort()
     .map(key => `${JSON.stringify(key)}:${stableJson(record[key])}`)
     .join(",")}}`;
+}
+
+function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
+  let originAuthority: CloudflareStagingOriginAuthority | undefined;
+  if (binding.originAuthority !== undefined) {
+    const parsed = cloudflareStagingOriginAuthoritySchema.safeParse(binding.originAuthority);
+    if (!parsed.success || binding.action === "bootstrap") {
+      throw new CloudflareStagingExecutorIdentityError("executor_attempt_binding_invalid");
+    }
+    originAuthority = parsed.data;
+  }
+  return {
+    jobId: binding.jobId, tenantId: binding.tenantId, target: binding.target,
+    artifactSha256: binding.artifactSha256.toLowerCase(), action: binding.action, idempotencyKey: binding.idempotencyKey,
+    ...(originAuthority ? { contractVersion: CLOUDFLARE_STAGING_ORIGIN_CONTRACT, originAuthority } : {}),
+  };
 }
 
 /**
@@ -138,14 +157,7 @@ export async function createCloudflareStagingExecutorProof(
   const bodySha256 = crypto
     .createHash("sha256")
     .update(
-      stableJson({
-        jobId: binding.jobId,
-        tenantId: binding.tenantId,
-        target: binding.target,
-        artifactSha256: binding.artifactSha256.toLowerCase(),
-        action: binding.action,
-        idempotencyKey: binding.idempotencyKey,
-      })
+      stableJson(attemptBody(binding))
     )
     .digest("hex");
   const fields: ProofFields = {
@@ -307,14 +319,7 @@ export async function verifyCloudflareStagingExecutorProof(
   const expectedBodySha256 = crypto
     .createHash("sha256")
     .update(
-      stableJson({
-        jobId: expectedBinding.jobId,
-        tenantId: expectedBinding.tenantId,
-        target: expectedBinding.target,
-        artifactSha256: expectedBinding.artifactSha256.toLowerCase(),
-        action: expectedBinding.action,
-        idempotencyKey: expectedBinding.idempotencyKey,
-      })
+      stableJson(attemptBody(expectedBinding))
     )
     .digest("hex");
   const executorId =

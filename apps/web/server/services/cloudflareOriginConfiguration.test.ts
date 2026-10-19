@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { saveCloudflareOriginConfiguration, getCloudflareOriginConfiguration,
-  withCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
+  withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 
 const identity = { tenantId: "origin-test", projectId: "origin-project", environment: "staging", provider: "cloudflare" };
 const settings = () => ({ origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
@@ -103,6 +103,22 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: second.configurationRef })).rejects.toThrow("DENIED");
     await db.update(schema.systemSettings).set({ isSensitive: false }).where(eq(schema.systemSettings.key, first.configurationRef));
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: first.configurationRef })).rejects.toThrow("DENIED");
+  });
+
+  it("resolves a retained rollback version only under the exact active transition and rejects revocation", async () => {
+    const old = await saveCloudflareOriginConfiguration(db, { identity, settings: settings(), secrets, actorUserId });
+    const current = await saveCloudflareOriginConfiguration(db, { identity, settings: settings(), secrets: { ...secrets, secret: "fixture-replacement-secret" }, actorUserId });
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: current.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    const scope = { identity, configurationRef: old.configurationRef, configurationDigest: old.configurationDigest, activeConfigurationRef: current.configurationRef };
+    const operation = vi.fn(async value => ({ priorSecret: value.secrets.secret === secrets.secret }));
+    await expect(withCloudflareOriginConfiguration(db, scope, operation)).rejects.toThrow("DENIED");
+    await expect(withCloudflareOriginConfigurationForTransition(db, scope, operation)).resolves.toEqual({ priorSecret: true });
+    for (const change of [{ activeConfigurationRef: old.configurationRef }, { configurationDigest: "0".repeat(64) }, { identity: { ...identity, tenantId: "foreign" } }]) {
+      await expect(withCloudflareOriginConfigurationForTransition(db, { ...scope, ...change }, operation)).rejects.toThrow("DENIED");
+    }
+    await revokeCloudflareOriginConfiguration(db, { identity, configurationRef: old.configurationRef, actorUserId });
+    await expect(withCloudflareOriginConfigurationForTransition(db, scope, operation)).rejects.toThrow("DENIED");
+    expect(operation).toHaveBeenCalledOnce();
   });
 
   it("rejects expired versions and a disabled or rebound target", async () => {

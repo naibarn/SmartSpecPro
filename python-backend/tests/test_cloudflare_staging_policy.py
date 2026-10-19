@@ -138,3 +138,106 @@ def test_approval_response_preserves_canonical_numeric_requester():
     requester = TypeAdapter(ApprovalRequestResponse.model_fields["requester_id"].annotation)
     assert requester.validate_python(17) == 17
     assert requester.validate_python("legacy-id") == "legacy-id"
+
+
+def origin_fixture():
+    from app.services.cloudflare_staging_policy import ORIGIN_CONTRACT, ORIGIN_SCHEMA, ORIGIN_GRANT
+    service, rule, prior, old = service_fixture()
+    config = {"configurationRef": "cf-origin:" + "d" * 64, "configurationDigest": "d" * 64}
+    rollback = {"artifactRef": "sha256:" + "e" * 64, "sourceSha": "f" * 40, "buildDigest": "e" * 64,
+        "configurationRef": None, "configurationDigest": None}
+    policy = rule.conditions["definition"]
+    policy.pop("allowBootstrap")
+    artifacts = policy.pop("artifacts")
+    policy.update({"contractVersion": ORIGIN_CONTRACT, "releases": [{**artifacts[0], **config}, rollback]})
+    rule.conditions = {"schemaVersion": ORIGIN_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}
+    grant = {**old, "schemaVersion": ORIGIN_GRANT, "actions": ["deploy"], **config,
+        "rollbackDeploymentId": str(uuid4()), "rollbackArtifactRef": rollback["artifactRef"],
+        "rollbackSourceSha": rollback["sourceSha"], "rollbackBuildDigest": rollback["buildDigest"],
+        "rollbackConfigurationRef": None, "rollbackConfigurationDigest": None}
+    return service, rule, prior, grant
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_origin_policy_binds_exact_release_pairs_and_current_target():
+    service, rule, _, grant = origin_fixture()
+    assert normalize_cloudflare_staging_grant_payload(grant) == grant
+    decision = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    assert decision["policyVersion"] == _version(rule.conditions["definition"])
+    service._check_cloudflare_policy_bindings.assert_awaited_once_with(grant["tenantId"], grant["projectId"],
+        rule.conditions["definition"], datetime.fromisoformat(grant["expiresAt"]), active_origin_ref=grant["configurationRef"])
+    assert await service.validate_cloudflare_staging_policy_decision(SimpleNamespace(payload=grant,
+        extra_data={"cloudflareStagingPolicyDecisionV1": decision}), datetime.now(timezone.utc))
+    rule.is_active = False
+    assert not await service.validate_cloudflare_staging_policy_decision(SimpleNamespace(payload=grant,
+        extra_data={"cloudflareStagingPolicyDecisionV1": decision}), datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("changes", [
+    {"configurationRef": "cf-origin:" + "a" * 64, "configurationDigest": "a" * 64},
+    {"rollbackConfigurationRef": "cf-origin:" + "d" * 64, "rollbackConfigurationDigest": "d" * 64},
+    {"sourceSha": "9" * 40}, {"actions": ["bootstrap"]},
+])
+async def test_origin_policy_cannot_cross_pair_artifact_and_configuration(changes):
+    service, rule, _, grant = origin_fixture()
+    with pytest.raises((ValueError, PermissionError)):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, {**grant, **changes})
+    service.db.commit.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_legacy_policy_never_authorizes_origin_grant():
+    from app.services.cloudflare_staging_policy import SCHEMA
+    service, rule, _, grant = origin_fixture()
+    rule.conditions = {**rule.conditions, "schemaVersion": SCHEMA}
+    with pytest.raises(PermissionError, match="POLICY_UNAVAILABLE"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("changes", [
+    {"configurationRef": "cf-origin:" + "a" * 64}, {"configurationDigest": None},
+    {"rollbackConfigurationRef": "cf-origin:" + "a" * 64},
+    {"actions": ["deploy", "rollback"]}, {"actions": ["bootstrap"]},
+    {"schemaVersion": "cloudflare.staging-deployment-grant.v1"}, {"rollbackDeploymentId": "foreign"},
+    {"secret": "unexpected-secret"},
+])
+def test_origin_grant_requires_exact_version_and_complete_config_pair(changes):
+    _, _, _, grant = origin_fixture()
+    with pytest.raises(ValueError):
+        normalize_cloudflare_staging_grant_payload({**grant, **changes})
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_policy_binding_rejects_drifted_or_origin_configured_legacy_target():
+    service, rule, _, grant = origin_fixture()
+    for runtime_policy in (None, "cf-origin:" + "f" * 64):
+        service.db.execute.side_effect = None
+        service.db.execute.return_value = SimpleNamespace(mappings=lambda: SimpleNamespace(first=lambda: {"project_id": grant["projectId"], "runtimePolicy": runtime_policy}))
+        with pytest.raises(PermissionError, match="ORIGIN_BINDING_DENIED"):
+            await ApprovalDBService(service.db)._check_cloudflare_policy_bindings(grant["tenantId"], grant["projectId"],
+                rule.conditions["definition"], datetime.fromisoformat(grant["expiresAt"]), active_origin_ref=grant["configurationRef"])
+    with pytest.raises(PermissionError, match="ORIGIN_BINDING_DENIED"):
+        await ApprovalDBService(service.db)._check_cloudflare_policy_bindings(grant["tenantId"], grant["projectId"],
+            definition(), datetime.fromisoformat(grant["expiresAt"]))
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_api_preserves_explicit_origin_contract_and_pairs():
+    from pydantic import TypeAdapter, ValidationError
+    from app.api.approvals import CloudflareStagingPolicyGrantIssue, CloudflareStagingOriginPolicyGrantIssue
+    _, rule, _, grant = origin_fixture()
+    api_fields = {k: v for k, v in grant.items() if k not in {"grantRef", "tenantId", "requesterUserId", "revokedAt"}}
+    api_fields.update({"policyId": rule.id, "idempotencyKey": "origin-policy-fixture"})
+    adapter = TypeAdapter(CloudflareStagingPolicyGrantIssue | CloudflareStagingOriginPolicyGrantIssue)
+    parsed = adapter.validate_python(api_fields)
+    assert isinstance(parsed, CloudflareStagingOriginPolicyGrantIssue)
+    assert parsed.configuration_ref == grant["configurationRef"]
+    with pytest.raises(ValidationError):
+        adapter.validate_python({**api_fields, "configurationDigest": None})

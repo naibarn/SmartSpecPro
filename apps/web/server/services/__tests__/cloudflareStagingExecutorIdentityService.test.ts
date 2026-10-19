@@ -68,8 +68,8 @@ describe("Cloudflare staging executor identity", () => {
     };
   });
 
-  async function signedProof() {
-    return createCloudflareStagingExecutorProof(binding, {
+  async function signedProof(attempt = binding) {
+    return createCloudflareStagingExecutorProof(attempt, {
       resolvePrivateKey: async () => ({
         executorId,
         privateKey: keys.privateKey
@@ -80,6 +80,27 @@ describe("Cloudflare staging executor identity", () => {
       nonce: crypto.randomBytes(24).toString("base64url"),
     });
   }
+
+  it("binds the complete origin transition and rejects downgrade or config/rollback/project drift", async () => {
+    const originAuthority = {
+      projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111", accountRef: "a".repeat(32),
+      configurationRef: `cf-origin:${"b".repeat(64)}`, configurationDigest: "b".repeat(64),
+      rollbackConfigurationRef: null, rollbackConfigurationDigest: null,
+      rollbackDeploymentId: "22222222-2222-4222-8222-222222222222", rollbackArtifactRef: `sha256:${"c".repeat(64)}`,
+      rollbackSourceSha: "d".repeat(40), rollbackBuildDigest: "c".repeat(64),
+    };
+    const attempt = { ...binding, originAuthority };
+    const proof = await signedProof(attempt);
+    for (const expectedBinding of [binding,
+      { ...attempt, originAuthority: { ...originAuthority, projectId: "another-project" } },
+      { ...attempt, originAuthority: { ...originAuthority, accountRef: "f".repeat(32) } },
+      { ...attempt, originAuthority: { ...originAuthority, configurationRef: `cf-origin:${"f".repeat(64)}`, configurationDigest: "f".repeat(64) } },
+      { ...attempt, originAuthority: { ...originAuthority, rollbackDeploymentId: "33333333-3333-4333-8333-333333333333" } },
+    ]) await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding })).rejects.toThrow("executor_proof_invalid");
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: attempt })).resolves.toMatchObject({ registered: true });
+    const legacy = await signedProof();
+    await expect(verifyCloudflareStagingExecutorProof(legacy, { now, expectedBinding: attempt })).rejects.toThrow("executor_proof_invalid");
+  });
 
   it("registers only a bounded, valid Ed25519 identity", () => {
     const registered = validateCloudflareStagingExecutorRegistration(

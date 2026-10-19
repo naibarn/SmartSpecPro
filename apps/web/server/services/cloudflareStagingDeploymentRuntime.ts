@@ -1,3 +1,4 @@
+import { CLOUDFLARE_STAGING_ORIGIN_GRANT, cloudflareStagingOriginGrantSchema } from "./cloudflareStagingOriginContract";
 import { getDb } from "../db";
 import {
   getAppRuntimeConfig,
@@ -44,6 +45,10 @@ type GrantDocument = {
 
 function parseGrant(value: unknown): CloudflareStagingGrant | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if ((value as { schemaVersion?: unknown }).schemaVersion === CLOUDFLARE_STAGING_ORIGIN_GRANT) {
+    const parsed = cloudflareStagingOriginGrantSchema.safeParse(value);
+    return parsed.success ? { ...parsed.data, revoked: false } : null;
+  }
   const grant = value as Partial<GrantDocument>;
   if (
     grant.schemaVersion !== "cloudflare.staging-deployment-grant.v1" ||
@@ -135,6 +140,7 @@ export function createCloudflareStagingDeploymentRuntime(input: {
         artifactSha256: binding.artifactSha256,
         action: binding.action,
         idempotencyKey: binding.idempotencyKey,
+        ...(binding.originAuthority ? { originAuthority: binding.originAuthority } : {}),
       };
       const proof = await createCloudflareStagingExecutorProof(attempt, {
         resolvePrivateKey: input.resolvePrivateKey,
