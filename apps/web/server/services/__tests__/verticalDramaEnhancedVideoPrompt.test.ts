@@ -726,7 +726,7 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(getEnhancedPromptSemanticValidationError({
       ...result,
       prompt: 'พิมพ์ชนก says: “ฉันจะกลับมา”',
-    }, input)).toContain("not bound to speaker มยุรี");
+    }, input)).toContain("not bound to speaker มยุรี (named cue; expected speaker present in dialogue cue=false");
   });
 
   it("accepts compact canonical dialogue events bound by speaker ID", () => {
@@ -757,6 +757,12 @@ describe("vertical drama Enhanced prompt boundary", () => {
     };
 
     expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
+    expect(
+      getEnhancedPromptSemanticValidationError(
+        { ...compact, prompt: 'Line 1 ONLY (wrong-id): "คุณเห็นแฟ้มเอกสารนี้ไหม"' },
+        input,
+      ),
+    ).toContain("compact event; expected speaker token present=false");
   });
 
   it("accepts compact dialogue bound by a unique canonical speaker name", () => {

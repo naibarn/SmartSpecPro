@@ -870,7 +870,18 @@ export function getEnhancedPromptSemanticValidationError(
         if (customIdentity) {
           return `canonical dialogue line ${index + 1} ignores its shot-local identity override`;
         }
-        return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
+        const expectedSpeakerTokens = Array.from(compactSpeakerAliases);
+        const promptLines = prompt.split(/\r?\n/);
+        const compactEventsForLine = promptLines.filter(candidate =>
+          new RegExp(`^\\s*Line ${index + 1} ONLY \\(`).test(candidate),
+        );
+        const containsExpectedSpeaker = expectedSpeakerTokens.some(token =>
+          compactEventsForLine.some(candidate => candidate.includes(token)),
+        );
+        const containsExpectedPosition = compactEventsForLine.some(candidate =>
+          compactPosition ? candidate.includes(compactPosition) : false,
+        );
+        return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker} (compact event; expected speaker token present=${containsExpectedSpeaker}; expected position present=${containsExpectedPosition}; exact text present=${prompt.includes(text)})`;
       }
       continue;
     }
@@ -890,7 +901,13 @@ export function getEnhancedPromptSemanticValidationError(
       "i",
     );
     if (!canonicalSpeech.test(prompt) && !namedSpeech.test(prompt)) {
-      return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
+      const namedCuePattern = new RegExp(
+        `([^\\n]{0,180}${escapeRegExp(text)}[^\\n]{0,180})`,
+        "i",
+      );
+      const cueHasText = namedCuePattern.exec(prompt)?.[1] ?? "";
+      const expectedSpeakerPresent = cueHasText.toLocaleLowerCase().includes(speaker.toLocaleLowerCase());
+      return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker} (named cue; expected speaker present in dialogue cue=${expectedSpeakerPresent}; exact text present=${prompt.includes(text)})`;
     }
   }
   return null;
