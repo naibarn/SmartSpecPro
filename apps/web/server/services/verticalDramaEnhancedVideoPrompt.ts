@@ -17,6 +17,7 @@ import { once } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { VerticalDramaEnhancedRuntimeSettings } from "./verticalDramaEnhancedRuntimeSettings";
+import { prepareEnhancedBridgeRuntime } from "./verticalDramaEnhancedBridgeRuntime";
 
 /** Frame selections replace storyboard identities that can still point at a base look. */
 export function selectEnhancedSpeakerIdentityCandidates(input: {
@@ -99,16 +100,6 @@ export const ENHANCED_ESTIMATED_INPUT_TOKENS = 24_000;
 export const ENHANCED_ESTIMATED_OUTPUT_TOKENS = 6_000;
 
 const SKILL_RELATIVE_PATH = "generic-commercial-video-director";
-
-function resolvedUvExecutable(): string {
-  const home = process.env.HOME?.trim();
-  const candidates = [
-    "/usr/local/bin/uv",
-    "/usr/bin/uv",
-    ...(home ? [resolve(home, ".local/bin/uv"), resolve(home, ".cargo/bin/uv")] : []),
-  ];
-  return candidates.find(candidate => existsSync(candidate)) ?? "uv";
-}
 
 export type EnhancedVideoPromptFlags = { ui: boolean; jobs: boolean; apply: boolean };
 
@@ -207,53 +198,48 @@ export async function probeEnhancedRuntime(): Promise<EnhancedRuntimeProbe> {
   if (runtimeProbeCache && now < runtimeProbeCache.expiresAt) return runtimeProbeCache.value;
   if (runtimeProbePromise) return runtimeProbePromise;
 
-  runtimeProbePromise = new Promise<EnhancedRuntimeProbe>(resolveProbe => {
-    const child = spawn(resolvedUvExecutable(), [
-      "run",
-      "--project",
-      resolvedSkillRoot(),
-      "python",
-      "-m",
-      "smartaihub_video_director.enhanced_bridge",
-      "--health",
-    ], {
-      cwd: process.cwd(),
-      env: {
-        PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-        HOME: process.env.HOME ?? "/tmp",
-        PYTHONUNBUFFERED: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout: Buffer[] = [];
-    const timeout = setTimeout(() => child.kill("SIGTERM"), 15_000);
-    child.stdout.on("data", chunk => stdout.push(Buffer.from(chunk)));
-    child.on("error", () => {
-      clearTimeout(timeout);
-      resolveProbe({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" });
-    });
-    child.on("close", code => {
-      clearTimeout(timeout);
-      if (code !== 0) {
+  runtimeProbePromise = prepareEnhancedBridgeRuntime(resolvedSkillRoot())
+    .then(launch => new Promise<EnhancedRuntimeProbe>(resolveProbe => {
+      const child = spawn(launch.command, [...launch.args, "--health"], {
+        cwd: process.cwd(),
+        env: launch.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const stdout: Buffer[] = [];
+      const timeout = setTimeout(() => {
+        child.kill("SIGKILL");
         resolveProbe({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" });
-        return;
-      }
-      try {
-        const result = JSON.parse(Buffer.concat(stdout).toString("utf8").trim()) as Record<string, unknown>;
-        resolveProbe({
-          bridgeAvailable: result.ok === true,
-          sdkVersion: typeof result.sdkVersion === "string" ? result.sdkVersion : "unknown",
-          adapterVersion: typeof result.adapterVersion === "string" ? result.adapterVersion : "unknown",
-        });
-      } catch {
+      }, 15_000);
+      child.stdout.on("data", chunk => stdout.push(Buffer.from(chunk)));
+      child.stderr.resume();
+      child.on("error", () => {
+        clearTimeout(timeout);
         resolveProbe({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" });
-      }
+      });
+      child.on("close", code => {
+        clearTimeout(timeout);
+        if (code !== 0) {
+          resolveProbe({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" });
+          return;
+        }
+        try {
+          const result = JSON.parse(Buffer.concat(stdout).toString("utf8").trim()) as Record<string, unknown>;
+          resolveProbe({
+            bridgeAvailable: result.ok === true,
+            sdkVersion: typeof result.sdkVersion === "string" ? result.sdkVersion : "unknown",
+            adapterVersion: typeof result.adapterVersion === "string" ? result.adapterVersion : "unknown",
+          });
+        } catch {
+          resolveProbe({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" });
+        }
+      });
+    }))
+    .catch(() => ({ bridgeAvailable: false, sdkVersion: "unknown", adapterVersion: "unknown" }))
+    .then(value => {
+      runtimeProbeCache = { value, expiresAt: Date.now() + (value.bridgeAvailable ? 30_000 : 5_000) };
+      runtimeProbePromise = null;
+      return value;
     });
-  }).then(value => {
-    runtimeProbeCache = { value, expiresAt: Date.now() + 30_000 };
-    runtimeProbePromise = null;
-    return value;
-  });
 
   return runtimeProbePromise;
 }
@@ -902,17 +888,6 @@ export function getEnhancedPromptSemanticValidationError(
   return null;
 }
 
-function bridgeCommand(): [string, string[]] {
-  return [resolvedUvExecutable(), [
-    "run",
-    "--project",
-    resolvedSkillRoot(),
-    "python",
-    "-m",
-    "smartaihub_video_director.enhanced_bridge",
-  ]];
-}
-
 /**
  * JSON-lines bridge to the skill's isolated Python runtime. Only canonical,
  * server-built input is sent. The bridge has no callback into the app and its
@@ -931,15 +906,10 @@ export async function invokeEnhancedVideoDirectorBridge(
       input.videoPromptMaxChars,
     ),
   };
-  const env = options.env ?? {
-    PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-    HOME: process.env.HOME ?? "/tmp",
-    PYTHONUNBUFFERED: "1",
-  };
-  const [command, args] = bridgeCommand();
-  const child = spawn(command, args, {
+  const launch = await prepareEnhancedBridgeRuntime(resolvedSkillRoot());
+  const child = spawn(launch.command, launch.args, {
     cwd: options.cwd,
-    env: { ...env, PYTHONUNBUFFERED: "1" },
+    env: { ...options.env, ...launch.env },
     stdio: ["pipe", "pipe", "pipe"],
   });
   const chunks: Buffer[] = [];

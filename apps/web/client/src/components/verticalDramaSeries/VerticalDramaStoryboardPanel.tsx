@@ -246,8 +246,8 @@ const ENHANCED_READINESS_REASON_LABELS: Record<string, [string, string]> = {
     "Enhanced Prompt Apply is disabled",
   ],
   AGENT_SDK_UNAVAILABLE: [
-    "ไม่พบ OpenAI Agents SDK bridge",
-    "OpenAI Agents SDK bridge is unavailable",
+    "เชื่อมต่อ OpenAI Agents SDK bridge ไม่สำเร็จ",
+    "Could not connect to the OpenAI Agents SDK bridge",
   ],
   AGENT_SDK_VERSION_UNSUPPORTED: [
     "เวอร์ชัน Agents SDK ไม่รองรับ",

@@ -9062,41 +9062,72 @@ function EpisodeWorkspaceShell({
       return;
     }
     let cancelled = false;
-    void Promise.all(
-      enhancedReadinessShotNumbers.map(async shotNumber => {
-        try {
-          const readiness =
-            await utils.verticalDramaEpisodes.getEnhancedVideoPromptReadiness.fetch(
+    let refreshing = false;
+    let retryCount = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    async function refreshReadiness() {
+      if (cancelled || refreshing) return;
+      refreshing = true;
+      let transientFailure = false;
+      await Promise.all(
+        enhancedReadinessShotNumbers.map(async shotNumber => {
+          try {
+            const readiness =
+              await utils.verticalDramaEpisodes.getEnhancedVideoPromptReadiness.fetch(
+                {
+                  seriesId,
+                  episodeId,
+                  shotNumber,
+                  targetVideoModelId: selectedVideoModelId || undefined,
+                }
+              );
+            return [
+              shotNumber,
+              { ready: readiness.ready, reasons: readiness.reasons },
+            ] as const;
+          } catch (error) {
+            transientFailure = true;
+            return [
+              shotNumber,
               {
-                seriesId,
-                episodeId,
-                shotNumber,
-                targetVideoModelId: selectedVideoModelId || undefined,
-              }
-            );
-          return [
-            shotNumber,
-            { ready: readiness.ready, reasons: readiness.reasons },
-          ] as const;
-        } catch (error) {
-          return [
-            shotNumber,
-            {
-              ready: false,
-              reasons: [
-                error instanceof Error
-                  ? error.message
-                  : "Enhanced readiness check failed",
-              ],
-            },
-          ] as const;
+                ready: false,
+                reasons: [
+                  error instanceof Error
+                    ? error.message
+                    : "Enhanced readiness check failed",
+                ],
+              },
+            ] as const;
+          }
+        })
+      ).then(entries => {
+        if (cancelled) return;
+        setEnhancedReadinessByShot(Object.fromEntries(entries));
+        const runtimeUnavailable = entries.some(([, readiness]) =>
+          readiness.reasons.some(reason =>
+            reason === "AGENT_SDK_UNAVAILABLE" || reason === "AGENT_RUNTIME_NOT_READY"
+          )
+        );
+        // A failed probe is cached for five seconds server-side. Recheck after
+        // that window; a temporary failure must not disable Enhanced indefinitely.
+        if ((transientFailure || runtimeUnavailable) && retryCount < 3) {
+          retryCount += 1;
+          retryTimer = setTimeout(() => void refreshReadiness(), 10_000);
         }
-      })
-    ).then(entries => {
-      if (!cancelled) setEnhancedReadinessByShot(Object.fromEntries(entries));
-    });
+      });
+      refreshing = false;
+    }
+    const refreshOnFocus = () => {
+      clearTimeout(retryTimer);
+      retryCount = 0;
+      void refreshReadiness();
+    };
+    void refreshReadiness();
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
+      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [
     enabled,
