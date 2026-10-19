@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7b3e20583067978c00779382bba6eb70ff920109",
+    "expected_canonical_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Resume authenticated Episode 281 production smoke in an owner browser session; then reconcile DB catalog against direct-DDL receipts through the registered migration authority without editing Drizzle history. Continue the existing P0 internal closure work; durable FIFO release queue remains a known release-control gap.",
+    "next_action": "Resume authenticated Episode 281 production smoke in an owner browser session and record its result; then continue P0 internal closure and reconcile DB catalog through the registered migration authority without editing Drizzle history. Durable FIFO release queue and automated migration-authority/catalog reconciliation remain open.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "origin/main 7b3e20583067978c00779382bba6eb70ff920109. Production release generation 9 uses artifact sha256:bae21c27f80c7d3a73ca6dbbc92189d194d45a6b167e299bdd50356ea7daaea4; web and Node worker revisions match. Evidence: specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md. Resume with authenticated Enhanced prompt generation on Episode 281, then inspect service/browser errors. DB remains globally UNKNOWN; no migration was run for this release.",
+    "resume_point": "Production generation 11 is source 0a0d458b57d13b20a8171a974aad51383bbdbee5 with immutable artifact sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44. Bridge probe is healthy at SDK 0.22.2; the speaker cue validator and self-dirtying build staging issue are fixed. Owner browser must hard-refresh Episode 281 and run one Enhanced prompt generation. DB remains globally UNKNOWN; no migration was run.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -120,12 +120,20 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": null,
-    "evidence": [],
-    "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "artifact_digest": "sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44",
+    "environment": "production",
+    "evidence": [
+      {
+        "kind": "VERIFIED_LINUX_PRODUCTION_RELEASE",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md",
+        "scope": "Latest-main semantic speaker validation and Cloudflare staging worktree fix deployed; web and Node worker revisions, health, SDK bridge, and artifact digest verified. Authenticated Episode 281 click-through remains pending.",
+        "source_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+        "status": "PASS"
+      }
+    ],
+    "required": true,
+    "source_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "UNRESOLVED",
@@ -139,7 +147,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 74,
+  "generation": 75,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -255,9 +263,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7b3e20583067978c00779382bba6eb70ff920109",
+    "canonical_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
     "integrated": true,
-    "integrated_at": "2026-10-19T10:33:35+07:00"
+    "integrated_at": "2026-10-19T11:29:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -664,7 +672,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T03:45:23.178631Z",
+  "updated_at": "2026-10-19T04:27:53.383854Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

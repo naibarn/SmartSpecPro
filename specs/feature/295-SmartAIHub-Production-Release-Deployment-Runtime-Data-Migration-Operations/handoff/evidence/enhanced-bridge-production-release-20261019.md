@@ -138,3 +138,51 @@ that a stale worker forces release rollback. The focused release suite passed
   absent. Per earlier evidence, no migration was required by this release and
   no production DB mutation was performed; the global Drizzle ledger remains
   `UNKNOWN` and must be reconciled separately through its registered authority.
+
+## Follow-up: semantic speaker validation and release retry — 2026-10-19
+
+The next authenticated-page screenshot showed the Enhanced button enabled and a
+bridge response reaching the server, but the response was rejected with
+`canonical dialogue line 1 is not bound to speaker มยุรี`. This is a different
+failure from SDK readiness. Code inspection found the semantic validator only
+recognized the narrow `Name; Name says with ...` phrase even though the skill
+contract permits a direct named cue such as `Name says: “...”`. This mismatch
+could reject a correctly attributed canonical line. The validator now accepts
+common explicit named speech verbs when the exact canonical text is quoted in
+the same cue; a regression test confirms that attributing it to another
+character still fails. Focused suite: 49/49 passed.
+
+- Integrated fix: `4613ae0495cd0ca7c19d336eff21fa97f0ec3194`.
+- The first canonical build passed with artifact digest
+  `sha256:b4c10b114572cfe773e31508b7e36409ab937d223e9b42215d730095e9c50021`.
+  The standard release wrapper retried the build and stopped before touching
+  production because the build itself had left
+  `apps/cloudflare/.staging-artifact/` untracked in its canonical checkout.
+  The existing release controller then prepared and promoted that exact,
+  validated build result; no files were deleted and no DB mutation occurred.
+- This self-dirtying build workspace was fixed by ignoring the generated
+  Cloudflare staging directory in `0a0d458b57d13b20a8171a974aad51383bbdbee5`.
+  The next standard `pnpm run release:web:linux` completed build, prepare and
+  promotion without the dirty-worktree failure. The build checkout is clean.
+- Current production source: `0a0d458b57d13b20a8171a974aad51383bbdbee5`.
+- Current immutable release digest:
+  `sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44`.
+- Release id/generation:
+  `smartspec-web-0a0d458b57d13b20a8171a974aad51383bbdbee5-9fe34102cde1`,
+  generation 11. Receipt:
+  `/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/production-deployments/smartspec-web-0a0d458b57d13b20a8171a974aad51383bbdbee5-9fe34102cde1-11.json`.
+- `release:status` confirms canonical/source/frontend/backend/runtime revisions
+  all match `0a0d458b`, `target_matches_release=true`, and
+  `is_current_canonical=true`. Web and worker process working directories match
+  the same immutable release. Release verification returned health 200 and
+  anonymous diagnostics 403. Public `/healthz` and `/login` return 200.
+- Runtime probe reports `bridgeAvailable=true`, SDK `0.22.2`, adapter `1.0.0`;
+  production `@smartspec/remotion-render/render-video-schema` import succeeds.
+- This service-only fix requires no database migration. Database identity and
+  UNKNOWN global Drizzle ledger remain as recorded above; no production DB
+  mutation was made.
+- Authenticated Episode 281 regression after the latest promotion is still
+  pending user confirmation. Owner: user with the authenticated browser.
+  Resume by hard-refreshing Episode 281, clicking Enhanced once and reporting
+  whether the prompt is generated or the exact new error. Do not claim
+  end-to-end completion until this browser action passes.
