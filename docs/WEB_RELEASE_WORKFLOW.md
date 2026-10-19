@@ -10,8 +10,15 @@ pnpm run build:canonical
 
 This fetches the configured canonical ref (`origin/main`), builds its exact tip
 in an isolated workspace, and records the source SHA, artifact digest, and build
-result. It does not publish the artifact, restart a service, or change the
-website.
+result. The Cloudflare staging bundle is also published to the existing private
+shared S3/R2 artifact store when available. This does not deploy a Worker,
+restart a service, or change the website.
+
+Only the server-side artifact publisher loads `apps/web/.env` from the invoking
+repository, so it can read the existing encrypted Admin storage settings. The
+isolated build does not receive that file. Set `SMARTSPEC_ARTIFACT_ENV_FILE` to
+use another trusted server environment file; injected environment values retain
+precedence. Secrets are not copied into the build workspace or artifact.
 
 ## Make the latest build live on smartaihub.app
 

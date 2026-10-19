@@ -794,6 +794,37 @@ def sync_primary_workspace(repo: Path, canonical_ref: str, canonical_tip: str) -
     return {"status": "FAST_FORWARDED", "branch": branch, "head": canonical_tip}
 
 
+def _cloudflare_artifact_publication_process(
+    repo: Path, result_dir: Path, source_sha: str, build_id: str,
+) -> tuple[list[str], dict[str, str]]:
+    """Load the caller's server configuration only in the publisher process.
+
+    Exact-source worktrees intentionally contain no ignored .env files. Keep
+    credentials out of the build and artifact; dotenv reads the trusted caller
+    path inside the server-side publisher and preserves injected environment.
+    """
+    environment = os.environ.copy()
+    environment["SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT"] = str(result_dir.resolve())
+    command = ["pnpm", "--filter", "@smartspec/web", "exec", "tsx"]
+    configured_path = environment.get("SMARTSPEC_ARTIFACT_ENV_FILE") or environment.get("DOTENV_CONFIG_PATH")
+    env_file = Path(configured_path).expanduser() if configured_path else repo / "apps/web/.env"
+    if not env_file.is_absolute():
+        env_file = repo / env_file
+    if configured_path or env_file.is_file():
+        environment["DOTENV_CONFIG_PATH"] = str(env_file.resolve())
+        environment["DOTENV_CONFIG_QUIET"] = "true"
+        # dotenv treats the string "false" as truthy; remove the option so
+        # credentials injected by the runner retain precedence.
+        environment.pop("DOTENV_CONFIG_OVERRIDE", None)
+        command.extend(["--require", "dotenv/config"])
+    command.extend([
+        "scripts/publish-cloudflare-staging-artifact.ts",
+        "--source-sha", source_sha,
+        "--build-id", build_id,
+    ])
+    return command, environment
+
+
 def build_canonical(
     repo: Path,
     *,
@@ -928,14 +959,9 @@ def build_canonical(
         result["result_file"] = str(result_path)
         _write_json_atomic(result_path, result)
         if status == "BUILD_PASSED" and cloudflare_bundle:
-            publish_command = [
-                "pnpm", "--filter", "@smartspec/web", "exec", "tsx",
-                "scripts/publish-cloudflare-staging-artifact.ts",
-                "--source-sha", str(lease["source_revision"]),
-                "--build-id", result_path.stem,
-            ]
-            publisher_environment = os.environ.copy()
-            publisher_environment["SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT"] = str(result_dir.resolve())
+            publish_command, publisher_environment = _cloudflare_artifact_publication_process(
+                repo, result_dir, str(lease["source_revision"]), result_path.stem,
+            )
             try:
                 publication = subprocess.run(
                     publish_command,
@@ -969,6 +995,9 @@ def build_canonical(
                         "status": "PUBLISH_PENDING",
                         "reason": parsed.get("reason") if isinstance(parsed, dict) else "publisher_unavailable",
                     })
+                    diagnostic = parsed.get("diagnosticCode") if isinstance(parsed, dict) else None
+                    if isinstance(diagnostic, str) and re.fullmatch(r"[A-Z][A-Z0-9_]{4,99}", diagnostic):
+                        result["cloudflare_staging_artifact"]["diagnostic_code"] = diagnostic
             except (OSError, subprocess.TimeoutExpired):
                 result["cloudflare_staging_artifact"].update({"status": "PUBLISH_PENDING", "reason": "publisher_unavailable"})
             _write_json_atomic(result_path, result)
