@@ -3,6 +3,8 @@ name: Cloudflare local readiness
 on:
   push:
     paths:
+      - "scripts/development-lifecycle/canonical_source.py"
+      - "scripts/development-lifecycle/test_cloudflare_artifact_environment.py"
       - "python-backend/app/services/cloudflare_staging_policy.py"
       - "python-backend/app/services/approval_db_service.py"
       - "python-backend/app/api/approvals.py"
@@ -22,6 +24,8 @@ on:
       - ".github/workflows/cloudflare-local-readiness.yml"
   pull_request:
     paths:
+      - "scripts/development-lifecycle/canonical_source.py"
+      - "scripts/development-lifecycle/test_cloudflare_artifact_environment.py"
       - "python-backend/app/services/cloudflare_staging_policy.py"
       - "python-backend/app/services/approval_db_service.py"
       - "python-backend/app/api/approvals.py"
@@ -56,6 +60,8 @@ jobs:
           node-version: "22.22.3"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Test isolated artifact publisher configuration discovery
+        run: python3 -m unittest discover -s scripts/development-lifecycle -p test_cloudflare_artifact_environment.py
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Test Express route architecture guard

@@ -35,7 +35,7 @@
     },
     "section-04-provision-release": {
       "status": "in_progress",
-      "next_action": "Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority"
+      "next_action": "Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes."
     }
   },
   "pre_commit": {
@@ -47,12 +47,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 12,
-  "updated_at": "2026-10-19T17:47:44.198163+00:00",
+  "generation": 13,
+  "updated_at": "2026-10-19T17:57:48.129559+00:00",
   "progress": {
     "active_section": "section-04-provision-release",
-    "next_action": "Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority",
-    "merged_main_sha": "6491cb159874579a571f55c271b9b452e41c45b2",
+    "next_action": "Automatic artifact publication is verified PUBLISHED. Continue exact protected-ingress provisioning/release authority and actual auth/tenant/rollback acceptance; no v1/v2 Worker grant authorizes Access/Tunnel/DNS writes.",
+    "merged_main_sha": "f52718457bceca27aefb58d7d729768450932842",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
       "Section 02 live origin/proxy chain not provisioned or accepted",
