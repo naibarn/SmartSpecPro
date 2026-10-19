@@ -42,6 +42,9 @@ async def main():
                 grant["actions"] = ["deploy"]
                 request = await service.create_cloudflare_staging_grant_request(tenant_id=grant["tenantId"], requester_id=grant["requesterUserId"],
                     idempotency_key="disposable-policy-job-1", payload=grant, policy_id=rule.id)
+                from app.api.approvals import ApprovalRequestResponse
+                response = ApprovalRequestResponse.model_validate(request)
+                assert response.requester_id == grant["requesterUserId"]
                 # An exact retry reuses the durable decision and consumes no budget.
                 again = await service.create_cloudflare_staging_grant_request(tenant_id=grant["tenantId"], requester_id=grant["requesterUserId"],
                     idempotency_key="disposable-policy-job-1", payload=grant, policy_id=rule.id)

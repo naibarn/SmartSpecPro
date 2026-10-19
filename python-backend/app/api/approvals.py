@@ -546,7 +546,7 @@ class ApprovalRequestResponse(BaseModel):
     tenant_id: str | None
     project_id: str | None
     execution_id: str | None
-    requester_id: str | None
+    requester_id: int | str | None
     requester_type: str
     status: ApprovalStatus
     payload: dict

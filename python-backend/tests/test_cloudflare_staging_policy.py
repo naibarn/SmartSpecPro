@@ -129,3 +129,12 @@ def test_api_tenant_uses_verified_auth_binding_and_rejects_context_mismatch():
         _cloudflare_authenticated_tenant(user, "tenant-2")
     with pytest.raises(HTTPException):
         _cloudflare_authenticated_tenant(SimpleNamespace(), "tenant-1")
+
+
+@pytest.mark.unit
+def test_approval_response_preserves_canonical_numeric_requester():
+    from app.api.approvals import ApprovalRequestResponse
+    from pydantic import TypeAdapter
+    requester = TypeAdapter(ApprovalRequestResponse.model_fields["requester_id"].annotation)
+    assert requester.validate_python(17) == 17
+    assert requester.validate_python("legacy-id") == "legacy-id"
