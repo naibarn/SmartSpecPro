@@ -86,11 +86,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
+    "expected_canonical_sha": "fd69f5799139aba3e05a0f5053251e17eae78a68",
     "expected_spec_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c"
   },
   "continuation": {
-    "next_action": "Implement transactional PostgreSQL persistence and sandbox-only restart/migration proof for the commercial payment bridge before integrating any task-flow caller. Preserve existing Credits and payment records; keep provider activation disabled. Evidence: handoff/evidence/commercial-payment-bridge-implementation-20261019.md.",
+    "next_action": "Implement a transactional PostgreSQL repository for global spending reservations, provider attempts, usage, settlements, refunds and balanced ledger postings; then run the mock flow against disposable PostgreSQL across process restart. Do not connect live providers or change SPEC-224 acceptance. Evidence: handoff/evidence/commercial-payment-bridge-implementation-20261019.md.",
     "next_ready_workunit": "SPEC-207-WU-PAYMENT-INTEROP-CONTRACT",
     "reactivation_predicate": null,
     "resume_point": "Bridge contract and deterministic E2E checkpoint; remaining: durable PostgreSQL repository, database migration proof and process-restart sandbox acceptance.",
@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 22,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
     "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
@@ -283,7 +283,9 @@
     "title": "Spec 207 — SmartAIHub Agentic Economic Control Plane"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "8062840ce402a74e2015e0651c10d2d4980ba21e"
+    ],
     "mapping": [],
     "source_paths": [
       "apps/web/shared/commercialPaymentContracts.ts",
@@ -295,13 +297,13 @@
       "apps/web/server/__tests__/commercialPaymentBridgeMigration.test.ts"
     ],
     "started": true,
-    "status": "PARTIAL_IN_PROGRESS"
+    "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
+    "canonical_sha": "fd69f5799139aba3e05a0f5053251e17eae78a68",
     "integrated": true,
-    "integrated_at": "2026-10-19T00:06:03Z"
+    "integrated_at": "2026-10-19T00:40:11Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -541,7 +543,7 @@
     "unresolved": 537
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T00:31:41.260127Z",
+  "updated_at": "2026-10-19T00:42:01.998553Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
