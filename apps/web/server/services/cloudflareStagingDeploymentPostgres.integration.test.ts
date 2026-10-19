@@ -191,7 +191,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       "export default { fetch() { return new Response('ok') } };"
     );
     const assetBytes = new TextEncoder().encode(
-      "<!doctype html><title>disposable</title>"
+      '<!doctype html><title>disposable</title><div id="root"></div><script src="/assets/app.js"></script>'
     );
     const files = [
       ["modules/index.js", moduleBytes],
@@ -274,6 +274,8 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       if (!url.startsWith("https://api.cloudflare.com/client/v4/")) {
         if (url.endsWith("/healthz"))
           return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
+        if (url.endsWith("/assets/app.js")) return new Response("export default {}", { headers: { "Content-Type": "application/javascript" } });
+        if (url.endsWith(".workers.dev/")) return new Response(assetBytes, { headers: { "Content-Type": "text/html" } });
         throw new Error("unexpected test transport URL");
       }
       const result = url.endsWith("/assets-upload-session")
@@ -552,7 +554,11 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
           !url.endsWith(
             "/accounts/0123456789abcdef0123456789abcdef/workers/subdomain"
           ) &&
-          !url.endsWith("/healthz")
+          ![
+            "https://smartspec-cloudflare-staging.disposable-account.workers.dev/healthz",
+            "https://smartspec-cloudflare-staging.disposable-account.workers.dev/",
+            "https://smartspec-cloudflare-staging.disposable-account.workers.dev/assets/app.js",
+          ].includes(url)
       )
     ).toEqual([]);
   }, 30_000);

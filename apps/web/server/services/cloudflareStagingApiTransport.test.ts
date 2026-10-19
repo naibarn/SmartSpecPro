@@ -16,7 +16,7 @@ const target: CloudflareStagingTarget = {
 };
 const sourceSha = "a".repeat(40);
 const bytes = new TextEncoder().encode("export default { fetch() { return new Response('ok') } }");
-const assetBytes = new TextEncoder().encode("<!doctype html><div id=\"root\"></div>");
+const assetBytes = new TextEncoder().encode('<!doctype html><div id="root"></div><script type="module" src="/assets/app.js"></script>');
 
 function digest(bundle: Omit<CloudflareStagingBundle, "buildDigest">) {
   const files = [
@@ -32,7 +32,10 @@ const bundleBase = {
   mainModule: "index.js",
   compatibilityDate: "2026-10-17",
   moduleFiles: { "index.js": { contentType: "application/javascript", bytes } },
-  assets: { "index.html": { contentType: "text/html", bytes: assetBytes } },
+  assets: {
+    "index.html": { contentType: "application/octet-stream", bytes: assetBytes },
+    "_headers": { contentType: "application/octet-stream", bytes: new TextEncoder().encode("/\n  Cache-Control: no-cache\n") },
+  },
 };
 const buildDigest = digest(bundleBase);
 const bundle: CloudflareStagingBundle = { ...bundleBase, buildDigest };
@@ -81,11 +84,14 @@ describe("Cloudflare staging API transport", () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
       const url = String(input);
       requests.push({ url, init });
-      if (url.endsWith("/assets-upload-session")) return json({ jwt: "upload-session-jwt", buckets: [[createHash("md5").update(assetBytes).digest("hex")]] });
+      if (url.endsWith("/assets-upload-session")) {
+        expect(JSON.parse(String(init.body)).manifest).not.toHaveProperty("/_headers");
+        return json({ jwt: "upload-session-jwt", buckets: [[createHash("md5").update("smartaihub-http-metadata-v1\0").update("text/html; charset=utf-8").update("\0").update(assetBytes).digest("hex")]] });
+      }
       if (url.includes("/workers/assets/upload?base64=true")) {
         expect(new Headers(init.headers).get("authorization")).toBe("Bearer upload-session-jwt");
-        const uploaded = (init.body as FormData).get(createHash("md5").update(assetBytes).digest("hex")) as File;
-        expect(uploaded.type).toBe("text/html");
+        const uploaded = (init.body as FormData).get(createHash("md5").update("smartaihub-http-metadata-v1\0").update("text/html; charset=utf-8").update("\0").update(assetBytes).digest("hex")) as File;
+        expect(uploaded.type).toBe("text/html; charset=utf-8");
         expect(await uploaded.text()).toBe(Buffer.from(assetBytes).toString("base64"));
         return json({ jwt: "completion-jwt" }, 201);
       }
@@ -95,6 +101,7 @@ describe("Cloudflare staging API transport", () => {
         expect(metadata.main_module).toBe("index.js");
         expect((form.get("index.js") as File).type).toBe("application/javascript+module");
         expect(metadata.assets.jwt).toBe("completion-jwt");
+        expect(metadata.assets.config._headers).toContain("Cache-Control: no-cache");
         expect(metadata.bindings).toEqual([
           { name: "ASSETS", type: "assets" },
           { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
@@ -117,6 +124,8 @@ describe("Cloudflare staging API transport", () => {
         "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
       } });
       if (url === "https://smartspec-cloudflare-staging.account-test.workers.dev/healthz") return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
+      if (url === "https://smartspec-cloudflare-staging.account-test.workers.dev/") return new Response(assetBytes, { headers: { "Content-Type": "text/html" } });
+      if (url === "https://smartspec-cloudflare-staging.account-test.workers.dev/assets/app.js") return new Response("export default {}", { headers: { "Content-Type": "application/javascript" } });
       throw new Error(`Unexpected request ${url}`);
     }) as typeof fetch;
 
@@ -284,6 +293,21 @@ describe("Cloudflare staging API transport", () => {
       .rejects.toThrow("LEASE_EXPIRED_DURING_ARTIFACT_READ");
     expect(assertMutationAuthorized).toHaveBeenCalledOnce();
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("does not accept a healthy Worker whose SPA is served as a binary download", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
+      if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: { "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}` } });
+      if (url.endsWith("/deployments")) return json({ deployments: [{ id: deploymentId }] });
+      if (url.endsWith("/healthz")) return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
+      return new Response(assetBytes, { headers: { "Content-Type": "application/octet-stream" } });
+    }) as typeof fetch;
+    const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
+    expect(await transport.verifyRuntime({ token: "private", target, deploymentId, sourceSha, buildDigest,
+      url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).toMatchObject({ reachable: false });
   });
 
 });

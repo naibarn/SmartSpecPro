@@ -1,4 +1,5 @@
 import { lstat, readFile, realpath } from "node:fs/promises";
+import { cloudflareStagingAssetContentType } from "../server/services/cloudflareStagingAssetMetadata";
 import { resolve, relative, sep } from "node:path";
 import {
   assertSharedImmutableStorageActive,
@@ -28,11 +29,6 @@ function assertInside(path: string, root: string) {
   if (!relation || relation === ".." || relation.startsWith(`..${sep}`)) throw new Error("ARTIFACT_PATH_DENIED");
 }
 
-function contentType(value: unknown) {
-  return typeof value === "string" && /^[\w!#$&^_.+-]+\/[\w!#$&^_.+-]+(?:;[\w=.+-]+)*$/.test(value)
-    ? value
-    : "application/octet-stream";
-}
 
 async function main() {
   const sourceSha = argument("--source-sha") ?? "";
@@ -99,7 +95,7 @@ async function main() {
       }
       const bytes = await readFile(resolvedPath);
       if (bytes.byteLength !== entry.size) throw new Error("ARTIFACT_FILE_SIZE_MISMATCH");
-      destination[name] = { contentType: contentType(entry.contentType), bytes };
+      destination[name] = { contentType: cloudflareStagingAssetContentType(name, entry.contentType), bytes };
     }
   }
   await loadFiles(manifest.moduleFiles, moduleRoot, modules);

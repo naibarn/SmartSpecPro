@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
+import { cloudflareStagingAssetContentType } from "./cloudflareStagingAssetMetadata";
 import type {
   CloudflareStagingApi,
   CloudflareStagingArtifact,
@@ -90,19 +91,10 @@ function safeAssetPath(value: string) {
     !value.includes("\\") && value.split("/").every(part => part && part !== "." && part !== "..");
 }
 
-function cloudflareAssetHash(bytes: Uint8Array) {
-  return createHash("md5").update(bytes).digest("hex");
-}
-
-function contentTypeForAsset(name: string, contentType: string) {
-  if (/^[\w!#$&^_.+-]+\/[\w!#$&^_.+-]+(?:;[\w=.+-]+)*$/.test(contentType)) return contentType;
-  const extension = name.split(".").pop()?.toLowerCase();
-  if (extension === "html") return "text/html; charset=utf-8";
-  if (extension === "css") return "text/css; charset=utf-8";
-  if (extension === "js" || extension === "mjs") return "application/javascript";
-  if (extension === "json") return "application/json";
-  if (extension === "svg") return "image/svg+xml";
-  return "application/octet-stream";
+function cloudflareAssetHash(bytes: Uint8Array, contentType: string) {
+  // Cloudflare caches asset metadata by hash. Include MIME type so a repaired
+  // upload cannot reuse an older object with application/octet-stream metadata.
+  return createHash("md5").update("smartaihub-http-metadata-v1\0").update(contentType).update("\0").update(bytes).digest("hex");
 }
 
 function base64(bytes: Uint8Array) {
@@ -159,9 +151,11 @@ export function createCloudflareStagingApiTransport(input: {
       if (!safeAssetPath(name) || file.bytes.byteLength > 25 * 1024 * 1024) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ASSET_INVALID");
       }
-      const hash = cloudflareAssetHash(file.bytes);
+      if (["_headers", "_redirects", ".assetsignore"].includes(name)) continue;
+      const contentType = cloudflareStagingAssetContentType(name, file.contentType);
+      const hash = cloudflareAssetHash(file.bytes, contentType);
       manifest[`/${name}`] = { hash, size: file.bytes.byteLength };
-      assetsByHash.set(hash, { name, bytes: file.bytes, contentType: contentTypeForAsset(name, file.contentType) });
+      assetsByHash.set(hash, { name, bytes: file.bytes, contentType });
     }
     if (Object.keys(manifest).length === 0) return undefined;
 
@@ -231,6 +225,8 @@ export function createCloudflareStagingApiTransport(input: {
       assets: completionJwt ? {
         jwt: completionJwt,
         config: {
+          ...(bundle.assets["_headers"] ? { _headers: new TextDecoder().decode(bundle.assets["_headers"].bytes) } : {}),
+          ...(bundle.assets["_redirects"] ? { _redirects: new TextDecoder().decode(bundle.assets["_redirects"].bytes) } : {}),
           not_found_handling: "single-page-application",
           run_worker_first: [
             "/api", "/api/*", "/v1", "/v1/*", "/trpc", "/trpc/*", "/auth", "/auth/*",
@@ -437,8 +433,26 @@ export function createCloudflareStagingApiTransport(input: {
         } catch { /* Bounded retry for initial endpoint propagation. */ }
         if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 2000));
       }
+      let spaReady = false;
+      if (healthy) {
+        try {
+          const page = await fetchImpl(baseUrl, { redirect: "manual", signal: AbortSignal.timeout(10000) });
+          if (page.status === 200 && page.headers.get("content-type")?.startsWith("text/html")) {
+            const html = await page.text();
+            const script = /<script[^>]+src=["'](\/assets\/[^"']+\.js)["']/i.exec(html)?.[1];
+            if (html.includes('id="root"') && script && !script.includes("..") && !script.includes("\\")) {
+              const javascript = await fetchImpl(new URL(script, baseUrl), { redirect: "manual", signal: AbortSignal.timeout(10000) });
+              spaReady = javascript.status === 200 && /(?:javascript|ecmascript)/i.test(javascript.headers.get("content-type") ?? "");
+              await javascript.body?.cancel();
+            }
+          }
+        } catch { /* An inaccessible or download-only SPA is not accepted. */ }
+        const after = await api<{ deployments?: Deployment[] }>(token,
+          `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
+        if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
+      }
       return {
-        reachable: healthy,
+        reachable: healthy && spaReady,
         deploymentId,
         sourceSha,
         buildDigest,
