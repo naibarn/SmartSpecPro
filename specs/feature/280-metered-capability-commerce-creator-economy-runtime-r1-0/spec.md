@@ -3,8 +3,8 @@
 
 **Status:** Proposed / Additive implementation-ready specification  
 **Spec ID:** 280  
-**Revision:** 1.2 — additive SPEC-303 asset/party and infrastructure economics boundary
-**Date:** 2026-10-04  
+**Revision:** 1.3 — provider-neutral Agentic Commerce and payment boundary
+**Date:** 2026-10-19
 **Target repository path:** `specs/feature/280-metered-capability-commerce-creator-economy-runtime/spec.md`  
 **Primary owner:** SmartAIHub Capability Commerce / Marketplace Settlement Runtime  
 **Canonical development orchestrator:** Spec 224 (unchanged)  
@@ -13,7 +13,7 @@
 **Canonical assistant layer:** Spec 269  
 **Canonical command ingress:** Spec 279  
 **Canonical durable execution:** `worker_jobs` + Spec 278  
-**Canonical credit/payment/ledger authority:** existing SmartAIHub billing/credit/wallet/ledger infrastructure; this Spec MUST integrate rather than duplicate  
+**Canonical authority:** Spec 280 owns usage metering, pricing, task/service billing and revenue sharing; Spec 207 owns wallet, budget, spending authorization, ledger, settlement and reconciliation. This Spec MUST integrate rather than duplicate financial authority.
 **Core business principle:** BYO-LLM + rent SmartAIHub capabilities + build/publish/earn  
 **Implementation rule:** ADDITIVE ONLY. Existing implemented Spec 224/256 behavior MUST remain valid.
 
@@ -2003,6 +2003,145 @@ A circuit breaker SHOULD avoid unnecessarily killing already-safe non-commercial
 43. BYO provider expense is not misrepresented as SmartAIHub revenue.
 44. Paid provider fallback requires preauthorization or approval.
 45. Emergency commercial circuit breakers can stop new spend without creating a second job authority.
+
+# 54. Revision 1.3 Addendum — Provider-Neutral Agentic Commerce Boundary
+
+This addendum assigns commercial semantics to Spec 280 and financial authority
+to Spec 207. It does not authorize a production payment rollout.
+
+## 54.1 Ownership and boundary
+
+Spec 280 owns usage-meter definitions and receipts, price books and quote
+calculation for metered services, billable-task/service decisions, commercial
+contract snapshots, revenue-sharing policy and beneficiary/allocation
+calculation. Spec 207 owns payer/funding-source selection, spending
+authorization, task budget reservation, payment attempts, overdraft/credit
+exposure, canonical ledger postings, capture/refund/reversal, settlement and
+reconciliation. Spec 207 MUST post the immutable allocation supplied by Spec
+280 without recomputing its pricing or revenue split. A Spec 280 projection or
+dashboard MUST NOT become a balance or payment-finality authority.
+
+Spec 206's `billing-budget/v1` may carry a negotiated task budget envelope and
+payment capability metadata. It does not authorize/capture funds, implement a
+payment protocol or own a financial ledger. A2A transport and payment protocol
+are independently negotiated.
+
+## 54.2 Provider-neutral payment interface
+
+Every paid invocation MAY use prepaid SmartAIHub Credits, direct fiat
+pay-as-you-go, an approved postpaid account, or a supported agentic payment
+protocol. Credit top-up remains available and behaviorally compatible; it is
+not a prerequisite for PAYG. Protocol names, PSPs, acquiring banks, wallet
+vendors, currencies and settlement rails are adapter configuration and MUST
+NOT be embedded in capability identity, price policy or revenue policy.
+
+The integration contract is a versioned `CommercialPaymentRequest` and
+`CommercialPaymentReceipt` exchanged with Spec 207. It carries stable
+invocation/task identifiers, payer and tenant references derived by the server,
+the immutable commercial snapshot and policy versions, maximum amount/currency,
+funding mode, budget/reservation reference, usage receipt references,
+idempotency scope, expiry and normalized outcome/finality. Credentials are
+opaque server-side references and never enter a Skill, agent prompt, Runner,
+worker payload or client-visible receipt.
+
+Payment adapters are separated into: (a) payment-protocol adapters that
+negotiate/verify an agent-to-service payment exchange; (b) fiat
+funding/payment-provider adapters for card, bank or local payment methods; and
+(c) settlement-rail adapters. They normalize quote, authorization/reservation,
+capture, release, refund, status lookup and provider observations into Spec
+207's versioned contract. Unsupported or unknown provider states fail closed
+into reconciliation; the service does not assume protocol equivalence or
+provider finality.
+
+## 54.3 Task reservation, usage settlement and controlled overdraft
+
+Before effectful execution, Spec 280 supplies the immutable price version and
+bounded maximum exposure for the task. Spec 207 atomically reserves that amount
+against the applicable payer, task, tenant and period caps before execution is
+admitted. Concurrent reservations use a tenant/payer-scoped serializable
+transaction or compare-and-swap/version fence so their combined exposure
+cannot exceed the authorized balance/limit. Reusing an idempotency key with a
+different immutable request hash is rejected.
+
+Usage is reported as append-only, deduplicated meter receipts with unit,
+quantity, source job/attempt, sequence, event time and evidence reference.
+Settlement uses the price snapshot captured at admission, charges only
+contractually billable usage, releases unused reserve and posts corrections as
+new adjustments. It MUST NOT rewrite prior usage or settlement facts.
+
+At a task checkpoint, the existing durable job authority records the
+checkpoint and Spec 207 reconciles usage/reserve. Resume reuses the same
+invocation, commercial snapshot and idempotency scope; before further effects,
+the system obtains any required incremental reserve. If reserve cannot be
+extended, the job pauses at a safe checkpoint or terminates under its existing
+job policy. It MUST NOT replay completed billable effects or silently exceed
+the cap.
+
+Controlled overdraft is an explicitly approved, bounded postpaid facility, not
+an implicit negative balance. Its default is disabled and limit zero. The
+authority records payer/tenant, currency, limit, effective period, expiry,
+eligible capabilities, per-task cap, aggregate outstanding exposure, risk
+hold and approval/audit reference. Available exposure subtracts unpaid
+receivables, active reservations and risk holds under concurrency control.
+Admission fails closed when any limit is reached or the facility is expired,
+suspended or disputed. Spec 207's postpaid account/receivable rules remain
+authoritative; Spec 280 only supplies commercial amount and eligible usage.
+
+## 54.4 Failure, refund and reconciliation behavior
+
+A provider timeout after possible authorization or capture produces an unknown
+outcome. The system queries/reconciles the original provider reference and MUST
+NOT retry the charge through another provider/route until failure is
+established. Safe retries reuse the same idempotency key and request hash. Only
+confirmed unused authorization is released. Refunds are new idempotent
+operations linked to the original settlement; partial refunds reverse the
+corresponding allocation under the captured policy version. Disputes and
+chargebacks remain distinct from refunds. Webhook, polling and statement
+observations are deduplicated before financial posting.
+
+## 54.5 Compatibility, migration and compliance constraints
+
+The existing Credit Wallet and top-up/payment methods remain an enabled
+compatibility rail. PAYG is additive and cannot change historical credit
+transaction meaning or balances. Implementation MUST first map existing
+credit reservations, invoices/payment attempts, provider references, usage
+records and job settlement references to the versioned contract; it MUST NOT
+pretend the current credit transaction table is a complete double-entry
+ledger. Schema work requires an additive migration, explicit backfill and
+reconciliation plan, dual-read/shadow validation, bounded canary and rollback
+that leaves existing Credits usable. This documentation revision authorizes no
+schema or data migration.
+
+Provider onboarding MUST determine applicable licensing, consumer disclosure,
+KYC/AML/sanctions, tax, privacy/data residency, chargeback, PCI scope and
+record-retention requirements for each jurisdiction and payment method. Use
+tokenized/opaque provider references; never store raw card credentials, private
+keys or wallet seeds in SmartAIHub application records. Unknown legal or
+provider obligations block activation of that route, not the existing Credits
+rail.
+
+## 54.6 Acceptance criteria
+
+1. A paid task can select Credits, eligible fiat PAYG or an explicitly
+   supported agentic protocol through the same versioned Spec 207 boundary.
+2. PAYG works without preloading SmartAIHub Credits; the existing top-up path
+   remains selectable and unchanged for existing accounts.
+3. Concurrent tasks cannot reserve beyond balance, per-task cap, tenant cap,
+   period cap or approved overdraft limit.
+4. Price, revenue allocation, payer authorization and ledger posting each have
+   one explicit owner and immutable version/reference.
+5. Duplicate meter receipts, settlement requests, webhooks and retries create
+   no duplicate usage charge, allocation or refund.
+6. Unknown provider outcomes are reconciled before another provider is tried;
+   checkpoint resume reuses the same invocation without duplicate billable
+   effects.
+7. Partial failure charges only the captured policy's billable usage and
+   releases unused reserve; refunds/chargebacks remain separately auditable.
+8. Spec 224 consumes only an optional typed economic interface; no lifecycle,
+   Live Acceptance, Runner, verification or scheduling requirement is added to
+   Spec 224.
+9. Migration and compliance gates above are evidenced before route activation.
+   Documentation-only changes do not enable live payment.
 
 ---
 

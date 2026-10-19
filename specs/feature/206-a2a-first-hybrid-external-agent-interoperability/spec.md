@@ -2,8 +2,8 @@
 
 **Status:** Proposed / Ready for implementation planning
 **Spec ID:** 206
-**Revision:** 9 — provider A2A support research, capability inventory and deterministic route-selection repair
-**Date:** 2026-09-18
+**Revision:** 10 — provider A2A inventory and payment/budget ownership clarification
+**Date:** 2026-10-19
 **Audit status:** Revisions 2–6 are retained historical protocol audits. Revision 7 recorded the first repository/codebase convergence audit; Revision 8 recorded a fresh fourteen-round re-audit. Revision 9 adds an evidence-backed provider inventory, separates A2A discovery from MCP/native support, and makes activation/fallback rules explicit.
 **Suggested repository path:** `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md`
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, LangGraph Orchestrator, Capability Registry / Resolver, Spec 199 External MCP Gateway, Spec 200 Universal External Agent Control Plane, SmartAIHub Runner, SmartAIHub Worker App, Unified Job Control Plane, Retrieval Broker, Asset / Library Gateway, Approval Service, Audit / Observability
@@ -119,7 +119,7 @@ This section is normative.
 | Approval | shared Approval Service |
 | Audit / trace / provenance | shared platform |
 | Asset / Library | shared platform |
-| Billing / credits / revenue share | shared platform |
+| Billing, task budget, payment and revenue sharing | Spec 280 owns usage/pricing/task billing/allocation; Spec 207 owns financial authorization/ledger/settlement; Spec 206 transports budget metadata only |
 | Secrets / credentials | shared platform |
 
 ## 2.2 Spec 206 does not replace Spec 200
@@ -1285,7 +1285,8 @@ May communicate execution budget envelopes where both sides explicitly support i
 
 It SHALL NOT be trusted as the billing source of truth.
 
-SmartAIHub's billing ledger remains authoritative.
+It SHALL NOT be trusted as billing source of truth; Spec 280 owns metering, pricing and revenue-sharing semantics.
+Spec 207's ledger remains the sole financial source; this extension transports budget intent and does not authorize or execute payment.
 
 ## 19.4 provenance/v1
 

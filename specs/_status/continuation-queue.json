@@ -269,21 +269,6 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 2,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/207-agentic-economic-control-plane",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/207-agentic-economic-control-plane",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 1,
-        "TEST": 0
-      },
-      "spec_id": "207"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
       "declared_claim_count": 13,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture",
@@ -735,7 +720,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
+      "next_action": "Construct deterministic, explicitly synthetic development controls for ACL, stale, revoked/deleted, no-answer, follow-up, multi-hop, and OCR/long-document classes where test-only semantics are honest. Ensure data provenance, content digest, revision pair, ACL ownership, and expected visibility are explicit. Independently review and adjudicate without human labels unless actually human-reviewed. No threshold changes or release approval.",
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "priority": "R3_RELATIONSHIP_CLAIM",
       "record_key": "canonical:specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
@@ -2970,6 +2955,21 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/207-agentic-economic-control-plane",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/207-agentic-economic-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "207"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
       "next_action": "Continue W2 now: wire the app Runner-owned Moli process to the merged non-production isolation boundary and test cancellation/cleanup. W3 waits for an explicitly approved disposable worker_jobs database and Runner authorization target. W4 fixed dependency candidates are identified; reproducible rebuild, publisher provenance, deployed-target inventory, and notices review remain open.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "priority": "R4_STATUS_CLAIM",
@@ -4923,7 +4923,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "priority": "P1",
-      "rationale": "P229.8 corrected cohort implementation is integrated at c9dd724407942047d41b79f087c979538f2ae217 and exact-SHA focused tests pass. Profile A baseline fails quality thresholds. Continue Profiles B-H and the remaining two latency profiles when authorized non-production provider resources and secure credentials are available; otherwise keep them NOT_EVALUABLE and do not certify the gate.",
+      "rationale": "Construct deterministic, explicitly synthetic development controls for ACL, stale, revoked/deleted, no-answer, follow-up, multi-hop, and OCR/long-document classes where test-only semantics are honest. Ensure data provenance, content digest, revision pair, ACL ownership, and expected visibility are explicit. Independently review and adjudicate without human labels unless actually human-reviewed. No threshold changes or release approval.",
       "record_key": "canonical:specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
       "spec_id": "229"
     },

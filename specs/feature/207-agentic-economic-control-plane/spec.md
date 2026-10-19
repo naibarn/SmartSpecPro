@@ -1,7 +1,7 @@
 # Spec 207 — SmartAIHub Agentic Economic Control Plane
 ## Multi-Wallet Portfolio, Agentic Payments, Policy Routing, Financial Calendar, Settlement & Revenue Infrastructure
 
-**Status:** Draft for implementation — Revision R4 plus 207–210 repository convergence audit completed 2026-09-19  
+**Status:** Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19
 **Target:** Q4 2026 foundation → production maturity throughout 2027  
 **Spec ID:** 207  
 **Suggested path:** `specs/feature/207-agentic-economic-control-plane/spec.md`  
@@ -1652,7 +1652,7 @@ Example event types:
 
 # 39. Revenue Sharing
 
-Revenue sharing SHALL be computed from ledgered economic events.
+Spec 280 calculates commercial allocations; Spec 207 records them through its canonical ledger.
 
 Canonical stages:
 
@@ -1683,6 +1683,7 @@ Supported recipients MAY include:
 Revenue policy SHALL be versioned.
 
 Historical transactions SHALL retain the revenue-sharing rules active at execution time.
+
 
 ---
 

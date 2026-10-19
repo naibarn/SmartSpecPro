@@ -2,11 +2,11 @@
 # 206 — Spec 206 — SmartAIHub A2A-First Hybrid External Agent Interoperability Layer
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 602 unresolved of 602
+- Requirements: 0 pass / 603 unresolved of 603
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Manifest generation: 13
 
 ## Source-declared status and relationship claims
 
