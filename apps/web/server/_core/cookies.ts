@@ -33,6 +33,10 @@ export function getSessionCookieOptions(
   const shouldSetDomain =
     hostname &&
     !LOCAL_HOSTS.has(hostname) &&
+    // workers.dev is a public suffix; scope each staging/preview session to
+    // its exact hostname instead of issuing a cookie the browser will reject.
+    hostname !== "workers.dev" &&
+    !hostname.endsWith(".workers.dev") &&
     !isIpAddress(hostname) &&
     hostname !== "127.0.0.1" &&
     hostname !== "::1";

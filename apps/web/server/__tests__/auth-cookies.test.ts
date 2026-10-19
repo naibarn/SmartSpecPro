@@ -26,6 +26,27 @@ describe("Cookie Configuration", () => {
     expect(options.domain).toBe(".smartaihub.app");
   });
 
+  it.each([
+    "smartspec-cloudflare-staging.smartaihub-f3fb0b68.workers.dev",
+    "preview-smartspec-cloudflare-staging.smartaihub-f3fb0b68.workers.dev",
+  ])("keeps the session host-only on Cloudflare hostname %s", hostname => {
+    const options = getSessionCookieOptions(mockRequest({ hostname }));
+
+    // workers.dev is a public suffix: browsers reject Domain=.workers.dev.
+    expect(options.domain).toBeUndefined();
+    expect(options.httpOnly).toBe(true);
+    expect(options.secure).toBe(true);
+    expect(options.path).toBe("/");
+  });
+
+  it("does not treat a hostname containing workers.dev as a Worker hostname", () => {
+    const options = getSessionCookieOptions(
+      mockRequest({ hostname: "workers.dev.smartaihub.app" })
+    );
+
+    expect(options.domain).toBe(".smartaihub.app");
+  });
+
   it("should set httpOnly to true", () => {
     const req = mockRequest();
     const options = getSessionCookieOptions(req);

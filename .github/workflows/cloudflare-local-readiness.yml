@@ -127,6 +127,8 @@ jobs:
           test "$(curl -sSI http://127.0.0.1:8800/ | awk 'tolower($1) == "cache-control:" { gsub("\r", ""); print tolower($0) }' | grep -c 'no-cache')" -ge 1
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
+      - name: Verify session cookies on staging and production hostnames
+        run: pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts
       - name: Run web adapter contract tests
         run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingAssetMetadata.test.ts server/services/cloudflareStagingDeploymentExecutor.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/__tests__/workerJobMonitorService.test.ts server/services/__tests__/cloudflareStagingExecutorIdentityService.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts client/src/components/admin/AdminDeploymentTargets.test.tsx scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Install PostgreSQL for disposable control-plane integration test
