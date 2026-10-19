@@ -26,9 +26,10 @@ Equivalent compatibility commands are `npm run build:deploy` and
 2. Prepare an immutable frontend/backend artifact and verify its manifest and
    revision compatibility.
 3. Ask `sudo` to authorize promotion of that exact artifact.
-4. Atomically switch the versioned release for `smartspec-web.service`, restart
-   that service, and run readiness checks.
-5. Roll back the service pointer and restart the prior release if activation or
+4. Atomically switch the versioned release, restart `smartspec-web.service` and
+   `smartspec-node-worker.service` against that same artifact, and verify both
+   processes report the promoted revision. The worker heartbeat must be fresh.
+5. Roll back the service pointer and both service configurations if activation or
    readiness fails.
 
 Only a verified promotion is reported as successful. A successful build alone
@@ -101,7 +102,11 @@ passed.
 
 Do not use a raw `systemctl restart` to publish a build. Restarting an old
 working directory does not promote the new artifact. The release command
-switches the versioned runtime first and restarts only `smartspec-web.service`.
+switches the versioned runtime first and restarts the web service and its
+PostgreSQL Node job worker together. The worker runs from the release artifact
+root, not the source checkout's `apps/web` directory. A successful release
+receipt includes both process revisions and working directories; a stale worker
+artifact or missing heartbeat fails verification.
 
 ## Development and browser testing
 

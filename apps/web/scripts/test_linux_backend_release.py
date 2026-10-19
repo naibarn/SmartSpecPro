@@ -33,8 +33,10 @@ class IsolatedSystemdRuntime:
         self.current_link = current_link
         self.legacy = legacy
         self.active_path = legacy
+        self.node_worker_active_path = legacy
         self.fail_restart_once = False
         self.unhealthy_revision: str | None = None
+        self.leave_node_worker_stale = False
         self.restart_count = 0
         self.reload_count = 0
 
@@ -51,17 +53,25 @@ class IsolatedSystemdRuntime:
             raise release.ReleaseError("injected systemd restart failure")
         if self.current_link.is_symlink():
             self.active_path = self.current_link.resolve()
+            if not self.leave_node_worker_stale:
+                self.node_worker_active_path = self.current_link.resolve()
         else:
             self.active_path = self.legacy
+            self.node_worker_active_path = self.legacy
 
     def working_directory(self):
         return str(self.active_path)
+
+    def node_worker_working_directory(self):
+        return str(self.node_worker_active_path)
 
     def verify(self, release_path: Path, source_sha: str):
         if self.unhealthy_revision == source_sha:
             raise release.ReleaseError("injected readiness failure")
         if self.active_path.resolve() != release_path.resolve():
             raise release.ReleaseError("runtime is serving a different release")
+        if self.node_worker_active_path.resolve() != release_path.resolve():
+            raise release.ReleaseError("Node worker is serving a different release")
         manifest = json.loads((release_path / "release-manifest.json").read_text())
         if manifest["source_revision"] != source_sha:
             raise release.ReleaseError("runtime manifest revision mismatch")
@@ -72,12 +82,20 @@ class IsolatedSystemdRuntime:
             "runtimeRevision": source_sha,
             "healthHttp": 200,
             "anonymousDiagnosticsHttp": 401,
+            "nodeWorker": {
+                "service": release.NODE_WORKER_SERVICE,
+                "workingDirectory": str(self.node_worker_active_path.resolve()),
+                "runtimeRevision": source_sha,
+            },
         }
 
-    def verify_rollback(self, previous_working_directory: str):
+    def verify_rollback(self, previous_working_directory: str, previous_node_worker_directory: str):
         expected = Path(previous_working_directory)
         if self.active_path.resolve() != expected.resolve():
             raise release.ReleaseError("rollback did not restore previous runtime")
+        expected_worker = Path(previous_node_worker_directory)
+        if self.node_worker_active_path.resolve() != expected_worker.resolve():
+            raise release.ReleaseError("rollback did not restore previous Node worker runtime")
         return {"status": "ROLLED_BACK_HEALTHY", "workingDirectory": str(expected)}
 
 
@@ -205,6 +223,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.runtime_data_root = self.release_root / "smartspec-web-data"
         self.current_link = self.release_root / "smartspec-web-current"
         self.dropin_path = self.root / "systemd/smartspec-web.service.d/96-canonical-release.conf"
+        self.node_worker_dropin_path = self.root / "systemd/smartspec-node-worker.service.d/95-runtime-artifact.conf"
         self.lock_path = self.root / "canonical-leases/fixture/production-release.lock"
         self.receipt_root = self.ledger_root
         self.legacy = self.root / "legacy-runtime"
@@ -234,6 +253,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             runtime_data_root=self.runtime_data_root,
             runtime=self.runtime,
             current_tip=self.tip,
+            node_worker_dropin_path=self.node_worker_dropin_path,
             require_root=False,
         )
 
@@ -245,6 +265,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(result["runtime_verification"]["anonymousDiagnosticsHttp"], 401)
         self.assertEqual(self.current_link.resolve(), Path(result["release_path"]))
         self.assertIn(f"Environment=RELEASE={self.source_sha}", self.dropin_path.read_text())
+        self.assertIn("WorkingDirectory=" + str(self.current_link), self.node_worker_dropin_path.read_text())
+        self.assertIn(f"Environment=RELEASE={self.source_sha}", self.node_worker_dropin_path.read_text())
+        self.assertEqual(self.runtime.node_worker_active_path.resolve(), self.current_link.resolve())
         self.assertEqual(result["generation"], 1)
         release_path = Path(result["release_path"])
         self.assertTrue((release_path / "logs").is_symlink())
@@ -344,6 +367,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(self.runtime.active_path, self.legacy)
         self.assertFalse(self.current_link.exists())
         self.assertEqual(self.dropin_path.read_text(), original_dropin)
+        self.assertFalse(self.node_worker_dropin_path.exists())
         receipt = next((self.ledger_root / "production-deployments").glob("*.json"))
         self.assertEqual(json.loads(receipt.read_text())["status"], "ROLLED_BACK")
 
@@ -354,6 +378,16 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             self.promote(artifact)
         self.assertEqual(self.runtime.active_path, self.legacy)
         self.assertFalse(self.current_link.exists())
+
+    def test_stale_node_worker_fails_release_verification_and_rolls_back(self):
+        artifact = self.prepare()
+        self.runtime.leave_node_worker_stale = True
+        with self.assertRaisesRegex(release.ReleaseError, "Node worker is serving a different release"):
+            self.promote(artifact)
+        self.assertEqual(self.runtime.active_path, self.legacy)
+        self.assertEqual(self.runtime.node_worker_active_path, self.legacy)
+        self.assertFalse(self.current_link.exists())
+        self.assertFalse(self.node_worker_dropin_path.exists())
 
     def test_retry_after_success_is_idempotent(self):
         artifact = self.prepare()

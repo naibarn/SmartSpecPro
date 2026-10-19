@@ -31,12 +31,16 @@ from typing import Any, Callable, Protocol
 
 
 SERVICE = "smartspec-web.service"
+NODE_WORKER_SERVICE = "smartspec-node-worker.service"
 PROCEDURE = "infrastructure.getSpec224DatabaseDiagnostics"
 ADMIN_REGISTRATION = "getSpec224DatabaseDiagnostics: exactAdminProcedure"
 RELEASE_ROOT = Path("/home/dev/production-releases")
 RUNTIME_DATA_ROOT = RELEASE_ROOT / "smartspec-web-data"
 CURRENT_LINK = RELEASE_ROOT / "smartspec-web-current"
 SYSTEMD_DROPIN = Path("/etc/systemd/system/smartspec-web.service.d/96-canonical-release.conf")
+NODE_WORKER_SYSTEMD_DROPIN = Path(
+    "/etc/systemd/system/smartspec-node-worker.service.d/95-runtime-artifact.conf"
+)
 
 
 class ReleaseError(RuntimeError):
@@ -297,8 +301,9 @@ class Runtime(Protocol):
     def daemon_reload(self) -> None: ...
     def restart(self) -> None: ...
     def verify(self, release_path: Path, source_sha: str) -> dict[str, Any]: ...
-    def verify_rollback(self, previous_working_directory: str) -> dict[str, Any]: ...
+    def verify_rollback(self, previous_working_directory: str, previous_node_worker_directory: str) -> dict[str, Any]: ...
     def working_directory(self) -> str: ...
+    def node_worker_working_directory(self) -> str: ...
 
 
 class SystemdRuntime:
@@ -324,6 +329,13 @@ class SystemdRuntime:
         exec_start = self._run("show", self.service, "--property=ExecStart", "--value")
         if "--import tsx" not in exec_start or "server/_core/index.ts" not in exec_start:
             raise ReleaseError("smartspec-web.service entrypoint differs from the approved Node runtime")
+        if self._run("show", NODE_WORKER_SERVICE, "--property=ActiveState", "--value") != "active":
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} must be active before promotion")
+        if self._run("show", NODE_WORKER_SERVICE, "--property=User", "--value") != "dev":
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} owner differs from the approved Linux runtime")
+        worker_exec = self._run("show", NODE_WORKER_SERVICE, "--property=ExecStart", "--value")
+        if "--import tsx" not in worker_exec or "server/jobs/postgresNodeJobWorker.ts" not in worker_exec:
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} entrypoint differs from the approved Node runtime")
         service_cgroup = self._run("show", self.service, "--property=ControlGroup", "--value")
         listeners = subprocess.run(
             ["ss", "-H", "-ltnp", "sport = :3000"],
@@ -340,10 +352,13 @@ class SystemdRuntime:
         )
 
     def restart(self) -> None:
-        self._run("restart", self.service)
+        self._run("restart", self.service, NODE_WORKER_SERVICE)
 
     def working_directory(self) -> str:
         return self._run("show", self.service, "--property=WorkingDirectory", "--value")
+
+    def node_worker_working_directory(self) -> str:
+        return self._run("show", NODE_WORKER_SERVICE, "--property=WorkingDirectory", "--value")
 
     def _main_pid(self) -> int:
         return int(self._run("show", self.service, "--property=MainPID", "--value"))
@@ -376,6 +391,7 @@ class SystemdRuntime:
                     route_status = exc.code
                 if route_status not in {401, 403}:
                     raise ReleaseError(f"Admin diagnostics route did not deny anonymous access (HTTP {route_status})")
+                worker = self._verify_node_worker(release_path, source_sha)
                 return {
                     "status": "HEALTHY",
                     "service": self.service,
@@ -384,13 +400,43 @@ class SystemdRuntime:
                     "runtimeRevision": runtime_release,
                     "healthHttp": 200,
                     "anonymousDiagnosticsHttp": route_status,
+                    "nodeWorker": worker,
                 }
             except (OSError, ValueError, urllib.error.URLError, ReleaseError) as exc:
                 last_error = str(exc)
                 time.sleep(1)
         raise ReleaseError(f"Promotion health check timed out: {last_error}")
 
-    def verify_rollback(self, previous_working_directory: str) -> dict[str, Any]:
+    def _verify_node_worker(self, release_path: Path, source_sha: str) -> dict[str, Any]:
+        if self._run("is-active", NODE_WORKER_SERVICE) != "active":
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} is not active")
+        pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
+        process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
+        if process_cwd != release_path.resolve():
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} cwd does not match promoted release")
+        environ = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
+        values = {
+            item.split(b"=", 1)[0].decode(): item.split(b"=", 1)[1].decode()
+            for item in environ
+            if b"=" in item
+        }
+        if values.get("RELEASE") != source_sha:
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} revision does not match promoted release")
+        heartbeat = Path(values.get("FEATURE_186_NODE_WORKER_HEARTBEAT_FILE", ""))
+        if not heartbeat.is_file():
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat is missing")
+        fields = heartbeat.read_text(encoding="utf-8").strip().split("\t")
+        if len(fields) != 3 or fields[2] != str(pid):
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat does not match its process")
+        if time.time() - int(fields[0]) / 1000 > 30:
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat is stale")
+        return {"service": NODE_WORKER_SERVICE, "pid": pid, "workingDirectory": str(process_cwd), "runtimeRevision": source_sha}
+
+    def verify_rollback(
+        self,
+        previous_working_directory: str,
+        previous_node_worker_directory: str,
+    ) -> dict[str, Any]:
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
             try:
@@ -400,9 +446,18 @@ class SystemdRuntime:
                     expected_cwd = Path(previous_working_directory).resolve(strict=False)
                     if process_cwd != expected_cwd:
                         raise ReleaseError("rollback process cwd does not match the previous runtime")
+                    worker_pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
+                    worker_cwd = Path(f"/proc/{worker_pid}/cwd").resolve(strict=True)
+                    expected_worker_cwd = Path(previous_node_worker_directory).resolve(strict=False)
+                    if worker_cwd != expected_worker_cwd:
+                        raise ReleaseError("rollback Node worker cwd does not match the previous runtime")
                     with urllib.request.urlopen("http://127.0.0.1:3000/healthz", timeout=2) as response:
                         if response.status == 200:
-                            return {"status": "ROLLED_BACK_HEALTHY", "workingDirectory": str(process_cwd)}
+                            return {
+                                "status": "ROLLED_BACK_HEALTHY",
+                                "workingDirectory": str(process_cwd),
+                                "nodeWorkerWorkingDirectory": str(worker_cwd),
+                            }
             except (OSError, ValueError, urllib.error.URLError, ReleaseError):
                 pass
             time.sleep(1)
@@ -581,6 +636,7 @@ def promote_artifact(
     runtime_data_root: Path,
     runtime: Runtime,
     current_tip: Callable[[dict[str, Any]], str],
+    node_worker_dropin_path: Path = NODE_WORKER_SYSTEMD_DROPIN,
     require_root: bool = True,
 ) -> dict[str, Any]:
     if require_root and os.geteuid() != 0:
@@ -618,8 +674,12 @@ def promote_artifact(
             try:
                 active_manifest = json.loads((active_target / "release-manifest.json").read_text(encoding="utf-8"))
                 if active_manifest.get("release_id") == release_id and active_manifest.get("source_revision") == source_sha:
-                    return {"status": "ALREADY_PROMOTED", "release_id": release_id,
-                            "source_sha": source_sha, "runtime": runtime.verify(active_target, source_sha)}
+                    return {
+                        "status": "ALREADY_PROMOTED",
+                        "release_id": release_id,
+                        "source_sha": source_sha,
+                        "runtime": runtime.verify(active_target, source_sha),
+                    }
             except (OSError, ValueError, ReleaseError):
                 pass
         generation = _next_generation(receipt_root, SERVICE)
@@ -668,6 +728,12 @@ def promote_artifact(
         previous_link = os.readlink(current_link) if current_link.is_symlink() else None
         previous_working_directory = runtime.working_directory()
         previous_dropin = dropin_path.read_text(encoding="utf-8") if dropin_path.exists() else None
+        previous_node_worker_directory = runtime.node_worker_working_directory()
+        previous_node_worker_dropin = (
+            node_worker_dropin_path.read_text(encoding="utf-8")
+            if node_worker_dropin_path.exists()
+            else None
+        )
         policy_path = workspace / ".development-repository.toml"
         import tomllib
         config = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
@@ -681,9 +747,15 @@ def promote_artifact(
             f"WorkingDirectory={current_link}\n"
             f"Environment=RELEASE={source_sha}\n"
         )
+        node_worker_dropin = (
+            "[Service]\n"
+            f"WorkingDirectory={current_link}\n"
+            f"Environment=RELEASE={source_sha}\n"
+        )
         activation_started = False
         try:
             _atomic_write_text(dropin_path, dropin)
+            _atomic_write_text(node_worker_dropin_path, node_worker_dropin)
             runtime.daemon_reload()
             atomic_symlink(target, current_link)
             activation_started = True
@@ -713,10 +785,17 @@ def promote_artifact(
                     dropin_path.unlink(missing_ok=True)
                 else:
                     _atomic_write_text(dropin_path, previous_dropin)
+                if previous_node_worker_dropin is None:
+                    node_worker_dropin_path.unlink(missing_ok=True)
+                else:
+                    _atomic_write_text(node_worker_dropin_path, previous_node_worker_dropin)
                 runtime.daemon_reload()
                 if activation_started:
                     runtime.restart()
-                rollback = runtime.verify_rollback(previous_working_directory)
+                rollback = runtime.verify_rollback(
+                    previous_working_directory,
+                    previous_node_worker_directory,
+                )
             except Exception as rollback_exc:
                 rollback_errors.append(str(rollback_exc))
                 rollback = {"status": "ROLLBACK_FAILED"}
