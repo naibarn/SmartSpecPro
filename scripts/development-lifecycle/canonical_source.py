@@ -133,6 +133,7 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
             "source_root": str(values["source_root"]).strip(),
             "lease_root": str(values.get("lease_root", values["source_root"])).strip(),
             "build_target": str(values.get("build_target", "web-build")).strip(),
+            "canonical_user_workspace": str(values.get("canonical_user_workspace", "")).strip(),
             "source_fallback_roots": [str(item).strip() for item in values.get("source_fallback_roots", [])],
         }
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
@@ -796,12 +797,15 @@ def sync_primary_workspace(repo: Path, canonical_ref: str, canonical_tip: str) -
 
 def _cloudflare_artifact_publication_process(
     repo: Path, result_dir: Path, source_sha: str, build_id: str,
+    *, canonical_user_workspace: Path | None = None,
 ) -> tuple[list[str], dict[str, str]]:
     """Load the caller's server configuration only in the publisher process.
 
     Exact-source worktrees intentionally contain no ignored .env files. Keep
-    credentials out of the build and artifact; dotenv reads the trusted caller
-    path inside the server-side publisher and preserves injected environment.
+    credentials out of the build and artifact; dotenv reads the caller's server
+    env, or the configured canonical workspace's env when the caller has none.
+    A fallback workspace must belong to this exact Git repository. Never scan
+    unrelated worktrees or copy env contents into the build/artifact.
     """
     environment = os.environ.copy()
     environment["SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT"] = str(result_dir.resolve())
@@ -810,6 +814,28 @@ def _cloudflare_artifact_publication_process(
     env_file = Path(configured_path).expanduser() if configured_path else repo / "apps/web/.env"
     if not env_file.is_absolute():
         env_file = repo / env_file
+    env_source = "explicit" if configured_path else "caller"
+    if not configured_path and not env_file.is_file() and canonical_user_workspace is not None:
+        canonical = canonical_user_workspace.expanduser()
+        if canonical.is_absolute():
+            canonical = canonical.resolve()
+            candidate = canonical / "apps/web/.env"
+            if candidate.is_file():
+                try:
+                    if Path(git(canonical, "rev-parse", "--show-toplevel")).resolve() != canonical:
+                        raise LifecycleError("ARTIFACT_ENV_WORKSPACE_ROOT_REQUIRED")
+                    caller_common = Path(git(repo, "rev-parse", "--git-common-dir"))
+                    canonical_common = Path(git(canonical, "rev-parse", "--git-common-dir"))
+                    if not caller_common.is_absolute():
+                        caller_common = repo / caller_common
+                    if not canonical_common.is_absolute():
+                        canonical_common = canonical / canonical_common
+                    if caller_common.resolve() == canonical_common.resolve():
+                        env_file, env_source = candidate, "canonical_workspace"
+                except LifecycleError:
+                    # An unavailable/foreign checkout never becomes a secret
+                    # source. Injected runner configuration can still work.
+                    pass
     if configured_path or env_file.is_file():
         environment["DOTENV_CONFIG_PATH"] = str(env_file.resolve())
         environment["DOTENV_CONFIG_QUIET"] = "true"
@@ -817,6 +843,9 @@ def _cloudflare_artifact_publication_process(
         # credentials injected by the runner retain precedence.
         environment.pop("DOTENV_CONFIG_OVERRIDE", None)
         command.extend(["--require", "dotenv/config"])
+        environment["SMARTSPEC_ARTIFACT_ENV_SOURCE"] = env_source
+    else:
+        environment["SMARTSPEC_ARTIFACT_ENV_SOURCE"] = "process"
     command.extend([
         "scripts/publish-cloudflare-staging-artifact.ts",
         "--source-sha", source_sha,
@@ -961,7 +990,9 @@ def build_canonical(
         if status == "BUILD_PASSED" and cloudflare_bundle:
             publish_command, publisher_environment = _cloudflare_artifact_publication_process(
                 repo, result_dir, str(lease["source_revision"]), result_path.stem,
+                canonical_user_workspace=Path(policy["canonical_user_workspace"]) if policy.get("canonical_user_workspace") else None,
             )
+            result["cloudflare_staging_artifact"]["configuration_source"] = publisher_environment["SMARTSPEC_ARTIFACT_ENV_SOURCE"]
             try:
                 publication = subprocess.run(
                     publish_command,

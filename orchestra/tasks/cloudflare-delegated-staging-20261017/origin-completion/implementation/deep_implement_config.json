@@ -28,8 +28,14 @@
       "merged_main_sha": "bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8"
     },
     "section-03-config-authority": {
+      "status": "checkpointed",
+      "next_action": "Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending",
+      "checkpoint_sha": "6491cb159874579a571f55c271b9b452e41c45b2",
+      "merged_main_sha": "6491cb159874579a571f55c271b9b452e41c45b2"
+    },
+    "section-04-provision-release": {
       "status": "in_progress",
-      "next_action": "Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete"
+      "next_action": "Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority"
     }
   },
   "pre_commit": {
@@ -41,16 +47,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 10,
-  "updated_at": "2026-10-19T17:32:41.723240+00:00",
+  "generation": 12,
+  "updated_at": "2026-10-19T17:47:44.198163+00:00",
   "progress": {
-    "active_section": "section-03-config-authority",
-    "next_action": "Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete",
-    "merged_main_sha": "bed8d9e0ab0f95a00e8376cca0e2f1ef0e61fc7f",
+    "active_section": "section-04-provision-release",
+    "next_action": "Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority",
+    "merged_main_sha": "6491cb159874579a571f55c271b9b452e41c45b2",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
       "Section 02 live origin/proxy chain not provisioned or accepted",
-      "Origin-capable typed grant/proof/configuration transport and live origin release remain incomplete; existing Audit account credential is available and reads actual Tunnel/DNS resources"
+      "Live protected ingress/origin release and actual auth/tenant/rollback acceptance remain unexecuted; Worker v2 policy authorizes no Access/Tunnel/DNS mutation"
     ]
   }
 }

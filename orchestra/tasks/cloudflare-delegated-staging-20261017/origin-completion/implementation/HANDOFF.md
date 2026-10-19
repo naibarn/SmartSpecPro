@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `10`
-- Updated (UTC): `2026-10-19T17:32:41.723240+00:00`
+- State generation: `12`
+- Updated (UTC): `2026-10-19T17:47:44.198163+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
-- Latest recorded merged Main SHA: `bed8d9e0ab0f95a00e8376cca0e2f1ef0e61fc7f`
+- Latest recorded merged Main SHA: `6491cb159874579a571f55c271b9b452e41c45b2`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-03-config-authority`
-- Next action: Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete
+- Active section: `section-04-provision-release`
+- Next action: Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority
 
 ## Sections
 
@@ -19,14 +19,14 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-cookie-session | checkpointed | — | — | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | Proceed with section-02 protected origin transport; cookie helper is integrated and CI/browser-fixture verified, live auth remains pending |
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
-| section-03-config-authority | in_progress | — | — | — | — | Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete |
-| section-04-provision-release | pending | — | — | — | — | — |
+| section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
+| section-04-provision-release | in_progress | — | — | — | — | Use read-only exact account inventory from protected-origin-inventory.json; existing Zero Trust organization is available, but no visible Access app/service token/staging origin DNS is provisioned. Capture canonical build result and exact live acceptance gap without treating v2 Worker policy as provisioning authority |
 | section-05-acceptance | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
 - Section 02 live origin/proxy chain not provisioned or accepted
-- Origin-capable typed grant/proof/configuration transport and live origin release remain incomplete; existing Audit account credential is available and reads actual Tunnel/DNS resources
+- Live protected ingress/origin release and actual auth/tenant/rollback acceptance remain unexecuted; Worker v2 policy authorizes no Access/Tunnel/DNS mutation
 
 ## Resume
 
