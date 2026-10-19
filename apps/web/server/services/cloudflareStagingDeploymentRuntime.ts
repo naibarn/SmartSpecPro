@@ -31,13 +31,15 @@ type GrantDocument = {
   artifactRef: string;
   sourceSha: string;
   buildDigest: string;
-  actions: Array<"deploy" | "rollback">;
-  rollbackDeploymentId: string;
-  rollbackArtifactRef: string;
-  rollbackSourceSha: string;
-  rollbackBuildDigest: string;
+  actions: Array<"deploy" | "rollback" | "bootstrap">;
+  rollbackDeploymentId: string | null;
+  rollbackArtifactRef: string | null;
+  rollbackSourceSha: string | null;
+  rollbackBuildDigest: string | null;
   expiresAt: string;
   revokedAt: null;
+  jobId?: string;
+  accountRef?: string;
 };
 
 function parseGrant(value: unknown): CloudflareStagingGrant | null {
@@ -57,12 +59,13 @@ function parseGrant(value: unknown): CloudflareStagingGrant | null {
     typeof grant.buildDigest !== "string" ||
     !Array.isArray(grant.actions) ||
     grant.actions.length === 0 ||
-    grant.actions.some(action => action !== "deploy" && action !== "rollback") ||
-    typeof grant.rollbackDeploymentId !== "string" ||
-    typeof grant.rollbackArtifactRef !== "string" ||
-    typeof grant.rollbackSourceSha !== "string" ||
-    typeof grant.rollbackBuildDigest !== "string" ||
+    grant.actions.some(action => action !== "deploy" && action !== "rollback" && action !== "bootstrap") ||
+    (typeof grant.rollbackDeploymentId !== "string" && grant.rollbackDeploymentId !== null) ||
+    (typeof grant.rollbackArtifactRef !== "string" && grant.rollbackArtifactRef !== null) ||
+    (typeof grant.rollbackSourceSha !== "string" && grant.rollbackSourceSha !== null) ||
+    (typeof grant.rollbackBuildDigest !== "string" && grant.rollbackBuildDigest !== null) ||
     typeof grant.expiresAt !== "string" ||
+    ((grant.jobId !== undefined || grant.accountRef !== undefined) && (typeof grant.jobId !== "string" || !/^[a-f0-9-]{36}$/i.test(grant.jobId) || typeof grant.accountRef !== "string" || !/^[a-f0-9]{32}$/i.test(grant.accountRef))) ||
     grant.revokedAt !== null
   ) {
     return null;

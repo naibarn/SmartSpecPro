@@ -148,6 +148,22 @@ function invocation(
 }
 
 describe("Cloudflare staging deployment executor", () => {
+  it("permits exclusive bootstrap with an absent baseline and rejects job/account replay before credentials", async () => {
+    const bootstrap = { ...grant, actions: ["bootstrap"] as const, rollbackDeploymentId: null, rollbackArtifactRef: null, rollbackSourceSha: null, rollbackBuildDigest: null, jobId: "job-1", accountRef: target.accountRef };
+    const state = runtime({ resolveGrant: async () => bootstrap });
+    const call = invocation({ action: "bootstrap" });
+    const result = await createCloudflareStagingDeploymentExecutor(state.dependencies)(call.payload);
+    expect(result.output).toMatchObject({ action: "bootstrap", rollbackDeploymentId: null, runtimeVerified: true });
+    expect(state.cloudflare.deploy).toHaveBeenCalledWith(expect.objectContaining({ bootstrap: true }));
+    expect(state.cloudflare.rollback).not.toHaveBeenCalled();
+    for (const changed of [{ jobId: "another-job" }, { accountRef: "foreign-account" }, { rollbackDeploymentId: "invented-baseline" }, { actions: ["bootstrap", "deploy"] as const }]) {
+      const withCredential = vi.fn();
+      const invalid = runtime({ resolveGrant: async () => ({ ...bootstrap, ...changed }), withCredential });
+      await expect(createCloudflareStagingDeploymentExecutor(invalid.dependencies)(invocation({ action: "bootstrap" }).payload)).rejects.toBeInstanceOf(CloudflareStagingDeploymentError);
+      expect(withCredential).not.toHaveBeenCalled();
+    }
+  });
+
   it("completes the canonical worker job envelope through the existing registry and runtime receipt", async () => {
     const state = runtime();
     const lease = {

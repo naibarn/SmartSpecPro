@@ -34,13 +34,16 @@ export type CloudflareStagingGrant = Readonly<{
   artifactRef: string;
   sourceSha: string;
   buildDigest: string;
-  actions: readonly ("deploy" | "rollback")[];
-  rollbackDeploymentId: string;
-  rollbackArtifactRef: string;
-  rollbackSourceSha: string;
-  rollbackBuildDigest: string;
+  actions: readonly ("deploy" | "rollback" | "bootstrap")[];
+  rollbackDeploymentId: string | null;
+  rollbackArtifactRef: string | null;
+  rollbackSourceSha: string | null;
+  rollbackBuildDigest: string | null;
   expiresAt: string;
   revoked: false;
+  /** Policy grants bind one canonical job and the provider account. */
+  jobId?: string;
+  accountRef?: string;
 }>;
 
 export type CloudflareStagingTarget = Readonly<{
@@ -68,7 +71,7 @@ export type CloudflareStagingDeploymentRuntime = Readonly<{
     tenantId: string;
     target: typeof CLOUDFLARE_STAGING_TARGET_ID;
     artifactSha256: string;
-    action: "deploy" | "rollback";
+    action: "deploy" | "rollback" | "bootstrap";
     idempotencyKey: string;
   }) => Promise<{ registered: boolean; executorId: string }>;
   resolveTarget: (input: {
@@ -177,6 +180,7 @@ export type CloudflareStagingApi = Readonly<{
     target: CloudflareStagingTarget;
     artifact: CloudflareStagingArtifact;
     idempotencyKey: string;
+    bootstrap?: boolean;
   }) => Promise<{
     deploymentId: string;
     url: string;
@@ -201,6 +205,8 @@ export type CloudflareStagingApi = Readonly<{
     target: CloudflareStagingTarget;
     deploymentId: string;
     idempotencyKey: string;
+    sourceSha?: string;
+    buildDigest?: string;
   }) => Promise<{
     deploymentId: string;
     url?: string;
@@ -222,7 +228,7 @@ export class CloudflareStagingDeploymentError extends Error {
 
 type JobInput = {
   contractVersion: typeof CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT;
-  action: "deploy" | "rollback";
+  action: "deploy" | "rollback" | "bootstrap";
   targetId: typeof CLOUDFLARE_STAGING_TARGET_ID;
   environment: "staging";
   grantRef: string;
@@ -251,7 +257,7 @@ function parseJobInput(value: unknown): JobInput {
     Object.keys(input).length !== allowed.length ||
     Object.keys(input).some(key => !allowed.includes(key)) ||
     input.contractVersion !== CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT ||
-    (input.action !== "deploy" && input.action !== "rollback") ||
+    (input.action !== "deploy" && input.action !== "rollback" && input.action !== "bootstrap") ||
     input.targetId !== CLOUDFLARE_STAGING_TARGET_ID ||
     input.environment !== "staging" ||
     typeof input.grantRef !== "string" ||
@@ -277,6 +283,8 @@ function assertValidGrant(input: {
   tenantId: string;
   requesterUserId: number | undefined;
   executorId: string;
+  jobId: string;
+  accountRef: string;
   now: Date;
 }) {
   const { grant, artifact, job } = input;
@@ -294,6 +302,8 @@ function assertValidGrant(input: {
     );
   }
   if (
+    (grant.jobId !== undefined && grant.jobId !== input.jobId) ||
+    (grant.accountRef !== undefined && grant.accountRef !== input.accountRef) ||
     grant.requesterUserId !== input.requesterUserId ||
     grant.executorId !== input.executorId ||
     !grant.projectId ||
@@ -309,7 +319,7 @@ function assertValidGrant(input: {
     );
   }
   const approvedArtifact =
-    job.action === "deploy"
+    job.action !== "rollback"
       ? {
           artifactRef: grant.artifactRef,
           sourceSha: grant.sourceSha,
@@ -317,13 +327,13 @@ function assertValidGrant(input: {
         }
       : {
           artifactRef: grant.rollbackArtifactRef,
-          sourceSha: grant.rollbackSourceSha,
-          buildDigest: grant.rollbackBuildDigest,
+          sourceSha: grant.rollbackSourceSha!,
+          buildDigest: grant.rollbackBuildDigest!,
         };
   if (
     approvedArtifact.artifactRef !== job.artifactRef ||
-    approvedArtifact.sourceSha.toLowerCase() !== job.sourceSha.toLowerCase() ||
-    approvedArtifact.buildDigest.toLowerCase() !==
+    approvedArtifact.sourceSha?.toLowerCase() !== job.sourceSha.toLowerCase() ||
+    approvedArtifact.buildDigest?.toLowerCase() !==
       job.buildDigest.toLowerCase() ||
     artifact.artifactRef !== job.artifactRef ||
     artifact.immutable !== true ||
@@ -334,8 +344,16 @@ function assertValidGrant(input: {
       "CLOUDFLARE_STAGING_ARTIFACT_MISMATCH"
     );
   }
-  if (
+  if (job.action === "bootstrap") {
+    if (grant.actions.length !== 1 || [grant.rollbackDeploymentId, grant.rollbackArtifactRef, grant.rollbackSourceSha, grant.rollbackBuildDigest].some(value => value !== null)) {
+      throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_BOOTSTRAP_GRANT_INVALID");
+    }
+  } else if (
+    grant.actions.includes("bootstrap") ||
     !grant.rollbackDeploymentId ||
+    !grant.rollbackArtifactRef ||
+    !grant.rollbackSourceSha ||
+    !grant.rollbackBuildDigest ||
     !SAFE_REF.test(grant.rollbackDeploymentId) ||
     !SAFE_REF.test(grant.rollbackArtifactRef) ||
     !SHA.test(grant.rollbackSourceSha) ||
@@ -435,6 +453,8 @@ export function createCloudflareStagingDeploymentExecutor(
       tenantId: context.tenantId,
       requesterUserId: context.requestedByUserId,
       executorId: identity.executorId,
+      jobId: context.jobId,
+      accountRef: target.accountRef,
       now: activeRuntime.now?.() ?? new Date(),
     });
     await reporter.assertActive(lease);
@@ -444,21 +464,24 @@ export function createCloudflareStagingDeploymentExecutor(
       operation: async token => {
         try {
           const request =
-            job.action === "deploy"
+            job.action !== "rollback"
               ? await activeRuntime.cloudflare.deploy({
                   token,
                   target,
                   artifact: artifact!,
                   idempotencyKey,
+                  bootstrap: job.action === "bootstrap",
                 })
               : await activeRuntime.cloudflare.rollback({
                   token,
                   target,
-                  deploymentId: grant.rollbackDeploymentId,
+                  deploymentId: grant.rollbackDeploymentId!,
+                  sourceSha: grant.rollbackSourceSha!,
+                  buildDigest: grant.rollbackBuildDigest!,
                   idempotencyKey,
                 });
           const url =
-            job.action === "deploy"
+            job.action !== "rollback"
               ? (request.url ?? "")
               : (request.url ?? `https://${target.workerRef}.workers.dev`);
           let safeWorkersDevUrl = false;
@@ -515,14 +538,16 @@ export function createCloudflareStagingDeploymentExecutor(
                 const rollback = await activeRuntime.cloudflare.rollback({
                   token,
                   target,
-                  deploymentId: grant.rollbackDeploymentId,
+                  deploymentId: grant.rollbackDeploymentId!,
+                  sourceSha: grant.rollbackSourceSha!,
+                  buildDigest: grant.rollbackBuildDigest!,
                   idempotencyKey: `${idempotencyKey}:auto-rollback`,
                 });
                 if (
                   rollback.sourceSha.toLowerCase() !==
-                    grant.rollbackSourceSha.toLowerCase() ||
+                    grant.rollbackSourceSha!.toLowerCase() ||
                   rollback.buildDigest.toLowerCase() !==
-                    grant.rollbackBuildDigest.toLowerCase()
+                    grant.rollbackBuildDigest!.toLowerCase()
                 ) {
                   throw new CloudflareStagingDeploymentError(
                     "CLOUDFLARE_STAGING_ROLLBACK_RECEIPT_MISMATCH"
@@ -534,17 +559,17 @@ export function createCloudflareStagingDeploymentExecutor(
                     target,
                     deploymentId: rollback.deploymentId,
                     url,
-                    sourceSha: grant.rollbackSourceSha,
-                    buildDigest: grant.rollbackBuildDigest,
+                    sourceSha: grant.rollbackSourceSha!,
+                    buildDigest: grant.rollbackBuildDigest!,
                   }
                 );
                 if (
                   !rollbackVerified.reachable ||
                   rollbackVerified.deploymentId !== rollback.deploymentId ||
                   rollbackVerified.sourceSha.toLowerCase() !==
-                    grant.rollbackSourceSha.toLowerCase() ||
+                    grant.rollbackSourceSha!.toLowerCase() ||
                   rollbackVerified.buildDigest.toLowerCase() !==
-                    grant.rollbackBuildDigest.toLowerCase()
+                    grant.rollbackBuildDigest!.toLowerCase()
                 ) {
                   throw new CloudflareStagingDeploymentError(
                     "CLOUDFLARE_STAGING_ROLLBACK_VERIFICATION_FAILED"
@@ -576,7 +601,7 @@ export function createCloudflareStagingDeploymentExecutor(
           return {
             ok: false as const,
             diagnosticCode:
-              error instanceof CloudflareStagingDeploymentError
+              error instanceof Error && "diagnosticCode" in error && typeof error.diagnosticCode === "string" && /^CLOUDFLARE_[A-Z0-9_]+$/.test(error.diagnosticCode)
                 ? error.diagnosticCode
                 : "CLOUDFLARE_STAGING_API_ERROR",
           };

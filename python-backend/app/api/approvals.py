@@ -273,11 +273,11 @@ class CloudflareStagingGrantIssue(BaseModel):
     artifact_ref: StrictStr = Field(..., alias="artifactRef", min_length=1, max_length=255)
     source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[0-9a-f]{40}$")
     build_digest: StrictStr = Field(..., alias="buildDigest", pattern=r"^[0-9a-f]{64}$")
-    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=2)
-    rollback_deployment_id: StrictStr = Field(..., alias="rollbackDeploymentId", min_length=1, max_length=255)
-    rollback_artifact_ref: StrictStr = Field(..., alias="rollbackArtifactRef", min_length=1, max_length=255)
-    rollback_source_sha: StrictStr = Field(..., alias="rollbackSourceSha", pattern=r"^[0-9a-f]{40}$")
-    rollback_build_digest: StrictStr = Field(..., alias="rollbackBuildDigest", pattern=r"^[0-9a-f]{64}$")
+    actions: list[Literal["deploy", "rollback", "bootstrap"]] = Field(..., min_length=1, max_length=2)
+    rollback_deployment_id: StrictStr | None = Field(..., alias="rollbackDeploymentId", min_length=1, max_length=255)
+    rollback_artifact_ref: StrictStr | None = Field(..., alias="rollbackArtifactRef", min_length=1, max_length=255)
+    rollback_source_sha: StrictStr | None = Field(..., alias="rollbackSourceSha", pattern=r"^[0-9a-f]{40}$")
+    rollback_build_digest: StrictStr | None = Field(..., alias="rollbackBuildDigest", pattern=r"^[0-9a-f]{64}$")
     expires_at: datetime = Field(..., alias="expiresAt")
 
     @field_validator("actions")
@@ -286,6 +286,63 @@ class CloudflareStagingGrantIssue(BaseModel):
         if len(set(value)) != len(value):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
         return value
+
+
+def _cloudflare_authenticated_tenant(current_user: User, context_tenant: str | None) -> str:
+    """Use the tenant validated by get_current_user, including internal delegation."""
+    verified = getattr(current_user, "_media_auth_tenant_id", None) or getattr(current_user, "currentTenantId", None)
+    if not isinstance(verified, str) or not verified:
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_AUTHENTICATED_TENANT_REQUIRED")
+    if context_tenant is not None and context_tenant != verified:
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_AUTHENTICATED_TENANT_MISMATCH")
+    return verified
+
+
+class CloudflareStagingPolicyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    definition: dict
+
+
+class CloudflareStagingPolicyGrantIssue(CloudflareStagingGrantIssue):
+    policy_id: StrictStr = Field(..., alias="policyId", pattern=r"^[a-f0-9-]{36}$")
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
+    account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+
+
+@router.post("/cloudflare-staging-policies", status_code=201)
+async def create_cloudflare_staging_policy(
+    data: CloudflareStagingPolicyCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        rule = await ApprovalDBService(db).create_cloudflare_staging_policy(
+            tenant_id=tenant_id, project_id=data.project_id, actor_id=int(current_user.id), definition=data.definition)
+        return {"policyId": rule.id, "tenantId": rule.tenant_id, "projectId": rule.project_id, "active": rule.is_active, "conditions": rule.conditions}
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/cloudflare-staging-policies/{policy_id}/revoke")
+async def revoke_cloudflare_staging_policy(
+    policy_id: str, current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id), db: AsyncSession = Depends(get_db_session),
+):
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        rule = await ApprovalDBService(db).revoke_cloudflare_staging_policy(tenant_id=tenant_id, actor_id=int(current_user.id), policy_id=policy_id)
+        return {"policyId": rule.id, "active": rule.is_active}
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 
 
 @router.post("/spec224/recovery-grants")
@@ -1330,6 +1387,14 @@ async def acknowledge_spec224_external_agent_decision(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SPEC224_DECISION_ACK_REJECTED")
     return {"acknowledged": True, "deliveryId": data.delivery_id}
 
+@router.post("/cloudflare-staging-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
+async def create_cloudflare_staging_policy_grant(
+    data: CloudflareStagingPolicyGrantIssue, current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id), db: AsyncSession = Depends(get_db_session),
+):
+    return await create_cloudflare_staging_grant_request(data, current_user, tenant_id, db)
+
+
 @router.post("/cloudflare-staging-grants", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_cloudflare_staging_grant_request(
     data: CloudflareStagingGrantIssue,
@@ -1337,14 +1402,13 @@ async def create_cloudflare_staging_grant_request(
     tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a typed grant approval request; a separate admin must approve it."""
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    """Issue a typed grant through independent Admin approval or a bounded owner policy."""
     if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
         raise HTTPException(status_code=403, detail="CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
     if data.expires_at.tzinfo is None:
         raise HTTPException(status_code=422, detail="CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
 
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
     expires_at = data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     grant_payload = {
         "schemaVersion": "cloudflare.staging-deployment-grant.v1",
@@ -1371,7 +1435,8 @@ async def create_cloudflare_staging_grant_request(
             tenant_id=tenant_id,
             requester_id=int(current_user.id),
             idempotency_key=data.idempotency_key,
-            payload=grant_payload,
+            payload={**grant_payload, **({"jobId": data.job_id, "accountRef": data.account_ref} if isinstance(data, CloudflareStagingPolicyGrantIssue) else {})},
+            policy_id=data.policy_id if isinstance(data, CloudflareStagingPolicyGrantIssue) else None,
         )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
@@ -1388,10 +1453,9 @@ async def revoke_cloudflare_staging_grant(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Revoke a staging grant under the authenticated administrator identity."""
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
     if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
         raise HTTPException(status_code=403, detail="CLOUDFLARE_STAGING_GRANT_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
     try:
         return await ApprovalDBService(db).revoke_cloudflare_staging_grant(
             grant_ref=grant_ref,

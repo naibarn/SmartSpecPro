@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -62,6 +64,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     vi.resetModules();
     schema = await import("../../drizzle/schema");
     await installSpec277AutoTeamRuntimeSchema(sql, [
+      schema.canonicalProjects,
       schema.tenants,
       schema.users,
       schema.runnerNodes,
@@ -270,7 +273,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       cloudflareRequests.push(url);
       if (!url.startsWith("https://api.cloudflare.com/client/v4/")) {
         if (url.endsWith("/healthz"))
-          return new Response("ok", { status: 200 });
+          return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
         throw new Error("unexpected test transport URL");
       }
       const result = url.endsWith("/assets-upload-session")
@@ -319,7 +322,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       fetchImpl,
     });
     const rollbackDigest = "d".repeat(64);
-    const grant = {
+    let grant = {
       schemaVersion: "cloudflare.staging-deployment-grant.v1" as const,
       grantRef: "a4dca6ee-3424-4c4e-86b6-f6aa5ed8f8c0",
       tenantId,
@@ -331,7 +334,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       artifactRef: publishedArtifact.artifactRef,
       sourceSha,
       buildDigest: publishedArtifact.buildDigest,
-      actions: ["deploy", "rollback"] as const,
+      actions: ["deploy", "rollback"] as readonly ("deploy" | "rollback")[],
       rollbackDeploymentId: deploymentId,
       rollbackArtifactRef: `sha256:${rollbackDigest}`,
       rollbackSourceSha: rollbackSha,
@@ -340,42 +343,79 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       revokedAt: null,
       revoked: false as const,
     };
-    await sql.unsafe(`
-      CREATE TABLE approval_requests (
-        id varchar(36) PRIMARY KEY,
-        request_type varchar(50) NOT NULL,
-        tenant_id varchar(36) NOT NULL,
-        project_id varchar(255) NOT NULL,
-        requester_id integer NOT NULL,
-        status varchar(20) NOT NULL,
-        payload jsonb NOT NULL,
-        extra_data jsonb NOT NULL,
-        current_approvals integer NOT NULL,
-        required_approvers integer NOT NULL,
-        resolved_at timestamptz NOT NULL,
-        revoked_at timestamptz,
-        expires_at timestamptz NOT NULL
-      )
-    `);
-    await sql`
-      INSERT INTO approval_requests
-        (id, request_type, tenant_id, project_id, requester_id, status, payload, extra_data,
-         current_approvals, required_approvers, resolved_at, expires_at)
-      VALUES (${grant.grantRef}, 'deployment', ${tenantId}, ${projectId}, ${user!.id}, 'approved',
-        ${grant}::jsonb, ${{ cloudflareStagingGrantIssuerV1: "admin_approval_workflow" }}::jsonb,
-        1, 1, NOW(), ${grant.expiresAt})
-    `;
-    const [storedGrant] = await sql<
-      { id: string; status: string; payload: Record<string, unknown> }[]
-    >`
-      SELECT id, status, payload FROM approval_requests WHERE id = ${grant.grantRef}
-    `;
-    expect(storedGrant?.status).toBe("approved");
-    expect(storedGrant?.payload).toEqual(grant);
+    const python = process.env.CLOUDFLARE_POLICY_TEST_PYTHON;
+    const policyJobId = "06c1af13-d332-49b5-89ef-81c7f1089ca4";
+    async function policyProbe(data: Record<string, unknown>): Promise<{ grant: typeof grant | null }> {
+      if (!python) throw new Error("POLICY_TEST_PYTHON_REQUIRED");
+      return new Promise((resolveProbe, reject) => {
+        const child = spawn(python, ["tests/integration/cloudflare_staging_policy_probe.py"], {
+          cwd: resolve(import.meta.dirname, "../../../../python-backend"),
+          env: { ...process.env, DEBUG: "false", PYTHONPATH: "." }, stdio: ["pipe", "pipe", "pipe"],
+        });
+        let stdout = "", stderr = "";
+        child.stdout.on("data", chunk => { stdout += chunk; });
+        child.stderr.on("data", chunk => { stderr += chunk; });
+        child.on("error", reject);
+        child.on("close", code => {
+          const line = stdout.split("\n").find(value => value.startsWith("POLICY_PROBE:"));
+          if (code !== 0 || !line) return reject(new Error(`DISPOSABLE_POLICY_PROBE_FAILED: ${stderr.slice(-4000)}`));
+          resolveProbe(JSON.parse(line.slice("POLICY_PROBE:".length)));
+        });
+        child.stdin.end(JSON.stringify({ databaseUrl: disposable.databaseUrl, ...data }));
+      });
+    }
+    if (python) {
+      await runtimeDb.update(schema.tenants).set({ ownerId: user!.id }).where((await import("drizzle-orm")).eq(schema.tenants.id, tenantId));
+      await runtimeDb.insert(schema.canonicalProjects).values({ projectId, tenantId, projectType: "platform-deployment", title: "Disposable policy fixture", ownerPrincipalId: `user:${user!.id}` });
+      const issued = await policyProbe({ mode: "issue", grant, jobId: policyJobId, accountRef: accountId });
+      expect(issued.grant).not.toBeNull();
+      const [decision] = await sql`SELECT extra_data FROM approval_requests WHERE id = ${issued.grant!.grantRef}`;
+      expect(decision!.extra_data.cloudflareStagingGrantIssuerV1).toBe("owner_staging_policy");
+      const [audits] = await sql`SELECT count(*)::int AS count FROM audit_logs WHERE action = 'cloudflare.staging_grant.policy_approved'`;
+      expect(audits!.count).toBe(1);
+      grant = { ...issued.grant!, revoked: false };
+    } else {
+      await sql.unsafe(`
+        CREATE TABLE approval_requests (
+          id varchar(36) PRIMARY KEY,
+          request_type varchar(50) NOT NULL,
+          tenant_id varchar(36) NOT NULL,
+          project_id varchar(255) NOT NULL,
+          requester_id integer NOT NULL,
+          status varchar(20) NOT NULL,
+          payload jsonb NOT NULL,
+          extra_data jsonb NOT NULL,
+          current_approvals integer NOT NULL,
+          required_approvers integer NOT NULL,
+          resolved_at timestamptz NOT NULL,
+          revoked_at timestamptz,
+          expires_at timestamptz NOT NULL
+        )
+      `);
+      await sql`
+        INSERT INTO approval_requests
+          (id, request_type, tenant_id, project_id, requester_id, status, payload, extra_data,
+           current_approvals, required_approvers, resolved_at, expires_at)
+        VALUES (${grant.grantRef}, 'deployment', ${tenantId}, ${projectId}, ${user!.id}, 'approved',
+          ${grant}::jsonb, ${{ cloudflareStagingGrantIssuerV1: "admin_approval_workflow" }}::jsonb,
+          1, 1, NOW(), ${grant.expiresAt})
+      `;
+      const [storedGrant] = await sql<
+        { id: string; status: string; payload: Record<string, unknown> }[]
+      >`
+        SELECT id, status, payload FROM approval_requests WHERE id = ${grant.grantRef}
+      `;
+      expect(storedGrant?.status).toBe("approved");
+      expect(storedGrant?.payload).toEqual(grant);
+    }
     const runtime = bindCloudflareStagingDeploymentAuthorities({
       db: runtimeDb,
       cloudflare,
       resolveGrant: async ref => {
+        if (python) {
+          const resolved = await policyProbe({ mode: "resolve", grantRef: ref });
+          return resolved.grant ? { ...resolved.grant, revoked: false as const } : null;
+        }
         const [row] = await sql<
           {
             payload: Record<string, unknown>;
@@ -462,7 +502,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       },
       timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 60_000 },
     };
-    const job = await controlPlane.create(definition);
+    const job = await controlPlane.create(definition, python ? { canonicalJobId: policyJobId } : undefined);
     expect(job.created).toBe(true);
     const [outbox] = await runtimeDb
       .select()

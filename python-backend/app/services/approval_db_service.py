@@ -27,6 +27,7 @@ from app.models.approval import (
 from app.models.audit_log import AuditLog
 from app.models.tenant import Tenant, TenantUser
 from app.models.user import Role, User
+from app.services.cloudflare_staging_policy import CloudflareStagingPolicyAuthority
 from app.services.spec224_development_policy import (
     SPEC224_DEVELOPMENT_POLICY_SCHEMA,
     evaluate_development_policy,
@@ -47,7 +48,7 @@ _SPEC224_CANONICAL_UUID = re.compile(
 
 _CF_STAGING_GRANT_SCHEMA = "cloudflare.staging-deployment-grant.v1"
 _CF_STAGING_TARGET = "smartspec-cloudflare-staging"
-_CF_STAGING_ACTIONS = {"deploy", "rollback"}
+_CF_STAGING_ACTIONS = {"deploy", "rollback", "bootstrap"}
 _CF_STAGING_SHA = re.compile(r"^[0-9a-f]{40}$")
 _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
@@ -62,8 +63,14 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         "buildDigest", "actions", "rollbackDeploymentId", "rollbackArtifactRef",
         "rollbackSourceSha", "rollbackBuildDigest", "expiresAt", "revokedAt",
     }
-    if set(value) != required:
+    policy_fields = {"accountRef", "jobId"}
+    if set(value) not in (required, required | policy_fields):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_FIELDS_INVALID")
+    if policy_fields <= set(value) and (
+        not isinstance(value["accountRef"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["accountRef"])
+        or not isinstance(value["jobId"], str) or not _SPEC224_CANONICAL_UUID.fullmatch(value["jobId"])
+    ):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_POLICY_BINDING_INVALID")
     if value["schemaVersion"] != _CF_STAGING_GRANT_SCHEMA:
         raise ValueError("CLOUDFLARE_STAGING_GRANT_SCHEMA_INVALID")
     if value["targetId"] != _CF_STAGING_TARGET or value["environment"] != "staging":
@@ -73,13 +80,19 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
             raise ValueError("CLOUDFLARE_STAGING_GRANT_FIELD_INVALID")
     if type(value["requesterUserId"]) is not int or value["requesterUserId"] <= 0:
         raise ValueError("CLOUDFLARE_STAGING_GRANT_REQUESTER_INVALID")
-    for field in ("sourceSha", "rollbackSourceSha"):
+    bootstrap = value["actions"] == ["bootstrap"]
+    if isinstance(value["actions"], list) and "bootstrap" in value["actions"] and not bootstrap:
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
+    rollback_fields = ("rollbackDeploymentId", "rollbackArtifactRef", "rollbackSourceSha", "rollbackBuildDigest")
+    if bootstrap and any(value[field] is not None for field in rollback_fields):
+        raise ValueError("CLOUDFLARE_STAGING_GRANT_ROLLBACK_INVALID")
+    for field in (("sourceSha",) if bootstrap else ("sourceSha", "rollbackSourceSha")):
         if not isinstance(value[field], str) or not _CF_STAGING_SHA.fullmatch(value[field]):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_SOURCE_SHA_INVALID")
-    for field in ("buildDigest", "rollbackBuildDigest"):
+    for field in (("buildDigest",) if bootstrap else ("buildDigest", "rollbackBuildDigest")):
         if not isinstance(value[field], str) or not _CF_STAGING_DIGEST.fullmatch(value[field]):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_BUILD_DIGEST_INVALID")
-    if value["artifactRef"] != f"sha256:{value['buildDigest']}" or value["rollbackArtifactRef"] != f"sha256:{value['rollbackBuildDigest']}":
+    if value["artifactRef"] != f"sha256:{value['buildDigest']}" or (not bootstrap and value["rollbackArtifactRef"] != f"sha256:{value['rollbackBuildDigest']}"):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_ARTIFACT_REF_INVALID")
     if not isinstance(value["actions"], list) or not value["actions"]:
         raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
@@ -87,7 +100,7 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
     if len(set(value["actions"])) != len(value["actions"]):
         raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
-    for field in ("rollbackDeploymentId", "rollbackArtifactRef"):
+    for field in (() if bootstrap else ("rollbackDeploymentId", "rollbackArtifactRef")):
         if not isinstance(value[field], str) or not value[field].strip() or len(value[field]) > 255:
             raise ValueError("CLOUDFLARE_STAGING_GRANT_ROLLBACK_INVALID")
     if not isinstance(value["expiresAt"], str):
@@ -336,7 +349,7 @@ SPEC224_PROTECTED_RUNTIME_OPERATIONS = {
 }
 
 
-class ApprovalDBService:
+class ApprovalDBService(CloudflareStagingPolicyAuthority):
     """
     Database-backed approval service for persistent approval request storage.
 
@@ -628,6 +641,7 @@ class ApprovalDBService:
 
     async def create_cloudflare_staging_grant_request(
         self, *, tenant_id: str, requester_id: int, idempotency_key: str, payload: dict,
+        policy_id: str | None = None,
     ) -> ApprovalRequest:
         """Create an admin-authorized, typed Cloudflare staging grant approval."""
         if not tenant_id or len(tenant_id) > 36:
@@ -655,6 +669,12 @@ class ApprovalDBService:
         grant_id = str(uuid5(NAMESPACE_URL, correlation_key))
         grant = normalize_cloudflare_staging_grant_payload({**grant, "grantRef": grant_id})
 
+        policy_decision = None
+        if policy_id:
+            policy_decision = await self.authorize_cloudflare_staging_policy_grant(policy_id, grant)
+        elif "jobId" in grant or "accountRef" in grant:
+            raise ValueError("CLOUDFLARE_STAGING_GRANT_POLICY_REQUIRED")
+
         # Serialize idempotent create attempts without introducing a new table/index.
         await self.db.execute(
             text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
@@ -667,6 +687,7 @@ class ApprovalDBService:
                 existing.request_type != ApprovalType.DEPLOYMENT
                 or existing.requester_id != requester_id
                 or existing_payload != grant
+                or (existing.extra_data or {}).get("cloudflareStagingPolicyDecisionV1") != policy_decision
             ):
                 raise ValueError("CLOUDFLARE_STAGING_GRANT_IDEMPOTENCY_CONFLICT")
             return existing
@@ -680,31 +701,34 @@ class ApprovalDBService:
             project_id=grant["projectId"],
             requester_id=requester_id,
             requester_type="user",
-            status=ApprovalStatus.PENDING,
+            status=ApprovalStatus.APPROVED if policy_decision else ApprovalStatus.PENDING,
             payload=grant,
             extra_data={
                 "approvers": [],
-                "cloudflareStagingGrantIssuerV1": "admin_approval_workflow",
+                "cloudflareStagingGrantIssuerV1": "owner_staging_policy" if policy_decision else "admin_approval_workflow",
+                **({"cloudflareStagingPolicyDecisionV1": policy_decision} if policy_decision else {}),
             },
             action_digest=hashlib.sha256(
                 json.dumps(grant, sort_keys=True, separators=(",", ":")).encode("utf-8")
             ).hexdigest(),
             correlation_key=correlation_key,
             risk_level="critical",
-            required_approvers=1,
+            required_approvers=0 if policy_decision else 1,
             current_approvals=0,
+            resolved_at=now.replace(tzinfo=None) if policy_decision else None,
             expires_at=expires_at.replace(tzinfo=None),
         )
         self.db.add(request)
         self.db.add(AuditLog(
             user_id=str(requester_id),
             user_role=str(requester_role.value if hasattr(requester_role, "value") else requester_role),
-            action="cloudflare.staging_grant.requested",
+            action="cloudflare.staging_grant.policy_approved" if policy_decision else "cloudflare.staging_grant.requested",
             resource_type="cloudflare_staging_deployment_grant", resource_id=grant_id,
             details={
                 "tenantId": tenant_id, "projectId": grant["projectId"],
                 "targetId": _CF_STAGING_TARGET, "environment": "staging",
                 "actionDigest": request.action_digest, "correlationKey": correlation_key,
+                **({"policyDecision": policy_decision, "jobId": grant["jobId"], "accountRef": grant["accountRef"]} if policy_decision else {}),
             },
         ))
         await self.db.commit()
@@ -731,7 +755,7 @@ class ApprovalDBService:
         if request is None:
             raise ValueError("CLOUDFLARE_STAGING_GRANT_NOT_FOUND")
         extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
-        if extra_data.get("cloudflareStagingGrantIssuerV1") != "admin_approval_workflow":
+        if extra_data.get("cloudflareStagingGrantIssuerV1") not in ("admin_approval_workflow", "owner_staging_policy"):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_NOT_FOUND")
         grant = normalize_cloudflare_staging_grant_payload(
             request.payload if isinstance(request.payload, dict) else {}
@@ -775,7 +799,7 @@ class ApprovalDBService:
         ):
             return None
         extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
-        if extra_data.get("cloudflareStagingGrantIssuerV1") != "admin_approval_workflow":
+        if extra_data.get("cloudflareStagingGrantIssuerV1") not in ("admin_approval_workflow", "owner_staging_policy"):
             return None
         try:
             grant = normalize_cloudflare_staging_grant_payload(
@@ -801,6 +825,13 @@ class ApprovalDBService:
         if current.tzinfo is None:
             current = current.replace(tzinfo=timezone.utc)
         if expires_at <= current or expires_at > issued_at + timedelta(days=30):
+            return None
+        if extra_data.get("cloudflareStagingGrantIssuerV1") == "owner_staging_policy":
+            if request.action_digest != hashlib.sha256(json.dumps(grant, sort_keys=True, separators=(",", ":")).encode()).hexdigest():
+                return None
+            if not await self.validate_cloudflare_staging_policy_decision(request, current):
+                return None
+        elif "jobId" in grant or "accountRef" in grant:
             return None
         return grant
 

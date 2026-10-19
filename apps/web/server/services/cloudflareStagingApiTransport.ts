@@ -39,7 +39,7 @@ type Version = {
 export class CloudflareStagingTransportError extends Error {
   readonly class = "permanent" as const;
   readonly diagnosticCode: string;
-  constructor(diagnosticCode: string) {
+  constructor(diagnosticCode: string, readonly status?: number, readonly apiCode?: number) {
     super(diagnosticCode);
     this.name = "CloudflareStagingTransportError";
     this.diagnosticCode = diagnosticCode;
@@ -123,7 +123,9 @@ export function createCloudflareStagingApiTransport(input: {
       },
     });
     if (!response.ok) {
-      throw new CloudflareStagingTransportError(`CLOUDFLARE_HTTP_${response.status}`);
+      let code: number | undefined;
+      try { const body = await response.json() as Envelope<unknown>; code = body.errors?.[0]?.code; } catch { /* Retain bounded HTTP diagnostic. */ }
+      throw new CloudflareStagingTransportError(`CLOUDFLARE_HTTP_${response.status}${Number.isSafeInteger(code) ? `_API_${code}` : ""}`, response.status, code);
     }
     let envelope: Envelope<T>;
     try { envelope = await response.json() as Envelope<T>; }
@@ -212,7 +214,7 @@ export function createCloudflareStagingApiTransport(input: {
     return bundle;
   }
 
-  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact) {
+  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string) {
     const completionJwt = await uploadAssets(token, target, bundle);
     const metadata = {
       main_module: bundle.mainModule,
@@ -234,7 +236,7 @@ export function createCloudflareStagingApiTransport(input: {
         },
       } : undefined,
       annotations: {
-        "workers/commit_sha": artifact.sourceSha,
+        ...(bootstrapKey ? { "workers/tag": bootstrapTag(bootstrapKey) } : {}),
         "workers/message": `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`,
       },
     };
@@ -244,10 +246,12 @@ export function createCloudflareStagingApiTransport(input: {
       form.set(name, new Blob([file.bytes], { type: file.contentType }), name);
     }
     const result = await api<{ id?: string }>(token,
-      `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions`, {
-        method: "POST",
+      `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}${bootstrapKey ? "" : "/versions"}`, {
+        method: bootstrapKey ? "PUT" : "POST",
         body: form,
       });
+    // Initial PUT activates the first version; its actual deployment is read back below.
+    if (bootstrapKey) return "";
     if (!result.id || !VERSION_ID.test(result.id)) throw new CloudflareStagingTransportError("CLOUDFLARE_VERSION_RECEIPT_INVALID");
     return result.id;
   }
@@ -296,18 +300,72 @@ export function createCloudflareStagingApiTransport(input: {
     const version = await api<Version>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(primary.version_id)}`);
     const annotations = version.metadata?.annotations;
-    if (version.id !== primary.version_id || annotations?.["workers/commit_sha"]?.toLowerCase() !== sourceSha.toLowerCase() ||
+    if (version.id !== primary.version_id ||
         annotations?.["workers/message"] !== `SmartAIHub staging ${sourceSha} ${buildDigest}`) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
     }
     return { versionId: primary.version_id, deployment };
   }
 
+  function bootstrapTag(key: string) {
+    return createHash("sha256").update(`smartaihub-staging:${key}`).digest("hex").slice(0, 32);
+  }
+
+  async function bootstrapDeployment(token: string, target: CloudflareStagingTarget, artifact: CloudflareStagingArtifact, bundle: CloudflareStagingBundle, key: string) {
+    const scriptUrl = `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}`;
+    async function currentOwnedDeployment(allowAbsent: boolean): Promise<Deployment | null> {
+      let listing: { deployments?: Deployment[] };
+      try { listing = await api(token, `${scriptUrl}/deployments`); }
+      catch (error) {
+        if (allowAbsent && error instanceof CloudflareStagingTransportError && error.status === 404 && error.apiCode === 10007) return null;
+        throw error;
+      }
+      const current = listing.deployments?.[0];
+      if (!current?.id || current.versions?.length !== 1 || current.versions[0]?.percentage !== 100 || !current.versions[0]?.version_id) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED");
+      }
+      const version = await api<Version>(token, `${scriptUrl}/versions/${encodeURIComponent(current.versions[0].version_id)}`);
+      if (version.metadata?.annotations?.["workers/tag"] !== bootstrapTag(key)) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED");
+      }
+      await verifyVersion(token, target, current.id, artifact.sourceSha, artifact.buildDigest);
+      return current;
+    }
+    let current = await currentOwnedDeployment(true);
+    let subdomain: string;
+    try { subdomain = await getWorkersDevSubdomain(token, target); }
+    catch (error) {
+      if (!(error instanceof CloudflareStagingTransportError) || error.status !== 404 || error.apiCode !== 10007) throw error;
+      const workers = await api<Array<{ id?: string }>>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/scripts`);
+      // Do not expose existing Workers by registering their account-wide subdomain.
+      if (!Array.isArray(workers) || workers.length !== 0) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
+      const created = await api<{ subdomain?: string }>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/subdomain`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subdomain: `smartaihub-${target.accountRef.slice(0, 8)}` }),
+      });
+      if (created.subdomain !== `smartaihub-${target.accountRef.slice(0, 8)}`) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_SUBDOMAIN_INVALID");
+      subdomain = created.subdomain;
+    }
+    if (!current) {
+      // Recheck immediately before creation; a discovered foreign Worker is never overwritten.
+      if (await currentOwnedDeployment(true)) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_CONCURRENT_CREATION");
+      await uploadVersion(token, target, bundle, artifact, key);
+      current = await currentOwnedDeployment(false);
+    }
+    if (!current?.id) throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_RECEIPT_INVALID");
+    await api(token, `${scriptUrl}/subdomain`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: true, previews_enabled: false }),
+    });
+    return { deploymentId: current.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest };
+  }
+
   return {
-    deploy: async ({ token, target, artifact, idempotencyKey }) => {
+    deploy: async ({ token, target, artifact, idempotencyKey, bootstrap }) => {
       assertTarget(target);
       if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_IDEMPOTENCY_INVALID");
       const bundle = await loadVerifiedBundle(artifact);
+      if (bootstrap) return bootstrapDeployment(token, target, artifact, bundle, idempotencyKey);
       const prior = await findDeploymentByIdempotencyKey(token, target, idempotencyKey);
       if (prior?.id) {
         const deployment = await getDeployment(token, target, prior.id);
@@ -316,8 +374,7 @@ export function createCloudflareStagingApiTransport(input: {
         }
         const priorVersion = await api<Version>(token,
           `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(deployment.versions[0].version_id)}`);
-        if (priorVersion.metadata?.annotations?.["workers/commit_sha"]?.toLowerCase() !== artifact.sourceSha.toLowerCase() ||
-            priorVersion.metadata?.annotations?.["workers/message"] !== `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`) {
+        if (priorVersion.metadata?.annotations?.["workers/message"] !== `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`) {
           throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
         }
         const subdomain = await getWorkersDevSubdomain(token, target);
@@ -339,14 +396,18 @@ export function createCloudflareStagingApiTransport(input: {
       if (new URL(url).origin !== baseUrl.origin) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_URL_DENIED");
       await verifyVersion(token, target, deploymentId, sourceSha, buildDigest);
       const response = await fetchImpl(new URL("/healthz", baseUrl), { redirect: "manual" });
+      let healthy = false;
+      if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
+        try { const health = await response.json() as { ok?: unknown; service?: unknown }; healthy = health.ok === true && health.service === "smartspec-cloudflare-runtime"; } catch { /* Fail closed on non-runtime content. */ }
+      }
       return {
-        reachable: response.status >= 200 && response.status < 400,
+        reachable: healthy,
         deploymentId,
         sourceSha,
         buildDigest,
       };
     },
-    rollback: async ({ token, target, deploymentId, idempotencyKey }) => {
+    rollback: async ({ token, target, deploymentId, idempotencyKey, sourceSha, buildDigest }) => {
       assertTarget(target);
       const previous = await getDeployment(token, target, deploymentId);
       const version = previous.versions[0];
@@ -359,6 +420,9 @@ export function createCloudflareStagingApiTransport(input: {
       const message = annotations?.["workers/message"] ?? "";
       const match = /^SmartAIHub staging ([a-f0-9]{40}) ([a-f0-9]{64})$/i.exec(message);
       if (versionDetails.id !== version.version_id || !match) throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_UNVERIFIED");
+      if ((sourceSha !== undefined && match[1] !== sourceSha) || (buildDigest !== undefined && match[2] !== buildDigest)) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_MISMATCH");
+      }
       const rolledBackDeploymentId = await createDeployment(token, target, [{ version_id: version.version_id, percentage: 100 }], idempotencyKey);
       const subdomain = await getWorkersDevSubdomain(token, target);
       return {

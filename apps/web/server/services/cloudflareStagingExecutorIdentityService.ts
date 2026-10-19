@@ -49,7 +49,7 @@ export type CloudflareStagingExecutorAttemptBinding = {
   tenantId: string;
   target: typeof CLOUDFLARE_STAGING_EXECUTOR_TARGET;
   artifactSha256: string;
-  action: "deploy" | "rollback";
+  action: "deploy" | "rollback" | "bootstrap";
   idempotencyKey: string;
 };
 
@@ -101,7 +101,7 @@ export async function createCloudflareStagingExecutorProof(
     !binding.tenantId.trim() ||
     !binding.idempotencyKey.trim() ||
     !/^[a-f0-9]{64}$/i.test(binding.artifactSha256) ||
-    (binding.action !== "deploy" && binding.action !== "rollback")
+    (binding.action !== "deploy" && binding.action !== "rollback" && binding.action !== "bootstrap")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"
@@ -299,7 +299,7 @@ export async function verifyCloudflareStagingExecutorProof(
     expectedBinding.target !== CLOUDFLARE_STAGING_EXECUTOR_TARGET ||
     !/^[a-f0-9]{64}$/i.test(expectedBinding.artifactSha256) ||
     (expectedBinding.action !== "deploy" &&
-      expectedBinding.action !== "rollback")
+      expectedBinding.action !== "rollback" && expectedBinding.action !== "bootstrap")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"

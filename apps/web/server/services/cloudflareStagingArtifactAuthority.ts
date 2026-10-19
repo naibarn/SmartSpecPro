@@ -294,10 +294,13 @@ export function createCloudflareStagingArtifactAuthority(input: {
     const moduleFiles: Record<string, { contentType: string; bytes: Uint8Array }> = {};
     const assets: Record<string, { contentType: string; bytes: Uint8Array }> = {};
     for (const [files, output] of [[manifest.moduleFiles, moduleFiles], [manifest.assets, assets]] as const) {
-      for (const [name, file] of Object.entries(files)) {
-        const bytes = await readBlob(input.storage, file);
-        if (!bytes) return null;
-        output[name] = { contentType: file.contentType, bytes };
+      const entries = Object.entries(files);
+      for (let offset = 0; offset < entries.length; offset += 8) {
+        const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([name, file]) => ({
+          name, file, bytes: await readBlob(input.storage, file),
+        })));
+        if (batch.some(item => !item.bytes)) return null;
+        for (const { name, file, bytes } of batch) output[name] = { contentType: file.contentType, bytes: bytes! };
       }
     }
     const bundle: CloudflareStagingBundle = {
