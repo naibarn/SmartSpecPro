@@ -80600,7 +80600,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "fd69f5799139aba3e05a0f5053251e17eae78a68",
+      "canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -125466,7 +125466,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "fd69f5799139aba3e05a0f5053251e17eae78a68",
+      "canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
