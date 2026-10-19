@@ -25,10 +25,10 @@
     "expected_spec_digest": "8c0311636a889603d2bed5edeb54d765205748c3eff6172bfac84a87e062face"
   },
   "continuation": {
-    "next_action": "Map canonical usage-meter receipts, immutable commercial snapshots and revenue allocation snapshots to the SPEC-207 CommercialPaymentRequest/Receipt without duplicating financial state. Preserve the SPEC-224 boundary. See SPEC-207 handoff/evidence/agentic-commerce-payment-interoperability-gap-review-20261019.md.",
+    "next_action": "Complete the SPEC-280 mapping from canonical metering receipts and immutable allocation snapshots into the typed SPEC-207 contract; keep final pricing and revenue policy owned by SPEC-280 and payment/ledger state owned by SPEC-207. The deterministic bridge is partial; next add durable PostgreSQL persistence and sandbox-only restart/migration proof. Evidence: ../207-agentic-economic-control-plane/handoff/evidence/commercial-payment-bridge-implementation-20261019.md.",
     "next_ready_workunit": "SPEC-280-WU-USAGE-TO-PAYMENT-MAPPING",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-280 Revision 1.3, section 54; begin with existing usage evidence, credit reservations and settlement references.",
+    "resume_point": "Revision 1.3 section 54 mapping implemented as a typed bridge; remaining: durable persistence, production source mapping to canonical usage receipts and sandbox acceptance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
     "digest": "8c0311636a889603d2bed5edeb54d765205748c3eff6172bfac84a87e062face",
@@ -90,9 +90,17 @@
   "implementation": {
     "checkpoint_shas": [],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/shared/commercialPaymentContracts.ts",
+      "apps/web/server/services/commercialPayments.ts",
+      "apps/web/server/services/__tests__/commercialPayments.test.ts",
+      "apps/web/drizzle/schema.ts",
+      "apps/web/drizzle/0408_spec207_280_commercial_payment_bridge.sql",
+      "apps/web/drizzle/0408_spec207_280_commercial_payment_bridge.rollback.md",
+      "apps/web/server/__tests__/commercialPaymentBridgeMigration.test.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL_IN_PROGRESS"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
@@ -187,7 +195,7 @@
     "unresolved": 163
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T00:06:04.148040Z",
+  "updated_at": "2026-10-19T00:31:41.320259Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

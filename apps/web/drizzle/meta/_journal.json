@@ -2759,6 +2759,13 @@
       "when": 1792300000000,
       "tag": "0407_spec229_projection_shard_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 408,
+      "version": "7",
+      "when": 1792300000001,
+      "tag": "0408_spec207_280_commercial_payment_bridge",
+      "breakpoints": true
     }
   ]
 }

@@ -15,3 +15,4 @@
 {"changes": ["integration.canonical_ref", "integration.canonical_sha", "integration.integrated", "integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 15, "observed_at": "2026-10-19T00:05:47.512787Z", "provenance": "OBSERVED"}
 {"changes": ["integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 16, "observed_at": "2026-10-19T00:05:56.458543Z", "provenance": "OBSERVED"}
 {"changes": ["integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 17, "observed_at": "2026-10-19T00:06:04.148040Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.next_ready_workunit", "continuation.resume_point", "implementation.source_paths", "implementation.started", "implementation.status"], "event_type": "CURRENT_TRANSITION", "generation": 18, "observed_at": "2026-10-19T00:31:41.320259Z", "provenance": "OBSERVED"}
