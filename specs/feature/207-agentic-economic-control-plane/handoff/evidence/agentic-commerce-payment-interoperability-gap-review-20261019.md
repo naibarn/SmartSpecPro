@@ -14,9 +14,10 @@
 
 ## Existing documents reviewed
 
-- `specs/feature/207-agentic-economic-control-plane/spec.md` and its existing sections/hand-off artifacts: multi-wallet routing, budget envelopes, idempotency, provider adapters, internal Credits, ledger, settlement, reconciliation, postpaid accounts, expiry/orphan holds and acceptance criteria already form the financial foundation.
+- `specs/feature/207-agentic-economic-control-plane/spec.md` and its existing sections/hand-off artifacts: section 80 already defines buyer/seller/marketplace/intermediary flows; multi-wallet routing, budget envelopes, idempotency, provider adapters, internal Credits, ledger, settlement, reconciliation, postpaid accounts, expiry/orphan holds and acceptance criteria already form the financial foundation. The new addendum fills in the cross-Spec ownership, PAYG, bounded task reservation, overdraft, checkpoint and protocol/provider failure contracts.
 - `specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md`: metered capability commerce, price/revenue policy versions, immutable commercial snapshots, usage evidence, nested reservation, settlement saga, creator/tenant allocation and recovery/idempotency.
 - `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md`: A2A transport selection and the `billing-budget/v1` extension boundary.
+- `specs/feature/_candidates/spec-298-smartaihub-universal-access-admission/candidate-spec.md`: non-canonical admission candidate that explicitly separates A2A/MCP identity from transaction/payment authority and names a payment-owner adapter seam. Its AP2 link is a reference, not canonical payment ownership or protocol certification.
 - `specs/feature/239-External Personal Agent Interoperability/spec.md`: external agent calls already defer SmartAIHub credit reservation/settlement to SPEC-207 and retain foreign provider billing as estimated/out-of-band.
 - `specs/quick/023-finance-payment-instruments/request.md` and its sections: private finance capture/instrument records; explicitly excludes payment processing and live bank reconciliation.
 - SPEC-066 Beam adapter/webhook/payment-attempt section and SPEC-068 card method/consent section: existing provider-specific billing components remain adapters and require idempotent attempts, webhook verification and masked credentials.
