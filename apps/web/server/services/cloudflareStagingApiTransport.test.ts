@@ -103,7 +103,7 @@ describe("Cloudflare staging API transport", () => {
         expect(metadata.annotations["workers/message"]).toContain(buildDigest);
         return json({ id: versionId });
       }
-      if (url.endsWith("/deployments") && init.method !== "POST") return json({ deployments: [] });
+      if (url.endsWith("/deployments") && init.method !== "POST") return json({ deployments: [{ id: deploymentId }] });
       if (url.endsWith("/deployments") && init.method === "POST") {
         const body = JSON.parse(String(init.body));
         expect(body.versions).toEqual([{ version_id: versionId, percentage: 100 }]);
@@ -112,10 +112,10 @@ describe("Cloudflare staging API transport", () => {
       }
       if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
-      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, metadata: { annotations: {
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: {
         "workers/commit_sha": sourceSha,
         "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
-      } } });
+      } });
       if (url === "https://smartspec-cloudflare-staging.account-test.workers.dev/healthz") return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
       throw new Error(`Unexpected request ${url}`);
     }) as typeof fetch;
@@ -148,9 +148,9 @@ describe("Cloudflare staging API transport", () => {
       const url = String(input);
       calls.push({ url, body: typeof init.body === "string" ? init.body : undefined });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
-      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, metadata: { annotations: {
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: {
         "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
-      } } });
+      } });
       if (url.endsWith("/deployments") && init.method === "POST") return json({ id: rollbackId });
       if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
       throw new Error(`Unexpected request ${url}`);
@@ -174,10 +174,10 @@ describe("Cloudflare staging API transport", () => {
         annotations: { "workers/message": "SmartAIHub staging idempotency cloudflare-staging:job-1" },
       }] });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
-      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, metadata: { annotations: {
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: {
         "workers/commit_sha": sourceSha,
         "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
-      } } });
+      } });
       if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
       throw new Error(`Unexpected request ${url}`);
     }) as typeof fetch;
@@ -207,11 +207,13 @@ describe("Cloudflare staging API transport", () => {
       const url = String(input);
       if (url.endsWith("/deployments")) return created
         ? json({ deployments: [{ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] }] })
-        : new Response(JSON.stringify({ success: false, errors: [{ code: 10007 }] }), { status: 404 });
+        : json({ deployments: [] });
+      if (url.endsWith(`/scripts/${target.workerRef}/versions`)) return json({ items: [] });
+      if (url.endsWith(`/scripts/${target.workerRef}/settings`)) return new Response(JSON.stringify({ success: false, errors: [{ code: 10222 }] }), { status: 404 });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
-      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, metadata: { annotations: {
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: {
         "workers/tag": versionTag, "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
-      } } });
+      } });
       if (url.endsWith("/workers/scripts")) return json([{ id: "existing-disabled-worker" }]);
       if (url.endsWith("/scripts/existing-disabled-worker/subdomain")) return json({ enabled: false, previews_enabled: false });
       if (url.endsWith("/workers/subdomain")) {
@@ -254,6 +256,20 @@ describe("Cloudflare staging API transport", () => {
     const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
     await expect(transport.deploy({ token: "private", target, artifact, idempotencyKey: "bootstrap", bootstrap: true })).rejects.toThrow("ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
     expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
+  it("refuses a historical deployment receipt when another deployment is active", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
+      if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: { "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}` } });
+      if (url.endsWith("/deployments")) return json({ deployments: [{ id: "33333333-3333-4333-8333-333333333333" }] });
+      throw Error("HEALTH_MUST_NOT_BE_CHECKED_FOR_STALE_DEPLOYMENT");
+    }) as typeof fetch;
+    const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
+    await expect(transport.verifyRuntime({ token: "private", target, deploymentId, sourceSha, buildDigest,
+      url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).rejects.toThrow("ACTIVE_DEPLOYMENT_MISMATCH");
   });
 
 });

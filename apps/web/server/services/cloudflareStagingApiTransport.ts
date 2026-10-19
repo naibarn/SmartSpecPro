@@ -33,7 +33,8 @@ type Deployment = {
 };
 type Version = {
   id?: string;
-  metadata?: { main_module?: string; annotations?: Record<string, string> };
+  metadata?: { main_module?: string };
+  annotations?: Record<string, string>;
 };
 
 export class CloudflareStagingTransportError extends Error {
@@ -299,7 +300,7 @@ export function createCloudflareStagingApiTransport(input: {
     if (!primary?.version_id) throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_VERSION_MISSING");
     const version = await api<Version>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(primary.version_id)}`);
-    const annotations = version.metadata?.annotations;
+    const annotations = version.annotations;
     if (version.id !== primary.version_id ||
         annotations?.["workers/message"] !== `SmartAIHub staging ${sourceSha} ${buildDigest}`) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
@@ -320,12 +321,25 @@ export function createCloudflareStagingApiTransport(input: {
         if (allowAbsent && error instanceof CloudflareStagingTransportError && error.status === 404 && error.apiCode === 10007) return null;
         throw error;
       }
+      if (allowAbsent && Array.isArray(listing.deployments) && listing.deployments.length === 0) {
+        const versions = await api<{ items?: Version[] }>(token, `${scriptUrl}/versions`);
+        const workers = await api<Array<{ id?: string }>>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/scripts`);
+        if (Array.isArray(versions.items) && versions.items.length === 0 && Array.isArray(workers) && !workers.some(worker => worker.id === target.workerRef)) {
+          try { await api(token, `${scriptUrl}/settings`); }
+          catch (error) {
+            // A failed compilation/asset session leaves a no-content draft:
+            // no versions, no settings, no live Worker in account inventory.
+            if (error instanceof CloudflareStagingTransportError && error.status === 404 && error.apiCode === 10222) return null;
+            throw error;
+          }
+        }
+      }
       const current = listing.deployments?.[0];
       if (!current?.id || current.versions?.length !== 1 || current.versions[0]?.percentage !== 100 || !current.versions[0]?.version_id) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED");
       }
       const version = await api<Version>(token, `${scriptUrl}/versions/${encodeURIComponent(current.versions[0].version_id)}`);
-      if (version.metadata?.annotations?.["workers/tag"] !== bootstrapTag(key)) {
+      if (version.annotations?.["workers/tag"] !== bootstrapTag(key)) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED");
       }
       await verifyVersion(token, target, current.id, artifact.sourceSha, artifact.buildDigest);
@@ -381,7 +395,7 @@ export function createCloudflareStagingApiTransport(input: {
         }
         const priorVersion = await api<Version>(token,
           `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(deployment.versions[0].version_id)}`);
-        if (priorVersion.metadata?.annotations?.["workers/message"] !== `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`) {
+        if (priorVersion.annotations?.["workers/message"] !== `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`) {
           throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
         }
         const subdomain = await getWorkersDevSubdomain(token, target);
@@ -402,10 +416,23 @@ export function createCloudflareStagingApiTransport(input: {
       const baseUrl = new URL(safeWorkersDevUrl(target.workerRef, await getWorkersDevSubdomain(token, target)));
       if (new URL(url).origin !== baseUrl.origin) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_URL_DENIED");
       await verifyVersion(token, target, deploymentId, sourceSha, buildDigest);
-      const response = await fetchImpl(new URL("/healthz", baseUrl), { redirect: "manual" });
+      const active = await api<{ deployments?: Deployment[] }>(token,
+        `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
+      if (active.deployments?.[0]?.id !== deploymentId) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
+      }
       let healthy = false;
-      if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
-        try { const health = await response.json() as { ok?: unknown; service?: unknown }; healthy = health.ok === true && health.service === "smartspec-cloudflare-runtime"; } catch { /* Fail closed on non-runtime content. */ }
+      // A newly enabled workers.dev endpoint can take a few seconds to propagate.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        try {
+          const response = await fetchImpl(new URL("/healthz", baseUrl), { redirect: "manual", signal: AbortSignal.timeout(5000) });
+          if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
+            const health = await response.json() as { ok?: unknown; service?: unknown };
+            healthy = health.ok === true && health.service === "smartspec-cloudflare-runtime";
+          }
+          if (healthy || (response.status !== 404 && response.status !== 503)) break;
+        } catch { /* Bounded retry for initial endpoint propagation. */ }
+        if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 2000));
       }
       return {
         reachable: healthy,
@@ -423,7 +450,7 @@ export function createCloudflareStagingApiTransport(input: {
       }
       const versionDetails = await api<Version>(token,
         `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(version.version_id)}`);
-      const annotations = versionDetails.metadata?.annotations;
+      const annotations = versionDetails.annotations;
       const message = annotations?.["workers/message"] ?? "";
       const match = /^SmartAIHub staging ([a-f0-9]{40}) ([a-f0-9]{64})$/i.exec(message);
       if (versionDetails.id !== version.version_id || !match) throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_UNVERIFIED");

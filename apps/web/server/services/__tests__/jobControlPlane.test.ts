@@ -1998,6 +1998,20 @@ describe("job control plane", () => {
     expect(state.jobs.get(created.jobId).attempt).toBe(allowed ? 2 : 1);
   });
 
+  it.each(["bootstrap", "deploy"])("bounds bootstrap receipt recovery to the bootstrap action: %s", async action => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, jobType: "cloudflare.staging.deploy", idempotencyKey: undefined,
+      input: { action, targetId: "smartspec-cloudflare-staging" } });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "staging-test", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: "CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED", message: "no verified receipt", class: "permanent" });
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000089", "user_requested_retry",
+      { disposition: "provider_operation_resolved", knownRuntime: "cloudflare_staging_bootstrap_receipt" }, definition.requestedByUserId,
+      { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId, authorizationScope: "worker_jobs.user_retry" },
+    )).resolves.toBe(action === "bootstrap");
+  });
+
   it("allows only the exact fixed Remotion runtime failure to recover without a pre-existing review flag", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

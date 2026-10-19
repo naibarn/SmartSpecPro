@@ -283,7 +283,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
           : url.endsWith("/deployments") && init.method === "POST"
             ? { id: deploymentId }
             : url.endsWith("/deployments")
-              ? { deployments: [] }
+              ? { deployments: [{ id: deploymentId }] }
               : url.endsWith("/workers/subdomain")
                 ? { subdomain: "disposable-account" }
                 : url.endsWith(`/deployments/${deploymentId}`)
@@ -294,11 +294,8 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
                   : url.endsWith(`/versions/${versionId}`)
                     ? {
                         id: versionId,
-                        metadata: {
-                          annotations: {
-                            "workers/commit_sha": sourceSha,
-                            "workers/message": `SmartAIHub staging ${sourceSha} ${bundleDigest}`,
-                          },
+                        annotations: {
+                          "workers/message": `SmartAIHub staging ${sourceSha} ${bundleDigest}`,
                         },
                       }
                     : null;

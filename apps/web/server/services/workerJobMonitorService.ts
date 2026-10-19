@@ -80,6 +80,7 @@ export type UserWorkerJobRetryReason =
   | "adapter_contract_unsupported"
   | "known_runtime_failure"
   | "cloudflare_compile_rejected"
+  | "cloudflare_bootstrap_receipt"
   | "artifact_qc_failure"
   | "protection_provider_unavailable";
 
@@ -175,6 +176,10 @@ export function getUserWorkerJobRetryPolicy(
 
   if (row.status === "failed" && row.jobType === "cloudflare.staging.deploy" && row.errorCode === "CLOUDFLARE_HTTP_400_API_10021") {
     return { mode: "review_recovery", reason: "cloudflare_compile_rejected" };
+  }
+
+  if (row.status === "failed" && row.jobType === "cloudflare.staging.deploy" && row.errorCode === "CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED") {
+    return { mode: "review_recovery", reason: "cloudflare_bootstrap_receipt" };
   }
 
   // Content protection is a downstream sibling of the render. When its
@@ -1269,7 +1274,9 @@ export async function retryUserWorkerJob(
     authorizationScope: "worker_jobs.user_retry",
   };
   const reason = "user_requested_retry";
-  const recoveryEvidence = retryPolicy.reason === "cloudflare_compile_rejected"
+  const recoveryEvidence = retryPolicy.reason === "cloudflare_bootstrap_receipt"
+    ? { disposition: "provider_operation_resolved" as const, knownRuntime: "cloudflare_staging_bootstrap_receipt" as const }
+    : retryPolicy.reason === "cloudflare_compile_rejected"
     ? { disposition: "pre_submission_failure" as const, knownRuntime: "cloudflare_staging_compile" as const }
     : retryPolicy.reason === "known_runtime_failure"
     ? {

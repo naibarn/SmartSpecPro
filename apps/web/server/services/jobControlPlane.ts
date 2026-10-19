@@ -4715,7 +4715,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt";
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4736,7 +4736,8 @@ export function createJobControlPlane(
         (evidence.knownRuntime !== undefined &&
           evidence.knownRuntime !== "remotion_revision_id" &&
           evidence.knownRuntime !== "content_protection_provider" &&
-          evidence.knownRuntime !== "cloudflare_staging_compile")
+          evidence.knownRuntime !== "cloudflare_staging_compile" &&
+          evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt")
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4789,6 +4790,14 @@ export function createJobControlPlane(
           scope?.authorizationScope === "worker_jobs.user_retry" &&
           job?.jobType === "cloudflare.staging.deploy" &&
           job?.errorCode === "CLOUDFLARE_HTTP_400_API_10021";
+        const knownCloudflareBootstrapReceipt =
+          evidence.knownRuntime === "cloudflare_staging_bootstrap_receipt" &&
+          evidence.disposition === "provider_operation_resolved" &&
+          scope?.authorizationScope === "worker_jobs.user_retry" &&
+          job?.jobType === "cloudflare.staging.deploy" &&
+          job?.inputJson?.action === "bootstrap" &&
+          job?.inputJson?.targetId === "smartspec-cloudflare-staging" &&
+          job?.errorCode === "CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED";
         const knownProtectionProviderFailure =
           evidence.knownRuntime === "content_protection_provider" &&
           evidence.disposition === "provider_operation_resolved" &&
@@ -4808,7 +4817,8 @@ export function createJobControlPlane(
           (!job.operatorReviewRequired &&
             !knownRemotionRevisionFailure &&
             !knownProtectionProviderFailure &&
-            !knownCloudflareCompileRejection) ||
+            !knownCloudflareCompileRejection &&
+            !knownCloudflareBootstrapReceipt) ||
           job.attempt >= job.maxAttempts
         )
           return false;
