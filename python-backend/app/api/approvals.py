@@ -319,6 +319,19 @@ class CloudflareStagingOriginPolicyGrantIssue(CloudflareStagingPolicyGrantIssue)
     rollback_configuration_digest: StrictStr | None = Field(..., alias="rollbackConfigurationDigest", pattern=r"^[a-f0-9]{64}$")
 
 
+class CloudflareOriginProvisionGrantIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    policy_id: StrictStr = Field(..., alias="policyId", pattern=r"^[a-f0-9-]{36}$")
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    executor_id: StrictStr = Field(..., alias="executorId", min_length=1, max_length=200)
+    account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
+    plan: dict
+    plan_digest: StrictStr = Field(..., alias="planDigest", pattern=r"^[a-f0-9]{64}$")
+    expires_at: datetime = Field(..., alias="expiresAt")
+
+
 @router.post("/cloudflare-staging-policies", status_code=201)
 async def create_cloudflare_staging_policy(
     data: CloudflareStagingPolicyCreate,
@@ -1395,6 +1408,31 @@ async def acknowledge_spec224_external_agent_decision(
     if not acknowledged:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SPEC224_DECISION_ACK_REJECTED")
     return {"acknowledged": True, "deliveryId": data.delivery_id}
+
+@router.post("/cloudflare-staging-origin-provision-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
+async def create_cloudflare_origin_provision_grant(
+    data: CloudflareOriginProvisionGrantIssue, current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id), db: AsyncSession = Depends(get_db_session),
+):
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    if data.expires_at.tzinfo is None:
+        raise HTTPException(status_code=422, detail="CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
+    try:
+        return await ApprovalDBService(db).create_cloudflare_staging_grant_request(
+            tenant_id=tenant_id, requester_id=int(current_user.id), idempotency_key=data.idempotency_key,
+            policy_id=data.policy_id, payload={
+                "schemaVersion": "cloudflare.staging-origin-provision-grant.v1",
+                "grantRef": "00000000-0000-0000-0000-000000000000", "tenantId": tenant_id,
+                "requesterUserId": int(current_user.id), "projectId": data.project_id, "executorId": data.executor_id,
+                "targetId": "smartspec-cloudflare-staging", "environment": "staging", "accountRef": data.account_ref,
+                "jobId": data.job_id, "actions": ["provision"], "plan": data.plan, "planDigest": data.plan_digest,
+                "expiresAt": data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"), "revokedAt": None,
+            })
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 
 @router.post("/cloudflare-staging-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
 async def create_cloudflare_staging_policy_grant(

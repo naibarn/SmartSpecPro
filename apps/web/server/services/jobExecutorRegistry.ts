@@ -1,3 +1,5 @@
+import { ORIGIN_PROVISION_CONTRACT, ORIGIN_PROVISION_JOB } from "./cloudflareOriginProvisionContract";
+import { createCloudflareOriginProvisionExecutor } from "./cloudflareOriginProvisionExecutor";
 import { createHash } from "node:crypto";
 import type { JobExecutor } from "./jobExecutor";
 import type { ExecutionClass, LeaseContext } from "./jobControlPlaneTypes";
@@ -369,6 +371,12 @@ defaultJobExecutorRegistry.register({
   executor: createCloudflareStagingDeploymentExecutor(
     createCloudflareStagingDeploymentRuntime
   ),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: ORIGIN_PROVISION_JOB, executionClass: "long",
+  contractVersions: new Set([ORIGIN_PROVISION_CONTRACT]),
+  executor: createCloudflareOriginProvisionExecutor(),
 });
 
 // Development-only local Node executor. It uses a server-owned private pipe

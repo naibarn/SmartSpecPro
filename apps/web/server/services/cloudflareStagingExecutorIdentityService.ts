@@ -1,3 +1,4 @@
+import { ORIGIN_PROVISION_CONTRACT, originProvisionAuthoritySchema, type OriginProvisionAuthority } from "./cloudflareOriginProvisionContract";
 import crypto from "crypto";
 import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT, cloudflareStagingOriginAuthoritySchema, type CloudflareStagingOriginAuthority } from "./cloudflareStagingOriginContract";
 import { eq } from "drizzle-orm";
@@ -50,10 +51,11 @@ export type CloudflareStagingExecutorAttemptBinding = {
   tenantId: string;
   target: typeof CLOUDFLARE_STAGING_EXECUTOR_TARGET;
   artifactSha256: string;
-  action: "deploy" | "rollback" | "bootstrap";
+  action: "deploy" | "rollback" | "bootstrap" | "provision";
   idempotencyKey: string;
   /** v2 authority is signed in full; it never follows from executor identity. */
   originAuthority?: CloudflareStagingOriginAuthority;
+  provisionAuthority?: OriginProvisionAuthority;
 };
 
 /** Canonical bytes the registered Ed25519 executor must sign for each operation. */
@@ -83,6 +85,12 @@ function stableJson(value: unknown): string {
 }
 
 function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
+  const provision = binding.action === "provision";
+  const parsedProvision = originProvisionAuthoritySchema.safeParse(binding.provisionAuthority);
+  if (provision !== (binding.provisionAuthority !== undefined) || (provision &&
+      (!parsedProvision.success || parsedProvision.data.planDigest !== binding.artifactSha256 || binding.originAuthority !== undefined))) {
+    throw new CloudflareStagingExecutorIdentityError("executor_attempt_binding_invalid");
+  }
   let originAuthority: CloudflareStagingOriginAuthority | undefined;
   if (binding.originAuthority !== undefined) {
     const parsed = cloudflareStagingOriginAuthoritySchema.safeParse(binding.originAuthority);
@@ -95,6 +103,7 @@ function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
     jobId: binding.jobId, tenantId: binding.tenantId, target: binding.target,
     artifactSha256: binding.artifactSha256.toLowerCase(), action: binding.action, idempotencyKey: binding.idempotencyKey,
     ...(originAuthority ? { contractVersion: CLOUDFLARE_STAGING_ORIGIN_CONTRACT, originAuthority } : {}),
+    ...(provision && parsedProvision.success ? { contractVersion: ORIGIN_PROVISION_CONTRACT, provisionAuthority: parsedProvision.data } : {}),
   };
 }
 
@@ -120,11 +129,12 @@ export async function createCloudflareStagingExecutorProof(
     !binding.tenantId.trim() ||
     !binding.idempotencyKey.trim() ||
     !/^[a-f0-9]{64}$/i.test(binding.artifactSha256) ||
-    (binding.action !== "deploy" && binding.action !== "rollback" && binding.action !== "bootstrap")
+    (binding.action !== "deploy" && binding.action !== "rollback" && binding.action !== "bootstrap" && binding.action !== "provision")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"
     );
+  attemptBody(binding);
   const resolved = options.resolvePrivateKey
     ? await options.resolvePrivateKey()
     : {
@@ -311,7 +321,7 @@ export async function verifyCloudflareStagingExecutorProof(
     expectedBinding.target !== CLOUDFLARE_STAGING_EXECUTOR_TARGET ||
     !/^[a-f0-9]{64}$/i.test(expectedBinding.artifactSha256) ||
     (expectedBinding.action !== "deploy" &&
-      expectedBinding.action !== "rollback" && expectedBinding.action !== "bootstrap")
+      expectedBinding.action !== "rollback" && expectedBinding.action !== "bootstrap" && expectedBinding.action !== "provision")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"

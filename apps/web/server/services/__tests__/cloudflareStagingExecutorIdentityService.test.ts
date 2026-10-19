@@ -81,6 +81,18 @@ describe("Cloudflare staging executor identity", () => {
     });
   }
 
+  it("signs provision intent separately and rejects deploy downgrade and cross-plan replay", async () => {
+    const provisionAuthority = { projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111",
+      accountRef: "a".repeat(32), planDigest: binding.artifactSha256 };
+    const attempt = { ...binding, action: "provision" as const, provisionAuthority };
+    const proof = await signedProof(attempt as any);
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: binding })).rejects.toThrow("executor_proof_invalid");
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: { ...attempt,
+      provisionAuthority: { ...provisionAuthority, projectId: "other" } } })).rejects.toThrow("executor_proof_invalid");
+    await expect(createCloudflareStagingExecutorProof({ ...binding, action: "provision" })).rejects.toThrow("executor_attempt_binding_invalid");
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: attempt })).resolves.toMatchObject({ registered: true });
+  });
+
   it("binds the complete origin transition and rejects downgrade or config/rollback/project drift", async () => {
     const originAuthority = {
       projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111", accountRef: "a".repeat(32),

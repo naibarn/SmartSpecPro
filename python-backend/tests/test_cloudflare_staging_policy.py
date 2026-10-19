@@ -241,3 +241,50 @@ async def test_api_preserves_explicit_origin_contract_and_pairs():
     assert parsed.configuration_ref == grant["configurationRef"]
     with pytest.raises(ValidationError):
         adapter.validate_python({**api_fields, "configurationDigest": None})
+
+
+def provision_fixture():
+    from app.services.cloudflare_origin_provision_contract import CONTRACT, POLICY_SCHEMA, GRANT_SCHEMA, plan_digest
+    service, rule, prior, old = service_fixture()
+    plan = {"hostname": "origin-staging.smartaihub.app", "zoneId": "a" * 32, "tunnelId": str(uuid4()),
+        "teamName": "test-team", "publicOrigin": "https://smartspec-cloudflare-staging.test.workers.dev",
+        "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()}
+    policy = {k: v for k, v in rule.conditions["definition"].items() if k not in ("allowBootstrap", "artifacts")}
+    policy.update({"contractVersion": CONTRACT, "maxOperations": 1, "plan": plan, "planDigest": plan_digest(plan)})
+    rule.conditions = {"schemaVersion": POLICY_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}
+    grant = {k: old[k] for k in ("grantRef", "tenantId", "requesterUserId", "projectId", "executorId", "targetId", "environment", "expiresAt", "revokedAt", "accountRef", "jobId")}
+    grant.update({"schemaVersion": GRANT_SCHEMA, "actions": ["provision"], "plan": plan, "planDigest": plan_digest(plan)})
+    return service, rule, prior, grant
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_provision_policy_requires_exact_intent_and_separate_schema_and_budget():
+    from app.services.cloudflare_origin_provision_contract import plan_digest
+    service, rule, prior, grant = provision_fixture()
+    assert normalize_cloudflare_staging_grant_payload(grant) == grant
+    decision = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    for changed in [{"accountRef": "f" * 32}, {"actions": ["deploy"]}, {"executorId": "foreign"},
+        {"plan": {**grant["plan"], "hostname": "smartaihub.app"}}, {"planDigest": "f" * 64}]:
+        with pytest.raises((ValueError, PermissionError)):
+            candidate = normalize_cloudflare_staging_grant_payload({**grant, **changed})
+            await service.authorize_cloudflare_staging_policy_grant(rule.id, candidate)
+    changed_plan = {**grant["plan"], "zoneId": "b" * 32}
+    with pytest.raises(PermissionError):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, {**grant, "plan": changed_plan, "planDigest": plan_digest(changed_plan)})
+    prior.append(SimpleNamespace(id=str(uuid4()), payload={"jobId": str(uuid4())}, extra_data={"cloudflareStagingPolicyDecisionV1": decision}))
+    with pytest.raises(PermissionError, match="BUDGET_EXHAUSTED"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    prior.clear()
+    rule.conditions = {**rule.conditions, "schemaVersion": SCHEMA}
+    with pytest.raises(PermissionError, match="UNAVAILABLE"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("changes", [{"maxOperations": 2}, {"expiresAt": "2030-01-01T00:00:00Z"},
+    {"planDigest": "f" * 64}, {"allowBootstrap": True}])
+def test_provision_policy_closed_budget_and_expiry(changes):
+    _, rule, _, _ = provision_fixture()
+    with pytest.raises(ValueError):
+        validate_staging_policy({**rule.conditions["definition"], **changes}, datetime.now(timezone.utc))

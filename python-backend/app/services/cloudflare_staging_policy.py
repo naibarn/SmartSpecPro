@@ -13,6 +13,7 @@ from sqlalchemy import select, text
 
 from app.models.approval import ApprovalRequest, ApprovalRule, ApprovalType
 from app.models.audit_log import AuditLog
+from app.services.cloudflare_origin_provision_contract import (CONTRACT as PROVISION_CONTRACT, POLICY_SCHEMA as PROVISION_SCHEMA, GRANT_SCHEMA as PROVISION_GRANT, validate_plan, plan_digest)
 
 SCHEMA = "cloudflare.staging-policy.v1"
 ORIGIN_SCHEMA = "cloudflare.staging-origin-policy.v2"
@@ -33,13 +34,16 @@ def validate_origin_configuration_pair(ref, digest, *, allow_none=False):
 
 
 def validate_staging_policy(value: dict, now: datetime) -> dict:
+    provision = isinstance(value, dict) and value.get("contractVersion") == PROVISION_CONTRACT
     origin = isinstance(value, dict) and value.get("contractVersion") == ORIGIN_CONTRACT
     fields = {"accountRef", "executorId", "actorUserId", "targetId", "environment", "artifacts", "maxOperations", "expiresAt", "allowBootstrap"}
     if origin:
         fields = (fields - {"artifacts", "allowBootstrap"}) | {"contractVersion", "releases"}
+    if provision:
+        fields = (fields - {"artifacts", "allowBootstrap"}) | {"contractVersion", "plan", "planDigest"}
     if not isinstance(value, dict) or set(value) != fields:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_FIELDS_INVALID")
-    if value["targetId"] != TARGET or value["environment"] != "staging" or (not origin and type(value["allowBootstrap"]) is not bool):
+    if value["targetId"] != TARGET or value["environment"] != "staging" or (not origin and not provision and type(value["allowBootstrap"]) is not bool):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_TARGET_INVALID")
     if not isinstance(value["accountRef"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["accountRef"]):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_ACCOUNT_INVALID")
@@ -47,8 +51,13 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_EXECUTOR_INVALID")
     if type(value["actorUserId"]) is not int or value["actorUserId"] <= 0 or type(value["maxOperations"]) is not int or not 1 <= value["maxOperations"] <= 4:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_BUDGET_INVALID")
-    artifacts = value["releases"] if origin else value["artifacts"]
-    if not isinstance(artifacts, list) or not 1 <= len(artifacts) <= 2:
+    if provision:
+        plan = validate_plan(value["plan"])
+        expiry = datetime.fromisoformat(plan["configurationExpiresAt"].replace("Z", "+00:00"))
+        if value["maxOperations"] != 1 or value["planDigest"] != plan_digest(plan) or not now < expiry <= now + timedelta(days=30):
+            raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_POLICY_INVALID")
+    artifacts = [] if provision else value["releases"] if origin else value["artifacts"]
+    if not provision and (not isinstance(artifacts, list) or not 1 <= len(artifacts) <= 2):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_ARTIFACT_INVALID")
     for artifact in artifacts:
         if (not isinstance(artifact, dict) or set(artifact) != ({"artifactRef", "sourceSha", "buildDigest", "configurationRef", "configurationDigest"} if origin else {"artifactRef", "sourceSha", "buildDigest"})
@@ -66,7 +75,7 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_EXPIRY_INVALID") from exc
     if expiry.tzinfo is None or expiry <= now or expiry > now + timedelta(hours=4):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_EXPIRY_INVALID")
-    return {**value, ("releases" if origin else "artifacts"): [dict(a) for a in artifacts]}
+    return {**value, "plan": plan} if provision else {**value, ("releases" if origin else "artifacts"): [dict(a) for a in artifacts]}
 
 
 class CloudflareStagingPolicyAuthority:
@@ -100,6 +109,8 @@ class CloudflareStagingPolicyAuthority:
         binding = result.mappings().first()
         if binding is None:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_RUNTIME_BINDING_DENIED")
+        if policy.get("contractVersion") == PROVISION_CONTRACT:
+            return
         origin = policy.get("contractVersion") == ORIGIN_CONTRACT
         allowed_refs = {release["configurationRef"] for release in policy["releases"]} if origin else {None}
         if binding["runtimePolicy"] not in allowed_refs or (origin and (binding["runtimePolicy"] is None or
@@ -117,7 +128,7 @@ class CloudflareStagingPolicyAuthority:
         rule = ApprovalRule(
             id=str(uuid4()), name="Bounded Cloudflare staging policy", tenant_id=tenant_id, project_id=project_id,
             trigger_type=ApprovalType.DEPLOYMENT,
-            conditions={"schemaVersion": ORIGIN_SCHEMA if policy.get("contractVersion") == ORIGIN_CONTRACT else SCHEMA, "ownerUserId": actor_id, "definition": policy, "version": _version(policy)},
+            conditions={"schemaVersion": PROVISION_SCHEMA if policy.get("contractVersion") == PROVISION_CONTRACT else ORIGIN_SCHEMA if policy.get("contractVersion") == ORIGIN_CONTRACT else SCHEMA, "ownerUserId": actor_id, "definition": policy, "version": _version(policy)},
             approver_roles=[], approver_users=[], required_approvals=0, timeout_minutes=240, timeout_action="reject",
             auto_approve_conditions={}, is_active=True,
         )
@@ -132,7 +143,7 @@ class CloudflareStagingPolicyAuthority:
         await self._require_cloudflare_policy_owner(tenant_id, actor_id)
         result = await self.db.execute(select(ApprovalRule).where(ApprovalRule.id == policy_id, ApprovalRule.tenant_id == tenant_id).with_for_update())
         rule = result.scalar_one_or_none()
-        if not rule or (rule.conditions or {}).get("schemaVersion") not in (SCHEMA, ORIGIN_SCHEMA):
+        if not rule or (rule.conditions or {}).get("schemaVersion") not in (SCHEMA, ORIGIN_SCHEMA, PROVISION_SCHEMA):
             raise ValueError("CLOUDFLARE_STAGING_POLICY_NOT_FOUND")
         if rule.is_active:
             rule.is_active = False
@@ -150,11 +161,12 @@ class CloudflareStagingPolicyAuthority:
             ApprovalRule.trigger_type == ApprovalType.DEPLOYMENT).with_for_update())
         rule = result.scalar_one_or_none()
         conditions = rule.conditions if rule and isinstance(rule.conditions, dict) else {}
+        provision = grant.get("schemaVersion") == PROVISION_GRANT
         origin = grant.get("schemaVersion") == ORIGIN_GRANT
-        if not rule or not rule.is_active or conditions.get("schemaVersion") != (ORIGIN_SCHEMA if origin else SCHEMA):
+        if not rule or not rule.is_active or conditions.get("schemaVersion") != (PROVISION_SCHEMA if provision else ORIGIN_SCHEMA if origin else SCHEMA):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_UNAVAILABLE")
         policy = validate_staging_policy(conditions.get("definition"), current)
-        if origin != (policy.get("contractVersion") == ORIGIN_CONTRACT):
+        if origin != (policy.get("contractVersion") == ORIGIN_CONTRACT) or provision != (policy.get("contractVersion") == PROVISION_CONTRACT):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
         if conditions.get("version") != _version(policy) or conditions.get("ownerUserId") != grant["requesterUserId"]:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_VERSION_DENIED")
@@ -163,7 +175,9 @@ class CloudflareStagingPolicyAuthority:
             or (origin and grant["actions"][0] not in ("deploy", "rollback"))
             or (grant["actions"] == ["bootstrap"] and not policy["allowBootstrap"])):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
-        for prefix in ("", "rollback"):
+        if provision and (grant["actions"] != ["provision"] or grant["plan"] != policy["plan"] or grant["planDigest"] != policy["planDigest"]):
+            raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
+        for prefix in (() if provision else ("", "rollback")):
             if prefix and grant["actions"] == ["bootstrap"]:
                 continue
             fields = ("artifactRef", "sourceSha", "buildDigest") if not prefix else ("rollbackArtifactRef", "rollbackSourceSha", "rollbackBuildDigest")
