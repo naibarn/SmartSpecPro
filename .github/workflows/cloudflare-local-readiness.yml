@@ -124,7 +124,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y postgresql
       - name: Exercise staging executor through disposable PostgreSQL
-        run: npm --workspace @smartspec/web run test -- server/services/cloudflareStagingDeploymentPostgres.integration.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/cloudflareStagingDeploymentPostgres.integration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
         env:
           RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"
           TMPDIR: /tmp

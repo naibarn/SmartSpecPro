@@ -3,7 +3,31 @@ import { combineCloudflarePermissionCatalogs, fetchCloudflarePermissionGroups, f
 import { CLOUDFLARE_PROBE_SERVICES, CLOUDFLARE_ZONE_PROBE_SERVICES } from "../../../shared/cloudflareCredentialCatalog";
 
 describe("Cloudflare permission group catalog probe", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it.each([
+    [{ not_before: "2027-01-30T17:00:00Z", expires_on: "2027-01-31T16:59:59Z" }, "invalid_token", "not_yet_valid"],
+    [{ expires_on: "2026-10-19T10:00:00Z" }, "invalid_token", "expired"],
+    [{ not_before: "invalid-date" }, "unavailable", "invalid_window"],
+    [{ expires_on: 123 }, "unavailable", "invalid_window"],
+    [{ not_before: "2026-10-20T00:00:00Z", expires_on: "2026-10-19T00:00:00Z" }, "unavailable", "invalid_window"],
+  ] as const)("rejects active tokens outside a valid TTL: %j", async (window, status, validityIssue) => {
+    vi.useFakeTimers().setSystemTime(new Date("2026-10-19T10:00:00Z"));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true, result: { status: "active", ...window, id: "private-token-id" },
+    }), { status: 200 }));
+    const result = await verifyCloudflareToken("secret-token", fetchMock);
+    expect(result).toEqual({ status, httpStatus: 200, validityIssue });
+    expect(JSON.stringify(result)).not.toMatch(/private-token-id|secret-token/);
+  });
+
+  it("accepts an active token at its start boundary before expiry", async () => {
+    vi.useFakeTimers().setSystemTime(new Date("2026-10-19T10:00:00Z"));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true,
+      result: { status: "active", not_before: "2026-10-19T10:00:00Z", expires_on: "2027-01-31T16:59:59Z" },
+    }), { status: 200 }));
+    await expect(verifyCloudflareToken("secret-token", fetchMock)).resolves.toEqual({ status: "granted", httpStatus: 200 });
+  });
 
   it("verifies a Cloudflare token without returning token identifiers or secrets", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({

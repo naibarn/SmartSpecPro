@@ -217,7 +217,7 @@ export async function revokeCloudflareDeploymentCredential(db: DrizzleDB, input:
   return { status: rows.length ? "REVOKED" as const : "NOT_CONFIGURED" as const };
 }
 
-type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null };
+type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null; validityIssue?: "not_yet_valid" | "expired" | "invalid_window" };
 
 function statusFor(httpStatus: number, success: boolean): CloudflareProbeStatus {
   if (httpStatus === 200 && success) return "granted";
@@ -417,12 +417,26 @@ async function getProbe(token: string, path: string, fetchImpl: typeof fetch = f
 export async function verifyCloudflareToken(token: string, fetchImpl: typeof fetch = fetch): Promise<{
   status: Exclude<CloudflareProbeStatus, "partial">;
   httpStatus: number | null;
+  validityIssue?: ProbeResult["validityIssue"];
 }> {
   const result = await getProbe(token, "user/tokens/verify", fetchImpl);
   if (result.status !== "granted") return { status: result.status === "partial" ? "unavailable" : result.status, httpStatus: result.httpStatus };
-  const tokenStatus = result.result && typeof result.result === "object"
-    ? (result.result as Record<string, unknown>).status
-    : undefined;
+  const metadata = result.result && typeof result.result === "object"
+    ? result.result as Record<string, unknown> : {};
+  const tokenStatus = metadata.status;
+  if (tokenStatus === "active") {
+    const parseBoundary = (value: unknown) => value == null ? null
+      : typeof value === "string" && value.trim() ? Date.parse(value) : NaN;
+    const start = parseBoundary(metadata.not_before);
+    const end = parseBoundary(metadata.expires_on);
+    if ((start !== null && !Number.isFinite(start)) || (end !== null && !Number.isFinite(end)) ||
+        (start !== null && end !== null && start >= end)) {
+      return { status: "unavailable", httpStatus: result.httpStatus, validityIssue: "invalid_window" };
+    }
+    const now = Date.now();
+    if (end !== null && end <= now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "expired" };
+    if (start !== null && start > now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "not_yet_valid" };
+  }
   return {
     status: tokenStatus === "active" ? "granted"
       : tokenStatus === "disabled" || tokenStatus === "expired" ? "invalid_token"
@@ -472,6 +486,7 @@ export async function probeCloudflareCredential(
     permission: "Valid API token",
     status: tokenVerification.status,
     httpStatus: tokenVerification.httpStatus,
+    ...(tokenVerification.validityIssue ? { validityIssue: tokenVerification.validityIssue } : {}),
   };
   if (tokenVerification.status !== "granted") {
     return { profileId, checkedAt, error: null, accountId: accountId || null, zoneId: null, checks: [tokenCheck] };

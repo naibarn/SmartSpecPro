@@ -26,6 +26,7 @@ type ProbeResult = {
     permission: string;
     status: "granted" | "missing_permission" | "invalid_token" | "resource_not_found" | "rate_limited" | "unsupported_or_invalid_request" | "unavailable";
     httpStatus: number | null;
+    validityIssue?: "not_yet_valid" | "expired" | "invalid_window";
   }>;
 };
 
@@ -138,10 +139,14 @@ export default function CloudflareCredentialCenter() {
                   `In Cloudflare API Tokens, edit the ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} token and grant the required permission shown above at ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} scope. Where alternatives are listed, grant one accepted permission, not all of them. Save the updated token here, then run Probe read access again. HTTP 403 confirms this request was denied, but Cloudflare does not distinguish token scope, account/resource selection, or product entitlement; verify each before adding broader access.`,
                   `ไปที่ Cloudflare API Tokens แล้วแก้ token ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} เพิ่ม permission ตามที่แสดงด้านบนใน scope ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} หากแสดงตัวเลือกหลายรายการ ให้เพิ่มเพียงหนึ่ง permission ที่ endpoint ยอมรับ ไม่ต้องเพิ่มทั้งหมด จากนั้นบันทึก token ที่อัปเดตในหน้านี้และกดตรวจสิทธิ์อ่านอีกครั้ง HTTP 403 ยืนยันว่า request ถูกปฏิเสธ แต่ Cloudflare แยกสาเหตุระหว่าง scope ของ token, การเลือก account/resource หรือ entitlement ของบริการไม่ได้ ให้ตรวจทุกจุดก่อนเพิ่มสิทธิ์ให้กว้างขึ้น`
                 )}</p> : null}
-                {check.status === "invalid_token" ? <p role="status">{text(`Cloudflare rejected this token (HTTP ${check.httpStatus ?? "—"}). Replace the token saved under this profile, then probe again.`, `Cloudflare ปฏิเสธ token นี้ (HTTP ${check.httpStatus ?? "—"}) ให้สร้างหรือเลือก token ใหม่สำหรับ profile นี้ บันทึกแทนค่าเดิม แล้วตรวจอีกครั้ง`)}</p> : null}
+                {check.validityIssue ? <p role="status">{check.validityIssue === "not_yet_valid"
+                  ? text("This token's TTL starts in the future. Edit its start date in Cloudflare API Tokens, save, then probe again.", "token นี้ยังไม่ถึงวันเริ่มใช้งาน ให้แก้วันเริ่มต้น TTL ใน Cloudflare API Tokens บันทึก แล้วตรวจอีกครั้ง")
+                  : check.validityIssue === "expired"
+                    ? text("This token's TTL has expired. Extend its validity or replace it, then probe again.", "token นี้หมดอายุแล้ว ให้ต่ออายุ TTL หรือบันทึก token ใหม่ แล้วตรวจอีกครั้ง")
+                    : text("Cloudflare returned an invalid TTL window. Check the token's start and end dates before changing permissions.", "Cloudflare ส่งช่วงเวลา TTL ที่ไม่ถูกต้อง ให้ตรวจวันเริ่มต้นและวันสิ้นสุดก่อนเปลี่ยน permission")}</p> : check.status === "invalid_token" ? <p role="status">{text(`Cloudflare rejected this token (HTTP ${check.httpStatus ?? "—"}). Check its TTL and selected account; replace it if it remains invalid, then probe again.`, `Cloudflare ปฏิเสธ token นี้ (HTTP ${check.httpStatus ?? "—"}) ให้ตรวจ TTL และ account ที่เลือก หากยังใช้ไม่ได้ให้บันทึก token ใหม่ แล้วตรวจอีกครั้ง`)}</p> : null}
                 {check.status === "resource_not_found" ? <p role="status">{text("The request was authorized but the expected resource was not found. Confirm the account/zone and create the Cloudflare resource if needed; adding permission may not fix this.", "คำขอผ่านการยืนยันตัวตนแล้วแต่ไม่พบ resource ให้ตรวจ account/zone และสร้าง resource ของ Cloudflare หากยังไม่มี การเพิ่ม permission อาจไม่ช่วย")}</p> : null}
                 {check.status === "rate_limited" ? <p role="status">{text("Cloudflare rate-limited this probe. Wait briefly and retry; do not change permissions based on this result.", "Cloudflare จำกัดอัตราการตรวจ ให้รอสักครู่แล้วตรวจใหม่ ไม่ต้องเปลี่ยน permission จากผลนี้")}</p> : null}
-                {check.status === "unsupported_or_invalid_request" || check.status === "unavailable" ? <p role="status">{text("This result does not establish a missing permission. Check Cloudflare API availability and the endpoint/request before changing token scopes.", "ผลนี้ยังสรุปไม่ได้ว่าขาด permission ให้ตรวจสถานะ Cloudflare API และ endpoint/request ก่อนเปลี่ยน scope ของ token")}</p> : null}
+                {!check.validityIssue && (check.status === "unsupported_or_invalid_request" || check.status === "unavailable") ? <p role="status">{text("This result does not establish a missing permission. Check Cloudflare API availability and the endpoint/request before changing token scopes.", "ผลนี้ยังสรุปไม่ได้ว่าขาด permission ให้ตรวจสถานะ Cloudflare API และ endpoint/request ก่อนเปลี่ยน scope ของ token")}</p> : null}
               </VStack>
             </li>
           ))}

@@ -62,6 +62,30 @@ authority. Never rewrite checksums or ledger rows to make the reported head
 match. Keep scoped compatibility evidence and unrelated database drift
 separate in the release record.
 
+For the Cloudflare staging control-plane tables only, use the audited additive
+repair command from an integrated checkout in `apps/web`:
+
+```bash
+pnpm exec tsx --require dotenv/config scripts/cloudflare-deployment-schema.ts
+# Use the inspected fingerprint and the actual authorization reference:
+CLOUDFLARE_SCHEMA_EXPECTED_FINGERPRINT='<inspected fingerprint>' \
+MIGRATION_AUTHORIZATION_REF='<actual authorization reference>' \
+pnpm exec tsx --require dotenv/config scripts/cloudflare-deployment-schema.ts --apply
+```
+
+An isolated checkout must set `DOTENV_CONFIG_PATH` to the authorized server env
+file without copying it into the checkout. The command selects five hash-pinned
+DDL statements from migrations 0389/0391, excluding the unrelated audit index.
+It takes the shared Drizzle advisory lock, verifies the database fingerprint,
+creates both tables atomically, and writes a migration receipt in
+`api_audit_events` and the operator's private local state directory. Existing
+tables without a matching success receipt and later schema drift fail closed.
+It does not advance `drizzle.__drizzle_migrations` past pending migrations.
+Retain the direct receipt for later reconciliation by migration authority.
+Recovery before commit is transactional rollback; after commit, retain these
+additive tables and roll back application code if necessary. Never drop tables
+that may have acquired target or credential records.
+
 ### Concurrent and interrupted release recovery
 
 The canonical build lease serializes canonical builds, and the production
