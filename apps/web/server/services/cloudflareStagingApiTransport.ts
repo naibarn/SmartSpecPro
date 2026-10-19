@@ -243,7 +243,7 @@ export function createCloudflareStagingApiTransport(input: {
     const form = new FormData();
     form.set("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata.json");
     for (const [name, file] of Object.entries(bundle.moduleFiles)) {
-      form.set(name, new Blob([file.bytes], { type: file.contentType }), name);
+      form.set(name, new Blob([file.bytes], { type: /\.m?js$/i.test(name) ? "application/javascript+module" : file.contentType }), name);
     }
     const result = await api<{ id?: string }>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}${bootstrapKey ? "" : "/versions"}`, {

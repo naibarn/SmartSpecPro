@@ -4715,7 +4715,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile";
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4735,7 +4735,8 @@ export function createJobControlPlane(
             evidence.operationKey.length > 200)) ||
         (evidence.knownRuntime !== undefined &&
           evidence.knownRuntime !== "remotion_revision_id" &&
-          evidence.knownRuntime !== "content_protection_provider")
+          evidence.knownRuntime !== "content_protection_provider" &&
+          evidence.knownRuntime !== "cloudflare_staging_compile")
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4782,6 +4783,12 @@ export function createJobControlPlane(
           scope?.authorizationScope === "worker_jobs.user_retry" &&
           job?.jobType === "remotion_render_video" &&
           failureText.includes("revisionId is not defined");
+        const knownCloudflareCompileRejection =
+          evidence.knownRuntime === "cloudflare_staging_compile" &&
+          evidence.disposition === "pre_submission_failure" &&
+          scope?.authorizationScope === "worker_jobs.user_retry" &&
+          job?.jobType === "cloudflare.staging.deploy" &&
+          job?.errorCode === "CLOUDFLARE_HTTP_400_API_10021";
         const knownProtectionProviderFailure =
           evidence.knownRuntime === "content_protection_provider" &&
           evidence.disposition === "provider_operation_resolved" &&
@@ -4800,7 +4807,8 @@ export function createJobControlPlane(
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
             !knownRemotionRevisionFailure &&
-            !knownProtectionProviderFailure) ||
+            !knownProtectionProviderFailure &&
+            !knownCloudflareCompileRejection) ||
           job.attempt >= job.maxAttempts
         )
           return false;

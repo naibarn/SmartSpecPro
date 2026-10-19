@@ -472,6 +472,15 @@ describe("workerJobMonitorService", () => {
     );
   });
 
+  it("exposes compile retry only for the exact staging compiler rejection", () => {
+    const row = { status: "failed" as const, jobType: "cloudflare.staging.deploy", statusReason: null,
+      errorCode: "CLOUDFLARE_HTTP_400_API_10021", errorMessage: null, failureReason: null,
+      operatorReviewRequired: false, operatorReviewReason: null };
+    expect(getUserWorkerJobRetryPolicy(row)).toEqual({ mode: "review_recovery", reason: "cloudflare_compile_rejected" });
+    expect(getUserWorkerJobRetryPolicy({ ...row, errorCode: "CLOUDFLARE_HTTP_403" })).toBeNull();
+    expect(getUserWorkerJobRetryPolicy({ ...row, jobType: "unrelated.job" })).toBeNull();
+  });
+
   it("allows an expired content-protection job to retry after the runtime is installed", () => {
     expect(getUserWorkerJobRetryPolicy({
       status: "expired",

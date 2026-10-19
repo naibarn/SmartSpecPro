@@ -128,7 +128,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
-        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingDeploymentExecutor.test.ts server/services/__tests__/cloudflareStagingExecutorIdentityService.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts client/src/components/admin/AdminDeploymentTargets.test.tsx scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingDeploymentExecutor.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/__tests__/workerJobMonitorService.test.ts server/services/__tests__/cloudflareStagingExecutorIdentityService.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts client/src/components/admin/AdminDeploymentTargets.test.tsx scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Install PostgreSQL for disposable control-plane integration test
         run: |
           sudo apt-get update

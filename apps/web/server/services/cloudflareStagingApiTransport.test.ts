@@ -31,7 +31,7 @@ const bundleBase = {
   sourceSha,
   mainModule: "index.js",
   compatibilityDate: "2026-10-17",
-  moduleFiles: { "index.js": { contentType: "application/javascript+module", bytes } },
+  moduleFiles: { "index.js": { contentType: "application/javascript", bytes } },
   assets: { "index.html": { contentType: "text/html", bytes: assetBytes } },
 };
 const buildDigest = digest(bundleBase);
@@ -93,6 +93,7 @@ describe("Cloudflare staging API transport", () => {
         const form = init.body as FormData;
         const metadata = JSON.parse(await form.get("metadata")!.text());
         expect(metadata.main_module).toBe("index.js");
+        expect((form.get("index.js") as File).type).toBe("application/javascript+module");
         expect(metadata.assets.jwt).toBe("completion-jwt");
         expect(metadata.bindings).toEqual([
           { name: "ASSETS", type: "assets" },

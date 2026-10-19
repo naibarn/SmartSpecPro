@@ -1978,6 +1978,26 @@ describe("job control plane", () => {
     expect(state.outbox).toHaveLength(1);
   });
 
+  it.each([
+    ["cloudflare.staging.deploy", "CLOUDFLARE_HTTP_400_API_10021", "worker_jobs.user_retry", true],
+    ["cloudflare.staging.deploy", "CLOUDFLARE_HTTP_403", "worker_jobs.user_retry", false],
+    ["unrelated.job", "CLOUDFLARE_HTTP_400_API_10021", "worker_jobs.user_retry", false],
+    ["cloudflare.staging.deploy", "CLOUDFLARE_HTTP_400_API_10021", "other.scope", false],
+  ])("bounds Cloudflare compile recovery by job, exact error and caller scope: %s %s %s", async (jobType, code, authorizationScope, allowed) => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, jobType: jobType as string, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "staging-test", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: code as string, message: code as string, class: "permanent" });
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000088", "user_requested_retry",
+      { disposition: "pre_submission_failure", knownRuntime: "cloudflare_staging_compile" }, definition.requestedByUserId,
+      { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId, authorizationScope: authorizationScope as string },
+    )).resolves.toBe(allowed);
+    expect(state.jobs.get(created.jobId).status).toBe(allowed ? "queued" : "failed");
+    expect(state.jobs.get(created.jobId).attempt).toBe(allowed ? 2 : 1);
+  });
+
   it("allows only the exact fixed Remotion runtime failure to recover without a pre-existing review flag", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

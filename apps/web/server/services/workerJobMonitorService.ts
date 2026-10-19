@@ -79,6 +79,7 @@ export type UserWorkerJobRetryReason =
   | "automatic_retry"
   | "adapter_contract_unsupported"
   | "known_runtime_failure"
+  | "cloudflare_compile_rejected"
   | "artifact_qc_failure"
   | "protection_provider_unavailable";
 
@@ -170,6 +171,10 @@ export function getUserWorkerJobRetryPolicy(
       .some(value => value.includes("revisionId is not defined"))
   ) {
     return { mode: "review_recovery", reason: "known_runtime_failure" };
+  }
+
+  if (row.status === "failed" && row.jobType === "cloudflare.staging.deploy" && row.errorCode === "CLOUDFLARE_HTTP_400_API_10021") {
+    return { mode: "review_recovery", reason: "cloudflare_compile_rejected" };
   }
 
   // Content protection is a downstream sibling of the render. When its
@@ -1264,7 +1269,9 @@ export async function retryUserWorkerJob(
     authorizationScope: "worker_jobs.user_retry",
   };
   const reason = "user_requested_retry";
-  const recoveryEvidence = retryPolicy.reason === "known_runtime_failure"
+  const recoveryEvidence = retryPolicy.reason === "cloudflare_compile_rejected"
+    ? { disposition: "pre_submission_failure" as const, knownRuntime: "cloudflare_staging_compile" as const }
+    : retryPolicy.reason === "known_runtime_failure"
     ? {
         disposition: "pre_submission_failure" as const,
         knownRuntime: "remotion_revision_id" as const,
