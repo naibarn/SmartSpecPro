@@ -364,9 +364,11 @@ async function provisionMcpOAuthSigningKey(
 // Router
 // ============================================================
 
+const deploymentTenantIdSchema = z.string().trim().min(1).max(36);
+
 export const infrastructureRouter = router({
   listDeploymentTargetProjects: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid() }))
+    .input(z.object({ tenantId: deploymentTenantIdSchema }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -430,7 +432,7 @@ export const infrastructureRouter = router({
   }),
 
   listProviderDeploymentTargets: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32) }))
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32) }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -439,7 +441,7 @@ export const infrastructureRouter = router({
 
   createProviderDeploymentTarget: exactAdminProcedure
     .input(z.object({
-      tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
       provider: z.literal("cloudflare"), deploymentTargetId: z.string().trim().min(1).max(160),
       accountRef: z.string().trim().max(255).nullable().optional(), workerRef: z.string().trim().max(255).nullable().optional(),
       containerApplicationRef: z.string().trim().max(255).nullable().optional(), provenance: z.string().trim().min(1).max(500),
@@ -457,7 +459,7 @@ export const infrastructureRouter = router({
 
   updateProviderDeploymentTarget: exactAdminProcedure
     .input(z.object({
-      tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
       provider: z.literal("cloudflare"), targetRowId: z.string().uuid(),
       changes: z.object({ deploymentTargetId: z.string().trim().min(1).max(160), accountRef: z.string().trim().max(255).nullable(),
         workerRef: z.string().trim().max(255).nullable(), containerApplicationRef: z.string().trim().max(255).nullable(),
@@ -479,7 +481,7 @@ export const infrastructureRouter = router({
     }),
 
   disableProviderDeploymentTarget: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
       provider: z.literal("cloudflare"), targetRowId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -492,7 +494,7 @@ export const infrastructureRouter = router({
     }),
 
   getDeploymentCredentialState: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -501,7 +503,7 @@ export const infrastructureRouter = router({
     }),
 
   saveDeploymentCredential: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
       provider: z.literal("cloudflare"), token: z.string().trim().min(20).max(512) }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -515,7 +517,7 @@ export const infrastructureRouter = router({
     }),
 
   revokeDeploymentCredential: exactAdminProcedure
-    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });

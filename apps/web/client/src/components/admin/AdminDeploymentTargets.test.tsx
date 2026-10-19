@@ -23,7 +23,7 @@ vi.mock("@/lib/trpc", () => ({
       listProviderDeploymentTargets: { invalidate: mocks.invalidate },
       getDeploymentCredentialState: { invalidate: mocks.invalidate },
     } }),
-    systemSettings: { listTenants: { useQuery: () => ({ data: [{ id: "8de1a509-6177-49b7-b57d-5d3b5228d75f", name: "Tenant One" }] }) } },
+    systemSettings: { listTenants: { useQuery: () => ({ data: [{ id: "tenant-ZCSKEM9s", name: "Tenant One" }] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: () => ({ data: mocks.targets, isLoading: false, isError: mocks.targetsError, isFetching: false }) },
@@ -37,7 +37,7 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
-const tenantId = "8de1a509-6177-49b7-b57d-5d3b5228d75f";
+const tenantId = "tenant-ZCSKEM9s";
 const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
 
 Object.defineProperties(HTMLElement.prototype, {

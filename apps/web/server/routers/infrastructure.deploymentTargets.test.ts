@@ -22,7 +22,7 @@ describe("infrastructure deployment target project selector", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("lists active canonical project identities only for an exact admin", async () => {
+  it.each([tenantId, "tenant-ZCSKEM9s"])("lists active canonical project identities for an exact admin with tenant %s", async (selectedTenantId) => {
     const projects = [
       {
         projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0",
@@ -39,7 +39,7 @@ describe("infrastructure deployment target project selector", () => {
     } as any);
 
     await expect(
-      admin.listDeploymentTargetProjects({ tenantId })
+      admin.listDeploymentTargetProjects({ tenantId: selectedTenantId })
     ).resolves.toEqual(projects);
     expect(from).toHaveBeenCalled();
     expect(where).toHaveBeenCalled();
@@ -49,16 +49,16 @@ describe("infrastructure deployment target project selector", () => {
       user: { id: 2, role: "system_agent" },
     } as any);
     await expect(
-      systemAgent.listDeploymentTargetProjects({ tenantId })
+      systemAgent.listDeploymentTargetProjects({ tenantId: selectedTenantId })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("enforces the UUID tenant contract before reading project identities", async () => {
+  it.each(["", " ", "t".repeat(37)])("rejects an invalid varchar tenant before reading project identities: %j", async (invalidTenantId) => {
     const admin = infrastructureRouter.createCaller({
       user: { id: 1, role: "admin" },
     } as any);
     await expect(
-      admin.listDeploymentTargetProjects({ tenantId: "tenant-demo" })
+      admin.listDeploymentTargetProjects({ tenantId: invalidTenantId })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(getDbMock).not.toHaveBeenCalled();
   });

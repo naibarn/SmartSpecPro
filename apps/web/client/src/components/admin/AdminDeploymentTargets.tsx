@@ -13,7 +13,6 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ENVIRONMENTS = ["preview", "staging"] as const;
 
 type DeploymentTarget = {
@@ -168,7 +167,8 @@ export default function AdminDeploymentTargets() {
   const [environment, setEnvironment] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
-  const validTenantId = UUID_PATTERN.test(tenantId);
+  const validTenantId = tenantId.length > 0 && tenantId.length <= 36
+    && Boolean(tenantsQuery.data?.some(tenant => tenant.id === tenantId));
   const projectsQuery = trpc.infrastructure.listDeploymentTargetProjects.useQuery(
     { tenantId },
     { enabled: validTenantId },
@@ -228,7 +228,7 @@ export default function AdminDeploymentTargets() {
               {(tenantsQuery.data ?? []).map(tenant => <SelectItem key={String(tenant.id)} value={String(tenant.id)}>{tenant.name} · {String(tenant.id)}</SelectItem>)}
             </SelectContent>
           </Select>
-          {tenantId && !validTenantId ? <p role="status">{text("This tenant ID does not meet the UUID contract required by exact-admin target APIs.", "Tenant ID นี้ไม่เป็นไปตาม UUID contract ที่ exact-admin target API กำหนด")}</p> : null}
+          {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
         <VStack gap={1}>
           <Label htmlFor="deployment-project">{text("Canonical project", "Canonical project")}</Label>
@@ -249,7 +249,7 @@ export default function AdminDeploymentTargets() {
         </VStack>
       </HStack>
 
-      {!validScope ? <p role="status">{text("Select a UUID tenant, an active canonical project, and preview or staging to inspect target authority.", "เลือก tenant ที่เป็น UUID, canonical project ที่ active และ preview หรือ staging เพื่อตรวจ target authority")}</p> : null}
+      {!validScope ? <p role="status">{text("Select a tenant, an active canonical project, and preview or staging to inspect target authority.", "เลือก tenant, canonical project ที่ active และ preview หรือ staging เพื่อตรวจ target authority")}</p> : null}
       {validScope && targetsQuery.isError ? <p role="alert">{text("Target registry could not be read. The current authority state is unknown; exact-admin access may be required.", "อ่าน target registry ไม่สำเร็จ สถานะ authority ยังไม่ทราบ และอาจต้องใช้ exact-admin")}</p> : null}
       {validScope && targetsQuery.isLoading ? <p role="status">{text("Reading target registry…", "กำลังอ่าน target registry…")}</p> : null}
       {validScope && !targetsQuery.isLoading && !targetsQuery.isError && isConflict ? <p role="alert">TARGET_AUTHORITY_CONFLICT: {text("multiple enabled Cloudflare targets exist for this scope. Resolve the conflict before deployment.", "พบ Cloudflare target ที่เปิดใช้งานหลายรายการใน scope นี้ ต้องแก้ conflict ก่อน deploy")}</p> : null}

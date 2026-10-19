@@ -11,6 +11,8 @@ on:
       - "scripts/guards/**"
       - "apps/web/server/services/cloudflareJobAdapters.ts"
       - "apps/web/scripts/verify-cloudflare-*.ts"
+      - "apps/web/scripts/cloudflare-deployment-schema.ts"
+      - "apps/web/scripts/__tests__/cloudflare-deployment-schema.test.ts"
       - "ops/feature-187/**"
       - "ops/feature-188/cloudflare-*"
       - ".github/workflows/cloudflare-local-readiness.yml"
@@ -24,6 +26,8 @@ on:
       - "scripts/guards/**"
       - "apps/web/server/services/cloudflareJobAdapters.ts"
       - "apps/web/scripts/verify-cloudflare-*.ts"
+      - "apps/web/scripts/cloudflare-deployment-schema.ts"
+      - "apps/web/scripts/__tests__/cloudflare-deployment-schema.test.ts"
       - "ops/feature-187/**"
       - "ops/feature-188/cloudflare-*"
       - ".github/workflows/cloudflare-local-readiness.yml"
@@ -118,7 +122,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Run web adapter contract tests
-        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts scripts/__tests__/verify-cloudflare-target-readiness.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts client/src/components/admin/AdminDeploymentTargets.test.tsx scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Install PostgreSQL for disposable control-plane integration test
         run: |
           sudo apt-get update
