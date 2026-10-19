@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
 import { describe, expect, it } from "vitest";
 import {
   createCanonicalBuildReceiptAuthority,
@@ -48,6 +49,7 @@ function fixture(verify: (value: CloudflareStagingBuildReceipt) => Promise<boole
   };
   return {
     objects,
+    storage,
     authority: createCloudflareStagingArtifactAuthority({ storage, buildReceipts: { verify } }),
   };
 }
@@ -63,7 +65,75 @@ const bundle = {
   },
 };
 
+function bundleReceipt(value: Pick<CloudflareStagingBundle, "moduleFiles" | "assets">) {
+  const lines = [
+    ...Object.entries(value.moduleFiles).map(([name, file]) => [`modules/${name}`, file.bytes] as const),
+    ...Object.entries(value.assets).map(([name, file]) => [`public/${name}`, file.bytes] as const),
+  ].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .map(([name, bytes]) => `${name}\0${sha256(bytes)}\0${bytes.byteLength}`);
+  return { ...receipt, cloudflareBundleDigest: sha256(Buffer.from(lines.join("\n"))) };
+}
+
 describe("Cloudflare staging artifact authority", () => {
+  it("round-trips a large release asset using bounded immutable chunks and rejects tampering", async () => {
+    const { authority, objects } = fixture();
+    const bytes = Buffer.alloc(13 * 1024 * 1024, 7);
+    const largeBundle = { ...bundle, assets: { ...bundle.assets, "releases/worker.exe": { contentType: "application/octet-stream", bytes } } };
+    const published = await authority.publish({ receipt: bundleReceipt(largeBundle), bundle: largeBundle });
+    expect([...objects.values()].every(object => object.byteLength <= 10 * 1024 * 1024)).toBe(true);
+    const resolved = await authority.resolveBundle(published.artifactRef);
+    expect(Buffer.from(resolved!.assets["releases/worker.exe"]!.bytes).equals(bytes)).toBe(true);
+    const manifestKey = [...objects.keys()].find(key => key.endsWith("manifest.json"))!;
+    const originalManifest = objects.get(manifestKey)!;
+    const malformed = JSON.parse(originalManifest.toString());
+    malformed.assets["releases/worker.exe"].chunks[0].size++;
+    objects.set(manifestKey, Buffer.from(JSON.stringify(malformed)));
+    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    objects.set(manifestKey, originalManifest);
+    const chunkKey = [...objects.keys()].find(key => key.endsWith(sha256(bytes.subarray(0, 10 * 1024 * 1024))))!;
+    objects.set(chunkKey, Buffer.alloc(10 * 1024 * 1024, 8));
+    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+  });
+
+  it("rejects an oversized file before writing any remote objects", async () => {
+    const { authority, objects } = fixture();
+    const oversizedBundle = { ...bundle, assets: { ...bundle.assets, "too-large": { contentType: "application/octet-stream", bytes: Buffer.alloc(25 * 1024 * 1024 + 1) } } };
+    await expect(authority.publish({ receipt: bundleReceipt(oversizedBundle), bundle: oversizedBundle })).rejects.toThrow("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
+    expect(objects.size).toBe(0);
+  });
+
+  it("bounds parallel uploads and preserves immutable manifest bytes across completion orders", async () => {
+    const { storage, objects } = fixture();
+    let active = 0;
+    let maximum = 0;
+    let reverse = false;
+    const parallelBundle = { ...bundle, assets: Object.fromEntries(Array.from({ length: 19 }, (_, index) =>
+      [`asset-${index}`, { contentType: "text/plain", bytes: Buffer.from(String(index)) }])) };
+    const authority = createCloudflareStagingArtifactAuthority({
+      buildReceipts: { verify: async () => true },
+      storage: {
+        readBuffer: storage.readBuffer,
+        async putIfAbsent(key, bytes, type) {
+          active++;
+          maximum = Math.max(maximum, active);
+          try {
+            await new Promise(resolve => setTimeout(resolve, reverse ? 1 : bytes.byteLength % 3));
+            return await storage.putIfAbsent(key, bytes, type);
+          } finally { active--; }
+        },
+      },
+    });
+    const input = { receipt: bundleReceipt(parallelBundle), bundle: parallelBundle };
+    const published = await authority.publish(input);
+    const manifestKey = [...objects.keys()].find(key => key.endsWith("manifest.json"))!;
+    const firstManifest = Buffer.from(objects.get(manifestKey)!);
+    reverse = true;
+    await expect(authority.publish(input)).resolves.toEqual(published);
+    expect(objects.get(manifestKey)!.equals(firstManifest)).toBe(true);
+    expect(maximum).toBeGreaterThan(1);
+    expect(maximum).toBeLessThanOrEqual(8);
+  });
+
   it("allows only retryable publish-pending canonical build receipts", async () => {
     const resultsRoot = await mkdtemp(join(tmpdir(), "cf-staging-receipt-"));
     try {

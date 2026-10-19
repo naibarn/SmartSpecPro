@@ -10,6 +10,7 @@ const ARTIFACT_REF = /^sha256:([a-f0-9]{64})$/i;
 const STORAGE_ROOT = "cloudflare-staging/artifacts";
 const BLOB_ROOT = "cloudflare-staging/blobs/sha256";
 const MAX_OBJECT_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MANIFEST_VERSION = "cloudflare-staging-artifact-v1";
 
 export type CloudflareStagingBuildReceipt = Readonly<{
@@ -26,6 +27,7 @@ type StoredFile = Readonly<{
   contentType: string;
   size: number;
   sha256: string;
+  chunks?: readonly Readonly<{ sha256: string; size: number }>[];
 }>;
 
 type ArtifactManifest = Readonly<{
@@ -154,10 +156,31 @@ function blobKey(digest: string) {
 }
 
 async function putBlob(storage: CloudflareStagingArtifactStorage, bytes: Uint8Array, contentType: string) {
-  if (bytes.byteLength < 1 || bytes.byteLength > MAX_OBJECT_BYTES) throw new Error("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
+  if (bytes.byteLength < 1 || bytes.byteLength > MAX_FILE_BYTES) throw new Error("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
   const digest = sha256(bytes);
+  if (bytes.byteLength > MAX_OBJECT_BYTES) {
+    const chunks: { sha256: string; size: number }[] = [];
+    for (let offset = 0; offset < bytes.byteLength; offset += MAX_OBJECT_BYTES) {
+      const chunk = bytes.subarray(offset, offset + MAX_OBJECT_BYTES);
+      const chunkDigest = sha256(chunk);
+      await storage.putIfAbsent(blobKey(chunkDigest), chunk, "application/octet-stream");
+      chunks.push({ sha256: chunkDigest, size: chunk.byteLength });
+    }
+    return { contentType, size: bytes.byteLength, sha256: digest, chunks } satisfies StoredFile;
+  }
   await storage.putIfAbsent(blobKey(digest), bytes, contentType);
   return { contentType, size: bytes.byteLength, sha256: digest } satisfies StoredFile;
+}
+
+async function readBlob(storage: CloudflareStagingArtifactStorage, file: StoredFile) {
+  const parts: Uint8Array[] = [];
+  for (const part of file.chunks ?? [file]) {
+    const bytes = await storage.readBuffer(blobKey(part.sha256.toLowerCase()));
+    if (!bytes || bytes.byteLength !== part.size || sha256(bytes) !== part.sha256.toLowerCase()) return null;
+    parts.push(bytes);
+  }
+  const bytes = parts.length === 1 ? parts[0]! : Buffer.concat(parts);
+  return bytes.byteLength === file.size && sha256(bytes) === file.sha256.toLowerCase() ? bytes : null;
 }
 
 function validateManifest(input: unknown, artifactDigest: string): ArtifactManifest | null {
@@ -176,8 +199,13 @@ function validateManifest(input: unknown, artifactDigest: string): ArtifactManif
   for (const [group, files] of [["module", value.moduleFiles], ["asset", value.assets]] as const) {
     for (const [name, file] of Object.entries(files)) {
       if (!safePath(name) || !file || !SHA256.test(file.sha256) || !Number.isSafeInteger(file.size) ||
-          file.size < 1 || file.size > MAX_OBJECT_BYTES || typeof file.contentType !== "string" ||
+          file.size < 1 || file.size > MAX_FILE_BYTES || typeof file.contentType !== "string" ||
           file.contentType.length > 200) throw new Error(`CLOUDFLARE_ARTIFACT_${group.toUpperCase()}_MANIFEST_INVALID`);
+      if (file.size > MAX_OBJECT_BYTES) {
+        if (!Array.isArray(file.chunks) || file.chunks.length !== Math.ceil(file.size / MAX_OBJECT_BYTES) ||
+            file.chunks.some((chunk, index) => !chunk || !SHA256.test(chunk.sha256) ||
+              chunk.size !== Math.min(MAX_OBJECT_BYTES, file.size - index * MAX_OBJECT_BYTES))) return null;
+      } else if (file.chunks !== undefined) return null;
     }
   }
   return value as ArtifactManifest;
@@ -208,10 +236,23 @@ export function createCloudflareStagingArtifactAuthority(input: {
     const buildDigest = sortedFileDigest(bundle.moduleFiles, bundle.assets);
     if (buildDigest !== receipt.cloudflareBundleDigest.toLowerCase()) throw new Error("CLOUDFLARE_ARTIFACT_BUILD_DIGEST_MISMATCH");
 
-    const moduleFiles: Record<string, StoredFile> = {};
-    const assets: Record<string, StoredFile> = {};
-    for (const [name, file] of Object.entries(bundle.moduleFiles)) moduleFiles[name] = await putBlob(input.storage, file.bytes, file.contentType);
-    for (const [name, file] of Object.entries(bundle.assets)) assets[name] = await putBlob(input.storage, file.bytes, file.contentType);
+    for (const file of [...Object.values(bundle.moduleFiles), ...Object.values(bundle.assets)]) {
+      if (file.bytes.byteLength < 1 || file.bytes.byteLength > MAX_FILE_BYTES) throw new Error("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
+    }
+    async function publishFiles(files: typeof bundle.assets) {
+      const entries = Object.entries(files);
+      const stored: Record<string, StoredFile> = {};
+      // Bound remote I/O while retaining deterministic manifest property order
+      // so repeated publications of the same artifact stay byte-identical.
+      for (let offset = 0; offset < entries.length; offset += 8) {
+        const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([name, file]) =>
+          [name, await putBlob(input.storage, file.bytes, file.contentType)] as const));
+        for (const [name, file] of batch) stored[name] = file;
+      }
+      return stored;
+    }
+    const moduleFiles = await publishFiles(bundle.moduleFiles);
+    const assets = await publishFiles(bundle.assets);
     const manifest: ArtifactManifest = {
       format: MANIFEST_VERSION,
       sourceSha: receipt.sourceSha.toLowerCase(),
@@ -253,8 +294,8 @@ export function createCloudflareStagingArtifactAuthority(input: {
     const assets: Record<string, { contentType: string; bytes: Uint8Array }> = {};
     for (const [files, output] of [[manifest.moduleFiles, moduleFiles], [manifest.assets, assets]] as const) {
       for (const [name, file] of Object.entries(files)) {
-        const bytes = await input.storage.readBuffer(blobKey(file.sha256.toLowerCase()));
-        if (!bytes || bytes.byteLength !== file.size || sha256(bytes) !== file.sha256.toLowerCase()) return null;
+        const bytes = await readBlob(input.storage, file);
+        if (!bytes) return null;
         output[name] = { contentType: file.contentType, bytes };
       }
     }
