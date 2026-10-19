@@ -32337,3 +32337,270 @@ export const spec224VerificationLeases = pgTable(
     check("spec224_verification_leases_owner_hash_format", sql`${t.ownerTokenHash} ~ '^[a-f0-9]{64}$'`),
   ],
 );
+
+/** Additive SPEC-207/280 bridge. Existing credit, invoice and payment rows remain authoritative for their current rails. */
+export const commercialPaymentRequests = pgTable(
+  "commercial_payment_requests",
+  {
+    requestId: varchar("request_id", { length: 128 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 }).notNull().unique(),
+    invocationId: varchar("invocation_id", { length: 128 }).notNull(),
+    tenantRef: varchar("tenant_ref", { length: 128 }).notNull(),
+    payerRef: varchar("payer_ref", { length: 128 }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    rail: varchar("rail", { length: 24 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 256 })
+      .notNull()
+      .unique(),
+    requestHash: varchar("request_hash", { length: 64 }).notNull(),
+    snapshotJson: jsonb("snapshot_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    state: varchar("state", { length: 32 }).notNull().default("reserved"),
+    reservedMinor: bigint("reserved_minor", { mode: "number" }).notNull(),
+    capturedMinor: bigint("captured_minor", { mode: "number" })
+      .notNull()
+      .default(0),
+    fencingToken: integer("fencing_token").notNull().default(1),
+    providerRef: varchar("provider_ref", { length: 256 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("commercial_payment_payer_state_idx").on(
+      t.tenantRef,
+      t.payerRef,
+      t.currency,
+      t.state
+    ),
+    check(
+      "commercial_payment_rail_check",
+      sql`${t.rail} IN ('credits', 'fiat_payg', 'x402', 'mpp')`
+    ),
+    check(
+      "commercial_payment_state_check",
+      sql`${t.state} IN ('reserved', 'authorization_unknown', 'authorized', 'paused', 'settled', 'reconciliation_required')`
+    ),
+    check(
+      "commercial_payment_amounts_nonnegative",
+      sql`${t.reservedMinor} >= 0 AND ${t.capturedMinor} >= 0`
+    ),
+    check("commercial_payment_fence_positive", sql`${t.fencingToken} > 0`),
+  ]
+);
+export type CommercialPaymentRequestRow =
+  typeof commercialPaymentRequests.$inferSelect;
+
+export const commercialPaymentAttempts = pgTable(
+  "commercial_payment_attempts",
+  {
+    attemptId: varchar("attempt_id", { length: 128 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 })
+      .notNull()
+      .references(() => commercialPaymentRequests.taskId, {
+        onDelete: "restrict",
+      }),
+    attemptNo: integer("attempt_no").notNull(),
+    providerId: varchar("provider_id", { length: 128 }).notNull(),
+    rail: varchar("rail", { length: 24 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 256 })
+      .notNull()
+      .unique(),
+    requestHash: varchar("request_hash", { length: 64 }).notNull(),
+    providerRef: varchar("provider_ref", { length: 256 }),
+    fencingToken: integer("fencing_token").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("commercial_payment_attempt_task_number_unique").on(
+      t.taskId,
+      t.attemptNo
+    ),
+    index("commercial_payment_attempt_provider_ref_idx").on(
+      t.providerId,
+      t.providerRef
+    ),
+    check(
+      "commercial_payment_attempt_fence_positive",
+      sql`${t.fencingToken} > 0`
+    ),
+    check(
+      "commercial_payment_attempt_status_check",
+      sql`${t.status} IN ('pending', 'authorized', 'declined', 'unknown', 'captured', 'released', 'refunded', 'reconciliation_required')`
+    ),
+  ]
+);
+
+export const commercialSpendingLimits = pgTable(
+  "commercial_spending_limits",
+  {
+    tenantRef: varchar("tenant_ref", { length: 128 }).notNull(),
+    payerRef: varchar("payer_ref", { length: 128 }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    globalCapMinor: bigint("global_cap_minor", { mode: "number" }).notNull(),
+    overdraftLimitMinor: bigint("overdraft_limit_minor", { mode: "number" })
+      .notNull()
+      .default(0),
+    overdraftEnabled: boolean("overdraft_enabled").notNull().default(false),
+    policyVersion: varchar("policy_version", { length: 64 }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    primaryKey({ columns: [t.tenantRef, t.payerRef, t.currency] }),
+    check(
+      "commercial_spending_limits_nonnegative",
+      sql`${t.globalCapMinor} >= 0 AND ${t.overdraftLimitMinor} >= 0`
+    ),
+    check(
+      "commercial_spending_limits_zero_when_disabled",
+      sql`${t.overdraftEnabled} OR ${t.overdraftLimitMinor} = 0`
+    ),
+  ]
+);
+
+export const commercialUsageReceipts = pgTable(
+  "commercial_usage_receipts",
+  {
+    receiptId: varchar("receipt_id", { length: 128 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 })
+      .notNull()
+      .references(() => commercialPaymentRequests.taskId, {
+        onDelete: "restrict",
+      }),
+    invocationId: varchar("invocation_id", { length: 128 }).notNull(),
+    sequence: integer("sequence").notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 256 })
+      .notNull()
+      .unique(),
+    receiptHash: varchar("receipt_hash", { length: 64 }).notNull(),
+    meter: varchar("meter", { length: 128 }).notNull(),
+    unit: varchar("unit", { length: 32 }).notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 8 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    sourceAttemptRef: varchar("source_attempt_ref", { length: 256 }).notNull(),
+    evidenceRef: varchar("evidence_ref", { length: 256 }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("commercial_usage_task_sequence_unique").on(
+      t.taskId,
+      t.sequence
+    ),
+    check(
+      "commercial_usage_nonnegative",
+      sql`${t.quantity} >= 0 AND ${t.amountMinor} >= 0`
+    ),
+  ]
+);
+
+export const commercialSettlements = pgTable(
+  "commercial_settlements",
+  {
+    settlementId: varchar("settlement_id", { length: 128 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 })
+      .notNull()
+      .unique()
+      .references(() => commercialPaymentRequests.taskId, {
+        onDelete: "restrict",
+      }),
+    authorizationId: varchar("authorization_id", { length: 128 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 256 })
+      .notNull()
+      .unique(),
+    capturedMinor: bigint("captured_minor", { mode: "number" }).notNull(),
+    releasedMinor: bigint("released_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    allocationSnapshotJson: jsonb("allocation_snapshot_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    receiptIdsJson: jsonb("receipt_ids_json").$type<string[]>().notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("settled"),
+    settledAt: timestamp("settled_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    check(
+      "commercial_settlement_amounts_nonnegative",
+      sql`${t.capturedMinor} >= 0 AND ${t.releasedMinor} >= 0`
+    ),
+    check(
+      "commercial_settlement_status_check",
+      sql`${t.status} IN ('settled', 'reconciliation_required', 'reversed')`
+    ),
+  ]
+);
+
+export const commercialLedgerPostings = pgTable(
+  "commercial_ledger_postings",
+  {
+    postingRef: varchar("posting_ref", { length: 256 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 })
+      .notNull()
+      .references(() => commercialPaymentRequests.taskId, {
+        onDelete: "restrict",
+      }),
+    idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+    accountRef: varchar("account_ref", { length: 256 }).notNull(),
+    side: varchar("side", { length: 8 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("commercial_ledger_idempotency_account_unique").on(
+      t.idempotencyKey,
+      t.accountRef
+    ),
+    index("commercial_ledger_task_created_idx").on(t.taskId, t.createdAt),
+    check(
+      "commercial_ledger_side_check",
+      sql`${t.side} IN ('debit', 'credit')`
+    ),
+    check("commercial_ledger_amount_positive", sql`${t.amountMinor} > 0`),
+  ]
+);
+
+export const commercialPaymentRefunds = pgTable(
+  "commercial_payment_refunds",
+  {
+    refundId: varchar("refund_id", { length: 128 }).primaryKey(),
+    taskId: varchar("task_id", { length: 128 })
+      .notNull()
+      .references(() => commercialPaymentRequests.taskId, {
+        onDelete: "restrict",
+      }),
+    settlementId: varchar("settlement_id", { length: 128 })
+      .notNull()
+      .references(() => commercialSettlements.settlementId, {
+        onDelete: "restrict",
+      }),
+    idempotencyKey: varchar("idempotency_key", { length: 256 })
+      .notNull()
+      .unique(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull(),
+    providerRef: varchar("provider_ref", { length: 256 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [check("commercial_refund_amount_positive", sql`${t.amountMinor} > 0`)]
+);
