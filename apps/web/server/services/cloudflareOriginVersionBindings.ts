@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "../../../../packages/shared/src/cloudflareOrigin";
+import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
 
 const credential = z.string().min(16).max(4096).regex(/^[\x21-\x7e]+$/);
 export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32), clientId: credential, secret: credential }).strict()

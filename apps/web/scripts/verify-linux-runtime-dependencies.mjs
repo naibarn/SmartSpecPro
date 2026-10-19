@@ -70,7 +70,15 @@ for (const file of await sourceFiles(path.join(runtimeRoot, "server"))) {
   const relativeFile = path.relative(runtimeRoot, file).split(path.sep).join("/");
   for (const site of importSites(sourceFile)) {
     const specifier = site.specifier;
-    if (specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("#")
+    if (specifier.startsWith(".")) {
+      const target = path.resolve(path.dirname(file), specifier);
+      const relativeTarget = path.relative(runtimeRoot, target);
+      if (relativeTarget === ".." || relativeTarget.startsWith(`..${path.sep}`) || path.isAbsolute(relativeTarget)) {
+        violations.push(`${relativeFile}: '${specifier}' escapes the standalone runtime artifact; use a declared workspace package`);
+      }
+      continue;
+    }
+    if (specifier.startsWith("/") || specifier.startsWith("#")
       || specifier.startsWith("node:") || isRuntimeAlias(specifier)) continue;
 
     const dependency = packageName(specifier);

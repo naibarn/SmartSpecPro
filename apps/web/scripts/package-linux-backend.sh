@@ -75,6 +75,12 @@ if (Object.keys(paths).length !== runtimeAliases.length) {
 writeFileSync(path, `${JSON.stringify({ compilerOptions: { baseUrl: ".", paths } }, null, 2)}\n`);
 JS
 node "$WEB_ROOT/scripts/verify-linux-runtime-dependencies.mjs" "$PACKAGE_ROOT"
+# Import the protected-origin boundary from the detached artifact itself. Source
+# checkout tests cannot detect monorepo-relative paths broken by pnpm deploy.
+(
+  cd "$PACKAGE_ROOT"
+  NODE_ENV=production node --import tsx --input-type=module -e 'await import("./server/_core/cloudflareOriginMiddleware.ts"); await import("./server/services/cloudflareOriginVersionBindings.ts");'
+)
 mkdir -p "$PACKAGE_ROOT/dist/public"
 cp -a "$WEB_ROOT/dist/public/." "$PACKAGE_ROOT/dist/public/"
 node --input-type=module - "$PACKAGE_ROOT/release-build.json" "$SOURCE_SHA" <<'JS'

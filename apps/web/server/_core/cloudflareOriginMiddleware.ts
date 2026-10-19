@@ -1,5 +1,5 @@
 import type { Request, RequestHandler } from "express";
-import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "../../../../packages/shared/src/cloudflareOrigin";
+import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
 import { isValidCloudflareOriginAttestation } from "./cloudflareOriginAttestation";
 
 export type CloudflareOriginConfig = {

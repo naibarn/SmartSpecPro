@@ -5,7 +5,7 @@ import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
-import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "../../../../packages/shared/src/cloudflareOrigin";
+import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
 
 export { cloudflareOriginSecretsSchema, cloudflareOriginSettingsSchema } from "./cloudflareOriginVersionBindings";
 import {
