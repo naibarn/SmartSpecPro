@@ -733,7 +733,7 @@ describe("vertical drama Enhanced prompt boundary", () => {
     const input = buildEnhancedSkillInput({
       shot: {
         dialogue: [
-          { speaker: "พิมพ์ชนก", text: "คุณเห็นแฟ้มเอกสารนี้ไหม" },
+          { speaker: "พิมพ์ชนก", position: "viewer-center-left", text: "คุณเห็นแฟ้มเอกสารนี้ไหม" },
           { speaker: "รินลดา", speakerId: "rinlada", text: "ฉันไม่รู้ ฉันคิดว่ามีแค่คนเดียว" },
         ],
       },
@@ -757,6 +757,12 @@ describe("vertical drama Enhanced prompt boundary", () => {
     };
 
     expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
+    expect(
+      getEnhancedPromptSemanticValidationError(
+        { ...compact, prompt: 'Line 1 ONLY (char-1 @ viewer-right): "คุณเห็นแฟ้มเอกสารนี้ไหม"' },
+        input,
+      ),
+    ).toContain("expected position present=false");
     expect(
       getEnhancedPromptSemanticValidationError(
         { ...compact, prompt: 'Line 1 ONLY (wrong-id): "คุณเห็นแฟ้มเอกสารนี้ไหม"' },

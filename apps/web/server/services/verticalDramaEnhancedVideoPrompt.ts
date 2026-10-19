@@ -860,7 +860,7 @@ export function getEnhancedPromptSemanticValidationError(
       const positionAnchor = customIdentity
         ? ` identified by ${escapeRegExp(customIdentity)}`
         : compactPosition
-          ? ` @ ${escapeRegExp(compactPosition)}`
+          ? `(?: @ ${escapeRegExp(compactPosition)})?`
           : "(?: @ [^):\\r\\n]+)?";
       const compactCanonicalLine = new RegExp(
         `(?:^|\\n)Line ${index + 1} ONLY \\((?:${Array.from(compactSpeakerAliases).map(escapeRegExp).join("|")})${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
