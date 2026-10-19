@@ -3,17 +3,17 @@
 
 **Status:** Proposed / Additive implementation-ready specification  
 **Spec ID:** 280  
-**Revision:** 1.3 — provider-neutral Agentic Commerce and payment boundary
+**Revision:** 1.4 — SPEC-207/280 executable contract, ownership and acceptance alignment
 **Date:** 2026-10-19
 **Target repository path:** `specs/feature/280-metered-capability-commerce-creator-economy-runtime/spec.md`  
-**Primary owner:** SmartAIHub Capability Commerce / Marketplace Settlement Runtime  
+**Primary owner:** SmartAIHub Capability Commerce / Marketplace Runtime
 **Canonical development orchestrator:** Spec 224 (unchanged)  
 **Canonical Skill/capability semantic resolver:** implemented Spec 256 (unchanged)  
 **Canonical portable application/product contract:** Spec 261 SPAAS  
 **Canonical assistant layer:** Spec 269  
 **Canonical command ingress:** Spec 279  
 **Canonical durable execution:** `worker_jobs` + Spec 278  
-**Canonical authority:** Spec 280 owns usage metering, pricing, task/service billing and revenue sharing; Spec 207 owns wallet, budget, spending authorization, ledger, settlement and reconciliation. This Spec MUST integrate rather than duplicate financial authority.
+**Canonical authority:** SPEC-280 owns usage metering, pricing, task/service billing and revenue sharing; SPEC-207 owns payer/funding selection, wallet, budget reservation, spending authorization, payment attempts, ledger, settlement, refunds and reconciliation. This Spec MUST integrate rather than duplicate financial authority.
 **Core business principle:** BYO-LLM + rent SmartAIHub capabilities + build/publish/earn  
 **Implementation rule:** ADDITIVE ONLY. Existing implemented Spec 224/256 behavior MUST remain valid.
 
@@ -32,13 +32,13 @@ SmartAIHub orchestrates
         ↓
 SmartAIHub paid capability is invoked
         ↓
-credits reserved
+SPEC-207 authorization / reservation (Credits or eligible PAYG)
         ↓
 capability executes
         ↓
 evidence/result
         ↓
-credits settled
+SPEC-207 settlement (using legacy Credits primitives where selected)
         ↓
 revenue allocated
 ```
@@ -761,6 +761,17 @@ Required:
 
 # 24. Credit Reservation & Settlement
 
+**Authority clarification (Revision 1.4):** This section describes the
+commercial sequence, not a second reservation or settlement implementation.
+SPEC-280 emits the immutable price/billability/allocation snapshot and usage
+receipts; SPEC-207 performs payer selection, spending authorization, task and
+global budget reservation, provider attempts, ledger posting, settlement,
+refund and reconciliation. The existing Credits debit/refund path remains the
+compatibility rail until its migration is separately evidenced. Any older
+reference in this document to a SPEC-280-owned “credit reservation” means a
+request to the SPEC-207 authority and MUST NOT create SPEC-280-owned balance,
+hold, payment-attempt or ledger state.
+
 Canonical flow:
 
 ```text
@@ -1154,13 +1165,20 @@ tenant_earnings_projection
 
 BUT:
 
-- canonical credit balance remains existing billing/ledger authority;
-- canonical transaction settlement MUST use existing ledger primitives;
+- canonical credit balance remains with the existing billing authority until
+  its migration is evidenced; the target economic ledger authority is SPEC-207;
+- canonical settlement MUST use SPEC-207 financial primitives (and existing
+  credit primitives for the compatible legacy rail);
 - projections SHALL NOT mutate balances independently.
 
 ---
 
 # 41. Settlement Allocation Record
+
+SPEC-280 calculates and snapshots the commercial allocation. SPEC-207 (or the
+existing Credits authority for that compatibility rail) posts the financial
+entries and returns canonical ledger/settlement references. This record is a
+commercial allocation contract/projection, not a separate balance ledger.
 
 Illustrative:
 
@@ -1453,6 +1471,13 @@ rent capabilities
 
 Revision 1.1 closes commerce/runtime gaps discovered during a second cross-spec review with Specs 278 and 279.
 
+**Revision 1.4 ownership clarification:** The commercial state, usage, and
+billability portions below belong to SPEC-280. Payer authorization, financial
+reservation, charge/debit, refund, ledger posting, settlement finality and
+reconciliation belong to SPEC-207 (or the existing Credit authority while
+that compatibility rail remains in use). Legacy illustrative wording below
+is subordinate to this boundary and sections 54/55.
+
 ## 52.1 Immutable Commercial Contract Snapshot
 
 Before a paid invocation is admitted, Spec 280 SHALL create or reference an immutable snapshot containing the commercial facts that govern that invocation.
@@ -1478,10 +1503,9 @@ commercial_contract_snapshot:
     revenue_policy_version: ...
     tenant_attribution_path_ref: ...
 
-  payer:
-    payer_policy_ref: ...
-    funding_source_ref: ...
-    reserved_amount: ...
+  amount_ceiling:
+    currency_or_credit_unit: ...
+    maximum_amount: ...
 
   rights:
     entitlement_ref: ...
@@ -1494,6 +1518,10 @@ commercial_contract_snapshot:
 Subsequent price/share changes SHALL NOT mutate this snapshot.
 
 A retry/recovery of the same invocation reuses the same snapshot unless the original commercial invocation is explicitly replaced.
+
+Payer, funding-source and reservation references are returned by SPEC-207 and
+may be linked as opaque references. SPEC-280 MUST NOT choose the funding
+source or record a spendable balance/reservation as its authority.
 
 ## 52.2 Commercial Invocation State Machine
 
@@ -1554,25 +1582,23 @@ Projection tables are never balance authority.
 A robust paid invocation SHALL follow:
 
 ```text
-1. calculate bounded estimate
-2. reserve payer funds/credits
-3. create immutable commercial snapshot
-4. issue bounded CommercialExecutionGrant if physical execution is required
-5. execute
-6. receive/deduplicate UsageMeterReceipts
-7. classify outcome/failure attribution
-8. calculate billable amount
-9. commit canonical charge/usage transaction
-10. allocate earnings/liabilities
-11. release unused reservation
-12. emit settlement receipt
+1. SPEC-280 calculates bounded commercial estimate and snapshot
+2. SPEC-207 authorizes payer and reserves bounded exposure
+3. SPEC-280 issues a bounded CommercialExecutionGrant if physical execution is required
+4. canonical job authority executes
+5. SPEC-280 receives and deduplicates UsageMeterReceipts
+6. SPEC-280 classifies failure and calculates billable amount/allocation
+7. SPEC-207 captures/posts the financial transaction and allocation snapshot
+8. SPEC-207 releases unused reservation and returns canonical result
+9. SPEC-280 updates commercial projections from that result
+10. emit settlement receipt/reference
 ```
 
 If step 9 succeeds but later projection/allocation UI update fails, the ledger transaction remains canonical and projections reconcile later.
 
 ## 52.5 Commercial Execution Grant
 
-Spec 280 SHALL be able to issue a short-lived bounded grant consumed by Spec 278.
+Spec 280 SHALL be able to issue a short-lived bounded commercial grant consumed by Spec 278 after SPEC-207 economic admission. The grant does not authorize a debit or replace the SPEC-207 reservation.
 
 The grant MUST bind at least:
 
@@ -1639,9 +1665,13 @@ Untrusted client-supplied numbers MUST NOT directly determine charges.
 
 External provider usage data MAY be reconciled with provider receipts/API data where available.
 
-## 52.8 Root Budget & Child Reservation
+## 52.8 Root Budget Envelope & Child Reservation Request
 
-Nested paid calls SHALL draw from a bounded root budget.
+Nested paid calls SHALL declare bounded child exposure beneath a root budget
+envelope. SPEC-280 owns the commercial parent/child relationship and requests
+child amounts; SPEC-207 owns, reserves, fences and reconciles the financial
+root budget. SPEC-280 MUST NOT maintain a competing spendable budget or
+reservation balance.
 
 Illustrative:
 
@@ -1654,11 +1684,15 @@ Mini App reserves       60
   └─ remaining child    25
 ```
 
-A child reservation SHALL atomically reduce or encumber available root budget.
+A child reservation request MUST be accepted by SPEC-207 before effectful
+child execution; SPEC-207 atomically reduces or encumbers available root
+exposure.
 
 Parallel children MUST NOT each observe the same unreserved balance.
 
-Child reservation release/settlement SHALL reconcile back into root budget state.
+Child release/settlement results from SPEC-207 SHALL reconcile back into the
+root budget state held by SPEC-207. SPEC-280 retains commercial lineage and
+projection references only.
 
 ## 52.9 Nested Settlement Ordering
 
@@ -2157,8 +2191,13 @@ rail.
         ↓
 280
   immutable commercial snapshot
-  reserve
-  grant
+  billability and allocation policy
+  usage receipts
+        ↓
+207
+  quote / authorize
+  global + task reservation
+  provider-neutral payment attempts
         ↓
 worker_jobs
         ↓
@@ -2169,15 +2208,131 @@ worker_jobs
 280
   dedupe
   billability policy
-  settle
+  final billable amount + allocation snapshot
   revenue allocation
         ↓
-existing canonical ledger
+207 canonical ledger and settlement/reconciliation
         ↓
 creator / tenant / platform projections & payout lifecycle
 ```
 
 The commercial runtime SHALL make SmartAIHub monetizable without forcing users to buy their LLM from SmartAIHub and without weakening the existing orchestration/job authority boundaries.
+
+# 55. Revision 1.4 Addendum — Contract Conformance and Operational Acceptance
+
+This section makes Revision 1.3's payment boundary directly implementable.
+SPEC-207 section 202 defines the financial state machine and contract
+authority; this section defines the SPEC-280 producer obligations. The typed
+contract is shared and versioned, not implemented as duplicate SPEC-local
+payment models.
+
+## 55.1 Commercial snapshot producer contract
+
+Before a paid task is admitted, SPEC-280 MUST resolve the active capability
+release, pricing version, billability rules, revenue policy version and
+beneficiary bindings, then create an immutable snapshot containing:
+
+- stable invocation, task, capability and release references;
+- meter/pricing facts, amount ceiling and currency;
+- pricing and revenue policy version identifiers and effective time;
+- complete beneficiary allocation rows, rounding method and residual owner;
+- tenant/channel/asset/creator attribution references where applicable;
+- digest over canonical serialization and creation timestamp.
+
+Every allocation row MUST use integer minor units for fiat amounts. Allocation
+rows plus platform amount MUST equal the authorized maximum or define a
+versioned deterministic rule for usage-dependent allocation whose total is
+checked at settlement. Missing beneficiary identity, currency mismatch,
+non-finite price, invalid policy version or an allocation that exceeds the
+snapshot ceiling blocks paid admission. SPEC-280 MUST NOT select payment
+providers, authorize spending, reserve a balance or claim payment finality.
+
+## 55.2 Usage receipt and billability contract
+
+Each usage receipt MUST bind to the invocation, task, worker job/attempt,
+capability release, meter version and current fencing generation. It records a
+unique receipt ID, idempotency scope, sequence, quantity/unit, event time,
+trusted evidence reference and producer identity. Client-provided quantity or
+price is untrusted until validated against server-side execution evidence.
+
+SPEC-280 determines `BILLABLE`, `NON_BILLABLE`, `PARTIALLY_BILLABLE` or
+`PENDING_EVIDENCE` under the snapshot's policy. The decision records reason
+code, evidence digest, accepted receipt IDs and the exact price version. A
+duplicate receipt with the same identity and digest returns the original
+decision; conflicting content is rejected and audited. Receipts are append-only
+and late evidence creates a new adjustment candidate. A SPEC-280 decision is
+not a debit or settlement; SPEC-207 must authorize and post the resulting
+financial effect.
+
+## 55.3 PAYG, Credits and payment interoperability
+
+The payer may select the existing prepaid Credits rail or eligible fiat PAYG
+without preloading Credits. Agentic protocol options (including x402 or MPP)
+are capabilities negotiated by provider-neutral SPEC-207 adapters and are not
+hard-coded into capability IDs, pricing, revenue policy or this commercial
+snapshot. No live provider integration or real-money mode is required for this
+contract to be implemented or mock-tested. Provider/rail availability does
+not change whether a task's usage is billable.
+
+SPEC-280 MUST pass the same snapshot and accepted usage receipts to SPEC-207
+regardless of funding mode. It MUST NOT change historical Credits
+transactions, combine creator earnings with spendable usage balance, or
+reinterpret an external harness/provider's own subscription expense as
+SmartAIHub revenue.
+
+## 55.4 Failure, resume and settlement handoff
+
+At each durable task checkpoint, SPEC-280 emits all accepted receipts and the
+current billability watermark to the financial contract. On resume it reuses
+the same invocation and commercial snapshot; it may append receipts for new
+work but MUST NOT issue a new commercial invocation solely because the worker
+process/session restarted. It MUST honor SPEC-207's reservation result before
+allowing further paid effects. A denied incremental reserve pauses or terminates
+according to the durable job policy.
+
+After the task reaches a settlement boundary, SPEC-280 sends the accepted
+receipt set, billable amount, allocation snapshot and policy versions exactly
+once by idempotent operation. SPEC-207 returns the canonical settlement ID and
+ledger reference or a reconciliation-required result. SPEC-280 projections
+may display pending/settled/refunded state from those references but MUST NOT
+infer finality from a callback, task success, queued outbox event or local
+projection.
+
+## 55.5 Conformance and acceptance matrix
+
+The implementation is accepted only when the following producer-to-finance
+flow is proven with deterministic mock adapters and the SPEC-207 ledger
+invariants:
+
+| Case | Required observable result |
+| --- | --- |
+| Credits payer | Existing compatible debit/refund semantics remain intact; same typed request/receipt lineage is preserved. |
+| PAYG payer with zero Credits | Task is admitted only after SPEC-207 authorizes and reserves the external exposure; no top-up is required. |
+| Parallel paid tasks | SPEC-207 global/task caps bound combined reservations; SPEC-280 creates no shadow budget. |
+| Duplicate/conflicting usage receipt | Identical retry is idempotent; identity collision with changed content is rejected and audited. |
+| Partial/non-billable failure | Only policy-approved usage is passed for settlement; unused reservation is released by SPEC-207. |
+| Checkpoint and resume | Same invocation/snapshot; completed billable effects are not replayed; incremental reserve is required before more paid work. |
+| Unknown payment result | SPEC-280 shows pending/reconciliation state; it does not trigger provider failover or claim settlement. |
+| Refund/reversal | SPEC-207 returns a new adjustment linked to original settlement/allocation version; SPEC-280 updates projections from canonical references. |
+| Multi-party allocation | Snapshot totals and residual rounding are deterministic; ledger allocation equals captured amount. |
+| Tenant isolation | Cross-tenant snapshot/receipt/settlement lookup is denied and audited. |
+
+Database acceptance requires additive migration evidence, legacy Credits and
+payment record preservation, rollback proof, unique/idempotency constraints,
+transaction/concurrency proof and process-restart recovery against disposable
+PostgreSQL. End-to-end mock acceptance must assert balanced ledger entries and
+reservation reconciliation. Unit tests alone are insufficient. Sandbox
+evidence records the exact source SHA and must keep real provider credentials,
+live charging and production routes disabled.
+
+## 55.6 SPEC-224 interface boundary
+
+SPEC-224 may consume an optional versioned economic admission interface that
+returns an opaque invocation reference, admission decision, bounded budget
+reference and stable reason code. It does not receive provider credentials or
+payment protocol details and does not own reservation, charge, settlement or
+ledger state. No SPEC-224 scope, acceptance, lifecycle, verification, Live
+Acceptance or schedule change is introduced by this addendum.
 
 ## R1.2 Additive asset, party, infrastructure-cost, and referral boundary — 2026-10-07
 

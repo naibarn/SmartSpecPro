@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -87,13 +87,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "fd69f5799139aba3e05a0f5053251e17eae78a68",
-    "expected_spec_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c"
+    "expected_spec_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d"
   },
   "continuation": {
-    "next_action": "Implement a transactional PostgreSQL repository for global spending reservations, provider attempts, usage, settlements, refunds and balanced ledger postings; then run the mock flow against disposable PostgreSQL across process restart. Do not connect live providers or change SPEC-224 acceptance. Evidence: handoff/evidence/commercial-payment-bridge-implementation-20261019.md.",
+    "next_action": "SPEC-207 R6 normative contract is documented and reconciled; implement the transactional PostgreSQL payment repository, map production SPEC-280 receipts/allocation snapshots, and prove crash/restart mock E2E plus ledger invariants. Do not enable provider routes or change SPEC-224 acceptance. Evidence: handoff/evidence/commercial-payment-normative-alignment-20261019.md.",
     "next_ready_workunit": "SPEC-207-WU-PAYMENT-INTEROP-CONTRACT",
     "reactivation_predicate": null,
-    "resume_point": "Bridge contract and deterministic E2E checkpoint; remaining: durable PostgreSQL repository, database migration proof and process-restart sandbox acceptance.",
+    "resume_point": "Normative payment contract and ownership aligned; remaining work is durable persistence/source mapping and sandbox process-restart acceptance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -101,7 +101,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -193,7 +193,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -266,18 +266,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 23,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
-    "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+    "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-19T00:04:04.625481Z",
+      "last_evidence_at": "2026-10-19T08:15:06.293134Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "5",
+    "revision": "6",
     "slug": "207-agentic-economic-control-plane",
     "spec_id": "207",
     "title": "Spec 207 — SmartAIHub Agentic Economic Control Plane"
@@ -288,13 +288,17 @@
     ],
     "mapping": [],
     "source_paths": [
-      "apps/web/shared/commercialPaymentContracts.ts",
-      "apps/web/server/services/commercialPayments.ts",
-      "apps/web/server/services/__tests__/commercialPayments.test.ts",
-      "apps/web/drizzle/schema.ts",
-      "apps/web/drizzle/0408_spec207_280_commercial_payment_bridge.sql",
       "apps/web/drizzle/0408_spec207_280_commercial_payment_bridge.rollback.md",
-      "apps/web/server/__tests__/commercialPaymentBridgeMigration.test.ts"
+      "apps/web/drizzle/0408_spec207_280_commercial_payment_bridge.sql",
+      "apps/web/drizzle/schema.ts",
+      "apps/web/server/__tests__/commercialPaymentBridgeMigration.test.ts",
+      "apps/web/server/services/__tests__/commercialPayments.test.ts",
+      "apps/web/server/services/commercialPayments.ts",
+      "apps/web/shared/commercialPaymentContracts.ts",
+      "specs/feature/207-agentic-economic-control-plane/handoff/evidence/commercial-payment-normative-alignment-20261019.md",
+      "specs/feature/207-agentic-economic-control-plane/handoff/manifest.json",
+      "specs/feature/207-agentic-economic-control-plane/handoff/requirement-ledger.json",
+      "specs/feature/207-agentic-economic-control-plane/spec.md"
     ],
     "started": true,
     "status": "PARTIAL_INTEGRATED"
@@ -309,7 +313,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-19T00:04:04.625481Z"
+    "updated_at": "2026-10-19T08:15:06.293134Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -319,10 +323,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-19T00:04:04.625481Z",
+    "reconciled_at": "2026-10-19T08:15:06.293134Z",
     "sources": [
       {
-        "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -395,12 +399,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19",
+        "excerpt": "**Status:** Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
-        "value": "Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
+        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "value": "Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -410,7 +414,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 9,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
       }
     ],
@@ -438,11 +442,11 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19",
+        "excerpt": "**Status:** Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19",
         "line": 4,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
-        "value": "Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
+        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "value": "Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -451,14 +455,14 @@
         "excerpt": "**Implementation status:** Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger.",
         "line": 9,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "825650b631dba07c8b12b8f4ac01317744489fcb3f1553c61e5b75fa5ec69c9c",
+        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -539,11 +543,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 537,
-    "unresolved": 537
+    "total": 561,
+    "unresolved": 561
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T00:42:01.998553Z",
+  "updated_at": "2026-10-19T08:15:06.753344Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

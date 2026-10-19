@@ -1,7 +1,7 @@
 # Spec 207 — SmartAIHub Agentic Economic Control Plane
 ## Multi-Wallet Portfolio, Agentic Payments, Policy Routing, Financial Calendar, Settlement & Revenue Infrastructure
 
-**Status:** Draft for implementation — Revision R5 commerce/payment ownership boundary added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19
+**Status:** Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19
 **Target:** Q4 2026 foundation → production maturity throughout 2027  
 **Spec ID:** 207  
 **Suggested path:** `specs/feature/207-agentic-economic-control-plane/spec.md`  
@@ -7611,6 +7611,7 @@ Related job: video_batch_221
 
 ## 201.8 Acceptance criteria
 
+
 Production tests MUST cover:
 
 - authorization expires while job is queued,
@@ -7621,3 +7622,267 @@ Production tests MUST cover:
 - cancelled job leaves external hold,
 - orphan detector is replay-safe,
 - cleanup does not double-release or double-capture.
+
+# 202. Provider-Neutral Commercial Payment Contract — Revision R6
+
+This section is the financial execution authority for paid capability tasks.
+It complements (and does not replace) the commercial policy authority in
+SPEC-280. It defines the contract and state transitions that connect a
+commercial snapshot to a bounded authorization, usage settlement and ledger
+result. This section is normative for new integrations; it does not authorize
+live payment activation.
+
+## 202.1 Ownership and boundary
+
+SPEC-280 owns meter definitions, usage evidence meaning, billability, price
+calculation, immutable commercial snapshots and beneficiary allocation
+calculation. SPEC-207 owns payer/funding selection, spending authorization,
+task reservations, global spending limits, payment attempts, overdraft
+exposure, ledger postings, refund/reversal, settlement and reconciliation.
+SPEC-207 MUST consume the exact versioned allocation snapshot from SPEC-280;
+it MUST validate totals and post the allocation without recomputing the
+commercial split. SPEC-207 MUST NOT create a competing usage meter or
+marketplace pricing/revenue policy.
+
+SPEC-224 MAY call a typed economic admission/quote interface and receive a
+stable decision, budget reference and reason code. SPEC-207/280 MUST NOT add a
+SPEC-224 lifecycle, scheduling, build, verification or Live Acceptance
+requirement. SPEC-224 remains the owner of its own orchestration and acceptance.
+Durable task execution, retries and checkpoints remain with the canonical
+`worker_jobs`/outbox authority.
+
+## 202.2 Versioned contract
+
+The shared contract is versioned and immutable after first authorization.
+Fields below are logical fields; transport encodings MAY evolve only through a
+new compatible contract version.
+
+```yaml
+CommercialSnapshot:
+  schema_version: 1
+  snapshot_id: string
+  invocation_id: string
+  task_id: string
+  tenant_ref: server-derived opaque reference | null
+  capability_ref: string
+  price_policy_version: string
+  revenue_policy_version: string
+  currency: ISO-4217 code
+  maximum_amount_minor: non-negative integer
+  pricing_basis: immutable SPEC-280 pricing facts
+  allocation_snapshot:
+    allocation_id: string
+    beneficiaries: [{party_ref, role, amount_minor}]
+    platform_amount_minor: non-negative integer
+  created_at: timestamp
+  digest: hash(canonical serialized immutable fields)
+
+PaymentRequest:
+  schema_version: 1
+  request_id: string
+  invocation_id: string
+  task_id: string
+  snapshot_id: string
+  snapshot_digest: string
+  payer_ref: server-derived opaque reference
+  funding_mode: CREDITS | FIAT_PAYG | APPROVED_POSTPAID | AGENT_PROTOCOL
+  maximum_amount_minor: non-negative integer
+  currency: ISO-4217 code
+  idempotency_key: opaque bounded key
+  idempotency_scope: payer + task + operation
+  request_hash: hash(canonical immutable request)
+  expires_at: timestamp
+  route_policy_ref: server-side policy reference
+
+Authorization:
+  authorization_id: string
+  request_id: string
+  reservation_id: string
+  decision: AUTHORIZED | DENIED | UNKNOWN
+  authorized_amount_minor: non-negative integer
+  currency: ISO-4217 code
+  fencing_token: monotonically increasing task generation
+  provider_attempt_ref: opaque reference | null
+  expires_at: timestamp
+
+UsageReceipt:
+  receipt_id: string
+  invocation_id: string
+  task_id: string
+  attempt_id: string
+  meter_id: string
+  sequence: non-negative integer
+  quantity_decimal: canonical decimal string
+  unit: string
+  occurred_at: timestamp
+  evidence_ref: trusted server-side reference
+  idempotency_key: opaque bounded key
+
+Settlement:
+  settlement_id: string
+  invocation_id: string
+  snapshot_id: string
+  usage_receipt_ids: [string]
+  billable_amount_minor: non-negative integer
+  currency: ISO-4217 code
+  allocation_id: string
+  ledger_transaction_id: string
+  released_reservation_minor: non-negative integer
+  status: SETTLED | PARTIAL | RECONCILIATION_REQUIRED
+```
+
+Money is integer minor units with an explicit currency. Meter quantities use
+canonical decimal strings or integer rational units and MUST NOT use binary
+floating point. Server identity and tenant context MUST be derived from
+authenticated authority, never trusted from caller-supplied payment fields.
+The snapshot digest, amount, currency, versions and payer binding MUST match
+through authorization and settlement. A mismatched or unsupported contract
+version fails closed without an economic effect.
+
+## 202.3 Admission, reservation and global limits
+
+Before effectful work, the control plane MUST atomically reserve the requested
+maximum exposure against all applicable dimensions: payer, tenant, project,
+task, funding source and configured time period. Effective availability is
+the minimum remaining allowance across the dimensions, after subtracting
+settled spend, active reservations, pending/unknown attempts, receivables and
+risk holds. Limits are integer minor units per currency. A missing configured
+limit is not unlimited: the request is denied until policy supplies a finite
+limit or an explicit non-spending exemption.
+
+Concurrent admission MUST serialize on the authoritative payer/tenant limit
+rows or use an equivalent linearizable compare-and-swap fence. Every mutation
+MUST include the current fencing token and expected reservation version. A
+stale writer is rejected. Hold acquisition and the ledger/reservation record
+are atomic. A uniqueness constraint on (scope, idempotency key, operation)
+returns the original result for an identical request; reusing a key with a
+different request hash is a hard conflict and MUST NOT mutate state.
+
+Controlled overdraft is disabled by default and has a zero limit until an
+existing authorized policy grants a bounded facility. Its approval binds the
+payer, tenant, currency, total exposure, task cap, eligible capability set,
+time window, expiry and audit reference. Reserved and unknown-outcome amounts
+count against the limit. Expired, suspended or disputed facilities deny new
+work. A task cannot opt itself into overdraft.
+
+## 202.4 Payment state machine and routing protection
+
+The canonical flow is:
+
+```text
+COMMERCIAL_SNAPSHOT
+  -> REQUESTED -> RESERVED -> AUTHORIZED -> EXECUTING
+  -> SETTLING -> SETTLED | PARTIAL | RECONCILIATION_REQUIRED
+  reservation -> RELEASED (unused/confirmed failed amount) or CLOSED
+  later refund/reversal -> new linked adjustment transaction
+```
+
+Denial before authorization creates no provider charge and no billable
+execution. All transitions are compare-and-swap operations over the canonical
+invocation generation. Payment protocol, fiat provider, wallet/funding source
+and settlement rail are independent adapter dimensions. Adapters expose
+capability discovery plus typed quote/authorize/capture/release/refund/status
+operations and normalize observations; they never own SmartAIHub balances,
+prices or final ledger state. Credentials are server-side opaque references
+and MUST NOT enter prompts, Runner/worker payloads, logs, client receipts or
+SPEC-224 interfaces.
+
+If authorization/capture times out or returns an ambiguous response, the
+attempt becomes UNKNOWN and its full possible exposure remains reserved. The
+system MUST query the same provider attempt/reference and reconcile callbacks,
+polling and statement observations before another route can execute. Failover
+to another provider is allowed only after the original route is authoritatively
+declined, voided or otherwise proven not to have charged. An unavailable status
+is not proof of failure. Retries reuse the same operation key and request hash.
+
+## 202.5 Metered settlement, checkpoint and refund
+
+Usage receipts are append-only. Each is authenticated to the task and current
+fencing generation, deduplicated by source plus receipt/idempotency key, and
+ordered by meter sequence. A duplicate with an identical digest returns the
+original result; a duplicate identity with different content is rejected and
+audited. Late usage after final settlement is recorded as a new adjustment
+candidate and never rewrites the original receipt or settlement.
+
+SPEC-280 decides which accepted receipts are billable under the frozen
+commercial snapshot and supplies the amount and allocation snapshot. SPEC-207
+checks the amount is non-negative, in the authorized currency, within the
+remaining reservation/approved exposure and that beneficiary allocations sum
+exactly to the settlement amount under the snapshot's rounding rule. Capture,
+balanced ledger postings, reservation release and settlement reference MUST
+commit atomically in the internal ledger. If the external provider outcome is
+unknown, do not post final settlement; retain the hold and reconcile.
+
+At a job checkpoint, the job authority persists the checkpoint and completed
+effect identifiers. SPEC-207 reconciles receipts and remaining reservation.
+Resume continues the same invocation, snapshot, payment idempotency scope and
+job lineage under a higher fencing generation. Before additional billable
+effects, it must obtain any incremental reserve under the same global limits.
+If additional reserve is denied, pause at the safe checkpoint or terminate
+according to job policy; completed billable work is not replayed and the cap
+cannot be exceeded.
+
+Refund and reversal are new idempotent ledger transactions that reference the
+original settlement and original allocation version. A refund amount cannot
+exceed the refundable remaining amount. Partial refunds reverse beneficiary
+and platform entries proportionally under the captured rounding policy;
+disputes and chargebacks use distinct states and evidence. Reconciliation
+compares internal attempts/ledger to provider observations and reports
+unmatched, duplicate, amount/currency mismatch, stale pending and unknown
+outcome cases. It never silently edits a posted ledger transaction.
+
+## 202.6 Credit compatibility, migration and security
+
+Existing prepaid Credits, top-up flow, `credit_transactions`, and
+`creditService` remain a supported compatibility rail and retain their
+existing meaning. PAYG must not require a prior credit top-up and must not
+rewrite historical balances or transactions. Until a durable financial ledger
+is proven, existing credit debit/refund authority remains in place; a bridge
+MUST NOT describe legacy credit rows as balanced double-entry postings without
+evidence. New schema is additive, nullable/versioned where it extends legacy
+records, and preserves old reads/writes. Backfill is idempotent and
+reconciliation-backed. Rollback disables the new route and removes only new
+objects after checking references; it MUST NOT delete or reverse existing
+credit, payment, ledger or task records. Shadow comparison precedes any
+bounded canary. This specification revision does not authorize applying a
+production migration or activating a route.
+
+Tenant isolation applies to every request, attempt, reservation, receipt,
+settlement and refund lookup. Object references must be authorized within the
+authenticated tenant. Webhook signatures/replay windows, secret rotation,
+least privilege, redacted audit logs and tamper-evident financial events are
+required. Rate limits apply to payment initiation, callback processing and
+refund operations. PCI, licensing, KYC/AML/sanctions, consumer disclosures,
+tax, privacy/data residency and retention requirements must be assessed per
+jurisdiction and route before activation; unresolved requirements block that
+route, not Credits.
+
+## 202.7 Required verification and release gates
+
+The acceptance suite MUST use a deterministic mock provider and prove the
+whole path from immutable commercial snapshot through request, concurrent
+reservation, authorization, receipt, settlement, balanced ledger and refund.
+It MUST assert ledger invariants (debits equal credits per transaction and
+currency; no duplicate economic event; allocation totals match captured
+amount; reservation balances reconcile) and include:
+
+- parallel tasks at the global cap, with exactly bounded admission;
+- same-key retry and same-key/different-hash conflict;
+- crash/restart between every external effect and durable state transition;
+- duplicate, reordered and late callbacks/receipts;
+- budget exhaustion, expired reservation and stale fencing token;
+- overdraft denied by default and approved exposure bounded;
+- unknown outcome with no route failover until decline is proven;
+- partial usage, partial settlement, unused reserve release and partial refund;
+- checkpoint/resume without repeating completed billable effects;
+- tenant-crossing object access denied and audit trail completeness.
+
+Database acceptance MUST exercise transaction isolation and uniqueness
+constraints against disposable PostgreSQL, migration from a representative
+legacy schema with Credits/payment rows, rollback that preserves all original
+records, and process-restart recovery. Unit tests or in-memory mocks alone are
+not sufficient. Sandbox acceptance uses only mock/sandbox credentials, never
+real-money mode, and records exact source SHA, test profile, evidence and
+ledger-invariant results. Route activation additionally requires security,
+compliance, reconciliation, rollback and operational approval under existing
+authorities. No production charge is authorized by passing these tests.

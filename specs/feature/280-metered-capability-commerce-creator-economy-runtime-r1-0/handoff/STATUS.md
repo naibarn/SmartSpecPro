@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 163 unresolved of 163
+- Requirements: 0 pass / 198 unresolved of 198
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 19
+- Manifest generation: 26
 
 ## Source-declared status and relationship claims
 
