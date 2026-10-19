@@ -214,3 +214,17 @@ performed for this investigation.
   deployed revision before any further code change.
 - Acceptance remains open until Enhanced generation succeeds in production,
   runtime/source/digest are verified, and no material new errors appear.
+
+## Diagnostic checkpoint release generation 12 — 2026-10-19
+
+Integrated `fe130ce2b3eea1d216d111922c38adfaeafba99e` and its current-main
+release wrapper were deployed as canonical source `5b45e776db007976d755b9edcc555d7e96b3b532`.
+
+- Immutable release id: `smartspec-web-5b45e776db007976d755b9edcc555d7e96b3b532-7812152413bd`, generation 12.
+- Artifact digest: `sha256:337de850df27740de1f0b0a4bd1d6a2a4f0272e55f677bf6ec68ae8506f1af0e`.
+- Receipt: `/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/production-deployments/smartspec-web-5b45e776db007976d755b9edcc555d7e96b3b532-7812152413bd-12.json`.
+- `release:status`: source, frontend, backend, canonical and runtime revisions match; `target_matches_release=true`, `is_current_canonical=true` at verification.
+- Web and Node worker are in the same immutable generation 12 directory. Release verification: health HTTP 200; anonymous diagnostics HTTP 403.
+- Executed `probeEnhancedRuntime()` from the immutable release: bridge available, SDK `0.22.2`, adapter `1.0.0`.
+- No database migration or mutation was performed. This deploy adds diagnostic facts to the semantic validation error; it does not establish that Episode 281 generation succeeds.
+- Next action: owner performs one authenticated Enhanced generation on Episode 281 after a hard refresh and shares the resulting error text/screenshot. The updated error contains only boolean mismatch facts, not prompt/dialogue text. Codex then fixes the concrete contract mismatch and repeats the focused test and production smoke.

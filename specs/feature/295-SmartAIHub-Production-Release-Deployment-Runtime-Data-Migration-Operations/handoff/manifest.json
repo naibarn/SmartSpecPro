@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fe130ce2b3eea1d216d111922c38adfaeafba99e",
+    "expected_canonical_sha": "5b45e776db007976d755b9edcc555d7e96b3b532",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
     "next_action": "Deploy diagnostic-only checkpoint fe130ce2 from origin/main; verify immutable runtime/source digest and bridge readiness; ask owner to run one authenticated Enhanced prompt; use privacy-safe mismatch facts to fix the semantic contract and repeat production smoke. Do not claim completion until generation succeeds. Then continue SPEC-295 P0 internal gap closure and reconcile DB only through registered migration authority; no migration-history edits.",
     "next_ready_workunit": "ENHANCED_BRIDGE_DIAGNOSE_AND_FIX",
     "reactivation_predicate": null,
-    "resume_point": "Production generation 11 (source 0a0d458b57d13b20a8171a974aad51383bbdbee5, artifact sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44) was healthy but authenticated Episode 281 still fails with canonical dialogue line 1 not bound to มยุรี. Raw bridge prompt is not persisted. Diagnostic-only source checkpoint fe130ce2 is integrated and focused suite passed 49/49; deploy it and collect the next mismatch classification before changing validation logic. Production DB remains unchanged and globally UNKNOWN.",
+    "resume_point": "Production generation 12 runs source 5b45e776db007976d755b9edcc555d7e96b3b532, immutable artifact sha256:337de850df27740de1f0b0a4bd1d6a2a4f0272e55f677bf6ec68ae8506f1af0e; web and worker align, health 200, runtime probe bridgeAvailable=true SDK 0.22.2 adapter 1.0.0. The privacy-safe mismatch diagnostics are deployed. Owner must hard-refresh Episode 281 and run one Enhanced generation, then share the new error classification. This is not feature acceptance. DB remains unchanged/UNKNOWN.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -120,7 +120,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d0dfbe5516ec9e8e090fe8052139f4f5ffefb80c5ee0a11ceaed509265897a44",
+    "artifact_digest": "sha256:337de850df27740de1f0b0a4bd1d6a2a4f0272e55f677bf6ec68ae8506f1af0e",
     "environment": "production",
     "evidence": [
       {
@@ -129,10 +129,17 @@
         "scope": "Latest-main semantic speaker validation and Cloudflare staging worktree fix deployed; web and Node worker revisions, health, SDK bridge, and artifact digest verified. Authenticated Episode 281 click-through remains pending.",
         "source_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
         "status": "PASS"
+      },
+      {
+        "kind": "DIAGNOSTIC_RELEASE_GENERATION_12",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md",
+        "scope": "Canonical source 5b45e776 and immutable generation 12 artifact deployed; web/worker revisions aligned; release health 200, anonymous diagnostics 403, Enhanced runtime bridge probe SDK 0.22.2. Diagnostic instrumentation only; semantic smoke still needs owner retry.",
+        "source_sha": "5b45e776db007976d755b9edcc555d7e96b3b532",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "0a0d458b57d13b20a8171a974aad51383bbdbee5",
+    "source_sha": "5b45e776db007976d755b9edcc555d7e96b3b532",
     "status": "PASS"
   },
   "disposition": {
@@ -147,7 +154,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 76,
+  "generation": 77,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -263,7 +270,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fe130ce2b3eea1d216d111922c38adfaeafba99e",
+    "canonical_sha": "5b45e776db007976d755b9edcc555d7e96b3b532",
     "integrated": true,
     "integrated_at": "2026-10-19T11:29:00+07:00"
   },
@@ -672,7 +679,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T06:51:27.944709Z",
+  "updated_at": "2026-10-19T06:57:53.251220Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
