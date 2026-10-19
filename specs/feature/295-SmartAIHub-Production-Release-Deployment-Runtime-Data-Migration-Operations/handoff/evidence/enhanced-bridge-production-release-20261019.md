@@ -228,3 +228,39 @@ release wrapper were deployed as canonical source `5b45e776db007976d755b9edcc555
 - Executed `probeEnhancedRuntime()` from the immutable release: bridge available, SDK `0.22.2`, adapter `1.0.0`.
 - No database migration or mutation was performed. This deploy adds diagnostic facts to the semantic validation error; it does not establish that Episode 281 generation succeeds.
 - Next action: owner performs one authenticated Enhanced generation on Episode 281 after a hard refresh and shares the resulting error text/screenshot. The updated error contains only boolean mismatch facts, not prompt/dialogue text. Codex then fixes the concrete contract mismatch and repeats the focused test and production smoke.
+
+## Root-cause fix: compact speaker event position contract — 2026-10-19
+
+The user's post-generation-12 screenshot exposed safe diagnostic facts for the
+failed first line: `expected speaker token present=true`, `expected position
+present=false`, `exact text present=true`. This isolates the mismatch: the
+Python bridge's compact motion event intentionally emits
+`Line N ONLY (speaker-id): "exact dialogue"` without a position. The TypeScript
+semantic validator nevertheless required the source line's position when one
+was known, despite its comment saying compact position anchors were optional.
+The validator therefore rejected a correctly bound speaker and exact canonical
+text. This is the confirmed regression; the SDK and bridge were healthy.
+
+Fix `43336e21ce5d2c25d6d5f1f1fe0a0392d5717877` makes the position optional in a
+compact event, while requiring an exact position if the event includes one.
+Custom shot-local identity overrides remain mandatory. Regression coverage
+checks omitted position is accepted and an explicitly wrong position is still
+rejected. Focused suite: 49/49 passed.
+
+- Production release generation 13, source
+  `43336e21ce5d2c25d6d5f1f1fe0a0392d5717877`.
+- Immutable release id:
+  `smartspec-web-43336e21ce5d2c25d6d5f1f1fe0a0392d5717877-51fefde068df`.
+- Artifact digest:
+  `sha256:5f456e5c2efe2ae9e857c128f2e178a546cae0c01376b071f08b3f5433f86dc9`.
+- Receipt:
+  `/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/production-deployments/smartspec-web-43336e21ce5d2c25d6d5f1f1fe0a0392d5717877-51fefde068df-13.json`.
+- `release:status`: canonical/source/frontend/backend/runtime revisions match;
+  `target_matches_release=true`, `is_current_canonical=true` at verification.
+- Web and worker share the immutable generation 13 directory; health HTTP 200,
+  anonymous diagnostics HTTP 403; direct runtime probe returns bridge available,
+  SDK `0.22.2`, adapter `1.0.0`.
+- No database migration or mutation was performed.
+- Production functional acceptance remains pending: owner must hard-refresh
+  Episode 281 and run one Enhanced generation. Completion requires the prompt
+  to appear successfully and a brief check for new material service errors.
