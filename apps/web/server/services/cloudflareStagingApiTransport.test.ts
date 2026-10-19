@@ -211,7 +211,8 @@ describe("Cloudflare staging API transport", () => {
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, metadata: { annotations: {
         "workers/tag": versionTag, "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
       } } });
-      if (url.endsWith("/workers/scripts")) return json([]);
+      if (url.endsWith("/workers/scripts")) return json([{ id: "existing-disabled-worker" }]);
+      if (url.endsWith("/scripts/existing-disabled-worker/subdomain")) return json({ enabled: false, previews_enabled: false });
       if (url.endsWith("/workers/subdomain")) {
         if (init.method === "PUT") { accountSubdomain = true; expect(JSON.parse(String(init.body))).toEqual({ subdomain: `smartaihub-${accountId.slice(0, 8)}` }); }
         return accountSubdomain ? json({ subdomain: `smartaihub-${accountId.slice(0, 8)}` })
@@ -245,12 +246,13 @@ describe("Cloudflare staging API transport", () => {
   it("never registers an account-wide subdomain when existing Workers could be exposed", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
       expect(init.method ?? "GET").toBe("GET");
+      if (String(input).endsWith("/scripts/existing-worker/subdomain")) return json({ enabled: true, previews_enabled: false });
       return String(input).endsWith("/workers/scripts") ? json([{ id: "existing-worker" }])
         : new Response(JSON.stringify({ success: false, errors: [{ code: 10007 }] }), { status: 404 });
     }) as typeof fetch;
     const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
     await expect(transport.deploy({ token: "private", target, artifact, idempotencyKey: "bootstrap", bootstrap: true })).rejects.toThrow("ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
 });

@@ -337,8 +337,15 @@ export function createCloudflareStagingApiTransport(input: {
     catch (error) {
       if (!(error instanceof CloudflareStagingTransportError) || error.status !== 404 || error.apiCode !== 10007) throw error;
       const workers = await api<Array<{ id?: string }>>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/scripts`);
-      // Do not expose existing Workers by registering their account-wide subdomain.
-      if (!Array.isArray(workers) || workers.length !== 0) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
+      // Registration is safe only when every existing Worker explicitly has both
+      // workers.dev and preview exposure disabled. Never edit those Workers.
+      if (!Array.isArray(workers) || workers.length > 100) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
+      for (const worker of workers) {
+        if (!worker.id || !/^[a-z0-9][a-z0-9_-]{0,62}$/i.test(worker.id)) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
+        const exposure = await api<{ enabled?: boolean; previews_enabled?: boolean }>(token,
+          `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${encodeURIComponent(worker.id)}/subdomain`);
+        if (exposure.enabled !== false || exposure.previews_enabled !== false) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_ACCOUNT_SUBDOMAIN_SCOPE_DENIED");
+      }
       const created = await api<{ subdomain?: string }>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/subdomain`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subdomain: `smartaihub-${target.accountRef.slice(0, 8)}` }),
