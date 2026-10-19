@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+    "expected_canonical_sha": "7b3e20583067978c00779382bba6eb70ff920109",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
+    "next_action": "Resume authenticated Episode 281 production smoke in an owner browser session; then reconcile DB catalog against direct-DDL receipts through the registered migration authority without editing Drizzle history. Continue the existing P0 internal closure work; durable FIFO release queue remains a known release-control gap.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open.",
+    "resume_point": "origin/main 7b3e20583067978c00779382bba6eb70ff920109. Production release generation 9 uses artifact sha256:bae21c27f80c7d3a73ca6dbbc92189d194d45a6b167e299bdd50356ea7daaea4; web and Node worker revisions match. Evidence: specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md. Resume with authenticated Enhanced prompt generation on Episode 281, then inspect service/browser errors. DB remains globally UNKNOWN; no migration was run for this release.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 73,
+  "generation": 74,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -214,7 +214,8 @@
       "f3703f06ba9ba8679838e7ab6c5b4b157f52d78e",
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
-      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "7b3e20583067978c00779382bba6eb70ff920109"
     ],
     "mapping": [],
     "source_paths": [
@@ -254,9 +255,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+    "canonical_sha": "7b3e20583067978c00779382bba6eb70ff920109",
     "integrated": true,
-    "integrated_at": "2026-10-07T13:26:20Z"
+    "integrated_at": "2026-10-19T10:33:35+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -663,7 +664,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T01:30:08.401124Z",
+  "updated_at": "2026-10-19T03:45:23.178631Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -966,6 +967,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md",
         "scope": "Migration receipt bootstrap/retry/reconciliation partial and deployment-target service list/update/disable; 11 focused suites (73 tests), drizzle-kit check, syntax parse, target suite 4 tests; remaining internal paths explicitly open.",
         "source_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+        "status": "PASS"
+      },
+      {
+        "kind": "PRODUCTION_RELEASE_AND_NODE_WORKER_ALIGNMENT",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/enhanced-bridge-production-release-20261019.md",
+        "scope": "Canonical Linux release 7b3e2058: verified immutable artifact, web and PostgreSQL Node worker on the same release, fresh worker heartbeat, health/guard, Enhanced bridge SDK probe, and public asset digest. Authenticated Episode 281 acceptance remains pending.",
+        "source_sha": "7b3e20583067978c00779382bba6eb70ff920109",
         "status": "PASS"
       }
     ],

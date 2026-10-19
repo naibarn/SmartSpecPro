@@ -85,3 +85,56 @@ promote `61d5351` was correctly rejected when canonical main advanced to
   and inspect browser/service errors. Resume DB reconciliation through the
   registered migration authority using existing direct-DDL receipts and live
   catalog evidence; do not edit the migration ledger or run the entire journal.
+
+## Follow-up: stale PostgreSQL Node worker release — 2026-10-19
+
+The authenticated-page screenshot showed a second runtime error after the web
+release: `Cannot find package 'zod'` imported from
+`.../f97df2f18b35c1335ffe9d845b2b65244b3b7e97-deploy/packages/remotion-render/dist/remotionRenderVideoSchema.js`.
+Read-only process and systemd evidence identified the source: `smartspec-web`
+was on release `4cb140d`, while `smartspec-node-worker.service` had a runtime
+override to the older `f97df...-deploy` checkout. Reproducing the module import
+from that checkout failed with the same missing-package message; importing it
+from the immutable release runtime succeeded. The worker journal recorded the
+same error for job `8f95f93d-72c4-4db3-a520-5a899c1a34c7`.
+
+The worker was gracefully drained with zero active jobs and restarted against
+the release artifact root. Its heartbeat, startup and executor-module readiness
+were verified. The permanent release-controller change is integrated at
+`7b3e20583067978c00779382bba6eb70ff920109`: future promotions update both
+systemd working directories under the existing release fence, restart both
+services, require matching runtime revisions and a fresh worker heartbeat, and
+restore both service configurations on rollback. Regression coverage verifies
+that a stale worker forces release rollback. The focused release suite passed
+19/19 and `git diff --check` passed.
+
+## Current production evidence
+
+- Exact canonical source at promotion: `7b3e20583067978c00779382bba6eb70ff920109`.
+- Immutable release artifact: `sha256:bae21c27f80c7d3a73ca6dbbc92189d194d45a6b167e299bdd50356ea7daaea4`.
+- Linux release artifact digest: `sha256:7cd9020aa0abacd41766908a94b559db2a9ae4c7806814c2524c070fce6a8c1f`.
+- Release id/generation: `smartspec-web-7b3e20583067978c00779382bba6eb70ff920109-7cd9020aa0ab`, generation 9.
+- Promotion receipt:
+  `/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/production-deployments/smartspec-web-7b3e20583067978c00779382bba6eb70ff920109-7cd9020aa0ab-9.json`.
+- `release:status` reports `target_matches_release=true` and
+  `is_current_canonical=true`. Web and Node worker are active on the same
+  versioned release root; `/healthz` returns HTTP 200 and the anonymous
+  diagnostics guard returns 403.
+- The production release's `render-video-schema` import succeeds. A direct
+  probe through `verticalDramaEnhancedVideoPrompt.probeEnhancedRuntime()` reports
+  `bridgeAvailable=true`, Agents SDK `0.22.2`, adapter `1.0.0`.
+- `https://smartaihub.app/login` returns HTTP 200 and its main JavaScript asset
+  digest matches the deployed immutable artifact. No missing-`zod` or new
+  worker startup error appeared after promotion; the diagnostics 403 entries
+  are expected authorization denials.
+- The exact authenticated Episode 281 click-through remains **PENDING** because
+  no authenticated production browser session is available to this release
+  operator. Owner: user with an already-authenticated production session.
+  Resume by hard-refreshing the episode page, confirm readiness is enabled,
+  run one Enhanced video-prompt generation, then inspect the page and service
+  logs. Do not claim end-to-end acceptance until this passes.
+- Release-control coverage now includes both serving processes. Durable FIFO
+  release queue and automated migration-authority/catalog reconciliation remain
+  absent. Per earlier evidence, no migration was required by this release and
+  no production DB mutation was performed; the global Drizzle ledger remains
+  `UNKNOWN` and must be reconciled separately through its registered authority.
