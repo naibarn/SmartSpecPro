@@ -90,6 +90,7 @@
     "repair:library-knowledge-ledger": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-ledger",
     "astryx": "node ../../node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "db:migrate": "node --import tsx scripts/db-migrate-with-receipt.ts migrate",
+    "db:migrate:spec224-0395": "node --import tsx scripts/spec224-targeted-0395-migration.ts",
     "db:push": "node --import tsx scripts/db-migrate-with-receipt.ts push",
     "test:research-notes-migration": "python3 scripts/test-research-notes-migration.py",
     "test:mini-app-runtime-baseline": "bash scripts/test-mini-app-runtime-baseline.sh",

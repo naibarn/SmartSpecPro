@@ -6,9 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { apiAuditEvents } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { evaluateMigrationAttempt } from "../server/services/migrationExecutionReceiptPolicy";
+import { DRIZZLE_MIGRATION_ADVISORY_LOCK } from "../server/services/migrationExecutionLock";
 import { closeDb, getDb } from "../server/db";
 import { hasDatabaseErrorCode } from "./migrationReceiptHelpers";
+
+const { Client } = pg;
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const phaseKey = process.env.MIGRATION_IDEMPOTENCY_KEY?.trim() || randomUUID();
@@ -181,4 +185,31 @@ async function readDbReceipts(db: ReturnType<typeof getDb>, key: string): Promis
   return (rows as unknown as Array<{ metadata: Record<string, unknown> | null }>).flatMap(row => row.metadata ? [row.metadata] : []);
 }
 
-await main();
+async function mainWithMigrationLock() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("Database not configured. Set DATABASE_URL before calling db:migrate.");
+  const lockClient = new Client({ connectionString: databaseUrl, application_name: "smartaihub-db-migrate" });
+  let lockAcquired = false;
+  try {
+    await lockClient.connect();
+    const lock = await lockClient.query<{ acquired: boolean }>(
+      `SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired`,
+      [DRIZZLE_MIGRATION_ADVISORY_LOCK],
+    );
+    lockAcquired = lock.rows[0]?.acquired === true;
+    if (!lockAcquired) {
+      process.exitCode = 75;
+      return;
+    }
+    await main();
+  } finally {
+    if (lockAcquired) {
+      try {
+        await lockClient.query(`SELECT pg_advisory_unlock(hashtextextended($1, 0))`, [DRIZZLE_MIGRATION_ADVISORY_LOCK]);
+      } catch { /* the connection close releases the session lock */ }
+    }
+    await lockClient.end().catch(() => undefined);
+  }
+}
+
+await mainWithMigrationLock();
