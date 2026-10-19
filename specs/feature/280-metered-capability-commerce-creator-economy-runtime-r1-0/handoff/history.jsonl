@@ -12,3 +12,6 @@
 {"changes": ["continuation.next_action", "continuation.next_ready_workunit", "continuation.resume_point"], "event_type": "CURRENT_TRANSITION", "generation": 12, "observed_at": "2026-10-19T00:01:48.428399Z", "provenance": "OBSERVED"}
 {"confidence": "LOW", "event_type": "CURRENT_TRANSITION", "evidence_count": 1, "fingerprint": "2c0fae39686b22a6e82e1ea572ba120216cdce357ae74a3b94ca76cc94033627", "observed_at": "2026-10-19T00:04:05.262029Z", "provenance": "INFERRED", "spec_digest": "8c0311636a889603d2bed5edeb54d765205748c3eff6172bfac84a87e062face"}
 {"changes": ["continuation.next_action", "continuation.next_ready_workunit", "continuation.resume_point"], "event_type": "CURRENT_TRANSITION", "generation": 14, "observed_at": "2026-10-19T00:04:06.328262Z", "provenance": "OBSERVED"}
+{"changes": ["integration.canonical_ref", "integration.canonical_sha", "integration.integrated", "integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 15, "observed_at": "2026-10-19T00:05:47.512787Z", "provenance": "OBSERVED"}
+{"changes": ["integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 16, "observed_at": "2026-10-19T00:05:56.458543Z", "provenance": "OBSERVED"}
+{"changes": ["integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 17, "observed_at": "2026-10-19T00:06:04.148040Z", "provenance": "OBSERVED"}

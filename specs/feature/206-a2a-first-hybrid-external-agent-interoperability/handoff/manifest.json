@@ -51,7 +51,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
     "expected_spec_digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511"
   },
   "continuation": {
@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 13,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
@@ -185,10 +185,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
+    "integrated": true,
+    "integrated_at": "2026-10-19T00:06:03Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -337,7 +337,7 @@
     "unresolved": 603
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T00:04:40.927149Z",
+  "updated_at": "2026-10-19T00:06:04.156447Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

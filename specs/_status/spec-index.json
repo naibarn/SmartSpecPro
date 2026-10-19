@@ -79854,7 +79854,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -80464,8 +80464,7 @@
         "requirement REQ-21785261109C is OPEN",
         "requirement REQ-06E8EED3074A is OPEN",
         "requirement REQ-E5898B830B80 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -80600,7 +80599,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -81144,8 +81143,7 @@
         "requirement REQ-D80C2954ADA5 is OPEN",
         "requirement REQ-A91A209DC4FF is OPEN",
         "requirement REQ-84F319A0A3B8 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -125443,7 +125441,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+      "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
