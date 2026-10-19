@@ -29,7 +29,7 @@
     },
     "section-03-config-authority": {
       "status": "in_progress",
-      "next_action": "Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented"
+      "next_action": "Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows."
     }
   },
   "pre_commit": {
@@ -41,16 +41,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 7,
-  "updated_at": "2026-10-19T13:05:44.580490+00:00",
+  "generation": 8,
+  "updated_at": "2026-10-19T13:28:31.194748+00:00",
   "progress": {
     "active_section": "section-03-config-authority",
-    "next_action": "Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented",
-    "merged_main_sha": "bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8",
+    "next_action": "Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows.",
+    "merged_main_sha": "9d14cf631ef73d0e090d7d3396d79c878a6bb29a",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
-      "Existing exact Tunnel GET returns HTTP401/code1001 Not authorized; list HTTP200 is not resource authority",
-      "Section 02 live origin/proxy chain not provisioned or accepted"
+      "Section 02 live origin/proxy chain not provisioned or accepted",
+      "Origin-capable typed grant/proof/configuration transport and live origin release remain incomplete; existing Audit account credential is available and reads actual Tunnel/DNS resources"
     ]
   }
 }

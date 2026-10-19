@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { combineCloudflarePermissionCatalogs, fetchCloudflarePermissionGroups, fetchCloudflareUserPermissionGroups, probeCloudflareCredential, probeCloudflareServiceCatalog, probeCloudflareZoneServiceCatalog, verifyCloudflareToken } from "../cloudflareCredentialCenter";
+import { combineCloudflarePermissionCatalogs, fetchCloudflarePermissionGroups, fetchCloudflareUserPermissionGroups, probeCloudflareCredential, probeCloudflarePermissionCatalog, probeCloudflareServiceCatalog, probeCloudflareZoneServiceCatalog, verifyCloudflareToken } from "../cloudflareCredentialCenter";
 import { CLOUDFLARE_PROBE_SERVICES, CLOUDFLARE_ZONE_PROBE_SERVICES } from "../../../shared/cloudflareCredentialCatalog";
 
 describe("Cloudflare permission group catalog probe", () => {
@@ -44,6 +44,63 @@ describe("Cloudflare permission group catalog probe", () => {
     expect(result).toEqual({ status: "granted", httpStatus: 200 });
     expect(JSON.stringify(result)).not.toContain("token-id-must-not-leak");
     expect(JSON.stringify(result)).not.toContain("secret-token");
+  });
+
+  it("verifies an account-owned token using its exact account after the user endpoint rejects it", async () => {
+    const accountId = "0123456789abcdef0123456789abcdef";
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => url.endsWith("/user/tokens/verify")
+      ? new Response(JSON.stringify({ success: false }), { status: 401 })
+      : new Response(JSON.stringify({ success: true, result: { id: "must-not-leak", status: "active" } }), { status: 200 }));
+    const result = await verifyCloudflareToken("fixture-account-token", fetchMock, accountId);
+    expect(result).toEqual({ status: "granted", httpStatus: 200, verificationEndpoint: "account" });
+    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+      "https://api.cloudflare.com/client/v4/user/tokens/verify",
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/tokens/verify`,
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(/must-not-leak|fixture-account-token/);
+  });
+
+  it("applies the same TTL checks to account tokens", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => url.endsWith("/user/tokens/verify")
+      ? new Response(JSON.stringify({ success: false }), { status: 401 })
+      : new Response(JSON.stringify({ success: true, result: { status: "active", expires_on: "2020-01-01T00:00:00Z" } }), { status: 200 }));
+    await expect(verifyCloudflareToken("fixture-token", fetchMock, "0".repeat(32))).resolves.toMatchObject({
+      status: "invalid_token", validityIssue: "expired", verificationEndpoint: "account",
+    });
+  });
+
+  it.each([
+    [200, { status: "disabled" }],
+    [200, { status: "active", expires_on: "2020-01-01T00:00:00Z" }],
+    [503, null],
+  ])("does not bypass explicit user-token state or outages by probing another authority: %s", async (status, result) => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ success: status === 200, result }), { status }));
+    expect((await verifyCloudflareToken("fixture-token", fetchMock, "0".repeat(32))).status).not.toBe("granted");
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("never interpolates an unvalidated account into verification requests", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ success: false }), { status: 401 }));
+    await verifyCloudflareToken("fixture-token", fetchMock, "../foreign/target");
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("continues actual catalog probing after successful account-token verification", async () => {
+    const accountId = "0123456789abcdef0123456789abcdef";
+    const rows = [
+      { value: JSON.stringify({ audit: { token: "fixture-account-token" } }), isSensitive: false },
+      { value: accountId, isSensitive: false },
+    ];
+    const db = { select: () => { const query = { from: () => query, where: () => query, limit: async () => rows.splice(0, 1) }; return query; } } as never;
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith("/user/tokens/verify")) return new Response(JSON.stringify({ success: false }), { status: 401 });
+      const result = url.endsWith(`/accounts/${accountId}/tokens/verify`) ? { status: "active" } : [];
+      return new Response(JSON.stringify({ success: true, result }), { status: 200 });
+    });
+    const report = await probeCloudflareCredential(db, "audit", fetchMock);
+    expect(report.checks.find(check => check.id === "tokenVerification")).toMatchObject({ status: "granted", scope: "Account API token" });
+    expect(report.checks.find(check => check.id === "tunnels")).toMatchObject({ status: "granted", verificationScope: "catalog" });
+    expect(JSON.stringify(report)).not.toContain("fixture-account-token");
   });
 
   it.each([
@@ -132,6 +189,47 @@ describe("Cloudflare permission group catalog probe", () => {
     expect(result.complete).toBe(false);
     expect(result.sources.map((source) => [source.scope, source.status])).toEqual([["account", "granted"], ["user", "missing_permission"]]);
     expect(result.groups.map((group) => group.name)).toEqual(["Queues Read"]);
+  });
+
+  it("does not require a user catalog for a verified account-owned token", async () => {
+    const account = await fetchCloudflarePermissionGroups("fixture", "0".repeat(32), vi.fn(async () => new Response(JSON.stringify({ success: true, result: [{ id: "p", name: "Cloudflare Tunnel Read" }] }), { status: 200 })));
+    const result = combineCloudflarePermissionCatalogs(account, null);
+    expect(result).toMatchObject({ status: "granted", complete: true, userCatalogApplicable: false });
+    expect(result.sources.map(source => source.scope)).toEqual(["account"]);
+  });
+
+  it("does not turn a failed account catalog into success when the user catalog is inapplicable", async () => {
+    const account = await fetchCloudflarePermissionGroups("fixture", "0".repeat(32), vi.fn(async () => new Response(JSON.stringify({ success: false }), { status: 403 })));
+    expect(combineCloudflarePermissionCatalogs(account, null)).toMatchObject({ status: "missing_permission", complete: false, userCatalogApplicable: false });
+  });
+
+  it("does not misclassify account-token verification failure as resource permission denial", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: false, errors: [{ code: 1001 }] }), { status: 401 }));
+    await expect(verifyCloudflareToken("fixture", fetchMock, "0".repeat(32))).resolves.toMatchObject({ status: "invalid_token", verificationEndpoint: "account" });
+  });
+
+  it("runs the account-only catalog path and caches only nonsecret applicable results", async () => {
+    const accountId = "0".repeat(32);
+    const rows = [
+      { value: JSON.stringify({ audit: { token: "fixture-account-token" } }), isSensitive: false },
+      { value: accountId, isSensitive: false },
+    ];
+    const inserted = vi.fn();
+    const db = { select: () => { const q = { from: () => q, where: () => q, limit: async () => rows.splice(0, 1) }; return q; },
+      insert: () => ({ values: async (value: unknown) => inserted(value) }) } as never;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/user/tokens/verify")) return new Response(JSON.stringify({ success: false }), { status: 401 });
+      if (url.endsWith("/tokens/verify")) return new Response(JSON.stringify({ success: true, result: { status: "active" } }), { status: 200 });
+      expect(url).not.toContain("/user/tokens/permission_groups");
+      return new Response(JSON.stringify({ success: true, result: [{ id: "p", name: "Cloudflare Tunnel Read" }] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await probeCloudflarePermissionCatalog(db, "audit");
+    expect(result).toMatchObject({ status: "granted", complete: true, userCatalogApplicable: false });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(inserted).toHaveBeenCalledOnce();
+    expect(JSON.stringify(inserted.mock.calls)).not.toContain("fixture-account-token");
   });
 
   it.each([

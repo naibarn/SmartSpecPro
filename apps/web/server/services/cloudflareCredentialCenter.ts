@@ -248,6 +248,8 @@ export type CloudflarePermissionCatalogResult = {
   complete: boolean;
   stale: boolean;
   lastSuccessAt: string | null;
+  /** A verified account-owned token has no user-owned permission catalog. */
+  userCatalogApplicable?: false;
   sources: Array<{ scope: "account" | "user"; status: CloudflareProbeStatus; httpStatus: number | null; groupCount: number; complete: boolean }>;
 };
 
@@ -335,15 +337,15 @@ export function fetchCloudflareUserPermissionGroups(token: string, fetchImpl: ty
 
 export function combineCloudflarePermissionCatalogs(
   account: PermissionGroupSourceResult,
-  user: PermissionGroupSourceResult,
+  user: PermissionGroupSourceResult | null,
 ): CloudflarePermissionCatalogResult {
-  const byId = new Map([...account.groups, ...user.groups].map((group) => [group.id, group]));
+  const byId = new Map([...account.groups, ...(user?.groups ?? [])].map((group) => [group.id, group]));
   const groups = [...byId.values()];
-  const complete = account.status === "granted" && account.complete && user.status === "granted" && user.complete;
+  const complete = account.status === "granted" && account.complete && (!user || (user.status === "granted" && user.complete));
   const status: CloudflareProbeStatus = complete ? "granted"
-    : account.status === "granted" || user.status === "granted" ? "partial"
-      : account.status !== "granted" ? account.status : user.status;
-  const failedSource = account.status === "granted" && account.complete ? user : account;
+    : account.status === "granted" || user?.status === "granted" ? "partial"
+      : account.status !== "granted" ? account.status : user?.status ?? account.status;
+  const failedSource = account.status === "granted" && account.complete && user ? user : account;
   const checkedAt = new Date().toISOString();
   return {
     status,
@@ -354,9 +356,10 @@ export function combineCloudflarePermissionCatalogs(
     complete,
     stale: false,
     lastSuccessAt: complete ? checkedAt : null,
+    ...(!user ? { userCatalogApplicable: false as const } : {}),
     sources: [
       { scope: "account", status: account.status, httpStatus: account.httpStatus, groupCount: account.groups.length, complete: account.complete },
-      { scope: "user", status: user.status, httpStatus: user.httpStatus, groupCount: user.groups.length, complete: user.complete },
+      ...(user ? [{ scope: "user" as const, status: user.status, httpStatus: user.httpStatus, groupCount: user.groups.length, complete: user.complete }] : []),
     ],
   };
 }
@@ -371,13 +374,15 @@ export async function probeCloudflarePermissionCatalog(
     .from(systemSettings).where(and(eq(systemSettings.category, "vectordb"), eq(systemSettings.key, "vectorizeAccountId"))).limit(1);
   const accountId = secretValue(accountRow ?? { value: null, isSensitive: false }) || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
   if (!accountId) return { status: "unavailable", checkedAt: new Date().toISOString(), httpStatus: null, groups: [], totalCount: 0, complete: false, stale: false, lastSuccessAt: null, sources: [] };
+  const verification = await verifyCloudflareToken(token, fetch, accountId);
+  const accountOwned = verification.status === "granted" && verification.verificationEndpoint === "account";
   const [accountCatalog, userCatalog] = await Promise.all([
     fetchCloudflarePermissionGroups(token, accountId),
-    fetchCloudflareUserPermissionGroups(token),
+    accountOwned ? Promise.resolve(null) : fetchCloudflareUserPermissionGroups(token),
   ]);
   const result = combineCloudflarePermissionCatalogs(accountCatalog, userCatalog);
   if (result.status === "granted" && result.complete) {
-    const cacheValue = JSON.stringify({ accountId, checkedAt: result.checkedAt, totalCount: result.totalCount, groups: result.groups, sources: result.sources });
+    const cacheValue = JSON.stringify({ accountId, checkedAt: result.checkedAt, totalCount: result.totalCount, groups: result.groups, sources: result.sources, userCatalogApplicable: result.userCatalogApplicable });
     const [existing] = await db.select({ id: systemSettings.id }).from(systemSettings)
       .where(and(eq(systemSettings.category, "infrastructure"), eq(systemSettings.key, PERMISSION_CATALOG_CACHE_KEY))).limit(1);
     if (existing) {
@@ -390,8 +395,8 @@ export async function probeCloudflarePermissionCatalog(
   const [cachedRow] = await db.select({ value: systemSettings.value }).from(systemSettings)
     .where(and(eq(systemSettings.category, "infrastructure"), eq(systemSettings.key, PERMISSION_CATALOG_CACHE_KEY))).limit(1);
   try {
-    const cached = cachedRow?.value ? JSON.parse(cachedRow.value) as { accountId?: string; checkedAt?: string; totalCount?: number; groups?: CloudflarePermissionGroup[]; sources?: CloudflarePermissionCatalogResult["sources"] } : null;
-    if (cached?.accountId === accountId && Array.isArray(cached.groups) && cached.checkedAt) {
+    const cached = cachedRow?.value ? JSON.parse(cachedRow.value) as { accountId?: string; checkedAt?: string; totalCount?: number; groups?: CloudflarePermissionGroup[]; sources?: CloudflarePermissionCatalogResult["sources"]; userCatalogApplicable?: false } : null;
+    if (cached?.accountId === accountId && (cached.userCatalogApplicable !== false) === (result.userCatalogApplicable !== false) && Array.isArray(cached.groups) && cached.checkedAt) {
       return { ...result, groups: cached.groups, totalCount: cached.totalCount ?? cached.groups.length, sources: cached.sources ?? result.sources, complete: true, stale: true, lastSuccessAt: cached.checkedAt };
     }
   } catch {
@@ -410,7 +415,7 @@ async function getProbe(token: string, path: string, fetchImpl: typeof fetch = f
     const body = await response.json().catch(() => null) as { success?: boolean; result?: unknown; errors?: Array<{ code?: number }> } | null;
     // A Tunnel resource can return 401/1001 for authorization while this token
     // verifies active and its list endpoint returns 200. Do not call it expired.
-    const resourceDenied = path.startsWith("accounts/") && response.status === 401 &&
+    const resourceDenied = path.startsWith("accounts/") && !/^accounts\/[^/]+\/tokens(?:\/|$)/.test(path) && response.status === 401 &&
       Array.isArray(body?.errors) && body.errors.some(error => error.code === 1001);
     return { status: resourceDenied ? "missing_permission" : statusFor(response.status, body?.success === true), httpStatus: response.status, result: body?.result };
   } catch {
@@ -419,13 +424,22 @@ async function getProbe(token: string, path: string, fetchImpl: typeof fetch = f
 }
 
 /** Verify the saved API token itself without returning its identifier or value. */
-export async function verifyCloudflareToken(token: string, fetchImpl: typeof fetch = fetch): Promise<{
+export async function verifyCloudflareToken(token: string, fetchImpl: typeof fetch = fetch, accountId?: string): Promise<{
   status: Exclude<CloudflareProbeStatus, "partial">;
   httpStatus: number | null;
   validityIssue?: ProbeResult["validityIssue"];
+  verificationEndpoint?: "account";
 }> {
-  const result = await getProbe(token, "user/tokens/verify", fetchImpl);
-  if (result.status !== "granted") return { status: result.status === "partial" ? "unavailable" : result.status, httpStatus: result.httpStatus };
+  let result = await getProbe(token, "user/tokens/verify", fetchImpl);
+  let endpoint: { verificationEndpoint?: "account" } = {};
+  // Account-owned API tokens authenticate against their account endpoint.
+  // A user-endpoint 401 is not proof that the saved account token is invalid.
+  // Never fall back from an explicit token state/TTL denial or provider outage.
+  if ((result.httpStatus === 401 || result.httpStatus === 403) && accountId && /^[a-f0-9]{32}$/i.test(accountId)) {
+    result = await getProbe(token, `accounts/${accountId}/tokens/verify`, fetchImpl);
+    endpoint = { verificationEndpoint: "account" };
+  }
+  if (result.status !== "granted") return { status: result.status === "partial" ? "unavailable" : result.status, httpStatus: result.httpStatus, ...endpoint };
   const metadata = result.result && typeof result.result === "object"
     ? result.result as Record<string, unknown> : {};
   const tokenStatus = metadata.status;
@@ -436,17 +450,18 @@ export async function verifyCloudflareToken(token: string, fetchImpl: typeof fet
     const end = parseBoundary(metadata.expires_on);
     if ((start !== null && !Number.isFinite(start)) || (end !== null && !Number.isFinite(end)) ||
         (start !== null && end !== null && start >= end)) {
-      return { status: "unavailable", httpStatus: result.httpStatus, validityIssue: "invalid_window" };
+      return { status: "unavailable", httpStatus: result.httpStatus, validityIssue: "invalid_window", ...endpoint };
     }
     const now = Date.now();
-    if (end !== null && end <= now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "expired" };
-    if (start !== null && start > now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "not_yet_valid" };
+    if (end !== null && end <= now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "expired", ...endpoint };
+    if (start !== null && start > now) return { status: "invalid_token", httpStatus: result.httpStatus, validityIssue: "not_yet_valid", ...endpoint };
   }
   return {
     status: tokenStatus === "active" ? "granted"
       : tokenStatus === "disabled" || tokenStatus === "expired" ? "invalid_token"
         : "unavailable",
     httpStatus: result.httpStatus,
+    ...endpoint,
   };
 }
 
@@ -485,11 +500,11 @@ export async function probeCloudflareCredential(
     .from(systemSettings).where(and(eq(systemSettings.category, "vectordb"), eq(systemSettings.key, "vectorizeAccountId"))).limit(1);
   const accountId = secretValue(accountRow ?? { value: null, isSensitive: false }) || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
   const checkedAt = new Date().toISOString();
-  const tokenVerification = await verifyCloudflareToken(token, fetchImpl);
+  const tokenVerification = await verifyCloudflareToken(token, fetchImpl, accountId);
   const tokenCheck: ProbeResult = {
     id: "tokenVerification",
     label: "Cloudflare API token verification",
-    scope: "Token",
+    scope: tokenVerification.verificationEndpoint === "account" ? "Account API token" : "Token",
     permission: "Valid API token",
     status: tokenVerification.status,
     httpStatus: tokenVerification.httpStatus,

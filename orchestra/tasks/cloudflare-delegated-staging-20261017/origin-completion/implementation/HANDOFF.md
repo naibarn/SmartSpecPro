@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `7`
-- Updated (UTC): `2026-10-19T13:05:44.580490+00:00`
+- State generation: `8`
+- Updated (UTC): `2026-10-19T13:28:31.194748+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
-- Latest recorded merged Main SHA: `bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8`
+- Latest recorded merged Main SHA: `9d14cf631ef73d0e090d7d3396d79c878a6bb29a`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-config-authority`
-- Next action: Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented
+- Next action: Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows.
 
 ## Sections
 
@@ -19,14 +19,14 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-cookie-session | checkpointed | — | — | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | Proceed with section-02 protected origin transport; cookie helper is integrated and CI/browser-fixture verified, live auth remains pending |
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
-| section-03-config-authority | in_progress | — | — | — | — | Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented |
+| section-03-config-authority | in_progress | — | — | — | — | Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows. |
 | section-04-provision-release | pending | — | — | — | — | — |
 | section-05-acceptance | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- Existing exact Tunnel GET returns HTTP401/code1001 Not authorized; list HTTP200 is not resource authority
 - Section 02 live origin/proxy chain not provisioned or accepted
+- Origin-capable typed grant/proof/configuration transport and live origin release remain incomplete; existing Audit account credential is available and reads actual Tunnel/DNS resources
 
 ## Resume
 
