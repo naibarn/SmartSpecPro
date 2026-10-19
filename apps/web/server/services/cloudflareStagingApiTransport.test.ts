@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { cloudflareOriginDescriptorDigest, type CloudflareOriginDescriptor } from "./cloudflareOriginVersionBindings";
 import { describe, expect, it, vi } from "vitest";
 import type { CloudflareStagingTarget } from "./cloudflareStagingDeploymentExecutor";
 import { createCloudflareStagingApiTransport, type CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
@@ -310,4 +311,177 @@ describe("Cloudflare staging API transport", () => {
       url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).toMatchObject({ reachable: false });
   });
 
+});
+
+
+describe("Cloudflare version-scoped origin transport", () => {
+  const publicUrl = "https://smartspec-cloudflare-staging.account-test.workers.dev";
+  function configuration(overrides: Partial<CloudflareOriginDescriptor> = {}) {
+    const descriptor: CloudflareOriginDescriptor = {
+      schemaVersion: "cloudflare.origin-configuration.v1", versionId: "33333333-3333-4333-8333-333333333333",
+      tenantId: target.tenantId, projectId: target.projectId, environment: "staging", provider: "cloudflare",
+      accountRef: accountId, targetId: "smartspec-cloudflare-staging", origin: "https://staging-origin.example.com",
+      allowedPublicOrigins: [publicUrl], accessApplicationId: "44444444-4444-4444-8444-444444444444",
+      accessTeamName: "test-team", accessAudience: "test-application-audience",
+      expiresAt: new Date(Date.now() + 60_000).toISOString(), ...overrides,
+    };
+    const configurationDigest = cloudflareOriginDescriptorDigest(descriptor);
+    return { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
+      secrets: { token: "t".repeat(32), clientId: "id-" + "i".repeat(20), secret: "s".repeat(32) } };
+  }
+  function fixture(options: { message?: string; prior?: boolean; auth?: () => Response } = {}) {
+    const config = configuration();
+    const originTarget = { ...target, runtimePolicy: config.configurationRef };
+    const mutations: Array<{ url: string; init: RequestInit }> = [];
+    let metadata: any;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      if (init.method && init.method !== "GET") mutations.push({ url, init });
+      if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
+      if (url.endsWith("/assets-upload-session")) return json({ jwt: "completed-asset-session", buckets: [] });
+      if (url.endsWith("/versions") && init.method === "POST") {
+        metadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
+        return json({ id: versionId });
+      }
+      if (url.endsWith("/deployments") && init.method === "POST") return json({ id: deploymentId });
+      if (url.endsWith("/deployments")) return json({ deployments: [{ id: deploymentId,
+        annotations: { "workers/message": options.prior ? "SmartAIHub staging idempotency cloudflare-staging:origin-job" : "other-job" } }] });
+      if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
+        annotations: { "workers/message": options.message ?? `SmartAIHub staging ${sourceSha} ${buildDigest} origin ${config.configurationDigest}` } });
+      if (url === `${publicUrl}/healthz`) return new Response(JSON.stringify({ ok: true, service: "smartspec-cloudflare-runtime" }), { headers: { "content-type": "application/json" } });
+      if (url === `${publicUrl}/`) return new Response(new TextDecoder().decode(assetBytes), { headers: { "content-type": "text/html" } });
+      if (url === `${publicUrl}/assets/app.js`) return new Response("console.log('app')", { headers: { "content-type": "application/javascript" } });
+      if (url === `${publicUrl}/trpc/auth.me`) return options.auth?.() ?? new Response(JSON.stringify({ result: { data: { json: null } } }), { headers: { "content-type": "application/json" } });
+      throw new Error(`Unexpected fixture request ${url}`);
+    }) as typeof fetch;
+    return { config, originTarget, fetchImpl, mutations, metadata: () => metadata,
+      api: createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl }) };
+  }
+  function deploy(f: ReturnType<typeof fixture>, assertMutationAuthorized = async () => {}) {
+    return f.api.deploy({ token: "provider-deployment-token", target: f.originTarget, artifact,
+      idempotencyKey: "cloudflare-staging:origin-job", originConfiguration: f.config, assertMutationAuthorized });
+  }
+  function verify(f: ReturnType<typeof fixture>) {
+    return f.api.verifyRuntime({ token: "provider-deployment-token", target: f.originTarget,
+      deploymentId, url: publicUrl, sourceSha, buildDigest, configurationDigest: f.config.configurationDigest });
+  }
+
+  it("uploads origin secrets only as version bindings and returns distinct artifact/config receipts", async () => {
+    const f = fixture();
+    const guard = vi.fn(async () => {});
+    const receipt = await deploy(f, guard);
+    expect(receipt.configurationDigest).toBe(f.config.configurationDigest);
+    expect(receipt.buildDigest).toBe(buildDigest);
+    expect(guard).toHaveBeenCalledTimes(3);
+    const metadata = f.metadata();
+    expect(metadata.bindings).toContainEqual({ name: "AUTH_ORIGIN", type: "plain_text", text: f.config.descriptor.origin });
+    expect(metadata.bindings).toContainEqual({ name: "AUTH_ORIGIN_PRIVATE_HOST", type: "plain_text", text: "staging-origin.example.com" });
+    expect(metadata.bindings).toContainEqual({ name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify([publicUrl]) });
+    for (const [name, text] of [["AUTH_ORIGIN_TOKEN", f.config.secrets.token], ["AUTH_ORIGIN_ACCESS_CLIENT_ID", f.config.secrets.clientId], ["AUTH_ORIGIN_ACCESS_CLIENT_SECRET", f.config.secrets.secret]]) {
+      expect(metadata.bindings).toContainEqual({ name, type: "secret_text", text });
+      expect(JSON.stringify(receipt)).not.toContain(text);
+    }
+    expect(metadata.bindings).not.toContainEqual(expect.objectContaining({ name: "DATABASE_URL" }));
+    expect(metadata.annotations["workers/message"]).toBe(`SmartAIHub staging ${sourceSha} ${buildDigest} origin ${f.config.configurationDigest}`);
+    expect(f.mutations.every(r => !/secrets|routes|queues|cron|hyperdrive/.test(r.url))).toBe(true);
+    expect((await verify(f)).reachable).toBe(true);
+  });
+
+  it.each(["tenantId", "projectId", "accountRef", "configurationDigest", "configurationRef"])("denies %s drift before any provider call", async field => {
+    const f = fixture();
+    if (field in f.config.descriptor) (f.config.descriptor as any)[field] = "foreign";
+    else (f.config as any)[field] = "foreign";
+    await expect(deploy(f)).rejects.toThrow("CLOUDFLARE_ORIGIN_CONFIGURATION_DENIED");
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects unbound origins, missing mutation guards and origin bootstrap before fetch", async () => {
+    const f = fixture();
+    for (const overrides of [{ target }, { assertMutationAuthorized: undefined }, { bootstrap: true }]) {
+      await expect(f.api.deploy({ token: "provider-token", target: f.originTarget, artifact,
+        idempotencyKey: "origin-job", originConfiguration: f.config, assertMutationAuthorized: async () => {}, ...overrides })).rejects.toThrow("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
+    }
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("denies an allowlist that omits the actual workers.dev origin before upload", async () => {
+    const f = fixture();
+    f.config = configuration({ allowedPublicOrigins: ["https://different.example.com"] });
+    f.originTarget.runtimePolicy = f.config.configurationRef;
+    await expect(deploy(f)).rejects.toThrow("CLOUDFLARE_STAGING_PUBLIC_ORIGIN_DENIED");
+    expect(f.mutations).toHaveLength(0);
+  });
+
+  it("snapshots caller-owned configuration before asynchronous bundle reads", async () => {
+    const f = fixture();
+    const api = createCloudflareStagingApiTransport({ fetchImpl: f.fetchImpl, resolveBundle: async () => {
+      f.config.secrets.secret = "foreign-secret".repeat(4);
+      f.config.descriptor.allowedPublicOrigins.push("https://unapproved.example.com");
+      return bundle;
+    } });
+    await api.deploy({ token: "provider-token", target: f.originTarget, artifact,
+      idempotencyKey: "origin-job", originConfiguration: f.config, assertMutationAuthorized: async () => {} });
+    expect(f.metadata().bindings).toContainEqual({ name: "AUTH_ORIGIN_ACCESS_CLIENT_SECRET", type: "secret_text", text: "s".repeat(32) });
+    expect(JSON.stringify(f.metadata())).not.toContain("unapproved.example.com");
+  });
+
+  it("rechecks configuration expiry after a long bundle read and before provider mutation", async () => {
+    const f = fixture();
+    const originalNow = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(originalNow);
+    try {
+      const api = createCloudflareStagingApiTransport({ fetchImpl: f.fetchImpl, resolveBundle: async () => {
+        clock.mockReturnValue(originalNow + 120_000);
+        return bundle;
+      } });
+      await expect(api.deploy({ token: "provider-token", target: f.originTarget, artifact,
+        idempotencyKey: "origin-job", originConfiguration: f.config, assertMutationAuthorized: async () => {} })).rejects.toThrow("CLOUDFLARE_ORIGIN_CONFIGURATION_DENIED");
+      expect(f.mutations).toHaveLength(0);
+    } finally { clock.mockRestore(); }
+  });
+
+  it("stops before activation when the current authority is revoked after upload", async () => {
+    const f = fixture();
+    let calls = 0;
+    await expect(deploy(f, async () => { if (++calls === 3) throw new Error("GRANT_REVOKED"); })).rejects.toThrow("GRANT_REVOKED");
+    expect(f.mutations).toHaveLength(2);
+    expect(f.mutations.some(r => r.url.endsWith("/deployments"))).toBe(false);
+  });
+
+  it("does not reuse an artifact-only receipt for an origin-bearing retry", async () => {
+    const f = fixture({ prior: true, message: `SmartAIHub staging ${sourceSha} ${buildDigest}` });
+    await expect(deploy(f)).rejects.toThrow("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
+    expect(f.mutations).toHaveLength(0);
+  });
+
+  it("verifies the origin digest independently from unchanged artifact bytes", async () => {
+    const f = fixture({ message: `SmartAIHub staging ${sourceSha} ${buildDigest} origin ${"f".repeat(64)}` });
+    await expect(verify(f)).rejects.toThrow("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
+    expect(f.mutations).toHaveLength(0);
+  });
+
+  it.each([
+    () => new Response("<html>Access login</html>", { headers: { "content-type": "text/html" } }),
+    () => new Response(JSON.stringify({ error: "AUTH_ORIGIN_UNAVAILABLE" }), { status: 503, headers: { "content-type": "application/json" } }),
+    () => new Response(JSON.stringify({ error: { message: "backend failure" } }), { headers: { "content-type": "application/json" } }),
+    () => new Response(null, { status: 302, headers: { location: "https://team.cloudflareaccess.com/" } }),
+  ])("fails origin acceptance when assets/health pass but actual auth does not", async auth => {
+    const f = fixture({ auth });
+    expect((await verify(f)).reachable).toBe(false);
+  });
+
+  it("requires the exact previous config for rollback, then reuses its immutable version", async () => {
+    const f = fixture();
+    const rollback = { token: "provider-token", target: f.originTarget, deploymentId, sourceSha, buildDigest,
+      idempotencyKey: "origin-rollback", assertMutationAuthorized: async () => {} };
+    await expect(f.api.rollback(rollback)).rejects.toThrow("CLOUDFLARE_ROLLBACK_ORIGIN_MISMATCH");
+    await expect(f.api.rollback({ ...rollback, configurationDigest: "e".repeat(64) })).rejects.toThrow("CLOUDFLARE_ROLLBACK_ORIGIN_MISMATCH");
+    expect(f.mutations).toHaveLength(0);
+    const receipt = await f.api.rollback({ ...rollback, configurationDigest: f.config.configurationDigest });
+    expect(receipt.configurationDigest).toBe(f.config.configurationDigest);
+    expect(f.mutations).toHaveLength(1);
+    expect(f.mutations[0].url.endsWith("/deployments")).toBe(true);
+    expect(f.metadata()).toBeUndefined();
+  });
 });

@@ -1,6 +1,7 @@
 import type { JobExecutor } from "./jobExecutor";
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
 import type { DrizzleDB } from "../db";
+import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import {
   authorizeDeploymentTarget,
@@ -184,12 +185,15 @@ export type CloudflareStagingApi = Readonly<{
     artifact: CloudflareStagingArtifact;
     idempotencyKey: string;
     bootstrap?: boolean;
+    /** Only a future origin-capable executor may supply these resolved secrets. */
+    originConfiguration?: CloudflareOriginVersionBindings;
     assertMutationAuthorized?: () => Promise<void>;
   }) => Promise<{
     deploymentId: string;
     url: string;
     sourceSha: string;
     buildDigest: string;
+    configurationDigest?: string;
   }>;
   verifyRuntime: (input: {
     token: string;
@@ -198,11 +202,13 @@ export type CloudflareStagingApi = Readonly<{
     url: string;
     sourceSha: string;
     buildDigest: string;
+    configurationDigest?: string;
   }) => Promise<{
     reachable: boolean;
     deploymentId: string;
     sourceSha: string;
     buildDigest: string;
+    configurationDigest?: string;
   }>;
   rollback: (input: {
     token: string;
@@ -211,12 +217,14 @@ export type CloudflareStagingApi = Readonly<{
     idempotencyKey: string;
     sourceSha?: string;
     buildDigest?: string;
+    configurationDigest?: string;
     assertMutationAuthorized?: () => Promise<void>;
   }) => Promise<{
     deploymentId: string;
     url?: string;
     sourceSha: string;
     buildDigest: string;
+    configurationDigest?: string;
   }>;
 }>;
 

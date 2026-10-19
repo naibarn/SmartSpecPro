@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
@@ -7,29 +7,17 @@ import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "../../../../packages/shared/src/cloudflareOrigin";
 
+export { cloudflareOriginSecretsSchema, cloudflareOriginSettingsSchema } from "./cloudflareOriginVersionBindings";
+import {
+  cloudflareOriginSecretsSchema, cloudflareOriginSettingsSchema,
+  cloudflareOriginDescriptorSchema as descriptorSchema,
+  cloudflareOriginDescriptorDigest as digest,
+  type CloudflareOriginDescriptor as Descriptor,
+} from "./cloudflareOriginVersionBindings";
 const category = "cloudflare_origin_versions";
 const targetId = "smartspec-cloudflare-staging";
-const credential = z.string().min(16).max(4096).regex(/^[\x21-\x7e]+$/);
-export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32), clientId: credential, secret: credential }).strict()
-  .refine(value => new Set([value.token, value.clientId, value.secret]).size === 3, "Origin and Access credentials must be separate");
-export const cloudflareOriginSettingsSchema = z.object({
-  origin: z.string().max(2048),
-  allowedPublicOrigins: z.array(z.string().max(2048)).min(1).max(32),
-  accessApplicationId: z.string().uuid(),
-  accessTeamName: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/),
-  accessAudience: z.string().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/),
-  expiresAt: z.string().datetime({ offset: true }),
-}).strict();
 type OriginSettings = z.infer<typeof cloudflareOriginSettingsSchema>;
 type OriginSecrets = z.infer<typeof cloudflareOriginSecretsSchema>;
-const descriptorSchema = cloudflareOriginSettingsSchema.extend({
-  schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
-  versionId: z.string().uuid(),
-  tenantId: z.string().min(1).max(36), projectId: z.string().min(1).max(100),
-  environment: z.literal("staging"), provider: z.literal("cloudflare"),
-  accountRef: z.string().regex(/^[a-f0-9]{32}$/), targetId: z.literal(targetId),
-}).strict();
-type Descriptor = z.infer<typeof descriptorSchema>;
 const storedSchema = z.object({ descriptor: descriptorSchema, secrets: cloudflareOriginSecretsSchema,
   revokedAt: z.string().datetime({ offset: true }).nullable() }).strict();
 
@@ -40,11 +28,6 @@ function validateSettings(settings: OriginSettings, now: number) {
   const allowed = parseCloudflarePublicOrigins(JSON.stringify(parsed.allowedPublicOrigins));
   if (!origin || !allowed || allowed.includes(origin.origin) || Date.parse(parsed.expiresAt) <= now) denied();
   return { ...parsed, allowedPublicOrigins: [...allowed].sort() };
-}
-function digest(descriptor: Descriptor) {
-  // Every descriptor field, including the immutable secret version, is bound.
-  const canonical = Object.fromEntries(Object.entries(descriptor).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 function reference(descriptor: Descriptor) { return `cf-origin:${digest(descriptor)}`; }
 function matches(descriptor: Descriptor, identity: DeploymentTargetIdentity) {

@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
+import { validateCloudflareOriginVersionBindings, type CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { cloudflareStagingAssetContentType } from "./cloudflareStagingAssetMetadata";
 import type {
   CloudflareStagingApi,
@@ -212,7 +213,14 @@ export function createCloudflareStagingApiTransport(input: {
     return bundle;
   }
 
-  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string) {
+  function versionMessage(sourceSha: string, buildDigest: string, configurationDigest?: string) {
+    if (configurationDigest !== undefined && !SHA256.test(configurationDigest)) {
+      throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ORIGIN_DIGEST_INVALID");
+    }
+    return `SmartAIHub staging ${sourceSha} ${buildDigest}${configurationDigest ? ` origin ${configurationDigest}` : ""}`;
+  }
+
+  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string, origin?: CloudflareOriginVersionBindings) {
     const completionJwt = await uploadAssets(token, target, bundle);
     const metadata = {
       main_module: bundle.mainModule,
@@ -221,6 +229,14 @@ export function createCloudflareStagingApiTransport(input: {
         { name: "ASSETS", type: "assets" },
         { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
         { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
+        ...(origin ? [
+          { name: "AUTH_ORIGIN", type: "plain_text", text: origin.descriptor.origin },
+          { name: "AUTH_ORIGIN_PRIVATE_HOST", type: "plain_text", text: new URL(origin.descriptor.origin).host },
+          { name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify(origin.descriptor.allowedPublicOrigins) },
+          { name: "AUTH_ORIGIN_TOKEN", type: "secret_text", text: origin.secrets.token },
+          { name: "AUTH_ORIGIN_ACCESS_CLIENT_ID", type: "secret_text", text: origin.secrets.clientId },
+          { name: "AUTH_ORIGIN_ACCESS_CLIENT_SECRET", type: "secret_text", text: origin.secrets.secret },
+        ] : []),
       ],
       assets: completionJwt ? {
         jwt: completionJwt,
@@ -237,7 +253,7 @@ export function createCloudflareStagingApiTransport(input: {
       } : undefined,
       annotations: {
         ...(bootstrapKey ? { "workers/tag": bootstrapTag(bootstrapKey) } : {}),
-        "workers/message": `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`,
+        "workers/message": versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest),
       },
     };
     const form = new FormData();
@@ -290,7 +306,7 @@ export function createCloudflareStagingApiTransport(input: {
       typeof deployment.id === "string" && VERSION_ID.test(deployment.id)) ?? null;
   }
 
-  async function verifyVersion(token: string, target: CloudflareStagingTarget, deploymentId: string, sourceSha: string, buildDigest: string) {
+  async function verifyVersion(token: string, target: CloudflareStagingTarget, deploymentId: string, sourceSha: string, buildDigest: string, configurationDigest?: string) {
     const deployment = await getDeployment(token, target, deploymentId);
     const primary = deployment.versions[0];
     if (deployment.versions.length !== 1 || primary?.percentage !== 100) {
@@ -301,7 +317,7 @@ export function createCloudflareStagingApiTransport(input: {
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(primary.version_id)}`);
     const annotations = version.annotations;
     if (version.id !== primary.version_id ||
-        annotations?.["workers/message"] !== `SmartAIHub staging ${sourceSha} ${buildDigest}`) {
+        annotations?.["workers/message"] !== versionMessage(sourceSha, buildDigest, configurationDigest)) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
     }
     return { versionId: primary.version_id, deployment };
@@ -381,40 +397,60 @@ export function createCloudflareStagingApiTransport(input: {
   }
 
   return {
-    deploy: async ({ token, target, artifact, idempotencyKey, bootstrap, assertMutationAuthorized }) => mutationAuthority.run(assertMutationAuthorized ?? (async () => {}), async () => {
+    deploy: async ({ token, target, artifact, idempotencyKey, bootstrap, originConfiguration, assertMutationAuthorized }) => {
       assertTarget(target);
       if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_IDEMPOTENCY_INVALID");
-      const bundle = await loadVerifiedBundle(artifact);
-      if (bootstrap) return bootstrapDeployment(token, target, artifact, bundle, idempotencyKey);
-      const prior = await findDeploymentByIdempotencyKey(token, target, idempotencyKey);
-      if (prior?.id) {
-        const deployment = await getDeployment(token, target, prior.id);
-        if (deployment.versions.length !== 1 || deployment.versions[0]?.percentage !== 100 || !deployment.versions[0]?.version_id) {
-          throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_SCOPE_MISMATCH");
-        }
-        const priorVersion = await api<Version>(token,
-          `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(deployment.versions[0].version_id)}`);
-        if (priorVersion.annotations?.["workers/message"] !== `SmartAIHub staging ${artifact.sourceSha} ${artifact.buildDigest}`) {
-          throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
-        }
-        const subdomain = await getWorkersDevSubdomain(token, target);
-        return { deploymentId: prior.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest };
+      if (Boolean(target.runtimePolicy) !== Boolean(originConfiguration) ||
+          (originConfiguration && (!assertMutationAuthorized || bootstrap))) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
       }
-      const versionId = await uploadVersion(token, target, bundle, artifact);
-      const deploymentId = await createDeployment(token, target, [{ version_id: versionId, percentage: 100 }], idempotencyKey);
-      const subdomain = await getWorkersDevSubdomain(token, target);
-      return {
-        deploymentId,
-        url: safeWorkersDevUrl(target.workerRef, subdomain),
-        sourceSha: artifact.sourceSha,
-        buildDigest: artifact.buildDigest,
-      };
-    }),
-    verifyRuntime: async ({ token, target, deploymentId, url, sourceSha, buildDigest }) => {
+      const origin = originConfiguration ? validateCloudflareOriginVersionBindings(originConfiguration, target) : undefined;
+      return mutationAuthority.run(async () => {
+        // Revalidate expiry and exact target binding after long artifact reads,
+        // then ask the executor to recheck grant/config/lease revocation.
+        if (origin) validateCloudflareOriginVersionBindings(origin, target);
+        await assertMutationAuthorized?.();
+      }, async () => {
+        const bundle = await loadVerifiedBundle(artifact);
+        if (origin) {
+          const publicUrl = safeWorkersDevUrl(target.workerRef, await getWorkersDevSubdomain(token, target));
+          if (!origin.descriptor.allowedPublicOrigins.includes(publicUrl)) {
+            throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_PUBLIC_ORIGIN_DENIED");
+          }
+        }
+        if (bootstrap) return bootstrapDeployment(token, target, artifact, bundle, idempotencyKey);
+        const prior = await findDeploymentByIdempotencyKey(token, target, idempotencyKey);
+        if (prior?.id) {
+          const deployment = await getDeployment(token, target, prior.id);
+          if (deployment.versions.length !== 1 || deployment.versions[0]?.percentage !== 100 || !deployment.versions[0]?.version_id) {
+            throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_SCOPE_MISMATCH");
+          }
+          const priorVersion = await api<Version>(token,
+            `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(deployment.versions[0].version_id)}`);
+          if (priorVersion.id !== deployment.versions[0].version_id ||
+              priorVersion.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest)) {
+            throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
+          }
+          const subdomain = await getWorkersDevSubdomain(token, target);
+          return { deploymentId: prior.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest, ...(origin ? { configurationDigest: origin.configurationDigest } : {}) };
+        }
+        const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
+        const deploymentId = await createDeployment(token, target, [{ version_id: versionId, percentage: 100 }], idempotencyKey);
+        const subdomain = await getWorkersDevSubdomain(token, target);
+        return {
+          deploymentId,
+          url: safeWorkersDevUrl(target.workerRef, subdomain),
+          sourceSha: artifact.sourceSha,
+          buildDigest: artifact.buildDigest,
+          ...(origin ? { configurationDigest: origin.configurationDigest } : {}),
+        };
+      });
+    },
+    verifyRuntime: async ({ token, target, deploymentId, url, sourceSha, buildDigest, configurationDigest }) => {
       assertTarget(target);
       const baseUrl = new URL(safeWorkersDevUrl(target.workerRef, await getWorkersDevSubdomain(token, target)));
       if (new URL(url).origin !== baseUrl.origin) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_URL_DENIED");
-      await verifyVersion(token, target, deploymentId, sourceSha, buildDigest);
+      await verifyVersion(token, target, deploymentId, sourceSha, buildDigest, configurationDigest);
       const active = await api<{ deployments?: Deployment[] }>(token,
         `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
       if (active.deployments?.[0]?.id !== deploymentId) {
@@ -451,15 +487,37 @@ export function createCloudflareStagingApiTransport(input: {
           `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
         if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
       }
+      let originReady = configurationDigest === undefined;
+      if (healthy && spaReady && configurationDigest !== undefined) {
+        try {
+          // Exercise the real Linux auth authority, not the Worker's native
+          // health endpoint or an HTML Access login page. No user credentials.
+          const response = await fetchImpl(new URL("/trpc/auth.me", baseUrl), {
+            redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10000),
+          });
+          if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
+            const body = await response.json() as { result?: { data?: { json?: unknown } }; error?: unknown };
+            originReady = body?.error === undefined && body?.result?.data?.json === null;
+          } else await response.body?.cancel();
+        } catch { /* Origin failures remain a failed verification, never asset-only success. */ }
+        const after = await api<{ deployments?: Deployment[] }>(token,
+          `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
+        if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
+      }
       return {
-        reachable: healthy && spaReady,
+        reachable: healthy && spaReady && originReady,
         deploymentId,
         sourceSha,
         buildDigest,
+        ...(configurationDigest ? { configurationDigest } : {}),
       };
     },
-    rollback: async ({ token, target, deploymentId, idempotencyKey, sourceSha, buildDigest, assertMutationAuthorized }) => mutationAuthority.run(assertMutationAuthorized ?? (async () => {}), async () => {
+    rollback: async ({ token, target, deploymentId, idempotencyKey, sourceSha, buildDigest, configurationDigest, assertMutationAuthorized }) => mutationAuthority.run(assertMutationAuthorized ?? (async () => {}), async () => {
       assertTarget(target);
+      if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey) || (configurationDigest !== undefined && !assertMutationAuthorized)) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
+      }
+      if (configurationDigest !== undefined) versionMessage(sourceSha ?? "", buildDigest ?? "", configurationDigest);
       const previous = await getDeployment(token, target, deploymentId);
       const version = previous.versions[0];
       if (previous.versions.length !== 1 || version?.percentage !== 100 || !version.version_id) {
@@ -469,8 +527,9 @@ export function createCloudflareStagingApiTransport(input: {
         `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(version.version_id)}`);
       const annotations = versionDetails.annotations;
       const message = annotations?.["workers/message"] ?? "";
-      const match = /^SmartAIHub staging ([a-f0-9]{40}) ([a-f0-9]{64})$/i.exec(message);
+      const match = /^SmartAIHub staging ([a-f0-9]{40}) ([a-f0-9]{64})(?: origin ([a-f0-9]{64}))?$/i.exec(message);
       if (versionDetails.id !== version.version_id || !match) throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_UNVERIFIED");
+      if (match[3] !== configurationDigest) throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ORIGIN_MISMATCH");
       if ((sourceSha !== undefined && match[1] !== sourceSha) || (buildDigest !== undefined && match[2] !== buildDigest)) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_ROLLBACK_ARTIFACT_MISMATCH");
       }
@@ -481,6 +540,7 @@ export function createCloudflareStagingApiTransport(input: {
         url: safeWorkersDevUrl(target.workerRef, subdomain),
         sourceSha: match[1]!,
         buildDigest: match[2]!,
+        ...(configurationDigest ? { configurationDigest } : {}),
       };
     }),
   };

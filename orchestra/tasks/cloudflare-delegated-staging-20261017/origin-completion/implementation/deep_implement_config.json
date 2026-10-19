@@ -29,7 +29,7 @@
     },
     "section-03-config-authority": {
       "status": "in_progress",
-      "next_action": "Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows."
+      "next_action": "Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete"
     }
   },
   "pre_commit": {
@@ -41,12 +41,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 8,
-  "updated_at": "2026-10-19T13:28:31.194748+00:00",
+  "generation": 10,
+  "updated_at": "2026-10-19T17:32:41.723240+00:00",
   "progress": {
     "active_section": "section-03-config-authority",
-    "next_action": "Continue section 03 explicit origin-capable grant/proof/transport composition using existing exact authorities; do not request replacement credentials for inventory. Section 03 foundation is integrated at 9d14cf631; root account-token verifier fix follows.",
-    "merged_main_sha": "9d14cf631ef73d0e090d7d3396d79c878a6bb29a",
+    "next_action": "Compose immutable origin metadata and secret bindings through version-aware transport; preserve v1 fail-closed guard until explicit v2 grant/proof/policy is complete",
+    "merged_main_sha": "bed8d9e0ab0f95a00e8376cca0e2f1ef0e61fc7f",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
       "Section 02 live origin/proxy chain not provisioned or accepted",
