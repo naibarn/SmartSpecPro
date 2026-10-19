@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { getDb } from "../db";
-import { providerDeploymentCredentials, systemSettings } from "../../drizzle/schema";
+import { systemSettings } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
@@ -26,11 +27,20 @@ export async function saveCloudflareOriginProvisionCredential(db: DrizzleDB, inp
   const credentialRef = originProvisionCredentialRef(input.identity);
   if (!input.token || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0)
     throw new OriginProvisionError("ORIGIN_PROVISION_CREDENTIAL_INVALID");
-  await db.insert(providerDeploymentCredentials).values({ ...input.identity, credentialRef,
-    encryptedSecret: encrypt(input.token), status: "CONFIGURED", revokedAt: null,
-    createdBy: input.actorUserId, updatedBy: input.actorUserId,
-  }).onConflictDoUpdate({ target: providerDeploymentCredentials.credentialRef,
-    set: { encryptedSecret: encrypt(input.token), status: "CONFIGURED", revokedAt: null, updatedBy: input.actorUserId, updatedAt: new Date() } });
+  const key = createHash("sha256").update(credentialRef).digest("hex");
+  await db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${credentialRef}))`);
+    const rows = await tx.select({ id: systemSettings.id }).from(systemSettings).where(and(
+      eq(systemSettings.category, "cloudflare_origin_provision_credentials"), eq(systemSettings.key, key),
+    )).limit(2);
+    if (rows.length > 1) throw new OriginProvisionError("ORIGIN_PROVISION_CREDENTIAL_DENIED");
+    const value = encrypt(JSON.stringify({ ...input.identity, credentialRef, token: input.token, revokedAt: null }));
+    if (rows[0]) await tx.update(systemSettings).set({ value, isSensitive: true, valueJson: null,
+      updatedBy: input.actorUserId, updatedAt: new Date() }).where(eq(systemSettings.id, rows[0].id));
+    else await tx.insert(systemSettings).values({ category: "cloudflare_origin_provision_credentials", key,
+      value, isSensitive: true, valueJson: null, updatedBy: input.actorUserId,
+      description: "Scoped protected staging ingress credential; separate from Worker deployment" });
+  });
   return { credentialRef, status: "CONFIGURED" as const };
 }
 
@@ -74,15 +84,20 @@ export function createCloudflareOriginProvisionRuntime(options: { fetchImpl?: ty
         target.target.workerRef === "smartspec-cloudflare-staging" && !target.target.containerApplicationRef ? target.target.accountRef : null;
     },
     withCredential: async (scope, operation) => {
-      const rows = await db.select().from(providerDeploymentCredentials).where(and(
-        eq(providerDeploymentCredentials.credentialRef, originProvisionCredentialRef(scope)),
-        eq(providerDeploymentCredentials.tenantId, scope.tenantId), eq(providerDeploymentCredentials.projectId, scope.projectId),
-        eq(providerDeploymentCredentials.environment, "staging"), eq(providerDeploymentCredentials.provider, "cloudflare"),
+      const credentialRef = originProvisionCredentialRef(scope);
+      const key = createHash("sha256").update(credentialRef).digest("hex");
+      const rows = await db.select().from(systemSettings).where(and(
+        eq(systemSettings.category, "cloudflare_origin_provision_credentials"), eq(systemSettings.key, key),
       )).limit(2);
       const row = rows[0];
-      if (rows.length !== 1 || row?.status !== "CONFIGURED" || row.revokedAt || !row.encryptedSecret)
+      if (rows.length !== 1 || !row?.isSensitive || !row.value)
         throw new OriginProvisionError("ORIGIN_PROVISION_CREDENTIAL_DENIED");
-      return operation(decrypt(row.encryptedSecret));
+      const credential = JSON.parse(decrypt(row.value));
+      if (credential.credentialRef !== credentialRef || credential.tenantId !== scope.tenantId ||
+          credential.projectId !== scope.projectId || credential.environment !== "staging" || credential.provider !== "cloudflare" ||
+          credential.revokedAt !== null || typeof credential.token !== "string" || !credential.token)
+        throw new OriginProvisionError("ORIGIN_PROVISION_CREDENTIAL_DENIED");
+      return operation(credential.token);
     },
     loadCheckpoint: async grant => {
       const rows = await db.select().from(systemSettings).where(checkpointWhere(grant)).limit(2);

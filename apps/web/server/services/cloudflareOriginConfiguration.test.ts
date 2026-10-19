@@ -49,7 +49,7 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     process.env.LLM_ENCRYPTION_KEY = "origin-config-disposable-test-key";
     sql = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     schema = await import("../../drizzle/schema");
-    await installSpec277AutoTeamRuntimeSchema(sql, [schema.users, schema.tenants, schema.providerDeploymentTargets, schema.systemSettings]);
+    await installSpec277AutoTeamRuntimeSchema(sql, [schema.users, schema.tenants, schema.providerDeploymentTargets, schema.providerDeploymentCredentials, schema.systemSettings]);
     const database = await import("../db"); db = database.getDb(); closeDb = database.closeDb;
     const [actor] = await db.insert(schema.users).values({ openId: "origin-config-fixture", role: "admin", plan: "free", credits: 0 }).returning();
     actorUserId = actor!.id;
@@ -68,6 +68,25 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
   }, 20_000);
+
+  it("stores provisioning credentials separately without violating or replacing the unique Worker credential scope", async () => {
+    const { saveCloudflareDeploymentCredential, withCloudflareDeploymentCredential } = await import("./cloudflareCredentialCenter");
+    const { deploymentCredentialRef } = await import("./providerDeploymentTargetAuthority");
+    const { saveCloudflareOriginProvisionCredential, createCloudflareOriginProvisionRuntime } = await import("./cloudflareOriginProvisionExecutor");
+    await saveCloudflareDeploymentCredential(db, { identity, token: "worker-deploy-disposable-token", actorUserId });
+    await saveCloudflareOriginProvisionCredential(db, { identity, token: "ingress-provision-disposable-token", actorUserId });
+    const runtime = createCloudflareOriginProvisionRuntime();
+    await expect(runtime.withCredential(identity, async token => token === "ingress-provision-disposable-token")).resolves.toBe(true);
+    await expect(withCloudflareDeploymentCredential(db, { identity, credentialRef: deploymentCredentialRef(identity) },
+      async token => token === "worker-deploy-disposable-token")).resolves.toMatchObject({ status: "CONFIGURED", value: true });
+    await expect(runtime.withCredential({ ...identity, projectId: "other" }, async () => true)).rejects.toThrow("CREDENTIAL_DENIED");
+    const rows = await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.category, "cloudflare_origin_provision_credentials"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.value).not.toContain("ingress-provision-disposable-token");
+    expect(rows[0]!.valueJson).toBeNull();
+    await saveCloudflareOriginProvisionCredential(db, { identity, token: "ingress-provision-replacement-token", actorUserId });
+    await expect(runtime.withCredential(identity, async token => token === "ingress-provision-replacement-token")).resolves.toBe(true);
+  });
 
   it("encrypts immutable versions, returns metadata only and requires exact current target/digest before secret resolution", async () => {
     const saved = await saveCloudflareOriginConfiguration(db, { identity, settings: settings(), secrets, actorUserId });
