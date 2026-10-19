@@ -896,10 +896,10 @@
     "expected_spec_digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5"
   },
   "continuation": {
-    "next_action": "Source Trust remains the next ready work unit. Obtain the authenticated Platform/Security non-production approval and exact provider resource identities/permissions; only then implement and wire the production adapter through the existing verifier. Refresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before one dispatch. No live grant or dispatch has occurred.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: authenticated non-production Source Trust approval and exact issuer/signing/storage/revocation resource bindings; then fresh authenticated Windows Runtime/Tenant admission evidence.",
-    "reactivation_predicate": "Resume DB recovery when a Platform/Database Administrator with exact SmartAIHub admin authority invokes the new diagnostic on the backend associated with the failure and provides the non-secret result identifying its backend revision/instance and database fingerprint. Reconcile migration 0395, enum labels, migration activity and migration ledger against that exact DB. If a schema change is required, use Database Owner Authorization and the protected targeted workflow. Only after the backend accepts external_runtime continue authenticated startWorkspaceRun and exact-run Windows authority checks.",
-    "resume_point": "Repository-wide Autonomous Approval by Policy governance merged in PR #1147 at canonical SHA b8b433963d624aac0dbb771b725470e90daec72c (source commit 5a320640c88e228d0959767ccd6ff6d2cb6f55e3). Existing SPEC-224 tenant Development Policy Authority (#1129) and policy-bound Recovery Grant (#1132) remain the only approval/grant implementations; no duplicate engine was created. Source Trust verifier contract exists and has isolated positive/negative tests, but no production authority adapter or Runtime Admission invocation is configured. No owner approval/resource IDs, Windows live snapshot, grant, or dispatch was available/created.",
+    "next_action": "Database recovery is now the active SPEC-224 blocker: Admin diagnostics verified the current production Backend database and showed 0395 pending, external_runtime absent, 88 pending migrations, 41 unknown hashes, and no matching historical failure audit. Obtain Database Owner authorization for a protected operation scoped only to 0395 through the canonical migration authority; that target-scoped operation is not currently available. Do not run the full journal. After an authorized postcondition succeeds, retry authenticated startWorkspaceRun and continue exact-run Windows binding, admission, certification, lease/fencing, Recovery Grant if required, dispatch, settlement, and Final Verify. Source Trust readiness remains recorded as separate work.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: Database Owner authorization and an available protected migration operation targeting exact production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f / migration 0395; operation must validate drift and prove enum postcondition. Do not run full-journal db:migrate.",
+    "reactivation_predicate": "Resume production schema recovery only when the Database Owner authorizes a protected and audited operation targeting the current production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f and migration 0395 alone, with drift/concurrency preconditions and enum postcondition. The current db:migrate command applies the full Drizzle journal and is not safe for the observed 88 pending / 41 unknown state. This evidence identifies the DB serving the diagnostics request, but not the connection that handled the historical failed run request; keep that limitation explicit. After postcondition verification, resume canonical run creation and exact Windows admission.",
+    "resume_point": "Latest DB identity observation: production Backend revision 319fbc7a107341b466e5c1e0f4ddf50c630af6e4, instance label production:pid-3876410 (PID fallback), database smartspec/public, role smartspec, fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f. 0395 is PENDING, external_runtime is absent, migration evidence shows 88 pending / 41 unknown, reconciliation FAILURE_HISTORY_UNAVAILABLE, zero observed active candidates, and no matching failure audit. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md. No DB mutation/run/dispatch occurred. Existing db:migrate calls drizzle-kit migrate for the full journal; no protected targeted-0395 path exists.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 114,
+  "generation": 115,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "ee0cdb09dc2c77767be7fa640eb92e803893d008e7eb47236a59d1821bbe13d5",
@@ -2694,7 +2694,7 @@
     "unresolved": 1259
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T12:14:06.536009Z",
+  "updated_at": "2026-10-19T00:03:28.694425Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2907,6 +2907,13 @@
         "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1108",
         "scope": "PR #1108 merged through the protected executor. progressive_integration_gate, local-contract and Mocked SPEC-308 browser simulation passed; build-preview was skipped by policy. Focused tests on code commit e2e535af7aa274e937e0f4adf04fdbf9ff262456 passed 2 files/24 tests. This establishes Runner capability availability normalization only; it does not establish Windows live admission, Profile Certification, Recovery Grant, source trust, or dispatch.",
         "source_sha": "b8934a794d2cf50c67e2c433ade6f73cf2487288",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_PRODUCTION_DATABASE_IDENTITY_ADMIN_OBSERVATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md",
+        "scope": "User-provided exact-admin diagnostics screenshot verifies the current production Backend DB fingerprint and reports migration 0395 pending with external_runtime absent, 88 pending entries, 41 unknown hashes, FAILURE_HISTORY_UNAVAILABLE and zero observed active candidates. No matching historical run-creation failure audit was found, so historical error-to-DB correlation is not proven. Source inspection found only full-journal drizzle-kit migrate; no targeted-0395 protected operation. No DB mutation, run creation, or dispatch.",
+        "source_sha": "cf43f498a002e42e128837ab0f397f1b672fd930",
         "status": "PARTIAL"
       }
     ],

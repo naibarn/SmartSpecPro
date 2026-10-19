@@ -1,31 +1,37 @@
-# SPEC-224 Database Identity Action Handoff
+# SPEC-224 Database Identity and Targeted Recovery Handoff
 
 ## Current checkpoint
 
-- Source base after reconciliation: `origin/main` `d40202cb8552f25f6dd125496ba4e3fe7b41c61a`.
-- Work branch: `codex/spec224-db-identity-20261018`.
-- Implementation commit after rebase: `ca20bbbf403c19b87af6e189502bc0aa6aa283b3`.
-- Scope: exact-admin, read-only diagnostics endpoint and a manual Admin UI action. It reports only backend runtime identity, a hashed non-secret DB fingerprint, database/schema/role, summarized migration state, `worker_runtime_type` labels, migration activity count and the latest failed `startWorkspaceRun` correlation.
-- The endpoint uses the existing `exactAdminProcedure`. It has no input, mutation, migration, grant or dispatch behavior. `startWorkspaceRun` behavior is unchanged; new failure audit records include allowlisted backend runtime identity fields.
-- Focused service tests: `spec224DatabaseDiagnostics.test.ts`, 4 passing. Browser UAT and live backend diagnostics have not run.
-- PR: [#1113](https://github.com/naibarn/SmartSpecPro/pull/1113), opened through the normal workflow. The initial PR head `54647d793dcd0d494fa073dfe2085030a05cf3fe` passed `local-contract` (push and PR events), `progressive_integration_gate`, and Mocked SPEC-308 browser simulation; `build-preview` was skipped by workflow policy. Recheck the current PR head before merge.
+- Latest verified source: `origin/main` `cf43f498a002e42e128837ab0f397f1b672fd930`.
+- PR #1113, which added exact-admin read-only diagnostics and future run-failure backend identity metadata, is integrated. The UI action is available under **Admin → Settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence** (`/admin/settings`). It uses the existing exact-admin authority; no new auth path was added.
+- A user-provided Admin screenshot on 2026-10-19 shows the current production Backend at revision `319fbc7a107341b466e5c1e0f4ddf50c630af6e4`, instance label `production:pid-3876410`, database `smartspec`, schema `public`, role `smartspec`, fingerprint `sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f`.
+- The observed current database has `0395_spec224_external_runtime_job_type` pending; `external_runtime` is absent from `worker_runtime_type`. The diagnostic reports 88 pending entries, 41 unknown applied hashes, reconciliation `FAILURE_HISTORY_UNAVAILABLE`, and zero observed active migration candidates.
+- No matching failure audit was found. The current production database identity is verified for the diagnostics request, but it is **not** correlated to the historical run-creation error. The PID fallback is not a stable instance identity.
+- Source inspection confirms `apps/web/package.json` runs `db:migrate` through `apps/web/scripts/db-migrate-with-receipt.ts`, which invokes `drizzle-kit migrate` over the full journal. No existing targeted-0395 protected migration operation was found. Do not run the full set with this observed drift.
+- Evidence: `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md`.
 
-## Exact authorized Admin action
+## Required authority action
 
-After this checkpoint is integrated and available on the Admin backend, a real Platform/Database Administrator with the existing SmartAIHub `admin` role should open **Admin → Settings → Infrastructure → Monitoring → SPEC-224 Database Identity → Collect evidence**. The visible route is `/admin/settings`.
+Database Owner must authorize a protected and audited recovery operation against the exact verified target fingerprint above, scoped only to migration `0395_spec224_external_runtime_job_type`. The operation must validate enum state, migration history/drift and concurrent activity before applying, then prove the `external_runtime` postcondition. The canonical migration authority currently lacks this target-scoped operation; make that protected operation available before any production apply. Do not edit migration history, use manual SQL outside the authority, or run the full migration journal.
 
-The Admin should save/share only the displayed diagnostic result, especially `instanceFingerprint`, database name/schema/effective role, migration target `0395`, enum labels, activity count and failure trace/run correlation. Do not share session cookies, connection strings, credentials or other secret values. If the failure predates runtime identity audit metadata, `TRACE_ONLY` plus the trace ID is expected; use that ID to locate the producing backend instance in authorized backend logs.
+The missing historical failure correlation must remain explicit in the Database Owner decision. If the owner requires proof of the exact connection that handled the earlier error, use the already-authorized backend log access and the existing request trace/error evidence; do not infer it from the present PID label.
 
-## Resume predicate
+## Resume sequence after authorized recovery
 
-Resume the database-dependent SPEC-224 phase only after the authorized Admin result confirms the exact backend/database that produced the run-creation failure. Reconcile the target 0395 ledger entry and enum labels, confirm no active migration candidates, then use the existing protected database-owner workflow if any shared-database change is still required. Do not infer identity from the shared local development database, edit migration history, run the full migration set, dispatch a run, or claim live acceptance from these unit tests.
+1. Verify the exact target's `worker_runtime_type` contains `external_runtime` and record the protected operation receipt.
+2. Invoke authenticated `spec226DevelopmentControl.startWorkspaceRun`; record actual Run ID, Job ID, and source SHA.
+3. Reconcile Windows Runner/session/workspace/source binding and exact-run profile certification, capability, admission, lease and fencing.
+4. Obtain a Tenant Owner Recovery Grant only if the existing authority requires it. Dispatch only after every exact-run gate passes.
+5. Capture the real Runner execution, settlement and Final Verify receipt. Do not treat local or disposable PostgreSQL tests as live acceptance.
 
-After schema is verified on the exact backend target, continue with authenticated `spec226DevelopmentControl.startWorkspaceRun`, then validate its actual run/job against the Windows binding, admission, certification and lease/fencing authorities. Linux evidence is not Windows acceptance.
+## Status
 
-## Current status
+- `BACKEND_DB_IDENTITY_VERIFIED`: yes, for the current production Backend diagnostics request; historical run-error correlation remains unavailable.
+- `MIGRATION_0395_STATUS`: pending; enum postcondition fails because `external_runtime` is absent.
+- `TARGETED_RECOVERY_AUTHORIZED`: no.
+- `ENUM_POSTCONDITION_VERIFIED`: no.
+- `CANONICAL_RUN_CREATED`: not attempted.
+- `WINDOWS_RUNNER_BOUND` / exact-run admission and lease-fencing: not verified for a run.
+- `LIVE_FINAL_VERIFY_ACCEPTED`: no.
 
-- `BACKEND_DB_IDENTITY_VERIFIED`: pending authorized Admin invocation.
-- `TARGETED_RECOVERY_AUTHORIZED`: not evaluated until target identity is verified.
-- `ENUM_POSTCONDITION_VERIFIED`: pending exact-target diagnostics.
-- `CANONICAL_RUN_CREATED`: not attempted; schema target is unverified.
-- `LIVE_FINAL_VERIFY_ACCEPTED`: not attempted.
+No database write, migration, run creation, dispatch, or Windows Final Verify was attempted. Prior disposable PostgreSQL migration tests were not repeated.
