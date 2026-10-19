@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import io
 import json
 import os
 import subprocess
 import tempfile
 import threading
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -283,6 +285,16 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertTrue(runtime_executable.stat().st_mode & 0o111)
         self.assertFalse(runtime_executable.stat().st_mode & 0o222)
 
+    def test_prepare_cli_validates_canonical_build_once(self):
+        with (
+            patch.object(release, "canonical_tip", return_value=self.source_sha),
+            patch.object(release, "validate_build_result", wraps=release.validate_build_result) as validate,
+            redirect_stdout(io.StringIO()),
+        ):
+            result = release.main(["prepare", "--build-result", str(self.build_result_path)])
+        self.assertEqual(result, 0)
+        self.assertEqual(validate.call_count, 1)
+
     def test_missing_procedure_registration_is_rejected_before_publication(self):
         router = self.backend / "server/routers/infrastructure.ts"
         router.write_text("export const infrastructureRouter = {};\n")
@@ -368,6 +380,13 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(self.runtime.restart_count, 0)
         self.assertFalse(self.current_link.exists())
+        receipts = list((self.receipt_root / "production-release-attempts").glob("*.json"))
+        self.assertEqual(len(receipts), 1)
+        receipt = json.loads(receipts[0].read_text())
+        self.assertEqual(receipt["status"], "BLOCKED_STALE_SOURCE")
+        self.assertEqual(receipt["source_revision"], self.source_sha)
+        self.assertEqual(receipt["observed_canonical_revision"], "f" * 40)
+        self.assertEqual(receipt["artifact_path"], str(artifact))
 
     def test_production_promotion_requires_explicit_root_authority(self):
         artifact = self.prepare()

@@ -527,6 +527,31 @@ def _next_generation(receipt_root: Path, service: str) -> int:
     return max(values, default=0) + 1
 
 
+def _record_stale_release_attempt(
+    receipt_root: Path,
+    manifest: dict[str, Any],
+    observed_tip: str,
+) -> Path:
+    """Persist why a pinned release could not be promoted after main advanced."""
+    attempts = receipt_root / "production-release-attempts"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    source_sha = str(manifest.get("sourceSha", "unknown"))
+    path = attempts / f"{stamp}-{source_sha[:12]}-stale-{uuid.uuid4().hex[:8]}.json"
+    write_json_atomic(path, {
+        "status": "BLOCKED_STALE_SOURCE",
+        "service": SERVICE,
+        "release_id": manifest.get("releaseId"),
+        "source_revision": source_sha,
+        "observed_canonical_revision": observed_tip,
+        "artifact_digest": manifest.get("releaseArtifactDigest"),
+        "artifact_path": str(manifest.get("artifactPath", "")),
+        "canonical_ref": manifest.get("canonicalRef"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "next_action": "Rebuild from the current origin/main tip and prepare a new immutable artifact.",
+    })
+    return path
+
+
 def validate_listener_ownership(
     ss_output: str,
     service_cgroup: str,
@@ -565,7 +590,9 @@ def promote_artifact(
     runtime.assert_supported_target()
     manifest = validate_published_artifact(artifact_path)
     source_sha = manifest["sourceSha"]
-    if current_tip(manifest) != source_sha:
+    observed_tip = current_tip(manifest)
+    if observed_tip != source_sha:
+        _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
         raise ReleaseError("Stale source rejected: release SHA is not current origin/main")
     build_path = Path(manifest["canonicalBuildResult"])
     build, _, workspace = validate_build_result(build_path)
@@ -582,7 +609,9 @@ def promote_artifact(
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        if current_tip(manifest) != source_sha:
+        observed_tip = current_tip(manifest)
+        if observed_tip != source_sha:
+            _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
             raise ReleaseError("Canonical source advanced while waiting for deployment fence")
         if current_link.is_symlink():
             active_target = current_link.resolve()
@@ -731,7 +760,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.action == "prepare":
-            build, _, workspace = validate_build_result(args.build_result)
             default_store = Path(args.build_result).parent / "artifacts"
             result = prepare_artifact(args.build_result, default_store)
             print(json.dumps(result, sort_keys=True))

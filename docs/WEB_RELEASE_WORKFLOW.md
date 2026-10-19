@@ -35,6 +35,38 @@ Only a verified promotion is reported as successful. A successful build alone
 does not update the website. No database migration or SPEC-224 job is run by
 this workflow.
 
+### Scope database readiness to this release
+
+Do not use the newest row in `drizzle.__drizzle_migrations` as a blanket
+release gate. Compare the exact candidate with the active release and identify
+the database objects its changed runtime paths use. A migration is a release
+prerequisite only when the candidate path requires it; unrelated pending
+migrations are not a reason to apply the full journal. An unchanged database
+contract can be recorded as `NONE_REQUIRED` with the compared source revisions
+and inspected code paths. A required migration must have target-specific
+applied/schema evidence from its registered migration authority. `UNKNOWN`
+blocks a required migration, but does not authorize editing migration history,
+running unrelated migrations, or treating the whole database as ready.
+
+If a direct/targeted DDL receipt is missing from the Drizzle ledger, preserve
+both records and reconcile the actual catalog through the existing migration
+authority. Never rewrite checksums or ledger rows to make the reported head
+match. Keep scoped compatibility evidence and unrelated database drift
+separate in the release record.
+
+### Concurrent and interrupted release recovery
+
+The canonical build lease serializes canonical builds, and the production
+release fence serializes pointer changes/restarts. These locks are single-writer
+fences, not a durable FIFO release queue. Check `release:status` before starting
+and let the promotion fence choose the sole active writer. If promotion rejects
+a stale source, keep that artifact as evidence, rebuild from the new
+`origin/main` tip, and promote only the newly prepared artifact. The release
+controller records stale-source attempts under its deployment receipt root;
+an interrupted/unknown attempt must be compared with the current pointer and
+service state before it is resumed. Never restart the service to publish an
+artifact outside this controller.
+
 For an exact integrated change, pass its commit SHA:
 
 ```bash
@@ -59,6 +91,13 @@ Then open `https://smartaihub.app/login` in a private window. In DevTools,
 enable **Network → Disable cache**, reload once, and confirm the login form
 renders without a blank page or React console error. The HTML response must be
 revalidated; hashed assets are immutable and change with the build.
+
+For feature fixes, include a production smoke for the changed feature after
+the runtime health check. A healthy `/healthz`, a matching release SHA, or a
+public login check alone does not verify an authenticated feature path. Record
+that path's result separately; when no authorized production session is
+available, leave authenticated acceptance pending instead of claiming it
+passed.
 
 Do not use a raw `systemctl restart` to publish a build. Restarting an old
 working directory does not promote the new artifact. The release command
