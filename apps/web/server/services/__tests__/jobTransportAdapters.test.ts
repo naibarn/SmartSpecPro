@@ -22,6 +22,15 @@ describe("job transport adapters", () => {
     });
     expect(reference.adapter).toBe("postgres-pull");
   });
+  it("admits the staging deployment contract only on the canonical PostgreSQL transport", () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    const input = { jobType: "cloudflare.staging.deploy", executionClass: "long", contractVersion: "cloudflare-staging-deploy-v1" };
+    expect(postgres.supports(input)).toBe(true);
+    expect(cloudflare.supports(input)).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: "cloudflare-staging-deploy-v2" })).toBe(false);
+  });
+
   it("rejects unsupported contract versions before publish", () => {
     const adapter = new PostgresPullJobTransportAdapter();
     expect(() => assertAdapterSupports(adapter, {

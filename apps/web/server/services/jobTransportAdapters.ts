@@ -26,6 +26,7 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   RESEARCH_NOTES_SUMMARY_CONTRACT,
   DEVELOPER_FAST_LANE_CONTRACT,
   "mini-app-factory-stage-v1",
+  "cloudflare-staging-deploy-v1",
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";

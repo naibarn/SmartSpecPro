@@ -1,4 +1,5 @@
 import type { JobExecutor } from "./jobExecutor";
+import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
 import type { DrizzleDB } from "../db";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import {
@@ -181,6 +182,7 @@ export type CloudflareStagingApi = Readonly<{
     artifact: CloudflareStagingArtifact;
     idempotencyKey: string;
     bootstrap?: boolean;
+    assertMutationAuthorized?: () => Promise<void>;
   }) => Promise<{
     deploymentId: string;
     url: string;
@@ -207,6 +209,7 @@ export type CloudflareStagingApi = Readonly<{
     idempotencyKey: string;
     sourceSha?: string;
     buildDigest?: string;
+    assertMutationAuthorized?: () => Promise<void>;
   }) => Promise<{
     deploymentId: string;
     url?: string;
@@ -459,6 +462,31 @@ export function createCloudflareStagingDeploymentExecutor(
     });
     await reporter.assertActive(lease);
 
+    const assertMutationAuthorized = async () => {
+      const now = activeRuntime.now?.() ?? new Date();
+      const deadlineMs = getEffectiveWorkerJobDeadlineMs({ ...context, runtimeType: "node_job_worker" });
+      if (!Number.isFinite(Date.parse(context.createdAt)) ||
+          Date.parse(context.createdAt) + deadlineMs <= now.getTime() ||
+          (lease.expiresAt && Date.parse(lease.expiresAt) <= now.getTime())) {
+        throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_JOB_DEADLINE_EXPIRED");
+      }
+      await reporter.assertActive(lease);
+      const [currentGrant, currentTarget, currentIdentity] = await Promise.all([
+        activeRuntime.resolveGrant(job.grantRef),
+        activeRuntime.resolveTarget({ tenantId: context.tenantId, projectId: grant.projectId, environment: "staging" }),
+        activeRuntime.executorIdentity({ jobId: context.jobId, tenantId: context.tenantId,
+          target: CLOUDFLARE_STAGING_TARGET_ID, artifactSha256: artifact.buildDigest, action: job.action, idempotencyKey }),
+      ]);
+      if (!currentIdentity.registered || currentIdentity.executorId !== identity.executorId ||
+          !currentTarget || JSON.stringify(currentTarget) !== JSON.stringify(target)) {
+        throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_AUTHORITY_CHANGED");
+      }
+      assertValidGrant({ grant: currentGrant, artifact, job, tenantId: context.tenantId,
+        requesterUserId: context.requestedByUserId, executorId: currentIdentity.executorId,
+        jobId: context.jobId, accountRef: target.accountRef, now: activeRuntime.now?.() ?? new Date() });
+      await reporter.assertActive(lease);
+    };
+
     const credential = await activeRuntime.withCredential({
       target,
       operation: async token => {
@@ -471,11 +499,13 @@ export function createCloudflareStagingDeploymentExecutor(
                   artifact: artifact!,
                   idempotencyKey,
                   bootstrap: job.action === "bootstrap",
+                  assertMutationAuthorized,
                 })
               : await activeRuntime.cloudflare.rollback({
                   token,
                   target,
                   deploymentId: grant.rollbackDeploymentId!,
+                  assertMutationAuthorized,
                   sourceSha: grant.rollbackSourceSha!,
                   buildDigest: grant.rollbackBuildDigest!,
                   idempotencyKey,
@@ -539,6 +569,7 @@ export function createCloudflareStagingDeploymentExecutor(
                   token,
                   target,
                   deploymentId: grant.rollbackDeploymentId!,
+                  assertMutationAuthorized,
                   sourceSha: grant.rollbackSourceSha!,
                   buildDigest: grant.rollbackBuildDigest!,
                   idempotencyKey: `${idempotencyKey}:auto-rollback`,

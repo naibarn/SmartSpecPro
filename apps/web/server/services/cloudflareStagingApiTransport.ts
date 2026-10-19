@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import type {
   CloudflareStagingApi,
@@ -113,9 +114,11 @@ export function createCloudflareStagingApiTransport(input: {
   fetchImpl?: typeof fetch;
 }): CloudflareStagingApi {
   const fetchImpl = input.fetchImpl ?? fetch;
+  const mutationAuthority = new AsyncLocalStorage<() => Promise<void>>();
 
   async function api<T>(token: string, url: string, init: RequestInit = {}): Promise<T> {
     assertSafeApiUrl(url);
+    if (init.method && init.method !== "GET" && init.method !== "HEAD") await mutationAuthority.getStore()?.();
     const response = await fetchImpl(url, {
       ...init,
       headers: {
@@ -382,7 +385,7 @@ export function createCloudflareStagingApiTransport(input: {
   }
 
   return {
-    deploy: async ({ token, target, artifact, idempotencyKey, bootstrap }) => {
+    deploy: async ({ token, target, artifact, idempotencyKey, bootstrap, assertMutationAuthorized }) => mutationAuthority.run(assertMutationAuthorized ?? (async () => {}), async () => {
       assertTarget(target);
       if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_IDEMPOTENCY_INVALID");
       const bundle = await loadVerifiedBundle(artifact);
@@ -410,7 +413,7 @@ export function createCloudflareStagingApiTransport(input: {
         sourceSha: artifact.sourceSha,
         buildDigest: artifact.buildDigest,
       };
-    },
+    }),
     verifyRuntime: async ({ token, target, deploymentId, url, sourceSha, buildDigest }) => {
       assertTarget(target);
       const baseUrl = new URL(safeWorkersDevUrl(target.workerRef, await getWorkersDevSubdomain(token, target)));
@@ -441,7 +444,7 @@ export function createCloudflareStagingApiTransport(input: {
         buildDigest,
       };
     },
-    rollback: async ({ token, target, deploymentId, idempotencyKey, sourceSha, buildDigest }) => {
+    rollback: async ({ token, target, deploymentId, idempotencyKey, sourceSha, buildDigest, assertMutationAuthorized }) => mutationAuthority.run(assertMutationAuthorized ?? (async () => {}), async () => {
       assertTarget(target);
       const previous = await getDeployment(token, target, deploymentId);
       const version = previous.versions[0];
@@ -465,6 +468,6 @@ export function createCloudflareStagingApiTransport(input: {
         sourceSha: match[1]!,
         buildDigest: match[2]!,
       };
-    },
+    }),
   };
 }

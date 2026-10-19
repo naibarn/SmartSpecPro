@@ -523,6 +523,10 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       executor: createCloudflareStagingDeploymentExecutor(runtime),
     };
     const registry = createJobExecutorRegistry([registration]);
+    const { publishJobOutboxRow } = await import("./jobOutboxPublisher");
+    const { PostgresPullJobTransportAdapter } = await import("./jobTransportAdapters");
+    const publication = await publishJobOutboxRow(outbox!.id, new PostgresPullJobTransportAdapter());
+    expect(publication.state).toBe("published");
     const execution = await executeCanonicalJobEnvelope(outbox!.envelopeJson, {
       controlPlane,
       executorRegistry: registry,

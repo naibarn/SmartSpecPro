@@ -272,4 +272,18 @@ describe("Cloudflare staging API transport", () => {
       url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).rejects.toThrow("ACTIVE_DEPLOYMENT_MISMATCH");
   });
 
+  it("rechecks mutation authority after slow bundle reads before any provider write", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      expect(init.method ?? "GET").toBe("GET");
+      expect(String(input)).toMatch(/deployments$/);
+      return json({ deployments: [] });
+    }) as typeof fetch;
+    const assertMutationAuthorized = vi.fn(async () => { throw Error("LEASE_EXPIRED_DURING_ARTIFACT_READ"); });
+    const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
+    await expect(transport.deploy({ token: "private", target, artifact, idempotencyKey: "job-lease-test", assertMutationAuthorized }))
+      .rejects.toThrow("LEASE_EXPIRED_DURING_ARTIFACT_READ");
+    expect(assertMutationAuthorized).toHaveBeenCalledOnce();
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
 });

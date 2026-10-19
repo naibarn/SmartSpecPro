@@ -129,6 +129,9 @@ function invocation(
         tenantId: options.tenantId ?? "tenant-a",
         requestedByUserId: options.requesterUserId ?? 41,
         projectId: "ignored-caller-project",
+        createdAt: "2029-01-01T00:00:00.000Z",
+        retryPolicy: { deadlineMs: 600000, deadlineMode: "fixed" },
+        timeoutSeconds: 600,
         input: {
           contractVersion: CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
           action: "deploy",
@@ -148,6 +151,28 @@ function invocation(
 }
 
 describe("Cloudflare staging deployment executor", () => {
+  it("blocks an elapsed creation-time deadline before a provider mutation", async () => {
+    const state = runtime();
+    state.cloudflare.deploy.mockImplementation(async input => {
+      await (input as typeof input & { assertMutationAuthorized: () => Promise<void> }).assertMutationAuthorized();
+      throw Error("PROVIDER_WRITE_MUST_NOT_RUN");
+    });
+    const call = invocation();
+    (call.payload as any).context.createdAt = "2028-01-01T00:00:00.000Z";
+    await expect(createCloudflareStagingDeploymentExecutor(state.dependencies)(call.payload)).rejects.toThrow("JOB_DEADLINE_EXPIRED");
+  });
+
+  it("checks current grant authority again at the provider mutation boundary", async () => {
+    let checks = 0;
+    const state = runtime({ resolveGrant: async () => ++checks === 1 ? grant : null });
+    state.cloudflare.deploy.mockImplementation(async input => {
+      await (input as typeof input & { assertMutationAuthorized: () => Promise<void> }).assertMutationAuthorized();
+      throw Error("PROVIDER_WRITE_MUST_NOT_RUN");
+    });
+    await expect(createCloudflareStagingDeploymentExecutor(state.dependencies)(invocation().payload)).rejects.toThrow("GRANT_OR_ARTIFACT_MISSING");
+    expect(checks).toBe(2);
+  });
+
   it("permits exclusive bootstrap with an absent baseline and rejects job/account replay before credentials", async () => {
     const bootstrap = { ...grant, actions: ["bootstrap"] as const, rollbackDeploymentId: null, rollbackArtifactRef: null, rollbackSourceSha: null, rollbackBuildDigest: null, jobId: "job-1", accountRef: target.accountRef };
     const state = runtime({ resolveGrant: async () => bootstrap });
