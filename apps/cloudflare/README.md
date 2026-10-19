@@ -139,6 +139,33 @@ forwarded and internal trust headers. Missing Worker configuration returns a
 closed 503, and a wrong token returns 403 at the origin. Do not put staging or
 production values in Wrangler vars or source control.
 
+For an Access-protected origin, also compose the dedicated
+`AUTH_ORIGIN_ACCESS_CLIENT_ID` and `AUTH_ORIGIN_ACCESS_CLIENT_SECRET` bindings,
+and `AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS` as a JSON array of exact canonical
+HTTPS public origins. An incomplete pair or absent/invalid allowlist fails
+before fetch. Caller Access credentials are discarded; application bearer
+Authorization remains separate. The proxy sets `x-smartaihub-public-origin`
+from its request URL, alongside the app attestation, so intermediate proxy
+rewrites cannot select the browser's tenant hostname. The origin must have the
+same private-host pin, app secret and public-origin allowlist. Its dedicated
+ingress rejects absent/wrong attestation before tenant handling and normalizes
+forwarded host/protocol only after verification. Legacy public ingress remains
+available; unsigned forwarded host values cannot choose tenants when the
+protected origin is configured. This does not grant an application identity
+or populate trusted App route provenance.
+
+Dynamic proxy responses are private/no-store, independently of SPA asset
+caching. Access login/challenge pages for JSON auth/tRPC endpoints become a
+sanitized 503; legitimate application OAuth redirects are preserved. Caller
+cancellation remains attached until the upstream body is consumed/canceled,
+not just until its headers arrive. No state-changing request is auto-replayed.
+State-changing cookie/browser requests on verified edge ingress must match
+the attested public origin, including login before a session cookie exists;
+existing bearer transport and signed-provider callback exemptions remain.
+The paired secrets and configuration still require the scoped deployment
+pipeline and actual Access/Tunnel authority; source support alone is not a
+claim that this protected origin is provisioned or serving.
+
 The production template intentionally has no broad SmartAIHub API route: its
 existing routes are limited to the runtime hostname and SPEC-260 namespaces.
 Do not add a general app-domain route until staging proves same-origin login,

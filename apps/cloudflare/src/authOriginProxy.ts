@@ -1,8 +1,13 @@
+import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
+
 /** Worker transport boundary for the existing Linux authentication authority. */
 export type AuthOriginProxyConfig = {
   AUTH_ORIGIN?: string;
   AUTH_ORIGIN_PRIVATE_HOST?: string;
   AUTH_ORIGIN_TOKEN?: string;
+  AUTH_ORIGIN_ACCESS_CLIENT_ID?: string;
+  AUTH_ORIGIN_ACCESS_CLIENT_SECRET?: string;
+  AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS?: string;
 };
 
 export type AuthOriginFetch = (request: Request) => Promise<Response>;
@@ -13,7 +18,11 @@ const HOP_BY_HOP_HEADERS = new Set([
   "connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer",
   "transfer-encoding", "upgrade",
 ]);
-const NEVER_FORWARD_HEADERS = new Set(["host", "content-length", "x-internal-token", ATTESTATION_HEADER]);
+const NEVER_FORWARD_HEADERS = new Set(["host", "content-length", "x-internal-token", ATTESTATION_HEADER, CLOUDFLARE_PUBLIC_ORIGIN_HEADER]);
+
+function validHeaderCredential(value: string | undefined): value is string {
+  return Boolean(value && value.length <= 4096 && /^[\x21-\x7e]+$/.test(value));
+}
 
 function unavailable(): Response {
   return new Response(JSON.stringify({ error: "AUTH_ORIGIN_UNAVAILABLE" }), {
@@ -47,10 +56,12 @@ function safeForwardedHeaders(requestUrl: URL): { host: string; proto: string; p
 
 function responseHeaders(upstream: Response): Headers {
   const headers = new Headers();
+  const connectionHeaders = new Set((upstream.headers.get("connection") ?? "").split(",").map(value => value.trim().toLowerCase()));
   // Preserve application response headers and streaming metadata while
   // removing connection-specific headers that must not cross HTTP hops.
   upstream.headers.forEach((value, name) => {
-    if (name !== "set-cookie" && !HOP_BY_HOP_HEADERS.has(name)) headers.set(name, value);
+    if (name !== "set-cookie" && !HOP_BY_HOP_HEADERS.has(name) && !connectionHeaders.has(name) &&
+        !name.startsWith("cf-access-") && name !== ATTESTATION_HEADER && name !== CLOUDFLARE_PUBLIC_ORIGIN_HEADER) headers.set(name, value);
   });
   const cookies = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.();
   if (cookies?.length) for (const cookie of cookies) headers.append("set-cookie", cookie);
@@ -58,7 +69,66 @@ function responseHeaders(upstream: Response): Headers {
     const cookie = upstream.headers.get("set-cookie");
     if (cookie) headers.append("set-cookie", cookie);
   }
+  // This transport serves dynamic, potentially authenticated application data.
+  // Static asset caching remains owned by the separate ASSETS binding.
+  for (const name of ["cdn-cache-control", "cloudflare-cdn-cache-control", "surrogate-control"]) headers.delete(name);
+  headers.set("cache-control", "private, no-store");
+  headers.set("pragma", "no-cache");
+  headers.set("expires", "0");
   return headers;
+}
+
+function isAccessResponse(upstream: Response, incoming: URL): boolean {
+  const location = upstream.headers.get("location");
+  if (location && upstream.status >= 300 && upstream.status < 400) {
+    try {
+      const target = new URL(location, incoming);
+      if (target.hostname.endsWith(".cloudflareaccess.com") || target.pathname.startsWith("/cdn-cgi/access/")) return true;
+    } catch { return true; }
+  }
+  return /^\/(?:trpc(?:[/.]|$)|api\/(?:auth|oauth)(?:\/|$))/.test(incoming.pathname) &&
+    (upstream.headers.get("content-type") ?? "").toLowerCase().includes("text/html");
+}
+
+/** Keep cancellation alive for the body, rather than only until headers arrive. */
+function proxyResponseBody(body: ReadableStream<Uint8Array>, abort: AbortController, cleanup: () => void): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  let settled = false;
+  let onAbort: () => void;
+  const finish = () => {
+    settled = true;
+    cleanup();
+    abort.signal.removeEventListener("abort", onAbort);
+  };
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      onAbort = () => {
+        if (settled) return;
+        finish();
+        controller.error(abort.signal.reason);
+        void reader.cancel(abort.signal.reason).catch(() => {});
+      };
+      abort.signal.addEventListener("abort", onAbort, { once: true });
+      if (abort.signal.aborted) onAbort();
+    },
+    async pull(controller) {
+      if (settled) return;
+      try {
+        const result = await reader.read();
+        if (settled) return;
+        if (result.done) { finish(); controller.close(); }
+        else controller.enqueue(result.value);
+      } catch (error) {
+        if (!settled) { finish(); controller.error(error); }
+      }
+    },
+    async cancel(reason) {
+      if (settled) return;
+      finish();
+      abort.abort(reason);
+      await reader.cancel(reason);
+    },
+  });
 }
 
 /**
@@ -76,13 +146,19 @@ export async function proxyAuthToOrigin(
   const incoming = new URL(request.url);
   const origin = resolvePrivateOrigin(config.AUTH_ORIGIN, config.AUTH_ORIGIN_PRIVATE_HOST, incoming);
   const token = config.AUTH_ORIGIN_TOKEN?.trim();
-  if (!origin || !token) return unavailable();
+  const accessConfigured = config.AUTH_ORIGIN_ACCESS_CLIENT_ID !== undefined || config.AUTH_ORIGIN_ACCESS_CLIENT_SECRET !== undefined;
+  const accessId = config.AUTH_ORIGIN_ACCESS_CLIENT_ID?.trim();
+  const accessSecret = config.AUTH_ORIGIN_ACCESS_CLIENT_SECRET?.trim();
+  const allowed = parseCloudflarePublicOrigins(config.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
+  if (!origin || !validHeaderCredential(token) ||
+      (config.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS !== undefined && (!allowed || !allowed.includes(incoming.origin))) ||
+      (accessConfigured && (!validHeaderCredential(accessId) || !validHeaderCredential(accessSecret) || !allowed))) return unavailable();
 
   const headers = new Headers();
   const connectionHeaders = new Set((request.headers.get("connection") ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean));
   request.headers.forEach((value, name) => {
     if (HOP_BY_HOP_HEADERS.has(name) || connectionHeaders.has(name) || NEVER_FORWARD_HEADERS.has(name) ||
-        name === "forwarded" || name === "x-forwarded" || name.startsWith("x-forwarded-") || name.startsWith("x-spec260-")) return;
+        name === "forwarded" || name === "x-forwarded" || name.startsWith("x-forwarded-") || name.startsWith("x-spec260-") || name.startsWith("cf-access-")) return;
     headers.set(name, value);
   });
   const forwarded = safeForwardedHeaders(incoming);
@@ -92,6 +168,11 @@ export async function proxyAuthToOrigin(
   headers.set("x-forwarded-proto", forwarded.proto);
   if (forwarded.port) headers.set("x-forwarded-port", forwarded.port);
   headers.set(ATTESTATION_HEADER, token);
+  headers.set(CLOUDFLARE_PUBLIC_ORIGIN_HEADER, incoming.origin);
+  if (accessConfigured) {
+    headers.set("cf-access-client-id", accessId!);
+    headers.set("cf-access-client-secret", accessSecret!);
+  }
 
   // Assign path/query to the pinned URL instead of resolving a combined string:
   // a pathname beginning with `//` must never be interpreted as a new authority.
@@ -103,6 +184,9 @@ export async function proxyAuthToOrigin(
   if (request.signal.aborted) abortFromCaller();
   else request.signal.addEventListener("abort", abortFromCaller, { once: true });
   const timeout = setTimeout(() => controller.abort(new Error("auth origin timeout")), Math.max(1, timeoutMs));
+  const cleanup = () => request.signal.removeEventListener("abort", abortFromCaller);
+  let bodyOwnsCleanup = false;
+  let rejectOnAbort: (() => void) | undefined;
   try {
     const outboundRequest = new Request(target, {
       method: request.method,
@@ -112,16 +196,25 @@ export async function proxyAuthToOrigin(
       signal: controller.signal,
     });
     const aborted = new Promise<never>((_resolve, reject) => {
-      const rejectOnAbort = () => reject(controller.signal.reason ?? new Error("auth origin request aborted"));
+      rejectOnAbort = () => reject(controller.signal.reason ?? new Error("auth origin request aborted"));
       if (controller.signal.aborted) rejectOnAbort();
       else controller.signal.addEventListener("abort", rejectOnAbort, { once: true });
     });
     const upstream = await Promise.race([fetcher(outboundRequest), aborted]);
-    return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders(upstream) });
+    clearTimeout(timeout);
+    if (rejectOnAbort) controller.signal.removeEventListener("abort", rejectOnAbort);
+    if (accessConfigured && isAccessResponse(upstream, incoming)) {
+      await upstream.body?.cancel();
+      return unavailable();
+    }
+    const body = upstream.body ? proxyResponseBody(upstream.body, controller, cleanup) : null;
+    bodyOwnsCleanup = Boolean(body);
+    return new Response(body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders(upstream) });
   } catch {
     return unavailable();
   } finally {
     clearTimeout(timeout);
-    request.signal.removeEventListener("abort", abortFromCaller);
+    if (rejectOnAbort) controller.signal.removeEventListener("abort", rejectOnAbort);
+    if (!bodyOwnsCleanup) cleanup();
   }
 }

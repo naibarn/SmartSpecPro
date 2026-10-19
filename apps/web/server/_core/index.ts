@@ -95,7 +95,9 @@ import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
-import { isValidCloudflareOriginAttestation } from "./cloudflareOriginAttestation";
+import { createCloudflareOriginMiddleware } from "./cloudflareOriginMiddleware";
+import { createAllowedBrowserOrigin } from "./browserOriginPolicy";
+import { createCsrfProtection } from "./csrfProtection";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
 import { registerSpec260EmergencyEdgeRoutes } from "../routes/spec260EmergencyEdge";
@@ -345,58 +347,15 @@ app.set("trust proxy", 1);
 
 // Worker-proxied requests carry a shared private credential. Validate it
 // before trusting the forwarded public host/protocol set by the Worker.
-app.use((req, res, next) => {
-  const attestation = req.get("x-cloudflare-origin-token");
-  if (attestation && !isValidCloudflareOriginAttestation(attestation, process.env.AUTH_ORIGIN_TOKEN)) {
-    return res.status(403).json({ error: "INVALID_EDGE_ORIGIN_ATTESTATION" });
-  }
-  return next();
-});
+app.use(createCloudflareOriginMiddleware());
 
 // Trusted origin check (shared between CORS and CSRF middleware)
-const configuredBrowserOrigins = [
-  ...(process.env.SMARTSPEC_ALLOWED_ORIGINS ?? "").split(","),
-  process.env.APP_URL ?? "",
-  process.env.PUBLIC_APP_URL ?? "",
-]
-  .map(origin => origin.trim().replace(/\/+$/, ""))
-  .filter(Boolean);
-const ALLOWED_SUFFIXES =
-  configuredBrowserOrigins.length > 0 && process.env.NODE_ENV === "production"
-    ? []
-    : [
-        ".smartaihub.app",
-        ".smartspec.pro",
-        ...(process.env.NODE_ENV !== "production"
-          ? [".smartspec.local", ".localhost"]
-          : []),
-      ];
-const ALLOWED_EXACT = [
-  "tauri://localhost",
-  "http://tauri.localhost",
-  "https://tauri.localhost",
-  ...configuredBrowserOrigins,
-];
-
-function isAllowedOrigin(origin: string | undefined): boolean {
-  if (!origin) return false;
-  let originHost = "";
-  try {
-    originHost = new URL(origin).hostname;
-  } catch {
-    return false;
-  }
-  return (
-    ALLOWED_EXACT.includes(origin) ||
-    originHost === "localhost" ||
-    // Allow IP addresses only in non-production (development/testing)
-    (process.env.NODE_ENV !== "production" &&
-      /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost)) ||
-    ALLOWED_SUFFIXES.some(
-      suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix)
-    )
-  );
-}
+const isAllowedOrigin = createAllowedBrowserOrigin({
+  production: process.env.NODE_ENV === "production",
+  allowedOrigins: process.env.SMARTSPEC_ALLOWED_ORIGINS,
+  appUrl: process.env.APP_URL,
+  publicAppUrl: process.env.PUBLIC_APP_URL,
+});
 
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
@@ -600,74 +559,11 @@ app.use(tenantMiddleware);
 
 // CSRF protection: verify Origin header on state-changing requests
 // Registered BEFORE route handlers so it protects both /trpc and /api/* REST endpoints
-const csrfCheck = (req: any, res: any, next: any) => {
-  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
-
-  // Allow provider webhooks to pass through even when they include third-party Origin.
-  // These are server-to-server callbacks and are validated by provider-specific logic.
-  if (
-    req.path === "/v1/media/callback/kie-ai" ||
-    req.originalUrl === "/api/v1/media/callback/kie-ai" ||
-    req.path.startsWith("/webhooks/gdrive") ||
-    req.originalUrl.startsWith("/api/webhooks/gdrive") ||
-    req.path.startsWith("/webhooks/telegram/") ||
-    req.originalUrl.startsWith("/webhooks/telegram/") ||
-    // Inbound webhook triggers (external services sending events into SmartAIHub)
-    // req.path includes the /api prefix at app-middleware level, so check originalUrl only.
-    req.originalUrl.startsWith("/api/webhooks/trigger/") ||
-    req.originalUrl.startsWith("/api/voice-agents/elevenlabs/") ||
-    // Generalized channel webhooks (platform callbacks: WhatsApp, Slack, Discord, etc.)
-    /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.path) ||
-    /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.originalUrl)
-  ) {
-    return next();
-  }
-
-  const origin = req.headers.origin;
-  const isMarketplaceCaptureRequest = req.originalUrl.startsWith(
-    "/api/marketplace-captures"
-  );
-
-  // Requests with no Origin header: allow if using Bearer token (server-to-server),
-  // reject if using cookie auth (browser CSRF risk in production)
-  if (!origin) {
-    const authHeader = req.headers.authorization;
-    if (
-      authHeader &&
-      authHeader.startsWith("Bearer ") &&
-      authHeader.length > 7
-    ) {
-      return next();
-    }
-    // In production, cookie-authenticated POST without Origin is a CSRF risk.
-    // In development, allow for easier testing (curl, Postman).
-    if (process.env.NODE_ENV === "production" && req.cookies?.[COOKIE_NAME]) {
-      res
-        .status(403)
-        .json({ error: { message: "Forbidden: missing Origin header" } });
-      return;
-    }
-    return next();
-  }
-
-  if (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin)) {
-    const authHeader = req.headers.authorization;
-    if (
-      authHeader &&
-      authHeader.startsWith("Bearer ") &&
-      authHeader.length > 7
-    ) {
-      return next();
-    }
-  }
-
-  if (!isAllowedOrigin(origin)) {
-    res.status(403).json({ error: { message: "Forbidden: invalid origin" } });
-    return;
-  }
-
-  next();
-};
+const csrfCheck = createCsrfProtection({
+  isAllowedOrigin,
+  isAllowedMarketplaceOrigin,
+  isProduction: () => process.env.NODE_ENV === "production",
+});
 
 app.use("/trpc", csrfCheck);
 app.use("/api", csrfCheck);

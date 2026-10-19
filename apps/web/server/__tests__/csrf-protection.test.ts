@@ -1,43 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-/**
- * CSRF protection logic tests.
- *
- * The actual CSRF middleware is defined inline in _core/index.ts.
- * These tests validate the origin-checking logic separately
- * to ensure the CSRF rules are correct for production deployment.
- */
+import { createAllowedBrowserOrigin } from "../_core/browserOriginPolicy";
 
-// Replicate the origin-checking logic from _core/index.ts
-const ALLOWED_SUFFIXES = [
-  ".smartspec.local",
-  ".smartspec.pro",
-  ".localhost",
-  ".smartaihub.app",
-];
-const ALLOWED_EXACT = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"];
-
-function isAllowedOrigin(
-  origin: string | undefined,
-  isProduction = false,
-): boolean {
-  if (!origin) return false;
-  let originHost = "";
-  try {
-    originHost = new URL(origin).hostname;
-  } catch {
-    return false;
-  }
-  return (
-    ALLOWED_EXACT.includes(origin) ||
-    originHost === "localhost" ||
-    (!isProduction &&
-      /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost)) ||
-    ALLOWED_SUFFIXES.some(
-      (suffix) =>
-        originHost === suffix.slice(1) || originHost.endsWith(suffix),
-    )
-  );
+// Exercise the same origin policy used by the production CORS/CSRF middleware.
+function isAllowedOrigin(origin: string | undefined, isProduction = false): boolean {
+  return createAllowedBrowserOrigin({ production: isProduction })(origin);
 }
 
 describe("CSRF Origin Validation", () => {

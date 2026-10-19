@@ -123,4 +123,106 @@ describe("auth origin proxy", () => {
     expect(timeoutResponse.status).toBe(503);
     expect(timedOutSignal?.aborted).toBe(true);
   });
+
+  const accessConfig = {
+    ...config,
+    AUTH_ORIGIN_ACCESS_CLIENT_ID: "staging-service.access",
+    AUTH_ORIGIN_ACCESS_CLIENT_SECRET: "fixture-service-secret",
+    AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: '["https://tenant.smartaihub.app"]',
+  };
+
+  it("replaces caller Access credentials and attests the actual public origin", async () => {
+    const fetcher = vi.fn(async (request: Request) => {
+      expect(request.headers.get("cf-access-client-id")).toBe("staging-service.access");
+      expect(request.headers.get("cf-access-client-secret")).toBe("fixture-service-secret");
+      expect(request.headers.get("cf-access-jwt-assertion")).toBeNull();
+      expect(request.headers.get("x-smartaihub-public-origin")).toBe("https://tenant.smartaihub.app");
+      expect(request.headers.get("authorization")).toBe("Bearer application-user");
+      return new Response("ok");
+    });
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me", {
+      headers: {
+        "cf-access-client-id": "caller", "cf-access-client-secret": "caller-secret",
+        "cf-access-jwt-assertion": "caller-jwt", "x-smartaihub-public-origin": "https://evil.invalid",
+        authorization: "Bearer application-user",
+      },
+    }), accessConfig, fetcher);
+    expect(response.status).toBe(200);
+    expect(fetcher).toHaveBeenCalledOnce();
+    await response.body?.cancel();
+  });
+
+  it.each([
+    { AUTH_ORIGIN_ACCESS_CLIENT_SECRET: undefined },
+    { AUTH_ORIGIN_ACCESS_CLIENT_ID: "" },
+    { AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: undefined },
+    { AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: '["https://other.smartaihub.app"]' },
+    { AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: '["https://tenant.smartaihub.app/override"]' },
+    { AUTH_ORIGIN_ACCESS_CLIENT_SECRET: "fixture\r\nInjected: value" },
+  ])("refuses incomplete or invalid Access/public-origin configuration before fetch: %j", async changes => {
+    const fetcher = vi.fn();
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me"), {
+      ...accessConfig, ...changes,
+    }, fetcher);
+    expect(response.status).toBe(503);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(await response.text()).not.toContain("fixture");
+  });
+
+  it("prevents callers from forwarding Access credentials even in legacy mode", async () => {
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me", {
+      headers: { "cf-access-client-secret": "caller-secret" },
+    }), config, async request => {
+      expect(request.headers.get("cf-access-client-secret")).toBeNull();
+      return new Response("ok");
+    });
+    await response.body?.cancel();
+  });
+
+  it("makes proxied responses private and removes connection-nominated response headers", async () => {
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me"), config, async () => new Response("ok", {
+      headers: {
+        "cache-control": "public, max-age=3600", "cdn-cache-control": "public",
+        "cloudflare-cdn-cache-control": "public", connection: "x-hop-secret", "x-hop-secret": "hop-only",
+      },
+    }));
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("cdn-cache-control")).toBeNull();
+    expect(response.headers.get("cloudflare-cdn-cache-control")).toBeNull();
+    expect(response.headers.get("x-hop-secret")).toBeNull();
+    await response.body?.cancel();
+  });
+
+  it.each([
+    new Response(null, { status: 302, headers: { location: "https://team.cloudflareaccess.com/cdn-cgi/access/login" } }),
+    new Response("<html>Access denied</html>", { status: 403, headers: { "content-type": "text/html" } }),
+  ])("does not pass an Access login/challenge page as an application response", async upstream => {
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me"), accessConfig, async () => upstream);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("location")).toBeNull();
+    expect(await response.json()).toEqual({ error: "AUTH_ORIGIN_UNAVAILABLE" });
+  });
+
+  it("preserves application OAuth redirects with Access enabled", async () => {
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/api/oauth/google/authorize"), accessConfig, async () => new Response(null, {
+      status: 302, headers: { location: "https://accounts.google.com/o/oauth2/v2/auth?state=fixture" },
+    }));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("https://accounts.google.com/");
+  });
+
+  it("keeps caller cancellation connected after upstream headers arrive", async () => {
+    const caller = new AbortController();
+    let signal: AbortSignal | undefined;
+    const cancel = vi.fn();
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/api/stream", { signal: caller.signal }), config, async request => {
+      signal = request.signal;
+      return new Response(new ReadableStream({ cancel }));
+    });
+    const body = response.text();
+    caller.abort(new Error("client disconnected after headers"));
+    expect(signal?.aborted).toBe(true);
+    await expect(body).rejects.toThrow("client disconnected after headers");
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });
