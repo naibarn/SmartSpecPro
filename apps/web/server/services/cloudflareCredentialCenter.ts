@@ -217,7 +217,8 @@ export async function revokeCloudflareDeploymentCredential(db: DrizzleDB, input:
   return { status: rows.length ? "REVOKED" as const : "NOT_CONFIGURED" as const };
 }
 
-type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null; validityIssue?: "not_yet_valid" | "expired" | "invalid_window" };
+type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null; validityIssue?: "not_yet_valid" | "expired" | "invalid_window";
+  verificationScope?: "catalog"; visibleResourceCount?: number | null; resourceAccessVerified?: false };
 
 function statusFor(httpStatus: number, success: boolean): CloudflareProbeStatus {
   if (httpStatus === 200 && success) return "granted";
@@ -406,8 +407,12 @@ async function getProbe(token: string, path: string, fetchImpl: typeof fetch = f
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(8_000),
     });
-    const body = await response.json().catch(() => null) as { success?: boolean; result?: unknown } | null;
-    return { status: statusFor(response.status, body?.success === true), httpStatus: response.status, result: body?.result };
+    const body = await response.json().catch(() => null) as { success?: boolean; result?: unknown; errors?: Array<{ code?: number }> } | null;
+    // A Tunnel resource can return 401/1001 for authorization while this token
+    // verifies active and its list endpoint returns 200. Do not call it expired.
+    const resourceDenied = path.startsWith("accounts/") && response.status === 401 &&
+      Array.isArray(body?.errors) && body.errors.some(error => error.code === 1001);
+    return { status: resourceDenied ? "missing_permission" : statusFor(response.status, body?.success === true), httpStatus: response.status, result: body?.result };
   } catch {
     return { status: "unavailable", httpStatus: null };
   }
@@ -452,7 +457,8 @@ export async function probeCloudflareServiceCatalog(
 ): Promise<ProbeResult[]> {
   return Promise.all(CLOUDFLARE_PROBE_SERVICES.map(async (service) => {
     const result = await getProbe(token, `accounts/${encodeURIComponent(accountId)}/${service.path}`, fetchImpl);
-    return { id: service.id, label: service.label, scope: service.scope, permission: service.permission, status: result.status, httpStatus: result.httpStatus };
+    return { id: service.id, label: service.label, scope: service.scope, permission: service.permission, status: result.status, httpStatus: result.httpStatus,
+      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false };
   }));
 }
 
@@ -463,7 +469,8 @@ export async function probeCloudflareZoneServiceCatalog(
 ): Promise<ProbeResult[]> {
   return Promise.all(CLOUDFLARE_ZONE_PROBE_SERVICES.map(async (service) => {
     const result = await getProbe(token, `zones/${encodeURIComponent(zoneId)}/${service.path}`, fetchImpl);
-    return { id: service.id, label: service.label, scope: "Zone", permission: service.permission, status: result.status, httpStatus: result.httpStatus };
+    return { id: service.id, label: service.label, scope: "Zone", permission: service.permission, status: result.status, httpStatus: result.httpStatus,
+      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false };
   }));
 }
 

@@ -171,19 +171,31 @@ describe("Cloudflare permission group catalog probe", () => {
   });
 
   it("probes every declared SmartAIHub account integration through GET endpoints only", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: [] }), { status: 200 }));
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ success: true, result: [] }), { status: 200 }));
     const results = await probeCloudflareServiceCatalog("secret-token", "account-123", fetchMock);
 
     expect(results.map((result) => result.id).sort()).toEqual(CLOUDFLARE_PROBE_SERVICES.map((service) => service.id).sort());
     expect(fetchMock).toHaveBeenCalledTimes(CLOUDFLARE_PROBE_SERVICES.length);
+    expect(results.find(result => result.id === "tunnels")).toMatchObject({
+      status: "granted", verificationScope: "catalog", visibleResourceCount: 0, resourceAccessVerified: false,
+    });
     for (const [url, options] of fetchMock.mock.calls) {
       expect(String(url)).toMatch(/^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/account-123\//);
       expect(options).toEqual(expect.objectContaining({ method: "GET" }));
     }
   });
 
+  it("distinguishes Tunnel authorization denial from an invalid token", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      success: false, errors: [{ code: 1001, message: "Not authorized" }],
+    }), { status: 401 }));
+    const results = await probeCloudflareServiceCatalog("secret-token", "account-123", fetchMock);
+    expect(results.find(result => result.id === "tunnels")).toMatchObject({ status: "missing_permission", httpStatus: 401 });
+    expect(JSON.stringify(results)).not.toContain("secret-token");
+  });
+
   it("probes every declared managed-zone API endpoint through GET only", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: [] }), { status: 200 }));
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ success: true, result: [] }), { status: 200 }));
     const results = await probeCloudflareZoneServiceCatalog("secret-token", "zone-123", fetchMock);
     expect(results.map((result) => result.id).sort()).toEqual(CLOUDFLARE_ZONE_PROBE_SERVICES.map((service) => service.id).sort());
     expect(fetchMock).toHaveBeenCalledTimes(CLOUDFLARE_ZONE_PROBE_SERVICES.length);

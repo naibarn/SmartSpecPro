@@ -27,6 +27,9 @@ type ProbeResult = {
     status: "granted" | "missing_permission" | "invalid_token" | "resource_not_found" | "rate_limited" | "unsupported_or_invalid_request" | "unavailable";
     httpStatus: number | null;
     validityIssue?: "not_yet_valid" | "expired" | "invalid_window";
+    verificationScope?: "catalog";
+    visibleResourceCount?: number | null;
+    resourceAccessVerified?: false;
   }>;
 };
 
@@ -127,17 +130,21 @@ export default function CloudflareCredentialCenter() {
                 <HStack gap={2} wrap="wrap">
                   <strong>{check.label}</strong>
                   <Badge variant={check.status === "granted" ? "default" : "secondary"}>
-                    {isThai ? statusLabels[check.status].th : statusLabels[check.status].en}{check.httpStatus ? ` · HTTP ${check.httpStatus}` : ""}
+                    {check.status === "granted" && check.verificationScope === "catalog" ? text("List endpoint readable", "อ่านรายการได้") : isThai ? statusLabels[check.status].th : statusLabels[check.status].en}{check.httpStatus ? ` · HTTP ${check.httpStatus}` : ""}
                   </Badge>
                 </HStack>
                 <span>{text("Token profile", "Token ที่ตรวจ")}: {profileId === "deployment" ? text("Deployment / provisioning", "Deployment / provisioning") : text("Infrastructure audit", "Infrastructure audit")} · {text("scope", "ขอบเขต")}: {check.scope} · {text("required permission", "permission ที่ endpoint ยอมรับ")}: {check.permission}</span>
+                {check.status === "granted" && check.verificationScope === "catalog" ? <p role="status">{text(
+                  `Only the list endpoint was verified${check.visibleResourceCount != null ? ` (${check.visibleResourceCount} visible entries)` : ""}. Access to a specific resource and write permission remain unverified. An empty list does not prove that resources do not exist.`,
+                  `ตรวจผ่านเฉพาะ endpoint อ่านรายการ${check.visibleResourceCount != null ? ` (เห็น ${check.visibleResourceCount} รายการ)` : ""} ยังไม่ได้ยืนยันสิทธิ์เข้าถึง resource รายตัวหรือสิทธิ์เขียน รายการว่างไม่ได้ยืนยันว่าไม่มี resource`
+                )}</p> : null}
                 {check.status === "missing_permission" && check.id === "tokenVerification" ? <p role="status">{text(
                   "Cloudflare rejected the token verification request. This is separate from the User Permission Catalog probe; check this API response before changing token scopes.",
                   "Cloudflare ปฏิเสธคำขอตรวจ token ซึ่งแยกจากการอ่าน User Permission Catalog ให้ตรวจผล API นี้ก่อนเปลี่ยน scope ของ token"
                 )}</p> : null}
                 {check.status === "missing_permission" && check.id !== "tokenVerification" ? <p role="status">{text(
-                  `In Cloudflare API Tokens, edit the ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} token and grant the required permission shown above at ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} scope. Where alternatives are listed, grant one accepted permission, not all of them. Save the updated token here, then run Probe read access again. HTTP 403 confirms this request was denied, but Cloudflare does not distinguish token scope, account/resource selection, or product entitlement; verify each before adding broader access.`,
-                  `ไปที่ Cloudflare API Tokens แล้วแก้ token ${profileId === "deployment" ? "Deployment / provisioning" : "Infrastructure audit"} เพิ่ม permission ตามที่แสดงด้านบนใน scope ${check.scope === "Zone" ? "Zone: smartaihub.app" : "Account: Smartaihub"} หากแสดงตัวเลือกหลายรายการ ให้เพิ่มเพียงหนึ่ง permission ที่ endpoint ยอมรับ ไม่ต้องเพิ่มทั้งหมด จากนั้นบันทึก token ที่อัปเดตในหน้านี้และกดตรวจสิทธิ์อ่านอีกครั้ง HTTP 403 ยืนยันว่า request ถูกปฏิเสธ แต่ Cloudflare แยกสาเหตุระหว่าง scope ของ token, การเลือก account/resource หรือ entitlement ของบริการไม่ได้ ให้ตรวจทุกจุดก่อนเพิ่มสิทธิ์ให้กว้างขึ้น`
+                  `Cloudflare denied this resource request (HTTP ${check.httpStatus ?? "—"}). Check the token's effective permission, selected account/zone and resource restriction against the requirement above. A successful token or list check does not establish resource access. Where alternatives are listed, only one accepted permission is needed; do not broaden or replace the token based only on this response.`,
+                  `Cloudflare ปฏิเสธคำขอ resource นี้ (HTTP ${check.httpStatus ?? "—"}) ให้ตรวจ permission ที่มีผลจริง, account/zone ที่เลือก และข้อจำกัดราย resource เทียบกับรายการด้านบน การตรวจ token หรืออ่านรายการผ่านไม่ได้ยืนยันสิทธิ์ราย resource หากมีหลาย permission ให้ใช้เพียงหนึ่งรายการที่ endpoint ยอมรับ ไม่ควรขยายสิทธิ์หรือเปลี่ยน token จากผลนี้เพียงอย่างเดียว`
                 )}</p> : null}
                 {check.validityIssue ? <p role="status">{check.validityIssue === "not_yet_valid"
                   ? text("This token's TTL starts in the future. Edit its start date in Cloudflare API Tokens, save, then probe again.", "token นี้ยังไม่ถึงวันเริ่มใช้งาน ให้แก้วันเริ่มต้น TTL ใน Cloudflare API Tokens บันทึก แล้วตรวจอีกครั้ง")
@@ -198,7 +205,7 @@ export default function CloudflareCredentialCenter() {
           <ol>
             <li>{text("Open Cloudflare Dashboard → My Profile → API Tokens → Create Custom Token.", "เข้า Cloudflare Dashboard → My Profile → API Tokens → Create Custom Token")}</li>
             <li>{text("Create one token per purpose shown below. Select only the SmartSpecPro account; restrict zone permissions to smartaihub.app where applicable.", "สร้าง token แยกตามวัตถุประสงค์ด้านล่าง เลือกเฉพาะ account ของ SmartSpecPro และจำกัด zone permission ไว้ที่ smartaihub.app เมื่อทำได้")}</li>
-            <li>{text("Copy the token once into its password field, save, then run Probe read access. A 403 identifies the service permission still missing; 404 means the resource may not exist or the endpoint is unavailable.", "คัดลอก token ลงช่องรหัสผ่าน บันทึก แล้วกดตรวจสิทธิ์อ่าน ถ้าได้ 403 คือขาด permission ของบริการนั้น ส่วน 404 อาจหมายถึงไม่มี resource หรือ endpoint ยังไม่พร้อม")}</li>
+            <li>{text("Copy the token into its password field, save, then probe read access. A denied request needs an effective account/resource permission check; 404 may mean the resource or endpoint is unavailable. A successful list check does not verify individual resources or writes.", "คัดลอก token ลงช่องรหัสผ่าน บันทึก แล้วตรวจสิทธิ์อ่าน หากคำขอถูกปฏิเสธให้ตรวจสิทธิ์ account/resource ที่มีผลจริง ส่วน 404 อาจหมายถึง resource หรือ endpoint ไม่พร้อม การอ่านรายการผ่านไม่ได้ยืนยันสิทธิ์ราย resource หรือสิทธิ์เขียน")}</li>
             <li>{text("For rotation, save the replacement and confirm its probe before revoking the prior token. This page never displays a saved token again.", "เมื่อต้องหมุน token ให้บันทึกค่าใหม่และตรวจ probe ผ่านก่อน แล้วจึงเพิกถอน token เดิม หน้านี้จะไม่แสดง token ที่บันทึกแล้วซ้ำ")}</li>
           </ol>
           <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">{text("Open Cloudflare API Tokens", "เปิดหน้า Cloudflare API Tokens")}</a>
