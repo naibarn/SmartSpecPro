@@ -75,7 +75,7 @@ function canonicalBundleDigest(bundle: CloudflareStagingBundle): string {
   const entries: Array<[string, Uint8Array]> = [];
   for (const [name, file] of Object.entries(bundle.moduleFiles)) entries.push([`modules/${name}`, file.bytes]);
   for (const [name, file] of Object.entries(bundle.assets)) entries.push([`public/${name}`, file.bytes]);
-  entries.sort(([left], [right]) => left.localeCompare(right));
+  entries.sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
   const manifest = entries.map(([name, bytes]) => {
     const digest = createHash("sha256").update(bytes).digest("hex");
     return `${name}\0${digest}\0${bytes.byteLength}`;

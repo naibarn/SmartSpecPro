@@ -22,7 +22,7 @@ function digest(bundle: Omit<CloudflareStagingBundle, "buildDigest">) {
   const files = [
     ...Object.entries(bundle.moduleFiles).map(([name, file]) => [`modules/${name}`, file.bytes] as const),
     ...Object.entries(bundle.assets).map(([name, file]) => [`public/${name}`, file.bytes] as const),
-  ].sort(([left], [right]) => left.localeCompare(right));
+  ].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
   const manifest = files.map(([name, value]) => `${name}\0${createHash("sha256").update(value).digest("hex")}\0${value.byteLength}`).join("\n");
   return createHash("sha256").update(manifest).digest("hex");
 }
@@ -45,6 +45,37 @@ function json(result: unknown, status = 200) {
 }
 
 describe("Cloudflare staging API transport", () => {
+  it("accepts canonical codepoint digests for localized assets before provider mutation", async () => {
+    const localizedBase = {
+      ...bundleBase,
+      assets: {
+        ...bundleBase.assets,
+        "z-guide.md": { contentType: "text/markdown", bytes: new TextEncoder().encode("guide") },
+        "ä-guide.md": { contentType: "text/markdown", bytes: new TextEncoder().encode("localized guide") },
+        "คู่มือ.md": { contentType: "text/markdown", bytes: new TextEncoder().encode("คู่มือ") },
+      },
+    };
+    const localizedDigest = digest(localizedBase);
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("PROVIDER_READ_PREFLIGHT_REACHED");
+    }) as typeof fetch;
+    const cloudflare = createCloudflareStagingApiTransport({
+      resolveBundle: async () => ({ ...localizedBase, buildDigest: localizedDigest }),
+      fetchImpl,
+    });
+    await expect(cloudflare.deploy({
+      token: "secret-token", target,
+      artifact: { ...artifact, buildDigest: localizedDigest },
+      idempotencyKey: "cloudflare-staging:localized-job",
+    })).rejects.toThrow("PROVIDER_READ_PREFLIGHT_REACHED");
+    expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${target.workerRef}/deployments`,
+      expect.objectContaining({ headers: expect.any(Object) }),
+    );
+    const init = (fetchImpl as ReturnType<typeof vi.fn>).mock.calls[0]![1];
+    expect(init.method ?? "GET").toBe("GET");
+  });
+
   it("uploads a verified static bundle, creates a version and deploys only the pinned staging Worker", async () => {
     const requests: Array<{ url: string; init: RequestInit }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
