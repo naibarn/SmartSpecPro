@@ -14,6 +14,23 @@ describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
+  it("keeps origin versions and secret writes behind the exact-admin guard", async () => {
+    const identity = { tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" as const, provider: "cloudflare" as const };
+    const reference = { ...identity, configurationRef: `cf-origin:${"a".repeat(64)}` };
+    for (const user of [null, { id: 2, role: "user" }, { id: 3, role: "domain_admin" }, { id: 4, role: "system_agent" }]) {
+      const caller = infrastructureRouter.createCaller({ user } as any);
+      await expect(caller.getCloudflareOriginConfiguration(reference)).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(caller.revokeCloudflareOriginConfiguration(reference)).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(caller.saveCloudflareOriginConfiguration({ ...identity,
+        settings: { origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
+          accessApplicationId: "11111111-1111-4111-8111-111111111111", accessTeamName: "fixture-team", accessAudience: "fixture",
+          expiresAt: "2030-01-01T00:00:00Z" },
+        secrets: { token: "fixture-origin-token-not-a-real-secret", clientId: "fixture-client.access", secret: "fixture-access-secret" },
+      })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("keeps Cloudflare credential metadata behind the exact-admin guard", async () => {
     for (const user of [null, { id: 2, role: "user" }, { id: 3, role: "system_agent" }]) {
       const caller = infrastructureRouter.createCaller({ user } as any);

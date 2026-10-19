@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `6`
-- Updated (UTC): `2026-10-19T13:03:08.030451+00:00`
+- State generation: `7`
+- Updated (UTC): `2026-10-19T13:05:44.580490+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019`
 - Latest recorded merged Main SHA: `bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-origin-transport`
-- Next action: Section 02 source support integrated, live proof pending; continue origin configuration authority
+- Active section: `section-03-config-authority`
+- Next action: Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-cookie-session | checkpointed | — | — | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | d7402e7563a3c8f9860f92f64014f47d9ba94ec5 | Proceed with section-02 protected origin transport; cookie helper is integrated and CI/browser-fixture verified, live auth remains pending |
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
-| section-03-config-authority | pending | — | — | — | — | — |
+| section-03-config-authority | in_progress | — | — | — | — | Add encrypted immutable origin versions to existing settings/target scope and guarded Admin APIs; refuse them under artifact-only v1 executor until explicit origin-capable grants are implemented |
 | section-04-provision-release | pending | — | — | — | — | — |
 | section-05-acceptance | pending | — | — | — | — | — |
 

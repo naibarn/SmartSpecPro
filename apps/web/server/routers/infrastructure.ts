@@ -52,6 +52,8 @@ import {
   saveCloudflareCredentialProfile,
 } from "../services/cloudflareCredentialCenter";
 import { auditLogger } from "../services/auditLogger";
+import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
+  getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration } from "../services/cloudflareOriginConfiguration";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
@@ -365,6 +367,9 @@ async function provisionMcpOAuthSigningKey(
 // ============================================================
 
 const deploymentTenantIdSchema = z.string().trim().min(1).max(36);
+const originIdentitySchema = z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100),
+  environment: z.literal("staging"), provider: z.literal("cloudflare") }).strict();
+const originReferenceSchema = originIdentitySchema.extend({ configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/) });
 
 export const infrastructureRouter = router({
   listDeploymentTargetProjects: exactAdminProcedure
@@ -429,6 +434,39 @@ export const infrastructureRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     return getCloudflareCredentialCenterState(db);
+  }),
+
+  saveCloudflareOriginConfiguration: exactAdminProcedure
+    .input(originIdentitySchema.extend({ settings: cloudflareOriginSettingsSchema, secrets: cloudflareOriginSecretsSchema }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { settings, secrets, ...identity } = input;
+      const result = await saveCloudflareOriginConfiguration(db, { identity, settings, secrets, actorUserId: ctx.user!.id })
+        .catch(() => { throw new TRPCError({ code: "BAD_REQUEST", message: "Origin configuration rejected; verify target scope and fields" }); });
+      auditLogger.log({ eventType: "cloudflare_origin_configuration_saved", userId: ctx.user!.id,
+        requestType: "cloudflare_origin_configuration_save", responsePayload: { ...identity,
+          configurationRef: result.configurationRef, configurationDigest: result.configurationDigest, deploymentAuthorized: false }, statusCode: 201 });
+      return result;
+    }),
+
+  getCloudflareOriginConfiguration: exactAdminProcedure.input(originReferenceSchema).query(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    const { configurationRef, ...identity } = input;
+    return getCloudflareOriginConfiguration(db, { identity, configurationRef })
+      .catch(() => { throw new TRPCError({ code: "NOT_FOUND", message: "Origin configuration unavailable in this scope" }); });
+  }),
+
+  revokeCloudflareOriginConfiguration: exactAdminProcedure.input(originReferenceSchema).mutation(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    const { configurationRef, ...identity } = input;
+    const result = await revokeCloudflareOriginConfiguration(db, { identity, configurationRef, actorUserId: ctx.user!.id })
+      .catch(() => { throw new TRPCError({ code: "NOT_FOUND", message: "Origin configuration unavailable in this scope" }); });
+    auditLogger.log({ eventType: "cloudflare_origin_configuration_revoked", userId: ctx.user!.id,
+      requestType: "cloudflare_origin_configuration_revoke", responsePayload: { ...identity, configurationRef }, statusCode: 200 });
+    return result;
   }),
 
   listProviderDeploymentTargets: exactAdminProcedure

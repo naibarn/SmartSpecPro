@@ -56,6 +56,7 @@ export type CloudflareStagingTarget = Readonly<{
   enabled: boolean;
   tenantId: string;
   projectId: string;
+  runtimePolicy?: string;
 }>;
 
 export type CloudflareStagingExecutorBinding = Parameters<
@@ -153,6 +154,7 @@ export function bindCloudflareStagingDeploymentAuthorities(input: {
         enabled: row.enabled,
         tenantId: row.tenantId,
         projectId: row.projectId,
+        ...(row.runtimePolicy ? { runtimePolicy: row.runtimePolicy } : {}),
       };
     },
     withCredential: async ({ target, operation }) => {
@@ -448,6 +450,10 @@ export function createCloudflareStagingDeploymentExecutor(
       throw new CloudflareStagingDeploymentError(
         "CLOUDFLARE_STAGING_TARGET_DENIED"
       );
+    }
+    // Artifact-only v1 grants cannot silently authorize origin/secret bindings.
+    if (target.runtimePolicy) {
+      throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
     }
     assertValidGrant({
       grant,

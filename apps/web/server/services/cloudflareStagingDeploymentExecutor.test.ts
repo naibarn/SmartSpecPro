@@ -151,6 +151,14 @@ function invocation(
 }
 
 describe("Cloudflare staging deployment executor", () => {
+  it("refuses an origin-configured target under an artifact-only v1 grant before resolving credentials", async () => {
+    const withCredential = vi.fn();
+    const state = runtime({ resolveTarget: async () => ({ ...target, runtimePolicy: `cf-origin:${"e".repeat(64)}` }), withCredential });
+    await expect(createCloudflareStagingDeploymentExecutor(state.dependencies)(invocation().payload)).rejects.toThrow("ORIGIN_GRANT_REQUIRED");
+    expect(withCredential).not.toHaveBeenCalled();
+    expect(state.cloudflare.deploy).not.toHaveBeenCalled();
+  });
+
   it("blocks an elapsed creation-time deadline before a provider mutation", async () => {
     const state = runtime();
     state.cloudflare.deploy.mockImplementation(async input => {
