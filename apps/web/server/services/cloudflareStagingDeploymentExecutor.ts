@@ -1,3 +1,4 @@
+import { withCloudflareStagingLeaseHeartbeat } from "./cloudflareStagingLeaseHeartbeat";
 import type { JobExecutor } from "./jobExecutor";
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
 import type { DrizzleDB } from "../db";
@@ -426,7 +427,7 @@ export function createCloudflareStagingDeploymentExecutor(
     | CloudflareStagingDeploymentRuntime
     | (() => CloudflareStagingDeploymentRuntime | undefined)
 ): JobExecutor {
-  return async ({ context, lease, reporter }) => {
+  return withCloudflareStagingLeaseHeartbeat(async ({ context, lease, reporter }) => {
     if (
       context.jobType !== CLOUDFLARE_STAGING_DEPLOYMENT_JOB ||
       (context.contractVersion !== CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT && context.contractVersion !== CLOUDFLARE_STAGING_ORIGIN_CONTRACT)
@@ -545,8 +546,7 @@ export function createCloudflareStagingDeploymentExecutor(
       const now = activeRuntime.now?.() ?? new Date();
       const deadlineMs = getEffectiveWorkerJobDeadlineMs({ ...context, runtimeType: "node_job_worker" });
       if (!Number.isFinite(Date.parse(context.createdAt)) ||
-          Date.parse(context.createdAt) + deadlineMs <= now.getTime() ||
-          (lease.expiresAt && Date.parse(lease.expiresAt) <= now.getTime())) {
+          Date.parse(context.createdAt) + deadlineMs <= now.getTime()) {
         throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_JOB_DEADLINE_EXPIRED");
       }
       await reporter.assertActive(lease);
@@ -770,5 +770,5 @@ export function createCloudflareStagingDeploymentExecutor(
       );
     await reporter.assertActive(lease);
     return { output: credential.value.receipt };
-  };
+  });
 }

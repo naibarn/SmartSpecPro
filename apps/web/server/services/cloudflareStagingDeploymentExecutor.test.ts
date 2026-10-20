@@ -119,7 +119,7 @@ function invocation(
     requesterUserId?: number;
   } = {}
 ) {
-  const reporter = { assertActive: vi.fn(async () => undefined) };
+  const reporter = { assertActive: vi.fn(async () => undefined), heartbeat: vi.fn(async () => undefined) };
   return {
     reporter,
     payload: {
@@ -233,6 +233,7 @@ describe("Cloudflare staging deployment executor", () => {
       getContext: vi.fn(async () => context),
       claim: vi.fn(async () => lease),
       start: vi.fn(async () => undefined),
+      heartbeat: vi.fn(async () => undefined),
       assertActive: vi.fn(async () => undefined),
       complete: vi.fn(async (_lease: unknown, result: unknown) => {
         completed.push(result);
