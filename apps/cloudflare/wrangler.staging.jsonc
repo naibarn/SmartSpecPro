@@ -3,6 +3,7 @@
   "name": "smartspec-cloudflare-staging",
   "main": "src/entrypoint.ts",
   "compatibility_date": "2026-10-17",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
   "vars": {

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { emergencyCaseEvents, emergencyCases, emergencyReports } from "../../drizzle/schema";
+import { emergencyIntakeEvent } from "../../../../packages/shared/src/emergencyIntakeEvent";
 
 /** Durable, credit-free admission into human triage; AI is not an authority here. */
 export async function markEmergencyReportReadyForTriage(input: { reportId: string; tenantId: string; canonicalJobId: string }): Promise<void> {
@@ -23,19 +24,14 @@ export async function markEmergencyReportReadyForTriage(input: { reportId: strin
       .where(and(eq(emergencyCaseEvents.tenantId, input.tenantId), eq(emergencyCaseEvents.caseId, caseRow.id)))
       .orderBy(desc(emergencyCaseEvents.revision)).limit(1);
     const revision = caseRow.revision + 1;
-    const payload = { revision, intakeStatus: "triage_available", reportStatus: "triage" };
-    const hash = createHash("sha256").update(JSON.stringify({
+    const event = emergencyIntakeEvent({
       tenantId: input.tenantId,
       caseId: caseRow.id,
       previousHash: previous?.eventHash ?? null,
       revision,
-      eventType: "triage_available",
-      reason: "Emergency report is durably queued for human triage",
-      actorType: "system",
-      actorRef: "spec260.emergency-report-intake",
-      payload,
       createdAt: now.toISOString(),
-    })).digest("hex");
+    });
+    const hash = createHash("sha256").update(JSON.stringify(event)).digest("hex");
 
     await tx.update(emergencyReports).set({ status: "triage", updatedAt: now })
       .where(and(eq(emergencyReports.id, report.id), eq(emergencyReports.tenantId, input.tenantId), eq(emergencyReports.status, "received")));
@@ -55,7 +51,7 @@ export async function markEmergencyReportReadyForTriage(input: { reportId: strin
       revision,
       previousHash: previous?.eventHash ?? null,
       eventHash: hash,
-      payloadJson: payload,
+      payloadJson: event.payload,
       createdAt: now,
     }).onConflictDoNothing();
   });

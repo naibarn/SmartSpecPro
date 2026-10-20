@@ -20,6 +20,8 @@ export const cloudflareOriginSettingsSchema = z.object({
   nativeResources: cloudflareNativeBindingDescriptorSchema.optional(),
   /** Narrow staging capability; Queue/cron/global cutover stay disabled. */
   workflowExecution: z.literal("emergency-intake").optional(),
+  /** Opt-in domain SQL only; canonical admission/lease/settlement stay on Node. */
+  workflowDatabase: z.literal("hyperdrive-intake").optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -38,7 +40,8 @@ export type CloudflareOriginVersionBindings = Readonly<{
 
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
-      (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase))) {
+      (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
+      (settings.workflowDatabase && !settings.workflowExecution)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
 }
@@ -52,6 +55,7 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
     { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "workflows" },
     { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
     { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+    ...(value.descriptor.workflowDatabase ? [{ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: value.descriptor.workflowDatabase }] : []),
     { name: "PLATFORM_EDGE_ORIGIN", type: "plain_text", text: value.descriptor.origin },
     { name: "PLATFORM_EDGE_PRIVATE_HOST", type: "plain_text", text: new URL(value.descriptor.origin).host },
     { name: "CLOUDFLARE_RUNTIME_TOKEN", type: "secret_text", text: value.secrets.workflowRuntimeToken! },
@@ -65,7 +69,8 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
-  })) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
+  }) || actual.some(binding => binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" &&
+    !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }
 
 export function cloudflareOriginDescriptorDigest(descriptor: CloudflareOriginDescriptor) {

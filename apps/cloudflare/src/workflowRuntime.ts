@@ -3,9 +3,10 @@ import type { CanonicalJobEnvelope, CanonicalJobHandler, CloudflareEnvironment, 
 import { assertBindingSubset } from "./bindings";
 import { parseCanonicalEnvelope } from "./queueConsumer";
 import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
-import { assertCanonicalControlPlaneConfiguration, createCanonicalControlPlaneProxyRepository, executeCanonicalPlatformJob } from "./canonicalControlPlaneProxy";
+import { assertCanonicalControlPlaneConfiguration, createCanonicalControlPlaneProxyRepository } from "./canonicalControlPlaneProxy";
+import { executeCanonicalJob } from "./canonicalExecution";
 
-const canonicalHandler = createCanonicalControlPlaneHandler({ repository: createCanonicalControlPlaneProxyRepository, execute: executeCanonicalPlatformJob });
+const canonicalHandler = createCanonicalControlPlaneHandler({ repository: createCanonicalControlPlaneProxyRepository, execute: executeCanonicalJob });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json", "cache-control": "no-store" },
 });

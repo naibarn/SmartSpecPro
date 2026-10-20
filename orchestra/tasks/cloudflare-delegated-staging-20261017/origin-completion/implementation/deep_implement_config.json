@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Live e15 native Workflow business execution/replay and five bindings are VERIFIED, Linux generation30/Python/staging deployed; preserve existing successful jobs and receipts. Workflow-only tenant window expires2026-10-20T16:17:52.026Z; new jobs then automatically fall back to Postgres. Renew only through existing exact owner/configuration/deployment authority, never by editing evidence. Remaining affected paths need actual Workers Paid/Workers-for-Platforms entitlement and bounded billing authority, concrete Container image/WorkerApp/broader runtime and recovery qualification, genuine interactive Google/password+OTP and independent authenticated tenant-B. Queue consumers/Cron/global cutover remain disabled. No DB relocation/schema migration, unused Stripe, paused macOS archives retained. Overall NOT_ACCEPTED; no invented identities/OTP/IAM/subscription or claim of all jobs/SQL migrated. Exact CI39437738834, actual APIs/WebSockets/desktop+mobile/full Dashboard/Admin both hosts and native provider/canonical/domain/replay proof PASS; broad CI baseline failures remain separate.",
+      "next_action": "Implement remaining code before paid entitlement: request-scoped supported PostgreSQL driver and opt-in direct Hyperdrive intake transaction with exact canonical dispatch/lease/fence checks, retaining existing Node job authority and hybrid fallback; native Container/WorkerApp adapters and lifecycle/image contracts; transport/Cron policy and recovery tests. Package/integration scoped checks with disposable PostgreSQL/local workerd. No production activation, live DB privilege expansion or second control plane. Scout complete; primary owns source edits. Serving source remains e15 and full acceptance open.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "e15f72f70b50bca1ebc902ac80826a91d4886a95",
       "merged_main_sha": "e15f72f70b50bca1ebc902ac80826a91d4886a95"
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 48,
-  "updated_at": "2026-10-20T14:33:55.007341+00:00",
+  "generation": 49,
+  "updated_at": "2026-10-20T14:52:20.199019+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Live e15 native Workflow business execution/replay and five bindings are VERIFIED, Linux generation30/Python/staging deployed; preserve existing successful jobs and receipts. Workflow-only tenant window expires2026-10-20T16:17:52.026Z; new jobs then automatically fall back to Postgres. Renew only through existing exact owner/configuration/deployment authority, never by editing evidence. Remaining affected paths need actual Workers Paid/Workers-for-Platforms entitlement and bounded billing authority, concrete Container image/WorkerApp/broader runtime and recovery qualification, genuine interactive Google/password+OTP and independent authenticated tenant-B. Queue consumers/Cron/global cutover remain disabled. No DB relocation/schema migration, unused Stripe, paused macOS archives retained. Overall NOT_ACCEPTED; no invented identities/OTP/IAM/subscription or claim of all jobs/SQL migrated. Exact CI39437738834, actual APIs/WebSockets/desktop+mobile/full Dashboard/Admin both hosts and native provider/canonical/domain/replay proof PASS; broad CI baseline failures remain separate.",
+    "next_action": "Implement remaining code before paid entitlement: request-scoped supported PostgreSQL driver and opt-in direct Hyperdrive intake transaction with exact canonical dispatch/lease/fence checks, retaining existing Node job authority and hybrid fallback; native Container/WorkerApp adapters and lifecycle/image contracts; transport/Cron policy and recovery tests. Package/integration scoped checks with disposable PostgreSQL/local workerd. No production activation, live DB privilege expansion or second control plane. Scout complete; primary owns source edits. Serving source remains e15 and full acceptance open.",
     "merged_main_sha": "e15f72f70b50bca1ebc902ac80826a91d4886a95",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

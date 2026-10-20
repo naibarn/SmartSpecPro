@@ -107,6 +107,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_JOB_TRANSPORT?: string;
   CLOUDFLARE_WORKFLOW_TENANT_ID?: string;
   CLOUDFLARE_WORKFLOW_EXPIRES_AT?: string;
+  /** Explicit immutable capability; absent keeps the existing Node executor. */
+  CLOUDFLARE_WORKFLOW_DATABASE?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;

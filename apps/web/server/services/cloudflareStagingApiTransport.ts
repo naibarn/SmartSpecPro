@@ -244,6 +244,7 @@ export function createCloudflareStagingApiTransport(input: {
     const metadata = {
       main_module: bundle.mainModule,
       compatibility_date: bundle.compatibilityDate,
+      compatibility_flags: ["nodejs_compat"],
       bindings: [
         { name: "ASSETS", type: "assets" },
         { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: origin?.descriptor.workflowExecution ? "enabled" : "disabled" },

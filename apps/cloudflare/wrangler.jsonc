@@ -3,6 +3,7 @@
   "name": "smartspec-cloudflare-runtime",
   "main": "src/entrypoint.ts",
   "compatibility_date": "2026-10-17",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "vars": {

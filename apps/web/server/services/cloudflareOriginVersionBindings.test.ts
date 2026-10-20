@@ -28,6 +28,18 @@ function fixture() {
 }
 
 describe("exact bounded Workflow deployment configuration", () => {
+  it("pins direct SQL opt-in in the immutable digest and rejects unapproved extra activation", () => {
+    const { value, target } = fixture();
+    const hybridBindings = cloudflareWorkflowVersionBindings(value);
+    expect(() => assertCloudflareWorkflowVersionBindings([...hybridBindings,
+      { name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: "hyperdrive-intake" }], value)).toThrow("MISMATCH");
+    value.descriptor.workflowDatabase = "hyperdrive-intake";
+    expect(() => validateCloudflareOriginVersionBindings(value, target)).toThrow();
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`; target.runtimePolicy = value.configurationRef;
+    const direct = validateCloudflareOriginVersionBindings(value, target);
+    expect(cloudflareWorkflowVersionBindings(direct)).toContainEqual({ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: "hyperdrive-intake" });
+  });
   it("binds activation, tenant, expiry, private authority and separate credentials in one immutable configuration", () => {
     const { value, target } = fixture();
     const parsed = validateCloudflareOriginVersionBindings(value, target);
