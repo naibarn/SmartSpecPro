@@ -92,6 +92,26 @@ suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL"
     expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
     expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);
   });
+  it.each(["policy", "legacy"])("rejects an elapsed %s hard deadline despite a live lease", async mode => {
+    const f = await fixture();
+    await sql`UPDATE worker_jobs SET "startedAt"=now()-interval '2 seconds',"timeoutSeconds"=1,
+      "timeoutPolicyJson"=${sql.json(mode === "policy" ? { hardTimeoutMs: 1 } : {})} WHERE id=${f.jobId}`;
+    await expect(run(f.delivery)).rejects.toThrow("LEASE_STALE");
+    expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
+    expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);
+  });
+  it("rolls back domain writes when the hard deadline elapses inside the transaction", async () => {
+    const f = await fixture();
+    await sql`UPDATE worker_jobs SET "startedAt"=now(),"timeoutPolicyJson"=${sql.json({ hardTimeoutMs: 700 })} WHERE id=${f.jobId}`;
+    await sql.unsafe(`CREATE FUNCTION delay_intake_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.9); RETURN NEW; END $$`);
+    await sql.unsafe(`CREATE TRIGGER delay_intake_update BEFORE UPDATE ON emergency_cases FOR EACH ROW EXECUTE FUNCTION delay_intake_update()`);
+    try {
+      await expect(run(f.delivery)).rejects.toThrow("LEASE_STALE");
+      expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
+      expect((await sql`SELECT revision FROM emergency_cases WHERE id=${f.caseId}`)[0].revision).toBe(0);
+      expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);
+    } finally { await sql.unsafe(`DROP TRIGGER delay_intake_update ON emergency_cases`); }
+  });
   it("rolls back all writes if a later database operation fails", async () => {
     const f = await fixture();
     await sql.unsafe(`CREATE FUNCTION reject_intake_case_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'disposable write failure'; END $$`);

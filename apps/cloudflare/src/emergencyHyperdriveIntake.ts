@@ -43,6 +43,10 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
         AND w."leaseOwnerToken"=$6 AND a."leaseTokenHash"=$6
         AND w.status='running' AND w."operatorReviewRequired"=false
         AND w."leaseExpiresAt">clock_timestamp() AND a."leaseExpiresAt">clock_timestamp()
+        AND EXTRACT(EPOCH FROM (clock_timestamp()-COALESCE(w."startedAt",w."createdAt")))*1000 <
+          CASE WHEN (w."timeoutPolicyJson"->>'hardTimeoutMs') ~ '^[0-9]+([.][0-9]+)?$'
+            AND (w."timeoutPolicyJson"->>'hardTimeoutMs')::numeric>0
+          THEN (w."timeoutPolicyJson"->>'hardTimeoutMs')::numeric ELSE w."timeoutSeconds"::numeric*1000 END
         AND w."jobType"='emergency.report.intake' AND w."executionClass"='short'
         AND w."runtimeType"='node_job_worker' AND w."contractVersion"='feature-186-v1'
         AND w."inputJson"=$9::jsonb AND d.adapter=$10
