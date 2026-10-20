@@ -113,8 +113,8 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
   }
   it("continues one expired definite rejection under a fresh canonical job without rewriting history or duplicating secrets", async () => {
     const { g, source, checkpoint } = await continuationFixture("continuation-owned");
-    await runtime.continueCheckpoint(g, source.jobId);
-    await runtime.continueCheckpoint(g, source.jobId);
+    await runtime.continueCheckpoint!(g, source.jobId);
+    await runtime.continueCheckpoint!(g, source.jobId);
     const state = await runtime.loadCheckpoint(g);
     expect(state).toMatchObject({ ...checkpoint, resumedFromJobId: source.jobId });
     expect((await runtime.loadCheckpoint(source)).continuedByJobId).toBe(g.jobId);
@@ -130,7 +130,7 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     else if (kind === "unexpired") await client`UPDATE worker_jobs SET "createdAt"=now() WHERE id=${source.jobId}`;
     else await runtime.saveCheckpoint(source, { ...checkpoint, ...(kind === "pending" ? { pending: "hyperdrive.create" }
       : kind === "already-created" ? { hyperdriveId: "e".repeat(32) } : { resumedFromJobId: randomUUID() }) });
-    await expect(runtime.continueCheckpoint(g, source.jobId)).rejects.toThrow("CONTINUATION_DENIED");
+    await expect(runtime.continueCheckpoint!(g, source.jobId)).rejects.toThrow("CONTINUATION_DENIED");
     expect((await runtime.loadCheckpoint(g)).databasePassword).toBeUndefined();
     expect((await runtime.loadCheckpoint(source)).continuedByJobId).toBeUndefined();
   });
