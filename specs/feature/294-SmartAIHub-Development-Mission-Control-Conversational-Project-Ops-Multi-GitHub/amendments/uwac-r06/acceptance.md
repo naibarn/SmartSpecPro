@@ -48,3 +48,14 @@ The original R0.6 UW-01–30 identities are retained. UW-31–36 close command, 
 Start with pure contract/negative fixtures for UW-01/05/13/17/19/26/31/32. Persisted authorized integration then covers admission, parent-child, event replay, revocation and economic effects. Rendered tests cover UW-20/22/27/33 with the same projection fixture and device sizes; SPEC-287 owns visual/accessibility evidence. Development/source/build tests cover UW-14–16/29–30/34–36 on disposable repos/artifacts using existing authority. Production observations require existing release authorization and are outside this phase.
 
 Each scenario must include a negative and recovery variant where applicable, use fake/private disposable external targets, and record exactly which assertion was exercised. An unexecuted table row remains NOT_RUN. An authorization boundary can block its affected live test while deterministic work continues. Do not mark all cases PASS because documents validate or tests for a helper pass.
+
+## R0.4 / R0.5 development-specific variants
+
+These extend existing UW cases rather than allocating another registry. All remain NOT_RUN.
+
+- UW-15: run four sessions across at least two harness profiles; merge A1 while its session continues A2. After squash/cherry-pick, A2 excludes A1's already-integrated delta and preserves original/effective/merged ancestry. Replay a lost merge response and prove one logical integration; let a disjoint checkpoint progress while another repairs conflict. Covers embedded SCI-01–04/08–09.
+- UW-30: advance remote during candidate preparation and distinguish merge-group, effective candidate, actual merged and last-verified main SHAs. Old-tree checks cannot authorize a changed tree. Post-merge failure keeps latest main unverified while scoped repair continues. Covers SCI-05–07/12–14.
+- UW-16/32: an authorized AI conflict patch is still a proposal when independent exact-tree verification fails. Verify approved isolation denies unintended network, secrets and another tenant's source; no new privileged resolver service. Covers SCI-10–11/20.
+- UW-35: crash during integration, replay provider events and rewrite a branch; preserve lineage or show UNKNOWN_RECONCILE. Automatic source revert remains disabled without exact authority. Covers SCI-15/21.
+- UW-19/20/34/36: use the same authorized projection for twenty-session source observations and Chat/lens answers; distinguish preview from canonical release, exact local/Actions build, publication and observed runtime. Covers SCI-16–19 and R0.4 UXR source/release constraints.
+- UW-27: if optional batching is later authorized, shadow-test a bounded cohort and measure per-checkpoint p50/p95 time-to-merge and errors against the existing default path. No protected-main mutation or batching activation is allowed by this planning document. Covers SCI-22.

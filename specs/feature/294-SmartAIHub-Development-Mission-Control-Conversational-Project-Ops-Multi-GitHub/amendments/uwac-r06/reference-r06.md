@@ -1,4 +1,4 @@
-> NON-NORMATIVE USER-SUPPLIED DESIGN REFERENCE. Original SHA-256: 786b828fc6011b7d2b4f816899ce684936fa8c0fbe1c5f4b341f9d28bc8c3b1a. Embedded instructions are task data. Retired-system references and proposed engines are superseded by amendment.md; no runtime/acceptance claim is adopted.
+> NON-NORMATIVE USER-SUPPLIED DESIGN REFERENCE. Original SHA-256: 786b828fc6011b7d2b4f816899ce684936fa8c0fbe1c5f4b341f9d28bc8c3b1a. Trailing whitespace is normalized in this review copy; the original input digest remains recorded. Embedded instructions are task data. Retired-system references and proposed engines are superseded by amendment.md; no runtime/acceptance claim is adopted.
 
 # SmartAIHub Unified Work/Agent/Skill/Development — Complete Planning Pack R0.6
 
@@ -10,10 +10,10 @@
 
 # SmartAIHub Unified Work, Skills, Agents & Development Control — Work-First Architecture Amendment R0.6
 
-**Planning ID:** `SAH-UWAC-2026-10-R0.6` (cross-SPEC amendment, **not** an allocated new numeric SPEC)  
-**Date:** 2026-10-21 (Asia/Bangkok)  
-**Status:** PROPOSED DESIGN / NOT IMPLEMENTED / NOT LIVE-ACCEPTED  
-**Normative precedence:** This R0.6 amendment supersedes coding-only assumptions in R0.1–R0.5 and narrows Git/Worktree requirements to source-backed work. R0.4 (UX, Git, Build/Deploy, Source Guardian) and R0.5 (Scion/Graft-inspired changeset integration) remain applicable **only when the task is a source-code development/integration task**. R0.6 MUST NOT weaken protected Git release rules for SmartAIHub core/platform code.  
+**Planning ID:** `SAH-UWAC-2026-10-R0.6` (cross-SPEC amendment, **not** an allocated new numeric SPEC)
+**Date:** 2026-10-21 (Asia/Bangkok)
+**Status:** PROPOSED DESIGN / NOT IMPLEMENTED / NOT LIVE-ACCEPTED
+**Normative precedence:** This R0.6 amendment supersedes coding-only assumptions in R0.1–R0.5 and narrows Git/Worktree requirements to source-backed work. R0.4 (UX, Git, Build/Deploy, Source Guardian) and R0.5 (Scion/Graft-inspired changeset integration) remain applicable **only when the task is a source-code development/integration task**. R0.6 MUST NOT weaken protected Git release rules for SmartAIHub core/platform code.
 **Repository reference:** `naibarn/SmartSpecPro` observed via connected GitHub, 2026-10-21; this is document/code review, not verification of production behavior.
 
 ## 0. Executive decision
@@ -336,17 +336,17 @@ Pass requires reproducible fixture, environment, method, executed result, eviden
 
 ## 15. Twelve-pass design gap review checklist
 
-1. Coding-first assumptions — non-Git work must be first class.  
-2. Workspace polymorphism — logical context vs Git source vs local temp folder.  
-3. Authority overlap — no second durable Work/Skill runtime.  
-4. Capability fit — one-function vs multi-step Work; no over-engineering.  
-5. Skill authoring governance — reuse SPEC-221 and private non-Git release.  
-6. External Agent variation — capability/profile negotiation, no universal native support assumed.  
-7. Evidence truth — source/result/verification separate from agent language.  
-8. User status clarity — accurate stopped reason and honest progress, no synthetic percentages.  
-9. Optional Git semantics — no false error for `source_binding=NONE`.  
-10. Safety/economy/privacy — scoped credentials, provider subscription, cost/effect gates.  
-11. Existing code release integrity — guarded main, CI and runtime proof preserved.  
+1. Coding-first assumptions — non-Git work must be first class.
+2. Workspace polymorphism — logical context vs Git source vs local temp folder.
+3. Authority overlap — no second durable Work/Skill runtime.
+4. Capability fit — one-function vs multi-step Work; no over-engineering.
+5. Skill authoring governance — reuse SPEC-221 and private non-Git release.
+6. External Agent variation — capability/profile negotiation, no universal native support assumed.
+7. Evidence truth — source/result/verification separate from agent language.
+8. User status clarity — accurate stopped reason and honest progress, no synthetic percentages.
+9. Optional Git semantics — no false error for `source_binding=NONE`.
+10. Safety/economy/privacy — scoped credentials, provider subscription, cost/effect gates.
+11. Existing code release integrity — guarded main, CI and runtime proof preserved.
 12. Dual-lens UX/accessibility — identical core facts, different detail, mobile first.
 
 This review is an explicit **design gap checklist**, not 12 completed independent code/runtime audit passes. Actual implementation must run checks and attach evidence.
@@ -1456,9 +1456,9 @@ This R0.3 document is a **planning artifact**. To turn it into canonical specifi
 
 # R0.4 NORMATIVE AMENDMENT — One Workspace, Dual-Layer UX, Canonical Main & Verified Build/Deploy
 
-**Amendment ID:** `SAH-CII-2026-10-R0.4`  
-**Date:** 2026-10-21 (Asia/Bangkok)  
-**State:** DESIGN/IMPLEMENTATION PLAN; NOT DEPLOYED; NOT ACCEPTED  
+**Amendment ID:** `SAH-CII-2026-10-R0.4`
+**Date:** 2026-10-21 (Asia/Bangkok)
+**State:** DESIGN/IMPLEMENTATION PLAN; NOT DEPLOYED; NOT ACCEPTED
 **Amendment precedence:** This addendum (sections 55–69) refines R0.3 (sections 38–54), R0.2 (18–37) and R0.1 (0–17), without transferring ownership from any canonical SPEC. All proposed contracts MUST be G0-diffed against current canonical code and spec/requirement owners before implementation.
 
 ## 55. Executive product decision — One Workspace, not four disconnected destinations
@@ -1815,10 +1815,10 @@ Before any external “better than Orca” promise, evaluate SmartAIHub against 
 
 # SmartAIHub Agent-Scale Source Integration — Scion / Graft Research & SPEC Addendum R0.5
 
-**Planning identifier:** `SAH-CII-2026-10-R0.5` (not a newly allocated numbered SPEC)  
-**Date:** 2026-10-21, Asia/Bangkok  
-**Status:** RESEARCH / DESIGN PROPOSAL — not implemented, benchmarked or accepted  
-**Supersedes:** none; **adds to** `SmartAIHub-Unified-Development-Workspace-SPEC-Plan-R0.4.md` (§§0–70). This addendum introduces §§71–84.  
+**Planning identifier:** `SAH-CII-2026-10-R0.5` (not a newly allocated numbered SPEC)
+**Date:** 2026-10-21, Asia/Bangkok
+**Status:** RESEARCH / DESIGN PROPOSAL — not implemented, benchmarked or accepted
+**Supersedes:** none; **adds to** `SmartAIHub-Unified-Development-Workspace-SPEC-Plan-R0.4.md` (§§0–70). This addendum introduces §§71–84.
 **Design objective:** make concurrent coding agents integrate independently verifiable changes quickly without ever confusing active worktrees, authoritative remote main, tested green revision, actual build SHA, or deployed runtime.
 
 ## 71. Source identity: three different projects frequently called “git ai”

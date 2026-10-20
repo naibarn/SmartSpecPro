@@ -25,6 +25,10 @@ Discovery fallback: no specialized codebase index is exposed, so use targeted `r
 | Remote workflows | `.github/workflows/runner-release.yml:95`; `runner-desktop-release.yml:35`; `deploy-production.yml:26` | Runner workflows accept ref; generic old production workflow is disabled. A shared exact-SHA/provenance remote release path is not established by these files |
 | Flags and safe routing | `apps/web/shared/featureFlags.ts:561`, `:562`, `:630`; `services/workOrchestratorFeatureFlags.ts:13` | taskPlannerEnabled=true, retired escalation=false, hermesTaskModes=false are defaults only; actual tenant activation unknown |
 
+## Embedded R0.4 / R0.5 review
+
+The supplied file has 2,147 original lines (the review copy adds its provenance notice). Relevant embedded sections are R0.4 §§55–70 and R0.5 §§71–84. C5 adopts contextual shared lenses/attention/deep links; C8 adopts selected immutable delta, prior-integrated lineage, duplicate-response reconciliation, candidate-tree checks and safe main-advance observation; C9 adopts preview-versus-release and common exact-source provenance. Optional batching stays later opt-in through the existing authority. External research products, standalone Git replacement, default fast-landing, performance superiority and automatic production revert are not introduced. This is review of supplied design data, not independent verification of external projects.
+
 ## Directly relevant retained gaps
 
 `skillExecutor.ts:551–566` retains a direct legacy Python subprocess path after the retired-sandbox guard. `workOrchestratorSecurityPolicy.ts:62–159` and `shared/workOrchestrator.ts:5–27` retain retired type cases while catalog discovery filters them. This phase adds exclusion/queue-conformance acceptance and implementation work; it neither invokes nor extends those paths. No production exploit or live side effect was tested.

@@ -38,3 +38,7 @@ Do not rewrite SPEC224 phase controller or close its live blockers. Disabled his
 ## Completion evidence
 
 Source diff, focused test receipt, protected/non-force canonical integration receipt and official requirement-level evidence for the implemented scope. Deployment/production acceptance require separate authorized target evidence.
+
+## Selected-delta integration variants
+
+Use existing checkpoint/attempt records for source/base/previous-integrated/delta/write-set/fingerprint identities and original→effective→merged lineage. Before publication, prove repeated checkpoints and lost network responses reconcile once; squash/cherry-pick never re-applies an integrated delta. MAIN_ADVANCED updates observation and safe-point sync only. Independent exact-candidate-tree verification governs any authorized AI repair in approved isolation. Optional batching stays disabled until an explicit existing policy and measured shadow acceptance authorize it. Follow R0.4/R0.5 variants in acceptance.md, without new Git/runtime services.
