@@ -2484,7 +2484,7 @@ export default function AdminSettings() {
       icon: Send,
     },
     {
-      key: "2FA",
+      key: "2fa",
       label: copy.nav.twoFA.label,
       sublabel: copy.nav.twoFA.sublabel,
       icon: Shield,
