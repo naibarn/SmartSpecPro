@@ -168,3 +168,25 @@ def test_google_login_redirect_uri_must_use_the_login_callback_path():
     assert is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google")
     assert not is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google-drive")
     assert not is_valid_google_login_redirect_uri("https://smartaihub.app/auth/callback/google?mode=drive")
+
+
+@pytest.mark.unit
+def test_staging_profile_requires_explicit_exact_origin_and_own_credentials():
+    from app.core.oauth_config import select_login_oauth_config
+
+    origin = "https://staging.account.workers.dev"
+    config = {
+        "googleClientId": "production-id", "googleClientSecret": "production-secret",
+        "googleRedirectUri": "https://smartaihub.app/auth/callback/google",
+        "googleStagingClientId": "staging-id", "googleStagingClientSecret": "staging-secret",
+        "googleStagingRedirectUri": origin + "/auth/callback/google",
+    }
+    assert select_login_oauth_config(config, "google", None)["googleClientId"] == "production-id"
+    assert select_login_oauth_config(config, "google", origin)["googleClientId"] == "staging-id"
+    for bad_origin in ["https://foreign.example.com", origin + "/", origin + "@attacker.example.com", origin + "?x=1"]:
+        with pytest.raises(ValueError, match="not configured"):
+            select_login_oauth_config(config, "google", bad_origin)
+    with pytest.raises(ValueError, match="not configured"):
+        select_login_oauth_config({**config, "googleStagingClientSecret": ""}, "google", origin)
+    with pytest.raises(ValueError, match="not configured"):
+        select_login_oauth_config({**config, "googleStagingRedirectUri": origin + "/auth/callback/google-drive"}, "google", origin)

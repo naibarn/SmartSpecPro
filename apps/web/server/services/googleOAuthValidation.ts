@@ -33,6 +33,7 @@ export function isValidGoogleRedirectUri(
     const uri = new URL(value.trim());
     return (
       (uri.protocol === "https:" || uri.protocol === "http:") &&
+      !uri.username && !uri.password &&
       uri.pathname === callbackPath &&
       !uri.search &&
       !uri.hash

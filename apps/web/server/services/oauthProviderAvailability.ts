@@ -40,6 +40,7 @@ function isValidRedirectUri(value: SettingValue, expectedPath?: string) {
     const uri = new URL(value!.trim());
     return (
       (uri.protocol === "https:" || uri.protocol === "http:") &&
+      !uri.username && !uri.password &&
       (!expectedPath || uri.pathname === expectedPath) &&
       !uri.search &&
       !uri.hash
@@ -84,23 +85,27 @@ export function buildOAuthProviderAvailability(
   /** Only a server-verified public origin may constrain a staged login profile. */
   expectedPublicOrigin?: string,
 ): OAuthProviderAvailability {
+  // An attested staging request must never borrow the production login profile.
+  const googleValues = expectedPublicOrigin === undefined ? values : {
+    googleClientId: values.googleStagingClientId,
+    googleClientSecret: values.googleStagingClientSecret,
+    googleRedirectUri: values.googleStagingRedirectUri,
+  };
   const google = buildProviderStatus(
     {
-      clientId: values.googleClientId ?? process.env.GOOGLE_CLIENT_ID,
+      clientId: googleValues.googleClientId ?? (expectedPublicOrigin === undefined ? process.env.GOOGLE_CLIENT_ID : undefined),
       clientSecret:
-        values.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET,
+        googleValues.googleClientSecret ?? (expectedPublicOrigin === undefined ? process.env.GOOGLE_CLIENT_SECRET : undefined),
       redirectUri:
-        values.googleRedirectUri ??
-        process.env.GOOGLE_REDIRECT_URI ??
-        DEFAULT_REDIRECTS.google,
+        googleValues.googleRedirectUri ?? (expectedPublicOrigin === undefined ? process.env.GOOGLE_REDIRECT_URI ?? DEFAULT_REDIRECTS.google : undefined),
     },
     "/auth/callback/google",
     expectedPublicOrigin,
   );
 
   const github = buildProviderStatus({
-    clientId: values.githubClientId ?? process.env.GITHUB_CLIENT_ID,
-    clientSecret: values.githubClientSecret ?? process.env.GITHUB_CLIENT_SECRET,
+    clientId: expectedPublicOrigin === undefined ? values.githubClientId ?? process.env.GITHUB_CLIENT_ID : undefined,
+    clientSecret: expectedPublicOrigin === undefined ? values.githubClientSecret ?? process.env.GITHUB_CLIENT_SECRET : undefined,
     redirectUri:
       values.githubRedirectUri ??
       process.env.GITHUB_REDIRECT_URI ??

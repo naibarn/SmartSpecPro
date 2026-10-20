@@ -1242,6 +1242,9 @@ export default function AdminSettings() {
       googleClientId?: string;
       googleClientSecret?: string;
       googleRedirectUri?: string;
+      googleStagingClientId?: string;
+      googleStagingClientSecret?: string;
+      googleStagingRedirectUri?: string;
       googleDriveRedirectUri?: string;
       githubClientId?: string;
       githubClientSecret?: string;
@@ -1365,6 +1368,7 @@ export default function AdminSettings() {
         setOauthForm(prev => ({
           ...prev,
           googleClientSecret: undefined,
+          googleStagingClientSecret: undefined,
           githubClientSecret: undefined,
           microsoftClientSecret: undefined,
           metaAppSecret: undefined,
@@ -2335,6 +2339,8 @@ export default function AdminSettings() {
   useEffect(() => {
     if (oauthSettings) {
       setOauthForm({
+        googleStagingClientId: (oauthSettings.googleStagingClientId as string) || "",
+        googleStagingRedirectUri: (oauthSettings.googleStagingRedirectUri as string) || "",
         googleClientId: (oauthSettings.googleClientId as string) || "",
         googleRedirectUri: (oauthSettings.googleRedirectUri as string) || "",
         googleDriveRedirectUri:
@@ -2414,6 +2420,9 @@ export default function AdminSettings() {
 
   const handleSaveOAuth = () => {
     updateOAuthMutation.mutate({
+      googleStagingClientId: oauthForm.googleStagingClientId,
+      googleStagingClientSecret: oauthForm.googleStagingClientSecret,
+      googleStagingRedirectUri: oauthForm.googleStagingRedirectUri,
       googleClientId: oauthForm.googleClientId,
       googleClientSecret: oauthForm.googleClientSecret,
       googleRedirectUri: oauthForm.googleRedirectUri,
@@ -4533,6 +4542,32 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{isThai ? "Google สำหรับ Cloudflare staging" : "Google for Cloudflare staging"}</CardTitle>
+                        <CardDescription>
+                          {isThai
+                            ? "ใช้โปรไฟล์แยกจาก production เพิ่ม Staging Redirect URI ใน Google Cloud Console ของ Client ID นี้ก่อนใช้งาน โดยเก็บ callback เดิมไว้"
+                            : "Separate from production. Register the staging redirect URI in this client's Google Cloud Console before use, keeping the existing callback."}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Label htmlFor="googleStagingClientId">Staging Client ID</Label>
+                        <Input id="googleStagingClientId" value={oauthForm.googleStagingClientId || ""}
+                          onChange={e => setOauthForm(prev => ({ ...prev, googleStagingClientId: e.target.value }))} />
+                        <Label htmlFor="googleStagingClientSecret">Staging Client Secret</Label>
+                        <Input id="googleStagingClientSecret" type="password" autoComplete="new-password"
+                          placeholder={oauthSettings?.googleStagingClientSecretConfigured ? (isThai ? "บันทึกแล้ว — เว้นว่างเพื่อคงค่าเดิม" : "Saved — leave blank to keep") : "Client secret"}
+                          value={oauthForm.googleStagingClientSecret || ""}
+                          onChange={e => setOauthForm(prev => ({ ...prev, googleStagingClientSecret: e.target.value }))} />
+                        <Label htmlFor="googleStagingRedirectUri">Staging Redirect URI</Label>
+                        <Input id="googleStagingRedirectUri" type="url"
+                          placeholder="https://your-staging-host/auth/callback/google"
+                          value={oauthForm.googleStagingRedirectUri || ""}
+                          onChange={e => setOauthForm(prev => ({ ...prev, googleStagingRedirectUri: e.target.value }))} />
+                      </CardContent>
+                    </Card>
 
                     <div className="grid gap-3 md:grid-cols-3">
                       {[

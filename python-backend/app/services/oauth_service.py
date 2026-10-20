@@ -49,7 +49,8 @@ class OAuthService:
         redirect_uri: str,
         client_id: str,
         client_secret: str,
-        state: str
+        state: str,
+        login_context: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Handle OAuth callback and create/login user
@@ -67,11 +68,7 @@ class OAuthService:
         self._last_oauth_user_created = False
 
         # R11.2: Validate the state parameter to prevent CSRF
-        try:
-            # State expires in 10 minutes
-            state_serializer.loads(state, max_age=600)
-        except Exception:
-            raise ValueError("Invalid or expired OAuth state token")
+        self.validate_oauth_state(state, login_context=login_context)
 
         # Exchange code for access token
         token_data = await self._exchange_code_for_token(
@@ -319,9 +316,22 @@ class OAuthService:
         
         return user
     
-    def generate_oauth_state(self) -> str:
+    def generate_oauth_state(self, login_context: Optional[Dict[str, str]] = None) -> str:
         """Generates a signed, timed state token for OAuth flows."""
-        return state_serializer.dumps(str(uuid.uuid4()))
+        nonce = str(uuid.uuid4())
+        return state_serializer.dumps({"nonce": nonce, "login_context": login_context} if login_context else nonce)
+
+    def validate_oauth_state(self, state: str, login_context: Optional[Dict[str, str]] = None) -> None:
+        """Reject cross-client/provider/callback state before any token exchange."""
+        try:
+            value = state_serializer.loads(state, max_age=600)
+            if login_context is None:
+                if not isinstance(value, str) or not value:
+                    raise ValueError("Unexpected profiled state")
+            elif not isinstance(value, dict) or not value.get("nonce") or value.get("login_context") != login_context:
+                raise ValueError("OAuth profile changed")
+        except Exception:
+            raise ValueError("Invalid or expired OAuth state token") from None
 
     async def link_oauth_account(
         self,
@@ -336,10 +346,7 @@ class OAuthService:
         """Link OAuth account to existing user"""
         
         # R11.2: Validate the state parameter
-        try:
-            state_serializer.loads(state, max_age=600)
-        except Exception:
-            raise ValueError("Invalid or expired OAuth state token")
+        self.validate_oauth_state(state)
 
         # Exchange code for token
         token_data = await self._exchange_code_for_token(

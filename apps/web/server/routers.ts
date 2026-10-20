@@ -174,6 +174,7 @@ import { intelligenceRegistryRouter } from "./routers/intelligenceRegistry";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
+  isPendingTwoFactorUserAllowed,
   setPendingTwoFactorCookie,
 } from "./services/pendingTwoFactor";
 import { buildOAuthProviderAvailability } from "./services/oauthProviderAvailability";
@@ -2506,10 +2507,7 @@ const authRouter = router({
 
       const user = await getUserByEmail(input.email);
       if (
-        !user ||
-        user.openId !== pending.openId ||
-        !user.twoFactorEnabled ||
-        !user.twoFactorSecret
+        !user || !user.twoFactorSecret || !isPendingTwoFactorUserAllowed(pending, user)
       ) {
         throw new Error("Invalid request");
       }
@@ -2540,6 +2538,10 @@ const authRouter = router({
 
       if (!valid) throw new Error("Invalid verification code");
 
+      const { enforceFreeCreditPolicyForUser } = await import("./services/freeCreditInactivityService");
+      const lifecycle = await enforceFreeCreditPolicyForUser({ userId: user.id, claimNotice: true });
+      if (lifecycle.disabled) throw new Error("Account disabled due to free-credit inactivity");
+
       // Create session
       const token = await sdk.createSessionToken(user.openId, {
         name: user.name || user.email || "",
@@ -2558,7 +2560,7 @@ const authRouter = router({
         user: { id: user.id, email: user.email, name: user.name },
         usedRecoveryCode,
         recoveryCodesRemaining: usedRecoveryCode
-          ? (user.recoveryCodes as string[]).length - 1
+          ? (user.recoveryCodes as string[]).length
           : undefined,
       };
     }),

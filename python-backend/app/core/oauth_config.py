@@ -17,7 +17,35 @@ from app.core.smartspecweb_crypto import decrypt_smartspecweb
 logger = structlog.get_logger(__name__)
 
 # Keys that are encrypted in the DB
-_SENSITIVE_KEYS = {"googleClientSecret", "githubClientSecret", "microsoftClientSecret"}
+_SENSITIVE_KEYS = {"googleClientSecret", "googleStagingClientSecret", "githubClientSecret", "microsoftClientSecret"}
+
+
+def select_login_oauth_config(config: Dict[str, str], provider: str, login_origin: Optional[str]) -> Dict[str, str]:
+    """Select an explicit staging profile; never infer a callback from headers.
+
+    The selector is public, like the provider name. Its only capability is to
+    choose the exact preconfigured callback/client; state binds that choice.
+    Production, Drive and other integration settings remain unchanged.
+    """
+    if login_origin is None:
+        return config
+    if provider != "google":
+        raise ValueError("OAuth login is not configured for this site")
+    redirect = config.get("googleStagingRedirectUri", "")
+    if not is_valid_google_login_redirect_uri(redirect):
+        raise ValueError("OAuth login is not configured for this site")
+    parsed = urlsplit(redirect)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    if parsed.scheme != "https" or origin != login_origin or not all(
+        config.get(key, "").strip() for key in ("googleStagingClientId", "googleStagingClientSecret")
+    ):
+        raise ValueError("OAuth login is not configured for this site")
+    return {
+        **config,
+        "googleClientId": config["googleStagingClientId"],
+        "googleClientSecret": config["googleStagingClientSecret"],
+        "googleRedirectUri": redirect,
+    }
 
 
 def is_valid_google_login_redirect_uri(value: str) -> bool:

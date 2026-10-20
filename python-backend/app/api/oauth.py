@@ -16,7 +16,7 @@ import os
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.core.oauth_config import get_oauth_config, is_valid_google_login_redirect_uri
+from app.core.oauth_config import get_oauth_config, is_valid_google_login_redirect_uri, select_login_oauth_config
 from app.services.oauth_service import OAuthService
 from app.services.google_token_service import GoogleTokenService, InvalidGrantError as GoogleInvalidGrantError
 from app.services.microsoft_token_service import MicrosoftTokenService, InvalidGrantError as MicrosoftInvalidGrantError
@@ -36,6 +36,19 @@ def _require_google_login_redirect_uri(value: str) -> str:
     return value
 
 
+async def _get_login_config(db: AsyncSession, provider: str, login_origin: Optional[str]):
+    try:
+        return select_login_oauth_config(await get_oauth_config(db), provider, login_origin)
+    except ValueError:
+        raise HTTPException(status_code=503, detail="OAuth login is not configured for this site") from None
+
+
+def _login_context(provider: str, client_id: str, redirect_uri: str, login_origin: Optional[str]):
+    if login_origin is None:
+        return None
+    return {"provider": provider, "client_id": client_id, "redirect_uri": redirect_uri}
+
+
 class OAuthCallbackRequest(BaseModel):
     """OAuth callback request"""
     code: str
@@ -50,11 +63,11 @@ class LinkOAuthRequest(BaseModel):
 
 
 @router.get("/google/authorize")
-async def google_authorize(db: AsyncSession = Depends(get_db)):
+async def google_authorize(db: AsyncSession = Depends(get_db), login_origin: Optional[str] = None):
     """
     Get Google OAuth authorization URL with CSRF state token
     """
-    cfg = await get_oauth_config(db)
+    cfg = await _get_login_config(db, "google", login_origin)
     client_id = cfg.get("googleClientId", "")
     redirect_uri = _require_google_login_redirect_uri(cfg.get("googleRedirectUri", ""))
 
@@ -65,7 +78,7 @@ async def google_authorize(db: AsyncSession = Depends(get_db)):
         )
 
     oauth_service = OAuthService(db)
-    state = oauth_service.generate_oauth_state()
+    state = oauth_service.generate_oauth_state(login_context=_login_context("google", client_id, redirect_uri, login_origin))
 
     auth_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth"
@@ -82,11 +95,11 @@ async def google_authorize(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/github/authorize")
-async def github_authorize(db: AsyncSession = Depends(get_db)):
+async def github_authorize(db: AsyncSession = Depends(get_db), login_origin: Optional[str] = None):
     """
     Get GitHub OAuth authorization URL with CSRF state token
     """
-    cfg = await get_oauth_config(db)
+    cfg = await _get_login_config(db, "github", login_origin)
     client_id = cfg.get("githubClientId", "")
     redirect_uri = cfg.get("githubRedirectUri", "")
 
@@ -113,7 +126,8 @@ async def github_authorize(db: AsyncSession = Depends(get_db)):
 @router.post("/google/callback")
 async def google_callback(
     request: OAuthCallbackRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    login_origin: Optional[str] = None,
 ):
     """
     Handle Google OAuth callback
@@ -123,7 +137,7 @@ async def google_callback(
     - Creates or logs in user
     - Returns JWT token
     """
-    cfg = await get_oauth_config(db)
+    cfg = await _get_login_config(db, "google", login_origin)
     client_id = cfg.get("googleClientId", "")
     client_secret = cfg.get("googleClientSecret", "")
     redirect_uri = _require_google_login_redirect_uri(cfg.get("googleRedirectUri", ""))
@@ -148,7 +162,8 @@ async def google_callback(
             redirect_uri=redirect_uri,
             client_id=client_id,
             client_secret=client_secret,
-            state=request.state
+            state=request.state,
+            login_context=_login_context("google", client_id, redirect_uri, login_origin),
         )
 
         return result
@@ -169,7 +184,8 @@ async def google_callback(
 @router.post("/github/callback")
 async def github_callback(
     request: OAuthCallbackRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    login_origin: Optional[str] = None,
 ):
     """
     Handle GitHub OAuth callback
@@ -179,7 +195,7 @@ async def github_callback(
     - Creates or logs in user
     - Returns JWT token
     """
-    cfg = await get_oauth_config(db)
+    cfg = await _get_login_config(db, "github", login_origin)
     client_id = cfg.get("githubClientId", "")
     client_secret = cfg.get("githubClientSecret", "")
     redirect_uri = cfg.get("githubRedirectUri", "")

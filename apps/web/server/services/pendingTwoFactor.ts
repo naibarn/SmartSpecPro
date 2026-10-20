@@ -6,6 +6,7 @@ import { ENV } from "../_core/env";
 
 const PENDING_TWO_FACTOR_COOKIE_NAME = "pending_2fa_challenge";
 const PENDING_TWO_FACTOR_TTL_MS = 10 * 60 * 1000;
+const PENDING_TWO_FACTOR_AUDIENCE = "two-factor-challenge";
 
 export type PendingTwoFactorPayload = {
   email: string;
@@ -13,6 +14,18 @@ export type PendingTwoFactorPayload = {
   name: string;
   provider: "password" | "google" | "github";
 };
+
+type PendingTwoFactorChallenge = PendingTwoFactorPayload & { issuedAt: number };
+
+export function isPendingTwoFactorUserAllowed(
+  pending: PendingTwoFactorChallenge,
+  user: { openId: string | null; isDisabled: boolean; twoFactorEnabled: boolean; twoFactorSecret: string | null; sessionRevokedAt: Date | null } | null | undefined,
+): boolean {
+  return !!user && user.openId === pending.openId && !user.isDisabled &&
+    user.twoFactorEnabled && !!user.twoFactorSecret &&
+    Number.isFinite(pending.issuedAt) &&
+    (!user.sessionRevokedAt || pending.issuedAt * 1000 > user.sessionRevokedAt.getTime());
+}
 
 function getPendingTwoFactorSecret() {
   return new TextEncoder().encode(ENV.cookieSecret);
@@ -27,6 +40,7 @@ async function signPendingTwoFactorToken(payload: PendingTwoFactorPayload) {
 
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setAudience(PENDING_TWO_FACTOR_AUDIENCE)
     .setIssuedAt(Math.floor(issuedAt / 1000))
     .setExpirationTime(expirationSeconds)
     .sign(secretKey);
@@ -47,7 +61,7 @@ export async function setPendingTwoFactorCookie(
 
 export async function readPendingTwoFactorCookie(
   req: Request,
-): Promise<PendingTwoFactorPayload | null> {
+): Promise<PendingTwoFactorChallenge | null> {
   const token = req.cookies?.[PENDING_TWO_FACTOR_COOKIE_NAME];
   if (!token) {
     return null;
@@ -56,6 +70,7 @@ export async function readPendingTwoFactorCookie(
   try {
     const { payload } = await jwtVerify(token, getPendingTwoFactorSecret(), {
       algorithms: ["HS256"],
+      audience: PENDING_TWO_FACTOR_AUDIENCE,
     });
 
     const email = typeof payload.email === "string" ? payload.email : null;
@@ -68,7 +83,7 @@ export async function readPendingTwoFactorCookie(
         ? payload.provider
         : null;
 
-    if (!email || !openId || !provider) {
+    if (!email || !openId || !provider || typeof payload.iat !== "number" || !Number.isFinite(payload.iat)) {
       return null;
     }
 
@@ -77,6 +92,7 @@ export async function readPendingTwoFactorCookie(
       openId,
       name,
       provider,
+      issuedAt: payload.iat,
     };
   } catch {
     return null;

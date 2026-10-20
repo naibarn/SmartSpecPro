@@ -127,4 +127,19 @@ describe("OAuth proxy routes", () => {
     expect(unsigned.status).toBe(200);
     expect(unsigned.body).toEqual(payload);
   });
+
+  it.each(["authorize", "callback"])("pins %s to the verified origin and strips unsigned profile selection", async action => {
+    getAppRuntimeConfigMock.mockResolvedValue({ pythonBackendUrl: "http://python-backend.test" });
+    const payload = action === "authorize" ? { authorization_url: `https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=${encodeURIComponent(stagedOrigin + "/auth/callback/google")}` } : { access_token: "fixture" };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json(payload));
+    for (const protectedRequest of [true, false]) {
+      const app = makeApp(true);
+      let req = action === "authorize" ? request(app).get(`/api/oauth/google/${action}?login_origin=https://attacker.example.com`) : request(app).post(`/api/oauth/google/${action}?login_origin=https://attacker.example.com`).send({ code: "fixture", state: "fixture" });
+      if (protectedRequest) req = req.set("host", ingress.AUTH_ORIGIN_PRIVATE_HOST).set("x-cloudflare-origin-token", ingress.AUTH_ORIGIN_TOKEN).set("x-smartaihub-public-origin", stagedOrigin);
+      else req = req.set("host", "smartaihub.app").set("x-forwarded-host", "attacker.example.com");
+      expect((await req).status).toBe(200);
+      const target = new URL(String(fetchMock.mock.calls.at(-1)?.[0]));
+      expect(target.searchParams.getAll("login_origin")).toEqual(protectedRequest ? [stagedOrigin] : []);
+    }
+  });
 });

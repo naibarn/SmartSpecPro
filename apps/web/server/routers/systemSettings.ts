@@ -1703,6 +1703,9 @@ export const systemSettingsRouter = router({
       googleClientSecret: undefined,
       googleClientSecretConfigured: false,
       googleRedirectUri: undefined,
+      googleStagingClientId: undefined,
+      googleStagingClientSecretConfigured: false,
+      googleStagingRedirectUri: undefined,
       googleDriveRedirectUri: undefined,
       githubClientId: undefined,
       githubClientSecret: undefined,
@@ -1730,6 +1733,10 @@ export const systemSettingsRouter = router({
         result.googleClientSecretConfigured = true;
       } else if (setting.key === "googleRedirectUri") {
         result.googleRedirectUri = setting.value || undefined;
+      } else if (setting.key === "googleStagingClientId" || setting.key === "googleStagingRedirectUri") {
+        result[setting.key] = setting.value || undefined;
+      } else if (setting.key === "googleStagingClientSecret" && setting.value) {
+        result.googleStagingClientSecretConfigured = true;
       } else if (setting.key === "googleDriveRedirectUri") {
         result.googleDriveRedirectUri = setting.value || undefined;
       } else if (setting.key === "githubClientId") {
@@ -1787,6 +1794,12 @@ export const systemSettingsRouter = router({
       z.object({
         googleClientId: z.string().optional(),
         googleClientSecret: z.string().optional(),
+        googleStagingClientId: z.string().trim().max(512).optional(),
+        googleStagingClientSecret: z.string().trim().max(4096).optional(),
+        googleStagingRedirectUri: z.string().trim().max(2048).refine(
+          value => !value || (value.startsWith("https://") && isValidGoogleRedirectUri(value, "/auth/callback/google")),
+          "Staging Google redirect URI must use HTTPS and /auth/callback/google"
+        ).optional(),
         googleRedirectUri: z
           .string()
           .refine(
@@ -1824,6 +1837,9 @@ export const systemSettingsRouter = router({
       if (!db) throw new Error("Database not available");
 
       const updates = [
+        { key: "googleStagingClientId", value: input.googleStagingClientId, sensitive: false },
+        { key: "googleStagingClientSecret", value: input.googleStagingClientSecret, sensitive: true },
+        { key: "googleStagingRedirectUri", value: input.googleStagingRedirectUri, sensitive: false },
         {
           key: "googleClientId",
           value: input.googleClientId,

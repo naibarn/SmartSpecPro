@@ -2,6 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildOAuthProviderAvailability } from "./oauthProviderAvailability";
 
+describe("isolated staging OAuth profiles", () => {
+  const origin = "https://staging.account.workers.dev";
+  const values = {
+    googleClientId: "production-id", googleClientSecret: "production-secret",
+    googleRedirectUri: "https://smartaihub.app/auth/callback/google",
+    googleStagingClientId: "staging-id", googleStagingClientSecret: "staging-secret",
+    googleStagingRedirectUri: origin + "/auth/callback/google",
+  };
+
+  it("uses the explicit matching staging profile without changing production", () => {
+    expect(buildOAuthProviderAvailability(values, origin).google).toBe(true);
+    expect(buildOAuthProviderAvailability(values).google).toBe(true);
+    expect(buildOAuthProviderAvailability(values, "https://foreign.example.com").google).toBe(false);
+  });
+
+  it("does not borrow production secrets for an incomplete staging profile", () => {
+    expect(buildOAuthProviderAvailability({ ...values, googleStagingClientSecret: "" }, origin).google).toBe(false);
+  });
+});
+
 describe("buildOAuthProviderAvailability", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -62,14 +82,14 @@ describe("buildOAuthProviderAvailability", () => {
     expect(buildOAuthProviderAvailability(values)).toMatchObject({ google: true, github: true });
     const staged = buildOAuthProviderAvailability(values, "https://staging.account.workers.dev");
     expect(staged).toMatchObject({ google: false, github: false });
-    expect(staged.details.google.invalid).toEqual(["redirectUri"]);
+    expect(staged.details.google.missing).toEqual(["clientId", "clientSecret", "redirectUri"]);
     expect(staged.details.github.invalid).toEqual(["redirectUri"]);
   });
 
   it("accepts an explicitly configured callback for that verified origin", () => {
     const publicOrigin = "https://staging.account.workers.dev";
-    const result = buildOAuthProviderAvailability({ googleClientId: "google-client", googleClientSecret: "google-secret",
-      googleRedirectUri: `${publicOrigin}/auth/callback/google` }, publicOrigin);
+    const result = buildOAuthProviderAvailability({ googleStagingClientId: "google-client", googleStagingClientSecret: "google-secret",
+      googleStagingRedirectUri: `${publicOrigin}/auth/callback/google` }, publicOrigin);
     expect(result.google).toBe(true);
   });
 });

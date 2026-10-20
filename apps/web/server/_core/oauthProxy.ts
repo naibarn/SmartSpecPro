@@ -62,6 +62,11 @@ async function proxyOAuthRequest(req: Request, res: Response) {
   try {
     const runtime = await getAppRuntimeConfig();
     const target = new URL(req.originalUrl, `${runtime.pythonBackendUrl}/`);
+    const publicOrigin = getVerifiedCloudflarePublicOrigin(req);
+    // Only the ingress decision may select an isolated login profile. Never
+    // forward a browser-supplied selector, including on the callback exchange.
+    target.searchParams.delete("login_origin");
+    if (publicOrigin) target.searchParams.set("login_origin", publicOrigin);
     const body = requestBody(req);
     const headers: Record<string, string> = {};
 
@@ -82,7 +87,6 @@ async function proxyOAuthRequest(req: Request, res: Response) {
     });
 
     const payload = Buffer.from(await upstream.arrayBuffer());
-    const publicOrigin = getVerifiedCloudflarePublicOrigin(req);
     if (action === "authorize" && upstream.ok && publicOrigin &&
       !authorizationReturnsToOrigin(payload, provider, publicOrigin)) {
       return res.status(503).set("cache-control", "private, no-store").json({

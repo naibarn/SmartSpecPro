@@ -1156,3 +1156,26 @@ class TestLinkOAuthAccountComplete:
                         client_secret="client_secret",
                         state=valid_state
                     )
+
+
+class TestStagingOAuthStateBinding:
+    def test_state_cannot_cross_profile_or_provider_and_legacy_cannot_enter_staging(self):
+        service = OAuthService(MagicMock())
+        context = {"provider": "google", "client_id": "staging-client", "redirect_uri": "https://staging.example.com/auth/callback/google"}
+        state = service.generate_oauth_state(login_context=context)
+        service.validate_oauth_state(state, login_context=context)
+        for changed in [None, {**context, "provider": "github"}, {**context, "client_id": "other"}, {**context, "redirect_uri": "https://smartaihub.app/auth/callback/google"}]:
+            with pytest.raises(ValueError, match="Invalid or expired"):
+                service.validate_oauth_state(state, login_context=changed)
+        with pytest.raises(ValueError, match="Invalid or expired"):
+            service.validate_oauth_state(service.generate_oauth_state(), login_context=context)
+
+    @pytest.mark.asyncio
+    async def test_mismatched_state_is_rejected_before_provider_token_exchange(self):
+        service = OAuthService(MagicMock())
+        service._exchange_code_for_token = AsyncMock()
+        context = {"provider": "google", "client_id": "staging", "redirect_uri": "https://staging.example.com/auth/callback/google"}
+        state = service.generate_oauth_state(login_context=context)
+        with pytest.raises(ValueError, match="Invalid or expired"):
+            await service.handle_oauth_callback("google", "code", context["redirect_uri"], "other-client", "secret", state, login_context={**context, "client_id": "other-client"})
+        service._exchange_code_for_token.assert_not_called()
