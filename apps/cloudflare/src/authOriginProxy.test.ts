@@ -80,6 +80,26 @@ describe("auth origin proxy", () => {
     expect(hosts).toEqual(["alpha.smartaihub.app", "beta.smartaihub.app"]);
   });
 
+  it.each([false, true])("keeps private Access cookies out of both hops (combined headers: %s)", async combined => {
+    const response = await proxyAuthToOrigin(new Request("https://tenant.smartaihub.app/trpc/auth.me", {
+      headers: { cookie: "app_session_id=actual-app-cookie; CF_Authorization=caller-access-jwt; csrf=csrf-cookie" },
+    }), config, async request => {
+      expect(request.headers.get("cookie")).toBe("app_session_id=actual-app-cookie; csrf=csrf-cookie");
+      const headers = new Headers();
+      headers.append("set-cookie", "CF_Authorization=origin-service-jwt; Path=/; Secure; HttpOnly");
+      headers.append("set-cookie", "app_session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly; Secure");
+      headers.append("set-cookie", "csrf=new-csrf; Path=/; Secure");
+      const upstream = new Response("ok", { headers });
+      if (combined) Object.defineProperty(upstream.headers, "getSetCookie", { value: undefined });
+      return upstream;
+    });
+    expect(response.headers.get("set-cookie")).not.toContain("CF_Authorization");
+    expect(response.headers.getSetCookie()).toEqual([
+      "app_session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly; Secure",
+      "csrf=new-csrf; Path=/; Secure",
+    ]);
+  });
+
   it("fails closed for missing config, mismatched/private origin, and caller path injection", async () => {
     const fetcher = vi.fn(async () => new Response("should not run"));
     const request = new Request("https://tenant.smartaihub.app/api/auth/login");

@@ -63,11 +63,13 @@ function responseHeaders(upstream: Response): Headers {
     if (name !== "set-cookie" && !HOP_BY_HOP_HEADERS.has(name) && !connectionHeaders.has(name) &&
         !name.startsWith("cf-access-") && name !== ATTESTATION_HEADER && name !== CLOUDFLARE_PUBLIC_ORIGIN_HEADER) headers.set(name, value);
   });
-  const cookies = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.();
-  if (cookies?.length) for (const cookie of cookies) headers.append("set-cookie", cookie);
-  else {
-    const cookie = upstream.headers.get("set-cookie");
-    if (cookie) headers.append("set-cookie", cookie);
+  const cookies = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.()
+    ?? [upstream.headers.get("set-cookie") ?? ""];
+  // Access may issue its service-auth JWT as a cookie on every origin response.
+  // It belongs to the private transport, never to the public application's jar.
+  // The lookahead preserves commas in Expires dates when Headers combines lines.
+  for (const line of cookies) for (const cookie of line.split(/,(?=\s*[^\s;,=]+=)/)) {
+    if (cookie && !/^\s*CF_Authorization=/i.test(cookie)) headers.append("set-cookie", cookie.trim());
   }
   // This transport serves dynamic, potentially authenticated application data.
   // Static asset caching remains owned by the separate ASSETS binding.
@@ -156,6 +158,12 @@ function prepareOriginRequest(request: Request, config: AuthOriginProxyConfig) {
         name === "forwarded" || name === "x-forwarded" || name.startsWith("x-forwarded-") || name.startsWith("x-spec260-") || name.startsWith("cf-access-")) return;
     headers.set(name, value);
   });
+  const cookie = headers.get("cookie");
+  if (cookie !== null) {
+    const applicationCookies = cookie.split(";").filter(part => !/^\s*CF_Authorization=/i.test(part)).map(part => part.trim()).filter(Boolean).join("; ");
+    if (applicationCookies) headers.set("cookie", applicationCookies);
+    else headers.delete("cookie");
+  }
   const forwarded = safeForwardedHeaders(incoming);
   // Never trust caller-provided proxy metadata or internal trust headers.
   for (const name of ["forwarded", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port", ATTESTATION_HEADER]) headers.delete(name);

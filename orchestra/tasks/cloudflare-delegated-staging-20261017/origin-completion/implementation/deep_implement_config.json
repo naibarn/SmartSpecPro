@@ -35,7 +35,7 @@
     },
     "section-04-provision-release": {
       "status": "in_progress",
-      "next_action": "Actual four-resource origin provisioning and protected Tunnel are complete; first Linux release rolled back healthy due monorepo-relative shared import. Fixed in main f25a3f0b8 with detached-artifact import guard; fresh canonical release is running. After actual signed anonymous/bearer origin200, execute origin-v2 Worker deploy/rollback/restore and browser acceptance."
+      "next_action": "Actual provision, paired Linux f25 release and v2 deploy/rollback/restore succeeded; staging core API passed; source main b4d6a3e9b. Release Access-cookie filter and WS/raw-upgrade slice, then repeat API/browser/WS. OAuth staging registration and second tenant remain separate acceptance gaps."
     }
   },
   "pre_commit": {
@@ -47,16 +47,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 16,
-  "updated_at": "2026-10-19T23:51:52.260929+00:00",
+  "generation": 17,
+  "updated_at": "2026-10-20T00:20:36.738987+00:00",
   "progress": {
     "active_section": "section-04-provision-release",
-    "next_action": "Actual four-resource origin provisioning and protected Tunnel are complete; first Linux release rolled back healthy due monorepo-relative shared import. Fixed in main f25a3f0b8 with detached-artifact import guard; fresh canonical release is running. After actual signed anonymous/bearer origin200, execute origin-v2 Worker deploy/rollback/restore and browser acceptance.",
+    "next_action": "Actual provision, paired Linux f25 release and v2 deploy/rollback/restore succeeded; staging core API passed; source main b4d6a3e9b. Release Access-cookie filter and WS/raw-upgrade slice, then repeat API/browser/WS. OAuth staging registration and second tenant remain separate acceptance gaps.",
     "merged_main_sha": "51dfab20b545a5e3a5f94900ca8e3fa2b4801e1f",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
-      "Section 02 live origin/proxy chain not provisioned or accepted",
-      "Live protected ingress/origin release and actual auth/tenant/rollback acceptance remain unexecuted; Worker v2 policy authorizes no Access/Tunnel/DNS mutation"
+      "Google staging authorize returns production callback; provider registration/client and full OAuth acceptance unverified",
+      "Second authorized tenant and successful password/2FA flow unavailable; no synthetic sessions or password resets",
+      "Latest WS/raw-upgrade and Access-cookie filtering need canonical artifact and actual serving verification"
     ]
   }
 }
