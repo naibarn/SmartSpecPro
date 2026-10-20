@@ -1,4 +1,4 @@
-import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
+import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
 
 /** Worker transport boundary for the existing Linux authentication authority. */
 export type AuthOriginProxyConfig = {
@@ -252,7 +252,11 @@ export async function proxyWebSocketToOrigin(
       request.headers.get("sec-websocket-version") !== "13" ||
       !/^[A-Za-z0-9+/]{22}==$/.test(request.headers.get("sec-websocket-key") ?? ""))
     return new Response(null, { status: 400 });
-  if (request.headers.has("origin") && request.headers.get("origin") !== url.origin)
+  // Embedded widgets intentionally originate at the customer's website. Their
+  // token and per-widget Origin allowlist remain enforced by the native handler.
+  const browserOrigin = request.headers.get("origin");
+  if (url.pathname === "/widget/v1/ws" ? !isCanonicalWidgetBrowserOrigin(browserOrigin)
+    : browserOrigin !== null && browserOrigin !== url.origin)
     return new Response(null, { status: 403 });
   const prepared = prepareOriginRequest(request, config);
   if (!prepared) return unavailable();

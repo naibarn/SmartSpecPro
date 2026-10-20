@@ -1,4 +1,4 @@
-import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
+import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
 import { isValidCloudflareOriginAttestation } from "./cloudflareOriginAttestation";
 
 export type CloudflareOriginConfig = {
@@ -50,11 +50,15 @@ export function applyCloudflareOriginForwarding(headers: Headers, decision: Extr
 
 /** Raw HTTP upgrades bypass Express. Enforce the same attestation first. */
 export function authorizeCloudflareOriginUpgrade(
-  req: { headers: Headers }, socket: { write: (value: string) => unknown; destroy: () => unknown },
+  req: { headers: Headers; url?: string }, socket: { write: (value: string) => unknown; destroy: () => unknown },
   config: CloudflareOriginConfig = cloudflareOriginEnvironment(),
 ): boolean {
   const decision = resolveCloudflareOriginIngress(req.headers, config);
-  if (decision.status !== 200 || (decision.publicOrigin && req.headers.origin !== undefined && req.headers.origin !== decision.publicOrigin)) {
+  const widget = req.url?.split("?")[0] === "/widget/v1/ws";
+  const browserOriginDenied = decision.status === 200 && decision.publicOrigin &&
+    (widget ? !isCanonicalWidgetBrowserOrigin(req.headers.origin)
+      : req.headers.origin !== undefined && req.headers.origin !== decision.publicOrigin);
+  if (decision.status !== 200 || browserOriginDenied) {
     const status = decision.status === 503 ? 503 : 403;
     socket.write(`HTTP/1.1 ${status} ${status === 503 ? "Service Unavailable" : "Forbidden"}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
     socket.destroy();

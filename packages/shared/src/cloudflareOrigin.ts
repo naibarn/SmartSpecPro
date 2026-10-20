@@ -1,6 +1,18 @@
 /** Pure ingress contract; contains no credentials or runtime side effects. */
 export const CLOUDFLARE_PUBLIC_ORIGIN_HEADER = "x-smartaihub-public-origin";
 
+/** Syntax only; widget token authentication and its per-widget allowlist decide access. */
+export function isCanonicalWidgetBrowserOrigin(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") &&
+      !url.username && !url.password && url.origin === value;
+  } catch {
+    return false;
+  }
+}
+
 /** Require an exact canonical HTTPS origin, without paths or URL credentials. */
 export function parseCloudflarePublicOrigin(value: unknown): URL | null {
   if (typeof value !== "string" || value.length > 2048) return null;

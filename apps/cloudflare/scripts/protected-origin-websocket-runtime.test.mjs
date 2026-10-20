@@ -57,9 +57,12 @@ export default { async fetch(request) {
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     assert.ok(ready, `workerd did not start: ${log}`);
-    await new Promise((resolve, reject) => {
+    for (const [pathname, browserOrigin] of [
+      ["/api/voice/stream", "https://staging.account.workers.dev"],
+      ["/widget/v1/ws", "https://customer.example.com"],
+    ]) await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("WebSocket echo timed out")), 10_000);
-      socket = new WebSocket(`ws://127.0.0.1:${port}/api/voice/stream`, { origin: "https://staging.account.workers.dev" });
+      socket = new WebSocket(`ws://127.0.0.1:${port}${pathname}`, { origin: browserOrigin });
       socket.once("upgrade", response => {
         try {
           assert.equal(response.statusCode, 101);
@@ -72,7 +75,7 @@ export default { async fetch(request) {
       socket.once("open", () => socket.send("actual-pair"));
       socket.once("message", bytes => {
         clearTimeout(timer);
-        try { assert.equal(bytes.toString(), "echo:actual-pair"); resolve(); } catch (error) { reject(error); }
+        try { assert.equal(bytes.toString(), "echo:actual-pair"); socket.close(); resolve(); } catch (error) { reject(error); }
       });
     });
   } finally {

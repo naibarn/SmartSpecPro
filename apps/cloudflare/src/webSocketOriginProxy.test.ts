@@ -11,6 +11,28 @@ const headers = { upgrade: "websocket", connection: "keep-alive, Upgrade", "sec-
   "x-smartaihub-public-origin": "https://attacker.example.com", "x-internal-token": "attacker-internal" };
 
 describe("exact origin WebSocket transport", () => {
+  it("preserves the embedding website Origin for the widget's token and per-widget allowlist authority", async () => {
+    const embeddingOrigin = "https://customer.example.com";
+    const upstream = { status: 101, headers: new Headers(), webSocket: { close: vi.fn() }, body: null } as unknown as Response;
+    const fetcher = vi.fn(async request => {
+      expect(request.headers.get("origin")).toBe(embeddingOrigin);
+      expect(request.headers.get("x-smartaihub-public-origin")).toBe(origin);
+      return upstream;
+    });
+    expect(await proxyWebSocketToOrigin(new Request(origin + "/widget/v1/ws", {
+      headers: { ...headers, origin: embeddingOrigin },
+    }), config, fetcher)).toBe(upstream);
+  });
+
+  it.each([undefined, "null", "https://customer.example.com/path", "https://user@customer.example.com", "https://customer.example.com/"])("rejects a missing or noncanonical widget browser Origin: %s", async browserOrigin => {
+    const requestHeaders = new Headers(headers);
+    if (browserOrigin === undefined) requestHeaders.delete("origin");
+    else requestHeaders.set("origin", browserOrigin);
+    const fetcher = vi.fn();
+    expect((await proxyWebSocketToOrigin(new Request(origin + "/widget/v1/ws", { headers: requestHeaders }), config, fetcher)).status).toBe(403);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it.each(["/api/voice/stream", "/api/runners/runner-1/control", "/widget/v1/ws"])("preserves the actual WebSocket pair for %s and replaces caller trust headers", async path => {
     const upstream = { status: 101, headers: new Headers({ upgrade: "websocket", connection: "Upgrade" }), webSocket: { close: vi.fn() }, body: null } as unknown as Response;
     const fetcher = vi.fn(async request => {
