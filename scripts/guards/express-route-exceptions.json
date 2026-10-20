@@ -1,3 +1,12 @@
 {
-  "exceptions": []
+  "exceptions": [
+    {
+      "file": "apps/web/server/routes/jobControlPlane.ts",
+      "method": "post",
+      "path": "/api/internal/cloudflare-job-control/execute",
+      "owner": "platform-canonical-job-control-plane",
+      "reason": "Private, dedicated-token hybrid execution port alongside the existing canonical dispatch/claim/settlement authority. It permits only the registered short emergency intake executor with persisted Workflow dispatch, tenant and lease checks; domain transactions remain on the existing Node authority during Cloudflare migration.",
+      "expires": "2026-11-20"
+    }
+  ]
 }

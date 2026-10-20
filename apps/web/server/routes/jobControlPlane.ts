@@ -175,6 +175,7 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
     dispatchId: workerJobDispatches.id, dispatchAttemptId: workerJobDispatches.attemptId,
     dispatchDedupeKey: workerJobDispatches.dedupeKey, dispatchAdapter: workerJobDispatches.adapter,
     publicationStatus: workerJobDispatches.publicationStatus, publishedAt: workerJobDispatches.publishedAt,
+    consumedAt: workerJobDispatches.consumedAt,
   }).from(workerJobs).innerJoin(workerJobDispatches, and(
     eq(workerJobDispatches.workerJobId, workerJobs.id),
     eq(workerJobDispatches.id, envelope.dispatch_id),
@@ -183,9 +184,12 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
     const [job] = await getDb().select({ id: workerJobs.id }).from(workerJobs).where(eq(workerJobs.id, envelope.job_id)).limit(1);
     return job ? { state: "dispatch_pending" as const } : { state: "not_found" as const };
   }
+  const attemptDedupeKey = `job:${envelope.job_id}:attempt:${envelope.business_attempt}`;
   if (row.contractVersion !== envelope.contract_version ||
       !CLOUDFLARE_DELIVERY_ADAPTERS.has(row.dispatchAdapter) || row.dispatchDedupeKey !== envelope.dedupe_key ||
-      row.dispatchAttemptId !== envelope.attempt_id || row.publicationStatus !== "published" || !row.publishedAt ||
+      !(row.dispatchDedupeKey === attemptDedupeKey || row.dispatchDedupeKey.startsWith(`${attemptDedupeKey}:`)) ||
+      row.dispatchAttemptId !== envelope.attempt_id || !row.publishedAt ||
+      !(row.publicationStatus === "published" || (row.publicationStatus === "consumed" && row.consumedAt)) ||
       !CLOUDFLARE_CANONICAL_RUNTIMES.has(row.runtimeType) || Object.keys(envelope.routing_metadata).length > 16) {
     return { state: "envelope_mismatch" as const };
   }

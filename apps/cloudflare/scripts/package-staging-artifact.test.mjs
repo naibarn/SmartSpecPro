@@ -19,6 +19,7 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     await mkdir(join(root, "apps/web/dist/public/assets"), { recursive: true });
     await mkdir(join(root, "apps/web/client/public/releases"), { recursive: true });
     await writeFile(join(root, "apps/cloudflare/.staging-artifact/wrangler/index.js"), "export default {};\n");
+    await writeFile(join(root, "apps/cloudflare/.staging-artifact/wrangler/entrypoint.js"), "export class CanonicalJobWorkflow {}\nexport default {};\n");
     await writeFile(join(root, "apps/web/dist/public/index.html"), "<html></html>\n");
     await writeFile(join(root, "apps/web/dist/public/assets/app.js"), "console.log('ready');\n");
     await writeFile(join(root, "apps/web/dist/public/.gitkeep"), "");
@@ -49,8 +50,8 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     const manifest = JSON.parse(await readFile(join(root, "apps/cloudflare/.staging-artifact/bundle-manifest.json"), "utf8"));
     assert.equal(result.status, "BUNDLE_BUILT");
     assert.equal(manifest.sourceSha, sourceSha);
-    assert.equal(manifest.mainModule, "index.js");
-    assert.equal(manifest.moduleFiles.length, 1);
+    assert.equal(manifest.mainModule, "entrypoint.js", "a stale index.js must not replace the configured Workflow entrypoint");
+    assert.equal(manifest.moduleFiles.length, 2);
     assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html", "releases/current.json", ...runtimeNames.slice(3).map(name => `releases/runtime/${name}`), "ä-user-guide.md"]);
     assert.ok(!manifest.assets.some(file => file.name === ".gitkeep"));
     assert.match(manifest.buildDigest, /^[a-f0-9]{64}$/);

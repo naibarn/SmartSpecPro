@@ -87,6 +87,21 @@ describe("Cloudflare canonical job boundary", () => {
     expect(mocks.plane.complete).toHaveBeenCalledWith(expect.objectContaining(claim), result);
   });
 
+  it("continues execution and settlement after claim marks the dispatch consumed", async () => {
+    row.publicationStatus = "consumed";
+    row.consumedAt = new Date();
+    await send("execute", { claim }).expect(200);
+    await send("complete", { claim, result: { output: { status: "triage" } } }).expect(200);
+    expect(mocks.execute).toHaveBeenCalledOnce();
+    expect(mocks.plane.complete).toHaveBeenCalledOnce();
+  });
+
+  it("cannot replay an old initial dispatch as a newer business attempt", async () => {
+    row.attempt = 2;
+    await send("claim", { envelope: { ...envelope, business_attempt: 2 } }).expect(409);
+    expect(mocks.plane.claim).not.toHaveBeenCalled();
+  });
+
   it("rejects superseded business attempts at completion", async () => {
     row.attempt = 2;
     await send("complete", { claim, result: {} }).expect(409);

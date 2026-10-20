@@ -186,6 +186,10 @@ function buildEnvelope(request: DispatchRequest, supportedContractVersions: Read
   };
 }
 
+export function buildCloudflareJobEnvelope(request: DispatchRequest): CloudflareJobEnvelope {
+  return buildEnvelope(request, DEFAULT_CONTRACT_VERSIONS);
+}
+
 function supportsContract(
   input: { jobType: string; executionClass: string; contractVersion: string },
   supportedContractVersions: ReadonlySet<string>,
@@ -220,6 +224,7 @@ function providerObservation(status?: string): TransportObservation {
   switch (status?.toLowerCase()) {
     case "failed":
     case "error":
+    case "errored":
     case "terminated":
       return "failed";
     case "completed":
@@ -231,6 +236,8 @@ function providerObservation(status?: string): TransportObservation {
     case "running":
     case "paused":
     case "waiting":
+    case "waitingforpause":
+    case "rollingback":
       return "published";
     default:
       return "unknown";

@@ -29,7 +29,8 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
       ...(postgresPythonPullEnabled ? [["python_job_worker", activeAdapter] as const] : []),
     ]),
     resolveAdapter: row => {
-      if (isPostgresNodeJobType(row.jobType) || row.runtimeType === "node_job_worker") return activeAdapter;
+      if (isPostgresNodeJobType(row.jobType) || row.runtimeType === "node_job_worker") return process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true"
+        ? createFeature186RuntimeAdapter(row) : activeAdapter;
       if (postgresPythonPullEnabled && row.runtimeType === "python_job_worker") return activeAdapter;
       // The web runtime's live outbox runner owns compatibility adapters. A
       // reconciler pass must leave those rows recoverable instead of

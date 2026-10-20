@@ -21,6 +21,8 @@ import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
 import { classifyApiRoute } from "./apiRouteManifest";
 import { proxyAuthToOrigin, proxyWebSocketToOrigin } from "./authOriginProxy";
 import { dispatchManifestRoute } from "./nativeApi";
+import { handleCanonicalWorkflowRequest } from "./workflowRuntime";
+import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -74,6 +76,7 @@ export function createCloudflareWorker(
   controlPlane?: { repository: CanonicalControlPlaneRepository | ((env: CloudflareEnvironment) => CanonicalControlPlaneRepository); execute: CanonicalWorkerExecution },
   publicationRegistry?: CanonicalPublicationRegistry,
   spec260Routes?: Spec260RouteRegistry,
+  runtime?: { workflowHandlerConfigured: boolean },
 ) {
   const resolvedHandler = handler ?? (controlPlane ? createCanonicalControlPlaneHandler(controlPlane) : undefined);
   const consumer = resolvedHandler ? new CloudflareQueueConsumer(resolvedHandler, quarantine) : failClosedConsumer;
@@ -88,12 +91,18 @@ export function createCloudflareWorker(
         const readiness = inspectBindingReadiness(env);
         const spec260EvidenceRetentionReady = env.CLOUDFLARE_ACTIVATION === "enabled" &&
           Boolean(env.PLATFORM_EDGE_ORIGIN?.trim() && env.PLATFORM_EDGE_PRIVATE_HOST?.trim() && env.PLATFORM_EDGE_TOKEN?.trim());
-        const ready = readiness.ready && jobHandlerConfigured && spec260EvidenceRetentionReady;
+        const workflows = readiness.transport === "workflows";
+        let controlPlaneConfigured = false;
+        try { assertCanonicalControlPlaneConfiguration(env); controlPlaneConfigured = true; } catch { /* fail closed */ }
+        const selectedHandlerConfigured = workflows ? Boolean(runtime?.workflowHandlerConfigured) : jobHandlerConfigured;
+        const ready = readiness.ready && selectedHandlerConfigured && (workflows
+          ? controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
         return json({
           ok: ready,
-          readiness: { ...readiness, required: readiness.required, jobHandlerConfigured, spec260EvidenceRetentionReady },
+          readiness: { ...readiness, required: readiness.required, jobHandlerConfigured: selectedHandlerConfigured, controlPlaneConfigured, spec260EvidenceRetentionReady },
         }, ready ? 200 : 503);
       }
+      if (url.pathname.startsWith("/internal/jobs/workflows/")) return handleCanonicalWorkflowRequest(request, env);
       if (url.pathname === "/internal/cache/search" && request.method === "POST") {
         if (!isAuthorizedSearchCache(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
         if (!env.SEARCH_RESULT_CACHE || typeof env.SEARCH_RESULT_CACHE.get !== "function" || typeof env.SEARCH_RESULT_CACHE.put !== "function") {
@@ -158,6 +167,7 @@ export function createCloudflareWorker(
         }
       }
       if (url.pathname === "/internal/jobs/publish" && request.method === "POST") {
+        if (env.CLOUDFLARE_JOB_TRANSPORT) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
         if (env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
         if (!isAuthorizedDispatch(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
         try {
@@ -199,10 +209,15 @@ export function createCloudflareWorker(
     },
 
     async queue(batch: QueueBatch, env: CloudflareEnvironment): Promise<void> {
+      if (env.CLOUDFLARE_JOB_TRANSPORT) {
+        for (const message of batch.messages) message.retry({ delaySeconds: 60 });
+        return;
+      }
       await consumer.handleBatch(batch, env);
     },
 
     async scheduled(controller: ScheduledController, env: CloudflareEnvironment): Promise<void> {
+      if (env.CLOUDFLARE_JOB_TRANSPORT) return;
       if (env.CLOUDFLARE_ACTIVATION !== "enabled") return;
       const input = { scheduledTime: controller.scheduledTime, maxRows: 100 };
       if (providerPollSweep) {

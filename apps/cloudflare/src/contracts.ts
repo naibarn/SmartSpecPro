@@ -49,10 +49,15 @@ export type CanonicalPublicationRegistry = {
   record(dedupeKey: string): Promise<void>;
 };
 
+export type CloudflareWorkflowInstance = {
+  id: string;
+  status(): Promise<{ status: string }>;
+  terminate(): Promise<void>;
+};
+
 export type CloudflareWorkflowBinding = {
-  get(instanceId: string): Promise<{ id?: string; status?: string } | null>;
-  create(input: { id: string; params: CanonicalJobEnvelope }): Promise<{ id?: string; status?: string }>;
-  terminate?(instanceId: string): Promise<void>;
+  get(instanceId: string): Promise<CloudflareWorkflowInstance>;
+  create(input: { id: string; params: CanonicalJobEnvelope }): Promise<CloudflareWorkflowInstance>;
 };
 
 export type CloudflareContainerBinding = {
@@ -98,6 +103,8 @@ export type VectorRecord = {
 export type CloudflareEnvironment = {
   CLOUDFLARE_ACTIVATION?: string;
   CLOUDFLARE_ENVIRONMENT?: string;
+  /** Workflow-only activation never enables Queue delivery or Cron. */
+  CLOUDFLARE_JOB_TRANSPORT?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;

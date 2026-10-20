@@ -7,13 +7,23 @@ import {
   PostgresPullJobTransportAdapter,
   type JobTransportAdapter,
 } from "./jobTransportAdapters";
+import { CloudflareWorkflowHttpJobTransportAdapter } from "./cloudflareWorkflowHttpAdapter";
 
 /**
  * Select the transport for the canonical envelope in one place. Both the
  * web outbox publisher and the reconciler use this factory so local execution
  * and the later Cloudflare migration cannot drift into different contracts.
  */
-export function createFeature186RuntimeAdapter(): JobTransportAdapter {
+export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobType: string; executionClass: string }): JobTransportAdapter {
+  // This bounded opt-in never enables the global Queue cutover. Unrelated
+  // Node/Python jobs retain their existing transport and rollback behavior.
+  if (process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true" && job?.runtimeType === "node_job_worker" &&
+      job.jobType === "emergency.report.intake" && job.executionClass === "short") {
+    const url = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim();
+    const token = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim();
+    if (!url || !token) throw new Error("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");
+    return new CloudflareWorkflowHttpJobTransportAdapter(url, token);
+  }
   if (!isCloudflareHardCutoverEnabled()) {
     return new PostgresPullJobTransportAdapter();
   }

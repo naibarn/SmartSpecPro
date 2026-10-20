@@ -6,6 +6,8 @@ export type BindingReadiness = {
   required: Record<RequiredBindingName, boolean>;
   missing: RequiredBindingName[];
   ready: boolean;
+  transport: "all" | "workflows" | "invalid";
+  selectedMissing: RequiredBindingName[];
 };
 
 function hasFunction(value: unknown, method: string): boolean {
@@ -38,12 +40,17 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
     REQUIRED_BINDING_NAMES.map(name => [name, isUsableBinding(env, name)]),
   ) as Record<RequiredBindingName, boolean>;
   const missing = REQUIRED_BINDING_NAMES.filter(name => !required[name]);
+  const transport = !env.CLOUDFLARE_JOB_TRANSPORT ? "all" : env.CLOUDFLARE_JOB_TRANSPORT === "workflows" ? "workflows" : "invalid";
+  const selectedMissing = transport === "workflows"
+    ? (["HYPERDRIVE", "JOB_WORKFLOW"] as const).filter(name => !required[name]) : missing;
   return {
     activation,
     environment: env.CLOUDFLARE_ENVIRONMENT?.trim() || "unknown",
     required,
     missing,
-    ready: activation === "enabled" && missing.length === 0,
+    transport,
+    selectedMissing,
+    ready: activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
   };
 }
 

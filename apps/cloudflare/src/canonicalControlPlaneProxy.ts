@@ -47,10 +47,8 @@ async function callPlatform<T>(
   action: "context" | "claim" | "execute" | "complete" | "fail",
   body: Record<string, unknown>,
 ): Promise<T> {
-  const token = env.CLOUDFLARE_CONTROL_PLANE_TOKEN?.trim();
-  if (!token) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");
-  if ([env.PLATFORM_EDGE_TOKEN, env.AUTH_ORIGIN_TOKEN, env.AUTH_ORIGIN_ACCESS_CLIENT_SECRET]
-      .some(secret => secret?.trim() === token)) throw new Error("CLOUDFLARE_CONTROL_PLANE_CREDENTIAL_REUSED");
+  assertCanonicalControlPlaneConfiguration(env);
+  const token = env.CLOUDFLARE_CONTROL_PLANE_TOKEN!.trim();
   const { origin, publicOrigin } = resolvePrivatePlatformOrigin(env);
   const bodyJson = JSON.stringify(body);
   if (new TextEncoder().encode(bodyJson).byteLength > 32 * 1024) throw new Error("CLOUDFLARE_CONTROL_PLANE_REQUEST_TOO_LARGE");
@@ -90,6 +88,15 @@ async function callPlatform<T>(
   if (bytes.byteLength > 512 * 1024) throw new Error("CLOUDFLARE_CONTROL_PLANE_RESPONSE_TOO_LARGE");
   try { return JSON.parse(new TextDecoder().decode(bytes)) as T; }
   catch { throw new Error("CLOUDFLARE_CONTROL_PLANE_RESPONSE_INVALID"); }
+}
+
+/** Configuration validation only; it does not claim live origin health. */
+export function assertCanonicalControlPlaneConfiguration(env: CloudflareEnvironment): void {
+  const token = env.CLOUDFLARE_CONTROL_PLANE_TOKEN?.trim();
+  if (!token) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");
+  if ([env.PLATFORM_EDGE_TOKEN, env.AUTH_ORIGIN_TOKEN, env.AUTH_ORIGIN_ACCESS_CLIENT_SECRET, env.CLOUDFLARE_RUNTIME_TOKEN]
+      .some(secret => secret?.trim() === token)) throw new Error("CLOUDFLARE_CONTROL_PLANE_CREDENTIAL_REUSED");
+  resolvePrivatePlatformOrigin(env);
 }
 
 type ContextResponse = { job: CanonicalControlPlaneJob | null; disposition?: "ack" };

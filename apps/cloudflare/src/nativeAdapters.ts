@@ -1,6 +1,6 @@
 import { assertBindingSubset } from "./bindings";
 import { upsertTenantVectors, validateArtifactManifest, type ArtifactManifest } from "./artifacts";
-import type { CanonicalJobEnvelope, CloudflareEnvironment, VectorRecord } from "./contracts";
+import type { CanonicalJobEnvelope, CloudflareEnvironment, CloudflareWorkflowInstance, VectorRecord } from "./contracts";
 
 export function assertNativeBindings(env: CloudflareEnvironment, name: "JOB_QUEUE" | "JOB_WORKFLOW" | "JOB_CONTAINERS" | "WORKER_APP" | "MEDIA_BUCKET" | "VECTOR_INDEX") {
   assertBindingSubset(env, ["HYPERDRIVE", name]);
@@ -11,7 +11,7 @@ export async function publishCanonicalQueueMessage(env: CloudflareEnvironment, e
   return assertNativeBindings(env, "JOB_QUEUE").JOB_QUEUE!.send(envelope);
 }
 
-export async function createCanonicalWorkflow(env: CloudflareEnvironment, instanceId: string, envelope: CanonicalJobEnvelope): Promise<{ id?: string; status?: string }> {
+export async function createCanonicalWorkflow(env: CloudflareEnvironment, instanceId: string, envelope: CanonicalJobEnvelope): Promise<CloudflareWorkflowInstance> {
   return assertNativeBindings(env, "JOB_WORKFLOW").JOB_WORKFLOW!.create({ id: instanceId, params: envelope });
 }
 

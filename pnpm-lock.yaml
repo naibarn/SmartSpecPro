@@ -64,6 +64,9 @@ importers:
         specifier: ^4.13.13
         version: 4.13.13
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261019.1
+        version: 5.20261019.1
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -1491,6 +1494,9 @@ packages:
 
   '@chevrotain/types@11.1.2':
     resolution: {integrity: sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw==}
+
+  '@cloudflare/workers-types@5.20261019.1':
+    resolution: {integrity: sha512-llvvy7WBVhK+OfykyBkG9A7OgsGvgwHSNyU40XGVkiy/xVFy0t/xflyhEBHT+U59yQECZQbmcZsJtqCNnLpIRg==}
 
   '@codemirror/autocomplete@6.20.3':
     resolution: {integrity: sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g==}
@@ -9843,6 +9849,8 @@ snapshots:
   '@chenglou/pretext@0.0.5': {}
 
   '@chevrotain/types@11.1.2': {}
+
+  '@cloudflare/workers-types@5.20261019.1': {}
 
   '@codemirror/autocomplete@6.20.3':
     dependencies:

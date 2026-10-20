@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { readdir, readFile, realpath, writeFile, mkdir, copyFile, lstat, stat } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { basename, join, relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { isRuntimePackFilePaused } from "../../web/shared/runtimePackAvailability.mjs";
@@ -100,8 +100,10 @@ const publicSourceRoot = await realpath(resolve(repoRoot, "apps/web/client/publi
 const publicFiles = await walk(publicRoot, { allowedSymlinkRoot: publicSourceRoot });
 if (publicFiles.length === 0) throw new Error("STAGING_ARTIFACT_SPA_OUTPUT_MISSING");
 
-const mainCandidate = wranglerFiles.find(file => file.name === "index.js") ??
-  wranglerFiles.find(file => file.name.toLowerCase().endsWith(".js"));
+const config = JSON.parse((await readFile(join(repoRoot, "apps/cloudflare/wrangler.staging.jsonc"), "utf8")).replace(/^\s*\/\/.*$/gm, ""));
+if (typeof config.main !== "string" || !safeRelative(config.main) || !/\.(?:[cm]?ts|[cm]?js)$/.test(config.main)) throw new Error("STAGING_ARTIFACT_ENTRYPOINT_INVALID");
+const expectedMain = basename(config.main).replace(/\.(?:[cm]?ts|[cm]?js)$/, ".js");
+const mainCandidate = wranglerFiles.find(file => file.name === expectedMain);
 if (!mainCandidate) throw new Error("STAGING_ARTIFACT_MAIN_MODULE_MISSING");
 await mkdir(moduleRoot, { recursive: true });
 const moduleFiles = [];
@@ -134,7 +136,7 @@ const entries = [
   ...assets.map(file => [`public/${file.name}`, file.sha256, file.size]),
 ].sort(([left], [right]) => compareArtifactPaths(left, right));
 const buildDigest = digest(Buffer.from(entries.map(([name, sha, size]) => `${name}\0${sha}\0${size}`).join("\n")));
-const compatibilityDate = JSON.parse((await readFile(join(repoRoot, "apps/cloudflare/wrangler.staging.jsonc"), "utf8")).replace(/^\s*\/\/.*$/gm, "")).compatibility_date;
+const compatibilityDate = config.compatibility_date;
 if (!/^\d{4}-\d{2}-\d{2}$/.test(compatibilityDate)) throw new Error("STAGING_ARTIFACT_COMPATIBILITY_DATE_INVALID");
 const manifest = {
   format: "cloudflare-staging-build-bundle-v1",
