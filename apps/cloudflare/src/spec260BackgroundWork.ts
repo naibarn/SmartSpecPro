@@ -29,7 +29,18 @@ function retentionConfiguration(env: CloudflareEnvironment) {
     // New bounded schedules require the existing qualified Access/app pair.
     if (bounded && !resolved.publicOrigin) return null;
     return { ...resolved, token, bounded };
-  } catch { return null; }
+  } catch {
+    // Preserve the existing explicit loopback-only development transport.
+    if (!bounded) try {
+      const origin = new URL(env.PLATFORM_EDGE_ORIGIN ?? "");
+      if (origin.protocol === "http:" && ["localhost", "127.0.0.1"].includes(origin.hostname) &&
+          origin.hostname === env.PLATFORM_EDGE_PRIVATE_HOST?.trim().toLowerCase() &&
+          !origin.username && !origin.password && origin.pathname === "/" && !origin.search && !origin.hash) {
+        return { origin, publicOrigin: undefined, token, bounded };
+      }
+    } catch { /* invalid local development URL */ }
+    return null;
+  }
 }
 
 /** Configuration readiness only; never a claim that a Cron was provisioned. */

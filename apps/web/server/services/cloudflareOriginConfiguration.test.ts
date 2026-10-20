@@ -121,6 +121,22 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).rejects.toThrow();
   });
 
+  it("round trips the independently encrypted bounded retention configuration without exposing its token", async () => {
+    const retentionToken="disposable-retention-token-not-a-real-secret";
+    const saved=await saveCloudflareOriginConfiguration(db,{identity,settings:{...settings(),retentionSchedule:"evidence-retention"},
+      secrets:{...secrets,retentionToken},actorUserId});
+    const metadata=await getCloudflareOriginConfiguration(db,{identity,configurationRef:saved.configurationRef});
+    expect(metadata.descriptor.retentionSchedule).toBe("evidence-retention");
+    expect(JSON.stringify(metadata)).not.toContain(retentionToken);
+    const [stored]=await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.key,saved.configurationRef));
+    expect(stored!.isSensitive).toBe(true);expect(stored!.value).not.toContain(retentionToken);
+    await db.update(schema.providerDeploymentTargets).set({runtimePolicy:saved.configurationRef}).where(eq(schema.providerDeploymentTargets.id,targetRowId));
+    const request={identity,configurationRef:saved.configurationRef,configurationDigest:saved.configurationDigest};
+    await expect(withCloudflareOriginConfiguration(db,request,async value=>value.secrets.retentionToken)).resolves.toBe(retentionToken);
+    await revokeCloudflareOriginConfiguration(db,{identity,configurationRef:saved.configurationRef,actorUserId});
+    await expect(withCloudflareOriginConfiguration(db,request,async()=>true)).rejects.toThrow();
+  });
+
   it("stores provisioning credentials separately without violating or replacing the unique Worker credential scope", async () => {
     const { saveCloudflareDeploymentCredential, withCloudflareDeploymentCredential } = await import("./cloudflareCredentialCenter");
     const { deploymentCredentialRef } = await import("./providerDeploymentTargetAuthority");

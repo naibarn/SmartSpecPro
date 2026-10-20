@@ -6,7 +6,7 @@ export type BindingReadiness = {
   required: Record<RequiredBindingName, boolean>;
   missing: RequiredBindingName[];
   ready: boolean;
-  transport: "all" | "workflows" | "queues" | "invalid";
+  transport: "all" | "workflows" | "queues" | "retention" | "invalid";
   selectedMissing: RequiredBindingName[];
 };
 
@@ -40,8 +40,8 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
     REQUIRED_BINDING_NAMES.map(name => [name, isUsableBinding(env, name)]),
   ) as Record<RequiredBindingName, boolean>;
   const missing = REQUIRED_BINDING_NAMES.filter(name => !required[name]);
-  const transport = !env.CLOUDFLARE_JOB_TRANSPORT ? "all" : env.CLOUDFLARE_JOB_TRANSPORT === "workflows" ? "workflows" : env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "queues" : "invalid";
-  const selectedMissing = transport === "workflows"
+  const transport = !env.CLOUDFLARE_JOB_TRANSPORT ? (env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined ? "retention" : "all") : env.CLOUDFLARE_JOB_TRANSPORT === "workflows" ? "workflows" : env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "queues" : "invalid";
+  const selectedMissing = transport === "retention" ? [] : transport === "workflows"
     ? (["HYPERDRIVE", "JOB_WORKFLOW"] as const).filter(name => !required[name])
     : transport === "queues" ? (["HYPERDRIVE", "JOB_QUEUE"] as const).filter(name => !required[name]) : missing;
   return {

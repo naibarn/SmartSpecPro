@@ -29,6 +29,15 @@ describe("Spec260 Cloudflare evidence-retention schedule", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ scheduledTime, occurrenceKey: "2026-09-30T12:05Z:emergency-evidence-retention" });
   });
 
+  it("preserves explicitly allowlisted loopback HTTP development admission", async () => {
+    const fetcher=vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({accepted:true,
+      jobId:"00000000-0000-4000-8000-000000000001",created:true}),{status:202}));
+    expect(await createSpec260EvidenceRetentionSweep(fetcher)({scheduledTime:Date.now(),maxRows:100},{
+      CLOUDFLARE_ACTIVATION:"enabled",PLATFORM_EDGE_ORIGIN:"http://127.0.0.1:3100",PLATFORM_EDGE_PRIVATE_HOST:"127.0.0.1",PLATFORM_EDGE_TOKEN:"local-only-token",
+    })).toBe("completed");
+    expect(String(fetcher.mock.calls[0][0])).toBe("http://127.0.0.1:3100/api/internal/spec260/schedules/evidence-retention");
+  });
+
   it("rejects non-private or recursive origins", async () => {
     const fetcher = vi.fn<typeof fetch>();
     const sweep = createSpec260EvidenceRetentionSweep(fetcher);
@@ -97,6 +106,17 @@ describe("independent bounded retention admission through existing Access author
       : new Response(mode === "html" ? "<html>Access login</html>" : mode === "empty" ? "" : mode === "oversize" ? "x".repeat(2049) : '{"accepted":false}',{status:202});
     const fetcher=vi.fn<typeof fetch>().mockResolvedValue(response);
     expect(await createSpec260EvidenceRetentionSweep(fetcher)({ scheduledTime:Date.now(),maxRows:100 },bounded())).toBe("retry");
+  });
+  it("reports retention-only readiness without granting Queue publication or consumption", async () => {
+    const env=bounded();delete env.CLOUDFLARE_JOB_TRANSPORT;
+    const handler=vi.fn(),cron=vi.fn().mockResolvedValue("completed"),worker=createCloudflareWorker(handler,undefined,undefined,cron);
+    const ready=await worker.fetch(new Request("https://runtime.invalid/readyz"),env);
+    expect(ready.status).toBe(200);expect(await ready.json()).toMatchObject({readiness:{transport:"retention",selectedMissing:[],missing:expect.arrayContaining(["JOB_CONTAINERS","WORKER_APP"])}});
+    const message={body:{},ack:vi.fn(),retry:vi.fn()};await worker.queue({messages:[message]},env);
+    expect(message.retry).toHaveBeenCalledOnce();expect(handler).not.toHaveBeenCalled();
+    const publication=await worker.fetch(new Request("https://runtime.invalid/internal/jobs/publish",{method:"POST"}),env);
+    expect(publication.status).toBe(409);
+    await worker.scheduled({scheduledTime:Date.now()},env);expect(cron).toHaveBeenCalledOnce();
   });
   it("allows only the explicit retention sweep alongside intake, without enabling provider polling", async () => {
     const cron=vi.fn().mockResolvedValue("completed"),poll=vi.fn(),worker=createCloudflareWorker(undefined,undefined,poll,cron);

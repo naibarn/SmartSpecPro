@@ -102,11 +102,13 @@ suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL"
   });
   it("rolls back domain writes when the hard deadline elapses inside the transaction", async () => {
     const f = await fixture();
-    await sql`UPDATE worker_jobs SET "startedAt"=now(),"timeoutPolicyJson"=${sql.json({ hardTimeoutMs: 700 })} WHERE id=${f.jobId}`;
-    await sql.unsafe(`CREATE FUNCTION delay_intake_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.9); RETURN NEW; END $$`);
+    await sql`UPDATE worker_jobs SET "startedAt"=now(),"timeoutPolicyJson"=${sql.json({ hardTimeoutMs: 1500 })} WHERE id=${f.jobId}`;
+    await sql.unsafe(`CREATE SEQUENCE intake_delay_observed`);
+    await sql.unsafe(`CREATE FUNCTION delay_intake_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('intake_delay_observed'); PERFORM pg_sleep(1.7); RETURN NEW; END $$`);
     await sql.unsafe(`CREATE TRIGGER delay_intake_update BEFORE UPDATE ON emergency_cases FOR EACH ROW EXECUTE FUNCTION delay_intake_update()`);
     try {
       await expect(run(f.delivery)).rejects.toThrow("LEASE_STALE");
+      expect((await sql`SELECT is_called FROM intake_delay_observed`)[0].is_called).toBe(true);
       expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
       expect((await sql`SELECT revision FROM emergency_cases WHERE id=${f.caseId}`)[0].revision).toBe(0);
       expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);

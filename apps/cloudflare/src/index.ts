@@ -95,7 +95,7 @@ export function createCloudflareWorker(
         const queues = readiness.transport === "queues";
         let controlPlaneConfigured = false;
         try { assertCanonicalControlPlaneConfiguration(env); controlPlaneConfigured = true; } catch { /* fail closed */ }
-        const selectedHandlerConfigured = workflows ? Boolean(runtime?.workflowHandlerConfigured) : jobHandlerConfigured;
+        const selectedHandlerConfigured = readiness.transport === "retention" ? Boolean(scheduledJobSweep) : workflows ? Boolean(runtime?.workflowHandlerConfigured) : jobHandlerConfigured;
         const ready = readiness.ready && selectedHandlerConfigured && (workflows || queues
           ? (workflows ? isCanonicalWorkflowEnabled(env) : isCanonicalIntakeTransportEnabled(env, "queues")) && controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
         return json({
@@ -168,7 +168,8 @@ export function createCloudflareWorker(
         }
       }
       if (url.pathname === "/internal/jobs/publish" && request.method === "POST") {
-        if (env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_JOB_TRANSPORT !== "queues") return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
+        if ((!env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined) ||
+            (env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_JOB_TRANSPORT !== "queues")) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
         if (env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues")) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 503);
         if (env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
         if (!isAuthorizedDispatch(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
@@ -211,7 +212,8 @@ export function createCloudflareWorker(
     },
 
     async queue(batch: QueueBatch, env: CloudflareEnvironment): Promise<void> {
-      if (env.CLOUDFLARE_JOB_TRANSPORT && (env.CLOUDFLARE_JOB_TRANSPORT !== "queues" || !isCanonicalIntakeTransportEnabled(env, "queues"))) {
+      if ((!env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined) ||
+          (env.CLOUDFLARE_JOB_TRANSPORT && (env.CLOUDFLARE_JOB_TRANSPORT !== "queues" || !isCanonicalIntakeTransportEnabled(env, "queues")))) {
         for (const message of batch.messages) message.retry({ delaySeconds: 60 });
         return;
       }
