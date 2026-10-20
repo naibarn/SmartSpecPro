@@ -13,6 +13,8 @@ import {
 } from "../services/spec224ApprovalContinuation";
 import { db, getDb } from "../db";
 import { workerJobAttempts, workerJobDispatches, workerJobs } from "../../drizzle/schema";
+import { prepareCloudflareMediaProbe } from "../services/cloudflareMediaProbe";
+import { parseMediaProbeCandidate } from "@smartspec/shared/src/cloudflareMediaProbe";
 import { createJobReporter } from "../services/jobReporter";
 
 const leaseSchema = z.object({
@@ -171,7 +173,8 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
     jobType: workerJobs.jobType, status: workerJobs.status, runtimeType: workerJobs.runtimeType,
     executionClass: workerJobs.executionClass, contractVersion: workerJobs.contractVersion,
     attempt: workerJobs.attempt, input: workerJobs.inputJson, operatorReviewRequired: workerJobs.operatorReviewRequired,
-    leaseExpiresAt: workerJobs.leaseExpiresAt,
+    leaseExpiresAt: workerJobs.leaseExpiresAt, startedAt: workerJobs.startedAt,
+    timeoutPolicyJson: workerJobs.timeoutPolicyJson, timeoutSeconds: workerJobs.timeoutSeconds,
     dispatchId: workerJobDispatches.id, dispatchAttemptId: workerJobDispatches.attemptId,
     dispatchDedupeKey: workerJobDispatches.dedupeKey, dispatchAdapter: workerJobDispatches.adapter,
     publicationStatus: workerJobDispatches.publicationStatus, publishedAt: workerJobDispatches.publishedAt,
@@ -278,6 +281,12 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     if (!parsed.success || parsed.data.jobId !== parsed.data.envelope.job_id || parsed.data.claim.jobId !== parsed.data.jobId) return res.status(400).json({ error: "CLOUDFLARE_JOB_EXECUTION_INVALID" });
     try {
       const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
+      if (authorized.state === "authorized" && authorized.row.attempt === parsed.data.envelope.business_attempt &&
+          !authorized.row.operatorReviewRequired && parseMediaProbeCandidate(authorized.row)) {
+        // This branch prepares owned R2 input only. CPU work happens inside
+        // the fixed private Runner, never through a Python/command proxy.
+        return res.json(await prepareCloudflareMediaProbe(authorized.row, parsed.data.claim, createJobControlPlane()));
+      }
       if (authorized.state !== "authorized" || authorized.row.attempt !== parsed.data.envelope.business_attempt ||
           !["workflows", "queues"].includes(process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim() || "workflows") ||
           authorized.row.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||

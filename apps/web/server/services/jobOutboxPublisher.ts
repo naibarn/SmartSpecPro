@@ -23,7 +23,7 @@ type OutboxResult = {
   dispatchRef?: DispatchRef;
 };
 
-export type JobAdapterResolver = (input: { runtimeType: string; executionClass: string; jobType: string; tenantId?: string }) => JobTransportAdapter | undefined;
+export type JobAdapterResolver = (input: { runtimeType: string; executionClass: string; jobType: string; tenantId?: string; inputJson?: unknown }) => JobTransportAdapter | undefined;
 
 /**
  * Cloudflare Queue publication has no queryable native message identity in
@@ -384,7 +384,7 @@ export async function publishPendingJobOutbox(
   resolveAdapter?: JobAdapterResolver,
 ): Promise<OutboxResult[]> {
   getDb();
-  const rows = await db.select({ id: workerJobOutbox.id, tenantId: workerJobs.tenantId, runtimeType: workerJobs.runtimeType, executionClass: workerJobs.executionClass, jobType: workerJobs.jobType, envelopeJson: workerJobOutbox.envelopeJson })
+  const rows = await db.select({ id: workerJobOutbox.id, tenantId: workerJobs.tenantId, runtimeType: workerJobs.runtimeType, executionClass: workerJobs.executionClass, jobType: workerJobs.jobType, inputJson: workerJobs.inputJson, envelopeJson: workerJobOutbox.envelopeJson })
     .from(workerJobOutbox)
     .innerJoin(workerJobs, eq(workerJobOutbox.workerJobId, workerJobs.id))
     .where(and(

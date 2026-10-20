@@ -36,7 +36,7 @@ export async function initializeUnifiedJobControlPlaneRuntime(
 
   outboxRunner = new JobOutboxRunner({
     adapters,
-    resolveAdapter: row => process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true"
+    resolveAdapter: row => (process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true" || process.env.FEATURE_186_CLOUDFLARE_MEDIA_PROBE === "true")
       ? createFeature186RuntimeAdapter(row) : isPostgresNodeJobType(row.jobType)
       ? activeAdapter
       : adapters.get(row.runtimeType) ?? activeAdapter,

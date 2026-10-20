@@ -25,6 +25,8 @@ export const cloudflareOriginSettingsSchema = z.object({
   workflowDatabase: z.literal("hyperdrive-intake").optional(),
   jobTransport: z.enum(["workflows", "queues"]).optional(),
   retentionSchedule: z.literal("evidence-retention").optional(),
+  mediaProbe: z.object({ capability: z.literal("container-media-probe-v1"),
+    imageRef: z.string().regex(/^[a-z0-9][a-z0-9.:-]*\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/) }).strict().optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -44,7 +46,7 @@ export type CloudflareOriginVersionBindings = Readonly<{
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
-      ((settings.workflowDatabase || settings.jobTransport) && !settings.workflowExecution) ||
+      ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
@@ -62,6 +64,10 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
       { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: value.descriptor.jobTransport ?? "workflows" },
       { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
       { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+      ...(value.descriptor.mediaProbe ? [
+        { name: "CLOUDFLARE_MEDIA_PROBE", type: "plain_text", text: value.descriptor.mediaProbe.capability },
+        { name: "CLOUDFLARE_RUNNER_IMAGE_REF", type: "plain_text", text: value.descriptor.mediaProbe.imageRef },
+      ] : []),
       ...(value.descriptor.workflowDatabase ? [{ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: value.descriptor.workflowDatabase }] : []),
       { name: "CLOUDFLARE_RUNTIME_TOKEN", type: "secret_text", text: value.secrets.workflowRuntimeToken! },
       { name: "CLOUDFLARE_CONTROL_PLANE_TOKEN", type: "secret_text", text: value.secrets.controlPlaneToken! },
@@ -81,7 +87,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
-  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" ||
+  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

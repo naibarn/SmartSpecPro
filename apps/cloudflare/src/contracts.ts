@@ -74,7 +74,8 @@ export type CloudflareWorkerAppBinding = {
 };
 
 export type R2ObjectBinding = {
-  put(key: string, value: unknown, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<unknown>;
+  get?(key: string): Promise<{ size: number; body: ReadableStream<Uint8Array>; customMetadata?: Record<string, string> } | null>;
+  put(key: string, value: unknown, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string>; onlyIf?: { etagDoesNotMatch: string }; sha256?: string }): Promise<unknown>;
   head(key: string): Promise<{ size?: number; etag?: string; httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> } | null>;
   delete(key: string): Promise<void>;
 };
@@ -116,6 +117,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_RETENTION_EXPIRES_AT?: string;
   /** Exact registry digest approved for the private Runner DO deployment. */
   CLOUDFLARE_RUNNER_IMAGE_REF?: string;
+  /** Independently admitted fixed operation; never enables arbitrary commands. */
+  CLOUDFLARE_MEDIA_PROBE?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;

@@ -23,11 +23,13 @@ function isUsableBinding(env: CloudflareEnvironment, name: RequiredBindingName):
     case "JOB_WORKFLOW":
       return hasFunction(env.JOB_WORKFLOW, "get") && hasFunction(env.JOB_WORKFLOW, "create");
     case "JOB_CONTAINERS":
-      return hasFunction(env.JOB_CONTAINERS, "start");
+      return hasFunction(env.JOB_CONTAINERS, "start") && (!env.CLOUDFLARE_MEDIA_PROBE ||
+        (hasFunction(env.JOB_CONTAINERS, "probeMedia") && hasFunction(env.JOB_CONTAINERS, "stop") &&
+          /^[a-z0-9][a-z0-9.:-]*\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/.test(env.CLOUDFLARE_RUNNER_IMAGE_REF ?? "")));
     case "WORKER_APP":
       return hasFunction(env.WORKER_APP, "dispatch");
     case "MEDIA_BUCKET":
-      return hasFunction(env.MEDIA_BUCKET, "put") && hasFunction(env.MEDIA_BUCKET, "head") && hasFunction(env.MEDIA_BUCKET, "delete");
+      return (!env.CLOUDFLARE_MEDIA_PROBE || hasFunction(env.MEDIA_BUCKET, "get")) && hasFunction(env.MEDIA_BUCKET, "put") && hasFunction(env.MEDIA_BUCKET, "head") && hasFunction(env.MEDIA_BUCKET, "delete");
     case "VECTOR_INDEX":
       return hasFunction(env.VECTOR_INDEX, "upsert") && hasFunction(env.VECTOR_INDEX, "query") && hasFunction(env.VECTOR_INDEX, "getByIds") && hasFunction(env.VECTOR_INDEX, "deleteByIds");
   }
@@ -41,9 +43,10 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
   ) as Record<RequiredBindingName, boolean>;
   const missing = REQUIRED_BINDING_NAMES.filter(name => !required[name]);
   const transport = !env.CLOUDFLARE_JOB_TRANSPORT ? (env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined ? "retention" : "all") : env.CLOUDFLARE_JOB_TRANSPORT === "workflows" ? "workflows" : env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "queues" : "invalid";
-  const selectedMissing = transport === "retention" ? [] : transport === "workflows"
+  const transportMissing = transport === "retention" ? [] : transport === "workflows"
     ? (["HYPERDRIVE", "JOB_WORKFLOW"] as const).filter(name => !required[name])
     : transport === "queues" ? (["HYPERDRIVE", "JOB_QUEUE"] as const).filter(name => !required[name]) : missing;
+  const selectedMissing = [...new Set([...transportMissing, ...(env.CLOUDFLARE_MEDIA_PROBE ? (["JOB_CONTAINERS", "MEDIA_BUCKET"] as const).filter(name => !required[name]) : [])])];
   return {
     activation,
     environment: env.CLOUDFLARE_ENVIRONMENT?.trim() || "unknown",
@@ -51,7 +54,7 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
     missing,
     transport,
     selectedMissing,
-    ready: activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
+    ready: (!env.CLOUDFLARE_MEDIA_PROBE || env.CLOUDFLARE_MEDIA_PROBE === "container-media-probe-v1") && activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
   };
 }
 

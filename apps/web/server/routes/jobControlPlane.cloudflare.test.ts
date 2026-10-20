@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   db: { select: vi.fn() },
   plane: { getContext: vi.fn(), claim: vi.fn(), start: vi.fn(), complete: vi.fn(), heartbeat: vi.fn(), assertActive: vi.fn() },
-  resolve: vi.fn(), execute: vi.fn(),
+  resolve: vi.fn(), execute: vi.fn(), prepareMedia: vi.fn(),
 }));
 vi.mock("../db", () => ({ db: mocks.db, getDb: () => mocks.db }));
 vi.mock("../services/appRuntimeConfig", () => ({ compareCachedInternalToken: () => false }));
 vi.mock("../services/jobControlPlane", () => ({ createJobControlPlane: () => mocks.plane, recordAuthenticatedJobCallback: vi.fn() }));
 vi.mock("../services/jobControlPlaneGateway", () => ({ createControlPlaneJob: vi.fn() }));
+vi.mock("../services/cloudflareMediaProbe", () => ({ prepareCloudflareMediaProbe: mocks.prepareMedia }));
 vi.mock("../services/jobExecutorRegistry", () => ({ defaultJobExecutorRegistry: { resolve: mocks.resolve } }));
 vi.mock("../../drizzle/schema", () => ({ workerJobs: {}, workerJobDispatches: {}, workerJobAttempts: {} }));
 vi.mock("drizzle-orm", () => ({ and: vi.fn(), asc: vi.fn(), desc: vi.fn(), eq: vi.fn(), sql: vi.fn() }));
@@ -58,6 +59,19 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Cloudflare canonical job boundary", () => {
+  it("prepares an owned media reference through the same claimed boundary without invoking a Node business executor", async () => {
+    const input = { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
+      args: [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" };
+    Object.assign(row, { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", input });
+    const prepared = { mediaSource: { tenantId: "tenant-a", userId: 7, objectKey: "uploads/7/input.wav" } };
+    mocks.prepareMedia.mockResolvedValue(prepared);
+    expect((await send("execute", { claim }).expect(200)).body).toEqual(prepared);
+    expect(mocks.prepareMedia).toHaveBeenCalledWith(row, expect.objectContaining(claim), mocks.plane);
+    expect(mocks.resolve).not.toHaveBeenCalled(); expect(mocks.execute).not.toHaveBeenCalled();
+    input.taskImportPath = "app.tasks.arbitrary";
+    await send("execute", { claim }).expect(409); expect(mocks.prepareMedia).toHaveBeenCalledOnce();
+  });
+
   it("executes Queue intake only under the exact selected transport, preserving the tenant fence", async () => {
     row.dispatchAdapter = "cloudflare-queues";
     await send("execute", { claim }).expect(409);

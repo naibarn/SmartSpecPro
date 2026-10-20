@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Fixed bounded FFprobe CPU primitive and native private RPC pass actual-WAV/timeout Rust tests,197 Worker tests, scoped tsc and image-plan tests. Paid entitlement verified Containers200 via audit reads; deployment403 remains separate missing provider IAM. Continue exact canonical legacy media admission, server-owned asset/R2 manifest, immutable result and settlement; no live activation, expired prior Workflow window, serving remains e15.",
+      "next_action": "Canonical existing media probe composition is implemented and passes210 Worker/67 web tests plus actual Rust HTTP-WAV proof. Verify local native R2 conditional/hash readback and wire actual approved image/DO through existing authority; affected deployment403 remains external. Paid resolved, prior Workflow window expired, source-only serving e15. Enrolled Worker App, broader jobs/APIs, recovery/vector/retention and genuine auth/tenant-B acceptance remain open.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "186353dd6aeb63e6d6c11913898ba8f4c4548b11",
-      "merged_main_sha": "1adf7ad01822d65a684908573d5c84379bcba41a"
+      "checkpoint_sha": "940d277bbbd81cb2c150cf348130a9160159aa80",
+      "merged_main_sha": "940d277bbbd81cb2c150cf348130a9160159aa80"
     }
   },
   "pre_commit": {
@@ -57,12 +57,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 53,
-  "updated_at": "2026-10-20T16:20:18.690059+00:00",
+  "generation": 54,
+  "updated_at": "2026-10-20T16:30:59.308065+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Fixed bounded FFprobe CPU primitive and native private RPC pass actual-WAV/timeout Rust tests,197 Worker tests, scoped tsc and image-plan tests. Paid entitlement verified Containers200 via audit reads; deployment403 remains separate missing provider IAM. Continue exact canonical legacy media admission, server-owned asset/R2 manifest, immutable result and settlement; no live activation, expired prior Workflow window, serving remains e15.",
-    "merged_main_sha": "1adf7ad01822d65a684908573d5c84379bcba41a",
+    "next_action": "Canonical existing media probe composition is implemented and passes210 Worker/67 web tests plus actual Rust HTTP-WAV proof. Verify local native R2 conditional/hash readback and wire actual approved image/DO through existing authority; affected deployment403 remains external. Paid resolved, prior Workflow window expired, source-only serving e15. Enrolled Worker App, broader jobs/APIs, recovery/vector/retention and genuine auth/tenant-B acceptance remain open.",
+    "merged_main_sha": "940d277bbbd81cb2c150cf348130a9160159aa80",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Code integrated: real supported request-scoped Postgres.js + fenced opt-in direct emergency intake; native Workflow/exclusive Queue handler composition; native Container DO lifecycle/image contract; existing registered Worker App SQL-backed adapter; actual Vectorize signature normalization; independently bounded retention schedule admission. No global activation or second job authority.",

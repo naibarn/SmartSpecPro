@@ -29,6 +29,7 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
       ...(postgresPythonPullEnabled ? [["python_job_worker", activeAdapter] as const] : []),
     ]),
     resolveAdapter: row => {
+      if (process.env.FEATURE_186_CLOUDFLARE_MEDIA_PROBE === "true" && row.runtimeType === "python_job_worker") return createFeature186RuntimeAdapter(row);
       if (isPostgresNodeJobType(row.jobType) || row.runtimeType === "node_job_worker") return process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true"
         ? createFeature186RuntimeAdapter(row) : activeAdapter;
       if (postgresPythonPullEnabled && row.runtimeType === "python_job_worker") return activeAdapter;

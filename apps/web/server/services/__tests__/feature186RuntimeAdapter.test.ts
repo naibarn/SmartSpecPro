@@ -48,6 +48,21 @@ describe("Feature 186 runtime adapter policy", () => {
       .toThrow("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");
   });
 
+
+  it("selects only the existing exact media probe wrapper under independent tenant/expiry opt-in", () => {
+    vi.stubEnv("FEATURE_186_CLOUDFLARE_MEDIA_PROBE", "true"); vi.stubEnv("CLOUDFLARE_MEDIA_PROBE", "container-media-probe-v1");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a"); vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "https://staging.example.workers.dev"); vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "test-bounded-runtime");
+    const input = { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
+      args: [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" };
+    const job = { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", tenantId: "tenant-a", inputJson: input };
+    expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
+    expect(createFeature186RuntimeAdapter({ ...job, tenantId: "tenant-b" }).name).toBe("postgres-pull");
+    expect(createFeature186RuntimeAdapter({ ...job, inputJson: { ...input, taskImportPath: "app.tasks.unapproved" } }).name).toBe("postgres-pull");
+    expect(createFeature186RuntimeAdapter({ ...job, inputJson: { ...input, kwargs: { command: "curl" } } }).name).toBe("postgres-pull");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", "2000-01-01T00:00:00Z"); expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
+  });
+
   it("selects PostgreSQL-pull without Cloudflare configuration", () => {
     process.env.FEATURE_186_HARD_CUTOVER = "true";
     process.env.NODE_ENV = "production";

@@ -21,6 +21,9 @@ export default defineConfig({
     extensions: [".ts", ".tsx", ".mts", ".mjs", ".js", ".jsx", ".json"],
     dedupe: ["react", "react-dom"],
     alias: {
+      // Shared dependency caches can point at another canonical revision.
+      // Tests must read this checkout's workspace contract sources.
+      "@smartspec/shared": path.resolve(workspaceRoot, "packages", "shared"),
       "react": resolvePackageDir("react"),
       "react-dom": resolvePackageDir("react-dom"),
       "@": path.resolve(templateRoot, "client", "src"),

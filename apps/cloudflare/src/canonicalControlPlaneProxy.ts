@@ -171,3 +171,11 @@ export function createCanonicalControlPlaneProxyRepository(env: CloudflareEnviro
     },
   };
 }
+
+/** Reuses the same fenced private boundary to resolve input only, not CPU work. */
+export async function prepareCanonicalMediaProbe({ env, job, envelope, claim }: Parameters<CanonicalWorkerExecution>[0]) {
+  const response = await callPlatform<{ mediaSource?: unknown }>(env, "execute", {
+    jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId },
+  });
+  return response.mediaSource;
+}
