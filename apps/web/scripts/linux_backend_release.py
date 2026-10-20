@@ -489,14 +489,16 @@ def _atomic_write_text(path: Path, content: str, *, mode: int = 0o644) -> None:
 
 
 def _make_readonly(root: Path) -> None:
+    # Promotion runs as root, while the services run as dev. A caller's private
+    # umask must not produce root-only code after copytree preserves its modes.
+    # Only validated immutable code is normalized; mutable data symlinks stay as-is.
     for path in sorted(root.rglob("*"), reverse=True):
         if path.is_symlink():
             continue
         if path.is_dir() or path.is_file():
             mode = stat.S_IMODE(path.stat().st_mode)
-            path.chmod(mode & ~0o222)
-    mode = stat.S_IMODE(root.stat().st_mode)
-    root.chmod(mode & ~0o222)
+            path.chmod(0o555 if path.is_dir() or mode & 0o111 else 0o444)
+    root.chmod(0o555)
 
 
 def _prepare_runtime_data(

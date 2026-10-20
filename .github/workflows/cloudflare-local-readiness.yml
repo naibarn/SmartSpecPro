@@ -22,6 +22,12 @@ on:
       - "apps/web/scripts/verify-cloudflare-*.ts"
       - "apps/web/scripts/cloudflare-deployment-schema.ts"
       - "apps/web/scripts/__tests__/cloudflare-deployment-schema.test.ts"
+      - "apps/web/scripts/targeted-additive-schema.ts"
+      - "apps/web/scripts/desktop-device-schema.ts"
+      - "apps/web/scripts/__tests__/desktop-device-schema.test.ts"
+      - "apps/web/drizzle/0409_desktop_device_registry.sql"
+      - "apps/web/scripts/linux_backend_release.py"
+      - "apps/web/scripts/test_linux_backend_release.py"
       - "ops/feature-187/**"
       - "ops/feature-188/cloudflare-*"
       - ".github/workflows/cloudflare-local-readiness.yml"
@@ -46,6 +52,12 @@ on:
       - "apps/web/scripts/verify-cloudflare-*.ts"
       - "apps/web/scripts/cloudflare-deployment-schema.ts"
       - "apps/web/scripts/__tests__/cloudflare-deployment-schema.test.ts"
+      - "apps/web/scripts/targeted-additive-schema.ts"
+      - "apps/web/scripts/desktop-device-schema.ts"
+      - "apps/web/scripts/__tests__/desktop-device-schema.test.ts"
+      - "apps/web/drizzle/0409_desktop_device_registry.sql"
+      - "apps/web/scripts/linux_backend_release.py"
+      - "apps/web/scripts/test_linux_backend_release.py"
       - "ops/feature-187/**"
       - "ops/feature-188/cloudflare-*"
       - ".github/workflows/cloudflare-local-readiness.yml"
@@ -72,6 +84,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Guard standalone Linux runtime import boundaries
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
+      - name: Verify Linux release permissions and recovery
+        run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
+      - name: Verify tenant branding storage authorization
+        run: pnpm --filter @smartspec/web exec vitest run server/services/__tests__/managedStorageAuthorizationService.test.ts
+        env:
+          JWT_SECRET: ci-tenant-branding-fixture-key-not-a-secret
       - name: Test Express route architecture guard
         run: node --test scripts/guards/express-route-architecture.test.mjs
       - name: Enforce Hono-first Express route policy
@@ -156,9 +174,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y postgresql
       - name: Exercise staging executor through disposable PostgreSQL
-        run: npm --workspace @smartspec/web run test -- server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
         env:
           RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"
+          RUN_DESKTOP_SCHEMA_DB_INTEGRATION: "true"
           TMPDIR: /tmp
       - name: Verify local readiness without target credentials
         run: |

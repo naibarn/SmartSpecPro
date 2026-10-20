@@ -308,6 +308,37 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertTrue(runtime_executable.stat().st_mode & 0o111)
         self.assertFalse(runtime_executable.stat().st_mode & 0o222)
 
+    def test_private_build_umask_does_not_make_installed_code_root_only(self):
+        executable = self.backend / "node_modules/private-tool/bin/tool"
+        executable.parent.mkdir(parents=True)
+        executable.write_bytes(b"fixture executable")
+        executable.chmod(0o700)
+        for path in self.backend.rglob("*"):
+            if path.is_dir():
+                path.chmod(0o700)
+            elif path.is_file() and path != executable:
+                path.chmod(0o600)
+        self.backend.chmod(0o700)
+        self.build_record["artifact"] = {
+            **release.build_artifact_manifest(self.dist), "artifact_path": str(self.dist)
+        }
+        self.build_result_path.write_text(json.dumps(self.build_record))
+
+        previous_umask = os.umask(0o077)
+        try:
+            artifact = self.prepare()
+            result = self.promote(artifact)
+        finally:
+            os.umask(previous_umask)
+        runtime = Path(result["release_path"])
+        for path in [runtime, *runtime.rglob("*")]:
+            if path.is_symlink():
+                continue
+            mode = path.stat().st_mode & 0o7777
+            expected = 0o555 if path.is_dir() or path.name == "tool" else 0o444
+            self.assertEqual(mode, expected, str(path.relative_to(runtime)))
+        self.assertTrue((runtime / "logs").is_symlink())
+
     def test_prepare_cli_validates_canonical_build_once(self):
         with (
             patch.object(release, "canonical_tip", return_value=self.source_sha),
@@ -499,13 +530,15 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         fake_pnpm.write_text(
             "#!/bin/sh\n"
             "for target in \"$@\"; do :; done\n"
-            "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/node_modules/tsx\" \"$target/node_modules/typescript\"\n"
+            "mkdir -p \"$target/server/_core\" \"$target/server/routers\" \"$target/server/services\" \"$target/node_modules/typescript\"\n"
             "mkdir -p \"$target/node_modules/.pnpm/node_modules/@smartspec\"\n"
             "cp \"$PWD/apps/web/tsconfig.json\" \"$target/tsconfig.json\"\n"
             "cp \"$PWD/apps/web/package.json\" \"$target/package.json\"\n"
             "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
-            "printf '{\"name\":\"tsx\"}\\n' > \"$target/node_modules/tsx/package.json\"\n"
+            "printf 'export const middleware = true;\\n' > \"$target/server/_core/cloudflareOriginMiddleware.ts\"\n"
+            "printf 'export const bindings = true;\\n' > \"$target/server/services/cloudflareOriginVersionBindings.ts\"\n"
+            f"ln -s '{(SCRIPT.parent.parent / 'node_modules/tsx').resolve()}' \"$target/node_modules/tsx\"\n"
             "printf '{\"name\":\"typescript\"}\\n' > \"$target/node_modules/typescript/package.json\"\n",
             encoding="utf-8",
         )
