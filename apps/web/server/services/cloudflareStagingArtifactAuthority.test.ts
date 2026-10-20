@@ -86,6 +86,36 @@ function canonicalBuildRecord() {
 }
 
 describe("Cloudflare staging artifact authority", () => {
+  it("rechecks content-addressed metadata and the live build receipt without reading all blobs", async () => {
+    let authorized = true;
+    const { storage, objects } = fixture();
+    const reads: string[] = [];
+    const authority = createCloudflareStagingArtifactAuthority({
+      storage: { ...storage, readBuffer: async key => { reads.push(key); return storage.readBuffer(key); } },
+      buildReceipts: { verify: async () => authorized },
+    });
+    const published = await authority.publish({ receipt, bundle });
+    reads.length = 0;
+    expect(await authority.resolveArtifact(published.artifactRef)).toEqual(published);
+    expect(reads).toHaveLength(1);
+    expect(reads[0]).toMatch(/manifest\.json$/);
+    authorized = false;
+    expect(await authority.resolveArtifact(published.artifactRef)).toBeNull();
+    authorized = true;
+    const manifestKey = reads[0]!;
+    const original = objects.get(manifestKey)!;
+    const manifest = JSON.parse(original.toString());
+    manifest.assets["assets/app.js"].sha256 = "f".repeat(64);
+    objects.set(manifestKey, Buffer.from(JSON.stringify(manifest)));
+    expect(await authority.resolveArtifact(published.artifactRef)).toBeNull();
+    objects.set(manifestKey, original);
+    const blobKey = [...objects.keys()].find(key => key.endsWith(sha256(jsBytes)))!;
+    objects.set(blobKey, Buffer.from("corrupted"));
+    // A metadata receipt does not claim that every remote byte is reachable.
+    expect(await authority.resolveArtifact(published.artifactRef)).toEqual(published);
+    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+  });
+
   it("rejects a valid manifest substituted under a different content address", async () => {
     const { authority, objects } = fixture();
     await authority.publish({ receipt, bundle });

@@ -102,6 +102,21 @@ function base64(bytes: Uint8Array) {
   return Buffer.from(bytes).toString("base64");
 }
 
+// Worker modules use a different MIME contract from browser assets. In
+// particular, Wrangler's generated README must be a text module, not Markdown.
+function moduleContentType(name: string, supplied: string): string {
+  if (/\.m?js$/i.test(name)) return "application/javascript+module";
+  if (/\.(?:md|txt)$/i.test(name)) return "text/plain";
+  if (/\.map$/i.test(name)) return "application/source-map";
+  const allowed = new Set([
+    "application/javascript+module", "text/javascript+module", "application/javascript", "text/javascript",
+    "text/x-python", "text/x-python-requirement", "application/wasm", "text/plain",
+    "application/octet-stream", "application/source-map",
+  ]);
+  if (!allowed.has(supplied)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_MODULE_CONTENT_TYPE_INVALID");
+  return supplied;
+}
+
 export function createCloudflareStagingApiTransport(input: {
   resolveBundle: CloudflareStagingBundleResolver;
   fetchImpl?: typeof fetch;
@@ -207,8 +222,9 @@ export function createCloudflareStagingApiTransport(input: {
         !/^\d{4}-\d{2}-\d{2}$/.test(bundle.compatibilityDate)) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ARTIFACT_MISMATCH");
     }
-    for (const name of Object.keys(bundle.moduleFiles)) {
+    for (const [name, file] of Object.entries(bundle.moduleFiles)) {
       if (!safeAssetPath(name)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_MODULE_INVALID");
+      moduleContentType(name, file.contentType);
     }
     return bundle;
   }
@@ -259,7 +275,7 @@ export function createCloudflareStagingApiTransport(input: {
     const form = new FormData();
     form.set("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata.json");
     for (const [name, file] of Object.entries(bundle.moduleFiles)) {
-      form.set(name, new Blob([file.bytes], { type: /\.m?js$/i.test(name) ? "application/javascript+module" : file.contentType }), name);
+      form.set(name, new Blob([file.bytes], { type: moduleContentType(name, file.contentType) }), name);
     }
     const result = await api<{ id?: string }>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}${bootstrapKey ? "" : "/versions"}`, {

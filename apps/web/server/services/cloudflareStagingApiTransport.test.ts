@@ -32,7 +32,12 @@ const bundleBase = {
   sourceSha,
   mainModule: "index.js",
   compatibilityDate: "2026-10-17",
-  moduleFiles: { "index.js": { contentType: "application/javascript", bytes } },
+  moduleFiles: {
+    "index.js": { contentType: "application/javascript", bytes },
+    // The canonical Wrangler output includes this alongside index.js. The
+    // artifact publisher infers a browser MIME type, which is invalid for modules.
+    "README.md": { contentType: "text/markdown; charset=utf-8", bytes: new TextEncoder().encode("Wrangler output") },
+  },
   assets: {
     "index.html": { contentType: "application/octet-stream", bytes: assetBytes },
     "_headers": { contentType: "application/octet-stream", bytes: new TextEncoder().encode("/\n  Cache-Control: no-cache\n") },
@@ -101,6 +106,8 @@ describe("Cloudflare staging API transport", () => {
         const metadata = JSON.parse(await form.get("metadata")!.text());
         expect(metadata.main_module).toBe("index.js");
         expect((form.get("index.js") as File).type).toBe("application/javascript+module");
+        expect((form.get("README.md") as File).type).toBe("text/plain");
+        expect(await (form.get("README.md") as File).text()).toBe("Wrangler output");
         expect(metadata.assets.jwt).toBe("completion-jwt");
         expect(metadata.assets.config._headers).toContain("Cache-Control: no-cache");
         expect(metadata.bindings).toEqual([
@@ -206,6 +213,22 @@ describe("Cloudflare staging API transport", () => {
     await expect(cloudflare.deploy({
       token: "secret-token", target: { ...target, workerRef: "production-worker" }, artifact, idempotencyKey: "cloudflare-staging:job-1",
     })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_STAGING_TARGET_DENIED" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported module MIME types before even creating an asset upload session", async () => {
+    const invalidBase = { ...bundleBase, moduleFiles: {
+      ...bundleBase.moduleFiles,
+      "unknown.module": { contentType: "application/json", bytes: new TextEncoder().encode("{}") },
+    } };
+    const invalidDigest = digest(invalidBase);
+    const fetchImpl = vi.fn() as typeof fetch;
+    const cloudflare = createCloudflareStagingApiTransport({
+      resolveBundle: async () => ({ ...invalidBase, buildDigest: invalidDigest }), fetchImpl,
+    });
+    await expect(cloudflare.deploy({ token: "secret-token", target,
+      artifact: { ...artifact, buildDigest: invalidDigest }, idempotencyKey: "invalid-module",
+    })).rejects.toThrow("CLOUDFLARE_STAGING_MODULE_CONTENT_TYPE_INVALID");
     expect(fetchImpl).not.toHaveBeenCalled();
   });
   it("bootstraps an absent Worker with the official PUT flow and resumes only its own version", async () => {
