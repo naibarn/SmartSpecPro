@@ -158,13 +158,15 @@ export function createCloudflarePrivateDatabaseExecutor(runtime: Runtime | (() =
       if (!cert.ca || certificateDigest(cert.raw) !== grant.plan.caSha256 || Date.parse(cert.validFrom) > Date.now()
         || Date.parse(cert.validTo) < Date.parse(grant.plan.configurationExpiresAt)) throw Error();
     } catch { throw new PrivateDatabaseError("PRIVATE_DATABASE_CA_INVALID"); }
-    if (context.attempt > 1 && !(await active.loadCheckpoint(grant)).databaseRolePrepared)
-      throw new PrivateDatabaseError("PRIVATE_DATABASE_RETRY_WRITE_DENIED");
+    // A definite pre-submission failure may resume the same bounded plan.
+    // Uncertain provider writes remain fenced before any local/provider work.
+    if ((await active.loadCheckpoint(grant)).pending)
+      throw new PrivateDatabaseError("PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED");
     await assertAuthorized(); await active.prepareDatabase(grant); await assertAuthorized();
     const output = await active.withCredential(scope, async token => {
       fingerprint = createHash("sha256").update(token).digest("hex");
       return provisionCloudflarePrivateDatabase({ grant, token, caCertificate, checkpoint: await active.loadCheckpoint(grant),
-        readOnly: context.attempt > 1, assertAuthorized, saveCheckpoint: state => active.saveCheckpoint(grant, state), fetchImpl: active.fetchImpl });
+        assertAuthorized, saveCheckpoint: state => active.saveCheckpoint(grant, state), fetchImpl: active.fetchImpl });
     });
     await assertAuthorized(); await active.prepareDatabase(grant);
     return { output };

@@ -147,6 +147,16 @@ describe("private database canonical executor fences", () => {
     await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).resolves.toMatchObject({ output: { providerConfigurationVerified: true } });
     expect(f.runtime.prepareDatabase).toHaveBeenCalledTimes(2);
   });
+  it("resumes the same bounded plan on a reviewed recovery attempt after definite pre-submission failure", async () => {
+    const f = execution(); f.args.context.attempt = 2;
+    f.args.controlPlane.getStatus.mockResolvedValue({ attempt: 2, lease: { active: true, stale: false, fencingVersion: 1, expiresAt: new Date(Date.now() + 60_000).toISOString() } });
+    await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).resolves.toMatchObject({ output: { providerConfigurationVerified: true } });
+  });
+  it("refuses uncertain writes before local role/connector preparation on recovery", async () => {
+    const f = execution(); f.input.checkpoint.pending = "hyperdrive.create";
+    await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).rejects.toThrow("AMBIGUOUS_WRITE_REVIEW_REQUIRED");
+    expect(f.runtime.prepareDatabase).not.toHaveBeenCalled(); expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
   it.each(["tenantId", "jobId", "requestedByUserId"])("denies substituted %s before database/provider work", async field => {
     const f = execution(); Object.assign(f.args.context, { [field]: field === "requestedByUserId" ? 2 : "foreign" });
     await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).rejects.toThrow("AUTHORITY_DENIED");
