@@ -4715,7 +4715,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection";
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4738,7 +4738,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "content_protection_provider" &&
           evidence.knownRuntime !== "cloudflare_staging_compile" &&
           evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt" &&
-          evidence.knownRuntime !== "cloudflare_staging_native_readback")
+          evidence.knownRuntime !== "cloudflare_staging_native_readback" &&
+          evidence.knownRuntime !== "cloudflare_staging_private_database_rejection")
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4825,6 +4826,18 @@ export function createJobControlPlane(
           job.errorCode === "NATIVE_PROVIDER_READBACK_MISMATCH" &&
           typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
           evidence.operationKey === `native-provision:${job.id}:${job.inputJson.planDigest}`;
+        // A definite client rejection did not create Hyperdrive. The executor
+        // still verifies its encrypted step checkpoint and every prior resource
+        // before resuming; uncertain writes retain their own review fence.
+        const knownPrivateDatabaseRejection =
+          evidence.knownRuntime === "cloudflare_staging_private_database_rejection" &&
+          evidence.disposition === "provider_operation_resolved" &&
+          scope?.authorizationScope === "worker_jobs.admin_requeue" &&
+          job?.jobType === "cloudflare.staging.private_database.provision" &&
+          job.contractVersion === "cloudflare-staging-private-db-v1" &&
+          job.status === "failed" && job.errorCode === "PRIVATE_DATABASE_HTTP_400" &&
+          typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
+          evidence.operationKey === `private-database:${job.id}:${job.inputJson.planDigest}`;
         if (
           !job ||
           !["failed", "expired"].includes(job.status) ||
@@ -4833,7 +4846,8 @@ export function createJobControlPlane(
             !knownProtectionProviderFailure &&
             !knownCloudflareCompileRejection &&
             !knownCloudflareBootstrapReceipt &&
-            !knownNativeReadbackFailure) ||
+            !knownNativeReadbackFailure &&
+            !knownPrivateDatabaseRejection) ||
           (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure)
         )
           return false;

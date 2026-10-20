@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { privateDatabaseBindingSchema, validatePrivateDatabaseBinding, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB, nativeProvisionJobSchema,
   nativeProvisionNamespace, nativeProvisionPlanDigest, nativeProvisionPlanSchema, nativeResourceNames } from "./cloudflareNativeProvisionContract";
 
@@ -6,6 +7,7 @@ import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB, nativeProvisionJobSche
 export const cloudflareNativeBindingDescriptorSchema = z.object({
   provisionJobId: z.string().uuid(), plan: nativeProvisionPlanSchema,
   planDigest: z.string().regex(/^[a-f0-9]{64}$/), queueId: z.string().regex(/^[a-f0-9]{32}$/),
+  privateDatabase: privateDatabaseBindingSchema.optional(),
 }).strict().refine(value => value.planDigest === nativeProvisionPlanDigest(value.plan));
 export type CloudflareNativeBindingDescriptor = z.infer<typeof cloudflareNativeBindingDescriptorSchema>;
 function denied(code: string): never { throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent" }); }
@@ -18,6 +20,7 @@ export function validateNativeBindingScope(value: CloudflareNativeBindingDescrip
     || Date.parse(descriptor.plan.configurationExpiresAt) <= now
     || Date.parse(descriptor.plan.configurationExpiresAt) < Date.parse(scope.expiresAt))
     denied("CLOUDFLARE_NATIVE_BINDING_SCOPE_DENIED");
+  if (descriptor.privateDatabase) validatePrivateDatabaseBinding(descriptor.privateDatabase, scope, now);
   return descriptor;
 }
 
@@ -48,6 +51,7 @@ export function nativeWorkerBindings(value: CloudflareNativeBindingDescriptor) {
     { name: "JOB_QUEUE", type: "queue", queue_name: names.queue },
     { name: "MEDIA_BUCKET", type: "r2_bucket", bucket_name: names.bucket },
     { name: "VECTOR_INDEX", type: "vectorize", index_name: names.vector },
+    ...(descriptor.privateDatabase ? [{ name: "HYPERDRIVE", type: "hyperdrive", id: descriptor.privateDatabase.hyperdriveId }] : []),
   ];
 }
 
@@ -57,7 +61,7 @@ export function assertNativeWorkerBindings(actual: unknown, value: CloudflareNat
   if (!Array.isArray(actual) || expected.some(binding => {
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || Object.entries(binding).some(([key, field]) => matches[0][key] !== field);
-  }) || actual.some(item => ["queue", "r2_bucket", "vectorize"].includes(item?.type)
+  }) || actual.some(item => ["queue", "r2_bucket", "vectorize", "hyperdrive"].includes(item?.type)
     && !expected.some(binding => binding.name === item.name))
     || actual.filter(item => item?.name === "CLOUDFLARE_ACTIVATION").length !== 1
     || !actual.some(item => item?.name === "CLOUDFLARE_ACTIVATION" && item.type === "plain_text" && item.text === "disabled"))
@@ -94,4 +98,5 @@ export async function verifyNativeProviderResources(input: {
     || !Array.isArray(metadata?.metadataIndexes) || !["tenantId", "sourceJobId"].every(field => metadata.metadataIndexes
       .some((item: any) => item.propertyName === field && ["string", "String"].includes(item.indexType))))
     denied("CLOUDFLARE_NATIVE_PROVIDER_RESOURCE_DRIFT");
+  if (descriptor.privateDatabase) await verifyPrivateDatabaseProviderResources({ ...input, descriptor: descriptor.privateDatabase });
 }

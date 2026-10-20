@@ -105,7 +105,7 @@ export function createCloudflarePrivateDatabaseRuntime(options: { fetchImpl?: ty
           if (state.databaseRolePrepared) {
             const r = roles[0];
             if (!r || r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.rolreplication || r.rolbypassrls || !r.rolcanlogin || r.rolconnlimit !== 5
-              || !r.rolconfig?.includes("default_transaction_read_only=on") || Date.parse(r.rolvaliduntil) !== Date.parse(g.plan.configurationExpiresAt)) throw new PrivateDatabaseError("PRIVATE_DATABASE_ROLE_DRIFT");
+              || !r.rolconfig?.includes("default_transaction_read_only=on") || new Date(r.rolvaliduntil).getTime() !== Date.parse(g.plan.configurationExpiresAt)) throw new PrivateDatabaseError("PRIVATE_DATABASE_ROLE_DRIFT");
             return;
           }
           if (roles.length) throw new PrivateDatabaseError("PRIVATE_DATABASE_EXISTING_ROLE_REVIEW_REQUIRED");

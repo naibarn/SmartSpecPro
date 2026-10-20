@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
+import { assertPrivateDatabaseProvisionReceipt } from "./cloudflarePrivateDatabaseBinding";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
@@ -45,6 +46,14 @@ async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: De
     operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
     .from(workerJobs).where(eq(workerJobs.id, descriptor.nativeResources.provisionJobId)).limit(1);
   assertNativeProvisionReceipt(descriptor.nativeResources, receipt, { ...descriptor, actorUserId });
+  if (descriptor.nativeResources.privateDatabase) {
+    const privateDatabase = descriptor.nativeResources.privateDatabase;
+    const [databaseReceipt] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+      jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+      operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+      .from(workerJobs).where(eq(workerJobs.id, privateDatabase.provisionJobId)).limit(1);
+    assertPrivateDatabaseProvisionReceipt(privateDatabase, databaseReceipt, { ...descriptor, actorUserId });
+  }
 }
 
 /** Store an immutable encrypted version. This neither binds nor deploys it. */

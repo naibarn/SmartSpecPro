@@ -7,14 +7,14 @@ export const privateDatabaseCheckpointSchema = z.object({
   planDigest: z.string().regex(/^[a-f0-9]{64}$/), pending: z.string().optional(),
   databasePassword: z.string().min(32).optional(), databaseRolePrepared: z.literal(true).optional(),
   caId: id.optional(), appId: id.optional(), policyId: id.optional(), dnsRecordId: id.optional(), hyperdriveId: id.optional(),
-  serviceToken: z.object({ id, clientId: z.string().min(16), secret: z.string().min(16), expiresAt: z.string() }).strict().optional(),
+  serviceToken: z.object({ id, clientId: z.string().min(16), secret: z.string().min(16), expiresAt: z.string().datetime({ offset: true }) }).strict().optional(),
 }).strict();
 export type PrivateDatabaseCheckpoint = z.infer<typeof privateDatabaseCheckpointSchema>;
 export class PrivateDatabaseError extends Error {
-  readonly class: "permanent" | "unknown";
+  readonly class: "permanent" | "unknown" | "retryable";
   constructor(readonly diagnosticCode: string) {
     super(diagnosticCode);
-    this.class = diagnosticCode.includes("AMBIGUOUS") ? "unknown" : "permanent";
+    this.class = diagnosticCode === "PRIVATE_DATABASE_DNS_NOT_READY" ? "retryable" : diagnosticCode.includes("AMBIGUOUS") ? "unknown" : "permanent";
   }
 }
 function fail(code: string): never { throw new PrivateDatabaseError(code); }
@@ -51,6 +51,8 @@ export async function provisionCloudflarePrivateDatabase(input: {
     } catch { return fail(body ? "PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED" : "PRIVATE_DATABASE_READ_UNAVAILABLE"); }
     if (!r.ok || b.success !== true) {
       if (body && r.status >= 400 && r.status < 500) { delete state.pending; await input.saveCheckpoint(state); }
+      if (step === "hyperdrive.create" && r.status === 400 && Array.isArray(b.errors) && b.errors.some((e: any) => e.code === 2008))
+        fail("PRIVATE_DATABASE_DNS_NOT_READY");
       fail(`PRIVATE_DATABASE_HTTP_${r.status}`);
     }
     if (body) delete state.pending;

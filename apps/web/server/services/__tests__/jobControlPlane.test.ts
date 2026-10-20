@@ -2029,6 +2029,28 @@ describe("job control plane", () => {
     }
   });
 
+  it.each([
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.admin_requeue", true, 3, true],
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.admin_requeue", true, 1, false],
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED", "worker_jobs.admin_requeue", true, 3, false],
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v2", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.admin_requeue", true, 3, false],
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.user_retry", true, 3, false],
+    ["cloudflare.staging.private_database.provision", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.admin_requeue", false, 3, false],
+    ["unrelated.job", "cloudflare-staging-private-db-v1", "PRIVATE_DATABASE_HTTP_400", "worker_jobs.admin_requeue", true, 3, false],
+  ])("bounds private database rejection recovery to exact contract/error/admin/plan/attempt budget: %s %s %s", async (jobType, contractVersion, code, authorizationScope, correctKey, maxAttempts, allowed) => {
+    const state = makeRepository(), controlPlane = createJobControlPlane(state.repository), planDigest = "a".repeat(64);
+    const created = await controlPlane.create({ ...definition, jobType: jobType as string, contractVersion: contractVersion as string,
+      input: { planDigest }, retryPolicy: { ...definition.retryPolicy, maxAttempts: maxAttempts as number }, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "staging-test", adapter: "test" });
+    await controlPlane.start(lease!); await controlPlane.fail(lease!, { code: code as string, message: code as string, class: "permanent" });
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000093", "private_database_provider_rejection_resolved",
+      { disposition: "provider_operation_resolved", knownRuntime: "cloudflare_staging_private_database_rejection",
+        operationKey: `private-database:${created.jobId}:${correctKey ? planDigest : "b".repeat(64)}` }, definition.requestedByUserId,
+      { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId, authorizationScope: authorizationScope as string })).resolves.toBe(allowed);
+    expect(state.jobs.get(created.jobId).attempt).toBe(allowed ? 2 : 1);
+    expect(state.jobs.get(created.jobId).maxAttempts).toBe(maxAttempts);
+  });
+
   it.each(["bootstrap", "deploy"])("bounds bootstrap receipt recovery to the bootstrap action: %s", async action => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

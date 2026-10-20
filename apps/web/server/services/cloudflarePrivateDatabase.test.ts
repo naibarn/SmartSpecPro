@@ -10,6 +10,9 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { validateJobDefinition } from "./jobCanonicalization";
+import { assertPrivateDatabaseProvisionReceipt, validatePrivateDatabaseBinding, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
+import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
+import { nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 
 let caCertificate: string, certDirectory: string;
 beforeAll(() => {
@@ -117,6 +120,13 @@ describe("private PostgreSQL staging provisioning", () => {
     });
     await expect(provisionCloudflarePrivateDatabase(f.input)).rejects.toThrow("HYPERDRIVE_DENIED");
   });
+  it("classifies definite DNS propagation rejection as retryable with cleared durable intent", async () => {
+    const f = fixture(), original = f.fetchImpl.getMockImplementation()!;
+    f.fetchImpl.mockImplementation(async (url, init) => String(url).endsWith("/hyperdrive/configs") && init.method === "POST"
+      ? Response.json({ success: false, errors: [{ code: 2008, message: "DNS lookup failed" }] }, { status: 400 }) : original(url, init));
+    await expect(provisionCloudflarePrivateDatabase(f.input)).rejects.toMatchObject({ diagnosticCode: "PRIVATE_DATABASE_DNS_NOT_READY", class: "retryable" });
+    expect(f.checkpoints.at(-1)?.pending).toBeUndefined(); expect(f.checkpoints.at(-1)?.hyperdriveId).toBeUndefined();
+  });
 });
 
 describe("private database canonical executor fences", () => {
@@ -175,5 +185,51 @@ describe("private database canonical executor fences", () => {
     for (const plan of [{ ...f.grant.plan, hostname: "foreign.example" }, { ...f.grant.plan, databaseName: 'db";DROP DATABASE other;' }, { ...f.grant.plan, connectionLimit: 100 }]) {
       expect(privateDatabaseGrantSchema.safeParse({ ...f.grant, plan, planDigest: privateDatabasePlanDigest(plan as never) }).success).toBe(false);
     }
+  });
+});
+
+describe("immutable private database binding authority", () => {
+  async function bindingFixture() {
+    const f = fixture(), output = await provisionCloudflarePrivateDatabase(f.input);
+    const descriptor = { provisionJobId: f.grant.jobId, plan: f.grant.plan, planDigest: f.grant.planDigest,
+      hyperdriveId: output.hyperdriveId!, caId: output.caId!, accessApplicationId: output.accessApplicationId!, accessPolicyId: output.accessPolicyId!,
+      serviceTokenId: output.serviceTokenId!, dnsRecordId: output.dnsRecordId! };
+    const scope = { tenantId: f.grant.tenantId, projectId: f.grant.projectId, accountRef: f.grant.accountRef, actorUserId: 1,
+      expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    const receipt = { id: f.grant.jobId, tenantId: f.grant.tenantId, requestedByUserId: 1, jobType: PRIVATE_DATABASE_JOB,
+      contractVersion: PRIVATE_DATABASE_CONTRACT, status: "succeeded", operatorReviewRequired: false,
+      inputJson: { contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: f.grant.grantRef, projectId: f.grant.projectId, planDigest: f.grant.planDigest }, outputJson: output };
+    f.fetchImpl.mockClear(); return { ...f, output, descriptor, scope, receipt };
+  }
+  it("requires the exact succeeded canonical provision receipt, requester and immutable resource IDs", async () => {
+    const f = await bindingFixture();
+    expect(validatePrivateDatabaseBinding(f.descriptor, f.scope)).toEqual(f.descriptor);
+    expect(() => assertPrivateDatabaseProvisionReceipt(f.descriptor, f.receipt, f.scope)).not.toThrow();
+    for (const change of [{ status: "failed" }, { requestedByUserId: 2 }, { tenantId: "foreign" }, { operatorReviewRequired: true },
+      { outputJson: { ...f.output, hyperdriveId: "f".repeat(32) } }, { outputJson: { ...f.output, sslmode: "require" } },
+      { inputJson: { ...f.receipt.inputJson, projectId: "foreign" } }]) {
+      expect(() => assertPrivateDatabaseProvisionReceipt(f.descriptor, { ...f.receipt, ...change }, f.scope)).toThrow("RECEIPT_DENIED");
+    }
+    expect(() => validatePrivateDatabaseBinding(f.descriptor, { ...f.scope, tenantId: "foreign" })).toThrow("SCOPE_DENIED");
+  });
+  it("projects Hyperdrive only from a declared private database configuration and detects version substitution", async () => {
+    const f = await bindingFixture();
+    const plan = { namespace: f.grant.plan.namespace, vectorDimensions: 768 as const, vectorMetric: "cosine" as const,
+      configurationExpiresAt: f.grant.plan.configurationExpiresAt };
+    const descriptor = { provisionJobId: "77777777-7777-4777-8777-777777777777", plan, planDigest: nativeProvisionPlanDigest(plan), queueId: "f".repeat(32), privateDatabase: f.descriptor };
+    const actual = [...nativeWorkerBindings(descriptor), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" }];
+    expect(actual).toContainEqual({ name: "HYPERDRIVE", type: "hyperdrive", id: f.descriptor.hyperdriveId });
+    expect(() => assertNativeWorkerBindings(actual, descriptor)).not.toThrow();
+    expect(() => assertNativeWorkerBindings(actual.map(b => b.name === "HYPERDRIVE" ? { ...b, id: "a".repeat(32) } : b), descriptor)).toThrow("BINDINGS_MISMATCH");
+    const { privateDatabase, ...legacy } = descriptor;
+    expect(() => assertNativeWorkerBindings(actual, legacy)).toThrow("BINDINGS_MISMATCH");
+  });
+  it("verifies eight dedicated provider resources using GET only and rejects TLS/cache/policy drift", async () => {
+    const f = await bindingFixture();
+    await verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl });
+    expect(f.fetchImpl).toHaveBeenCalledTimes(8);
+    expect(f.fetchImpl.mock.calls.every(([, init]) => !init.method || init.method === "GET")).toBe(true);
+    f.resources.hyperdrive.mtls.sslmode = "require";
+    await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl })).rejects.toThrow("RESOURCE_DRIFT");
   });
 });
