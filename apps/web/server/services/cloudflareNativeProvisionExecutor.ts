@@ -106,7 +106,7 @@ export function createCloudflareNativeProvisionRuntime(options: { fetchImpl?: ty
 }
 
 export function createCloudflareNativeProvisionExecutor(runtime: Runtime | (() => Runtime) = createCloudflareNativeProvisionRuntime): JobExecutor {
-  return async ({ context, lease, reporter }) => {
+  return async ({ context, lease, reporter, controlPlane }) => {
     if (context.jobType !== NATIVE_PROVISION_JOB || context.contractVersion !== NATIVE_PROVISION_CONTRACT) throw new NativeProvisionError("NATIVE_JOB_INVALID");
     const job = nativeProvisionJobSchema.parse(context.input), active = typeof runtime === "function" ? runtime() : runtime;
     const grant = nativeProvisionGrantSchema.parse(await active.resolveGrant(job.grantRef));
@@ -117,6 +117,13 @@ export function createCloudflareNativeProvisionExecutor(runtime: Runtime | (() =
     let lastHeartbeat = Date.now();
     const assertAuthorized = async () => {
       await reporter.assertActive(lease);
+      // The reporter fences identity; also inspect the persisted expiry so a
+      // delayed reconciler cannot let provisioning revive an elapsed lease.
+      const status = await controlPlane.getStatus(context.jobId, { tenantId: context.tenantId });
+      if (!status?.lease.active || status.lease.stale || !status.lease.expiresAt
+        || !Number.isFinite(Date.parse(status.lease.expiresAt)) || Date.parse(status.lease.expiresAt) <= Date.now()
+        || status.lease.fencingVersion !== lease.fencingVersion || status.attempt !== context.attempt)
+        throw new NativeProvisionError("NATIVE_AUTHORITY_EXPIRED");
       if (Date.now() - lastHeartbeat >= 20_000) {
         await reporter.heartbeat(lease);
         lastHeartbeat = Date.now();

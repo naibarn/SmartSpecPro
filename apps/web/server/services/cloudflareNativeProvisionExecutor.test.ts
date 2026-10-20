@@ -13,9 +13,10 @@ function fixture() {
     resolveAccount: vi.fn(async () => grant.accountRef), withCredential: vi.fn(), loadCheckpoint: vi.fn(), saveCheckpoint: vi.fn(), saveConfiguration: vi.fn() };
   const contractVersion = "cloudflare-staging-native-provision-v1";
   const input = { context: { jobType: "cloudflare.staging.native.provision", contractVersion, jobId: grant.jobId,
-    tenantId: grant.tenantId, requestedByUserId: 1, retryPolicy: { deadlineMs: 600000, deadlineMode: "fixed" }, createdAt: new Date().toISOString(),
+    tenantId: grant.tenantId, requestedByUserId: 1, attempt: 1, retryPolicy: { deadlineMs: 600000, deadlineMode: "fixed" }, createdAt: new Date().toISOString(),
     input: { contractVersion, grantRef: grant.grantRef, projectId: grant.projectId, planDigest: grant.planDigest } },
-    lease: { expiresAt: new Date(Date.now() + 60_000).toISOString() }, reporter: { assertActive: vi.fn(async () => undefined) } };
+    lease: { expiresAt: new Date(Date.now() + 60_000).toISOString(), fencingVersion: 1 }, reporter: { assertActive: vi.fn(async () => undefined) },
+    controlPlane: { getStatus: vi.fn(async () => ({ attempt: 1, lease: { active: true, stale: false, fencingVersion: 1, expiresAt: new Date(Date.now() + 60_000).toISOString() } })) } };
   return { grant, runtime, input };
 }
 
@@ -31,6 +32,13 @@ describe("canonical native provisioning admission fences", () => {
   it("rejects an expired canonical lease before resolving credentials", async () => {
     const f = fixture();
     f.input.lease.expiresAt = "2000-01-01T00:00:00Z";
+    await expect(createCloudflareNativeProvisionExecutor(f.runtime as never)(f.input as never)).rejects.toThrow("AUTHORITY_EXPIRED");
+    expect(f.runtime.withCredential).not.toHaveBeenCalled();
+  });
+
+  it("refuses a persisted lease that expired before the reconciler updated job status", async () => {
+    const f = fixture();
+    f.input.controlPlane.getStatus.mockResolvedValue({ attempt: 1, lease: { active: true, stale: false, fencingVersion: 1, expiresAt: "2000-01-01T00:00:00Z" } });
     await expect(createCloudflareNativeProvisionExecutor(f.runtime as never)(f.input as never)).rejects.toThrow("AUTHORITY_EXPIRED");
     expect(f.runtime.withCredential).not.toHaveBeenCalled();
   });
@@ -56,6 +64,7 @@ describe("canonical native provisioning admission fences", () => {
     let now = Date.now(), liveExpiry = now + 30_000;
     const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
     const heartbeat = vi.fn(async () => { liveExpiry = now + 30_000; });
+    f.input.controlPlane.getStatus.mockImplementation(async () => ({ attempt: 1, lease: { active: true, stale: false, fencingVersion: 1, expiresAt: new Date(liveExpiry).toISOString() } }));
     f.input.reporter.assertActive.mockImplementation(async () => { if (now >= liveExpiry) throw Error("lease expired"); });
     f.runtime.withCredential.mockImplementation(async (_scope, operation) => operation("test-private-token"));
     let queue: any = null, bucket: any = null, vector: any = null;
