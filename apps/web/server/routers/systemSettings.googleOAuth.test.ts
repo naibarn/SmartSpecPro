@@ -49,6 +49,9 @@ describe("validateGoogleOAuthFormat", () => {
 });
 
 describe("isValidGoogleRedirectUri", () => {
+  it("rejects callback URLs containing embedded credentials", () => {
+    expect(isValidGoogleRedirectUri("https://user:secret@smartaihub.app/auth/callback/google", "/auth/callback/google")).toBe(false);
+  });
   it("keeps login and Drive callback paths separate", () => {
     expect(
       isValidGoogleRedirectUri(
