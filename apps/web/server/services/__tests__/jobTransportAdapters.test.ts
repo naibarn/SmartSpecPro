@@ -7,6 +7,14 @@ import {
 } from "../jobTransportAdapters";
 
 describe("job transport adapters", () => {
+  it("admits staging native provisioning only on the canonical PostgreSQL transport", () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    const input = { jobType: "cloudflare.staging.native.provision", executionClass: "long", contractVersion: "cloudflare-staging-native-provision-v1" };
+    expect(postgres.supports(input)).toBe(true);
+    expect(cloudflare.supports(input)).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: "cloudflare-staging-native-provision-v2" })).toBe(false);
+  });
   it("admits only the registered Developer Fast Lane contract on PostgreSQL pull", async () => {
     const postgres = new PostgresPullJobTransportAdapter();
     const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
