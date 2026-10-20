@@ -366,5 +366,81 @@
     "local repository-wide typecheck (prohibited)"
   ],
   "outcome": "PASS_SCOPED_WITH_UNRELATED_BASELINE_FAILURE",
-  "finished_at": "2026-10-20T23:32:39.532390+00:00"
+  "finished_at": "2026-10-20T23:32:39.532390+00:00",
+  "integration": {
+    "integrated_sha": "ab8b5b4e81d493f730952d7570a10a400e72e6bb",
+    "observed_remote_sha": "ab8b5b4e81d493f730952d7570a10a400e72e6bb",
+    "integrated_main_parent": "cf5628760c11de708ab3ea6fbe637db33df62e29",
+    "source_commits": [
+      "d31943ebe",
+      "dccfb1c62"
+    ],
+    "observed_at": "2026-10-20T23:34:17.794593+00:00",
+    "method": "normal non-force direct push to refs/heads/main; branch protection absent, active rules empty",
+    "pull_request": null,
+    "scope": "documentation/specification/planning only",
+    "post_integration_checks": [
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "source_revision": "ab8b5b4e81d493f730952d7570a10a400e72e6bb"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "index",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "source_revision": "ab8b5b4e81d493f730952d7570a10a400e72e6bb"
+      },
+      {
+        "command": [
+          "python3",
+          "/home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py",
+          "--planning-dir",
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "source_revision": "ab8b5b4e81d493f730952d7570a10a400e72e6bb"
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "ce126996921bf710526dfac9949de77210cfb70d",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "source_revision": "ab8b5b4e81d493f730952d7570a10a400e72e6bb"
+      }
+    ],
+    "production_acceptance": "NOT_RUN",
+    "workspace_convergence": {
+      "status": "CONVERGENCE_PENDING",
+      "method": "workspace_authority.py verify (read-only)",
+      "exit_code": 20,
+      "observed_at": "2026-10-20T23:33:53.566+00:00",
+      "current_user_workspace_sha": "4539aee1fe866dc682db4421f4e38bc3ba6013cf",
+      "reasons": [
+        "USER_WORKSPACE_NOT_SYNCED",
+        "USER_WORKSPACE_DIRTY"
+      ],
+      "action": "Preserved original checkout and untracked user input; no reset/rebase/clean or dirty-worktree modification. Registered isolated task worktree retained for review and pending housekeeping."
+    }
+  },
+  "task_owned_file_count": 116
 }

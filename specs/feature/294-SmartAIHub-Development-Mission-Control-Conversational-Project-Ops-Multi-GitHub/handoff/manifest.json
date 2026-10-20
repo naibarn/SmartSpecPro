@@ -28,7 +28,7 @@
     "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open.",
+    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open. | UWAC R0.6 specification/planning integrated at ab8b5b4e81d493f730952d7570a10a400e72e6bb; specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/uwac-r06-checkpoint-20261021.md. New UWAC rows remain OPEN/UNVERIFIED. Future WP31/32 begins only in the next authorized implementation scope; existing SPEC224 live work is unchanged.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 84,
+  "generation": 85,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
@@ -1149,7 +1149,7 @@
     "unresolved": 499
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.924065Z",
+  "updated_at": "2026-10-20T23:34:17.806729Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1482,6 +1482,15 @@
         "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "status": "PASS_SCOPED",
         "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
+      },
+      {
+        "canonical_sha": "ab8b5b4e81d493f730952d7570a10a400e72e6bb",
+        "kind": "DOCUMENTATION_PLANNING_CHECKPOINT",
+        "observed_at": "2026-10-20T23:34:17.794593+00:00",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/uwac-r06-checkpoint-20261021.md",
+        "scope": "32 owner requirements; 15 source/document review lenses; 36 NOT_RUN acceptance designs; nine implementation sections; official preservation/index checks. Not runtime or production acceptance.",
+        "source_sha": "ab8b5b4e81d493f730952d7570a10a400e72e6bb",
+        "status": "PASS"
       }
     ],
     "freshness": "UNKNOWN",
