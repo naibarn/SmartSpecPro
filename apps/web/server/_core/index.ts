@@ -96,6 +96,7 @@ import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
 import { createCloudflareOriginMiddleware } from "./cloudflareOriginMiddleware";
+import { authorizeCloudflareOriginUpgrade } from "./cloudflareOriginIngress";
 import { createAllowedBrowserOrigin } from "./browserOriginPolicy";
 import { createCsrfProtection } from "./csrfProtection";
 import { registerServicesRoutes } from "../routers/services";
@@ -2245,6 +2246,7 @@ async function main() {
 
   // WebSocket upgrade routing
   server.on("upgrade", (req, socket, head) => {
+    if (!authorizeCloudflareOriginUpgrade(req, socket)) return;
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     if (url.pathname === "/api/voice/stream") {
       handleVoiceUpgrade(req, socket as any, head);
@@ -2252,6 +2254,9 @@ async function main() {
       handleRunnerUpgrade(req, socket as any, head);
     } else if (url.pathname === "/widget/v1/ws") {
       handleWidgetUpgrade(req, socket as any, head);
+    } else if (process.env.NODE_ENV === "production") {
+      socket.write("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      socket.destroy();
     }
   });
 

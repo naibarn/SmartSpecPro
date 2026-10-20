@@ -137,12 +137,7 @@ function proxyResponseBody(body: ReadableStream<Uint8Array>, abort: AbortControl
  * discarded. Tenant selection remains the responsibility of the origin's
  * existing auth/tenant authority, which must validate this host context.
  */
-export async function proxyAuthToOrigin(
-  request: Request,
-  config: AuthOriginProxyConfig,
-  fetcher: AuthOriginFetch = fetch,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<Response> {
+function prepareOriginRequest(request: Request, config: AuthOriginProxyConfig) {
   const incoming = new URL(request.url);
   const origin = resolvePrivateOrigin(config.AUTH_ORIGIN, config.AUTH_ORIGIN_PRIVATE_HOST, incoming);
   const token = config.AUTH_ORIGIN_TOKEN?.trim();
@@ -152,7 +147,7 @@ export async function proxyAuthToOrigin(
   const allowed = parseCloudflarePublicOrigins(config.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
   if (!origin || !validHeaderCredential(token) ||
       (config.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS !== undefined && (!allowed || !allowed.includes(incoming.origin))) ||
-      (accessConfigured && (!validHeaderCredential(accessId) || !validHeaderCredential(accessSecret) || !allowed))) return unavailable();
+      (accessConfigured && (!validHeaderCredential(accessId) || !validHeaderCredential(accessSecret) || !allowed))) return null;
 
   const headers = new Headers();
   const connectionHeaders = new Set((request.headers.get("connection") ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean));
@@ -179,6 +174,18 @@ export async function proxyAuthToOrigin(
   const target = new URL(origin);
   target.pathname = incoming.pathname;
   target.search = incoming.search;
+  return { incoming, target, headers, accessConfigured };
+}
+
+export async function proxyAuthToOrigin(
+  request: Request,
+  config: AuthOriginProxyConfig,
+  fetcher: AuthOriginFetch = fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const prepared = prepareOriginRequest(request, config);
+  if (!prepared) return unavailable();
+  const { incoming, target, headers, accessConfigured } = prepared;
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort(request.signal.reason);
   if (request.signal.aborted) abortFromCaller();
@@ -216,5 +223,64 @@ export async function proxyAuthToOrigin(
     clearTimeout(timeout);
     if (rejectOnAbort) controller.signal.removeEventListener("abort", rejectOnAbort);
     if (!bodyOwnsCleanup) cleanup();
+  }
+}
+
+
+export function isOriginWebSocketPath(pathname: string): boolean {
+  return pathname === "/api/voice/stream" || pathname === "/widget/v1/ws" ||
+    /^\/api\/runners\/[A-Za-z0-9._:-]+\/control$/.test(pathname);
+}
+
+/** Pass the Workers WebSocket pair through without reconstructing an HTTP body. */
+export async function proxyWebSocketToOrigin(
+  request: Request, config: AuthOriginProxyConfig, fetcher: AuthOriginFetch = fetch,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const url = new URL(request.url);
+  if (!isOriginWebSocketPath(url.pathname)) return new Response(null, { status: 404 });
+  if (request.method !== "GET" || request.headers.get("upgrade")?.toLowerCase() !== "websocket" ||
+      !request.headers.get("connection")?.split(",").some(v => v.trim().toLowerCase() === "upgrade") ||
+      request.headers.get("sec-websocket-version") !== "13" ||
+      !/^[A-Za-z0-9+/]{22}==$/.test(request.headers.get("sec-websocket-key") ?? ""))
+    return new Response(null, { status: 400 });
+  if (request.headers.has("origin") && request.headers.get("origin") !== url.origin)
+    return new Response(null, { status: 403 });
+  const prepared = prepareOriginRequest(request, config);
+  if (!prepared) return unavailable();
+  prepared.headers.set("upgrade", "websocket");
+  prepared.headers.set("connection", "Upgrade");
+  const abort = new AbortController();
+  const fromCaller = () => abort.abort(request.signal.reason);
+  if (request.signal.aborted) fromCaller();
+  else request.signal.addEventListener("abort", fromCaller, { once: true });
+  const timeout = setTimeout(() => abort.abort(new Error("origin handshake timeout")), Math.max(1, timeoutMs));
+  let upstream: Response | undefined;
+  let rejectOnAbort: (() => void) | undefined;
+  try {
+    const aborted = new Promise<never>((_resolve, reject) => {
+      rejectOnAbort = () => reject(abort.signal.reason ?? new Error("origin handshake aborted"));
+      if (abort.signal.aborted) rejectOnAbort();
+      else abort.signal.addEventListener("abort", rejectOnAbort, { once: true });
+    });
+    upstream = await Promise.race([fetcher(new Request(prepared.target, { method: "GET", headers: prepared.headers, redirect: "manual", signal: abort.signal })), aborted]);
+    const pair = (upstream as Response & { webSocket?: { close: (code: number, reason: string) => void } }).webSocket;
+    let sensitive = /(?:^|,\s*)CF_Authorization=/i.test(upstream.headers.get("set-cookie") ?? "");
+    upstream.headers.forEach((_value, name) => {
+      if (name.startsWith("cf-access-") || name === ATTESTATION_HEADER || name === CLOUDFLARE_PUBLIC_ORIGIN_HEADER) sensitive = true;
+    });
+    if (upstream.status !== 101 || !pair || sensitive) {
+      try { pair?.close(1008, "Origin handshake rejected"); } catch { /* unaccepted pair */ }
+      await upstream.body?.cancel();
+      return unavailable();
+    }
+    return upstream;
+  } catch {
+    try { await upstream?.body?.cancel(); } catch { /* disconnected handshake */ }
+    return unavailable();
+  } finally {
+    clearTimeout(timeout);
+    if (rejectOnAbort) abort.signal.removeEventListener("abort", rejectOnAbort);
+    request.signal.removeEventListener("abort", fromCaller);
   }
 }

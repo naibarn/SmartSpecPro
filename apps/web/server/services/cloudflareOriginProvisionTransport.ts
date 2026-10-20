@@ -14,8 +14,11 @@ export const originProvisionCheckpointSchema = z.object({
 export type OriginProvisionCheckpoint = z.infer<typeof originProvisionCheckpointSchema>;
 
 export class OriginProvisionError extends Error {
-  readonly class = "permanent";
-  constructor(readonly diagnosticCode: string) { super(diagnosticCode); }
+  readonly class: "permanent" | "unknown";
+  constructor(readonly diagnosticCode: string) {
+    super(diagnosticCode);
+    this.class = diagnosticCode.includes("AMBIGUOUS_WRITE") ? "unknown" : "permanent";
+  }
 }
 function fail(code: string): never { throw new OriginProvisionError(code); }
 

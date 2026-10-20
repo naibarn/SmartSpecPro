@@ -36,6 +36,15 @@ describe("canonical origin provisioning admission fences", () => {
     expect(f.runtime.withCredential).not.toHaveBeenCalled();
   });
 
+  it("refuses a credential rotated after callback admission before any provider request", async () => {
+    const f = fixture();
+    const fetchImpl = vi.fn();
+    f.runtime.withCredential.mockImplementationOnce(async (_scope, operation) => operation("original-provider-token"))
+      .mockImplementation(async (_scope, operation) => operation("replacement-provider-token"));
+    await expect(createCloudflareOriginProvisionExecutor({ ...f.runtime, fetchImpl } as never)(f.input as never)).rejects.toThrow("CREDENTIAL_CHANGED");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("rejects a revoked live grant after initial resolution", async () => {
     const f = fixture();
     f.runtime.resolveGrant.mockResolvedValueOnce(f.grant).mockResolvedValue(null as never);

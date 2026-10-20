@@ -27,7 +27,7 @@ test("staging serves Vite SPA assets while sending all API authority paths throu
   for (const path of [
     "/api", "/api/*", "/v1", "/v1/*", "/trpc", "/trpc/*", "/auth", "/auth/*",
     "/oauth", "/oauth/*", "/uploads", "/uploads/*", "/internal", "/internal/*",
-    "/.well-known/*", "/healthz", "/readyz", "/metrics", "/socket.io*", "/ws*",
+    "/.well-known/*", "/healthz", "/readyz", "/metrics", "/socket.io*", "/ws*", "/widget/v1/ws",
   ]) {
     assert.ok(config.assets.run_worker_first.includes(path), `${path} must bypass SPA fallback`);
   }

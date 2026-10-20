@@ -138,6 +138,7 @@ export function createCloudflareOriginProvisionExecutor(runtime: Runtime | (() =
     const active = typeof runtime === "function" ? runtime() : runtime;
     const grant = originProvisionGrantSchema.parse(await active.resolveGrant(job.grantRef));
     const scope = { tenantId: context.tenantId, projectId: job.projectId, provider: "cloudflare", environment: "staging" };
+    let credentialFingerprint: string | undefined;
     const assertAuthorized = async () => {
       await reporter.assertActive(lease);
       const now = Date.now();
@@ -150,15 +151,21 @@ export function createCloudflareOriginProvisionExecutor(runtime: Runtime | (() =
           grant.projectId !== job.projectId || grant.planDigest !== job.planDigest ||
           await active.resolveAccount(scope) !== grant.accountRef)
         throw new OriginProvisionError("ORIGIN_PROVISION_AUTHORITY_DENIED");
+      if (credentialFingerprint !== undefined && await active.withCredential(scope,
+        async token => createHash("sha256").update(token).digest("hex")) !== credentialFingerprint)
+        throw new OriginProvisionError("ORIGIN_PROVISION_CREDENTIAL_CHANGED");
     };
     await assertAuthorized();
     if (await active.verifyExecutor(grant) !== grant.executorId) throw new OriginProvisionError("ORIGIN_PROVISION_EXECUTOR_DENIED");
     const checkpoint = await active.loadCheckpoint(grant) ?? { planDigest: grant.planDigest };
-    const output = await active.withCredential(scope, token => provisionCloudflareOrigin({ grant, token, checkpoint,
+    const output = await active.withCredential(scope, token => {
+      credentialFingerprint = createHash("sha256").update(token).digest("hex");
+      return provisionCloudflareOrigin({ grant, token, checkpoint,
       assertAuthorized, fetchImpl: active.fetchImpl,
       saveCheckpoint: async state => { await reporter.assertActive(lease); await active.saveCheckpoint(grant, state); },
       saveConfiguration: value => active.saveConfiguration(grant, value),
-    }));
+      });
+    });
     return { output };
   };
 }

@@ -134,6 +134,14 @@ export const API_ROUTE_MANIFEST: readonly ApiRouteManifestEntry[] = [
     reason: "Browser auth redirects and callbacks must retain the established origin authority.",
   },
   {
+    id: "websocket.widget-origin",
+    path: "/widget/v1/ws",
+    match: "exact",
+    methods: ["GET"],
+    classification: "ORIGIN_PROXY",
+    reason: "The exact widget upgrade retains Access, origin attestation, and the native widget token/origin authority.",
+  },
+  {
     id: "websocket",
     path: "/socket.io",
     match: "prefix",

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { originProvisionPlanDigest, type OriginProvisionGrant } from "./cloudflareOriginProvisionContract";
-import { provisionCloudflareOrigin, type OriginProvisionCheckpoint } from "./cloudflareOriginProvisionTransport";
+import { OriginProvisionError, provisionCloudflareOrigin, type OriginProvisionCheckpoint } from "./cloudflareOriginProvisionTransport";
 
 function fixture() {
   const appId = "11111111-1111-4111-8111-111111111111";
@@ -74,6 +74,11 @@ describe("bounded staging origin provisioning", () => {
     f.input.assertAuthorized.mockImplementation(async () => { if (f.writes.length) throw Error("REVOKED"); });
     await expect(provisionCloudflareOrigin(f.input)).rejects.toThrow("REVOKED");
     expect(f.writes).toHaveLength(1);
+  });
+
+  it("classifies an ambiguous write for operator review instead of ordinary automatic retry", () => {
+    expect(new OriginProvisionError("ORIGIN_PROVISION_AMBIGUOUS_WRITE_REVIEW_REQUIRED").class).toBe("unknown");
+    expect(new OriginProvisionError("ORIGIN_PROVISION_HTTP_403").class).toBe("permanent");
   });
 
   it("does not retry an ambiguous service-token creation or lose its intent", async () => {

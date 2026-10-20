@@ -33,7 +33,8 @@
       "/readyz",
       "/metrics",
       "/socket.io*",
-      "/ws*"
+      "/ws*",
+      "/widget/v1/ws"
     ]
   }
 }
