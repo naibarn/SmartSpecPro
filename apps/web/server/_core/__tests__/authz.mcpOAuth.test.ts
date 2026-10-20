@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   verifyMcpOAuthBearerToken: vi.fn(),
   verifyBearerToken: vi.fn(),
+  authenticateRequest: vi.fn(),
+  isJtiRevoked: vi.fn(async () => false),
 }));
 
 vi.mock("../env", () => ({ ENV: { mcpServerToken: "", webGatewayToken: "" } }));
-vi.mock("../sdk", () => ({ sdk: { authenticateRequest: vi.fn() } }));
+vi.mock("../sdk", () => ({ sdk: { authenticateRequest: mocks.authenticateRequest } }));
 vi.mock("../tokens", () => ({ verifyBearerToken: mocks.verifyBearerToken, hasScope: vi.fn() }));
-vi.mock("../revocation", () => ({ isJtiRevoked: vi.fn(async () => false) }));
+vi.mock("../revocation", () => ({ isJtiRevoked: mocks.isJtiRevoked }));
 vi.mock("../../services/apiKeyService", () => ({ validateKey: vi.fn(async () => null) }));
 vi.mock("../../services/redis", () => ({ getRedisClient: vi.fn(() => null) }));
 vi.mock("../../services/appRuntimeConfig", () => ({
@@ -123,5 +125,61 @@ describe("authorizeRequest inbound MCP OAuth integration", () => {
     await expect(authorizeRequest(requestWithToken("local-token", "/api/worker-jobs"), { allowBearer: true, allowSession: false }))
       .resolves.toMatchObject({ ok: true, mode: "bearer", userId: 24, scopes: ["jobs:read"] });
     expect(mocks.verifyMcpOAuthBearerToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("first-party desktop tenant resolution", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isJtiRevoked.mockResolvedValue(false);
+    mocks.authenticateRequest.mockReset();
+    mocks.verifyBearerToken.mockResolvedValue({ sub: "openid-device-user", userId: 24, type: "access", jti: "device-jti", scopes: ["media:download"] });
+    mocks.authenticateRequest.mockResolvedValue({ id: 24, openId: "openid-device-user", currentTenantId: "current-tenant" });
+  });
+
+  const authorize = () => authorizeRequest(requestWithToken("device-token", "/api/storage/files/tenants/current-tenant/logo/saved.png"), { allowBearer: true, allowSession: false });
+
+  it("resolves the current tenant from the SDK without adding scopes", async () => {
+    await expect(authorize()).resolves.toMatchObject({ ok: true, mode: "bearer", userId: 24, tenantId: "current-tenant", scopes: ["media:download"] });
+    mocks.authenticateRequest.mockResolvedValue({ id: 24, openId: "openid-device-user", currentTenantId: "changed-tenant" });
+    await expect(authorize()).resolves.toMatchObject({ ok: true, tenantId: "changed-tenant" });
+  });
+
+  it.each([
+    { id: 99, openId: "openid-device-user", currentTenantId: "current-tenant" },
+    { id: 24, openId: "other-openid", currentTenantId: "current-tenant" },
+  ])("rejects a mismatching persisted identity: %j", async user => {
+    mocks.authenticateRequest.mockResolvedValue(user);
+    await expect(authorize()).resolves.toEqual({ ok: false, error: "Access token identity mismatch" });
+  });
+
+  it("rejects an account with no current tenant", async () => {
+    mocks.authenticateRequest.mockResolvedValue({ id: 24, openId: "openid-device-user", currentTenantId: null });
+    await expect(authorize()).resolves.toEqual({ ok: false, error: "User tenant unavailable" });
+  });
+
+  it.each(["Token revoked", "Account disabled"])('preserves SDK denial: %s', async message => {
+    mocks.authenticateRequest.mockRejectedValue(new Error(message));
+    await expect(authorize()).resolves.toEqual({ ok: false, error: message });
+  });
+
+  it("rejects JTI revocation before identity lookup", async () => {
+    mocks.isJtiRevoked.mockResolvedValue(true);
+    await expect(authorize()).resolves.toEqual({ ok: false, error: "Token revoked" });
+    expect(mocks.authenticateRequest).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { tenantId: "explicit-tenant" },
+    { tokenUse: "managed_media" },
+    { externalReference: "scoped-object" },
+    { apiKeyId: "key-1" },
+    { deviceIdHash: "device-hash" },
+    { sub: "24" },
+    { type: "refresh" },
+  ])("does not hydrate scoped, numeric-subject or refresh credentials: %j", async extra => {
+    mocks.verifyBearerToken.mockResolvedValue({ sub: "openid-device-user", userId: 24, type: "access", ...extra });
+    await authorize();
+    expect(mocks.authenticateRequest).not.toHaveBeenCalled();
   });
 });

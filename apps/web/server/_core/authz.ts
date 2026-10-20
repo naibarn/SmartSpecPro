@@ -263,7 +263,7 @@ export async function authorizeRequest(
         const sub = claims.sub != null
           ? String(claims.sub)
           : String((claims as any).openId || (claims as any).id || "");
-        const tenantId = typeof (claims as any).tenantId === "string"
+        let tenantId = typeof (claims as any).tenantId === "string"
           ? (claims as any).tenantId.trim()
           : "";
         const userIdCandidate = (claims as any).userId ?? Number.parseInt(sub, 10);
@@ -285,6 +285,19 @@ export async function authorizeRequest(
         const origin = typeof (claims as any).origin === "string"
           ? (claims as any).origin.trim()
           : "";
+        // First-party desktop access tokens carry the OpenID and numeric user
+        // ID, but no tenant. Resolve the live interactive identity through the
+        // same SDK checks used by the desktop routes, including revocation.
+        // Scoped/capability credentials must retain their explicit boundaries.
+        if (!tenantId && claims.type === "access" && userId && sub && !/^\d+$/.test(sub)
+          && !tokenUse && !apiKeyId && !externalReference && !deviceIdHash) {
+          const user = await sdk.authenticateRequest(req);
+          if (user.id !== userId || user.openId !== sub) {
+            return { ok: false, error: "Access token identity mismatch" };
+          }
+          tenantId = typeof user.currentTenantId === "string" ? user.currentTenantId.trim() : "";
+          if (!tenantId) return { ok: false, error: "User tenant unavailable" };
+        }
         if (tokenUse === "mcp_agent_pairing") {
           if (!tenantId || !userId || !deviceIdHash || !jti || claims.type !== "access") {
             return { ok: false, error: "Invalid MCP pairing token" };

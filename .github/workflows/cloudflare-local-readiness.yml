@@ -86,8 +86,8 @@ jobs:
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
       - name: Verify Linux release permissions and recovery
         run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
-      - name: Verify tenant branding storage authorization
-        run: pnpm --filter @smartspec/web exec vitest run server/services/__tests__/managedStorageAuthorizationService.test.ts
+      - name: Verify tenant branding and desktop bearer authorization
+        run: pnpm --filter @smartspec/web exec vitest run server/services/__tests__/managedStorageAuthorizationService.test.ts server/_core/__tests__/authz.mcpOAuth.test.ts
         env:
           JWT_SECRET: ci-tenant-branding-fixture-key-not-a-secret
       - name: Test Express route architecture guard
