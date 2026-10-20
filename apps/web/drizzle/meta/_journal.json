@@ -2766,6 +2766,13 @@
       "when": 1792300000001,
       "tag": "0408_spec207_280_commercial_payment_bridge",
       "breakpoints": true
+    },
+    {
+      "idx": 409,
+      "version": "7",
+      "when": 1792468101544,
+      "tag": "0409_desktop_device_registry",
+      "breakpoints": true
     }
   ]
 }

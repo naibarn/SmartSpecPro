@@ -86,6 +86,33 @@ Recovery before commit is transactional rollback; after commit, retain these
 additive tables and roll back application code if necessary. Never drop tables
 that may have acquired target or credential records.
 
+### Repair the existing Desktop Host registry schema
+
+The Desktop Host registry has a scoped additive repair for migration
+`0409_desktop_device_registry`. Inspect first from an integrated checkout:
+
+```bash
+pnpm exec tsx --require dotenv/config scripts/desktop-device-schema.ts
+DESKTOP_SCHEMA_EXPECTED_FINGERPRINT='<inspected fingerprint>' \
+MIGRATION_AUTHORIZATION_REF='<actual authorization reference>' \
+pnpm exec tsx --require dotenv/config scripts/desktop-device-schema.ts --apply
+```
+
+For an isolated checkout set `DOTENV_CONFIG_PATH` to the authorized server env
+file. The command uses the same migration lock, target fingerprint, bounded
+transaction and audit/external receipt path as the Cloudflare schema repair.
+It creates only the health-status enum, `desktop_devices` and its two indexes;
+all 28 column contracts, defaults, foreign keys and index validity are checked
+before commit. A conflicting enum, an existing table without its receipt, or
+later schema drift fails closed. Replaying the same successful repair performs
+no writes. The scoped repair does not advance the full Drizzle journal over
+unrelated pending migrations; its SQL remains safe for later journal replay.
+
+No devices are seeded and worker projection defaults to false. Before commit,
+recovery is transaction rollback. After commit, retain the additive registry
+and any enrolled device data; roll back application behavior if necessary.
+Do not drop the registry or shared enum as an automatic rollback.
+
 ### Concurrent and interrupted release recovery
 
 The canonical build lease serializes canonical builds, and the production
