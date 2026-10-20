@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `32`
-- Updated (UTC): `2026-10-20T06:37:55.440464+00:00`
+- State generation: `33`
+- Updated (UTC): `2026-10-20T07:04:37.893112+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `b6186b615660a642b74a2fcfb6e9eb88c31eab85`
+- Latest recorded merged Main SHA: `c98cb02fd9342be79c67f86164323390fcb8f240`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps.
+- Next action: Native Queue/R2/Vectorize metadata provision is actually SUCCEEDED on original canonical job f13e044c-c122-453a-9474-a41dd044c730, policy revoked; retain private receipts. Next: exact-grant deploy-time binding composition and concrete qualified Workflow/Container/WorkerApp handlers. Hyperdrive private path requires external Connectivity Directory authority (actual403) and approved database TLS (actual ssl off); do not expose DB or bypass TLS. Preserve real-login/second-tenant/macOS-native-build acceptance gaps and refresh protected origin before expiry.
 
 ## Sections
 
@@ -21,13 +21,14 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | b9322340644a86514aae4aef89696a862611a47c | b9322340644a86514aae4aef89696a862611a47c | Protected origin and compatible release are deployed; Node/Worker96765f185 and production Python b93223406 health verified. Registered Google staging callback is active, real Google email page reached by button-click on both hosts, owner2FA enrolled. Keep bounded configuration valid and compatible rollback52d14561d; section05 real user-controlled login/two-tenant/native-job acceptance remains pending. |
-| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | ee269bd4cae05afc380e5b49d9a05bbe55bf146d | ee269bd4cae05afc380e5b49d9a05bbe55bf146d | Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps. |
+| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | c98cb02fd9342be79c67f86164323390fcb8f240 | c98cb02fd9342be79c67f86164323390fcb8f240 | Native Queue/R2/Vectorize metadata provision is actually SUCCEEDED on original canonical job f13e044c-c122-453a-9474-a41dd044c730, policy revoked; retain private receipts. Next: exact-grant deploy-time binding composition and concrete qualified Workflow/Container/WorkerApp handlers. Hyperdrive private path requires external Connectivity Directory authority (actual403) and approved database TLS (actual ssl off); do not expose DB or bypass TLS. Preserve real-login/second-tenant/macOS-native-build acceptance gaps and refresh protected origin before expiry. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- Native Cloudflare target IAM403; real scoped provisioning, concrete allowlisted job executors and binding/recovery qualification unavailable; activation disabled
-- Successful interactive Google code exchange/password+OTP and independent second-tenant acceptance unverified; no fabricated credentials or sessions
-- Selected hyperframes-macos-arm64 runtime archive has no published real release; matching production/staging404 is separate from passing migration transport
+- Hyperdrive private connectivity: actual Workers VPC inventory403/API10000, no Connectivity Directory allow permission, local database ssl off; requires real external IAM and TLS authority, no DB relocation/public exposure/trust bypass
+- Resources created and independently verified but not attached to deployed Worker; concrete native Workflow/Container/WorkerApp handlers, qualified immutable Container image and recovery/PITR/vector/evidence-retention acceptance remain unverified; activation disabled
+- Successful interactive Google code exchange/password+OTP and independent second-tenant acceptance unverified; genuine user-controlled contexts required, no fabricated sessions
+- Selected hyperframes-macos-arm64 archive still has no real signed native release; existing production/staging404 retained as an honest acceptance gap
 
 ## Resume
 

@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps.",
+      "next_action": "Native Queue/R2/Vectorize metadata provision is actually SUCCEEDED on original canonical job f13e044c-c122-453a-9474-a41dd044c730, policy revoked; retain private receipts. Next: exact-grant deploy-time binding composition and concrete qualified Workflow/Container/WorkerApp handlers. Hyperdrive private path requires external Connectivity Directory authority (actual403) and approved database TLS (actual ssl off); do not expose DB or bypass TLS. Preserve real-login/second-tenant/macOS-native-build acceptance gaps and refresh protected origin before expiry.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "ee269bd4cae05afc380e5b49d9a05bbe55bf146d",
-      "merged_main_sha": "ee269bd4cae05afc380e5b49d9a05bbe55bf146d"
+      "checkpoint_sha": "c98cb02fd9342be79c67f86164323390fcb8f240",
+      "merged_main_sha": "c98cb02fd9342be79c67f86164323390fcb8f240"
     }
   },
   "pre_commit": {
@@ -57,17 +57,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 32,
-  "updated_at": "2026-10-20T06:37:55.440464+00:00",
+  "generation": 33,
+  "updated_at": "2026-10-20T07:04:37.893112+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps.",
-    "merged_main_sha": "b6186b615660a642b74a2fcfb6e9eb88c31eab85",
+    "next_action": "Native Queue/R2/Vectorize metadata provision is actually SUCCEEDED on original canonical job f13e044c-c122-453a-9474-a41dd044c730, policy revoked; retain private receipts. Next: exact-grant deploy-time binding composition and concrete qualified Workflow/Container/WorkerApp handlers. Hyperdrive private path requires external Connectivity Directory authority (actual403) and approved database TLS (actual ssl off); do not expose DB or bypass TLS. Preserve real-login/second-tenant/macOS-native-build acceptance gaps and refresh protected origin before expiry.",
+    "merged_main_sha": "c98cb02fd9342be79c67f86164323390fcb8f240",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
-      "Native Cloudflare target IAM403; real scoped provisioning, concrete allowlisted job executors and binding/recovery qualification unavailable; activation disabled",
-      "Successful interactive Google code exchange/password+OTP and independent second-tenant acceptance unverified; no fabricated credentials or sessions",
-      "Selected hyperframes-macos-arm64 runtime archive has no published real release; matching production/staging404 is separate from passing migration transport"
+      "Hyperdrive private connectivity: actual Workers VPC inventory403/API10000, no Connectivity Directory allow permission, local database ssl off; requires real external IAM and TLS authority, no DB relocation/public exposure/trust bypass",
+      "Resources created and independently verified but not attached to deployed Worker; concrete native Workflow/Container/WorkerApp handlers, qualified immutable Container image and recovery/PITR/vector/evidence-retention acceptance remain unverified; activation disabled",
+      "Successful interactive Google code exchange/password+OTP and independent second-tenant acceptance unverified; genuine user-controlled contexts required, no fabricated sessions",
+      "Selected hyperframes-macos-arm64 archive still has no real signed native release; existing production/staging404 retained as an honest acceptance gap"
     ]
   }
 }
