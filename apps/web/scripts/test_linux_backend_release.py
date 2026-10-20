@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -166,6 +167,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             'canonical_ref = "refs/heads/main"\n'
             f'source_root = "{self.source_root}"\n'
             f'lease_root = "{lease_root}"\n'
+            '[repository.platforms.linux]\n'
+            f'source_fallback_roots = ["{self.root / "fallback-sources"}"]\n'
         )
         (self.workspace / ".development-repository.toml").write_text(policy)
         (self.workspace / ".gitignore").write_text("apps/web/dist/\n")
@@ -360,6 +363,40 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             with self.assertRaisesRegex(release.ReleaseError, "exact-admin guard"):
                 release.prepare_artifact(self.build_result_path, self.artifact_store)
         self.assertFalse(list(self.artifact_store.glob("smartspec-web-*")))
+
+    def fallback_build(self, source_root: Path, ledger_root: Path | None = None):
+        workspace = source_root / "workspace"
+        workspace.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "-C", str(self.workspace), "worktree", "add", "--detach", str(workspace), self.source_sha], check=True, capture_output=True)
+        dist = workspace / "apps/web/dist"
+        shutil.copytree(self.dist, dist)
+        ledger_root = ledger_root or source_root / ".development-build-results" / self.ledger_root.name
+        ledger_root.mkdir(parents=True, exist_ok=True)
+        record = {**self.build_record, "isolated_workspace": str(workspace),
+                  "artifact": {**release.build_artifact_manifest(dist), "artifact_path": str(dist)}}
+        evidence = ledger_root / "fallback-build.json"
+        evidence.write_text(json.dumps(record))
+        return evidence, workspace, dist
+
+    def test_approved_fallback_source_and_ledger_can_prepare_a_verified_release(self):
+        evidence, workspace, dist = self.fallback_build(self.root / "fallback-sources")
+        record, actual_dist, actual_workspace = release.validate_build_result(evidence)
+        self.assertEqual(actual_workspace, workspace)
+        self.assertEqual(actual_dist, dist)
+        self.assertEqual(record["source_revision"], self.source_sha)
+        with patch.object(release, "canonical_tip", return_value=self.source_sha):
+            prepared = release.prepare_artifact(evidence, evidence.parent / "artifacts")
+        self.assertEqual(prepared["status"], "ARTIFACT_READY")
+
+    def test_unconfigured_fallback_source_is_rejected(self):
+        evidence, _, _ = self.fallback_build(self.root / "unapproved-sources")
+        with self.assertRaisesRegex(release.ReleaseError, "outside the configured canonical source/artifact authority"):
+            release.validate_build_result(evidence)
+
+    def test_fallback_workspace_cannot_use_another_roots_ledger(self):
+        evidence, _, _ = self.fallback_build(self.root / "fallback-sources", self.ledger_root)
+        with self.assertRaisesRegex(release.ReleaseError, "outside the configured canonical source/artifact authority"):
+            release.validate_build_result(evidence)
 
     def test_frontend_backend_source_mismatch_is_rejected(self):
         metadata_path = self.backend / "release-build.json"

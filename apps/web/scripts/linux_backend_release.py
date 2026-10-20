@@ -184,10 +184,26 @@ def validate_build_result(path: Path) -> tuple[dict[str, Any], Path, Path]:
         raise ReleaseError("Build workspace has source changes outside generated dist")
     import tomllib
     policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
+    linux_policy = policy.get("platforms", {}).get("linux", {})
+    if not isinstance(linux_policy, dict):
+        raise ReleaseError("Configured Linux canonical source policy is invalid")
+    policy = {**policy, **linux_policy}
     repository_key = hashlib.sha256(str(policy["repository_id"]).encode()).hexdigest()[:20]
-    configured_source_root = Path(str(policy["source_root"])).expanduser().resolve()
-    configured_ledger_root = configured_source_root / ".development-build-results" / repository_key
-    if not workspace.is_relative_to(configured_source_root) or not path.resolve().is_relative_to(configured_ledger_root):
+    fallback_roots = policy.get("source_fallback_roots", [])
+    if not isinstance(fallback_roots, list):
+        raise ReleaseError("Configured canonical fallback roots are invalid")
+    configured_roots = [policy["source_root"], *fallback_roots]
+    if any(not isinstance(value, str) or not value or not Path(value).expanduser().is_absolute() for value in configured_roots):
+        raise ReleaseError("Configured canonical source roots must be absolute paths")
+    # Match the canonical builder's approved storage roots. The workspace and
+    # its ledger must share ONE configured root; mixing two roots is not valid
+    # evidence, even when each individual path appears on the allowlist.
+    if not any(
+        workspace.is_relative_to(source_root) and path.resolve().is_relative_to(
+            source_root / ".development-build-results" / repository_key
+        )
+        for source_root in (Path(value).expanduser().resolve() for value in configured_roots)
+    ):
         raise ReleaseError("Build evidence is outside the configured canonical source/artifact authority")
     root = Path(artifact["artifact_path"]).resolve()
     if root != (workspace / "apps/web/dist").resolve() or not root.is_dir():
