@@ -1,5 +1,7 @@
 export type CloudflareCredentialProfileId = "audit" | "deployment" | "vectorize";
-export type CloudflareProbeStatus = "granted" | "partial" | "missing_permission" | "invalid_token" | "resource_not_found" | "rate_limited" | "unsupported_or_invalid_request" | "unavailable";
+export type CloudflareProbeStatus = "granted" | "partial" | "missing_permission" | "product_unavailable" | "invalid_token" | "resource_not_found" | "rate_limited" | "unsupported_or_invalid_request" | "unavailable";
+
+export type CloudflareProductRequirement = "workers_paid" | "workers_for_platforms";
 
 export const CLOUDFLARE_CREDENTIAL_PROFILES = [
   {
@@ -25,6 +27,7 @@ export const CLOUDFLARE_CREDENTIAL_PROFILES = [
       "Workers Containers Read (Cloudflare's current account-scoped Containers permission group)",
       "Queues Read",
       "Hyperdrive Read",
+      "Connectivity Directory Read (when using Workers VPC for a private database)",
       "Cloudflare Tunnel Read",
       "Load Balancing: Monitors and Pools Read",
       "Workers R2 Storage Read (bucket administration only; optional when R2 uses its separate S3 credential)",
@@ -46,6 +49,7 @@ export const CLOUDFLARE_CREDENTIAL_PROFILES = [
       "Queues Write (when provisioning queues)",
       "Workers Containers Write (when provisioning Containers; account scope)",
       "Hyperdrive Write (when provisioning Hyperdrive)",
+      "Connectivity Directory Write (when provisioning Workers VPC services)",
       "DNS Write (only when changing records)",
       "Workers Routes Write (only when changing routes)",
       "Load Balancing: Monitors and Pools Write (only when managing account pools)",
@@ -63,6 +67,8 @@ export const CLOUDFLARE_PROBE_SERVICES = [
   { id: "kv", label: "Workers KV", scope: "Account", permission: "Workers KV Storage Read", path: "storage/kv/namespaces" },
   { id: "queues", label: "Queues", scope: "Account", permission: "Queues Read", path: "queues" },
   { id: "workflows", label: "Workflows", scope: "Account", permission: "Workers Scripts Read (Workers Scripts Write or Workers Tail Read are also accepted)", path: "workflows" },
+  { id: "containers", label: "Cloudflare Containers", scope: "Account", permission: "Workers Containers Read (Workers Paid plan required)", path: "containers/applications" },
+  { id: "vpcServices", label: "Workers VPC services", scope: "Account", permission: "Connectivity Directory Read", path: "connectivity/directory/services" },
   { id: "hyperdrive", label: "Hyperdrive", scope: "Account", permission: "Hyperdrive Read", path: "hyperdrive/configs" },
   { id: "tunnels", label: "Cloudflare Tunnels", scope: "Account", permission: "Cloudflare Tunnel Read", path: "cfd_tunnel?is_deleted=false" },
   { id: "loadBalancerPools", label: "Load Balancer pools", scope: "Account", permission: "Load Balancing: Monitors and Pools Read", path: "load_balancers/pools?per_page=1" },

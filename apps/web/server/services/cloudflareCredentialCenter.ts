@@ -8,6 +8,7 @@ import {
   CLOUDFLARE_ZONE_PROBE_SERVICES,
   type CloudflareCredentialProfileId,
   type CloudflareProbeStatus,
+  type CloudflareProductRequirement,
 } from "../../shared/cloudflareCredentialCatalog";
 
 const CREDENTIALS_KEY = "cloudflare_api_credentials_v1";
@@ -218,7 +219,8 @@ export async function revokeCloudflareDeploymentCredential(db: DrizzleDB, input:
 }
 
 type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null; validityIssue?: "not_yet_valid" | "expired" | "invalid_window";
-  verificationScope?: "catalog"; visibleResourceCount?: number | null; resourceAccessVerified?: false };
+  verificationScope?: "catalog"; visibleResourceCount?: number | null; resourceAccessVerified?: false;
+  productRequirement?: CloudflareProductRequirement };
 
 function statusFor(httpStatus: number, success: boolean): CloudflareProbeStatus {
   if (httpStatus === 200 && success) return "granted";
@@ -405,14 +407,28 @@ export async function probeCloudflarePermissionCatalog(
   return result;
 }
 
-async function getProbe(token: string, path: string, fetchImpl: typeof fetch = fetch): Promise<{ status: CloudflareProbeStatus; httpStatus: number | null; result?: unknown }> {
+async function getProbe(token: string, path: string, fetchImpl: typeof fetch = fetch): Promise<{ status: CloudflareProbeStatus; httpStatus: number | null; result?: unknown; productRequirement?: CloudflareProductRequirement }> {
   try {
     const response = await fetchImpl(`${CLOUDFLARE_API_BASE}/${path}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(8_000),
     });
-    const body = await response.json().catch(() => null) as { success?: boolean; result?: unknown; errors?: Array<{ code?: number }> } | null;
+    const body = await response.json().catch(() => null) as { success?: boolean; result?: unknown; errors?: Array<{ code?: number; message?: string }> } | null;
+    // Classify only the provider's explicit product denials at their exact
+    // endpoints. A plan denial is neither an expired token nor proof of a
+    // missing IAM scope; never return the provider's untrusted error text.
+    const errors = Array.isArray(body?.errors) ? body.errors : [];
+    const productRequirement: CloudflareProductRequirement | undefined =
+      /^accounts\/[^/]+\/workers\/dispatch\/namespaces$/.test(path) && response.status === 403 &&
+      errors.some(error => error.code === 10121)
+        ? "workers_for_platforms"
+        : /^accounts\/[^/]+\/containers\/applications$/.test(path) && response.status === 401 &&
+          errors.some(error => error.code === 1000 && typeof error.message === "string" &&
+            error.message.includes("You do not have access to Cloudflare Containers") &&
+            error.message.includes("Workers Paid plan"))
+          ? "workers_paid" : undefined;
+    if (productRequirement) return { status: "product_unavailable", httpStatus: response.status, productRequirement };
     // A Tunnel resource can return 401/1001 for authorization while this token
     // verifies active and its list endpoint returns 200. Do not call it expired.
     const resourceDenied = path.startsWith("accounts/") && !/^accounts\/[^/]+\/tokens(?:\/|$)/.test(path) && response.status === 401 &&
@@ -473,7 +489,8 @@ export async function probeCloudflareServiceCatalog(
   return Promise.all(CLOUDFLARE_PROBE_SERVICES.map(async (service) => {
     const result = await getProbe(token, `accounts/${encodeURIComponent(accountId)}/${service.path}`, fetchImpl);
     return { id: service.id, label: service.label, scope: service.scope, permission: service.permission, status: result.status, httpStatus: result.httpStatus,
-      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false };
+      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false,
+      ...(result.productRequirement ? { productRequirement: result.productRequirement } : {}) };
   }));
 }
 
@@ -485,7 +502,8 @@ export async function probeCloudflareZoneServiceCatalog(
   return Promise.all(CLOUDFLARE_ZONE_PROBE_SERVICES.map(async (service) => {
     const result = await getProbe(token, `zones/${encodeURIComponent(zoneId)}/${service.path}`, fetchImpl);
     return { id: service.id, label: service.label, scope: "Zone", permission: service.permission, status: result.status, httpStatus: result.httpStatus,
-      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false };
+      verificationScope: "catalog", visibleResourceCount: Array.isArray(result.result) ? result.result.length : null, resourceAccessVerified: false,
+      ...(result.productRequirement ? { productRequirement: result.productRequirement } : {}) };
   }));
 }
 

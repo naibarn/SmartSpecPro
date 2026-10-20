@@ -268,6 +268,31 @@ describe("Cloudflare permission group catalog probe", () => {
     expect(failedPageResult.groups).toHaveLength(1);
   });
 
+  it("distinguishes explicit product-plan denials from token and permission failures without leaking provider text", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/workers/dispatch/namespaces")) return new Response(JSON.stringify({ success: false, errors: [{ code: 10121, message: "Purchase dispatch namespaces; must-not-leak-provider-text" }] }), { status: 403 });
+      if (url.endsWith("/containers/applications")) return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: JSON.stringify({ error: "Unauthorized: You do not have access to Cloudflare Containers. Deploying containers requires the Workers Paid plan. must-not-leak-provider-text" }) }] }), { status: 401 });
+      return new Response(JSON.stringify({ success: false, errors: [{ code: 10000 }] }), { status: 403 });
+    });
+    const report = await probeCloudflareServiceCatalog("secret-token", "account-123", fetchMock);
+    expect(report.find(check => check.id === "dispatchNamespaces")).toMatchObject({ status: "product_unavailable", productRequirement: "workers_for_platforms", httpStatus: 403 });
+    expect(report.find(check => check.id === "containers")).toMatchObject({ status: "product_unavailable", productRequirement: "workers_paid", httpStatus: 401 });
+    expect(report.find(check => check.id === "vpcServices")).toMatchObject({ status: "missing_permission", httpStatus: 403 });
+    expect(JSON.stringify(report)).not.toContain("must-not-leak");
+    expect(JSON.stringify(report)).not.toContain("secret-token");
+    expect(fetchMock.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+  });
+
+  it("does not misclassify ordinary Containers authentication errors or another endpoint as a billing requirement", async () => {
+    const denied = vi.fn(async () => new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API token" }] }), { status: 401 }));
+    const results = await probeCloudflareServiceCatalog("secret-token", "account-123", denied);
+    expect(results.every(check => check.status === "invalid_token" && !check.productRequirement)).toBe(true);
+    const unrelated = vi.fn(async () => new Response(JSON.stringify({ success: false, errors: [{ code: 10121 }] }), { status: 403 }));
+    const other = await probeCloudflareZoneServiceCatalog("secret-token", "zone-123", unrelated);
+    expect(other.every(check => check.status === "missing_permission" && !check.productRequirement)).toBe(true);
+  });
+
   it("probes every declared SmartAIHub account integration through GET endpoints only", async () => {
     const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ success: true, result: [] }), { status: 200 }));
     const results = await probeCloudflareServiceCatalog("secret-token", "account-123", fetchMock);

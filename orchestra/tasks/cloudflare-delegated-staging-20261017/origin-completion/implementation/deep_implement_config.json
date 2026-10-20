@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Mac rendering pack distribution pause completed and live verified on production+staging sourceb2eeaabf3, Linux generation27 and Worker00269359/versionad06b486. Both full dashboards passed with zero paused-pack requests and no API errors;14/14 live distribution probes,74 scoped tests, CI and canonical publication passed; original archives/.env hashes unchanged. Native3bindings preserved, latest canonical job2d74a49e succeeded, outbox published and bounded policy revoked. Full migration remains partial only at real VPC403/TLSoff, four missing runtime bindings, concrete handler/image/retention/recovery qualifications and genuine interactive-login/second-tenant contexts. Do not rerun completed deploy operators or enable consumers/cron/DNS to make readiness green.",
+      "next_action": "Fresh provider audit established actual product entitlement denials: Containers401/API1000 explicitly requires Workers Paid; dispatch403/API10121 explicitly requires Workers for Platforms. Existing token already has product write scopes, so do not rotate token/self-grant or buy plans without billing authority. No provider mutations in audit. Implemented exact endpoint/code/message classification and Admin product-plan explanation plus Containers/VPC readonly catalog probes;40 focused tests passed. TLS private-CA reload is being rehearsed on disposable PostgreSQL before optional compatible no-restart enablement on current DB; chain/hostname verification remains required. Exact runtime remains b2eeaabf3 until this diagnostic slice is built/released. Original native handler/image/qualification/context gaps remain.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01",
       "merged_main_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01"
@@ -57,17 +57,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 39,
-  "updated_at": "2026-10-20T08:05:35.739499+00:00",
+  "generation": 40,
+  "updated_at": "2026-10-20T08:18:07.667644+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Mac rendering pack distribution pause completed and live verified on production+staging sourceb2eeaabf3, Linux generation27 and Worker00269359/versionad06b486. Both full dashboards passed with zero paused-pack requests and no API errors;14/14 live distribution probes,74 scoped tests, CI and canonical publication passed; original archives/.env hashes unchanged. Native3bindings preserved, latest canonical job2d74a49e succeeded, outbox published and bounded policy revoked. Full migration remains partial only at real VPC403/TLSoff, four missing runtime bindings, concrete handler/image/retention/recovery qualifications and genuine interactive-login/second-tenant contexts. Do not rerun completed deploy operators or enable consumers/cron/DNS to make readiness green.",
+    "next_action": "Fresh provider audit established actual product entitlement denials: Containers401/API1000 explicitly requires Workers Paid; dispatch403/API10121 explicitly requires Workers for Platforms. Existing token already has product write scopes, so do not rotate token/self-grant or buy plans without billing authority. No provider mutations in audit. Implemented exact endpoint/code/message classification and Admin product-plan explanation plus Containers/VPC readonly catalog probes;40 focused tests passed. TLS private-CA reload is being rehearsed on disposable PostgreSQL before optional compatible no-restart enablement on current DB; chain/hostname verification remains required. Exact runtime remains b2eeaabf3 until this diagnostic slice is built/released. Original native handler/image/qualification/context gaps remain.",
     "merged_main_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Actual HYPERDRIVE/JOB_WORKFLOW/JOB_CONTAINERS/WORKER_APP still absent; JOB_QUEUE/MEDIA_BUCKET/VECTOR_INDEX attached and verified. Workers VPC403/API10000 and DB TLSoff are genuine external permission/trust boundaries. No DB relocation/public exposure.",
       "Concrete allowlisted native business handler, immutable Container image, Workflow/WorkerApp adapters and recovery/PITR/vector/evidence retention need qualification; activation remains disabled. Actual configuration rollback/restore passed.",
-      "Real Google code exchange/password+OTP and second-tenant acceptance need genuine user-controlled contexts; configured Google/owner2FA already verified. Moli unavailable; actual Chromium core/full Dashboard acceptance passed on both hosts."
+      "Real Google code exchange/password+OTP and second-tenant acceptance need genuine user-controlled contexts; configured Google/owner2FA already verified. Moli unavailable; actual Chromium core/full Dashboard acceptance passed on both hosts.",
+      "Provider explicitly denies Containers without Workers Paid and dispatch namespaces without Workers for Platforms (fresh readonly audit). Account has R2 Paid but no Workers plan; enabling recurring paid products needs existing account billing authority/budget. More token scopes do not solve this entitlement denial."
     ]
   }
 }

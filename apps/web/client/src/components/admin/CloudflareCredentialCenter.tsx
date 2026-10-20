@@ -10,7 +10,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 import StorageSettingsPanel from "./StorageSettingsPanel";
 import { toast } from "sonner";
-import { CLOUDFLARE_CREDENTIAL_PROFILES, type CloudflareCredentialProfileId } from "../../../../shared/cloudflareCredentialCatalog";
+import { CLOUDFLARE_CREDENTIAL_PROFILES, type CloudflareCredentialProfileId, type CloudflareProbeStatus, type CloudflareProductRequirement } from "../../../../shared/cloudflareCredentialCatalog";
 import { Cloud, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
 
 type ProbeResult = {
@@ -24,7 +24,8 @@ type ProbeResult = {
     label: string;
     scope: string;
     permission: string;
-    status: "granted" | "missing_permission" | "invalid_token" | "resource_not_found" | "rate_limited" | "unsupported_or_invalid_request" | "unavailable";
+    status: CloudflareProbeStatus;
+    productRequirement?: CloudflareProductRequirement;
     httpStatus: number | null;
     validityIssue?: "not_yet_valid" | "expired" | "invalid_window";
     verificationScope?: "catalog";
@@ -50,6 +51,7 @@ const statusLabels = {
   granted: { en: "Granted", th: "ผ่าน" },
   partial: { en: "Partial catalog", th: "รายการ permission ยังไม่ครบ" },
   missing_permission: { en: "Permission missing", th: "ขาดสิทธิ์" },
+  product_unavailable: { en: "Product plan required", th: "ยังไม่ได้เปิดแพ็กเกจบริการ" },
   invalid_token: { en: "Token rejected", th: "Token ถูกปฏิเสธ" },
   resource_not_found: { en: "Resource not found", th: "ไม่พบ resource" },
   unavailable: { en: "Unavailable / API error", th: "API ใช้งานไม่ได้" },
@@ -147,6 +149,9 @@ export default function CloudflareCredentialCenter() {
                   `Cloudflare denied this resource request (HTTP ${check.httpStatus ?? "—"}). Check the token's effective permission, selected account/zone and resource restriction against the requirement above. A successful token or list check does not establish resource access. Where alternatives are listed, only one accepted permission is needed; do not broaden or replace the token based only on this response.`,
                   `Cloudflare ปฏิเสธคำขอ resource นี้ (HTTP ${check.httpStatus ?? "—"}) ให้ตรวจ permission ที่มีผลจริง, account/zone ที่เลือก และข้อจำกัดราย resource เทียบกับรายการด้านบน การตรวจ token หรืออ่านรายการผ่านไม่ได้ยืนยันสิทธิ์ราย resource หากมีหลาย permission ให้ใช้เพียงหนึ่งรายการที่ endpoint ยอมรับ ไม่ควรขยายสิทธิ์หรือเปลี่ยน token จากผลนี้เพียงอย่างเดียว`
                 )}</p> : null}
+                {check.status === "product_unavailable" ? <p role="status">{check.productRequirement === "workers_paid"
+                  ? text("Cloudflare requires Workers Paid for Containers on this account. Changing the API token does not enable this product. Plan activation requires account billing authority.", "Cloudflare ต้องการ Workers Paid สำหรับ Containers ของบัญชีนี้ การเปลี่ยน API token ไม่ได้เปิดบริการ ต้องเปิดแพ็กเกจด้วยสิทธิ์จัดการการเรียกเก็บเงินของบัญชี")
+                  : text("Cloudflare requires Workers for Platforms for dispatch namespaces on this account. Changing token permissions does not enable this product. Plan activation requires account billing authority.", "Cloudflare ต้องการ Workers for Platforms สำหรับ dispatch namespaces ของบัญชีนี้ การเพิ่มสิทธิ์ token ไม่ได้เปิดบริการ ต้องเปิดแพ็กเกจด้วยสิทธิ์จัดการการเรียกเก็บเงินของบัญชี")}</p> : null}
                 {check.validityIssue ? <p role="status">{check.validityIssue === "not_yet_valid"
                   ? text("This token's TTL starts in the future. Edit its start date in Cloudflare API Tokens, save, then probe again.", "token นี้ยังไม่ถึงวันเริ่มใช้งาน ให้แก้วันเริ่มต้น TTL ใน Cloudflare API Tokens บันทึก แล้วตรวจอีกครั้ง")
                   : check.validityIssue === "expired"
