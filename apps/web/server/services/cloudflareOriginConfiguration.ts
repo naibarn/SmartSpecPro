@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
-import { providerDeploymentTargets, systemSettings } from "../../drizzle/schema";
+import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
+import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
@@ -35,6 +36,17 @@ function matches(descriptor: Descriptor, identity: DeploymentTargetIdentity) {
     descriptor.environment === identity.environment && descriptor.provider === identity.provider;
 }
 
+async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: Descriptor, actorUserId: number | null, now = Date.now()) {
+  if (!descriptor.nativeResources) return;
+  if (!actorUserId) denied();
+  validateNativeBindingScope(descriptor.nativeResources, descriptor, now);
+  const [receipt] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+    jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+    operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+    .from(workerJobs).where(eq(workerJobs.id, descriptor.nativeResources.provisionJobId)).limit(1);
+  assertNativeProvisionReceipt(descriptor.nativeResources, receipt, { ...descriptor, actorUserId });
+}
+
 /** Store an immutable encrypted version. This neither binds nor deploys it. */
 export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
   identity: DeploymentTargetIdentity; settings: OriginSettings; secrets: OriginSecrets; actorUserId: number;
@@ -56,6 +68,7 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
           projectId: input.identity.projectId, environment: "staging", provider: "cloudflare" }) !== "AUTHORIZED") denied();
     const descriptor = descriptorSchema.parse({ ...settings, schemaVersion: "cloudflare.origin-configuration.v1",
       versionId: randomUUID(), ...input.identity, accountRef: rows[0]!.accountRef, targetId });
+    await verifyNativeReceipt(tx, descriptor, input.actorUserId);
     const configurationRef = reference(descriptor);
     const existing = await tx.select({ id: systemSettings.id }).from(systemSettings)
       .where(and(eq(systemSettings.category, category), eq(systemSettings.key, configurationRef))).limit(1);
@@ -70,7 +83,7 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
 
 async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, configurationRef: string) {
   if (!/^cf-origin:[a-f0-9]{64}$/.test(configurationRef)) denied();
-  const rows = await db.select({ id: systemSettings.id, value: systemSettings.value, isSensitive: systemSettings.isSensitive })
+  const rows = await db.select({ id: systemSettings.id, value: systemSettings.value, isSensitive: systemSettings.isSensitive, updatedBy: systemSettings.updatedBy })
     .from(systemSettings).where(and(eq(systemSettings.category, category), eq(systemSettings.key, configurationRef))).limit(2);
   if (rows.length !== 1 || !rows[0]!.isSensitive || !rows[0]!.value) denied();
   let stored: z.infer<typeof storedSchema>;
@@ -80,7 +93,8 @@ async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, co
   validateSettings(cloudflareOriginSettingsSchema.parse({ origin: stored.descriptor.origin,
     allowedPublicOrigins: stored.descriptor.allowedPublicOrigins, accessApplicationId: stored.descriptor.accessApplicationId,
     accessTeamName: stored.descriptor.accessTeamName, accessAudience: stored.descriptor.accessAudience,
-    expiresAt: stored.descriptor.expiresAt }), 0);
+    expiresAt: stored.descriptor.expiresAt, ...(stored.descriptor.nativeResources ? { nativeResources: stored.descriptor.nativeResources } : {}) }), 0);
+  await verifyNativeReceipt(db, stored.descriptor, rows[0]!.updatedBy, 0);
   return { rowId: rows[0]!.id, stored };
 }
 

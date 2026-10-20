@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { nativeProvisionNamespace, nativeProvisionPlanDigest, nativeResourceNames } from "./cloudflareNativeProvisionContract";
 import { saveCloudflareOriginConfiguration, getCloudflareOriginConfiguration,
   withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 
@@ -68,6 +70,32 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
   }, 20_000);
+
+  it("binds native resources only to an exact succeeded canonical provision receipt and rechecks it before resolving secrets", async () => {
+    const plan = { namespace: nativeProvisionNamespace(identity.tenantId, identity.projectId), vectorDimensions: 768 as const,
+      vectorMetric: "cosine" as const, configurationExpiresAt: new Date(Date.now() + 7200_000).toISOString() };
+    const nativeResources = { provisionJobId: randomUUID(), plan, planDigest: nativeProvisionPlanDigest(plan), queueId: "b".repeat(32) };
+    const names = nativeResourceNames(plan);
+    const outputJson = { accountRef: "0123456789abcdef0123456789abcdef", namespace: plan.namespace, queue: { name: names.queue, id: nativeResources.queueId },
+      bucket: { name: names.bucket }, vector: { name: names.vector }, metadataIndexes: ["tenantId", "sourceJobId"],
+      providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false };
+    await db.insert(schema.workerJobs).values({ id: nativeResources.provisionJobId, tenantId: identity.tenantId, requestedByUserId: actorUserId,
+      runtimeType: "node_job_worker", jobType: "cloudflare.staging.native.provision", contractVersion: "cloudflare-staging-native-provision-v1", status: "failed",
+      inputJson: { contractVersion: "cloudflare-staging-native-provision-v1", grantRef: randomUUID(), projectId: identity.projectId, planDigest: nativeResources.planDigest }, outputJson });
+    const input = { identity, settings: { ...settings(), nativeResources }, secrets, actorUserId };
+    await expect(saveCloudflareOriginConfiguration(db, input)).rejects.toThrow("RECEIPT_DENIED");
+    await db.update(schema.workerJobs).set({ status: "succeeded" }).where(eq(schema.workerJobs.id, nativeResources.provisionJobId));
+    await expect(saveCloudflareOriginConfiguration(db, { ...input, actorUserId: actorUserId + 1 })).rejects.toThrow("RECEIPT_DENIED");
+    const saved = await saveCloudflareOriginConfiguration(db, input);
+    expect(saved.descriptor.nativeResources).toEqual(nativeResources);
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    const request = { identity, configurationRef: saved.configurationRef, configurationDigest: saved.configurationDigest }, operation = vi.fn(async () => true);
+    await expect(withCloudflareOriginConfiguration(db, request, operation)).resolves.toBe(true);
+    await db.update(schema.workerJobs).set({ outputJson: { ...outputJson, accountRef: "f".repeat(32) } }).where(eq(schema.workerJobs.id, nativeResources.provisionJobId));
+    await expect(withCloudflareOriginConfiguration(db, request, operation)).rejects.toThrow("RECEIPT_DENIED");
+    expect(operation).toHaveBeenCalledOnce();
+    await db.update(schema.workerJobs).set({ outputJson }).where(eq(schema.workerJobs.id, nativeResources.provisionJobId));
+  });
 
   it("stores provisioning credentials separately without violating or replacing the unique Worker credential scope", async () => {
     const { saveCloudflareDeploymentCredential, withCloudflareDeploymentCredential } = await import("./cloudflareCredentialCenter");

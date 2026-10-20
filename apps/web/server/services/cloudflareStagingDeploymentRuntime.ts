@@ -10,6 +10,8 @@ import {
   type CloudflareStagingGrant,
 } from "./cloudflareStagingDeploymentExecutor";
 import { createCloudflareStagingApiTransport } from "./cloudflareStagingApiTransport";
+import { createCloudflareNativeProvisionRuntime } from "./cloudflareNativeProvisionExecutor";
+import { verifyNativeProviderResources } from "./cloudflareNativeBindingDescriptor";
 import {
   createCloudflareStagingExecutorProof,
   verifyCloudflareStagingExecutorProof,
@@ -102,6 +104,9 @@ export function createCloudflareStagingDeploymentRuntime(input: {
   const cloudflare = createCloudflareStagingApiTransport({
     resolveBundle: resolveCloudflareStagingBundle,
     fetchImpl,
+    verifyNativeResources: async (descriptor, target) => createCloudflareNativeProvisionRuntime({ fetchImpl }).withCredential({
+      tenantId: target.tenantId, projectId: target.projectId, environment: "staging", provider: "cloudflare",
+    }, token => verifyNativeProviderResources({ descriptor, accountRef: target.accountRef, token, fetchImpl })),
   });
   const runtime = bindCloudflareStagingDeploymentAuthorities({
     db: getDb(),

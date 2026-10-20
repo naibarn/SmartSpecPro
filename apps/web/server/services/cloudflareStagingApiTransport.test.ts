@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { cloudflareOriginDescriptorDigest, type CloudflareOriginDescriptor } from "./cloudflareOriginVersionBindings";
+import { nativeProvisionNamespace, nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
+import { nativeWorkerBindings, type CloudflareNativeBindingDescriptor } from "./cloudflareNativeBindingDescriptor";
 import { describe, expect, it, vi } from "vitest";
 import type { CloudflareStagingTarget } from "./cloudflareStagingDeploymentExecutor";
 import { createCloudflareStagingApiTransport, type CloudflareStagingBundle } from "./cloudflareStagingApiTransport";
@@ -352,8 +354,8 @@ describe("Cloudflare version-scoped origin transport", () => {
     return { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
       secrets: { token: "t".repeat(32), clientId: "id-" + "i".repeat(20), secret: "s".repeat(32) } };
   }
-  function fixture(options: { message?: string; prior?: boolean; auth?: () => Response } = {}) {
-    const config = configuration();
+  function fixture(options: { message?: string; prior?: boolean; auth?: () => Response; native?: CloudflareNativeBindingDescriptor; versionBindings?: unknown } = {}) {
+    const config = configuration(options.native ? { nativeResources: options.native } : {});
     const originTarget = { ...target, runtimePolicy: config.configurationRef };
     const mutations: Array<{ url: string; init: RequestInit }> = [];
     let metadata: any;
@@ -371,6 +373,9 @@ describe("Cloudflare version-scoped origin transport", () => {
         annotations: { "workers/message": options.prior ? "SmartAIHub staging idempotency cloudflare-staging:origin-job" : "other-job" } }] });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
+        resources: { bindings: options.versionBindings ?? metadata?.bindings ?? (options.native ? [
+          ...nativeWorkerBindings(options.native), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
+        ] : []) },
         annotations: { "workers/message": options.message ?? `SmartAIHub staging ${sourceSha} ${buildDigest} origin ${config.configurationDigest}` } });
       if (url === `${publicUrl}/healthz`) return new Response(JSON.stringify({ ok: true, service: "smartspec-cloudflare-runtime" }), { headers: { "content-type": "application/json" } });
       if (url === `${publicUrl}/`) return new Response(new TextDecoder().decode(assetBytes), { headers: { "content-type": "text/html" } });
@@ -379,7 +384,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       throw new Error(`Unexpected fixture request ${url}`);
     }) as typeof fetch;
     return { config, originTarget, fetchImpl, mutations, metadata: () => metadata,
-      api: createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl }) };
+      api: createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl, verifyNativeResources: async () => {} }) };
   }
   function deploy(f: ReturnType<typeof fixture>, assertMutationAuthorized = async () => {}) {
     return f.api.deploy({ token: "provider-deployment-token", target: f.originTarget, artifact,
@@ -389,6 +394,43 @@ describe("Cloudflare version-scoped origin transport", () => {
     return f.api.verifyRuntime({ token: "provider-deployment-token", target: f.originTarget,
       deploymentId, url: publicUrl, sourceSha, buildDigest, configurationDigest: f.config.configurationDigest });
   }
+
+  function nativeDescriptor(): CloudflareNativeBindingDescriptor {
+    const plan = { namespace: nativeProvisionNamespace(target.tenantId, target.projectId), vectorDimensions: 768 as const,
+      vectorMetric: "cosine" as const, configurationExpiresAt: new Date(Date.now() + 3600_000).toISOString() };
+    return { provisionJobId: "55555555-5555-4555-8555-555555555555", plan, planDigest: nativeProvisionPlanDigest(plan), queueId: "a".repeat(32) };
+  }
+
+  it("binds only verified native resource names and reads the immutable version before activation", async () => {
+    const native = nativeDescriptor(), f = fixture({ native });
+    await deploy(f);
+    expect(f.metadata().bindings).toEqual(expect.arrayContaining(nativeWorkerBindings(native)));
+    const calls = vi.mocked(f.fetchImpl).mock.calls;
+    const versionRead = calls.findIndex(([url]) => String(url).endsWith(`/versions/${versionId}`));
+    const activation = calls.findIndex(([url, init]) => String(url).endsWith("/deployments") && init?.method === "POST");
+    expect(versionRead).toBeGreaterThan(-1);
+    expect(activation).toBeGreaterThan(versionRead);
+    expect(f.mutations.every(call => !/\/queues|\/r2|\/vectorize|\/routes|\/schedules/.test(call.url))).toBe(true);
+  });
+
+  it.each([false, true])("refuses missing uploaded native bindings even with a matching digest annotation (retry=%s)", async prior => {
+    const f = fixture({ native: nativeDescriptor(), versionBindings: [], prior });
+    await expect(deploy(f)).rejects.toThrow("VERSION_BINDINGS_MISMATCH");
+    expect(f.mutations.some(call => call.url.endsWith("/deployments"))).toBe(false);
+  });
+
+  it("requires a scoped resource verifier and refuses drift before uploading a version", async () => {
+    const f = fixture({ native: nativeDescriptor() });
+    const input = { token: "provider-token", target: f.originTarget, artifact, idempotencyKey: "native-job", originConfiguration: f.config,
+      assertMutationAuthorized: async () => {} };
+    const missing = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: f.fetchImpl });
+    await expect(missing.deploy(input)).rejects.toThrow("NATIVE_PROVIDER_VERIFIER_REQUIRED");
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+    const drift = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: f.fetchImpl,
+      verifyNativeResources: async () => { throw Error("native resource drift"); } });
+    await expect(drift.deploy(input)).rejects.toThrow("native resource drift");
+    expect(f.mutations).toHaveLength(0);
+  });
 
   it("uploads origin secrets only as version bindings and returns distinct artifact/config receipts", async () => {
     const f = fixture();

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
+import { cloudflareNativeBindingDescriptorSchema, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 
 const credential = z.string().min(16).max(4096).regex(/^[\x21-\x7e]+$/);
 export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32), clientId: credential, secret: credential }).strict()
@@ -12,6 +13,7 @@ export const cloudflareOriginSettingsSchema = z.object({
   accessTeamName: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/),
   accessAudience: z.string().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/),
   expiresAt: z.string().datetime({ offset: true }),
+  nativeResources: cloudflareNativeBindingDescriptorSchema.optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -46,6 +48,9 @@ export function validateCloudflareOriginVersionBindings(value: CloudflareOriginV
   } catch { return denied(); }
   const origin = parseCloudflarePublicOrigin(descriptor.origin);
   const allowed = parseCloudflarePublicOrigins(JSON.stringify(descriptor.allowedPublicOrigins));
+  if (descriptor.nativeResources) {
+    try { validateNativeBindingScope(descriptor.nativeResources, descriptor, now); } catch { return denied(); }
+  }
   if (!origin || !allowed || allowed.includes(origin.origin) || Date.parse(descriptor.expiresAt) <= now ||
       descriptor.tenantId !== target.tenantId || descriptor.projectId !== target.projectId ||
       descriptor.accountRef !== target.accountRef || descriptor.targetId !== target.targetId ||
