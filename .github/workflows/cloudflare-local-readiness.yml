@@ -21,6 +21,9 @@ on:
       - "apps/web/vite.config.ts"
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
+      - "apps/web/CloudflareHttp.Containerfile"
+      - "apps/web/scripts/package_cloudflare_http_image.py"
+      - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
       - "apps/web/shared/runtimePackAvailability.*"
       - "apps/web/server/**"
@@ -70,6 +73,9 @@ on:
       - "apps/web/vite.config.ts"
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
+      - "apps/web/CloudflareHttp.Containerfile"
+      - "apps/web/scripts/package_cloudflare_http_image.py"
+      - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
       - "apps/web/shared/runtimePackAvailability.*"
       - "apps/web/server/**"
@@ -122,6 +128,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Guard standalone Linux runtime import boundaries
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
+      - name: Verify canonical on-demand HTTP image preparation
+        run: python3 -m unittest discover -s apps/web/scripts -p test_package_cloudflare_http_image.py
       - name: Verify Linux release permissions and recovery
         run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
       - name: Verify tenant branding and desktop bearer authorization
