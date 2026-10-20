@@ -9,6 +9,7 @@
  */
 
 import { getDb } from "../db";
+import { getApplicationRuntimeProfile } from "../_core/applicationRuntime";
 import { skills as skillsTable } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { getDefaultModel, getModelIdsByType, refreshModelCache } from "./modelRegistry";
@@ -378,6 +379,12 @@ export async function autoSyncSkillsFromFolder(options?: { force?: boolean }): P
     skipped: [] as string[],
     errors: [] as string[],
   };
+
+  // Request-only replicas read the persisted catalog. Only an explicit admin
+  // resynchronization may mutate it; cold API requests must not own this work.
+  if (!options?.force && !getApplicationRuntimeProfile().ownsBackgroundWork) {
+    return result;
+  }
 
   if (_autoSyncCompleted && !options?.force) {
     console.log("[SkillRegistry] Auto-sync already completed, skipping");
