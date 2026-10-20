@@ -1,4 +1,6 @@
 import type { CanonicalJobEnvelope, CloudflareContainerBinding } from "./contracts";
+import { CONTAINER_MEDIA_PROBE_CONTRACT, MAX_CONTAINER_PROBE_RESULT_BYTES, containerProbeScope,
+  validateContainerProbeInput, validateContainerProbeResult, type ContainerProbeInput, type ContainerProbeResult } from "./containerMediaProbeContract";
 import { buildRunnerContainerEnvironment, runnerContainerInstanceId, validateRunnerContainerAssignment, type RunnerContainerAssignment } from "./runnerContainer";
 
 export type RunnerContainerRecord = { instanceId: string; scopeDigest: string; image: string; released: boolean; expiresAt: string };
@@ -48,13 +50,14 @@ export class NativeRunnerContainerController {
     if (!this.container.running) {
       this.container.start({ image, enableInternet: false, instance: "lite",
         env: { ...buildRunnerContainerEnvironment({ ...assignment, runnerId: `container:${assignment.envelope.job_id}` }),
-          SAH_RUNNER_HEALTH_PORT: "8787" }, labels: { scope: scopeDigest } });
+          SAH_RUNNER_HEALTH_PORT: "8787", SAH_RUNNER_TENANT_ID: assignment.tenantId,
+          SAH_RUNNER_FENCING_VERSION: String(assignment.fencingVersion), SAH_RUNNER_EXPIRES_AT_MS: String(deadline) }, labels: { scope: scopeDigest } });
     }
     await this.container.setInactivityTimeout(60_000);
     return { id: instanceId, status: "starting" };
   }
 
-  async inspect(instanceId: string) {
+  async inspect(instanceId: string, deadline = Date.now() + 2000) {
     const record = await this.storage.get<RunnerContainerRecord>(RECORD_KEY);
     if (!record || record.instanceId !== instanceId) return null;
     if (Date.parse(record.expiresAt) <= Date.now()) { await this.stop(instanceId); return { id: instanceId, status: "stopped" }; }
@@ -64,12 +67,54 @@ export class NativeRunnerContainerController {
     if (!provider || provider.image !== record.image || provider.labels.scope !== record.scopeDigest) {
       throw new Error("RUNNER_CONTAINER_PROVIDER_SCOPE_MISMATCH");
     }
-    const response = await this.container.getTcpPort(8787).fetch("http://runner.internal/health/runner", { signal: AbortSignal.timeout(2000) });
+    const response = await this.container.getTcpPort(8787).fetch("http://runner.internal/health/runner", { signal: AbortSignal.timeout(Math.max(1, Math.min(2000, deadline - Date.now()))) });
     if (!response.ok || (Number(response.headers.get("content-length")) > 1024)) throw new Error("RUNNER_CONTAINER_HEALTH_UNAVAILABLE");
     const text = await response.text(); if (text.length > 1024) throw new Error("RUNNER_CONTAINER_HEALTH_UNAVAILABLE");
     const body = JSON.parse(text);
     if (body?.state !== "ready" || body?.profile !== "shared_container") throw new Error("RUNNER_CONTAINER_HEALTH_UNAVAILABLE");
-    return { id: instanceId, status: "ready" };
+    return { id: instanceId, status: "ready", capabilities: Array.isArray(body.capabilities) ? body.capabilities : [] };
+  }
+
+  async probeMedia(assignment: RunnerContainerAssignment, input: ContainerProbeInput, prepare: (action: () => Promise<void>) => Promise<void> = action => action()): Promise<ContainerProbeResult> {
+    // Private RPC must follow an already-admitted, alarm-protected start.
+    await prepare(async () => {
+      const record = await this.storage.get<RunnerContainerRecord>(RECORD_KEY);
+      if (!record || record.instanceId !== runnerContainerInstanceId(assignment) || record.released) throw new Error("RUNNER_CONTAINER_ASSIGNMENT_CONFLICT");
+      await validateContainerProbeInput(input);
+      await this.start(assignment); // Recheck ownership under the short DO concurrency gate.
+    });
+    const deadline = Date.parse(assignment.expiresAt!);
+    const bootDeadline = Math.min(deadline, Date.now() + 10_000);
+    let ready = false;
+    for (let attempt = 0; attempt < 40 && Date.now() < bootDeadline; attempt++) {
+      try {
+        const health = await this.inspect(runnerContainerInstanceId(assignment), bootDeadline);
+        ready = health?.status === "ready" && health.capabilities?.includes(CONTAINER_MEDIA_PROBE_CONTRACT) === true;
+      } catch { /* bounded boot/readiness retry */ }
+      if (ready) break;
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    if (!ready || Date.now() >= deadline) throw new Error("CONTAINER_PROBE_NOT_READY");
+    const response = await this.container.getTcpPort(8787).fetch("http://runner.internal/v1/media/probe", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contractVersion: CONTAINER_MEDIA_PROBE_CONTRACT, scope: containerProbeScope(assignment), input }),
+      signal: AbortSignal.timeout(Math.min(32_000, Math.max(1, deadline-Date.now()))),
+    });
+    if (!response.ok || Number(response.headers.get("content-length")) > MAX_CONTAINER_PROBE_RESULT_BYTES || !response.body) {
+      await response.body?.cancel(); throw new Error("CONTAINER_PROBE_EXECUTION_UNAVAILABLE");
+    }
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let body = "", size = 0;
+    try {
+      for (;;) {
+        const part = await reader.read(); if (part.done) break;
+        size += part.value.byteLength;
+        if (size > MAX_CONTAINER_PROBE_RESULT_BYTES) { await reader.cancel(); throw new Error("CONTAINER_PROBE_RESULT_TOO_LARGE"); }
+        body += decoder.decode(part.value, { stream: true });
+      }
+      body += decoder.decode();
+    } finally { reader.releaseLock(); }
+    return validateContainerProbeResult(JSON.parse(body), assignment, input.checksumSha256);
   }
 
   async stop(instanceId: string) {
@@ -89,6 +134,7 @@ export type NativeRunnerContainerStub = {
   startRunner(assignment: RunnerContainerAssignment): Promise<{ id: string; status: string }>;
   inspectRunner(instanceId: string): Promise<{ id: string; status: string } | null>;
   stopRunner(instanceId: string): Promise<void>;
+  probeMedia?(assignment: RunnerContainerAssignment, input: ContainerProbeInput): Promise<ContainerProbeResult>;
 };
 export type NativeRunnerContainerNamespace = { idFromName(name: string): unknown; get(id: unknown): NativeRunnerContainerStub };
 
@@ -110,6 +156,14 @@ export function createNativeRunnerContainerBinding(namespace: NativeRunnerContai
       return result;
     },
     stop: instanceId => stub(instanceId).stopRunner(instanceId),
+    async probeMedia(assignment, input) {
+      validateRunnerContainerAssignment(assignment);
+      await validateContainerProbeInput(input);
+      const target = stub(runnerContainerInstanceId(assignment));
+      if (typeof target.probeMedia !== "function") throw new Error("CONTAINER_PROBE_EXECUTION_UNAVAILABLE");
+      const result = await target.probeMedia(assignment, input);
+      return validateContainerProbeResult(result, assignment, input.checksumSha256);
+    },
   };
 }
 function sameEnvelope(left: CanonicalJobEnvelope, right: CanonicalJobEnvelope) {

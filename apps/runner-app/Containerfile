@@ -8,9 +8,18 @@ COPY apps/runner-app/Cargo.toml apps/runner-app/Cargo.lock ./
 COPY apps/runner-app/src ./src
 RUN cargo build --locked --release --bin smartaihub-runner
 
-FROM ${RUNNER_RUNTIME_IMAGE}
+FROM ${RUNNER_RUNTIME_IMAGE} AS runtime
 COPY --from=build /source/target/release/smartaihub-runner /usr/local/bin/smartaihub-runner
 USER 65532:65532
 ENV SAH_RUNNER_PROFILE=shared_container SAH_RUNNER_HEALTH_PORT=8787
 EXPOSE 8787
 ENTRYPOINT ["smartaihub-runner", "run"]
+
+# Select this target only for the fixed private media probe capability. The
+# approved runtime base must already contain FFprobe and its compatible libs.
+# No package installation or runtime download is performed by the Runner.
+FROM runtime AS media-probe
+RUN ["/usr/bin/ffprobe", "-version"]
+
+# Preserve the generic image's default build behavior for existing callers.
+FROM runtime AS runner

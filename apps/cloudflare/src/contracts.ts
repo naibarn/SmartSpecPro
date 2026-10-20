@@ -64,6 +64,7 @@ export type CloudflareContainerBinding = {
   start(input: { instanceId: string; envelope: CanonicalJobEnvelope; assignment?: import("./runnerContainer").RunnerContainerAssignment }): Promise<{ id?: string; status?: string }>;
   find?(instanceId: string): Promise<{ id?: string; status?: string } | null>;
   stop?(instanceId: string): Promise<void>;
+  probeMedia?(assignment: import("./runnerContainer").RunnerContainerAssignment, input: import("./containerMediaProbeContract").ContainerProbeInput): Promise<import("./containerMediaProbeContract").ContainerProbeResult>;
 };
 
 export type CloudflareWorkerAppBinding = {

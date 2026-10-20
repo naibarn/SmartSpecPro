@@ -15,3 +15,12 @@ test("only approved immutable base inputs can produce a Runner build plan", () =
   assert.ok(recipe.includes("USER 65532:65532"));
   assert.ok(!recipe.includes("COPY ."));
 });
+
+test("media probe target verifies an already-installed fixed FFprobe binary", () => {
+  const image = `registry.example.com/runner/base@sha256:${"b".repeat(64)}`;
+  assert.equal(cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "container-media-probe-v1" }).target, "media-probe");
+  assert.equal(cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image }).target, "runtime");
+  assert.throws(() => cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "arbitrary-command" }), /NOT_ADMITTED/);
+  const recipe = readFileSync(new URL("./Containerfile", import.meta.url), "utf8");
+  assert.ok(recipe.includes('RUN ["/usr/bin/ffprobe", "-version"]'));
+});

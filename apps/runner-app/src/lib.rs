@@ -4,6 +4,7 @@ pub mod checkpoint_store;
 pub mod config;
 pub mod connection;
 pub mod container;
+pub mod container_probe;
 pub mod control_channel;
 pub mod device_proof;
 pub mod diagnostics;

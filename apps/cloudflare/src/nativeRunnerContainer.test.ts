@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNativeRunnerContainerBinding, NativeRunnerContainerController } from "./nativeRunnerContainer";
+import { containerProbeScope, probeSha256 } from "./containerMediaProbeContract";
 import type { RunnerContainerAssignment } from "./runnerContainer";
 function fixture() {
   const image = `registry.cloudflare.com/account/runner@sha256:${"a".repeat(64)}`;
@@ -20,7 +21,8 @@ describe("native Cloudflare Container lifecycle", () => {
     expect(f.storage.put.mock.invocationCallOrder[0]).toBeLessThan(f.container.start.mock.invocationCallOrder[0]);
     expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.image, enableInternet: false, instance: "lite" }));
     expect(f.container.start.mock.calls[0][0].env).toEqual({ SAH_RUNNER_PROFILE: "shared_container", SAH_RUNNER_ID: "container:job-1",
-      SAH_RUNNER_JOB_ID: "job-1", SAH_RUNNER_ATTEMPT_ID: "attempt-1", SAH_RUNNER_LEASE_ID: "lease-1", SAH_RUNNER_HEALTH_PORT: "8787" });
+      SAH_RUNNER_JOB_ID: "job-1", SAH_RUNNER_ATTEMPT_ID: "attempt-1", SAH_RUNNER_LEASE_ID: "lease-1", SAH_RUNNER_HEALTH_PORT: "8787", SAH_RUNNER_TENANT_ID: "tenant-a",
+      SAH_RUNNER_FENCING_VERSION: "1", SAH_RUNNER_EXPIRES_AT_MS: String(Date.parse(f.assignment.expiresAt!)) });
     f.container.running = true;
     f.container.inspect.mockResolvedValue({ image: f.image, labels: { scope: ([...f.records.values()][0] as { scopeDigest: string }).scopeDigest } });
     await f.controller.start(f.assignment);
@@ -71,5 +73,32 @@ describe("native Cloudflare Container lifecycle", () => {
     expect(stub.startRunner).toHaveBeenCalledWith(f.assignment);
     await expect(binding.start({ instanceId: id, envelope: f.assignment.envelope })).rejects.toThrow("ASSIGNMENT_REQUIRED");
     stub.inspectRunner.mockResolvedValue({ id: "foreign", status: "ready" }); await expect(binding.find!(id)).rejects.toThrow("PROVIDER_SCOPE");
+  });
+});
+
+describe("native fixed media probe RPC", () => {
+  it("requires admitted durable ownership before any CPU call", async () => {
+    const f = fixture(), input = { contentBase64: btoa("media"), sizeBytes: 5, checksumSha256: await probeSha256(new TextEncoder().encode("media")) };
+    await expect(f.controller.probeMedia(f.assignment, input)).rejects.toThrow("ASSIGNMENT_CONFLICT");
+    expect(f.container.start).not.toHaveBeenCalled();
+  });
+  it("checks image, health capability, bytes and scope before accepting the fixed operation", async () => {
+    const f = fixture(); await f.controller.start(f.assignment); f.container.running = true;
+    f.container.inspect.mockResolvedValue({ image: f.image, labels: { scope: ([...f.records.values()][0] as { scopeDigest: string }).scopeDigest } });
+    const input = { contentBase64: btoa("media"), sizeBytes: 5, checksumSha256: await probeSha256(new TextEncoder().encode("media")) };
+    const result = { contractVersion: "container-media-probe-v1", scope: containerProbeScope(f.assignment), inputChecksumSha256: input.checksumSha256,
+      result: { artifacts: [], derived: { format: { format_name: "wav" }, streams: [], durationMs: 1000 } } };
+    const request = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/health/runner")) return Response.json({ state: "ready", profile: "shared_container", capabilities: ["container-media-probe-v1"] });
+      expect(url).toBe("http://runner.internal/v1/media/probe");
+      expect(JSON.parse(String(init?.body))).toEqual({ contractVersion: "container-media-probe-v1", scope: containerProbeScope(f.assignment), input });
+      return Response.json(result);
+    });
+    f.container.getTcpPort.mockReturnValue({ fetch: request } as never);
+    expect(await f.controller.probeMedia(f.assignment, input)).toEqual(result);
+    expect(f.container.start).toHaveBeenCalledOnce();
+    await expect(f.controller.probeMedia({ ...f.assignment, fencingVersion: 2 }, input)).rejects.toThrow("CONFLICT");
+    await expect(f.controller.probeMedia(f.assignment, { ...input, checksumSha256: "b".repeat(64) })).rejects.toThrow("CHECKSUM");
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });
