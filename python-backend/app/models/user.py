@@ -55,6 +55,8 @@ class User(Base):
     createdAt = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updatedAt = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     lastSignedIn = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # Existing Web-owned column; mapping it does not create or migrate schema.
+    sessionRevokedAt = Column(DateTime(timezone=True), nullable=True)
 
     # Domain and tenant
     registeredDomain = Column(String(255), nullable=True)

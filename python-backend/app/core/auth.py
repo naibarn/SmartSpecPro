@@ -3,7 +3,8 @@ Authentication Module
 JWT token generation and validation using enhanced JWT Manager
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import math
 from typing import Optional, Dict, Any
 from jose import JWTError
 from fastapi import Depends, HTTPException, status
@@ -161,9 +162,26 @@ async def get_current_user(
         # Fallback to old format
         user_id_str = payload.get("user_id")
 
-    # Try to find user by openId first (Node.js SDK session tokens)
+    # Desktop tokens use OpenID as sub plus a numeric userId. Resolve both to
+    # the same account; never reinterpret that OpenID as a Python numeric sub.
     user = None
-    if open_id:
+    if "userId" in payload:
+        desktop_user_id = payload["userId"]
+        if type(desktop_user_id) is not int or desktop_user_id <= 0 or not isinstance(user_id_str, str) or not user_id_str:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid desktop identity in token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        result = await db.execute(select(User).where(User.id == desktop_user_id))
+        user = result.scalar_one_or_none()
+        if user is None or user.openId != user_id_str or (open_id is not None and open_id != user.openId):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Desktop token identity mismatch",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    elif open_id:
         result = await db.execute(select(User).where(User.openId == open_id))
         user = result.scalar_one_or_none()
 
@@ -193,6 +211,22 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    # The Web authority revokes all account sessions on security changes.
+    # Apply the same timestamp boundary to Python endpoints, including device
+    # tokens, in addition to the shared per-JTI revocation check above.
+    revoked_at = user.sessionRevokedAt
+    if revoked_at is not None:
+        if revoked_at.tzinfo is None:
+            revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+        issued_at = payload.get("iat")
+        if (isinstance(issued_at, bool) or not isinstance(issued_at, (int, float))
+                or not math.isfinite(issued_at) or issued_at <= revoked_at.timestamp()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     # Internal Node/MCP tokens may pin the request to a tenant. Verify active
     # membership here before any user-scoped media/library endpoint runs; a
