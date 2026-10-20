@@ -273,7 +273,8 @@ export async function proxyWebSocketToOrigin(
     });
     upstream = await Promise.race([fetcher(new Request(prepared.target, { method: "GET", headers: prepared.headers, redirect: "manual", signal: abort.signal })), aborted]);
     const pair = (upstream as Response & { webSocket?: { close: (code: number, reason: string) => void } }).webSocket;
-    let sensitive = /(?:^|,\s*)CF_Authorization=/i.test(upstream.headers.get("set-cookie") ?? "");
+    const accessCookie = /(?:^|,\s*)CF_Authorization=/i.test(upstream.headers.get("set-cookie") ?? "");
+    let sensitive = false;
     upstream.headers.forEach((_value, name) => {
       if (name.startsWith("cf-access-") || name === ATTESTATION_HEADER || name === CLOUDFLARE_PUBLIC_ORIGIN_HEADER) sensitive = true;
     });
@@ -282,6 +283,12 @@ export async function proxyWebSocketToOrigin(
       await upstream.body?.cancel();
       return unavailable();
     }
+    // Access legitimately sets its service JWT even on a 101 response. Preserve
+    // the actual pair when replacing only its HTTP handshake headers; never
+    // construct a body-bearing HTTP response or synthesize an accepted socket.
+    if (accessCookie) return new Response(null, {
+      status: 101, headers: responseHeaders(upstream), webSocket: pair,
+    } as ResponseInit);
     return upstream;
   } catch {
     try { await upstream?.body?.cancel(); } catch { /* disconnected handshake */ }

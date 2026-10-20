@@ -99,6 +99,8 @@ jobs:
         run: node --test apps/cloudflare/wrangler.staging.config.test.mjs
       - name: Test canonical staging artifact packager
         run: node --test apps/cloudflare/scripts/package-staging-artifact.test.mjs
+      - name: Test protected-origin WebSocket pair and Access cookie isolation in workerd
+        run: node --test apps/cloudflare/scripts/protected-origin-websocket-runtime.test.mjs
       - name: Smoke test Cloudflare Worker in local workerd
         run: |
           set -euo pipefail
