@@ -109,6 +109,7 @@ import {
 } from "../services/geoMapProviderRuntime";
 import { createCanonicalJobInTransaction } from "../services/jobControlPlane";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { createSpec260EvidenceRetentionScheduleHandler } from "./spec260EvidenceRetentionSchedule";
 import { createInvoiceChargeFlow } from "../services/billing/orchestration";
 import { createBeamProvider } from "../services/billing/beamProvider";
 import {
@@ -11022,107 +11023,15 @@ async function handleEmergencyRoute(
  * Writes enforce same-origin in both modes.
  */
 export function registerSpec260EmergencyEdgeRoutes(app: Express): void {
+  const retentionSchedule = createSpec260EvidenceRetentionScheduleHandler({
+    authenticate: compareCachedSpec260PlatformEdgeToken,
+    systemTenant: () => process.env.FEATURE_186_SYSTEM_TENANT_ID,
+    createJob: createControlPlaneJob,
+  });
   app.use("/api", (req: Request, res: Response, next) => {
     const path = req.originalUrl.split("?", 1)[0];
     if (path === "/api/internal/spec260/schedules/evidence-retention") {
-      if (
-        req.method !== "POST" ||
-        req.header("x-spec260-schedule") !== "evidence-retention-v1" ||
-        !compareCachedSpec260PlatformEdgeToken(req.header("x-internal-token"))
-      ) {
-        return reply(res, 401, { error: "SPEC260_SCHEDULE_AUTH_REQUIRED" });
-      }
-      const body = z
-        .object({
-          scheduledTime: z.number().int().positive().max(8_000_000_000_000),
-          occurrenceKey: z.string().trim().min(1).max(96),
-        })
-        .strict()
-        .safeParse(req.body);
-      if (!body.success)
-        return reply(res, 400, { error: "SPEC260_SCHEDULE_REQUEST_INVALID" });
-      const scheduledAt = new Date(body.data.scheduledTime);
-      const requestedOccurrence = `${new Date(Math.floor(scheduledAt.getTime() / 300_000) * 300_000).toISOString().slice(0, 16)}Z:emergency-evidence-retention`;
-      const admissionTime = new Date();
-      if (
-        admissionTime.getTime() - scheduledAt.getTime() >
-          7 * 24 * 60 * 60_000 ||
-        scheduledAt.getTime() - admissionTime.getTime() > 5 * 60_000 ||
-        body.data.occurrenceKey !== requestedOccurrence
-      ) {
-        return reply(res, 400, {
-          error: "SPEC260_SCHEDULE_OCCURRENCE_INVALID",
-        });
-      }
-      const tenantId = process.env.FEATURE_186_SYSTEM_TENANT_ID?.trim();
-      if (!tenantId)
-        return reply(res, 503, {
-          error: "SPEC260_SYSTEM_TENANT_NOT_CONFIGURED",
-        });
-      const scheduleId = "spec260-emergency-evidence-retention";
-      // Missed cron occurrences coalesce into the current five-minute bucket;
-      // the original timestamp remains provenance in the job input.
-      const occurrenceKey = `${new Date(Math.floor(admissionTime.getTime() / 300_000) * 300_000).toISOString().slice(0, 16)}Z:emergency-evidence-retention`;
-      const idempotencyKey = `feature-186:${scheduleId}:${occurrenceKey}`;
-      void createControlPlaneJob({
-        context: {
-          tenantId,
-          actorType: "system",
-          authorizationScope: `system:schedule:${scheduleId}`,
-          correlationId: idempotencyKey,
-          idempotencyKey,
-        },
-        definition: {
-          contractVersion: "feature-186-v1",
-          jobType: "emergency.evidence.retention",
-          executionClass: "short",
-          priority: 80,
-          input: {
-            maxRows: 100,
-            requestedOccurrenceKey: body.data.occurrenceKey,
-          },
-          idempotencyKey,
-          retryPolicy: {
-            maxAttempts: 3,
-            baseDelayMs: 5_000,
-            maxDelayMs: 15 * 60_000,
-            jitter: "bounded",
-            deadlineMs: 6 * 60 * 60 * 1000,
-            allowedErrorClasses: ["retryable", "timeout", "unavailable"],
-          },
-          timeoutPolicy: {
-            softTimeoutMs: 10 * 60_000,
-            hardTimeoutMs: 30 * 60 * 1000,
-          },
-          schedule: {
-            scheduleId,
-            occurrenceKey,
-            scheduleVersion: "1",
-            timezone: "UTC",
-            missedOccurrencePolicy: "coalesce",
-          },
-        },
-        createOptions: { runtimeType: "node_job_worker" },
-      })
-        .then(job =>
-          reply(res, 202, {
-            accepted: true,
-            jobId: job.jobId,
-            created: job.created,
-          })
-        )
-        .catch(error => {
-          const code =
-            error instanceof Error
-              ? error.message.slice(0, 120)
-              : "SCHEDULE_ADMISSION_FAILED";
-          console.error(
-            "[Spec260] evidence retention schedule admission failed",
-            { code }
-          );
-          if (!res.headersSent)
-            reply(res, 503, { error: "SPEC260_SCHEDULE_ADMISSION_FAILED" });
-        });
+      void retentionSchedule(req, res);
       return;
     }
     const matched = matchSpec260ApiRouteWithParams(

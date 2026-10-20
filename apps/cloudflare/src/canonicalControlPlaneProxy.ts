@@ -12,7 +12,7 @@ import { proxyAuthToOrigin } from "./authOriginProxy";
 
 const PUBLIC_APPLICATION_HOSTS = new Set(["smartaihub.app", "smartspec.pro"]);
 
-function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): { origin: URL; publicOrigin?: string } {
+export function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): { origin: URL; publicOrigin?: string } {
   const configuredOrigin = env.PLATFORM_EDGE_ORIGIN?.trim();
   const expectedHost = env.PLATFORM_EDGE_PRIVATE_HOST?.trim().toLowerCase();
   if (!configuredOrigin || !expectedHost) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");

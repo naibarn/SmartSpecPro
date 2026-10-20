@@ -47,6 +47,25 @@ describe("exact bounded Workflow deployment configuration", () => {
     const bindings=cloudflareWorkflowVersionBindings(validateCloudflareOriginVersionBindings(value,target));
     expect(bindings).toContainEqual({ name:"CLOUDFLARE_JOB_TRANSPORT",type:"plain_text",text:"queues" });
   });
+  it("binds retention independently with a separate secret and rejects unapproved extra schedule activation", () => {
+    const { value,target }=fixture();
+    const original=cloudflareWorkflowVersionBindings(value);
+    expect(()=>assertCloudflareWorkflowVersionBindings([...original,{name:"CLOUDFLARE_RETENTION_SCHEDULE",type:"plain_text",text:"evidence-retention"}],value)).toThrow("MISMATCH");
+    value.descriptor.retentionSchedule="evidence-retention";
+    (value.secrets as typeof value.secrets & {retentionToken:string}).retentionToken="retention-"+"e".repeat(32);
+    expect(()=>validateCloudflareOriginVersionBindings(value,target)).toThrow();
+    value.configurationDigest=cloudflareOriginDescriptorDigest(value.descriptor);value.configurationRef=`cf-origin:${value.configurationDigest}`;target.runtimePolicy=value.configurationRef;
+    const parsed=validateCloudflareOriginVersionBindings(value,target),bindings=cloudflareWorkflowVersionBindings(parsed);
+    expect(bindings).toContainEqual({name:"CLOUDFLARE_RETENTION_TENANT_ID",type:"plain_text",text:"tenant-a"});
+    expect(bindings).toContainEqual({name:"PLATFORM_EDGE_TOKEN",type:"secret_text",text:(value.secrets as any).retentionToken});
+    expect(bindings.filter(b=>b.name==="PLATFORM_EDGE_ORIGIN")).toHaveLength(1);
+    expect(()=>assertCloudflareWorkflowVersionBindings(bindings,parsed)).not.toThrow();
+    delete parsed.descriptor.workflowExecution;delete parsed.descriptor.jobTransport;
+    delete parsed.descriptor.workflowDatabase;delete parsed.secrets.workflowRuntimeToken;delete parsed.secrets.controlPlaneToken;
+    const retentionOnly=cloudflareWorkflowVersionBindings(parsed);
+    expect(retentionOnly.some(b=>b.name==="CLOUDFLARE_JOB_TRANSPORT")).toBe(false);
+    delete parsed.secrets.retentionToken;expect(()=>cloudflareWorkflowVersionBindings(parsed)).toThrow();
+  });
   it("binds activation, tenant, expiry, private authority and separate credentials in one immutable configuration", () => {
     const { value, target } = fixture();
     const parsed = validateCloudflareOriginVersionBindings(value, target);

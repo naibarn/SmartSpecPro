@@ -6,6 +6,7 @@ import { cloudflareNativeBindingDescriptorSchema, validateNativeBindingScope } f
 const credential = z.string().min(16).max(4096).regex(/^[\x21-\x7e]+$/);
 export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32), clientId: credential, secret: credential,
   workflowRuntimeToken: credential.min(32).optional(), controlPlaneToken: credential.min(32).optional(),
+  retentionToken: credential.min(32).optional(),
 }).strict().refine(value => {
   const values = Object.values(value).filter(item => item !== undefined);
   return new Set(values).size === values.length && Boolean(value.workflowRuntimeToken) === Boolean(value.controlPlaneToken);
@@ -18,11 +19,12 @@ export const cloudflareOriginSettingsSchema = z.object({
   accessAudience: z.string().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/),
   expiresAt: z.string().datetime({ offset: true }),
   nativeResources: cloudflareNativeBindingDescriptorSchema.optional(),
-  /** Narrow staging capability; Queue/cron/global cutover stay disabled. */
+  /** Narrow staging intake capability; other consumers require separate scope. */
   workflowExecution: z.literal("emergency-intake").optional(),
   /** Opt-in domain SQL only; canonical admission/lease/settlement stay on Node. */
   workflowDatabase: z.literal("hyperdrive-intake").optional(),
   jobTransport: z.enum(["workflows", "queues"]).optional(),
+  retentionSchedule: z.literal("evidence-retention").optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -42,7 +44,8 @@ export type CloudflareOriginVersionBindings = Readonly<{
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
-      ((settings.workflowDatabase || settings.jobTransport) && !settings.workflowExecution)) {
+      ((settings.workflowDatabase || settings.jobTransport) && !settings.workflowExecution) ||
+      Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
 }
@@ -51,16 +54,24 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
  * by the deployment grant, never inferred from a caller's runtime flags. */
 export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersionBindings) {
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
-  if (!value.descriptor.workflowExecution) return [];
+  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule) return [];
   return [
-    { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: value.descriptor.jobTransport ?? "workflows" },
-    { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
-    { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
-    ...(value.descriptor.workflowDatabase ? [{ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: value.descriptor.workflowDatabase }] : []),
     { name: "PLATFORM_EDGE_ORIGIN", type: "plain_text", text: value.descriptor.origin },
     { name: "PLATFORM_EDGE_PRIVATE_HOST", type: "plain_text", text: new URL(value.descriptor.origin).host },
-    { name: "CLOUDFLARE_RUNTIME_TOKEN", type: "secret_text", text: value.secrets.workflowRuntimeToken! },
-    { name: "CLOUDFLARE_CONTROL_PLANE_TOKEN", type: "secret_text", text: value.secrets.controlPlaneToken! },
+    ...(value.descriptor.workflowExecution ? [
+      { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: value.descriptor.jobTransport ?? "workflows" },
+      { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
+      { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+      ...(value.descriptor.workflowDatabase ? [{ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: value.descriptor.workflowDatabase }] : []),
+      { name: "CLOUDFLARE_RUNTIME_TOKEN", type: "secret_text", text: value.secrets.workflowRuntimeToken! },
+      { name: "CLOUDFLARE_CONTROL_PLANE_TOKEN", type: "secret_text", text: value.secrets.controlPlaneToken! },
+    ] : []),
+    ...(value.descriptor.retentionSchedule ? [
+      { name: "CLOUDFLARE_RETENTION_SCHEDULE", type: "plain_text", text: value.descriptor.retentionSchedule },
+      { name: "CLOUDFLARE_RETENTION_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
+      { name: "CLOUDFLARE_RETENTION_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+      { name: "PLATFORM_EDGE_TOKEN", type: "secret_text", text: value.secrets.retentionToken! },
+    ] : []),
   ];
 }
 
@@ -70,7 +81,8 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
-  }) || actual.some(binding => binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" &&
+  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" ||
+    binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }
 

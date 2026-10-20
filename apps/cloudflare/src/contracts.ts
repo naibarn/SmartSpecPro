@@ -109,6 +109,10 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_WORKFLOW_EXPIRES_AT?: string;
   /** Explicit immutable capability; absent keeps the existing Node executor. */
   CLOUDFLARE_WORKFLOW_DATABASE?: string;
+  /** Independently bounded system schedule; job transport never enables Cron. */
+  CLOUDFLARE_RETENTION_SCHEDULE?: string;
+  CLOUDFLARE_RETENTION_TENANT_ID?: string;
+  CLOUDFLARE_RETENTION_EXPIRES_AT?: string;
   /** Exact registry digest approved for the private Runner DO deployment. */
   CLOUDFLARE_RUNNER_IMAGE_REF?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;

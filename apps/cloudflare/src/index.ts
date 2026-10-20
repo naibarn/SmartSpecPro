@@ -17,7 +17,7 @@ import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
 import { matchSpec260ApiRoute } from "@smartspec/shared/src/emergencyRouteManifest";
 import type { Spec260RouteRegistry } from "./spec260RouteRegistration";
 import { createSpec260PlatformRouteRegistry } from "./spec260PlatformProxy";
-import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
+import { createSpec260EvidenceRetentionSweep, isSpec260EvidenceRetentionConfigured } from "./spec260BackgroundWork";
 import { classifyApiRoute } from "./apiRouteManifest";
 import { proxyAuthToOrigin, proxyWebSocketToOrigin } from "./authOriginProxy";
 import { dispatchManifestRoute } from "./nativeApi";
@@ -90,8 +90,7 @@ export function createCloudflareWorker(
       }
       if (url.pathname === "/readyz" && ["GET", "HEAD"].includes(request.method)) {
         const readiness = inspectBindingReadiness(env);
-        const spec260EvidenceRetentionReady = env.CLOUDFLARE_ACTIVATION === "enabled" &&
-          Boolean(env.PLATFORM_EDGE_ORIGIN?.trim() && env.PLATFORM_EDGE_PRIVATE_HOST?.trim() && env.PLATFORM_EDGE_TOKEN?.trim());
+        const spec260EvidenceRetentionReady = isSpec260EvidenceRetentionConfigured(env);
         const workflows = readiness.transport === "workflows";
         const queues = readiness.transport === "queues";
         let controlPlaneConfigured = false;
@@ -220,9 +219,16 @@ export function createCloudflareWorker(
     },
 
     async scheduled(controller: ScheduledController, env: CloudflareEnvironment): Promise<void> {
-      if (env.CLOUDFLARE_JOB_TRANSPORT) return;
       if (env.CLOUDFLARE_ACTIVATION !== "enabled") return;
       const input = { scheduledTime: controller.scheduledTime, maxRows: 100 };
+      if (env.CLOUDFLARE_JOB_TRANSPORT || env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined) {
+        if (env.CLOUDFLARE_RETENTION_SCHEDULE === "evidence-retention" &&
+            isSpec260EvidenceRetentionConfigured(env) && scheduledJobSweep) {
+          const result = await scheduledJobSweep(input, env);
+          if (result === "retry") console.warn("[Cloudflare] retention admission requested retry", input);
+        }
+        return;
+      }
       if (providerPollSweep) {
         assertBindingReadiness(env);
         const result = await providerPollSweep(input, env);

@@ -247,7 +247,7 @@ export function createCloudflareStagingApiTransport(input: {
       compatibility_flags: ["nodejs_compat"],
       bindings: [
         { name: "ASSETS", type: "assets" },
-        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: origin?.descriptor.workflowExecution ? "enabled" : "disabled" },
+        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },
         { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
@@ -460,7 +460,7 @@ export function createCloudflareStagingApiTransport(input: {
             throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
           }
           if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
-          if (origin?.descriptor.workflowExecution) assertCloudflareWorkflowVersionBindings(priorVersion.resources?.bindings, origin);
+          if (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) assertCloudflareWorkflowVersionBindings(priorVersion.resources?.bindings, origin);
           const subdomain = await getWorkersDevSubdomain(token, target);
           return { deploymentId: prior.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest, ...(origin ? { configurationDigest: origin.configurationDigest } : {}) };
         }
@@ -470,7 +470,7 @@ export function createCloudflareStagingApiTransport(input: {
           if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest))
             throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
           assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
-          if (origin.descriptor.workflowExecution) assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
+          if (origin.descriptor.workflowExecution || origin.descriptor.retentionSchedule) assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
           await assertMutationAuthorized?.();
           await input.verifyNativeResources!(origin.descriptor.nativeResources, target);
         }
