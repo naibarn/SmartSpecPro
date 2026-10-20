@@ -169,6 +169,7 @@ export type CanonicalControlPlaneJob = {
   jobType: string;
   executionClass: string;
   input: Record<string, unknown>;
+  requiredCapabilities?: Record<string, unknown>;
 };
 
 export type CanonicalClaim = {

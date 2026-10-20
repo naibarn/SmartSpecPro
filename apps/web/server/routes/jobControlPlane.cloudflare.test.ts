@@ -62,7 +62,8 @@ describe("Cloudflare canonical job boundary", () => {
   it("prepares an owned media reference through the same claimed boundary without invoking a Node business executor", async () => {
     const input = { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
       args: [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" };
-    Object.assign(row, { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", input });
+    Object.assign(row, { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", input,
+      requiredCapabilities: { runtime: "cloudflare-container", operation: "container-media-probe-v1", reason: "media-inspection-isolation" } });
     const prepared = { mediaSource: { tenantId: "tenant-a", userId: 7, objectKey: "uploads/7/input.wav" } };
     mocks.prepareMedia.mockResolvedValue(prepared);
     expect((await send("execute", { claim }).expect(200)).body).toEqual(prepared);

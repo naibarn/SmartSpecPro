@@ -55,8 +55,10 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "https://staging.example.workers.dev"); vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "test-bounded-runtime");
     const input = { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
       args: [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" };
-    const job = { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", tenantId: "tenant-a", inputJson: input };
+    const job = { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", tenantId: "tenant-a", inputJson: input, requiredCapabilities: { runtime: "cloudflare-container", operation: "container-media-probe-v1", reason: "media-inspection-isolation" } };
     expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
+    expect(createFeature186RuntimeAdapter({ ...job, requiredCapabilities: undefined }).name).toBe("postgres-pull");
+    expect(createFeature186RuntimeAdapter({ ...job, requiredCapabilities: { runtime: "cloudflare-container", operation: "container-media-probe-v1", reason: "prewarm" } }).name).toBe("postgres-pull");
     vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", ""); expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
     vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "always-on"); expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
     vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "on-demand");

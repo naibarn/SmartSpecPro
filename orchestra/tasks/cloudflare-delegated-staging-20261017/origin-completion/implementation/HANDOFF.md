@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `56`
-- Updated (UTC): `2026-10-20T17:03:03.332877+00:00`
+- State generation: `57`
+- Updated (UTC): `2026-10-20T17:07:37.811422+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `7ddf88bb95b536e2660b8cacbc92bbac82837461`
+- Latest recorded merged Main SHA: `e91dbe3af05f0add5369890039251bda6daad5e9`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired.
+- Next action: User on-demand constraint implemented at per-job requiredCapabilities plus default-off immutable policy and actual DO gate. Normal existing probes stay on original worker; only server-admitted media-inspection-isolation and a verified result cache miss can boot.216Worker/68web incl15real-PG/actual workerd default-off DO+R2 cache proof pass. Local canonicalca7 Runner image built and privately archived221MB, nonroot/no application secrets, no publication/cloud instances. Fresh native inventory17:06Z Containers200/count0. e91 integrated; exactca7 CI39462161286SUCCESS,e91 CI39462766580pending. Serving e15/expired old Workflow window. Preserve default-off; future Container image push/app/grant/live CPU qualification only when necessary under existing bounded authority; remaining broader migration acceptance stays partial.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | ca7e829d400b5e6aff93356c6175273b7ecf7d1e | ca7e829d400b5e6aff93356c6175273b7ecf7d1e | User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired. |
+| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e91dbe3af05f0add5369890039251bda6daad5e9 | e91dbe3af05f0add5369890039251bda6daad5e9 | User on-demand constraint implemented at per-job requiredCapabilities plus default-off immutable policy and actual DO gate. Normal existing probes stay on original worker; only server-admitted media-inspection-isolation and a verified result cache miss can boot.216Worker/68web incl15real-PG/actual workerd default-off DO+R2 cache proof pass. Local canonicalca7 Runner image built and privately archived221MB, nonroot/no application secrets, no publication/cloud instances. Fresh native inventory17:06Z Containers200/count0. e91 integrated; exactca7 CI39462161286SUCCESS,e91 CI39462766580pending. Serving e15/expired old Workflow window. Preserve default-off; future Container image push/app/grant/live CPU qualification only when necessary under existing bounded authority; remaining broader migration acceptance stays partial. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

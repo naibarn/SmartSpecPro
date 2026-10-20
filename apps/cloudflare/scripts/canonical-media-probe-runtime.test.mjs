@@ -16,9 +16,11 @@ test("local workerd verifies real R2 input/result and Rust media execution", {
   const runner = await startLocalMediaProbeRunner(), sourceKey = "uploads/7/fixture.wav";
   const source = { tenantId: runner.scope.tenantId, userId: 7, assetId: 1, objectKey: sourceKey, checksumSha256: runner.checksum,
     sizeBytes: runner.wav.length, contentType: "audio/wav", expiresAt: new Date(runner.scope.lease.expiresAtMs).toISOString() };
+  const runnerClassPath = fileURLToPath(new URL("../src/runnerContainerEntrypoint.ts", import.meta.url));
   const executePath = fileURLToPath(new URL("../src/canonicalMediaProbe.ts", import.meta.url));
   await writeFile(join(directory, "worker.ts"), `
 import { executeCanonicalMediaProbe } from ${JSON.stringify(executePath)};
+export { CanonicalRunnerContainer } from ${JSON.stringify(runnerClassPath)};
 const source = ${JSON.stringify(source)}, scope = ${JSON.stringify(runner.scope)}, nativeFetch = fetch;
 let prepareCalls = 0, starts = 0, stops = 0;
 globalThis.fetch = async (input, init) => {
@@ -30,6 +32,10 @@ globalThis.fetch = async (input, init) => {
 };
 export default { async fetch(request, bindings) {
   if (new URL(request.url).pathname === '/healthz') return new Response('ok');
+  if (new URL(request.url).pathname === '/disabled-start') {
+    try { await bindings.DISABLED_CONTAINER.get(bindings.DISABLED_CONTAINER.idFromName('no-paid-compute')).startRunner({}); return new Response('unexpected start', { status: 500 }); }
+    catch (error) { return Response.json({ denied: String(error).includes('RUNNER_CONTAINER_COMPUTE_DISABLED') }); }
+  }
   const bytes = Uint8Array.from(atob(${JSON.stringify(runner.wav.toString('base64'))}), c => c.charCodeAt(0));
   await bindings.MEDIA_BUCKET.put(source.objectKey, bytes, { sha256: source.checksumSha256 });
   const env = { MEDIA_BUCKET: bindings.MEDIA_BUCKET, CLOUDFLARE_CONTAINER_POLICY: 'on-demand', CLOUDFLARE_ACTIVATION: 'enabled', CLOUDFLARE_MEDIA_PROBE: 'container-media-probe-v1',
@@ -48,9 +54,9 @@ export default { async fetch(request, bindings) {
   const input = { taskName: 'app.tasks.media_job_worker.execute_media_job', taskImportPath: 'app.tasks.media_job_worker.execute_media_job',
     args: [JSON.stringify({ jobId: 'external-1', jobType: 'probe', inputs: { assets: [{ uri: 'r2://' + source.objectKey }] } }), '7', 'external-1'], kwargs: {}, queue: null, legacyUserId: '7' };
   const envelope = { job_id: scope.lease.jobId, business_attempt: 1, attempt_id: null, contract_version: 'feature-186-v1', dispatch_id: 'fixture-dispatch', dedupe_key: 'fixture-dedupe', routing_metadata: {} };
-  const result = await executeCanonicalMediaProbe({ env, envelope, job: { jobId: scope.lease.jobId, tenantId: scope.tenantId, contractVersion: 'feature-186-v1', businessAttempt: 1, status: 'running', operatorReviewRequired: false, jobType: 'python.legacy_task', executionClass: 'long', input },
+  const result = await executeCanonicalMediaProbe({ env, envelope, job: { jobId: scope.lease.jobId, tenantId: scope.tenantId, contractVersion: 'feature-186-v1', businessAttempt: 1, status: 'running', operatorReviewRequired: false, requiredCapabilities: { runtime: 'cloudflare-container', operation: 'container-media-probe-v1', reason: 'media-inspection-isolation' }, jobType: 'python.legacy_task', executionClass: 'long', input },
     claim: { attemptId: scope.lease.attemptId, leaseToken: ${JSON.stringify(runner.leaseToken)}, fencingVersion: 1, expiresAt: source.expiresAt } });
-  const cached = await executeCanonicalMediaProbe({ env, envelope, job: { jobId: scope.lease.jobId, tenantId: scope.tenantId, contractVersion: 'feature-186-v1', businessAttempt: 1, status: 'running', operatorReviewRequired: false, jobType: 'python.legacy_task', executionClass: 'long', input },
+  const cached = await executeCanonicalMediaProbe({ env, envelope, job: { jobId: scope.lease.jobId, tenantId: scope.tenantId, contractVersion: 'feature-186-v1', businessAttempt: 1, status: 'running', operatorReviewRequired: false, requiredCapabilities: { runtime: 'cloudflare-container', operation: 'container-media-probe-v1', reason: 'media-inspection-isolation' }, jobType: 'python.legacy_task', executionClass: 'long', input },
     claim: { attemptId: scope.lease.attemptId, leaseToken: ${JSON.stringify(runner.leaseToken)}, fencingVersion: 1, expiresAt: source.expiresAt } });
   if (cached.resultRef !== result.resultRef) throw new Error('cached result mismatch');
   const persisted = await bindings.MEDIA_BUCKET.get(result.resultRef);
@@ -61,7 +67,9 @@ export default { async fetch(request, bindings) {
 } };
 `);
   await writeFile(join(directory, "wrangler.json"), JSON.stringify({ name: "sah-probe-local-fixture", main: "worker.ts", compatibility_date: "2026-10-19",
-    r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "disposable-media-probe-fixture" }] }));
+    r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "disposable-media-probe-fixture" }],
+    durable_objects: { bindings: [{ name: "DISABLED_CONTAINER", class_name: "CanonicalRunnerContainer" }] },
+    migrations: [{ tag: "fixture-v1", new_sqlite_classes: ["CanonicalRunnerContainer"] }] }));
   const child = spawn("pnpm", ["dlx", "wrangler@4.151.1", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--persist-to", join(directory, "state")], {
     detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
   });
@@ -73,6 +81,8 @@ export default { async fetch(request, bindings) {
       if (ready || child.exitCode !== null) break; await new Promise(resolve => setTimeout(resolve, 300));
     }
     assert.ok(ready, `workerd not ready: ${log}`);
+    const disabled = await fetch(`http://127.0.0.1:${port}/disabled-start`);
+    assert.deepEqual(await disabled.json(), { denied: true });
     const response = await fetch(`http://127.0.0.1:${port}/run`, { signal: AbortSignal.timeout(15_000) });
     const text = await response.text(); assert.equal(response.status, 200, text + log); const result = JSON.parse(text);
     assert.equal(result.result.output.derived.durationMs, 1000); assert.equal(result.result.output.derived.streams[0].codec_name, "pcm_s16le");

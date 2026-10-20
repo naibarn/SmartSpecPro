@@ -20,7 +20,7 @@ function fixture() {
   });
   const expiresAt = new Date(Date.now() + 45_000).toISOString();
   const job = { jobId: "job-1", tenantId: "tenant-a", contractVersion: "feature-186-v1", businessAttempt: 1, status: "running", operatorReviewRequired: false,
-    jobType: "python.legacy_task", executionClass: "long", input: { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
+    requiredCapabilities: { runtime: "cloudflare-container", operation: "container-media-probe-v1", reason: "media-inspection-isolation" }, jobType: "python.legacy_task", executionClass: "long", input: { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
       args: [JSON.stringify({ jobType: "probe", jobId: "external-1", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" } };
   const envelope = { job_id: "job-1", contract_version: "feature-186-v1", business_attempt: 1, attempt_id: null, dispatch_id: "dispatch-1", dedupe_key: "job:job-1:attempt:1", routing_metadata: {} };
   const probeMedia = vi.fn(async (assignment, input) => ({ contractVersion: "container-media-probe-v1", scope: containerProbeScope(assignment), inputChecksumSha256: input.checksumSha256,
@@ -52,7 +52,7 @@ describe("canonical media probe composition", () => {
     await executeCanonicalMediaProbe(f.delivery); expect(f.objects.size).toBe(2);
     expect(f.env.JOB_CONTAINERS.start).toHaveBeenCalledOnce(); expect(f.probeMedia).toHaveBeenCalledOnce();
   });
-  it.each(["foreign-tenant", "checksum", "oversize", "expiry", "unsupported-task", "disabled", "missing-cost-policy", "short-window"])("rejects %s before starting a container", async scenario => {
+  it.each(["foreign-tenant", "checksum", "oversize", "expiry", "unsupported-task", "disabled", "missing-cost-policy", "not-required", "short-window"])("rejects %s before starting a container", async scenario => {
     const f = fixture();
     if (scenario === "foreign-tenant") f.delivery.job.tenantId = "tenant-b";
     if (scenario === "checksum") f.objects.set("uploads/7/input.wav", { bytes: new TextEncoder().encode("wrong") });
@@ -60,6 +60,7 @@ describe("canonical media probe composition", () => {
     if (scenario === "expiry") f.delivery.claim.expiresAt = "2000-01-01T00:00:00Z";
     if (scenario === "unsupported-task") f.delivery.job.input.taskName = "app.tasks.other";
     if (scenario === "disabled") delete f.delivery.env.CLOUDFLARE_MEDIA_PROBE;
+    if (scenario === "not-required") delete f.delivery.job.requiredCapabilities;
     if (scenario === "missing-cost-policy") delete f.delivery.env.CLOUDFLARE_CONTAINER_POLICY;
     if (scenario === "short-window") f.delivery.claim.expiresAt = new Date(Date.now() + 1000).toISOString();
     await expect(executeCanonicalMediaProbe(f.delivery)).rejects.toThrow();

@@ -1,5 +1,5 @@
 import type { CanonicalWorkerExecution, R2ObjectBinding } from "./contracts";
-import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, validateMediaProbeSource, type MediaProbeSource } from "../../../packages/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, requiresContainerMediaProbe, validateMediaProbeSource, type MediaProbeSource } from "../../../packages/shared/src/cloudflareMediaProbe";
 import { prepareCanonicalMediaProbe } from "./canonicalControlPlaneProxy";
 import { MAX_CONTAINER_PROBE_INPUT_BYTES, MAX_CONTAINER_PROBE_RESULT_BYTES, containerProbeScope, probeSha256, validateContainerProbeResult } from "./containerMediaProbeContract";
 import { isPinnedRunnerImage } from "./nativeRunnerContainer";
@@ -70,7 +70,7 @@ export const executeCanonicalMediaProbe: CanonicalWorkerExecution = async delive
   const bucket = env.MEDIA_BUCKET, binding = env.JOB_CONTAINERS;
   if (env.CLOUDFLARE_CONTAINER_POLICY !== CLOUDFLARE_CONTAINER_ON_DEMAND || env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_MEDIA_PROBE !== CLOUDFLARE_MEDIA_PROBE ||
       !["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") || job.tenantId !== env.CLOUDFLARE_WORKFLOW_TENANT_ID ||
-      !(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) || job.contractVersion !== "feature-186-v1" || !candidate ||
+      !(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) || job.contractVersion !== "feature-186-v1" || !candidate || !requiresContainerMediaProbe(job) ||
       !["dev", "staging", "prod"].includes(env.CLOUDFLARE_ENVIRONMENT ?? "") || !isPinnedRunnerImage(env.CLOUDFLARE_RUNNER_IMAGE_REF) ||
       !bucket?.get || !bucket.put || !binding?.probeMedia || !binding.stop || !claim.leaseToken ||
       !claim.attemptId || !Number.isSafeInteger(claim.fencingVersion) || claim.fencingVersion < 1) throw new Error("CLOUDFLARE_MEDIA_PROBE_NOT_ADMITTED");

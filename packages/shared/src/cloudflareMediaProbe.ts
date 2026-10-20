@@ -40,3 +40,11 @@ export function isCloudflareMediaProbeImage(value: unknown, accountRef?: string)
   return typeof value === "string" && /^registry\.cloudflare\.com\/[a-f0-9]{32}\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/.test(value) &&
     (accountRef === undefined || value.startsWith(`registry.cloudflare.com/${accountRef}/`));
 }
+
+/** Only server-admitted isolation requirements justify paid Container compute.
+ * Normal probes keep the existing worker route even when the deployment is ready. */
+export function requiresContainerMediaProbe(job: { jobType: string; executionClass: string; input: unknown; requiredCapabilities?: unknown }): boolean {
+  const capabilities = job.requiredCapabilities as Record<string, unknown> | undefined;
+  return capabilities?.runtime === "cloudflare-container" && capabilities.operation === CLOUDFLARE_MEDIA_PROBE &&
+    capabilities.reason === "media-inspection-isolation" && parseMediaProbeCandidate(job) !== null;
+}

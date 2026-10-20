@@ -172,7 +172,7 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
     jobId: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
     jobType: workerJobs.jobType, status: workerJobs.status, runtimeType: workerJobs.runtimeType,
     executionClass: workerJobs.executionClass, contractVersion: workerJobs.contractVersion,
-    attempt: workerJobs.attempt, input: workerJobs.inputJson, operatorReviewRequired: workerJobs.operatorReviewRequired,
+    attempt: workerJobs.attempt, input: workerJobs.inputJson, requiredCapabilities: workerJobs.capabilityRequirementsJson, operatorReviewRequired: workerJobs.operatorReviewRequired,
     leaseExpiresAt: workerJobs.leaseExpiresAt, startedAt: workerJobs.startedAt,
     timeoutPolicyJson: workerJobs.timeoutPolicyJson, timeoutSeconds: workerJobs.timeoutSeconds,
     dispatchId: workerJobDispatches.id, dispatchAttemptId: workerJobDispatches.attemptId,
@@ -246,7 +246,7 @@ export function registerJobControlPlaneRoutes(app: Express): void {
       return res.json({ job: {
         jobId: context.jobId, tenantId: context.tenantId, contractVersion: context.contractVersion,
         businessAttempt: context.attempt, status: authorized.row.status, operatorReviewRequired: authorized.row.operatorReviewRequired,
-        jobType: context.jobType, executionClass: context.executionClass, input: context.input,
+        jobType: context.jobType, executionClass: context.executionClass, input: context.input, requiredCapabilities: context.requiredCapabilities,
       } });
     } catch (error) { return fail(res, error); }
   });

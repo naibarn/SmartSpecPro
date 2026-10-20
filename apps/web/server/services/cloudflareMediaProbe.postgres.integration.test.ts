@@ -23,7 +23,7 @@ suite("owned media source preparation in disposable PostgreSQL", () => {
     const [asset] = await sql`INSERT INTO media_assets ("tenantId","userId",status,"storageKey","originalUrl","checksumSha256","fileSize","mimeType")
       VALUES ('tenant-a',7,'ready',${key},${url},${"a".repeat(64)},16044,'audio/wav') RETURNING id`;
     const args = [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: url }] } }), "7", "external-1"];
-    const job = { jobId: randomUUID(), tenantId: "tenant-a", requestedByUserId: 7, runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long",
+    const job = { jobId: randomUUID(), tenantId: "tenant-a", requestedByUserId: 7, runtimeType: "python_job_worker", requiredCapabilities: { runtime: "cloudflare-container", operation: "container-media-probe-v1", reason: "media-inspection-isolation" }, jobType: "python.legacy_task", executionClass: "long",
       contractVersion: "feature-186-v1", status: "running", leaseExpiresAt: new Date(Date.now() + 120_000), startedAt: new Date(), timeoutPolicyJson: { hardTimeoutMs: 90_000 }, timeoutSeconds: 90,
       input: { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job", args, kwargs: {}, queue: null, legacyUserId: "7" } };
     const lease = { jobId: job.jobId, attemptId: randomUUID(), leaseToken: "disposable-private-lease", fencingVersion: 1, expiresAt: job.leaseExpiresAt.toISOString() };
@@ -52,12 +52,13 @@ suite("owned media source preparation in disposable PostgreSQL", () => {
     if (scenario === "path") await sql`UPDATE media_assets SET "storageKey"='../secrets' WHERE id=${f.assetId}`;
     await expect(prepareCloudflareMediaProbe(f.job, f.lease, f.plane)).rejects.toThrow();
   });
-  it.each(["identity", "expiry", "hard-deadline", "stale", "other-task", "url"])("denies %s without external fetching", async scenario => {
+  it.each(["identity", "expiry", "hard-deadline", "stale", "normal-probe", "other-task", "url"])("denies %s without external fetching", async scenario => {
     const f = await fixture(), fetchSpy = vi.spyOn(globalThis, "fetch");
     if (scenario === "identity") f.job.requestedByUserId = 8;
     if (scenario === "expiry") f.job.leaseExpiresAt = new Date(0);
     if (scenario === "hard-deadline") f.job.startedAt = new Date(0);
     if (scenario === "stale") f.plane.assertActive.mockRejectedValue(new Error("JOB_LEASE_STALE"));
+    if (scenario === "normal-probe") f.job.requiredCapabilities = {} as never;
     if (scenario === "other-task") f.job.input.taskImportPath = "app.tasks.arbitrary";
     if (scenario === "url") f.job.input.args[0] = JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "http://169.254.169.254/private" }] } });
     await expect(prepareCloudflareMediaProbe(f.job, f.lease, f.plane)).rejects.toThrow();

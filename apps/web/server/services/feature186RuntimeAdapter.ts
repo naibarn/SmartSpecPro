@@ -1,4 +1,4 @@
-import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, requiresContainerMediaProbe } from "@smartspec/shared/src/cloudflareMediaProbe";
 import {
   assertFeature186RuntimeConfigured,
   isCloudflareHardCutoverEnabled,
@@ -15,11 +15,11 @@ import { CloudflareWorkflowHttpJobTransportAdapter } from "./cloudflareWorkflowH
  * web outbox publisher and the reconciler use this factory so local execution
  * and the later Cloudflare migration cannot drift into different contracts.
  */
-export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobType: string; executionClass: string; tenantId?: string; inputJson?: unknown }): JobTransportAdapter {
+export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobType: string; executionClass: string; tenantId?: string; inputJson?: unknown; requiredCapabilities?: unknown }): JobTransportAdapter {
   // This bounded opt-in never enables the global Queue cutover. Unrelated
   // Node/Python jobs retain their existing transport and rollback behavior.
   const mediaProbe = process.env.CLOUDFLARE_CONTAINER_POLICY === CLOUDFLARE_CONTAINER_ON_DEMAND && process.env.FEATURE_186_CLOUDFLARE_MEDIA_PROBE === "true" && process.env.CLOUDFLARE_MEDIA_PROBE === CLOUDFLARE_MEDIA_PROBE &&
-    job?.runtimeType === "python_job_worker" && parseMediaProbeCandidate({ ...job, input: job.inputJson });
+    job?.runtimeType === "python_job_worker" && requiresContainerMediaProbe({ ...job, input: job.inputJson });
   const emergency = process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true" && job?.runtimeType === "node_job_worker" &&
     job.jobType === "emergency.report.intake" && job.executionClass === "short";
   if ((mediaProbe || emergency) && job?.tenantId &&
