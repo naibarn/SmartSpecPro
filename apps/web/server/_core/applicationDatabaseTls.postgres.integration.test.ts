@@ -19,7 +19,7 @@ suite("application TLS against an owned disposable PostgreSQL", () => {
     const certificate = join(db.root, "server.crt"), key = join(db.root, "server.key");
     await exec("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-sha256", "-nodes", "-keyout", key, "-out", certificate,
       "-days", "1", "-subj", "/CN=localhost", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,digitalSignature,keyCertSign,cRLSign",
-      "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"], { timeout: 10_000 });
+      "-addext", "subjectAltName=DNS:localhost,DNS:db.private.test,IP:127.0.0.1"], { timeout: 10_000 });
     ca = await readFile(certificate, "utf8");
     admin = postgres(db.databaseUrl, { max: 1 });
     await admin.unsafe(`ALTER SYSTEM SET ssl_cert_file = '${certificate}'`);
@@ -49,5 +49,35 @@ suite("application TLS against an owned disposable PostgreSQL", () => {
     if (!python) throw new Error("CLOUDFLARE_TEST_PYTHON_REQUIRED");
     const result = await exec(python, [script], { env: { ...process.env, ...environment(), DEBUG: "false", PYTHONPATH: resolve(import.meta.dirname, "../../../../python-backend"), TEST_DATABASE_URL: db.databaseUrl }, timeout: 15_000 });
     expect(result.stdout.trim()).toBe("VERIFIED_TLS_AND_UNTRUSTED_CA_REJECTED");
+  });
+  it.skipIf(!process.env.CLOUDFLARE_TEST_PYTHON)("preserves PostgreSQL hostname verification through Python's local connector", async () => {
+    const script = join(db.root, "verify-connector.py");
+    await writeFile(script, `import asyncio, os, ssl
+from urllib.parse import urlsplit, urlunsplit
+import asyncpg
+from app.core.application_database_tls import application_database_connect_args
+from app.core.cloudflare_http_entrypoint import DatabaseConnectorEventLoop
+address = urlsplit(os.environ['TEST_DATABASE_URL'])
+async def verify(hostname):
+ args = application_database_connect_args('production')
+ authority = address.netloc.rsplit('@', 1)[0]
+ dsn = urlunsplit(address._replace(netloc=f'{authority}@{hostname}:{address.port}'))
+ connection = await asyncpg.connect(dsn, timeout=3, **args)
+ try:
+  assert await connection.fetchval('SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()') is True
+ finally:
+  await connection.close()
+asyncio.run(verify('db.private.test'), loop_factory=lambda: DatabaseConnectorEventLoop('db.private.test', address.port))
+try:
+ asyncio.run(verify('wrong.private.test'), loop_factory=lambda: DatabaseConnectorEventLoop('wrong.private.test', address.port))
+except ssl.SSLCertVerificationError:
+ print('VERIFIED_ORIGINAL_HOSTNAME_AND_REJECTED_WRONG_HOST')
+else:
+ raise AssertionError('wrong hostname accepted')
+`);
+    const python = process.env.CLOUDFLARE_TEST_PYTHON;
+    if (!python) throw new Error("CLOUDFLARE_TEST_PYTHON_REQUIRED");
+    const result = await exec(python, [script], { env: { ...process.env, ...environment(), DEBUG: "false", PYTHONPATH: resolve(import.meta.dirname, "../../../../python-backend"), TEST_DATABASE_URL: db.databaseUrl }, timeout: 15_000 });
+    expect(result.stdout.trim()).toBe("VERIFIED_ORIGINAL_HOSTNAME_AND_REJECTED_WRONG_HOST");
   });
 });
