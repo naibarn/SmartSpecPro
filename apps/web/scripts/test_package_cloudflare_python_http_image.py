@@ -47,6 +47,7 @@ class PythonHttpImageTests(unittest.TestCase):
         for changed in (
             lock + "\nnvidia-cublas-cu12==1.0 --hash=sha256:" + "a" * 64,
             lock + "\ntriton==1.0 --hash=sha256:" + "a" * 64,
+            lock + "\ncuda-bindings==1.0 --hash=sha256:" + "a" * 64,
             lock + "\nfixture @ https://other.example/wheel.whl --hash=sha256:" + "a" * 64,
             lock + "\nfixture>=1.0", lock + "\nfixture==1.0", lock + "\n--extra-index-url https://other.example",
         ):

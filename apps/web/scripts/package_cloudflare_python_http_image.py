@@ -29,7 +29,7 @@ SOURCE_PATHS = [
 
 
 def validate_cpu_lock(lock: str) -> None:
-    if re.search(r"(?mi)^(?:nvidia[-_]|triton\b|--)", lock):
+    if re.search(r"(?mi)^(?:nvidia[-_]|cuda[-_]|triton\b|--)", lock):
         raise ReleaseError("PYTHON_HTTP_CPU_LOCK_DENIED")
     requirements = lock.replace("\\\n", " ").splitlines()
     if not requirements or not any(line.startswith("torch @ https://download-r2.pytorch.org/whl/cpu/torch-") for line in requirements):

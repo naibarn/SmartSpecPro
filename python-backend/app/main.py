@@ -27,7 +27,6 @@ from app.api import (
     health,
     virtual_admin,
     llm_proxy,
-    orchestrator,
     autopilot,
     auth,
     credits,
@@ -385,7 +384,6 @@ app.include_router(admin_impersonation.router, tags=["Admin - Impersonation"])
 app.include_router(system_health.router, tags=["System Health"])
 app.include_router(audit_logs.router, tags=["Audit Logs"])
 app.include_router(support_tickets.router, tags=["Support Tickets"])
-app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["Orchestrator"])
 app.include_router(autopilot.router, prefix="/api/v1/autopilot", tags=["Autopilot"])
 app.include_router(skills.router, prefix="/api/v1", tags=["Skills"])
 app.include_router(admin_skills.router, prefix="/api/v1", tags=["Admin - Skills"])

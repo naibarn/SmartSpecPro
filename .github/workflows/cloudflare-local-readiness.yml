@@ -11,6 +11,10 @@ on:
       - "python-backend/app/services/cloudflare_private_database_contract.py"
       - "python-backend/app/core/application_*.py"
       - "python-backend/app/core/cloudflare_http_entrypoint.py"
+      - "python-backend/app/main.py"
+      - "python-backend/app/orchestrator/__init__.py"
+      - "python-backend/app/orchestrator/agents/__init__.py"
+      - "python-backend/scripts/test_application_import_boundaries.py"
       - "python-backend/CloudflareHttp.Containerfile"
       - "python-backend/requirements-cloudflare-http.*"
       - "python-backend/scripts/test_cloudflare_http_entrypoint.py"
@@ -70,6 +74,10 @@ on:
       - "python-backend/app/services/cloudflare_private_database_contract.py"
       - "python-backend/app/core/application_*.py"
       - "python-backend/app/core/cloudflare_http_entrypoint.py"
+      - "python-backend/app/main.py"
+      - "python-backend/app/orchestrator/__init__.py"
+      - "python-backend/app/orchestrator/agents/__init__.py"
+      - "python-backend/scripts/test_application_import_boundaries.py"
       - "python-backend/CloudflareHttp.Containerfile"
       - "python-backend/requirements-cloudflare-http.*"
       - "python-backend/scripts/test_cloudflare_http_entrypoint.py"
@@ -151,6 +159,7 @@ jobs:
         run: |
           python3 -m unittest discover -s apps/web/scripts -p 'test_package_cloudflare*http_image.py'
           DEBUG=false PYTHONPATH=python-backend python -m unittest discover -s python-backend/scripts -p test_cloudflare_http_entrypoint.py
+          python -m unittest discover -s python-backend/scripts -p test_application_import_boundaries.py
           node --test apps/web/scripts/cloudflare-http-entrypoint.test.mjs
       - name: Verify Linux release permissions and recovery
         run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
