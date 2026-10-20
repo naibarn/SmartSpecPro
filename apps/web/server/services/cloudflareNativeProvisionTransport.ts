@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { nativeProvisionGrantSchema, nativeResourceNames, type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
+import { nativeProvisionGrantSchema, nativeResourceNames, nativeWorkflowMetadataSchema, type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
 
 const resource = z.object({ name: z.string().min(1), id: z.string().optional() }).strict();
 export const nativeProvisionCheckpointSchema = z.object({
@@ -24,6 +24,8 @@ export async function provisionCloudflareNative(input: {
   fetchImpl?: typeof fetch;
   waitForMetadata?: () => Promise<void>;
   readOnly?: boolean;
+  /** Original canonical creation time, used only for fenced read-only recovery. */
+  workflowCreatedAfter?: string;
 }) {
   const grant = nativeProvisionGrantSchema.parse(input.grant);
   const state = nativeProvisionCheckpointSchema.parse(input.checkpoint);
@@ -56,6 +58,22 @@ export async function provisionCloudflareNative(input: {
       throw new NativeProvisionError("NATIVE_QUEUE_INVENTORY_INCOMPLETE");
     return result.result as Array<{ queue_id?: string; queue_name?: string; consumers_total_count?: number }>;
   };
+  if (state.pending === "workflow" && grant.plan.workflow && input.readOnly && state.preflightComplete &&
+      state.queue && state.bucket && state.vector && !state.workflow &&
+      ["tenantId", "sourceJobId"].every(name => state.metadata.includes(name as "tenantId" | "sourceJobId")) &&
+      Number.isFinite(Date.parse(input.workflowCreatedAfter ?? ""))) {
+    const observed = (await api(`/workflows/${names.workflow}`))?.result;
+    const valid = nativeWorkflowMetadataSchema.safeParse(observed);
+    if (!valid.success || valid.data.name !== names.workflow ||
+        !Number.isFinite(Date.parse(observed.created_on)) || Date.parse(observed.created_on) < Date.parse(input.workflowCreatedAfter!) ||
+        Date.parse(observed.created_on) > Date.parse(grant.expiresAt) || observed.modified_on !== observed.created_on ||
+        !observed.instances || typeof observed.instances !== "object" || Array.isArray(observed.instances) ||
+        Object.keys(observed.instances).length === 0 || !Object.values(observed.instances).every(count => count === 0)) {
+      throw new NativeProvisionError("NATIVE_WORKFLOW_RECOVERY_READBACK_DENIED");
+    }
+    state.workflow = { name: valid.data.name, id: valid.data.id, scriptName: valid.data.script_name, className: valid.data.class_name };
+    delete state.pending; await persist();
+  }
   if (state.pending) throw new NativeProvisionError("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
   if (input.readOnly && (!state.preflightComplete || !state.queue || !state.bucket || !state.vector
     || (grant.plan.workflow && !state.workflow)
@@ -131,15 +149,14 @@ export async function provisionCloudflareNative(input: {
       workflow = (await api(path, { class_name: "CanonicalJobWorkflow", script_name: "smartspec-cloudflare-staging",
         concurrency: { limit: 1 }, limits: { steps: 1 }, schedules: [],
         default_retention: { success_retention: "1 day", error_retention: "1 day" } }, "PUT"))?.result;
-      if (!z.string().uuid().safeParse(workflow?.id).success || workflow.name !== names.workflow ||
-          workflow.script_name !== "smartspec-cloudflare-staging" || workflow.class_name !== "CanonicalJobWorkflow" || workflow.is_deleted !== 0)
+      if (!nativeWorkflowMetadataSchema.safeParse(workflow).success || workflow.name !== names.workflow)
         throw new NativeProvisionError("NATIVE_CREATED_WORKFLOW_INVALID");
       state.workflow = { id: workflow.id, name: workflow.name, scriptName: "smartspec-cloudflare-staging", className: "CanonicalJobWorkflow" };
       delete state.pending; await persist();
       workflow = (await api(path))?.result;
     }
     if (workflow?.id !== state.workflow.id || workflow.name !== names.workflow || workflow.script_name !== state.workflow.scriptName ||
-        workflow.class_name !== state.workflow.className || workflow.is_deleted !== 0)
+        workflow.class_name !== state.workflow.className || !nativeWorkflowMetadataSchema.safeParse(workflow).success)
       throw new NativeProvisionError("NATIVE_WORKFLOW_READBACK_MISMATCH");
   } else if (state.workflow) throw new NativeProvisionError("NATIVE_UNAUTHORIZED_WORKFLOW_CHECKPOINT");
   await input.assertAuthorized();

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { privateDatabaseBindingSchema, validatePrivateDatabaseBinding, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB, nativeProvisionJobSchema,
-  nativeProvisionNamespace, nativeProvisionPlanDigest, nativeProvisionPlanSchema, nativeResourceNames } from "./cloudflareNativeProvisionContract";
+  nativeProvisionNamespace, nativeProvisionPlanDigest, nativeProvisionPlanSchema, nativeResourceNames, nativeWorkflowMetadataSchema } from "./cloudflareNativeProvisionContract";
 
 /** Included in the immutable configuration digest, never deployment authority by itself. */
 export const cloudflareNativeBindingDescriptorSchema = z.object({
@@ -107,6 +107,6 @@ export async function verifyNativeProviderResources(input: {
   if (descriptor.plan.workflow) {
     const workflow = await get(`/workflows/${names.workflow}`);
     if (workflow?.id !== descriptor.workflowId || workflow.name !== names.workflow || workflow.script_name !== "smartspec-cloudflare-staging" ||
-        workflow.class_name !== "CanonicalJobWorkflow" || workflow.is_deleted !== 0) denied("CLOUDFLARE_NATIVE_PROVIDER_WORKFLOW_DRIFT");
+        workflow.class_name !== "CanonicalJobWorkflow" || !nativeWorkflowMetadataSchema.safeParse(workflow).success) denied("CLOUDFLARE_NATIVE_PROVIDER_WORKFLOW_DRIFT");
   }
 }

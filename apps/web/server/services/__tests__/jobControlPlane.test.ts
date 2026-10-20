@@ -2000,6 +2000,7 @@ describe("job control plane", () => {
 
   it.each([
     ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", true, true],
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_CREATED_WORKFLOW_INVALID", "worker_jobs.admin_requeue", true, true],
     ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", false, false],
     ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_RESPONSE_UNCERTAIN", "worker_jobs.admin_requeue", true, false],
     ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v2", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", true, false],

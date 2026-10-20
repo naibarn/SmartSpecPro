@@ -166,6 +166,7 @@ export function createCloudflareNativeProvisionExecutor(runtime: Runtime | (() =
       fingerprint = createHash("sha256").update(token).digest("hex");
       return provisionCloudflareNative({ grant, token, checkpoint, assertAuthorized, fetchImpl: active.fetchImpl,
         readOnly: context.attempt > 1,
+        workflowCreatedAfter: context.createdAt,
         saveCheckpoint: async state => { await reporter.assertActive(lease); await active.saveCheckpoint(grant, state); } });
     });
     return { output };

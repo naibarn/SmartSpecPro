@@ -4,6 +4,13 @@ import { z } from "zod";
 export const NATIVE_PROVISION_CONTRACT = "cloudflare-staging-native-provision-v1";
 export const NATIVE_PROVISION_JOB = "cloudflare.staging.native.provision";
 export const NATIVE_PROVISION_GRANT = "cloudflare.staging-native-provision-grant.v1";
+/** Live API omits is_deleted for active resources although its reference
+ * response includes zero. A supplied nonzero/deleted marker remains denied. */
+export const nativeWorkflowMetadataSchema = z.object({
+  id: z.string().uuid(), name: z.string().min(1).max(64),
+  script_name: z.literal("smartspec-cloudflare-staging"), class_name: z.literal("CanonicalJobWorkflow"),
+  is_deleted: z.literal(0).optional(),
+});
 export const nativeProvisionPlanSchema = z.object({
   namespace: z.string().regex(/^smartspec-staging-[a-f0-9]{12}$/),
   vectorDimensions: z.literal(768), vectorMetric: z.literal("cosine"),

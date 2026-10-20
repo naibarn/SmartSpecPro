@@ -146,7 +146,7 @@ describe("bounded native staging provisioning", () => {
       if (init.method === "PUT") {
         expect(JSON.parse(init.body)).toEqual({ script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow", concurrency: { limit: 1 },
           limits: { steps: 1 }, schedules: [], default_retention: { success_retention: "1 day", error_retention: "1 day" } });
-        workflow = { name: nativeResourceNames(plan).workflow, id: "77777777-7777-4777-8777-777777777777", script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow", is_deleted: 0 };
+        workflow = { name: nativeResourceNames(plan).workflow, id: "77777777-7777-4777-8777-777777777777", script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow" };
       }
       return Response.json({ success: Boolean(workflow), result: workflow }, { status: workflow ? 200 : 404 });
     });
@@ -164,6 +164,24 @@ describe("bounded native staging provisioning", () => {
       const changed = { ...plan, ...extra };
       expect(nativeProvisionGrantSchema.safeParse({ ...grant, plan: changed, planDigest: nativeProvisionPlanDigest(changed as never) }).success).toBe(false);
     }
+  });
+
+  it.each(["valid", "old-resource", "modified", "has-instances", "deleted"])("reconciles only the same pending, unmodified and unused Workflow: %s", async scenario => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    const workflowPlan = { ...plan, workflow: true as const, reuseProvisionJobId: grant.jobId };
+    f.input.grant = { ...grant, jobId: "44444444-4444-4444-8444-444444444444", plan: workflowPlan, planDigest: nativeProvisionPlanDigest(workflowPlan) };
+    f.input.checkpoint = { ...f.checkpoints.at(-1)!, planDigest: f.input.grant.planDigest, pending: "workflow" };
+    const original = f.fetchMock.getMockImplementation()!; f.fetchMock.mockClear();
+    f.fetchMock.mockImplementation(async (url, init) => String(url).includes("/workflows/") ? Response.json({ success: true, result: {
+      id: "77777777-7777-4777-8777-777777777777", name: nativeResourceNames(plan).workflow, script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow",
+      created_on: scenario === "old-resource" ? "2026-10-20T10:00:00Z" : "2026-10-20T11:31:00Z",
+      modified_on: scenario === "modified" ? "2026-10-20T11:32:00Z" : "2026-10-20T11:31:00Z",
+      instances: { queued: 0, running: scenario === "has-instances" ? 1 : 0, complete: 0 }, ...(scenario === "deleted" ? { is_deleted: 1 } : {}),
+    } }) : original(url, init));
+    const result = provisionCloudflareNative({ ...f.input, readOnly: true, workflowCreatedAfter: "2026-10-20T11:30:00Z" });
+    if (scenario === "valid") await expect(result).resolves.toMatchObject({ workflow: { id: "77777777-7777-4777-8777-777777777777" } });
+    else await expect(result).rejects.toThrow("NATIVE_WORKFLOW_RECOVERY_READBACK_DENIED");
+    expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
   });
 
   it.each(["collision", "lost-response"])("fences Workflow %s instead of overwriting or blindly replaying metadata", async scenario => {

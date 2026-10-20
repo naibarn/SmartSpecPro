@@ -4823,7 +4823,7 @@ export function createJobControlPlane(
           job?.jobType === "cloudflare.staging.native.provision" &&
           job.contractVersion === "cloudflare-staging-native-provision-v1" &&
           job.status === "failed" && job.attempt === 1 && job.maxAttempts === 1 &&
-          job.errorCode === "NATIVE_PROVIDER_READBACK_MISMATCH" &&
+          ["NATIVE_PROVIDER_READBACK_MISMATCH", "NATIVE_CREATED_WORKFLOW_INVALID"].includes(job.errorCode ?? "") &&
           typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
           evidence.operationKey === `native-provision:${job.id}:${job.inputJson.planDigest}`;
         // A definite client rejection did not create Hyperdrive. The executor
