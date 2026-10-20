@@ -3,6 +3,8 @@ import type {
   CanonicalControlPlaneJob,
   CanonicalControlPlaneRepository,
   CanonicalJobEnvelope,
+  CanonicalJobResult,
+  CanonicalWorkerExecution,
   CloudflareEnvironment,
 } from "./contracts";
 import { parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
@@ -42,7 +44,7 @@ function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): { origin: URL
 
 async function callPlatform<T>(
   env: CloudflareEnvironment,
-  action: "context" | "claim" | "complete" | "fail",
+  action: "context" | "claim" | "execute" | "complete" | "fail",
   body: Record<string, unknown>,
 ): Promise<T> {
   const token = env.CLOUDFLARE_CONTROL_PLANE_TOKEN?.trim();
@@ -94,10 +96,29 @@ type ContextResponse = { job: CanonicalControlPlaneJob | null; disposition?: "ac
 type ClaimResponse = { state: "claimed" | "terminal" | "retry" | "quarantine"; claim?: CanonicalClaim };
 type SettlementResponse = { state: "completed" | "duplicate" | "retry" | "quarantine" };
 
+/** A deliberately narrow hybrid execution port; domain writes stay with the
+ * existing tenant-scoped Node executor while Cloudflare owns orchestration. */
+export const executeCanonicalPlatformJob: CanonicalWorkerExecution = async ({ env, job, envelope, claim }) => {
+  if (job.jobType !== "emergency.report.intake" || job.contractVersion !== "feature-186-v1" || job.executionClass !== "short") {
+    throw new Error("CLOUDFLARE_JOB_EXECUTION_NOT_ADMITTED");
+  }
+  const response = await callPlatform<{ result?: unknown }>(env, "execute", {
+    jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId },
+  });
+  const result = response.result;
+  if (!result || typeof result !== "object" || Array.isArray(result)) throw new Error("CLOUDFLARE_JOB_RESULT_INVALID");
+  const value = result as Record<string, unknown>;
+  if (Object.keys(value).some(key => key !== "resultRef" && key !== "output") ||
+      (value.resultRef !== undefined && (typeof value.resultRef !== "string" || value.resultRef.length > 2000)) ||
+      (value.output !== undefined && (!value.output || typeof value.output !== "object" || Array.isArray(value.output))) ||
+      new TextEncoder().encode(JSON.stringify(value)).byteLength > 24 * 1024) throw new Error("CLOUDFLARE_JOB_RESULT_INVALID");
+  return value as CanonicalJobResult;
+};
+
 /**
  * Cloudflare Queue execution uses the platform's canonical job service for
- * dispatch validation, lease fencing and settlement. Business execution
- * stays in the Cloudflare Worker; this proxy never reads or mutates job tables.
+ * dispatch validation, lease fencing and settlement. The separately admitted
+ * hybrid executor retains domain writes on Node; this proxy owns no job tables.
  */
 export function createCanonicalControlPlaneProxyRepository(env: CloudflareEnvironment): CanonicalControlPlaneRepository {
   return {
@@ -126,9 +147,9 @@ export function createCanonicalControlPlaneProxyRepository(env: CloudflareEnviro
       if (response.state === "quarantine") return "quarantine";
       return "retry";
     },
-    async complete({ job, envelope, claim }) {
+    async complete({ job, envelope, claim, result }) {
       const response = await callPlatform<SettlementResponse>(env, "complete", {
-        jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId },
+        jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId }, result,
       });
       return response.state;
     },

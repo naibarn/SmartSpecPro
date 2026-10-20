@@ -152,7 +152,10 @@ export type CanonicalClaim = {
   attemptId: string;
   leaseToken: string;
   fencingVersion: number;
+  expiresAt?: string;
 };
+
+export type CanonicalJobResult = { resultRef?: string; output?: Record<string, unknown> };
 
 /**
  * Injected boundary for the existing PostgreSQL control plane. The Worker
@@ -175,6 +178,7 @@ export type CanonicalControlPlaneRepository = {
     job: CanonicalControlPlaneJob;
     envelope: CanonicalJobEnvelope;
     claim: CanonicalClaim;
+    result: CanonicalJobResult;
   }): Promise<"completed" | "duplicate" | "retry" | "quarantine">;
   retry(input: {
     job: CanonicalControlPlaneJob;
@@ -191,7 +195,7 @@ export type CanonicalWorkerExecution = (
     claim: CanonicalClaim;
     env: CloudflareEnvironment;
   },
-) => Promise<"completed" | "retry">;
+) => Promise<CanonicalJobResult | "retry">;
 
 export type QuarantineHandler = (
   input: { envelope: CanonicalJobEnvelope | null; reason: string },

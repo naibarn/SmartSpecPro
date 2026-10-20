@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCanonicalControlPlaneProxyRepository } from "./canonicalControlPlaneProxy";
+import { createCanonicalControlPlaneProxyRepository, executeCanonicalPlatformJob } from "./canonicalControlPlaneProxy";
 import type { CanonicalJobEnvelope, CloudflareEnvironment } from "./contracts";
 
 const envelope: CanonicalJobEnvelope = {
@@ -127,8 +127,38 @@ describe("Cloudflare canonical control-plane proxy", () => {
     const claim = await repository.claim({ job, envelope });
     expect(claim).toEqual({ attemptId: "attempt-1", leaseToken: "lease", fencingVersion: 2 });
     if (claim === "already_terminal" || claim === "retry" || claim === "quarantine") throw new Error("expected a lease");
-    await expect(repository.complete({ job, envelope, claim })).resolves.toBe("completed");
-    const completion = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { claim: Record<string, unknown> };
+    const result = { resultRef: "report/report-1", output: { status: "triage" } };
+    await expect(repository.complete({ job, envelope, claim, result })).resolves.toBe("completed");
+    const completion = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { claim: Record<string, unknown>; result: unknown };
     expect(completion.claim).toMatchObject({ jobId: "job-1", attemptId: "attempt-1", fencingVersion: 2 });
+    expect(completion.result).toEqual(result);
   });
+
+  it("delegates only the admitted business operation and preserves its bounded result", async () => {
+    const result = { output: { reportId: "report-1", status: "triage" } };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ result })));
+    vi.stubGlobal("fetch", fetchMock);
+    const job = { jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1,
+      status: "running", operatorReviewRequired: false, jobType: "emergency.report.intake", executionClass: "short", input: {} };
+    const claim = { attemptId: "attempt-1", leaseToken: "lease", fencingVersion: 2 };
+    await expect(executeCanonicalPlatformJob({ env: environment, job, envelope, claim })).resolves.toEqual(result);
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/api/internal/cloudflare-job-control/execute");
+    expect(JSON.parse(String(init.body))).toEqual({ jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId } });
+    fetchMock.mockClear();
+    await expect(executeCanonicalPlatformJob({ env: environment, job: { ...job, jobType: "database.backup" }, envelope, claim }))
+      .rejects.toThrow("CLOUDFLARE_JOB_EXECUTION_NOT_ADMITTED");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, null, [], { deferred: true }, { resultRef: 5 }, { output: [] }, { output: { text: "x".repeat(25 * 1024) } }])(
+    "rejects malformed, deferred and oversized execution results", async result => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ result }))));
+      await expect(executeCanonicalPlatformJob({ env: environment, envelope,
+        job: { jobId: "job-1", tenantId: "tenant-1", contractVersion: "feature-186-v1", businessAttempt: 1,
+          status: "running", operatorReviewRequired: false, jobType: "emergency.report.intake", executionClass: "short", input: {} },
+        claim: { attemptId: "attempt-1", leaseToken: "lease", fencingVersion: 2 },
+      })).rejects.toThrow("CLOUDFLARE_JOB_RESULT_INVALID");
+    },
+  );
 });

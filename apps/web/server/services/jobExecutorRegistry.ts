@@ -1413,11 +1413,11 @@ defaultJobExecutorRegistry.register({
   executor: async ({ context, lease, reporter }) => {
     await reporter.assertActive(lease);
     const input = context.input as { reportId?: unknown; tenantId?: unknown };
-    if (typeof input.reportId !== "string" || typeof input.tenantId !== "string") {
+    if (typeof input.reportId !== "string" || input.tenantId !== context.tenantId) {
       throw new Error("EMERGENCY_REPORT_INTAKE_INPUT_INVALID");
     }
     const { markEmergencyReportReadyForTriage } = await import("../jobs/spec260EmergencyReportJob");
-    await markEmergencyReportReadyForTriage({ reportId: input.reportId, tenantId: input.tenantId });
+    await markEmergencyReportReadyForTriage({ reportId: input.reportId, tenantId: context.tenantId, canonicalJobId: lease.jobId });
     await reporter.assertActive(lease);
     return {};
   },

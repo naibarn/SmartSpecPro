@@ -6,6 +6,8 @@
  */
 export const POSTGRES_NODE_JOB_TYPES = new Set([
   "webhook.dispatch",
+  "emergency.report.intake",
+  "emergency.evidence.retention",
   "webhook.api_delivery",
   "embedding.generate",
   "llm.inference_settlement_reconcile",

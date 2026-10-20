@@ -67,7 +67,7 @@ export function createCanonicalControlPlaneHandler(input: {
           reason: "EXECUTOR_REQUESTED_RETRY",
         });
       }
-      const completed = await repository.complete({ job, envelope, claim });
+      const completed = await repository.complete({ job, envelope, claim, result: execution });
       if (completed === "completed" || completed === "duplicate") return "completed";
       if (completed === "quarantine") return "quarantined";
       return "retry";

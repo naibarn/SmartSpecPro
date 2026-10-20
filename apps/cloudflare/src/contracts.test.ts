@@ -32,12 +32,13 @@ describe("Cloudflare local runtime contracts", () => {
       complete: vi.fn().mockResolvedValue("completed" as const),
       retry: vi.fn(),
     };
-    const execute = vi.fn().mockResolvedValue("completed" as const);
+    const result = { output: { reportId: "report-1", status: "triage" } };
+    const execute = vi.fn().mockResolvedValue(result);
     const handler = createCanonicalControlPlaneHandler({ repository, execute });
     await expect(handler(envelope, {})).resolves.toBe("completed");
     expect(repository.loadJob).toHaveBeenCalledWith({ jobId: "job-1", cache: "no-store" }, envelope);
     expect(execute).toHaveBeenCalledWith(expect.objectContaining({ claim: expect.objectContaining({ fencingVersion: 2 }) }));
-    expect(repository.complete).toHaveBeenCalledOnce();
+    expect(repository.complete).toHaveBeenCalledWith(expect.objectContaining({ result }));
   });
 
   it("treats terminal canonical state as a late-delivery no-op", async () => {

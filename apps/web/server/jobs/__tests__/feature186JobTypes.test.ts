@@ -7,6 +7,10 @@ import {
 import { defaultJobExecutorRegistry } from "../../services/jobExecutorRegistry";
 
 describe("Feature 195 PostgreSQL node worker admission", () => {
+  it.each(["emergency.report.intake", "emergency.evidence.retention"])("retains canonical Node execution for %s", jobType => {
+    expect(isPostgresNodeJobType(jobType)).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(jobType, "feature-186-v1")).toBeDefined();
+  });
   it("admits external_agent_task through the canonical worker path", () => {
     expect(POSTGRES_NODE_JOB_TYPES.has("external_agent_task")).toBe(true);
     expect(isPostgresNodeJobType("external_agent_task")).toBe(true);

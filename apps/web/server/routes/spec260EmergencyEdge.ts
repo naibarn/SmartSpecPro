@@ -1888,7 +1888,7 @@ async function createReport(
         },
         options: {
           requestedBySystemComponent: "spec260.emergency-report-intake",
-          runtimeType: "cloudflare",
+          runtimeType: "node_job_worker",
         },
       });
       await tx
@@ -11102,7 +11102,7 @@ export function registerSpec260EmergencyEdgeRoutes(app: Express): void {
             missedOccurrencePolicy: "coalesce",
           },
         },
-        createOptions: { runtimeType: "cloudflare" },
+        createOptions: { runtimeType: "node_job_worker" },
       })
         .then(job =>
           reply(res, 202, {

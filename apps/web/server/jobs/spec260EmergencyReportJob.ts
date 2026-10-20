@@ -4,12 +4,13 @@ import { getDb } from "../db";
 import { emergencyCaseEvents, emergencyCases, emergencyReports } from "../../drizzle/schema";
 
 /** Durable, credit-free admission into human triage; AI is not an authority here. */
-export async function markEmergencyReportReadyForTriage(input: { reportId: string; tenantId: string }): Promise<void> {
+export async function markEmergencyReportReadyForTriage(input: { reportId: string; tenantId: string; canonicalJobId: string }): Promise<void> {
   await getDb().transaction(async tx => {
     const [report] = await tx.select().from(emergencyReports)
       .where(and(eq(emergencyReports.id, input.reportId), eq(emergencyReports.tenantId, input.tenantId)))
       .for("update").limit(1);
     if (!report) throw new Error("EMERGENCY_REPORT_NOT_FOUND");
+    if (report.workerJobId !== input.canonicalJobId) throw new Error("EMERGENCY_REPORT_JOB_MISMATCH");
     if (report.status !== "received") return;
     const [caseRow] = await tx.select().from(emergencyCases)
       .where(and(eq(emergencyCases.tenantId, input.tenantId), eq(emergencyCases.reportId, report.id)))

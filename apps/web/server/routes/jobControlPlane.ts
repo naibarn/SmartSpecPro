@@ -13,6 +13,7 @@ import {
 } from "../services/spec224ApprovalContinuation";
 import { db, getDb } from "../db";
 import { workerJobAttempts, workerJobDispatches, workerJobs } from "../../drizzle/schema";
+import { createJobReporter } from "../services/jobReporter";
 
 const leaseSchema = z.object({
   jobId: z.string().min(1).max(36),
@@ -152,12 +153,25 @@ const canonicalCloudflareEnvelopeSchema = z.object({
   routing_metadata: z.record(z.unknown()),
 }).strict();
 
+const cloudflareResultSchema = resultSchema.strict().refine(
+  result => Buffer.byteLength(JSON.stringify(result), "utf8") <= 24 * 1024,
+  { message: "Cloudflare job result is too large" },
+);
+const cloudflareDeliverySchema = z.object({
+  jobId: z.string().trim().min(1).max(36),
+  envelope: canonicalCloudflareEnvelopeSchema,
+  claim: leaseSchema,
+}).strict();
+const CLOUDFLARE_DELIVERY_ADAPTERS = new Set(["cloudflare-queues", "cloudflare-workflows"]);
+const CLOUDFLARE_CANONICAL_RUNTIMES = new Set(["node_job_worker", "python_job_worker", "external_runtime"]);
+
 async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalCloudflareEnvelopeSchema>) {
   const [row] = await getDb().select({
     jobId: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
     jobType: workerJobs.jobType, status: workerJobs.status, runtimeType: workerJobs.runtimeType,
     executionClass: workerJobs.executionClass, contractVersion: workerJobs.contractVersion,
     attempt: workerJobs.attempt, input: workerJobs.inputJson, operatorReviewRequired: workerJobs.operatorReviewRequired,
+    leaseExpiresAt: workerJobs.leaseExpiresAt,
     dispatchId: workerJobDispatches.id, dispatchAttemptId: workerJobDispatches.attemptId,
     dispatchDedupeKey: workerJobDispatches.dedupeKey, dispatchAdapter: workerJobDispatches.adapter,
     publicationStatus: workerJobDispatches.publicationStatus, publishedAt: workerJobDispatches.publishedAt,
@@ -170,9 +184,9 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
     return job ? { state: "dispatch_pending" as const } : { state: "not_found" as const };
   }
   if (row.contractVersion !== envelope.contract_version ||
-      row.dispatchAdapter !== "cloudflare-queues" || row.dispatchDedupeKey !== envelope.dedupe_key ||
+      !CLOUDFLARE_DELIVERY_ADAPTERS.has(row.dispatchAdapter) || row.dispatchDedupeKey !== envelope.dedupe_key ||
       row.dispatchAttemptId !== envelope.attempt_id || row.publicationStatus !== "published" || !row.publishedAt ||
-      row.runtimeType !== "cloudflare" || Object.keys(envelope.routing_metadata).length > 16) {
+      !CLOUDFLARE_CANONICAL_RUNTIMES.has(row.runtimeType) || Object.keys(envelope.routing_metadata).length > 16) {
     return { state: "envelope_mismatch" as const };
   }
   return { state: "authorized" as const, row };
@@ -203,7 +217,7 @@ export function registerJobControlPlaneRoutes(app: Express): void {
   });
 
   // Dedicated Cloudflare Worker boundary. It exposes only the canonical
-  // dispatch, claim and lease settlement operations required by Queue jobs;
+  // dispatch, claim and lease settlement operations required by native jobs;
   // the general internal gateway credential is never accepted here.
   app.post("/api/internal/cloudflare-job-control/context", async (req, res) => {
     if (!cloudflareControlPlaneAuth(req, res)) return;
@@ -240,20 +254,65 @@ export function registerJobControlPlaneRoutes(app: Express): void {
           ["succeeded", "failed", "cancelled", "canceled", "expired"].includes(authorized.row.status) || authorized.row.operatorReviewRequired) {
         return res.json({ state: "terminal" });
       }
-      const lease = await createJobControlPlane().claim({ jobId: parsed.data.jobId, runnerId: `cloudflare-queues:${process.env.CLOUDFLARE_ENVIRONMENT?.slice(0, 64) || "worker"}`,
-        adapter: "cloudflare-queues", attemptId: parsed.data.envelope.attempt_id ?? undefined });
+      const adapter = authorized.row.dispatchAdapter;
+      const lease = await createJobControlPlane().claim({ jobId: parsed.data.jobId, runnerId: `${adapter}:${process.env.CLOUDFLARE_ENVIRONMENT?.slice(0, 64) || "worker"}`,
+        adapter, attemptId: parsed.data.envelope.attempt_id ?? undefined });
       if (!lease) return res.json({ state: "retry" });
       await createJobControlPlane().start(lease);
-      return res.json({ state: "claimed", claim: { attemptId: lease.attemptId, leaseToken: lease.leaseToken, fencingVersion: lease.fencingVersion } });
+      return res.json({ state: "claimed", claim: { attemptId: lease.attemptId, leaseToken: lease.leaseToken, fencingVersion: lease.fencingVersion, expiresAt: lease.expiresAt } });
+    } catch (error) { return fail(res, error); }
+  });
+
+  // Native Workflow orchestration may delegate this one idempotent domain
+  // operation to its existing Node executor. This is a hybrid execution port,
+  // not a generic internal-token proxy or a caller-selected executor registry.
+  app.post("/api/internal/cloudflare-job-control/execute", async (req, res) => {
+    if (!cloudflareControlPlaneAuth(req, res)) return;
+    const parsed = cloudflareDeliverySchema.safeParse(req.body);
+    if (!parsed.success || parsed.data.jobId !== parsed.data.envelope.job_id || parsed.data.claim.jobId !== parsed.data.jobId) return res.status(400).json({ error: "CLOUDFLARE_JOB_EXECUTION_INVALID" });
+    try {
+      const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
+      if (authorized.state !== "authorized" || authorized.row.attempt !== parsed.data.envelope.business_attempt ||
+          authorized.row.dispatchAdapter !== "cloudflare-workflows" ||
+          authorized.row.runtimeType !== "node_job_worker" || authorized.row.jobType !== "emergency.report.intake" ||
+          authorized.row.contractVersion !== "feature-186-v1" || authorized.row.executionClass !== "short" ||
+          authorized.row.status !== "running" || authorized.row.operatorReviewRequired ||
+          !authorized.row.leaseExpiresAt || authorized.row.leaseExpiresAt.getTime() <= Date.now()) {
+        return res.status(409).json({ error: "CLOUDFLARE_JOB_EXECUTION_NOT_ADMITTED" });
+      }
+      const controlPlane = createJobControlPlane();
+      const context = await controlPlane.getContext(parsed.data.jobId, {
+        tenantId: authorized.row.tenantId, requestedByUserId: authorized.row.requestedByUserId ?? undefined,
+      });
+      if (!context || context.jobId !== parsed.data.jobId || context.tenantId !== authorized.row.tenantId ||
+          context.attempt !== parsed.data.envelope.business_attempt || context.jobType !== authorized.row.jobType ||
+          context.contractVersion !== authorized.row.contractVersion || context.executionClass !== "short" ||
+          context.input.tenantId !== context.tenantId || typeof context.input.reportId !== "string" ||
+          !context.input.reportId || context.input.reportId.length > 36 ||
+          Object.keys(context.input).some(key => key !== "reportId" && key !== "tenantId")) {
+        return res.status(409).json({ error: "CLOUDFLARE_JOB_EXECUTION_SCOPE_MISMATCH" });
+      }
+      // Check both the current fence and the hard execution deadline before
+      // the domain operation. The executor checks the fence around its write.
+      await controlPlane.assertActive(parsed.data.claim);
+      await controlPlane.heartbeat(parsed.data.claim);
+      const { defaultJobExecutorRegistry } = await import("../services/jobExecutorRegistry");
+      const registration = defaultJobExecutorRegistry.resolve(context.jobType, context.contractVersion);
+      if (!registration || registration.executionClass !== context.executionClass) return res.status(503).json({ error: "CLOUDFLARE_JOB_EXECUTOR_UNAVAILABLE" });
+      const result = await registration.executor({ context, lease: parsed.data.claim, reporter: createJobReporter(controlPlane), controlPlane });
+      await controlPlane.assertActive(parsed.data.claim);
+      return res.json({ result: cloudflareResultSchema.parse(result) });
     } catch (error) { return fail(res, error); }
   });
 
   app.post("/api/internal/cloudflare-job-control/complete", async (req, res) => {
     if (!cloudflareControlPlaneAuth(req, res)) return;
-    const parsed = z.object({ jobId: z.string().trim().min(1).max(36), envelope: canonicalCloudflareEnvelopeSchema, claim: leaseSchema }).strict().safeParse(req.body);
+    const parsed = cloudflareDeliverySchema.extend({ result: cloudflareResultSchema }).safeParse(req.body);
     if (!parsed.success || parsed.data.jobId !== parsed.data.envelope.job_id || parsed.data.claim.jobId !== parsed.data.jobId) return res.status(400).json({ error: "CLOUDFLARE_JOB_SETTLEMENT_INVALID" });
     try {
-      await createJobControlPlane().complete(parsed.data.claim, { output: {} });
+      const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
+      if (authorized.state !== "authorized" || authorized.row.attempt !== parsed.data.envelope.business_attempt) return res.status(409).json({ error: "CLOUDFLARE_DISPATCH_MISMATCH" });
+      await createJobControlPlane().complete(parsed.data.claim, parsed.data.result);
       return res.json({ state: "completed" });
     } catch (error) { return fail(res, error); }
   });
