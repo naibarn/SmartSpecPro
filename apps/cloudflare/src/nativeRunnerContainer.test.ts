@@ -3,7 +3,7 @@ import { createNativeRunnerContainerBinding, NativeRunnerContainerController } f
 import { containerProbeScope, probeSha256 } from "./containerMediaProbeContract";
 import type { RunnerContainerAssignment } from "./runnerContainer";
 function fixture() {
-  const image = `registry.cloudflare.com/account/runner@sha256:${"a".repeat(64)}`;
+  const image = `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner@sha256:${"a".repeat(64)}`;
   const records = new Map<string, unknown>();
   const storage = { get: async <T>(key: string) => records.get(key) as T | undefined, put: vi.fn(async (key, value) => { records.set(key, value); }) };
   const container = { running: false, images: { runner: image }, inspect: vi.fn(), start: vi.fn(), destroy: vi.fn(),

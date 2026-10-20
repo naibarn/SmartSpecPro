@@ -30,7 +30,7 @@ function fixture() {
 describe("exact bounded Workflow deployment configuration", () => {
 
   it("pins fixed media capability and image to a new immutable configuration, rejecting unapproved env injection", () => {
-    const { value, target } = fixture(), imageRef = `registry.example.com/runner/image@sha256:${"e".repeat(64)}`;
+    const { value, target } = fixture(), imageRef = `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner/image@sha256:${"e".repeat(64)}`;
     const original = cloudflareWorkflowVersionBindings(value);
     expect(() => assertCloudflareWorkflowVersionBindings([...original, { name: "CLOUDFLARE_MEDIA_PROBE", type: "plain_text", text: "container-media-probe-v1" }], value)).toThrow("MISMATCH");
     value.descriptor.mediaProbe = { capability: "container-media-probe-v1", imageRef };
@@ -40,6 +40,9 @@ describe("exact bounded Workflow deployment configuration", () => {
     expect(bindings).toContainEqual({ name: "CLOUDFLARE_RUNNER_IMAGE_REF", type: "plain_text", text: imageRef });
     expect(() => assertCloudflareWorkflowVersionBindings(bindings, parsed)).not.toThrow();
     expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "arbitrary", imageRef } })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "container-media-probe-v1", imageRef: imageRef.replace("registry.cloudflare.com", "docker.io") } })).toThrow();
+    const foreign = { ...value, descriptor: { ...value.descriptor, mediaProbe: { ...value.descriptor.mediaProbe, imageRef: imageRef.replace("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") } } };
+    expect(() => validateCloudflareOriginVersionBindings(foreign, target)).toThrow();
     expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "container-media-probe-v1", imageRef: "latest" } })).toThrow();
   });
 

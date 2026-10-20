@@ -1,3 +1,4 @@
+import { isCloudflareMediaProbeImage } from "@smartspec/shared/src/cloudflareMediaProbe";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
@@ -26,7 +27,7 @@ export const cloudflareOriginSettingsSchema = z.object({
   jobTransport: z.enum(["workflows", "queues"]).optional(),
   retentionSchedule: z.literal("evidence-retention").optional(),
   mediaProbe: z.object({ capability: z.literal("container-media-probe-v1"),
-    imageRef: z.string().regex(/^[a-z0-9][a-z0-9.:-]*\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/) }).strict().optional(),
+    imageRef: z.string().refine(value => isCloudflareMediaProbeImage(value)) }).strict().optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -114,7 +115,7 @@ export function validateCloudflareOriginVersionBindings(value: CloudflareOriginV
   if (descriptor.nativeResources) {
     try { validateNativeBindingScope(descriptor.nativeResources, descriptor, now); } catch { return denied(); }
   }
-  if (!origin || !allowed || allowed.includes(origin.origin) || Date.parse(descriptor.expiresAt) <= now ||
+  if ((descriptor.mediaProbe && !isCloudflareMediaProbeImage(descriptor.mediaProbe.imageRef, descriptor.accountRef)) || !origin || !allowed || allowed.includes(origin.origin) || Date.parse(descriptor.expiresAt) <= now ||
       descriptor.tenantId !== target.tenantId || descriptor.projectId !== target.projectId ||
       descriptor.accountRef !== target.accountRef || descriptor.targetId !== target.targetId ||
       descriptor.environment !== target.environment ||

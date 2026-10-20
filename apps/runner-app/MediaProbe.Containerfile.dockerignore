@@ -1,0 +1,10 @@
+# This recipe requires only the standalone Runner sources. Never send env,
+# credentials, Git history, dependencies, media or old runtime packs to a builder.
+**
+!apps/
+!apps/runner-app/
+!apps/runner-app/Cargo.toml
+!apps/runner-app/Cargo.lock
+!apps/runner-app/src/
+!apps/runner-app/src/**
+!apps/runner-app/MediaProbe.Containerfile

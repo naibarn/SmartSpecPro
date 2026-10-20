@@ -26,7 +26,7 @@ function fixture() {
   const probeMedia = vi.fn(async (assignment, input) => ({ contractVersion: "container-media-probe-v1", scope: containerProbeScope(assignment), inputChecksumSha256: input.checksumSha256,
     result: { artifacts: [], derived: { format: { format_name: "wav", duration: "1.000000" }, streams: [{ codec_name: "pcm_s16le" }], durationMs: 1000 } } }));
   const env = { CLOUDFLARE_MEDIA_PROBE: "container-media-probe-v1", CLOUDFLARE_ACTIVATION: "enabled", CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_JOB_TRANSPORT: "workflows",
-    CLOUDFLARE_WORKFLOW_TENANT_ID: "tenant-a", CLOUDFLARE_WORKFLOW_EXPIRES_AT: expiresAt, CLOUDFLARE_RUNNER_IMAGE_REF: `registry.example.com/runner/image@sha256:${"a".repeat(64)}`,
+    CLOUDFLARE_WORKFLOW_TENANT_ID: "tenant-a", CLOUDFLARE_WORKFLOW_EXPIRES_AT: expiresAt, CLOUDFLARE_RUNNER_IMAGE_REF: `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner/image@sha256:${"a".repeat(64)}`,
     MEDIA_BUCKET: { get, put, head: vi.fn(), delete: vi.fn() }, JOB_CONTAINERS: { start: vi.fn(), probeMedia, stop: vi.fn() } };
   const delivery = { job, envelope, claim: { attemptId: "attempt-1", leaseToken: "private-canonical-lease", fencingVersion: 1, expiresAt }, env } as Parameters<CanonicalWorkerExecution>[0];
   mocks.prepare.mockImplementation(async () => ({ tenantId: "tenant-a", userId: 7, assetId: 1, objectKey: "uploads/7/input.wav", sizeBytes: bytes.length,

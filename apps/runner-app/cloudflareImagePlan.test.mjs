@@ -16,11 +16,18 @@ test("only approved immutable base inputs can produce a Runner build plan", () =
   assert.ok(!recipe.includes("COPY ."));
 });
 
-test("media probe target verifies an already-installed fixed FFprobe binary", () => {
+test("media probe recipe pins its build-time package and excludes secrets from build context", () => {
   const image = `registry.example.com/runner/base@sha256:${"b".repeat(64)}`;
-  assert.equal(cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "container-media-probe-v1" }).target, "media-probe");
+  assert.equal(cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "container-media-probe-v1", ffmpegVersion: "7:5.1.9-0+deb12u1" }).target, "runtime");
   assert.equal(cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image }).target, "runtime");
   assert.throws(() => cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "arbitrary-command" }), /NOT_ADMITTED/);
-  const recipe = readFileSync(new URL("./Containerfile", import.meta.url), "utf8");
-  assert.ok(recipe.includes('RUN ["/usr/bin/ffprobe", "-version"]'));
+  const recipe = readFileSync(new URL("./MediaProbe.Containerfile", import.meta.url), "utf8");
+  assert.ok(recipe.includes('"ffmpeg=${FFMPEG_VERSION}"'));
+  assert.ok(recipe.includes("USER 65532:65532"));
+  assert.throws(() => cloudflareRunnerImagePlan({ buildImage: image, runtimeImage: image, capability: "container-media-probe-v1" }), /VERSION_REQUIRED/);
+  for (const file of ["Containerfile", "MediaProbe.Containerfile"]) {
+    const ignore = readFileSync(new URL(`./${file}.dockerignore`, import.meta.url), "utf8");
+    assert.ok(ignore.includes("**\n")); assert.ok(ignore.includes("!apps/runner-app/src/**"));
+    assert.ok(!ignore.includes("!.env")); assert.ok(!ignore.includes("!apps/web"));
+  }
 });

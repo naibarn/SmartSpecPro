@@ -33,3 +33,9 @@ export function validateMediaProbeSource(value: MediaProbeSource, tenantId: stri
       !(Date.parse(value.expiresAt) > now && Date.parse(value.expiresAt) <= now + 60_000)) throw new Error("CLOUDFLARE_MEDIA_SOURCE_DENIED");
   return { ...value };
 }
+
+/** Native DO-managed custom images must live in this account's Cloudflare registry. */
+export function isCloudflareMediaProbeImage(value: unknown, accountRef?: string): value is string {
+  return typeof value === "string" && /^registry\.cloudflare\.com\/[a-f0-9]{32}\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/.test(value) &&
+    (accountRef === undefined || value.startsWith(`registry.cloudflare.com/${accountRef}/`));
+}

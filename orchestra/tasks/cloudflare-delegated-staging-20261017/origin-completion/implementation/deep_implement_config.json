@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Canonical existing media probe composition is implemented and passes210 Worker/67 web tests plus actual Rust HTTP-WAV proof. Verify local native R2 conditional/hash readback and wire actual approved image/DO through existing authority; affected deployment403 remains external. Paid resolved, prior Workflow window expired, source-only serving e15. Enrolled Worker App, broader jobs/APIs, recovery/vector/retention and genuine auth/tenant-B acceptance remain open.",
+      "next_action": "Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "940d277bbbd81cb2c150cf348130a9160159aa80",
-      "merged_main_sha": "940d277bbbd81cb2c150cf348130a9160159aa80"
+      "checkpoint_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461",
+      "merged_main_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461"
     }
   },
   "pre_commit": {
@@ -57,12 +57,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 54,
-  "updated_at": "2026-10-20T16:30:59.308065+00:00",
+  "generation": 55,
+  "updated_at": "2026-10-20T16:58:39.678272+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Canonical existing media probe composition is implemented and passes210 Worker/67 web tests plus actual Rust HTTP-WAV proof. Verify local native R2 conditional/hash readback and wire actual approved image/DO through existing authority; affected deployment403 remains external. Paid resolved, prior Workflow window expired, source-only serving e15. Enrolled Worker App, broader jobs/APIs, recovery/vector/retention and genuine auth/tenant-B acceptance remain open.",
-    "merged_main_sha": "940d277bbbd81cb2c150cf348130a9160159aa80",
+    "next_action": "Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired.",
+    "merged_main_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Code integrated: real supported request-scoped Postgres.js + fenced opt-in direct emergency intake; native Workflow/exclusive Queue handler composition; native Container DO lifecycle/image contract; existing registered Worker App SQL-backed adapter; actual Vectorize signature normalization; independently bounded retention schedule admission. No global activation or second job authority.",

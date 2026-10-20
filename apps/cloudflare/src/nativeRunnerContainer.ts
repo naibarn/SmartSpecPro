@@ -1,3 +1,4 @@
+import { isCloudflareMediaProbeImage } from "../../../packages/shared/src/cloudflareMediaProbe";
 import type { CanonicalJobEnvelope, CloudflareContainerBinding } from "./contracts";
 import { CONTAINER_MEDIA_PROBE_CONTRACT, MAX_CONTAINER_PROBE_RESULT_BYTES, containerProbeScope,
   validateContainerProbeInput, validateContainerProbeResult, type ContainerProbeInput, type ContainerProbeResult } from "./containerMediaProbeContract";
@@ -7,8 +8,7 @@ export type RunnerContainerRecord = { instanceId: string; scopeDigest: string; i
 type Storage = { get<T>(key: string): Promise<T | undefined>; put(key: string, value: unknown): Promise<void> };
 type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout">;
 const RECORD_KEY = "canonical-runner-assignment";
-const PINNED_IMAGE = /^[a-z0-9][a-z0-9.:-]*\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/;
-export function isPinnedRunnerImage(value: string | undefined): value is string { return PINNED_IMAGE.test(value ?? ""); }
+export function isPinnedRunnerImage(value: string | undefined): value is string { return isCloudflareMediaProbeImage(value); }
 
 /** Private DO lifecycle only. The existing scheduler owns admission/lease and
  * execution. No caller-selected command, image, egress or public start route. */

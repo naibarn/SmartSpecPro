@@ -13,7 +13,7 @@ describe("real provider binding shapes", () => {
     const env = { JOB_CONTAINERS: raw } as never;
     expect(normalizeNativeEnvironment(env).JOB_CONTAINERS).toBe(raw);
     expect(normalizeNativeEnvironment({ JOB_CONTAINERS: raw, CLOUDFLARE_RUNNER_IMAGE_REF: "latest" } as never).JOB_CONTAINERS).toBe(raw);
-    expect(normalizeNativeEnvironment({ JOB_CONTAINERS: raw, CLOUDFLARE_RUNNER_IMAGE_REF: `registry.example.com/runner@sha256:${"a".repeat(64)}` } as never).JOB_CONTAINERS?.start).toBeTypeOf("function");
+    expect(normalizeNativeEnvironment({ JOB_CONTAINERS: raw, CLOUDFLARE_RUNNER_IMAGE_REF: `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner@sha256:${"a".repeat(64)}` } as never).JOB_CONTAINERS?.start).toBeTypeOf("function");
     expect(raw.get).not.toHaveBeenCalled();
   });
 });

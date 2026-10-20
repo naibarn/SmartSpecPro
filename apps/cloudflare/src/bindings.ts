@@ -1,3 +1,4 @@
+import { isCloudflareMediaProbeImage } from "../../../packages/shared/src/cloudflareMediaProbe";
 import { REQUIRED_BINDING_NAMES, type CloudflareEnvironment, type RequiredBindingName } from "./contracts";
 
 export type BindingReadiness = {
@@ -25,7 +26,7 @@ function isUsableBinding(env: CloudflareEnvironment, name: RequiredBindingName):
     case "JOB_CONTAINERS":
       return hasFunction(env.JOB_CONTAINERS, "start") && (!env.CLOUDFLARE_MEDIA_PROBE ||
         (hasFunction(env.JOB_CONTAINERS, "probeMedia") && hasFunction(env.JOB_CONTAINERS, "stop") &&
-          /^[a-z0-9][a-z0-9.:-]*\/[a-zA-Z0-9/_-]+@sha256:[a-f0-9]{64}$/.test(env.CLOUDFLARE_RUNNER_IMAGE_REF ?? "")));
+          isCloudflareMediaProbeImage(env.CLOUDFLARE_RUNNER_IMAGE_REF)));
     case "WORKER_APP":
       return hasFunction(env.WORKER_APP, "dispatch");
     case "MEDIA_BUCKET":

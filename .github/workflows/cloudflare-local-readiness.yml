@@ -21,7 +21,10 @@ on:
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
       - "packages/shared/src/cloudflareMediaProbe.ts"
-      - "apps/runner-app/Containerfile"
+      - "apps/runner-app/Containerfile*"
+      - "apps/runner-app/MediaProbe.Containerfile*"
+      - "apps/runner-app/containerMediaProbe*"
+      - "apps/runner-app/testsupport/**"
       - "apps/runner-app/cloudflareImagePlan*"
       - "apps/runner-app/src/container*"
       - "scripts/guards/**"
@@ -58,7 +61,10 @@ on:
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
       - "packages/shared/src/cloudflareMediaProbe.ts"
-      - "apps/runner-app/Containerfile"
+      - "apps/runner-app/Containerfile*"
+      - "apps/runner-app/MediaProbe.Containerfile*"
+      - "apps/runner-app/containerMediaProbe*"
+      - "apps/runner-app/testsupport/**"
       - "apps/runner-app/cloudflareImagePlan*"
       - "apps/runner-app/src/container*"
       - "scripts/guards/**"
@@ -201,3 +207,33 @@ jobs:
           npm --workspace @smartspec/web run verify:cloudflare-target-readiness -- --mode local
       - name: Verify patch hygiene
         run: git diff --check
+
+  media-probe-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/runner-app
+      - name: Install FFprobe for the explicit CPU fixture
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+      - name: Verify immutable image build plan
+        run: node --test apps/runner-app/cloudflareImagePlan.test.mjs
+      - name: Test actual scoped Runner CPU operation
+        env:
+          SAH_TEST_FFPROBE: /usr/bin/ffprobe
+        run: cargo test --manifest-path apps/runner-app/Cargo.toml --locked --lib container -- --include-ignored
+      - name: Build standalone Runner for the private HTTP fixture
+        run: cargo build --manifest-path apps/runner-app/Cargo.toml --locked --bin smartaihub-runner
+      - name: Verify real workerd R2 and Rust media execution
+        env:
+          SAH_TEST_FFPROBE: /usr/bin/ffprobe
+          SAH_TEST_RUNNER_BINARY: ${{ github.workspace }}/apps/runner-app/target/debug/smartaihub-runner
+        run: node --test apps/cloudflare/scripts/canonical-media-probe-runtime.test.mjs apps/runner-app/containerMediaProbe.integration.test.mjs
