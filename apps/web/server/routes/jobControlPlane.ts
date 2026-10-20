@@ -279,9 +279,10 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     try {
       const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
       if (authorized.state !== "authorized" || authorized.row.attempt !== parsed.data.envelope.business_attempt ||
+          !["workflows", "queues"].includes(process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim() || "workflows") ||
           authorized.row.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||
           !(Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
-          authorized.row.dispatchAdapter !== "cloudflare-workflows" ||
+          authorized.row.dispatchAdapter !== ((process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim() || "workflows") === "queues" ? "cloudflare-queues" : "cloudflare-workflows") ||
           authorized.row.runtimeType !== "node_job_worker" || authorized.row.jobType !== "emergency.report.intake" ||
           authorized.row.contractVersion !== "feature-186-v1" || authorized.row.executionClass !== "short" ||
           authorized.row.status !== "running" || authorized.row.operatorReviewRequired ||

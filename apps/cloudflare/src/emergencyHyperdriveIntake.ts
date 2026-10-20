@@ -15,7 +15,7 @@ function denied(code: string): never { throw new Error(code); }
  * rechecked against the DB clock before commit, and never written here. */
 export async function executeHyperdriveEmergencyIntake(delivery: Delivery, client: HyperdriveSqlClient): Promise<{}> {
   const { env, job, envelope, claim } = delivery;
-  if (env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_JOB_TRANSPORT !== "workflows" ||
+  if (env.CLOUDFLARE_ACTIVATION !== "enabled" || !["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") ||
       env.CLOUDFLARE_WORKFLOW_DATABASE !== "hyperdrive-intake" ||
       !(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
       job.tenantId !== env.CLOUDFLARE_WORKFLOW_TENANT_ID || job.jobType !== "emergency.report.intake" ||
@@ -45,14 +45,14 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
         AND w."leaseExpiresAt">clock_timestamp() AND a."leaseExpiresAt">clock_timestamp()
         AND w."jobType"='emergency.report.intake' AND w."executionClass"='short'
         AND w."runtimeType"='node_job_worker' AND w."contractVersion"='feature-186-v1'
-        AND w."inputJson"=$9::jsonb AND d.adapter='cloudflare-workflows'
+        AND w."inputJson"=$9::jsonb AND d.adapter=$10
         AND d."publicationStatus" IN ('published','consumed') AND d."publishedAt" IS NOT NULL AND d."failedAt" IS NULL
         AND o."publishedAt" IS NOT NULL AND o."cancelledAt" IS NULL AND o."quarantinedAt" IS NULL
         AND (o."envelopeJson"->>'businessAttempt')::int=$3
       FOR UPDATE OF w, a`;
     async function fence() {
       if (!(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
-          (await tx.unsafe<unknown[]>(fenceQuery, parameters)).length !== 1) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
+          (await tx.unsafe<unknown[]>(fenceQuery, [...parameters, env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "cloudflare-queues" : "cloudflare-workflows"])).length !== 1) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
     }
     await fence();
     const [report] = await tx.unsafe<Array<{ status: string; workerJobId: string }>>(

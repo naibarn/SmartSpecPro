@@ -22,6 +22,7 @@ export const cloudflareOriginSettingsSchema = z.object({
   workflowExecution: z.literal("emergency-intake").optional(),
   /** Opt-in domain SQL only; canonical admission/lease/settlement stay on Node. */
   workflowDatabase: z.literal("hyperdrive-intake").optional(),
+  jobTransport: z.enum(["workflows", "queues"]).optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -41,7 +42,7 @@ export type CloudflareOriginVersionBindings = Readonly<{
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
-      (settings.workflowDatabase && !settings.workflowExecution)) {
+      ((settings.workflowDatabase || settings.jobTransport) && !settings.workflowExecution)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
 }
@@ -52,7 +53,7 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
   if (!value.descriptor.workflowExecution) return [];
   return [
-    { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "workflows" },
+    { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: value.descriptor.jobTransport ?? "workflows" },
     { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
     { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
     ...(value.descriptor.workflowDatabase ? [{ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: value.descriptor.workflowDatabase }] : []),

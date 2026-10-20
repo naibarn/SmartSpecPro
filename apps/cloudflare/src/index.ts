@@ -23,6 +23,7 @@ import { proxyAuthToOrigin, proxyWebSocketToOrigin } from "./authOriginProxy";
 import { dispatchManifestRoute } from "./nativeApi";
 import { handleCanonicalWorkflowRequest, isCanonicalWorkflowEnabled } from "./workflowRuntime";
 import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
+import { isCanonicalIntakeTransportEnabled } from "./canonicalIntakeTransport";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -92,11 +93,12 @@ export function createCloudflareWorker(
         const spec260EvidenceRetentionReady = env.CLOUDFLARE_ACTIVATION === "enabled" &&
           Boolean(env.PLATFORM_EDGE_ORIGIN?.trim() && env.PLATFORM_EDGE_PRIVATE_HOST?.trim() && env.PLATFORM_EDGE_TOKEN?.trim());
         const workflows = readiness.transport === "workflows";
+        const queues = readiness.transport === "queues";
         let controlPlaneConfigured = false;
         try { assertCanonicalControlPlaneConfiguration(env); controlPlaneConfigured = true; } catch { /* fail closed */ }
         const selectedHandlerConfigured = workflows ? Boolean(runtime?.workflowHandlerConfigured) : jobHandlerConfigured;
-        const ready = readiness.ready && selectedHandlerConfigured && (workflows
-          ? isCanonicalWorkflowEnabled(env) && controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
+        const ready = readiness.ready && selectedHandlerConfigured && (workflows || queues
+          ? (workflows ? isCanonicalWorkflowEnabled(env) : isCanonicalIntakeTransportEnabled(env, "queues")) && controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
         return json({
           ok: ready,
           readiness: { ...readiness, required: readiness.required, jobHandlerConfigured: selectedHandlerConfigured, controlPlaneConfigured, spec260EvidenceRetentionReady },
@@ -167,7 +169,8 @@ export function createCloudflareWorker(
         }
       }
       if (url.pathname === "/internal/jobs/publish" && request.method === "POST") {
-        if (env.CLOUDFLARE_JOB_TRANSPORT) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
+        if (env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_JOB_TRANSPORT !== "queues") return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
+        if (env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues")) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 503);
         if (env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
         if (!isAuthorizedDispatch(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
         try {
@@ -209,7 +212,7 @@ export function createCloudflareWorker(
     },
 
     async queue(batch: QueueBatch, env: CloudflareEnvironment): Promise<void> {
-      if (env.CLOUDFLARE_JOB_TRANSPORT) {
+      if (env.CLOUDFLARE_JOB_TRANSPORT && (env.CLOUDFLARE_JOB_TRANSPORT !== "queues" || !isCanonicalIntakeTransportEnabled(env, "queues"))) {
         for (const message of batch.messages) message.retry({ delaySeconds: 60 });
         return;
       }

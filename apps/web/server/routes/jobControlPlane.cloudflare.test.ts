@@ -58,6 +58,16 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Cloudflare canonical job boundary", () => {
+  it("executes Queue intake only under the exact selected transport, preserving the tenant fence", async () => {
+    row.dispatchAdapter = "cloudflare-queues";
+    await send("execute", { claim }).expect(409);
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "queues");
+    await send("execute", { claim }).expect(200);
+    row.tenantId = "tenant-b";await send("execute", { claim }).expect(409);
+    row.tenantId = "tenant-a";vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "unknown");
+    await send("execute", { claim }).expect(409);
+    expect(mocks.execute).toHaveBeenCalledOnce();
+  });
   it.each(["context", "claim", "execute", "complete", "fail"])("requires its dedicated credential for %s", async action => {
     await request(app).post(`/api/internal/cloudflare-job-control/${action}`)
       .set("x-internal-token", "test-control-plane-token").send({ jobId: "job-1", envelope, claim }).expect(401);

@@ -24,6 +24,9 @@ export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobT
     const url = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim();
     const token = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim();
     if (!url || !token) throw new Error("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");
+    const transport = process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim() || "workflows";
+    if (transport === "queues") return new CloudflareQueueHttpJobTransportAdapter(url, token);
+    if (transport !== "workflows") throw new Error("CLOUDFLARE_INTAKE_TRANSPORT_INVALID");
     return new CloudflareWorkflowHttpJobTransportAdapter(url, token);
   }
   if (!isCloudflareHardCutoverEnabled()) {

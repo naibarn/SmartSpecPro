@@ -106,7 +106,7 @@ type SettlementResponse = { state: "completed" | "duplicate" | "retry" | "quaran
 /** A deliberately narrow hybrid execution port; domain writes stay with the
  * existing tenant-scoped Node executor while Cloudflare owns orchestration. */
 export const executeCanonicalPlatformJob: CanonicalWorkerExecution = async ({ env, job, envelope, claim }) => {
-  if (env.CLOUDFLARE_JOB_TRANSPORT === "workflows" && (!env.CLOUDFLARE_WORKFLOW_TENANT_ID || env.CLOUDFLARE_WORKFLOW_TENANT_ID !== job.tenantId)) {
+  if (["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") && (!env.CLOUDFLARE_WORKFLOW_TENANT_ID || env.CLOUDFLARE_WORKFLOW_TENANT_ID !== job.tenantId)) {
     throw new Error("CLOUDFLARE_JOB_TENANT_NOT_ADMITTED");
   }
   if (job.jobType !== "emergency.report.intake" || job.contractVersion !== "feature-186-v1" || job.executionClass !== "short") {

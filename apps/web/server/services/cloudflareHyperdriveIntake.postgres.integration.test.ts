@@ -112,4 +112,11 @@ suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL"
     await expect(withHyperdrivePostgres({ connectionString: url.href }, client => executeHyperdriveEmergencyIntake(f.delivery, client))).rejects.toThrow();
     expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
   });
+  it("admits the Queue capability only with its own exact persisted adapter", async () => {
+    const f=await fixture();f.delivery.env.CLOUDFLARE_JOB_TRANSPORT="queues";
+    await expect(run(f.delivery)).rejects.toThrow("LEASE_STALE");
+    await sql`UPDATE worker_job_dispatches SET adapter='cloudflare-queues' WHERE id=${f.dispatchId}`;
+    await run(f.delivery);
+    expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("triage");
+  });
 });

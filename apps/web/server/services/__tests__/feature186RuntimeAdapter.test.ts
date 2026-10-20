@@ -20,6 +20,11 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
     const job = { runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short", tenantId: "tenant-a" };
     expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "queues");
+    expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-queues");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "unknown");
+    expect(() => createFeature186RuntimeAdapter(job)).toThrow("TRANSPORT_INVALID");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "workflows");
     expect(createFeature186RuntimeAdapter().name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, jobType: "database.backup" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, runtimeType: "python_job_worker" }).name).toBe("postgres-pull");

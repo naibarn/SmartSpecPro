@@ -5,6 +5,7 @@ import { parseCanonicalEnvelope } from "./queueConsumer";
 import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
 import { assertCanonicalControlPlaneConfiguration, createCanonicalControlPlaneProxyRepository } from "./canonicalControlPlaneProxy";
 import { executeCanonicalJob } from "./canonicalExecution";
+import { isCanonicalIntakeTransportEnabled } from "./canonicalIntakeTransport";
 
 const canonicalHandler = createCanonicalControlPlaneHandler({ repository: createCanonicalControlPlaneProxyRepository, execute: executeCanonicalJob });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -12,9 +13,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 
 export function isCanonicalWorkflowEnabled(env: CloudflareEnvironment): boolean {
-  return env.CLOUDFLARE_ACTIVATION === "enabled" && env.CLOUDFLARE_JOB_TRANSPORT === "workflows" &&
-    Boolean(env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim()) &&
-    Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now();
+  return isCanonicalIntakeTransportEnabled(env, "workflows");
 }
 
 export async function canonicalWorkflowInstanceId(dedupeKey: string): Promise<string> {

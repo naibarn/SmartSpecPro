@@ -40,6 +40,13 @@ describe("exact bounded Workflow deployment configuration", () => {
     const direct = validateCloudflareOriginVersionBindings(value, target);
     expect(cloudflareWorkflowVersionBindings(direct)).toContainEqual({ name: "CLOUDFLARE_WORKFLOW_DATABASE", type: "plain_text", text: "hyperdrive-intake" });
   });
+  it("requires a new immutable digest to switch the transport to Queues", () => {
+    const { value, target } = fixture();value.descriptor.jobTransport = "queues";
+    expect(() => validateCloudflareOriginVersionBindings(value,target)).toThrow();
+    value.configurationDigest=cloudflareOriginDescriptorDigest(value.descriptor);value.configurationRef=`cf-origin:${value.configurationDigest}`;target.runtimePolicy=value.configurationRef;
+    const bindings=cloudflareWorkflowVersionBindings(validateCloudflareOriginVersionBindings(value,target));
+    expect(bindings).toContainEqual({ name:"CLOUDFLARE_JOB_TRANSPORT",type:"plain_text",text:"queues" });
+  });
   it("binds activation, tenant, expiry, private authority and separate credentials in one immutable configuration", () => {
     const { value, target } = fixture();
     const parsed = validateCloudflareOriginVersionBindings(value, target);
