@@ -31,10 +31,10 @@ def validate_plan(value):
     return dict(value)
 
 
-def normalize_grant(value):
+def validate_grant_identity(value, schema):
     fields = {"schemaVersion", "grantRef", "tenantId", "projectId", "requesterUserId", "executorId",
               "targetId", "environment", "accountRef", "jobId", "actions", "plan", "planDigest", "expiresAt", "revokedAt"}
-    if (not isinstance(value, dict) or set(value) != fields or value["schemaVersion"] != GRANT_SCHEMA
+    if (not isinstance(value, dict) or set(value) != fields or value["schemaVersion"] != schema
         or value["targetId"] != "smartspec-cloudflare-staging" or value["environment"] != "staging"
         or value["actions"] != ["provision"] or type(value["requesterUserId"]) is not int or value["requesterUserId"] <= 0
         or not isinstance(value["accountRef"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["accountRef"])):
@@ -45,9 +45,6 @@ def normalize_grant(value):
     for key in ("tenantId", "projectId", "executorId"):
         if not isinstance(value[key], str) or not 1 <= len(value[key]) <= (36 if key != "executorId" else 200):
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_GRANT_INVALID")
-    plan = validate_plan(value["plan"])
-    if value["planDigest"] != plan_digest(plan):
-        raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_DIGEST_INVALID")
     for key in ("expiresAt", "revokedAt"):
         if key == "revokedAt" and value[key] is None:
             continue
@@ -56,4 +53,11 @@ def normalize_grant(value):
                 raise ValueError()
         except (TypeError, AttributeError, ValueError) as exc:
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_EXPIRY_INVALID") from exc
+
+
+def normalize_grant(value):
+    validate_grant_identity(value, GRANT_SCHEMA)
+    plan = validate_plan(value["plan"])
+    if value["planDigest"] != plan_digest(plan):
+        raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_DIGEST_INVALID")
     return {**value, "plan": plan, "actions": ["provision"]}

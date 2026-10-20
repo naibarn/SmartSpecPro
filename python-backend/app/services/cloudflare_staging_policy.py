@@ -15,6 +15,12 @@ from app.models.approval import ApprovalRequest, ApprovalRule, ApprovalType
 from app.models.audit_log import AuditLog
 from app.services.cloudflare_origin_provision_contract import (CONTRACT as PROVISION_CONTRACT, POLICY_SCHEMA as PROVISION_SCHEMA, GRANT_SCHEMA as PROVISION_GRANT, validate_plan, plan_digest)
 
+from app.services.cloudflare_native_provision_contract import (CONTRACT as NATIVE_CONTRACT, POLICY_SCHEMA as NATIVE_SCHEMA,
+    GRANT_SCHEMA as NATIVE_GRANT, validate_plan as validate_native_plan, namespace as native_namespace)
+
+PROVISION_CONTRACTS = {PROVISION_CONTRACT: (PROVISION_SCHEMA, validate_plan), NATIVE_CONTRACT: (NATIVE_SCHEMA, validate_native_plan)}
+PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT}
+
 SCHEMA = "cloudflare.staging-policy.v1"
 ORIGIN_SCHEMA = "cloudflare.staging-origin-policy.v2"
 ORIGIN_GRANT = "cloudflare.staging-origin-grant.v2"
@@ -34,7 +40,7 @@ def validate_origin_configuration_pair(ref, digest, *, allow_none=False):
 
 
 def validate_staging_policy(value: dict, now: datetime) -> dict:
-    provision = isinstance(value, dict) and value.get("contractVersion") == PROVISION_CONTRACT
+    provision = isinstance(value, dict) and isinstance(value.get("contractVersion"), str) and value["contractVersion"] in PROVISION_CONTRACTS
     origin = isinstance(value, dict) and value.get("contractVersion") == ORIGIN_CONTRACT
     fields = {"accountRef", "executorId", "actorUserId", "targetId", "environment", "artifacts", "maxOperations", "expiresAt", "allowBootstrap"}
     if origin:
@@ -52,7 +58,7 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
     if type(value["actorUserId"]) is not int or value["actorUserId"] <= 0 or type(value["maxOperations"]) is not int or not 1 <= value["maxOperations"] <= 4:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_BUDGET_INVALID")
     if provision:
-        plan = validate_plan(value["plan"])
+        plan = PROVISION_CONTRACTS[value["contractVersion"]][1](value["plan"])
         expiry = datetime.fromisoformat(plan["configurationExpiresAt"].replace("Z", "+00:00"))
         if value["maxOperations"] != 1 or value["planDigest"] != plan_digest(plan) or not now < expiry <= now + timedelta(days=30):
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_POLICY_INVALID")
@@ -106,10 +112,12 @@ class CloudflareStagingPolicyAuthority:
             'AND r.profile = \'cloudflare_staging_executor\' AND r."snapshotExpiresAt" >= :expiry'
         ), {"tenant": tenant_id, "project": project_id, "executor": policy["executorId"], "account": policy["accountRef"],
             "target": TARGET, "principal": f"user:{policy['actorUserId']}", "actor": policy["actorUserId"], "expiry": expires_at})
+        if policy.get("contractVersion") == NATIVE_CONTRACT and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
+            raise PermissionError("CLOUDFLARE_NATIVE_PROVISION_SCOPE_DENIED")
         binding = result.mappings().first()
         if binding is None:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_RUNTIME_BINDING_DENIED")
-        if policy.get("contractVersion") == PROVISION_CONTRACT:
+        if policy.get("contractVersion") in PROVISION_CONTRACTS:
             return
         origin = policy.get("contractVersion") == ORIGIN_CONTRACT
         allowed_refs = {release["configurationRef"] for release in policy["releases"]} if origin else {None}
@@ -128,7 +136,7 @@ class CloudflareStagingPolicyAuthority:
         rule = ApprovalRule(
             id=str(uuid4()), name="Bounded Cloudflare staging policy", tenant_id=tenant_id, project_id=project_id,
             trigger_type=ApprovalType.DEPLOYMENT,
-            conditions={"schemaVersion": PROVISION_SCHEMA if policy.get("contractVersion") == PROVISION_CONTRACT else ORIGIN_SCHEMA if policy.get("contractVersion") == ORIGIN_CONTRACT else SCHEMA, "ownerUserId": actor_id, "definition": policy, "version": _version(policy)},
+            conditions={"schemaVersion": PROVISION_CONTRACTS[policy["contractVersion"]][0] if policy.get("contractVersion") in PROVISION_CONTRACTS else ORIGIN_SCHEMA if policy.get("contractVersion") == ORIGIN_CONTRACT else SCHEMA, "ownerUserId": actor_id, "definition": policy, "version": _version(policy)},
             approver_roles=[], approver_users=[], required_approvals=0, timeout_minutes=240, timeout_action="reject",
             auto_approve_conditions={}, is_active=True,
         )
@@ -143,7 +151,7 @@ class CloudflareStagingPolicyAuthority:
         await self._require_cloudflare_policy_owner(tenant_id, actor_id)
         result = await self.db.execute(select(ApprovalRule).where(ApprovalRule.id == policy_id, ApprovalRule.tenant_id == tenant_id).with_for_update())
         rule = result.scalar_one_or_none()
-        if not rule or (rule.conditions or {}).get("schemaVersion") not in (SCHEMA, ORIGIN_SCHEMA, PROVISION_SCHEMA):
+        if not rule or (rule.conditions or {}).get("schemaVersion") not in (SCHEMA, ORIGIN_SCHEMA, PROVISION_SCHEMA, NATIVE_SCHEMA):
             raise ValueError("CLOUDFLARE_STAGING_POLICY_NOT_FOUND")
         if rule.is_active:
             rule.is_active = False
@@ -161,12 +169,12 @@ class CloudflareStagingPolicyAuthority:
             ApprovalRule.trigger_type == ApprovalType.DEPLOYMENT).with_for_update())
         rule = result.scalar_one_or_none()
         conditions = rule.conditions if rule and isinstance(rule.conditions, dict) else {}
-        provision = grant.get("schemaVersion") == PROVISION_GRANT
+        provision = isinstance(grant.get("schemaVersion"), str) and grant["schemaVersion"] in PROVISION_GRANTS
         origin = grant.get("schemaVersion") == ORIGIN_GRANT
-        if not rule or not rule.is_active or conditions.get("schemaVersion") != (PROVISION_SCHEMA if provision else ORIGIN_SCHEMA if origin else SCHEMA):
+        if not rule or not rule.is_active or conditions.get("schemaVersion") != (PROVISION_CONTRACTS[PROVISION_GRANTS[grant["schemaVersion"]]][0] if provision else ORIGIN_SCHEMA if origin else SCHEMA):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_UNAVAILABLE")
         policy = validate_staging_policy(conditions.get("definition"), current)
-        if origin != (policy.get("contractVersion") == ORIGIN_CONTRACT) or provision != (policy.get("contractVersion") == PROVISION_CONTRACT):
+        if origin != (policy.get("contractVersion") == ORIGIN_CONTRACT) or provision != (policy.get("contractVersion") in PROVISION_CONTRACTS) or (provision and PROVISION_GRANTS[grant["schemaVersion"]] != policy.get("contractVersion")):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
         if conditions.get("version") != _version(policy) or conditions.get("ownerUserId") != grant["requesterUserId"]:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_VERSION_DENIED")

@@ -288,3 +288,62 @@ def test_provision_policy_closed_budget_and_expiry(changes):
     _, rule, _, _ = provision_fixture()
     with pytest.raises(ValueError):
         validate_staging_policy({**rule.conditions["definition"], **changes}, datetime.now(timezone.utc))
+
+
+# Native metadata uses the same owner, budget, revocation and runner authority.
+def native_definition():
+    from app.services.cloudflare_native_provision_contract import CONTRACT, namespace, plan_digest
+    policy = definition()
+    policy.pop("allowBootstrap")
+    policy.pop("artifacts")
+    plan = {"namespace": namespace("tenant-1", "project-1"), "vectorDimensions": 768,
+            "vectorMetric": "cosine", "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()}
+    return {**policy, "contractVersion": CONTRACT, "maxOperations": 1, "plan": plan, "planDigest": plan_digest(plan)}
+
+
+def native_grant(policy):
+    from app.services.cloudflare_native_provision_contract import GRANT_SCHEMA
+    return {"schemaVersion": GRANT_SCHEMA, "grantRef": str(uuid4()), "tenantId": "tenant-1", "projectId": "project-1",
+            "requesterUserId": 17, "executorId": policy["executorId"], "jobId": str(uuid4()), "accountRef": policy["accountRef"],
+            "targetId": policy["targetId"], "environment": "staging", "actions": ["provision"],
+            "plan": policy["plan"], "planDigest": policy["planDigest"], "expiresAt": policy["expiresAt"], "revokedAt": None}
+
+
+@pytest.mark.unit
+def test_native_grant_and_policy_use_strict_resource_scope():
+    policy = native_definition()
+    assert validate_staging_policy(policy, datetime.now(timezone.utc)) == policy
+    assert normalize_cloudflare_staging_grant_payload(native_grant(policy))["actions"] == ["provision"]
+    for changed in [{"tenantId": "foreign"}, {"projectId": "foreign"}, {"environment": "production"},
+                    {"actions": ["deploy"]}, {"jobId": "not-uuid"}, {"planDigest": "f" * 64}, {"extra": True}]:
+        with pytest.raises(ValueError):
+            normalize_cloudflare_staging_grant_payload({**native_grant(policy), **changed})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("changed", [{"maxOperations": 2}, {"plan": {"namespace": "production"}},
+                                     {"expiresAt": "2000-01-01T00:00:00Z"}])
+def test_native_policy_never_expands_budget_or_scope(changed):
+    with pytest.raises(ValueError):
+        validate_staging_policy({**native_definition(), **changed}, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_native_policy_admission_rechecks_budget_schema_and_revocation():
+    from app.services.cloudflare_native_provision_contract import POLICY_SCHEMA
+    service, rule, prior, _ = service_fixture()
+    policy = native_definition()
+    rule.conditions = {"schemaVersion": POLICY_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}
+    grant = native_grant(policy)
+    decision = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    assert decision["policyId"] == rule.id
+    prior.append(SimpleNamespace(id=str(uuid4()), payload={"jobId": "prior"}, extra_data={"cloudflareStagingPolicyDecisionV1": decision}))
+    with pytest.raises(PermissionError, match="BUDGET_EXHAUSTED"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    prior.clear()
+    with pytest.raises(PermissionError):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, {**grant, "schemaVersion": "cloudflare.staging-origin-provision-grant.v1"})
+    rule.is_active = False
+    with pytest.raises(PermissionError, match="UNAVAILABLE"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)

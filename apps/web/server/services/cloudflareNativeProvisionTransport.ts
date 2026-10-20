@@ -1,0 +1,100 @@
+import { z } from "zod";
+import { nativeProvisionGrantSchema, nativeResourceNames, type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
+
+const resource = z.object({ name: z.string().min(1), id: z.string().optional() }).strict();
+export const nativeProvisionCheckpointSchema = z.object({
+  planDigest: z.string(), preflightComplete: z.boolean().optional(),
+  pending: z.enum(["queue", "bucket", "vector"]).optional(),
+  queue: resource.optional(), bucket: resource.optional(), vector: resource.optional(),
+  metadata: z.array(z.enum(["tenantId", "sourceJobId"])).default([]),
+}).strict();
+export type NativeProvisionCheckpoint = z.infer<typeof nativeProvisionCheckpointSchema>;
+
+export class NativeProvisionError extends Error {
+  readonly class = "permanent";
+  constructor(readonly diagnosticCode: string) { super(diagnosticCode); }
+}
+
+/** Only isolated metadata creation. No delete/adopt, IAM, DB, consumer or cron API. */
+export async function provisionCloudflareNative(input: {
+  grant: NativeProvisionGrant; token: string; checkpoint: NativeProvisionCheckpoint;
+  assertAuthorized: () => Promise<void>; saveCheckpoint: (state: NativeProvisionCheckpoint) => Promise<void>;
+  fetchImpl?: typeof fetch;
+}) {
+  const grant = nativeProvisionGrantSchema.parse(input.grant);
+  const state = nativeProvisionCheckpointSchema.parse(input.checkpoint);
+  if (state.planDigest !== grant.planDigest) throw new NativeProvisionError("NATIVE_PLAN_CHECKPOINT_MISMATCH");
+  const names = nativeResourceNames(grant.plan), base = `https://api.cloudflare.com/client/v4/accounts/${grant.accountRef}`;
+  let requests = 0;
+  const api = async (path: string, body?: unknown) => {
+    await input.assertAuthorized();
+    if (++requests > 20) throw new NativeProvisionError("NATIVE_PROVIDER_REQUEST_BUDGET_EXCEEDED");
+    let response: Response;
+    try {
+      response = await (input.fetchImpl ?? fetch)(base + path, {
+        method: body === undefined ? "GET" : "POST", headers: { authorization: `Bearer ${input.token}`, "content-type": "application/json" },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }), redirect: "error", signal: AbortSignal.timeout(15_000),
+      });
+    } catch { throw new NativeProvisionError("NATIVE_PROVIDER_RESPONSE_UNCERTAIN"); }
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 1024 * 1024) throw new NativeProvisionError("NATIVE_PROVIDER_RESPONSE_INVALID");
+    let value: any;
+    try { value = JSON.parse(new TextDecoder().decode(bytes)); }
+    catch { throw new NativeProvisionError("NATIVE_PROVIDER_RESPONSE_INVALID"); }
+    if (response.status === 404 && body === undefined) return null;
+    if (!response.ok || value.success !== true) throw new NativeProvisionError(`NATIVE_PROVIDER_HTTP_${response.status}`);
+    return value;
+  };
+  const persist = () => input.saveCheckpoint(nativeProvisionCheckpointSchema.parse(state));
+  const queueList = async () => {
+    const result = await api("/queues?per_page=100");
+    if (!Array.isArray(result?.result) || result.result.length >= 100 || (result.result_info?.total_pages ?? 1) > 1)
+      throw new NativeProvisionError("NATIVE_QUEUE_INVENTORY_INCOMPLETE");
+    return result.result as Array<{ queue_id?: string; queue_name?: string; consumers_total_count?: number }>;
+  };
+  if (state.pending) throw new NativeProvisionError("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
+  if (!state.preflightComplete) {
+    if (state.queue || state.bucket || state.vector) throw new NativeProvisionError("NATIVE_CHECKPOINT_INVALID");
+    const queue = (await queueList()).find(item => item.queue_name === names.queue);
+    const bucket = await api(`/r2/buckets/${names.bucket}`), vector = await api(`/vectorize/v2/indexes/${names.vector}`);
+    if (queue || bucket || vector) throw new NativeProvisionError("NATIVE_UNOWNED_RESOURCE_COLLISION");
+    state.preflightComplete = true; await persist();
+  }
+  for (const kind of ["queue", "bucket", "vector"] as const) {
+    if (!state[kind]) {
+      state.pending = kind; await persist();
+      const created = kind === "queue" ? await api("/queues", { queue_name: names.queue })
+        : kind === "bucket" ? await api("/r2/buckets", { name: names.bucket })
+          : await api("/vectorize/v2/indexes", { name: names.vector,
+            description: `Canonical staging provision ${grant.jobId}`, config: { dimensions: 768, metric: "cosine" } });
+      const actual = created?.result;
+      if ((kind === "queue" ? actual?.queue_name : actual?.name) !== names[kind]
+        || (kind === "queue" && (typeof actual?.queue_id !== "string" || !/^[a-f0-9]{32}$/.test(actual.queue_id))))
+        throw new NativeProvisionError("NATIVE_CREATED_RESOURCE_INVALID");
+      state[kind] = { name: names[kind], ...(kind === "queue" ? { id: actual.queue_id } : {}) };
+      delete state.pending; await persist();
+    }
+    if (state[kind]?.name !== names[kind]) throw new NativeProvisionError("NATIVE_RESOURCE_SCOPE_MISMATCH");
+  }
+  for (const propertyName of ["tenantId", "sourceJobId"] as const) {
+    if (state.metadata.includes(propertyName)) continue;
+    const before = await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/list`);
+    const indexes = before?.result?.metadataIndexes;
+    if (!Array.isArray(indexes)) throw new NativeProvisionError("NATIVE_METADATA_INVENTORY_INVALID");
+    const existing = indexes.find((item: any) => item.propertyName === propertyName);
+    if (existing && existing.indexType !== "string") throw new NativeProvisionError("NATIVE_METADATA_TYPE_MISMATCH");
+    if (!existing) await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/create`, { propertyName, indexType: "string" });
+    state.metadata.push(propertyName); await persist();
+  }
+  const queues = await queueList(), queue = queues.find(item => item.queue_id === state.queue?.id);
+  const bucket = await api(`/r2/buckets/${names.bucket}`), vector = await api(`/vectorize/v2/indexes/${names.vector}`);
+  const metadata = await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/list`);
+  if (queue?.queue_name !== names.queue || (queue.consumers_total_count ?? 0) !== 0
+    || bucket?.result?.name !== names.bucket || vector?.result?.name !== names.vector
+    || vector.result.config?.dimensions !== 768 || vector.result.config?.metric !== "cosine"
+    || !["tenantId", "sourceJobId"].every(name => metadata?.result?.metadataIndexes?.some((item: any) => item.propertyName === name && item.indexType === "string")))
+    throw new NativeProvisionError("NATIVE_PROVIDER_READBACK_MISMATCH");
+  await input.assertAuthorized();
+  return { namespace: grant.plan.namespace, accountRef: grant.accountRef, queue: state.queue!, bucket: state.bucket!, vector: state.vector!,
+    metadataIndexes: state.metadata, providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false };
+}

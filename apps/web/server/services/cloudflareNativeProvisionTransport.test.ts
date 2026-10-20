@@ -1,0 +1,99 @@
+import { describe, expect, it, vi } from "vitest";
+import { nativeProvisionGrantSchema, nativeProvisionNamespace, nativeProvisionPlanDigest, nativeResourceNames,
+  type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
+import { provisionCloudflareNative, type NativeProvisionCheckpoint } from "./cloudflareNativeProvisionTransport";
+
+const plan = { namespace: nativeProvisionNamespace("tenant-1", "project-1"), vectorDimensions: 768 as const,
+  vectorMetric: "cosine" as const, configurationExpiresAt: "2026-10-27T00:00:00Z" };
+const grant: NativeProvisionGrant = { schemaVersion: "cloudflare.staging-native-provision-grant.v1",
+  grantRef: "11111111-1111-4111-8111-111111111111", tenantId: "tenant-1", projectId: "project-1", requesterUserId: 1,
+  executorId: "cf-staging-executor:test", jobId: "22222222-2222-4222-8222-222222222222", accountRef: "a".repeat(32),
+  targetId: "smartspec-cloudflare-staging", environment: "staging", actions: ["provision"], plan,
+  planDigest: nativeProvisionPlanDigest(plan), expiresAt: "2026-10-20T12:00:00Z", revokedAt: null };
+
+function fixture() {
+  const names = nativeResourceNames(plan), queueId = "b".repeat(32);
+  let queue: any = null, bucket: any = null, vector: any = null;
+  const indexes: any[] = [], checkpoints: NativeProvisionCheckpoint[] = [];
+  const fetchImpl = vi.fn(async (url: any, init: any) => {
+    const path = new URL(url).pathname.split(`/accounts/${grant.accountRef}`)[1];
+    const body = init.method === "POST" ? JSON.parse(init.body) : undefined;
+    let result: any;
+    if (path === "/queues") result = body ? (queue = { queue_name: body.queue_name, queue_id: queueId, consumers_total_count: 0 }) : queue ? [queue] : [];
+    else if (path === "/r2/buckets" && body) result = bucket = { name: body.name };
+    else if (path === `/r2/buckets/${names.bucket}`) result = bucket;
+    else if (path === "/vectorize/v2/indexes" && body) result = vector = { name: body.name, config: body.config };
+    else if (path.endsWith("/metadata_index/list")) result = { metadataIndexes: [...indexes] };
+    else if (path.endsWith("/metadata_index/create")) { indexes.push(body); result = { mutationId: "metadata-mutation" }; }
+    else if (path === `/vectorize/v2/indexes/${names.vector}`) result = vector;
+    else throw new Error("Unexpected provider operation");
+    return Response.json({ success: result !== null, result }, { status: result === null ? 404 : 200 });
+  });
+  const input = { grant, token: "private-test-fixture-token", checkpoint: { planDigest: grant.planDigest, metadata: [] } as NativeProvisionCheckpoint,
+    fetchImpl: fetchImpl as typeof fetch, assertAuthorized: vi.fn(async () => {}),
+    saveCheckpoint: vi.fn(async (value: NativeProvisionCheckpoint) => { checkpoints.push(structuredClone(value)); }) };
+  return { input, fetchMock: fetchImpl, checkpoints, indexes, setQueue: (value: any) => { queue = value; } };
+}
+
+describe("bounded native staging provisioning", () => {
+  it("creates only a project-bound queue, private bucket, vector index and metadata fields; verifies provider readback", async () => {
+    const f = fixture();
+    const out = await provisionCloudflareNative(f.input);
+    expect(out).toMatchObject({ providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false });
+    expect(f.fetchMock.mock.calls.filter(([, init]) => init.method === "POST")).toHaveLength(5);
+    expect(f.checkpoints.at(-1)?.metadata).toEqual(["tenantId", "sourceJobId"]);
+    expect(f.input.assertAuthorized).toHaveBeenCalledTimes(f.fetchMock.mock.calls.length + 1);
+    for (const [url, init] of f.fetchMock.mock.calls) {
+      expect(String(url)).toMatch(new RegExp(`^https://api.cloudflare.com/client/v4/accounts/${grant.accountRef}/(?:queues|r2/buckets|vectorize/v2/indexes)`));
+      expect(init.method).toMatch(/^(GET|POST)$/);
+      expect(String(url)).not.toMatch(/consumers|tokens|dns|hyperdrive/);
+    }
+    expect(JSON.stringify(out)).not.toContain(f.input.token);
+  });
+
+  it("retries a fully persisted successful run using reads only", async () => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    f.input.checkpoint = f.checkpoints.at(-1)!; f.fetchMock.mockClear();
+    await expect(provisionCloudflareNative(f.input)).resolves.toMatchObject({ providerConfigurationVerified: true });
+    expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+  });
+
+  it("does not adopt or overwrite an existing same-name queue", async () => {
+    const f = fixture(); f.setQueue({ queue_name: nativeResourceNames(plan).queue });
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_UNOWNED_RESOURCE_COLLISION");
+    expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+  });
+
+  it("stops all provider calls when authorization is revoked", async () => {
+    const f = fixture(); f.input.assertAuthorized.mockRejectedValue(new Error("authority revoked"));
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("authority revoked");
+    expect(f.input.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("persists uncertain create intent and never blindly repeats the write", async () => {
+    const f = fixture(), original = f.fetchMock.getMockImplementation()!;
+    f.fetchMock.mockImplementation(async (url, init) => {
+      if (init.method === "POST") throw new Error(`lost response ${f.input.token}`);
+      return original(url, init);
+    });
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVIDER_RESPONSE_UNCERTAIN");
+    f.input.checkpoint = f.checkpoints.at(-1)!; f.fetchMock.mockClear();
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
+    expect(f.input.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("refuses populated queues even when created by the same run", async () => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    f.input.checkpoint = f.checkpoints.at(-1)!;
+    f.setQueue({ queue_name: nativeResourceNames(plan).queue, queue_id: "b".repeat(32), consumers_total_count: 1 });
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVIDER_READBACK_MISMATCH");
+  });
+
+  it.each([{ environment: "production" }, { tenantId: "foreign-tenant" }, { actions: ["deploy"] },
+    { plan: { ...plan, vectorDimensions: 1536 } }, { planDigest: "f".repeat(64) }])("rejects changed grant scope: %j", async extra => {
+    const f = fixture(); f.input.grant = { ...grant, ...extra } as NativeProvisionGrant;
+    expect(nativeProvisionGrantSchema.safeParse(f.input.grant).success).toBe(false);
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow();
+    expect(f.input.fetchImpl).not.toHaveBeenCalled();
+  });
+});

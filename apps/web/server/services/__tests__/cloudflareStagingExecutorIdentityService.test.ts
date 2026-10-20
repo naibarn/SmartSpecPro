@@ -81,6 +81,17 @@ describe("Cloudflare staging executor identity", () => {
     });
   }
 
+  it("binds native provisioning separately from protected-origin provisioning", async () => {
+    const attempt = { ...binding, action: "provision" as const,
+      provisionAuthority: { projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111",
+        accountRef: "a".repeat(32), planDigest: binding.artifactSha256 } };
+    const native = { ...attempt, provisionContract: "cloudflare-staging-native-provision-v1" as const };
+    const proof = await signedProof(native as any);
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: attempt })).rejects.toThrow("executor_proof_invalid");
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: native })).resolves.toMatchObject({ registered: true });
+    await expect(createCloudflareStagingExecutorProof({ ...binding, provisionContract: "cloudflare-staging-native-provision-v1" })).rejects.toThrow("executor_attempt_binding_invalid");
+  });
+
   it("signs provision intent separately and rejects deploy downgrade and cross-plan replay", async () => {
     const provisionAuthority = { projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111",
       accountRef: "a".repeat(32), planDigest: binding.artifactSha256 };

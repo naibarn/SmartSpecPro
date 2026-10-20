@@ -1,9 +1,9 @@
 {
   "plugin_root": "/home/dev/.codex/skills/deep-implement",
-  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections",
-  "target_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
-  "state_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/implementation",
-  "git_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
+  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections",
+  "target_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
+  "state_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/implementation",
+  "git_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
   "commit_style": "simple",
   "test_command": "pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts",
   "sections": [
@@ -42,8 +42,8 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Desktop migration0409 applied and retained catalog/349 ledger rows verified. Node generation25 on ee269bd4c is DEPLOYED_VERIFIED; actual production/staging lists, analytics and saved logo200, anonymous denial and Chromium transport passed. Exact Cloudflare CI39369091257 passed. Remaining: actual target native IAM/provisioning403 and concrete allowlisted executors/binding/recovery qualification; real user-controlled Google/OTP and second-tenant acceptance; qualified macOS runtime archive publication. Keep native activation disabled and refresh existing protected configuration before expiry. Do not repeat resolved migration/branding/env setup.",
-      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
+      "next_action": "Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps.",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "ee269bd4cae05afc380e5b49d9a05bbe55bf146d",
       "merged_main_sha": "ee269bd4cae05afc380e5b49d9a05bbe55bf146d"
     }
@@ -57,13 +57,13 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 31,
-  "updated_at": "2026-10-20T04:29:13.710430+00:00",
+  "generation": 32,
+  "updated_at": "2026-10-20T06:37:55.440464+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Desktop migration0409 applied and retained catalog/349 ledger rows verified. Node generation25 on ee269bd4c is DEPLOYED_VERIFIED; actual production/staging lists, analytics and saved logo200, anonymous denial and Chromium transport passed. Exact Cloudflare CI39369091257 passed. Remaining: actual target native IAM/provisioning403 and concrete allowlisted executors/binding/recovery qualification; real user-controlled Google/OTP and second-tenant acceptance; qualified macOS runtime archive publication. Keep native activation disabled and refresh existing protected configuration before expiry. Do not repeat resolved migration/branding/env setup.",
-    "merged_main_sha": "ee269bd4cae05afc380e5b49d9a05bbe55bf146d",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
+    "next_action": "Fresh real provider audit: Admin deployment equals target token and is active but native reads403; existing protected-origin provisioning credential has account-scoped allow Write on Queues/R2/Vectorize. Extend existing bounded staging policy and canonical worker_jobs executor for isolated Queue/R2/Vectorize metadata provisioning; no IAM expansion, public DB exposure, consumers/cron activation or production data mutation. Verify exact provider receipts and retain other acceptance gaps.",
+    "merged_main_sha": "b6186b615660a642b74a2fcfb6e9eb88c31eab85",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Native Cloudflare target IAM403; real scoped provisioning, concrete allowlisted job executors and binding/recovery qualification unavailable; activation disabled",
       "Successful interactive Google code exchange/password+OTP and independent second-tenant acceptance unverified; no fabricated credentials or sessions",
