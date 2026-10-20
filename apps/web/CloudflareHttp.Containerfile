@@ -8,6 +8,10 @@ LABEL org.opencontainers.image.revision=${SOURCE_SHA}
 WORKDIR /app
 COPY --chown=node:node runtime/ /app/
 COPY --from=connector /usr/local/bin/cloudflared /usr/local/bin/cloudflared
+# cloudflared verifies the public Access HTTPS endpoint before DB TLS starts.
+# node:slim has no system trust bundle; retain the pinned connector's roots.
+COPY --from=connector /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN cloudflared --version && test -s /etc/ssl/certs/ca-certificates.crt
 COPY --chown=node:node cloudflare-http-entrypoint.mjs /app/scripts/cloudflare-http-entrypoint.mjs
 # These defaults select request-only startup; provider max_instances, finite
 # idle/hard lifetime and the private DB connector remain deployment authority.
