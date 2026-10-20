@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { workerJobs } from "../../drizzle/schema";
-import { PUBLIC_RUNNER_RELEASE_SELECT, PUBLIC_RUNNER_RELEASE_PREDICATE, publicRunnerReleaseView } from "../../../../packages/shared/src/cloudflarePublicReleases";
+import { PUBLIC_RUNNER_RELEASE_SELECT, PUBLIC_RUNNER_RELEASE_PREDICATE, publicRunnerReleaseView } from "@smartspec/shared/src/cloudflarePublicReleases";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, privateDatabaseJobSchema, privateDatabaseResourceDigest,
   type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { PrivateDatabaseError, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";

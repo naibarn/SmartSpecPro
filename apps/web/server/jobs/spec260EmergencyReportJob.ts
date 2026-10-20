@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { emergencyCaseEvents, emergencyCases, emergencyReports } from "../../drizzle/schema";
-import { emergencyIntakeEvent } from "../../../../packages/shared/src/emergencyIntakeEvent";
+import { emergencyIntakeEvent } from "@smartspec/shared/src/emergencyIntakeEvent";
 
 /** Durable, credit-free admission into human triage; AI is not an authority here. */
 export async function markEmergencyReportReadyForTriage(input: { reportId: string; tenantId: string; canonicalJobId: string }): Promise<void> {
