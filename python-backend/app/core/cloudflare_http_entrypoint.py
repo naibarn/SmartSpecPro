@@ -200,7 +200,7 @@ if __name__ == "__main__":
             supervise()
         else:
             raise ValueError(DENIED)
-    except Exception:
+    except Exception as exc:
         # Never echo credentials/DSNs from driver or child exceptions.
-        print("APPLICATION_CONNECTOR_START_FAILED", file=sys.stderr)
+        print(f"APPLICATION_CONNECTOR_START_FAILED:{type(exc).__name__}", file=sys.stderr)
         sys.exit(1)

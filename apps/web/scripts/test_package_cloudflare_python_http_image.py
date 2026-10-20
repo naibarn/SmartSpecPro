@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import subprocess
+import shutil
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -26,7 +28,11 @@ class PythonHttpImageTests(unittest.TestCase):
             path = self.source / "python-backend/app" / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("# tracked fixture\n")
-        subprocess.run(["git", "-C", str(self.source), "add", "--", "python-backend/app"], check=True)
+        for name in ("src/unified_slip_parser/router.py", "configs/issuer-detection.rules.json", "configs/transaction-type.rules.json", "configs/normalization.rules.json"):
+            path = self.source / "apps/web/skills/unified-payin-slip-parser" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}")
+        subprocess.run(["git", "-C", str(self.source), "add", "--", "python-backend/app", "apps/web/skills/unified-payin-slip-parser"], check=True)
         self.record = {"source_revision": SHA, "artifact": {"artifact_digest": "sha256:" + "c" * 64}}
         self.authority = patch("package_cloudflare_python_http_image.validate_build_result", return_value=(self.record, self.root / "artifact", self.source))
         self.packager = patch("package_cloudflare_python_http_image.packager_source_sha", return_value="d" * 40)
@@ -53,8 +59,9 @@ class PythonHttpImageTests(unittest.TestCase):
         self.assertEqual(result["sourceSha"], SHA)
         self.assertFalse(result["publish"])
         self.assertEqual(result["providerMutations"], 0)
-        self.assertFalse((self.root / "image/app/.env").exists())
-        self.assertTrue((self.root / "image/app/core/cloudflare_http_entrypoint.py").is_file())
+        self.assertFalse((self.root / "image/runtime/python-backend/app/.env").exists())
+        self.assertTrue((self.root / "image/runtime/python-backend/app/core/cloudflare_http_entrypoint.py").is_file())
+        self.assertTrue((self.root / "image/runtime/apps/web/skills/unified-payin-slip-parser/configs/issuer-detection.rules.json").is_file())
         self.assertEqual(json.loads((self.root / "image/image-input.json").read_text())["files"], result["files"])
         with self.assertRaisesRegex(ReleaseError, "OUTPUT_ALREADY_EXISTS"):
             prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)
@@ -71,6 +78,21 @@ class PythonHttpImageTests(unittest.TestCase):
         secret.symlink_to(self.root / "outside")
         with self.assertRaisesRegex(ReleaseError, "EXTERNAL_LINK_DENIED"):
             prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)
+
+    def test_packaged_payment_parser_loads_its_actual_rule_files(self):
+        skill = "apps/web/skills/unified-payin-slip-parser"
+        for directory in ("src", "configs"):
+            shutil.copytree(ROOT / skill / directory, self.source / skill / directory, dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        subprocess.run(["git", "-C", str(self.source), "add", "--", skill], check=True)
+        prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)
+        result = subprocess.run([sys.executable, "-c", (
+            "import sys; sys.path.insert(0, sys.argv[1]); "
+            "from unified_slip_parser.router import parse_slip; "
+            "assert isinstance(parse_slip({'source': {'raw_ocr_text': 'Sample transfer 100.00 THB'}}), dict); "
+            "print('PACKAGED_PAYMENT_RULES_LOADED')"
+        ), str(self.root / "image/runtime" / skill / "src")], capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.strip(), "PACKAGED_PAYMENT_RULES_LOADED")
 
 
 if __name__ == "__main__":

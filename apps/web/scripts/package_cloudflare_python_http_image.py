@@ -21,6 +21,11 @@ OWNED = [
     "python-backend/requirements-cloudflare-http.lock",
     "python-backend/requirements-cloudflare-http.in",
 ]
+SOURCE_PATHS = [
+    "python-backend/app",
+    "apps/web/skills/unified-payin-slip-parser/src",
+    "apps/web/skills/unified-payin-slip-parser/configs",
+]
 
 
 def validate_cpu_lock(lock: str) -> None:
@@ -49,7 +54,7 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
     lock = (repository / "python-backend/requirements-cloudflare-http.lock").read_text()
     validate_cpu_lock(lock)
     paths = subprocess.run(
-        ["git", "-c", f"safe.directory={workspace}", "-C", str(workspace), "ls-files", "-z", "--", "python-backend/app"],
+        ["git", "-c", f"safe.directory={workspace}", "-C", str(workspace), "ls-files", "-z", "--", *SOURCE_PATHS],
         capture_output=True, text=True, check=True,
     ).stdout.split("\0")
     if not all((workspace / name).is_file() for name in (
@@ -62,16 +67,20 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
     stage = Path(tempfile.mkdtemp(prefix=".python-http-image-", dir=output.parent))
     try:
         for name in filter(None, paths):
-            relative = Path(name).relative_to("python-backend")
+            relative = Path(name)
             source = workspace / name
             if source.is_symlink() or not source.is_file() or not source.resolve().is_relative_to(workspace):
                 raise ReleaseError("HTTP_IMAGE_EXTERNAL_LINK_DENIED")
             if source.name == ".env" or source.name.startswith(".env.") or "__pycache__" in source.parts:
                 raise ReleaseError("HTTP_IMAGE_ENV_FILE_DENIED")
-            target = stage / relative
+            target = stage / "runtime" / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
-        shutil.copyfile(repository / "python-backend/app/core/cloudflare_http_entrypoint.py", stage / "app/core/cloudflare_http_entrypoint.py")
+        for name in ("src/unified_slip_parser/router.py", "configs/issuer-detection.rules.json", "configs/transaction-type.rules.json", "configs/normalization.rules.json"):
+            if not (stage / "runtime/apps/web/skills/unified-payin-slip-parser" / name).is_file():
+                raise ReleaseError("PYTHON_HTTP_SLIP_PARSER_REQUIRED")
+        shutil.copyfile(repository / "python-backend/app/core/cloudflare_http_entrypoint.py", stage / "runtime/python-backend/app/core/cloudflare_http_entrypoint.py")
+        shutil.copyfile(repository / "python-backend/requirements-cloudflare-http.in", stage / "runtime/python-backend/requirements.txt")
         shutil.copyfile(repository / "python-backend/CloudflareHttp.Containerfile", stage / "Containerfile")
         (stage / "requirements-cloudflare-http.lock").write_text(lock)
         files = {str(path.relative_to(stage)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(stage.rglob("*")) if path.is_file()}
