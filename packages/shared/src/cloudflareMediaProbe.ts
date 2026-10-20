@@ -1,4 +1,5 @@
 /** Exact existing media producer wrapper; never a generic Python/task executor. */
+export const CLOUDFLARE_CONTAINER_ON_DEMAND = "on-demand" as const;
 export const CLOUDFLARE_MEDIA_PROBE = "container-media-probe-v1" as const;
 export const MEDIA_PROBE_TASK = "app.tasks.media_job_worker.execute_media_job";
 export const MEDIA_PROBE_MAX_BYTES = 3 * 1024 * 1024;

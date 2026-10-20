@@ -1,13 +1,14 @@
 import type { CanonicalWorkerExecution, R2ObjectBinding } from "./contracts";
-import { CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, validateMediaProbeSource, type MediaProbeSource } from "../../../packages/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, validateMediaProbeSource, type MediaProbeSource } from "../../../packages/shared/src/cloudflareMediaProbe";
 import { prepareCanonicalMediaProbe } from "./canonicalControlPlaneProxy";
-import { MAX_CONTAINER_PROBE_INPUT_BYTES, MAX_CONTAINER_PROBE_RESULT_BYTES, probeSha256, validateContainerProbeResult } from "./containerMediaProbeContract";
+import { MAX_CONTAINER_PROBE_INPUT_BYTES, MAX_CONTAINER_PROBE_RESULT_BYTES, containerProbeScope, probeSha256, validateContainerProbeResult } from "./containerMediaProbeContract";
 import { isPinnedRunnerImage } from "./nativeRunnerContainer";
 import { runnerContainerInstanceId, type RunnerContainerAssignment } from "./runnerContainer";
 import { validateArtifactManifest } from "./artifacts";
 
-async function readBoundedObject(bucket: R2ObjectBinding, key: string, max: number) {
-  const object = await bucket.get!(key);
+type ProbeObject = NonNullable<Awaited<ReturnType<NonNullable<R2ObjectBinding["get"]>>>>;
+async function readBoundedObject(bucket: R2ObjectBinding, key: string, max: number, existing?: ProbeObject) {
+  const object = existing ?? await bucket.get!(key);
   if (!object || !object.body || !Number.isSafeInteger(object.size) || object.size < 1 || object.size > max) {
     await object?.body?.cancel(); throw new Error("CLOUDFLARE_MEDIA_OBJECT_INVALID");
   }
@@ -29,25 +30,37 @@ async function readBoundedObject(bucket: R2ObjectBinding, key: string, max: numb
 function assertDeadline(assignment: RunnerContainerAssignment) {
   if (!(Date.parse(assignment.expiresAt!) > Date.now())) throw new Error("CLOUDFLARE_MEDIA_DEADLINE_EXCEEDED");
 }
-async function persistResult(bucket: R2ObjectBinding, assignment: RunnerContainerAssignment, bytes: Uint8Array, environment: string) {
+async function cachedResult(bucket: R2ObjectBinding, objectKey: string, assignment: RunnerContainerAssignment, cacheBinding: string) {
+  const object = await bucket.get!(objectKey);
+  if (!object) return null;
+  const stored = await readBoundedObject(bucket, objectKey, MAX_CONTAINER_PROBE_RESULT_BYTES, object);
+  const metadata = stored.object.customMetadata;
+  if (!metadata || metadata.tenantId !== assignment.tenantId || metadata.jobId !== assignment.envelope.job_id ||
+      metadata.cacheBinding !== cacheBinding || !/^[a-f0-9]{64}$/.test(metadata.checksumSha256 ?? "") ||
+      await probeSha256(stored.bytes) !== metadata.checksumSha256 || stored.bytes.length > 20 * 1024) {
+    throw new Error("CLOUDFLARE_MEDIA_ARTIFACT_INTEGRITY_FAILED");
+  }
+  const result = JSON.parse(new TextDecoder().decode(stored.bytes));
+  validateContainerProbeResult({ contractVersion: CLOUDFLARE_MEDIA_PROBE, scope: containerProbeScope(assignment),
+    inputChecksumSha256: cacheBinding, result }, assignment, cacheBinding);
+  assertDeadline(assignment);
+  return { resultRef: objectKey, output: result };
+}
+async function persistResult(bucket: R2ObjectBinding, assignment: RunnerContainerAssignment, bytes: Uint8Array, objectKey: string, cacheBinding: string) {
   const checksumSha256 = await probeSha256(bytes);
-  const objectKey = `${environment}/${assignment.tenantId}/${assignment.envelope.job_id}/probe/${assignment.attemptId}/${checksumSha256}.json`;
   const manifest = validateArtifactManifest({ tenantId: assignment.tenantId, jobId: assignment.envelope.job_id, objectKey,
     sizeBytes: bytes.byteLength, checksumSha256, contentType: "application/json", immutable: true });
   assertDeadline(assignment);
-  // Atomic create-only write. Never overwrite a concurrent publication, and
-  // never equate self-reported metadata with actual persisted body integrity.
+  // Atomic create-only result doubles as a verified pure-operation cache.
+  // A retry can reuse it without starting more paid compute.
   await bucket.put(objectKey, bytes, { onlyIf: { etagDoesNotMatch: "*" }, sha256: checksumSha256,
     httpMetadata: { contentType: manifest.contentType }, customMetadata: { tenantId: manifest.tenantId,
-      jobId: manifest.jobId, attemptId: assignment.attemptId, checksumSha256 } });
-  const stored = await readBoundedObject(bucket, objectKey, MAX_CONTAINER_PROBE_RESULT_BYTES);
-  if (stored.bytes.byteLength !== manifest.sizeBytes || await probeSha256(stored.bytes) !== checksumSha256 ||
-      stored.object.customMetadata?.tenantId !== manifest.tenantId || stored.object.customMetadata?.jobId !== manifest.jobId ||
-      stored.object.customMetadata?.attemptId !== assignment.attemptId || stored.object.customMetadata?.checksumSha256 !== checksumSha256) {
+      jobId: manifest.jobId, cacheBinding, checksumSha256 } });
+  const stored = await cachedResult(bucket, objectKey, assignment, cacheBinding);
+  if (!stored || await probeSha256(new TextEncoder().encode(JSON.stringify(stored.output))) !== checksumSha256) {
     throw new Error("CLOUDFLARE_MEDIA_ARTIFACT_INTEGRITY_FAILED");
   }
-  assertDeadline(assignment);
-  return objectKey;
+  return stored;
 }
 
 /** Canonical claim precedes this function; canonical settlement follows it.
@@ -55,7 +68,7 @@ async function persistResult(bucket: R2ObjectBinding, assignment: RunnerContaine
 export const executeCanonicalMediaProbe: CanonicalWorkerExecution = async delivery => {
   const { env, job, envelope, claim } = delivery, candidate = parseMediaProbeCandidate(job);
   const bucket = env.MEDIA_BUCKET, binding = env.JOB_CONTAINERS;
-  if (env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_MEDIA_PROBE !== CLOUDFLARE_MEDIA_PROBE ||
+  if (env.CLOUDFLARE_CONTAINER_POLICY !== CLOUDFLARE_CONTAINER_ON_DEMAND || env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_MEDIA_PROBE !== CLOUDFLARE_MEDIA_PROBE ||
       !["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") || job.tenantId !== env.CLOUDFLARE_WORKFLOW_TENANT_ID ||
       !(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) || job.contractVersion !== "feature-186-v1" || !candidate ||
       !["dev", "staging", "prod"].includes(env.CLOUDFLARE_ENVIRONMENT ?? "") || !isPinnedRunnerImage(env.CLOUDFLARE_RUNNER_IMAGE_REF) ||
@@ -73,6 +86,18 @@ export const executeCanonicalMediaProbe: CanonicalWorkerExecution = async delive
   const assignment: RunnerContainerAssignment = { envelope: { ...envelope, routing_metadata: { ...envelope.routing_metadata, tenantId: job.tenantId } },
     tenantId: job.tenantId, attemptId: claim.attemptId, leaseId, fencingVersion: claim.fencingVersion, expiresAt: new Date(deadline).toISOString(),
     workspaceRef: `workspace:${job.jobId}`, artifactRefs: [], resourceProfile: "small" };
+  const cacheBinding = await probeSha256(new TextEncoder().encode(JSON.stringify({ contract: CLOUDFLARE_MEDIA_PROBE,
+    image: env.CLOUDFLARE_RUNNER_IMAGE_REF, assetId: source.assetId, userId: source.userId,
+    objectKey: source.objectKey, checksum: source.checksumSha256, size: source.sizeBytes })));
+  const objectKey = `${env.CLOUDFLARE_ENVIRONMENT}/${job.tenantId}/${job.jobId}/probe/${cacheBinding}.json`;
+  const cached = await cachedResult(bucket, objectKey, assignment, cacheBinding);
+  if (cached) {
+    // Reconcile a previous uncertain cleanup without booting an instance.
+    const previous = await binding.find?.(runnerContainerInstanceId(assignment));
+    if (previous && !["stopped", "terminated"].includes(previous.status ?? "")) await binding.stop(runnerContainerInstanceId(assignment));
+    return cached;
+  }
+  if (deadline - Date.now() < 5_000) throw new Error("CLOUDFLARE_MEDIA_INSUFFICIENT_COMPUTE_WINDOW");
   // 3MiB input bound keeps this conversion within Worker memory limits.
   let binary = "";
   for (let offset = 0; offset < input.bytes.length; offset += 8192) binary += String.fromCharCode(...input.bytes.subarray(offset, offset + 8192));
@@ -85,8 +110,7 @@ export const executeCanonicalMediaProbe: CanonicalWorkerExecution = async delive
     const result = validateContainerProbeResult(response, assignment, source.checksumSha256).result;
     const bytes = new TextEncoder().encode(JSON.stringify(result));
     if (bytes.byteLength > 20 * 1024) throw new Error("CLOUDFLARE_MEDIA_CANONICAL_RESULT_TOO_LARGE");
-    const resultRef = await persistResult(bucket, assignment, bytes, env.CLOUDFLARE_ENVIRONMENT!);
-    return { resultRef, output: result };
+    return await persistResult(bucket, assignment, bytes, objectKey, cacheBinding);
   } finally {
     if (started) await binding.stop(runnerContainerInstanceId(assignment));
   }

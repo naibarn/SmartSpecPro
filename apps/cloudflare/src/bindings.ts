@@ -1,4 +1,4 @@
-import { isCloudflareMediaProbeImage } from "../../../packages/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, isCloudflareMediaProbeImage } from "../../../packages/shared/src/cloudflareMediaProbe";
 import { REQUIRED_BINDING_NAMES, type CloudflareEnvironment, type RequiredBindingName } from "./contracts";
 
 export type BindingReadiness = {
@@ -55,7 +55,7 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
     missing,
     transport,
     selectedMissing,
-    ready: (!env.CLOUDFLARE_MEDIA_PROBE || env.CLOUDFLARE_MEDIA_PROBE === "container-media-probe-v1") && activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
+    ready: (!env.CLOUDFLARE_MEDIA_PROBE || (env.CLOUDFLARE_MEDIA_PROBE === "container-media-probe-v1" && env.CLOUDFLARE_CONTAINER_POLICY === CLOUDFLARE_CONTAINER_ON_DEMAND)) && activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
   };
 }
 

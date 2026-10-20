@@ -119,6 +119,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_RUNNER_IMAGE_REF?: string;
   /** Independently admitted fixed operation; never enables arbitrary commands. */
   CLOUDFLARE_MEDIA_PROBE?: string;
+  /** Required cost policy: absent never admits Container compute. */
+  CLOUDFLARE_CONTAINER_POLICY?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;

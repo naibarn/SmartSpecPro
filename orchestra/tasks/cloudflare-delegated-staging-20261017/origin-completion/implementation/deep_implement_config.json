@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired.",
+      "next_action": "User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461",
-      "merged_main_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461"
+      "checkpoint_sha": "ca7e829d400b5e6aff93356c6175273b7ecf7d1e",
+      "merged_main_sha": "ca7e829d400b5e6aff93356c6175273b7ecf7d1e"
     }
   },
   "pre_commit": {
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 55,
-  "updated_at": "2026-10-20T16:58:39.678272+00:00",
+  "generation": 56,
+  "updated_at": "2026-10-20T17:03:03.332877+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired.",
+    "next_action": "User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired.",
     "merged_main_sha": "7ddf88bb95b536e2660b8cacbc92bbac82837461",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

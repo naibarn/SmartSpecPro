@@ -50,13 +50,16 @@ describe("Feature 186 runtime adapter policy", () => {
 
 
   it("selects only the existing exact media probe wrapper under independent tenant/expiry opt-in", () => {
-    vi.stubEnv("FEATURE_186_CLOUDFLARE_MEDIA_PROBE", "true"); vi.stubEnv("CLOUDFLARE_MEDIA_PROBE", "container-media-probe-v1");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "on-demand"); vi.stubEnv("FEATURE_186_CLOUDFLARE_MEDIA_PROBE", "true"); vi.stubEnv("CLOUDFLARE_MEDIA_PROBE", "container-media-probe-v1");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a"); vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "https://staging.example.workers.dev"); vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "test-bounded-runtime");
     const input = { taskName: "app.tasks.media_job_worker.execute_media_job", taskImportPath: "app.tasks.media_job_worker.execute_media_job",
       args: [JSON.stringify({ jobId: "external-1", jobType: "probe", inputs: { assets: [{ uri: "r2://uploads/7/input.wav" }] } }), "7", "external-1"], kwargs: {}, queue: null, legacyUserId: "7" };
     const job = { runtimeType: "python_job_worker", jobType: "python.legacy_task", executionClass: "long", tenantId: "tenant-a", inputJson: input };
     expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", ""); expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "always-on"); expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "on-demand");
     expect(createFeature186RuntimeAdapter({ ...job, tenantId: "tenant-b" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, inputJson: { ...input, taskImportPath: "app.tasks.unapproved" } }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, inputJson: { ...input, kwargs: { command: "curl" } } }).name).toBe("postgres-pull");

@@ -1,4 +1,4 @@
-import { isCloudflareMediaProbeImage } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, isCloudflareMediaProbeImage } from "@smartspec/shared/src/cloudflareMediaProbe";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
@@ -26,7 +26,7 @@ export const cloudflareOriginSettingsSchema = z.object({
   workflowDatabase: z.literal("hyperdrive-intake").optional(),
   jobTransport: z.enum(["workflows", "queues"]).optional(),
   retentionSchedule: z.literal("evidence-retention").optional(),
-  mediaProbe: z.object({ capability: z.literal("container-media-probe-v1"),
+  mediaProbe: z.object({ containerPolicy: z.literal(CLOUDFLARE_CONTAINER_ON_DEMAND), capability: z.literal("container-media-probe-v1"),
     imageRef: z.string().refine(value => isCloudflareMediaProbeImage(value)) }).strict().optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
@@ -66,6 +66,7 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
       { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
       { name: "CLOUDFLARE_WORKFLOW_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
       ...(value.descriptor.mediaProbe ? [
+        { name: "CLOUDFLARE_CONTAINER_POLICY", type: "plain_text", text: value.descriptor.mediaProbe.containerPolicy },
         { name: "CLOUDFLARE_MEDIA_PROBE", type: "plain_text", text: value.descriptor.mediaProbe.capability },
         { name: "CLOUDFLARE_RUNNER_IMAGE_REF", type: "plain_text", text: value.descriptor.mediaProbe.imageRef },
       ] : []),
@@ -88,7 +89,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
-  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
+  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

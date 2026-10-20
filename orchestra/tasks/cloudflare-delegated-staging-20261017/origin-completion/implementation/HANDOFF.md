@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `55`
-- Updated (UTC): `2026-10-20T16:58:39.678272+00:00`
+- State generation: `56`
+- Updated (UTC): `2026-10-20T17:03:03.332877+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `7ddf88bb95b536e2660b8cacbc92bbac82837461`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired.
+- Next action: User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 7ddf88bb95b536e2660b8cacbc92bbac82837461 | 7ddf88bb95b536e2660b8cacbc92bbac82837461 | Integrated7ddf88bb9 exact CI39458168554 SUCCESS. Actual local workerd/R2 plus Rust/FFprobe HTTP proof passes; source rejects non-Cloudflare/foreign-account image refs. Crucial credential correction: existing native-provision profile GET Containers/R2/Hyperdrive/Vectorize/Workflows200 and saved self-policy Workers Containers Write; deployment-token403 alone does not block native provisioning. No credential substitution/IAM mutation. Build digest-pinned official Rust/Debian recipe with exact signed-APT FFmpeg version, then implement bounded native image/DO provisioning through existing canonical grant rather than bypass live authority. Serving remains e15; old Workflow window expired. |
+| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | ca7e829d400b5e6aff93356c6175273b7ecf7d1e | ca7e829d400b5e6aff93356c6175273b7ecf7d1e | User explicitly requires Containers only when necessary. On-demand compute is denied by default at producer/private authority/Worker/DO start, immutable config requires on-demand (rejects always-on), and verified R2 cache avoids recompute across retries. Preserve disabled live activation/no prewarm/production cutover. Finish qualified local image build and inspect exact existing native grant scope before any external image/resource action; do not infer unlimited budget from Paid or credential privileges. Source ca7 CI pending,7dd CI success, serving e15 and old Workflow window expired. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

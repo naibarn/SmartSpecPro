@@ -33,17 +33,19 @@ describe("exact bounded Workflow deployment configuration", () => {
     const { value, target } = fixture(), imageRef = `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner/image@sha256:${"e".repeat(64)}`;
     const original = cloudflareWorkflowVersionBindings(value);
     expect(() => assertCloudflareWorkflowVersionBindings([...original, { name: "CLOUDFLARE_MEDIA_PROBE", type: "plain_text", text: "container-media-probe-v1" }], value)).toThrow("MISMATCH");
-    value.descriptor.mediaProbe = { capability: "container-media-probe-v1", imageRef };
+    value.descriptor.mediaProbe = { containerPolicy: "on-demand", capability: "container-media-probe-v1", imageRef };
     expect(() => validateCloudflareOriginVersionBindings(value, target)).toThrow();
     value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor); value.configurationRef = `cf-origin:${value.configurationDigest}`; target.runtimePolicy = value.configurationRef;
     const parsed = validateCloudflareOriginVersionBindings(value, target), bindings = cloudflareWorkflowVersionBindings(parsed);
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_CONTAINER_POLICY", type: "plain_text", text: "on-demand" });
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { ...value.descriptor.mediaProbe, containerPolicy: "always-on" } })).toThrow();
     expect(bindings).toContainEqual({ name: "CLOUDFLARE_RUNNER_IMAGE_REF", type: "plain_text", text: imageRef });
     expect(() => assertCloudflareWorkflowVersionBindings(bindings, parsed)).not.toThrow();
-    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "arbitrary", imageRef } })).toThrow();
-    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "container-media-probe-v1", imageRef: imageRef.replace("registry.cloudflare.com", "docker.io") } })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { containerPolicy: "on-demand", capability: "arbitrary", imageRef } })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { containerPolicy: "on-demand", capability: "container-media-probe-v1", imageRef: imageRef.replace("registry.cloudflare.com", "docker.io") } })).toThrow();
     const foreign = { ...value, descriptor: { ...value.descriptor, mediaProbe: { ...value.descriptor.mediaProbe, imageRef: imageRef.replace("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") } } };
     expect(() => validateCloudflareOriginVersionBindings(foreign, target)).toThrow();
-    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { capability: "container-media-probe-v1", imageRef: "latest" } })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, mediaProbe: { containerPolicy: "on-demand", capability: "container-media-probe-v1", imageRef: "latest" } })).toThrow();
   });
 
   it("pins direct SQL opt-in in the immutable digest and rejects unapproved extra activation", () => {

@@ -25,7 +25,7 @@ function fixture() {
   const envelope = { job_id: "job-1", contract_version: "feature-186-v1", business_attempt: 1, attempt_id: null, dispatch_id: "dispatch-1", dedupe_key: "job:job-1:attempt:1", routing_metadata: {} };
   const probeMedia = vi.fn(async (assignment, input) => ({ contractVersion: "container-media-probe-v1", scope: containerProbeScope(assignment), inputChecksumSha256: input.checksumSha256,
     result: { artifacts: [], derived: { format: { format_name: "wav", duration: "1.000000" }, streams: [{ codec_name: "pcm_s16le" }], durationMs: 1000 } } }));
-  const env = { CLOUDFLARE_MEDIA_PROBE: "container-media-probe-v1", CLOUDFLARE_ACTIVATION: "enabled", CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_JOB_TRANSPORT: "workflows",
+  const env = { CLOUDFLARE_CONTAINER_POLICY: "on-demand", CLOUDFLARE_MEDIA_PROBE: "container-media-probe-v1", CLOUDFLARE_ACTIVATION: "enabled", CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_JOB_TRANSPORT: "workflows",
     CLOUDFLARE_WORKFLOW_TENANT_ID: "tenant-a", CLOUDFLARE_WORKFLOW_EXPIRES_AT: expiresAt, CLOUDFLARE_RUNNER_IMAGE_REF: `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner/image@sha256:${"a".repeat(64)}`,
     MEDIA_BUCKET: { get, put, head: vi.fn(), delete: vi.fn() }, JOB_CONTAINERS: { start: vi.fn(), probeMedia, stop: vi.fn() } };
   const delivery = { job, envelope, claim: { attemptId: "attempt-1", leaseToken: "private-canonical-lease", fencingVersion: 1, expiresAt }, env } as Parameters<CanonicalWorkerExecution>[0];
@@ -41,7 +41,7 @@ describe("canonical media probe composition", () => {
       claim: vi.fn().mockResolvedValue(f.delivery.claim), complete, retry };
     const handler = createCanonicalControlPlaneHandler({ repository, execute: executeCanonicalMediaProbe });
     expect(await handler(f.delivery.envelope, f.env as never)).toBe("completed");
-    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ result: { resultRef: expect.stringMatching(/^staging\/tenant-a\/job-1\/probe\/attempt-1\/[a-f0-9]{64}\.json$/),
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ result: { resultRef: expect.stringMatching(/^staging\/tenant-a\/job-1\/probe\/[a-f0-9]{64}\.json$/),
       output: { artifacts: [], derived: { format: { format_name: "wav", duration: "1.000000" }, streams: [{ codec_name: "pcm_s16le" }], durationMs: 1000 } } } }));
     expect(f.env.JOB_CONTAINERS.stop.mock.invocationCallOrder[0]).toBeLessThan(complete.mock.invocationCallOrder[0]);
     const serialized = JSON.stringify(f.env.JOB_CONTAINERS.start.mock.calls);
@@ -50,8 +50,9 @@ describe("canonical media probe composition", () => {
     expect(retry).not.toHaveBeenCalled();
     // Same attempt/repeated execution cannot overwrite the immutable artifact.
     await executeCanonicalMediaProbe(f.delivery); expect(f.objects.size).toBe(2);
+    expect(f.env.JOB_CONTAINERS.start).toHaveBeenCalledOnce(); expect(f.probeMedia).toHaveBeenCalledOnce();
   });
-  it.each(["foreign-tenant", "checksum", "oversize", "expiry", "unsupported-task", "disabled"])("rejects %s before starting a container", async scenario => {
+  it.each(["foreign-tenant", "checksum", "oversize", "expiry", "unsupported-task", "disabled", "missing-cost-policy", "short-window"])("rejects %s before starting a container", async scenario => {
     const f = fixture();
     if (scenario === "foreign-tenant") f.delivery.job.tenantId = "tenant-b";
     if (scenario === "checksum") f.objects.set("uploads/7/input.wav", { bytes: new TextEncoder().encode("wrong") });
@@ -59,6 +60,8 @@ describe("canonical media probe composition", () => {
     if (scenario === "expiry") f.delivery.claim.expiresAt = "2000-01-01T00:00:00Z";
     if (scenario === "unsupported-task") f.delivery.job.input.taskName = "app.tasks.other";
     if (scenario === "disabled") delete f.delivery.env.CLOUDFLARE_MEDIA_PROBE;
+    if (scenario === "missing-cost-policy") delete f.delivery.env.CLOUDFLARE_CONTAINER_POLICY;
+    if (scenario === "short-window") f.delivery.claim.expiresAt = new Date(Date.now() + 1000).toISOString();
     await expect(executeCanonicalMediaProbe(f.delivery)).rejects.toThrow();
     expect(f.env.JOB_CONTAINERS.start).not.toHaveBeenCalled(); expect(f.put).not.toHaveBeenCalled();
   });
@@ -72,6 +75,26 @@ describe("canonical media probe composition", () => {
     await expect(executeCanonicalMediaProbe(f.delivery)).rejects.toThrow();
     expect(f.env.JOB_CONTAINERS.stop).toHaveBeenCalledOnce();
     expect(f.env.MEDIA_BUCKET.delete).not.toHaveBeenCalled();
+  });
+  it("reuses verified output on a new canonical retry without boot or CPU work", async () => {
+    const f = fixture(), first = await executeCanonicalMediaProbe(f.delivery);
+    f.delivery.claim.attemptId = "attempt-2"; f.delivery.claim.fencingVersion = 2;
+    expect(await executeCanonicalMediaProbe(f.delivery)).toEqual(first);
+    expect(f.env.JOB_CONTAINERS.start).toHaveBeenCalledOnce(); expect(f.probeMedia).toHaveBeenCalledOnce();
+    expect(f.put).toHaveBeenCalledOnce();
+  });
+  it("does not conceal corrupt cached artifacts by spending on fresh compute", async () => {
+    const f = fixture(); await executeCanonicalMediaProbe(f.delivery);
+    const [key, object] = [...f.objects.entries()].find(([key]) => key.startsWith("staging/"))!;
+    f.objects.set(key, { ...object, bytes: new TextEncoder().encode("corrupt cached output") });
+    await expect(executeCanonicalMediaProbe(f.delivery)).rejects.toThrow("INTEGRITY");
+    expect(f.env.JOB_CONTAINERS.start).toHaveBeenCalledOnce(); expect(f.probeMedia).toHaveBeenCalledOnce();
+  });
+  it("does not reuse another input or image's cache", async () => {
+    const f = fixture(); await executeCanonicalMediaProbe(f.delivery);
+    f.delivery.env.CLOUDFLARE_RUNNER_IMAGE_REF = f.delivery.env.CLOUDFLARE_RUNNER_IMAGE_REF!.replace(/a{64}$/, "b".repeat(64));
+    await executeCanonicalMediaProbe(f.delivery);
+    expect(f.env.JOB_CONTAINERS.start).toHaveBeenCalledTimes(2); expect(f.objects.size).toBe(3);
   });
   it("includes real input/CPU capabilities in readiness only when explicitly selected", () => {
     const f = fixture(); const env = { ...f.env, HYPERDRIVE: { connectionString: "opaque" }, JOB_WORKFLOW: { get: vi.fn(), create: vi.fn() } };

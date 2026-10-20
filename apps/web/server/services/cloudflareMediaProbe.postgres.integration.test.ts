@@ -14,7 +14,7 @@ suite("owned media source preparation in disposable PostgreSQL", () => {
     sql = postgres(disposable.databaseUrl, { max: 2 }); state.db = drizzle(sql);
     await sql.unsafe(`CREATE TABLE media_assets (id bigserial PRIMARY KEY, "tenantId" varchar(36), "userId" integer,
       status varchar(32), "storageKey" text, "originalUrl" text, "checksumSha256" varchar(64), "fileSize" bigint, "mimeType" varchar(100))`);
-    vi.stubEnv("CLOUDFLARE_MEDIA_PROBE", "container-media-probe-v1"); vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "on-demand"); vi.stubEnv("CLOUDFLARE_MEDIA_PROBE", "container-media-probe-v1"); vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 300_000).toISOString());
   }, 30_000);
   afterAll(async () => { vi.unstubAllEnvs(); if (sql) await sql.end({ timeout: 5 }); if (disposable) await disposable.close(); }, 20_000);

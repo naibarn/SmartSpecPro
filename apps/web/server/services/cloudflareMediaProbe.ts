@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { mediaAssets } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, validateMediaProbeSource } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, validateMediaProbeSource } from "@smartspec/shared/src/cloudflareMediaProbe";
 import type { LeaseContext } from "./jobControlPlaneTypes";
 
 type MediaJob = {
@@ -18,7 +18,7 @@ export async function prepareCloudflareMediaProbe(job: MediaJob, lease: LeaseCon
   const hardTimeout = typeof timeout === "number" && Number.isFinite(timeout) && timeout > 0 ? timeout : job.timeoutSeconds * 1000;
   const expiresAtMs = Math.min(now + 50_000, job.leaseExpiresAt?.getTime() ?? 0,
     (job.startedAt?.getTime() ?? 0) + hardTimeout, Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? ""));
-  if (process.env.CLOUDFLARE_MEDIA_PROBE !== CLOUDFLARE_MEDIA_PROBE || !candidate || job.runtimeType !== "python_job_worker" ||
+  if (process.env.CLOUDFLARE_CONTAINER_POLICY !== CLOUDFLARE_CONTAINER_ON_DEMAND || process.env.CLOUDFLARE_MEDIA_PROBE !== CLOUDFLARE_MEDIA_PROBE || !candidate || job.runtimeType !== "python_job_worker" ||
       job.contractVersion !== "feature-186-v1" || job.status !== "running" || candidate.userId !== job.requestedByUserId ||
       job.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() || !(expiresAtMs > now) || lease.jobId !== job.jobId) {
     throw Object.assign(new Error("CLOUDFLARE_MEDIA_PROBE_NOT_ADMITTED"), { code: "JOB_STATE_CONFLICT" });
