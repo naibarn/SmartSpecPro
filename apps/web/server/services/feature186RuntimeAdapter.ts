@@ -19,7 +19,8 @@ export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobT
   // Node/Python jobs retain their existing transport and rollback behavior.
   if (process.env.FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE === "true" && job?.runtimeType === "node_job_worker" &&
       job.jobType === "emergency.report.intake" && job.executionClass === "short" && job.tenantId &&
-      job.tenantId === process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim()) {
+      job.tenantId === process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() &&
+      Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) {
     const url = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim();
     const token = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim();
     if (!url || !token) throw new Error("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");

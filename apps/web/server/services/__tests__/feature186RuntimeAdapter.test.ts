@@ -17,6 +17,7 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "https://staging.example.workers.dev");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "test-workflow-runtime-token");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
     const job = { runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short", tenantId: "tenant-a" };
     expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
     expect(createFeature186RuntimeAdapter().name).toBe("postgres-pull");
@@ -24,6 +25,10 @@ describe("Feature 186 runtime adapter policy", () => {
     expect(createFeature186RuntimeAdapter({ ...job, runtimeType: "python_job_worker" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, executionClass: "long" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, tenantId: "tenant-b" }).name).toBe("postgres-pull");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", "2000-01-01T00:00:00Z");
+    expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", "");
+    expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
     vi.stubEnv("FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE", "false");
     expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
   });
@@ -33,6 +38,7 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
     expect(() => createFeature186RuntimeAdapter({ runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short", tenantId: "tenant-a" }))
       .toThrow("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");
   });
