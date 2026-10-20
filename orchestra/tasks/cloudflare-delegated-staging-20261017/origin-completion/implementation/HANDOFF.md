@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `36`
-- Updated (UTC): `2026-10-20T07:43:02.261026+00:00`
+- State generation: `37`
+- Updated (UTC): `2026-10-20T07:47:29.846651+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Actual native rollback job2e355435 and restore e474d635 succeeded; current deployment c395bf4e/version f4c429ab source33f9d6e58/config16d3c5b0 has three verified native bindings and activation disabled. Both short-lived policies revoked. User now requests pausing old large macOS rendering runtime packs; audit completed, implement reversible distribution/build exclusion without deleting archives or Mac app/Hermes. Keep four absent bindings, VPC403/TLSoff and real handler/image qualification open.
+- Next action: Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | Linux generation26 and current Worker c395bf4e source33f9d6e58 verified; native configuration rollback/restore completed and original rollback artifact retained. |
-| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | Actual native rollback job2e355435 and restore e474d635 succeeded; current deployment c395bf4e/version f4c429ab source33f9d6e58/config16d3c5b0 has three verified native bindings and activation disabled. Both short-lived policies revoked. User now requests pausing old large macOS rendering runtime packs; audit completed, implement reversible distribution/build exclusion without deleting archives or Mac app/Hermes. Keep four absent bindings, VPC403/TLSoff and real handler/image qualification open. |
+| section-05-acceptance | in_progress | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | 33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7 | Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

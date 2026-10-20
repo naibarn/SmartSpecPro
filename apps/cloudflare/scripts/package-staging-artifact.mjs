@@ -4,6 +4,8 @@ import { readdir, readFile, realpath, writeFile, mkdir, copyFile, lstat, stat } 
 import { join, relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 
+import { isRuntimePackFilePaused } from "../../web/shared/runtimePackAvailability.mjs";
+
 const repoRoot = resolve(process.cwd());
 const outRoot = resolve(repoRoot, "apps/cloudflare/.staging-artifact");
 const wranglerOut = join(outRoot, "wrangler");
@@ -120,6 +122,7 @@ const assets = [];
 for (const sourceFile of publicFiles) {
   const name = sourceFile.name.split(sep).join("/");
   if (!safeRelative(name)) throw new Error("STAGING_ARTIFACT_ASSET_PATH_INVALID");
+  if (name.startsWith("releases/runtime/") && isRuntimePackFilePaused(name)) continue;
   const bytes = await readFile(sourceFile.path);
   // Empty public placeholders such as .gitkeep are not deployable HTTP assets;
   // omitting them keeps the content-addressed publisher's non-empty blob rule.

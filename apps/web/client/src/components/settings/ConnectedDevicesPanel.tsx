@@ -1,3 +1,4 @@
+import { isRuntimePackPaused } from "@shared/runtimePackAvailability.mjs";
 import { useEffect, useState } from "react";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -244,7 +245,7 @@ export function ConnectedDevicesPanel() {
 
   async function refreshRuntimePacks() {
     const results = await Promise.all(
-      REMOTION_RUNTIME_IDS.map(async runtimeId => {
+      REMOTION_RUNTIME_IDS.filter(runtimeId => !isRuntimePackPaused(runtimeId)).map(async runtimeId => {
         try {
           const response = await fetch(
             `${window.location.origin}/api/workers/runtime-pack/manifest?runtimeId=${runtimeId}`,

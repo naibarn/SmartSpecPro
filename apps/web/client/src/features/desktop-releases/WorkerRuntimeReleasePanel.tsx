@@ -1,3 +1,4 @@
+import { isRuntimePackPaused } from "@shared/runtimePackAvailability.mjs";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   CheckCircle2,
@@ -1054,7 +1055,7 @@ npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PA
                 setRuntimeId(event.target.value as WorkerRuntimeId)
               }
             >
-              {workerRuntimeIdValues.map(id => (
+              {workerRuntimeIdValues.filter(id => !isRuntimePackPaused(id)).map(id => (
                 <option key={id} value={id}>
                   {labels[id]}
                 </option>
@@ -1231,10 +1232,10 @@ npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PA
                       <Button
                         type="button"
                         size="sm"
-                        disabled={busy}
+                        disabled={busy || isRuntimePackPaused(release.runtimeId)}
                         onClick={() => void action(release, "publish")}
                       >
-                        Publish
+                        {isRuntimePackPaused(release.runtimeId) ? "Distribution paused" : "Publish"}
                       </Button>
                     )}
                   </div>

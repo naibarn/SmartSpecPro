@@ -9,6 +9,7 @@ import yauzl from "yauzl";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { getDb } from "../db";
+import { isRuntimePackPaused, RUNTIME_PACK_PAUSED_MESSAGE } from "../../shared/runtimePackAvailability.mjs";
 import {
   storageDelete,
   storagePresignPut,
@@ -66,6 +67,12 @@ export class WorkerRuntimeReleaseError extends Error {
   }
 }
 
+function assertRuntimeDistributionActive(runtimeId: string): void {
+  if (isRuntimePackPaused(runtimeId)) {
+    throw new WorkerRuntimeReleaseError("runtime_pack_paused", 409, RUNTIME_PACK_PAUSED_MESSAGE);
+  }
+}
+
 function expectedPlatform(runtimeId: WorkerRuntimeId): WorkerRuntimePlatform {
   return runtimeId === "hyperframes-macos-arm64" ? "macos" : "windows";
 }
@@ -93,6 +100,7 @@ function validateUploadInput(
   const parsed = workerRuntimeReleaseUploadSchema.parse(
     input
   ) as WorkerRuntimeReleaseUpload;
+  assertRuntimeDistributionActive(parsed.runtimeId);
   const expectedName = expectedFileName(parsed.runtimeId, parsed.version);
   if (parsed.platform !== expectedPlatform(parsed.runtimeId)) {
     throw new WorkerRuntimeReleaseError(
@@ -353,6 +361,7 @@ export async function listWorkerRuntimeReleaseCatalog(
 ): Promise<WorkerRuntimeReleaseCatalog> {
   const releases = (await selectRows(Boolean(input.includeUnpublished)))
     .map(mapRelease)
+    .filter(release => input.includeUnpublished || !isRuntimePackPaused(release.runtimeId))
     .sort(
       (left, right) =>
         compareVersions(right.version, left.version) || right.id - left.id
@@ -362,6 +371,7 @@ export async function listWorkerRuntimeReleaseCatalog(
       runtimeId,
       releases.find(
         release =>
+          !isRuntimePackPaused(runtimeId) &&
           release.runtimeId === runtimeId &&
           release.channel === "stable" &&
           release.isPublished &&
@@ -381,6 +391,7 @@ export async function getLatestPublishedWorkerRuntimeRelease(
   runtimeId: WorkerRuntimeId,
   channel: WorkerRuntimeChannel = "stable"
 ): Promise<ReleaseRow | null> {
+  if (isRuntimePackPaused(runtimeId)) return null;
   const db = getDb();
   const rows = await db
     .select()
@@ -421,7 +432,7 @@ export async function getPublishedWorkerRuntimeReleaseByFileName(
       )
     )
     .limit(1);
-  return (row as ReleaseRow | undefined) ?? null;
+  return row && !isRuntimePackPaused(row.runtimeId) ? (row as ReleaseRow) : null;
 }
 
 export async function presignWorkerRuntimeReleaseUpload(
@@ -953,6 +964,7 @@ export async function publishWorkerRuntimeRelease(
 ): Promise<WorkerRuntimeReleaseAsset | null> {
   const current = await selectRowById(id);
   if (!current) return null;
+  assertRuntimeDistributionActive(current.runtimeId);
   if (current.validationStatus !== "valid") {
     throw new WorkerRuntimeReleaseError(
       "worker_runtime_release_invalid",

@@ -515,6 +515,10 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (web / "scripts/materialize-public-releases.sh").write_text(
             SCRIPT.with_name("materialize-public-releases.sh").read_text()
         )
+        (web / "shared").mkdir()
+        (web / "shared/runtimePackAvailability.mjs").write_text(
+            (SCRIPT.parent.parent / "shared/runtimePackAvailability.mjs").read_text()
+        )
         (repo / ".gitignore").write_text("apps/web/dist/\n")
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)

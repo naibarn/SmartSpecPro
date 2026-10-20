@@ -619,6 +619,8 @@ describe("DesktopReleasePanel", () => {
     render(<DesktopReleasePanel variant="dashboard" enabled />);
 
     expect(await screen.findByText("dashboard:desktopReleases.workerAppMac.title")).toBeInTheDocument();
+    expect(screen.queryByText("dashboard:desktopReleases.workerAppMacRuntime.title")).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("runtime-pack/manifest"))).toBe(false);
     expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.325-arm64-setup\.dmg/)).toBeInTheDocument();
     const downloadLink = screen.getByRole("link", {
       name: /dashboard:desktopReleases\.workerAppMac\.download/,

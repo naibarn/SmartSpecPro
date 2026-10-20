@@ -433,14 +433,19 @@ describe("workerRuntime routes", () => {
 
   function writeSignedRemotionExecutorZip(filePath: string, runtimeId = "remotion-executor-macos-x64") {
     const zip = new AdmZip();
+    const isWindows = runtimeId.includes("windows");
+    const nodePath = isWindows ? "node/node.exe" : "node/bin/node";
+    const browserPath = isWindows ? "browser/chrome.exe" : "browser/Chromium.app/Contents/MacOS/Chromium";
+    const ffmpegPath = isWindows ? "bin/ffmpeg.exe" : "bin/ffmpeg";
+    const ffprobePath = isWindows ? "bin/ffprobe.exe" : "bin/ffprobe";
     const paths = [
       "runtime-pack/remotion-sidecar/render.mjs",
       "runtime-pack/executor/dist/cli.js",
       "runtime-pack/executor/package.json",
-      "runtime-pack/node/bin/node",
-      "runtime-pack/browser/Chromium.app/Contents/MacOS/Chromium",
-      "runtime-pack/bin/ffmpeg",
-      "runtime-pack/bin/ffprobe",
+      `runtime-pack/${nodePath}`,
+      `runtime-pack/${browserPath}`,
+      `runtime-pack/${ffmpegPath}`,
+      `runtime-pack/${ffprobePath}`,
       "runtime-pack/fonts/NotoSansThai.ttf",
     ];
     for (const entry of paths) zip.addFile(entry, Buffer.from(`fixture:${entry}`));
@@ -455,15 +460,15 @@ describe("workerRuntime routes", () => {
       runtimePackId: runtimeId,
       version: "0.1.0",
       runtimeKind: "standalone_remotion_executor",
-      runtimePlatform: "macos",
-      platform: "macos",
+      runtimePlatform: isWindows ? "windows" : "macos",
+      platform: isWindows ? "windows" : "macos",
       architecture: "x64",
       executionEnvironment: "native",
       allowed: true,
-      nodePath: "node/bin/node",
-      browserPath: "browser/Chromium.app/Contents/MacOS/Chromium",
-      ffmpegPath: "bin/ffmpeg",
-      ffprobePath: "bin/ffprobe",
+      nodePath,
+      browserPath,
+      ffmpegPath,
+      ffprobePath,
       fontsPath: "fonts",
       sidecarPath: "remotion-sidecar/render.mjs",
       signingAlgorithm: "ed25519",
@@ -1279,25 +1284,33 @@ describe("workerRuntime routes", () => {
     expect(res.body.error.code).toBe("runtime_pack_not_published");
   });
 
-  it("serves only a structurally complete native macOS arm64 HyperFrames pack", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-macos-ready-"));
-    const fileName = "smart-ai-hub-worker-runtime-hyperframes-macos-arm64-2026.08.18.1.zip";
+  it.each([
+    ["hyperframes-macos-arm64", "smart-ai-hub-worker-runtime-hyperframes-macos-arm64-2026.08.18.1.zip"],
+    ["remotion-executor-macos-arm64", "smart-ai-hub-remotion-executor-remotion-executor-macos-arm64-0.1.0.zip"],
+    ["remotion-executor-macos-x64", "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip"],
+  ])("pauses distribution of %s while preserving existing archive bytes", async (runtimeId, fileName) => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-paused-"));
     const filePath = path.join(tempDir, fileName);
-    writeRuntimeZip(filePath, "hyperframes-macos-arm64");
-    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(officialRuntimeManifest("hyperframes-macos-arm64")));
+    const original = Buffer.from("retained old archive");
+    fs.writeFileSync(filePath, original);
     const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
 
-    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hyperframes-macos-arm64");
-
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      runtimeId: "hyperframes-macos-arm64",
-      runtimePlatform: "macos-arm64",
-      architecture: "arm64",
-      sidecarPath: "hyperframes-render",
-      archiveFileName: fileName,
-      allowed: true,
-    });
+    const manifest = await request(app).get(`/api/workers/runtime-pack/manifest?runtimeId=${runtimeId}`);
+    expect(manifest.status).toBe(200);
+    expect(manifest.headers["cache-control"]).toBe("no-store");
+    expect(manifest.body).toMatchObject({ runtimeId, allowed: false, distributionStatus: "paused", reason: "runtime_pack_paused" });
+    expect(manifest.body.archiveUrl).toBeUndefined();
+    for (const url of [
+      `/api/workers/runtime-pack/download/${fileName}`,
+      `/releases/runtime/${fileName}`,
+      `/releases/runtime/${fileName}.manifest.json`,
+    ]) {
+      const download = await request(app).get(url);
+      expect(download.status).toBe(410);
+      expect(download.body.error.code).toBe("runtime_pack_paused");
+    }
+    expect(fs.readFileSync(filePath)).toEqual(original);
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("serves the hermes runtime manifest and download for a built, allowed pack", async () => {
@@ -1389,19 +1402,19 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
   });
 
-  it("serves a signed standalone Remotion executor pack per macOS architecture", async () => {
+  it("serves a signed standalone Remotion executor pack per Windows architecture", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-"));
-    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-windows-x64-0.1.0.zip";
     const filePath = path.join(tempDir, fileName);
-    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const publicKey = writeSignedRemotionExecutorZip(filePath, "remotion-executor-windows-x64");
     const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir], publicKey } });
 
-    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-windows-x64");
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      runtimeId: "remotion-executor-macos-x64",
+      runtimeId: "remotion-executor-windows-x64",
       runtimeKind: "standalone_remotion_executor",
-      runtimePlatform: "macos",
+      runtimePlatform: "windows",
       architecture: "x64",
       allowed: true,
       archiveFileName: fileName,
@@ -1415,30 +1428,30 @@ describe("workerRuntime routes", () => {
 
   it("accepts a signed executor pack when the public key uses escaped newlines", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-escaped-key-"));
-    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-windows-x64-0.1.0.zip";
     const filePath = path.join(tempDir, fileName);
-    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const publicKey = writeSignedRemotionExecutorZip(filePath, "remotion-executor-windows-x64");
     const app = await makeApp({
       runtimePacks: { releaseDirs: [tempDir], publicKey: publicKey.replaceAll("\n", "\\n") },
     });
 
-    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-windows-x64");
     expect(res.status).toBe(200);
     expect(res.body.archiveFileName).toBe(fileName);
   });
 
   it("does not publish an executor archive without a trusted signature", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-unsigned-"));
-    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-windows-x64-0.1.0.zip";
     const filePath = path.join(tempDir, fileName);
-    writeSignedRemotionExecutorZip(filePath);
+    writeSignedRemotionExecutorZip(filePath, "remotion-executor-windows-x64");
     const manifestPath = `${filePath}.manifest.json`;
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     manifest.archiveSignature = "not-trusted";
     fs.writeFileSync(manifestPath, JSON.stringify(manifest));
     const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
 
-    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-windows-x64");
     expect(res.status).toBe(404);
   });
 

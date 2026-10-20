@@ -216,6 +216,7 @@ vi.mock("lucide-react", () => {
     Trash2: Icon,
     RotateCcw: Icon,
     Save: Icon,
+    XIcon: Icon,
   };
 });
 
@@ -234,6 +235,11 @@ import { ConnectedDevicesPanel } from "../ConnectedDevicesPanel";
 describe("ConnectedDevicesPanel", () => {
   it("shows named permissions, tenant context, verified origin, and client onboarding", async () => {
     render(<ConnectedDevicesPanel />);
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("runtimeId=remotion-executor-windows-x64"), expect.anything(),
+    ));
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("runtimeId=remotion-executor-macos"))).toBe(false);
 
     expect(
       screen.getByRole("button", { name: "Revoke all MCP access" })

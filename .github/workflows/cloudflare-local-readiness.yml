@@ -15,6 +15,8 @@ on:
       - "apps/web/vite.config.ts"
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
+      - "apps/web/scripts/materialize-public-releases.sh"
+      - "apps/web/shared/runtimePackAvailability.*"
       - "apps/web/server/**"
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
@@ -46,6 +48,8 @@ on:
       - "apps/web/vite.config.ts"
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
+      - "apps/web/scripts/materialize-public-releases.sh"
+      - "apps/web/shared/runtimePackAvailability.*"
       - "apps/web/server/**"
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
@@ -169,6 +173,8 @@ jobs:
         run: pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts server/__tests__/cloudflare-origin-attestation.test.ts server/__tests__/cloudflare-origin-middleware.test.ts server/__tests__/cloudflare-origin-upgrade.test.ts server/__tests__/cloudflare-public-origin.test.ts server/__tests__/csrf-protection.test.ts server/__tests__/csrf-middleware.test.ts
       - name: Verify OAuth readiness and callbacks on verified public origins
         run: pnpm --filter @smartspec/web exec vitest run server/services/oauthProviderAvailability.test.ts server/_core/oauthProxy.test.ts server/services/pendingTwoFactor.test.ts server/routers/systemSettings.googleOAuth.test.ts client/src/pages/AdminSettings.componentBindings.test.ts
+      - name: Verify paused macOS rendering distribution and retained active platforms
+        run: pnpm --filter @smartspec/web exec vitest run --maxWorkers=1 --testTimeout=15000 server/services/workerRuntimeReleaseService.test.ts server/routes/__tests__/workerRuntime.test.ts server/routes/__tests__/workerRuntimeReleases.test.ts client/src/features/desktop-releases/__tests__/DesktopReleasePanel.test.tsx client/src/components/settings/__tests__/ConnectedDevicesPanel.test.tsx
       - name: Run web adapter contract tests
         run: npm --workspace @smartspec/web run test -- server/services/__tests__/cloudflareJobAdapters.test.ts server/services/cloudflareOriginProvisionTransport.test.ts server/services/cloudflareOriginProvisionExecutor.test.ts server/services/cloudflareNativeProvisionTransport.test.ts server/services/cloudflareNativeProvisionExecutor.test.ts server/services/cloudflareNativeBindingDescriptor.test.ts server/services/cloudflareStagingApiTransport.test.ts server/services/cloudflareStagingAssetMetadata.test.ts server/services/cloudflareStagingLeaseHeartbeat.test.ts server/services/cloudflareStagingDeploymentExecutor.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/__tests__/workerJobMonitorService.test.ts server/services/__tests__/cloudflareStagingExecutorIdentityService.test.ts server/services/cloudflareStagingArtifactAuthority.test.ts server/routes/__tests__/contentProtectionPublicKeys.test.ts server/routers/infrastructure.deploymentTargets.test.ts client/src/components/admin/AdminDeploymentTargets.test.tsx scripts/__tests__/verify-cloudflare-target-readiness.test.ts
       - name: Install PostgreSQL for disposable control-plane integration test

@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Actual native rollback job2e355435 and restore e474d635 succeeded; current deployment c395bf4e/version f4c429ab source33f9d6e58/config16d3c5b0 has three verified native bindings and activation disabled. Both short-lived policies revoked. User now requests pausing old large macOS rendering runtime packs; audit completed, implement reversible distribution/build exclusion without deleting archives or Mac app/Hermes. Keep four absent bindings, VPC403/TLSoff and real handler/image qualification open.",
+      "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7",
       "merged_main_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7"
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 36,
-  "updated_at": "2026-10-20T07:43:02.261026+00:00",
+  "generation": 37,
+  "updated_at": "2026-10-20T07:47:29.846651+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Actual native rollback job2e355435 and restore e474d635 succeeded; current deployment c395bf4e/version f4c429ab source33f9d6e58/config16d3c5b0 has three verified native bindings and activation disabled. Both short-lived policies revoked. User now requests pausing old large macOS rendering runtime packs; audit completed, implement reversible distribution/build exclusion without deleting archives or Mac app/Hermes. Keep four absent bindings, VPC403/TLSoff and real handler/image qualification open.",
+    "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries.",
     "merged_main_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

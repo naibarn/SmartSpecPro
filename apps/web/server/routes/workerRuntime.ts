@@ -2,6 +2,11 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
+import {
+  isRuntimePackPaused,
+  isRuntimePackFilePaused,
+  RUNTIME_PACK_PAUSED_MESSAGE,
+} from "../../shared/runtimePackAvailability.mjs";
 
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
@@ -1357,6 +1362,12 @@ export function registerWorkerRuntimeRoutes(
   const connectLimiter = rateLimit("worker-connect", { rpm: 60 });
   const runtimePackLimiter = rateLimit("worker-runtime-pack", { rpm: 60 });
 
+  app.get("/releases/runtime/:fileName", (req, res, next) => {
+    if (!isRuntimePackFilePaused(String(req.params.fileName))) return next();
+    res.setHeader("Cache-Control", "no-store");
+    sendApiError(res, 410, "runtime_pack_paused", RUNTIME_PACK_PAUSED_MESSAGE, "invalid_request_error");
+  });
+
   app.get(
     "/api/workers/runtime-pack/manifest",
     runtimePackLimiter,
@@ -1366,6 +1377,17 @@ export function registerWorkerRuntimeRoutes(
         const runtimeId = String(
           req.query.runtimeId || DEFAULT_WORKER_RUNTIME_PACK_ID
         ).trim();
+
+        if (isRuntimePackPaused(runtimeId)) {
+          res.json({
+            runtimeId,
+            allowed: false,
+            distributionStatus: "paused",
+            reason: "runtime_pack_paused",
+            message: RUNTIME_PACK_PAUSED_MESSAGE,
+          });
+          return;
+        }
 
         // Feature 135 §11 — Hermes runtime pack ids are served by this same
         // endpoint but resolved independently of the HyperFrames pack logic
@@ -1595,6 +1617,11 @@ export function registerWorkerRuntimeRoutes(
       try {
         res.setHeader("Cache-Control", "no-store");
         const fileName = path.basename(String(req.params.fileName || ""));
+
+        if (isRuntimePackFilePaused(fileName)) {
+          sendApiError(res, 410, "runtime_pack_paused", RUNTIME_PACK_PAUSED_MESSAGE, "invalid_request_error");
+          return;
+        }
 
         // Feature 135 §11 — Hermes runtime pack downloads, resolved
         // independently of the HyperFrames pack logic below (own file-name

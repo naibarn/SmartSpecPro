@@ -1,3 +1,4 @@
+import { isRuntimePackPaused } from "@shared/runtimePackAvailability.mjs";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import {
@@ -1038,7 +1039,7 @@ export function DesktopReleasePanel(props: {
     isLoading: hyperframesMacRuntimeLoading,
     error: hyperframesMacRuntimeError,
     refresh: refreshHyperframesMacRuntime,
-  } = usePublicDashboardRuntime(variant === "dashboard" && enabled);
+  } = usePublicDashboardRuntime(variant === "dashboard" && enabled && !isRuntimePackPaused("hyperframes-macos-arm64"));
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -2248,6 +2249,7 @@ export function DesktopReleasePanel(props: {
           t={t}
         />
 
+        {!isRuntimePackPaused("hyperframes-macos-arm64") && (
         <div className="mt-4 rounded-2xl border border-amber-100 bg-white/95 p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 gap-3">
@@ -2338,6 +2340,7 @@ export function DesktopReleasePanel(props: {
             </div>
           </div>
         </div>
+        )}
 
         <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
