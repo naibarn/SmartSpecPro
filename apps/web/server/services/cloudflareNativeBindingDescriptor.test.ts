@@ -16,6 +16,20 @@ const receipt = { id: descriptor.provisionJobId, tenantId: scope.tenantId, reque
     activation: "disabled", jobHandlerQualified: false, metadataIndexes: ["tenantId", "sourceJobId"] } };
 
 describe("immutable native binding descriptors", () => {
+  it("binds Workflow metadata and resource identity only to its exact successful receipt", () => {
+    const workflowPlan = { ...plan, workflow: true as const, reuseProvisionJobId: "33333333-3333-4333-8333-333333333333" };
+    const workflowId = "44444444-4444-4444-8444-444444444444";
+    const extended = { ...descriptor, plan: workflowPlan, planDigest: nativeProvisionPlanDigest(workflowPlan), workflowId };
+    const workflowReceipt = { ...receipt, inputJson: { ...receipt.inputJson, planDigest: extended.planDigest },
+      outputJson: { ...receipt.outputJson, workflow: { id: workflowId, name: names.workflow, className: "CanonicalJobWorkflow", scriptName: "smartspec-cloudflare-staging" } } };
+    expect(() => assertNativeProvisionReceipt(extended, workflowReceipt, scope)).not.toThrow();
+    expect(nativeWorkerBindings(extended)).toContainEqual({ name: "JOB_WORKFLOW", type: "workflow", workflow_name: names.workflow,
+      class_name: "CanonicalJobWorkflow", script_name: "smartspec-cloudflare-staging" });
+    expect(() => assertNativeProvisionReceipt({ ...extended, workflowId: "55555555-5555-4555-8555-555555555555" }, workflowReceipt, scope)).toThrow("RECEIPT_DENIED");
+    const bindings = [...nativeWorkerBindings(extended), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" }];
+    expect(() => assertNativeWorkerBindings(bindings, extended)).not.toThrow();
+    expect(() => assertNativeWorkerBindings(bindings.filter(item => item.name !== "JOB_WORKFLOW"), extended)).toThrow("VERSION_BINDINGS_MISMATCH");
+  });
   it("admits a completed exact canonical receipt and projects only three resource bindings", () => {
     expect(validateNativeBindingScope(descriptor, scope)).toEqual(descriptor);
     expect(() => assertNativeProvisionReceipt(descriptor, receipt, scope)).not.toThrow();

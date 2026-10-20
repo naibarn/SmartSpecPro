@@ -8,7 +8,9 @@ export const nativeProvisionPlanSchema = z.object({
   namespace: z.string().regex(/^smartspec-staging-[a-f0-9]{12}$/),
   vectorDimensions: z.literal(768), vectorMetric: z.literal("cosine"),
   configurationExpiresAt: z.string().datetime({ offset: true }),
-}).strict();
+  /** Add Workflow metadata only to a previously proven, same-scope native set. */
+  workflow: z.literal(true).optional(), reuseProvisionJobId: z.string().uuid().optional(),
+}).strict().refine(value => Boolean(value.workflow) === Boolean(value.reuseProvisionJobId));
 export type NativeProvisionPlan = z.infer<typeof nativeProvisionPlanSchema>;
 export const nativeProvisionNamespace = (tenantId: string, projectId: string) =>
   `smartspec-staging-${createHash("sha256").update(`${tenantId}|${projectId}`).digest("hex").slice(0, 12)}`;
@@ -30,4 +32,5 @@ export const nativeProvisionJobSchema = z.object({
 }).strict();
 export const nativeResourceNames = (plan: NativeProvisionPlan) => ({
   queue: `${plan.namespace}-jobs`, bucket: `${plan.namespace}-media`, vector: `${plan.namespace}-vectors`,
+  workflow: `${plan.namespace}-workflow`,
 });

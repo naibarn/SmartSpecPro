@@ -15,12 +15,17 @@ def namespace(tenant_id, project_id):
 
 def validate_plan(value):
     if (not isinstance(value, dict)
-        or set(value) != {"namespace", "vectorDimensions", "vectorMetric", "configurationExpiresAt"}
+        or set(value) not in ({"namespace", "vectorDimensions", "vectorMetric", "configurationExpiresAt"},
+            {"namespace", "vectorDimensions", "vectorMetric", "configurationExpiresAt", "workflow", "reuseProvisionJobId"})
         or not isinstance(value["namespace"], str)
         or not re.fullmatch(r"smartspec-staging-[a-f0-9]{12}", value["namespace"])
         or type(value["vectorDimensions"]) is not int or value["vectorDimensions"] != 768
         or value["vectorMetric"] != "cosine"):
         raise ValueError("CLOUDFLARE_NATIVE_PROVISION_PLAN_INVALID")
+    if "workflow" in value and (value["workflow"] is not True
+        or not isinstance(value["reuseProvisionJobId"], str)
+        or not re.fullmatch(r"[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", value["reuseProvisionJobId"])):
+        raise ValueError("CLOUDFLARE_NATIVE_WORKFLOW_PLAN_INVALID")
     try:
         if datetime.fromisoformat(value["configurationExpiresAt"].replace("Z", "+00:00")).tzinfo is None:
             raise ValueError()

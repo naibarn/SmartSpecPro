@@ -8,7 +8,8 @@ export const cloudflareNativeBindingDescriptorSchema = z.object({
   provisionJobId: z.string().uuid(), plan: nativeProvisionPlanSchema,
   planDigest: z.string().regex(/^[a-f0-9]{64}$/), queueId: z.string().regex(/^[a-f0-9]{32}$/),
   privateDatabase: privateDatabaseBindingSchema.optional(),
-}).strict().refine(value => value.planDigest === nativeProvisionPlanDigest(value.plan));
+  workflowId: z.string().uuid().optional(),
+}).strict().refine(value => value.planDigest === nativeProvisionPlanDigest(value.plan) && Boolean(value.plan.workflow) === Boolean(value.workflowId));
 export type CloudflareNativeBindingDescriptor = z.infer<typeof cloudflareNativeBindingDescriptorSchema>;
 function denied(code: string): never { throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent" }); }
 
@@ -39,6 +40,8 @@ export function assertNativeProvisionReceipt(value: CloudflareNativeBindingDescr
     || !output || output.accountRef !== scope.accountRef || output.namespace !== descriptor.plan.namespace
     || output.queue?.name !== names.queue || output.queue?.id !== descriptor.queueId
     || output.bucket?.name !== names.bucket || output.vector?.name !== names.vector
+    || (descriptor.plan.workflow && (!output.workflow || output.workflow.id !== descriptor.workflowId ||
+      output.workflow.name !== names.workflow || output.workflow.scriptName !== "smartspec-cloudflare-staging" || output.workflow.className !== "CanonicalJobWorkflow"))
     || output.providerConfigurationVerified !== true || output.activation !== "disabled" || output.jobHandlerQualified !== false
     || !Array.isArray(output.metadataIndexes) || output.metadataIndexes.length !== 2
     || !["tenantId", "sourceJobId"].every(field => output.metadataIndexes.includes(field)))
@@ -52,6 +55,7 @@ export function nativeWorkerBindings(value: CloudflareNativeBindingDescriptor) {
     { name: "MEDIA_BUCKET", type: "r2_bucket", bucket_name: names.bucket },
     { name: "VECTOR_INDEX", type: "vectorize", index_name: names.vector },
     ...(descriptor.privateDatabase ? [{ name: "HYPERDRIVE", type: "hyperdrive", id: descriptor.privateDatabase.hyperdriveId }] : []),
+    ...(descriptor.plan.workflow ? [{ name: "JOB_WORKFLOW", type: "workflow", workflow_name: names.workflow, class_name: "CanonicalJobWorkflow", script_name: "smartspec-cloudflare-staging" }] : []),
   ];
 }
 
@@ -61,7 +65,7 @@ export function assertNativeWorkerBindings(actual: unknown, value: CloudflareNat
   if (!Array.isArray(actual) || expected.some(binding => {
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || Object.entries(binding).some(([key, field]) => matches[0][key] !== field);
-  }) || actual.some(item => ["queue", "r2_bucket", "vectorize", "hyperdrive"].includes(item?.type)
+  }) || actual.some(item => ["queue", "r2_bucket", "vectorize", "hyperdrive", "workflow"].includes(item?.type)
     && !expected.some(binding => binding.name === item.name))
     || actual.filter(item => item?.name === "CLOUDFLARE_ACTIVATION").length !== 1
     || !actual.some(item => item?.name === "CLOUDFLARE_ACTIVATION" && item.type === "plain_text" && item.text === "disabled"))
@@ -99,4 +103,9 @@ export async function verifyNativeProviderResources(input: {
       .some((item: any) => item.propertyName === field && ["string", "String"].includes(item.indexType))))
     denied("CLOUDFLARE_NATIVE_PROVIDER_RESOURCE_DRIFT");
   if (descriptor.privateDatabase) await verifyPrivateDatabaseProviderResources({ ...input, descriptor: descriptor.privateDatabase });
+  if (descriptor.plan.workflow) {
+    const workflow = await get(`/workflows/${names.workflow}`);
+    if (workflow?.id !== descriptor.workflowId || workflow.name !== names.workflow || workflow.script_name !== "smartspec-cloudflare-staging" ||
+        workflow.class_name !== "CanonicalJobWorkflow" || workflow.is_deleted !== 0) denied("CLOUDFLARE_NATIVE_PROVIDER_WORKFLOW_DRIFT");
+  }
 }

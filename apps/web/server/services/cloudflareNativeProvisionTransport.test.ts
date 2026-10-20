@@ -134,6 +134,61 @@ describe("bounded native staging provisioning", () => {
     await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVIDER_READBACK_MISMATCH");
   });
 
+  it("adds only bounded Workflow metadata to a proven native set and recovers with reads only", async () => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    const workflowPlan = { ...plan, workflow: true as const, reuseProvisionJobId: grant.jobId };
+    f.input.grant = { ...grant, jobId: "44444444-4444-4444-8444-444444444444", plan: workflowPlan, planDigest: nativeProvisionPlanDigest(workflowPlan) };
+    f.input.checkpoint = { ...f.checkpoints.at(-1)!, planDigest: f.input.grant.planDigest };
+    const original = f.fetchMock.getMockImplementation()!; let workflow: any = null;
+    f.fetchMock.mockClear();
+    f.fetchMock.mockImplementation(async (url, init) => {
+      if (!String(url).includes("/workflows/")) return original(url, init);
+      if (init.method === "PUT") {
+        expect(JSON.parse(init.body)).toEqual({ script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow", concurrency: { limit: 1 },
+          limits: { steps: 1 }, schedules: [], default_retention: { success_retention: "1 day", error_retention: "1 day" } });
+        workflow = { name: nativeResourceNames(plan).workflow, id: "77777777-7777-4777-8777-777777777777", script_name: "smartspec-cloudflare-staging", class_name: "CanonicalJobWorkflow", is_deleted: 0 };
+      }
+      return Response.json({ success: Boolean(workflow), result: workflow }, { status: workflow ? 200 : 404 });
+    });
+    await expect(provisionCloudflareNative(f.input)).resolves.toMatchObject({ workflow: { name: nativeResourceNames(plan).workflow }, activation: "disabled", jobHandlerQualified: false });
+    expect(f.fetchMock.mock.calls.filter(([, init]) => init.method !== "GET")).toHaveLength(1);
+    f.input.checkpoint = f.checkpoints.at(-1)!; f.fetchMock.mockClear();
+    await provisionCloudflareNative({ ...f.input, readOnly: true });
+    expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+    workflow.class_name = "ForeignClass";
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_WORKFLOW_READBACK_MISMATCH");
+  });
+
+  it("rejects half-specified Workflow extension authority", () => {
+    for (const extra of [{ workflow: true }, { reuseProvisionJobId: grant.jobId }, { workflow: false, reuseProvisionJobId: grant.jobId }]) {
+      const changed = { ...plan, ...extra };
+      expect(nativeProvisionGrantSchema.safeParse({ ...grant, plan: changed, planDigest: nativeProvisionPlanDigest(changed as never) }).success).toBe(false);
+    }
+  });
+
+  it.each(["collision", "lost-response"])("fences Workflow %s instead of overwriting or blindly replaying metadata", async scenario => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    const workflowPlan = { ...plan, workflow: true as const, reuseProvisionJobId: grant.jobId };
+    f.input.grant = { ...grant, jobId: "44444444-4444-4444-8444-444444444444", plan: workflowPlan, planDigest: nativeProvisionPlanDigest(workflowPlan) };
+    f.input.checkpoint = { ...f.checkpoints.at(-1)!, planDigest: f.input.grant.planDigest };
+    const original = f.fetchMock.getMockImplementation()!;
+    f.fetchMock.mockClear();
+    f.fetchMock.mockImplementation(async (url, init) => {
+      if (!String(url).includes("/workflows/")) return original(url, init);
+      if (scenario === "collision") return Response.json({ success: true, result: { name: nativeResourceNames(plan).workflow } });
+      if (init.method === "PUT") throw Error("response lost after possible write");
+      return Response.json({ success: false }, { status: 404 });
+    });
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow(scenario === "collision" ? "NATIVE_UNOWNED_WORKFLOW_COLLISION" : "NATIVE_PROVIDER_RESPONSE_UNCERTAIN");
+    if (scenario === "collision") expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+    else {
+      f.input.checkpoint = f.checkpoints.at(-1)!;
+      expect(f.input.checkpoint.pending).toBe("workflow"); f.fetchMock.mockClear();
+      await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
+      expect(f.fetchMock).not.toHaveBeenCalled();
+    }
+  });
+
   it.each([{ environment: "production" }, { tenantId: "foreign-tenant" }, { actions: ["deploy"] },
     { plan: { ...plan, vectorDimensions: 1536 } }, { planDigest: "f".repeat(64) }])("rejects changed grant scope: %j", async extra => {
     const f = fixture(); f.input.grant = { ...grant, ...extra } as NativeProvisionGrant;

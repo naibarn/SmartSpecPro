@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
-import { systemSettings } from "../../drizzle/schema";
+import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
@@ -9,7 +9,8 @@ import { createCloudflareStagingExecutorProof, verifyCloudflareStagingExecutorPr
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
 import type { JobExecutor } from "./jobExecutor";
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB, nativeProvisionJobSchema,
-  nativeProvisionGrantSchema, type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
+  nativeProvisionGrantSchema, nativeProvisionPlanDigest, type NativeProvisionGrant } from "./cloudflareNativeProvisionContract";
+import { assertNativeProvisionReceipt } from "./cloudflareNativeBindingDescriptor";
 import { NativeProvisionError, nativeProvisionCheckpointSchema, provisionCloudflareNative,
   type NativeProvisionCheckpoint } from "./cloudflareNativeProvisionTransport";
 
@@ -47,6 +48,18 @@ type Runtime = {
   saveCheckpoint(grant: NativeProvisionGrant, state: NativeProvisionCheckpoint): Promise<void>;
   fetchImpl?: typeof fetch;
 };
+
+/** Reuse is permitted only from the exact successful canonical receipt, never
+ * by adopting a same-name provider resource or trusting caller checkpoint data. */
+export function nativeWorkflowParentCheckpoint(grant: NativeProvisionGrant, receipt: Parameters<typeof assertNativeProvisionReceipt>[1]): NativeProvisionCheckpoint {
+  const { workflow, reuseProvisionJobId, ...plan } = grant.plan;
+  if (!workflow || !reuseProvisionJobId || reuseProvisionJobId === grant.jobId) throw new NativeProvisionError("NATIVE_WORKFLOW_PARENT_DENIED");
+  const output = receipt?.outputJson as Record<string, any> | null;
+  const descriptor = { provisionJobId: reuseProvisionJobId, plan, planDigest: nativeProvisionPlanDigest(plan), queueId: output?.queue?.id };
+  assertNativeProvisionReceipt(descriptor, receipt, { tenantId: grant.tenantId, projectId: grant.projectId, accountRef: grant.accountRef, actorUserId: grant.requesterUserId });
+  return nativeProvisionCheckpointSchema.parse({ planDigest: grant.planDigest, preflightComplete: true,
+    queue: output!.queue, bucket: output!.bucket, vector: output!.vector, metadata: output!.metadataIndexes });
+}
 
 export function createCloudflareNativeProvisionRuntime(options: { fetchImpl?: typeof fetch } = {}): Runtime {
   const db = getDb(), fetchImpl = options.fetchImpl ?? fetch;
@@ -86,7 +99,14 @@ export function createCloudflareNativeProvisionRuntime(options: { fetchImpl?: ty
     },
     async loadCheckpoint(g) {
       const rows = await db.select().from(systemSettings).where(where(g)).limit(2);
-      if (!rows.length) return null;
+      if (!rows.length) {
+        if (!g.plan.workflow) return null;
+        const [parent] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+          jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+          operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+          .from(workerJobs).where(eq(workerJobs.id, g.plan.reuseProvisionJobId!)).limit(1);
+        return nativeWorkflowParentCheckpoint(g, parent);
+      }
       if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].value || rows[0].updatedBy !== g.requesterUserId)
         throw new NativeProvisionError("NATIVE_CHECKPOINT_DENIED");
       return nativeProvisionCheckpointSchema.parse(JSON.parse(decrypt(rows[0].value)));

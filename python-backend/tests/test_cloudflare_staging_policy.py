@@ -321,6 +321,24 @@ def test_native_grant_and_policy_use_strict_resource_scope():
 
 
 @pytest.mark.unit
+def test_native_workflow_extension_requires_exact_parent_and_policy_digest():
+    from app.services.cloudflare_native_provision_contract import plan_digest, validate_plan
+    policy = native_definition()
+    plan = {**policy["plan"], "workflow": True, "reuseProvisionJobId": str(uuid4())}
+    policy = {**policy, "plan": plan, "planDigest": plan_digest(plan)}
+    assert validate_staging_policy(policy, datetime.now(timezone.utc)) == policy
+    assert normalize_cloudflare_staging_grant_payload(native_grant(policy))["plan"] == plan
+    for extra in [{"workflow": True}, {"reuseProvisionJobId": str(uuid4())},
+                  {"workflow": False, "reuseProvisionJobId": str(uuid4())},
+                  {"workflow": True, "reuseProvisionJobId": "foreign"},
+                  {"workflow": True, "reuseProvisionJobId": str(uuid4()), "schedules": ["* * * * *"]}]:
+        with pytest.raises(ValueError):
+            validate_plan({**native_definition()["plan"], **extra})
+    with pytest.raises(ValueError):
+        validate_staging_policy({**policy, "planDigest": "f" * 64}, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("changed", [{"maxOperations": 2}, {"plan": {"namespace": "production"}},
                                      {"expiresAt": "2000-01-01T00:00:00Z"}])
 def test_native_policy_never_expands_budget_or_scope(changed):

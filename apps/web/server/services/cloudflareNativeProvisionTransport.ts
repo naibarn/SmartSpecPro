@@ -4,8 +4,9 @@ import { nativeProvisionGrantSchema, nativeResourceNames, type NativeProvisionGr
 const resource = z.object({ name: z.string().min(1), id: z.string().optional() }).strict();
 export const nativeProvisionCheckpointSchema = z.object({
   planDigest: z.string(), preflightComplete: z.boolean().optional(),
-  pending: z.enum(["queue", "bucket", "vector", "metadata:tenantId", "metadata:sourceJobId"]).optional(),
+  pending: z.enum(["queue", "bucket", "vector", "metadata:tenantId", "metadata:sourceJobId", "workflow"]).optional(),
   queue: resource.optional(), bucket: resource.optional(), vector: resource.optional(),
+  workflow: z.object({ name: z.string(), id: z.string().uuid(), scriptName: z.literal("smartspec-cloudflare-staging"), className: z.literal("CanonicalJobWorkflow") }).strict().optional(),
   metadata: z.array(z.enum(["tenantId", "sourceJobId"])).default([]),
   metadataMutations: z.record(z.enum(["tenantId", "sourceJobId"]), z.string().uuid()).optional(),
 }).strict();
@@ -29,13 +30,13 @@ export async function provisionCloudflareNative(input: {
   if (state.planDigest !== grant.planDigest) throw new NativeProvisionError("NATIVE_PLAN_CHECKPOINT_MISMATCH");
   const names = nativeResourceNames(grant.plan), base = `https://api.cloudflare.com/client/v4/accounts/${grant.accountRef}`;
   let requests = 0;
-  const api = async (path: string, body?: unknown) => {
+  const api = async (path: string, body?: unknown, method = body === undefined ? "GET" : "POST") => {
     await input.assertAuthorized();
     if (++requests > 40) throw new NativeProvisionError("NATIVE_PROVIDER_REQUEST_BUDGET_EXCEEDED");
     let response: Response;
     try {
       response = await (input.fetchImpl ?? fetch)(base + path, {
-        method: body === undefined ? "GET" : "POST", headers: { authorization: `Bearer ${input.token}`, "content-type": "application/json" },
+        method, headers: { authorization: `Bearer ${input.token}`, "content-type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }), redirect: "error", signal: AbortSignal.timeout(15_000),
       });
     } catch { throw new NativeProvisionError("NATIVE_PROVIDER_RESPONSE_UNCERTAIN"); }
@@ -57,6 +58,7 @@ export async function provisionCloudflareNative(input: {
   };
   if (state.pending) throw new NativeProvisionError("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
   if (input.readOnly && (!state.preflightComplete || !state.queue || !state.bucket || !state.vector
+    || (grant.plan.workflow && !state.workflow)
     || !["tenantId", "sourceJobId"].every(name => state.metadata.includes(name as "tenantId" | "sourceJobId"))))
     throw new NativeProvisionError("NATIVE_READ_ONLY_CHECKPOINT_INCOMPLETE");
   if (!state.preflightComplete) {
@@ -120,7 +122,28 @@ export async function provisionCloudflareNative(input: {
     }
   }
   if (!metadataReady) throw new NativeProvisionError("NATIVE_METADATA_PROPAGATION_PENDING");
+  if (grant.plan.workflow) {
+    const path = `/workflows/${names.workflow}`;
+    let workflow = (await api(path))?.result;
+    if (!state.workflow) {
+      if (workflow) throw new NativeProvisionError("NATIVE_UNOWNED_WORKFLOW_COLLISION");
+      state.pending = "workflow"; await persist();
+      workflow = (await api(path, { class_name: "CanonicalJobWorkflow", script_name: "smartspec-cloudflare-staging",
+        concurrency: { limit: 1 }, limits: { steps: 1 }, schedules: [],
+        default_retention: { success_retention: "1 day", error_retention: "1 day" } }, "PUT"))?.result;
+      if (!z.string().uuid().safeParse(workflow?.id).success || workflow.name !== names.workflow ||
+          workflow.script_name !== "smartspec-cloudflare-staging" || workflow.class_name !== "CanonicalJobWorkflow" || workflow.is_deleted !== 0)
+        throw new NativeProvisionError("NATIVE_CREATED_WORKFLOW_INVALID");
+      state.workflow = { id: workflow.id, name: workflow.name, scriptName: "smartspec-cloudflare-staging", className: "CanonicalJobWorkflow" };
+      delete state.pending; await persist();
+      workflow = (await api(path))?.result;
+    }
+    if (workflow?.id !== state.workflow.id || workflow.name !== names.workflow || workflow.script_name !== state.workflow.scriptName ||
+        workflow.class_name !== state.workflow.className || workflow.is_deleted !== 0)
+      throw new NativeProvisionError("NATIVE_WORKFLOW_READBACK_MISMATCH");
+  } else if (state.workflow) throw new NativeProvisionError("NATIVE_UNAUTHORIZED_WORKFLOW_CHECKPOINT");
   await input.assertAuthorized();
   return { namespace: grant.plan.namespace, accountRef: grant.accountRef, queue: state.queue!, bucket: state.bucket!, vector: state.vector!,
-    metadataIndexes: state.metadata, providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false };
+    metadataIndexes: state.metadata, ...(state.workflow ? { workflow: state.workflow } : {}),
+    providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false };
 }

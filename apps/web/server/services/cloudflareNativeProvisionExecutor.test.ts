@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCloudflareNativeProvisionExecutor } from "./cloudflareNativeProvisionExecutor";
+import { createCloudflareNativeProvisionExecutor, nativeWorkflowParentCheckpoint } from "./cloudflareNativeProvisionExecutor";
 import { nativeProvisionPlanDigest, nativeProvisionNamespace, nativeResourceNames } from "./cloudflareNativeProvisionContract";
 
 function fixture() {
@@ -21,6 +21,20 @@ function fixture() {
 }
 
 describe("canonical native provisioning admission fences", () => {
+  it("reuses only an actor-owned, successful exact canonical native receipt", () => {
+    const f = fixture(), parentId = "77777777-7777-4777-8777-777777777777", names = nativeResourceNames(f.grant.plan);
+    const parent = { id: parentId, tenantId: f.grant.tenantId, requestedByUserId: 1, jobType: f.input.context.jobType, contractVersion: f.input.context.contractVersion,
+      status: "succeeded", operatorReviewRequired: false, inputJson: { ...f.input.context.input },
+      outputJson: { namespace: f.grant.plan.namespace, accountRef: f.grant.accountRef, queue: { id: "b".repeat(32), name: names.queue }, bucket: { name: names.bucket },
+        vector: { name: names.vector }, metadataIndexes: ["tenantId", "sourceJobId"], providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false } };
+    const plan = { ...f.grant.plan, workflow: true as const, reuseProvisionJobId: parentId };
+    const grant = { ...f.grant, plan, planDigest: nativeProvisionPlanDigest(plan) };
+    expect(nativeWorkflowParentCheckpoint(grant as never, parent)).toMatchObject({ planDigest: grant.planDigest, preflightComplete: true, queue: parent.outputJson.queue });
+    for (const change of [{ tenantId: "other" }, { requestedByUserId: 2 }, { status: "running" }, { id: f.grant.jobId },
+      { inputJson: { ...parent.inputJson, planDigest: "f".repeat(64) } }]) {
+      expect(() => nativeWorkflowParentCheckpoint(grant as never, { ...parent, ...change })).toThrow();
+    }
+  });
   it.each(["tenantId", "jobId", "requestedByUserId"])("denies mismatched %s before credentials/provider use", async field => {
     const f = fixture();
     Object.assign(f.input.context, { [field]: field === "requestedByUserId" ? 2 : "foreign" });
