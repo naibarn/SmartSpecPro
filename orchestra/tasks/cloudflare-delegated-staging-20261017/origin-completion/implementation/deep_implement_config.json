@@ -42,7 +42,8 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Google button-click reaches actual provider email field on both hosts; active-profile API/state-negative, Admin4-way/core browser/WSS8/SSE passed. Complete user-controlled Google code-exchange/password/OTP/revocation and second-tenant acceptance; independently qualify7 native bindings, canonical job handler and retention/recovery under exact authority. Generic b932 CI baseline remains53 Python failures/527 TS diagnostics, identical parent identifiers/locations; new startup regression passed. Keep native activation disabled until qualification."
+      "next_action": "Python7cab74a10 actually serves10:25, analytics200 and real refresh/revocation passed on both hosts;138 Python+77 Worker tests passed. Concrete native business executor/binding/recovery qualification still missing; provider deployment token Hyperdrive/R2/Vectorize403 and actual Queues/Workflows/Hyperdrive inventory0. Require existing exact provider IAM/resource authority before provisioning; retain user-controlled Google/OTP/two-tenant acceptance pending. Separate Desktop Host schema gap: desktop_devices absent; do not run unrelated/full migrations or hide errors.",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020"
     }
   },
   "pre_commit": {
@@ -54,13 +55,13 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 27,
-  "updated_at": "2026-10-20T03:12:14.848212+00:00",
+  "generation": 28,
+  "updated_at": "2026-10-20T03:31:12.540223+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Google button-click reaches actual provider email field on both hosts; active-profile API/state-negative, Admin4-way/core browser/WSS8/SSE passed. Complete user-controlled Google code-exchange/password/OTP/revocation and second-tenant acceptance; independently qualify7 native bindings, canonical job handler and retention/recovery under exact authority. Generic b932 CI baseline remains53 Python failures/527 TS diagnostics, identical parent identifiers/locations; new startup regression passed. Keep native activation disabled until qualification.",
+    "next_action": "Python7cab74a10 actually serves10:25, analytics200 and real refresh/revocation passed on both hosts;138 Python+77 Worker tests passed. Concrete native business executor/binding/recovery qualification still missing; provider deployment token Hyperdrive/R2/Vectorize403 and actual Queues/Workflows/Hyperdrive inventory0. Require existing exact provider IAM/resource authority before provisioning; retain user-controlled Google/OTP/two-tenant acceptance pending. Separate Desktop Host schema gap: desktop_devices absent; do not run unrelated/full migrations or hide errors.",
     "merged_main_sha": "b9322340644a86514aae4aef89696a862611a47c",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020",
     "gaps": [
       "Second authorized tenant and successful password/2FA flow unavailable; no synthetic sessions or password resets",
       "Full native Cloudflare binding/job/recovery qualification and scoped activation authority remain unverified; activation disabled"

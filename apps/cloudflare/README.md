@@ -184,6 +184,17 @@ gateway token, or a user credential. The platform routes reject requests when
 the dedicated token is absent. Queue activation stays disabled until this
 transport and an allowlisted Cloudflare executor registry are both composed.
 
+When this private platform is the already-qualified Access ingress, pin
+`PLATFORM_EDGE_ORIGIN`/`PLATFORM_EDGE_PRIVATE_HOST` to the exact
+`AUTH_ORIGIN`/`AUTH_ORIGIN_PRIVATE_HOST` pair. Canonical job-control requests
+then use the existing Access service credentials and application attestation,
+while retaining their separate `CLOUDFLARE_CONTROL_PLANE_TOKEN`. This service
+composition requires exactly one allowed public origin so a Queue event cannot
+guess a tenant host. An incomplete pair, ambiguous allowlist, public application
+host, or reused control-plane credential fails before network access. Other
+private platform hosts retain the dedicated-token transport. This support does
+not install a job executor, provision native resources, or enable activation.
+
 Spec 260 basemap configuration is owned by the existing encrypted platform
 `system_settings` authority and the Infrastructure Admin Maps & Geospatial panel.
 The Cloudflare Worker forwards `/api/public/emergency/map/*` requests to the

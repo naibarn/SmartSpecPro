@@ -5,22 +5,39 @@ import type {
   CanonicalJobEnvelope,
   CloudflareEnvironment,
 } from "./contracts";
+import { parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
+import { proxyAuthToOrigin } from "./authOriginProxy";
 
 const PUBLIC_APPLICATION_HOSTS = new Set(["smartaihub.app", "smartspec.pro"]);
 
-function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): URL {
+function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): { origin: URL; publicOrigin?: string } {
   const configuredOrigin = env.PLATFORM_EDGE_ORIGIN?.trim();
   const expectedHost = env.PLATFORM_EDGE_PRIVATE_HOST?.trim().toLowerCase();
   if (!configuredOrigin || !expectedHost) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");
   let origin: URL;
   try { origin = new URL(configuredOrigin); }
   catch { throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED"); }
+  const hostname = origin.hostname.toLowerCase().replace(/\.$/, "");
   if (origin.protocol !== "https:" || origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash ||
-      origin.hostname.toLowerCase() !== expectedHost || PUBLIC_APPLICATION_HOSTS.has(expectedHost) ||
-      expectedHost.endsWith(".smartaihub.app") || expectedHost.endsWith(".smartspec.pro")) {
+      origin.host.toLowerCase() !== expectedHost || PUBLIC_APPLICATION_HOSTS.has(hostname)) {
     throw new Error("CLOUDFLARE_CONTROL_PLANE_ORIGIN_INVALID");
   }
-  return origin;
+  // A product subdomain is private only through the exact already-qualified
+  // Access/app-attested ingress pair. Never relax the public-host exclusion
+  // just because PLATFORM_EDGE_PRIVATE_HOST repeats a caller's hostname.
+  const paired = [origin.origin, origin.href].includes(env.AUTH_ORIGIN?.trim() ?? "") &&
+    env.AUTH_ORIGIN_PRIVATE_HOST?.trim().toLowerCase() === expectedHost;
+  if (paired) {
+    const publicOrigins = parseCloudflarePublicOrigins(env.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
+    if (!env.AUTH_ORIGIN_TOKEN?.trim() || !env.AUTH_ORIGIN_ACCESS_CLIENT_ID?.trim() ||
+        !env.AUTH_ORIGIN_ACCESS_CLIENT_SECRET?.trim() || publicOrigins?.length !== 1 ||
+        publicOrigins[0] === origin.origin) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");
+    return { origin, publicOrigin: publicOrigins[0] };
+  }
+  if (hostname.endsWith(".smartaihub.app") || hostname.endsWith(".smartspec.pro")) {
+    throw new Error("CLOUDFLARE_CONTROL_PLANE_ORIGIN_INVALID");
+  }
+  return { origin };
 }
 
 async function callPlatform<T>(
@@ -30,18 +47,24 @@ async function callPlatform<T>(
 ): Promise<T> {
   const token = env.CLOUDFLARE_CONTROL_PLANE_TOKEN?.trim();
   if (!token) throw new Error("CLOUDFLARE_CONTROL_PLANE_NOT_CONFIGURED");
-  const origin = resolvePrivatePlatformOrigin(env);
+  if ([env.PLATFORM_EDGE_TOKEN, env.AUTH_ORIGIN_TOKEN, env.AUTH_ORIGIN_ACCESS_CLIENT_SECRET]
+      .some(secret => secret?.trim() === token)) throw new Error("CLOUDFLARE_CONTROL_PLANE_CREDENTIAL_REUSED");
+  const { origin, publicOrigin } = resolvePrivatePlatformOrigin(env);
   const bodyJson = JSON.stringify(body);
   if (new TextEncoder().encode(bodyJson).byteLength > 32 * 1024) throw new Error("CLOUDFLARE_CONTROL_PLANE_REQUEST_TOO_LARGE");
   let response: Response;
   try {
-    response = await fetch(new URL(`/api/internal/cloudflare-job-control/${action}`, origin), {
+    const init: RequestInit = {
       method: "POST",
       headers: { "content-type": "application/json", "cache-control": "no-store", "x-cloudflare-control-plane-token": token },
       body: bodyJson,
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
-    });
+    };
+    const path = `/api/internal/cloudflare-job-control/${action}`;
+    response = publicOrigin
+      ? await proxyAuthToOrigin(new Request(new URL(path, publicOrigin), init), env, fetch, 10_000)
+      : await fetch(new URL(path, origin), init);
   } catch {
     throw new Error("CLOUDFLARE_CONTROL_PLANE_UNAVAILABLE");
   }
