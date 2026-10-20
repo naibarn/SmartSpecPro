@@ -588,15 +588,16 @@ def _restore_link(link: Path, prior_target: str | None) -> None:
         atomic_symlink(Path(prior_target), link)
 
 
-def _next_generation(receipt_root: Path, service: str) -> int:
+def _next_generation(receipt_root: Path, service: str, additional_roots: tuple[Path, ...] = ()) -> int:
     values = []
-    for path in (receipt_root / "production-deployments").glob("*.json"):
-        try:
-            item = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if item.get("service") == service:
-            values.append(int(item.get("generation", 0)))
+    for root in {receipt_root, *additional_roots}:
+        for path in (root / "production-deployments").glob("*.json"):
+            try:
+                item = json.loads(path.read_text(encoding="utf-8"))
+                if item.get("service") == service:
+                    values.append(int(item.get("generation", 0)))
+            except (OSError, ValueError, TypeError):
+                continue
     return max(values, default=0) + 1
 
 
@@ -700,7 +701,18 @@ def promote_artifact(
                     }
             except (OSError, ValueError, ReleaseError):
                 pass
-        generation = _next_generation(receipt_root, SERVICE)
+        # The promotion lock remains in the shared lease root. Storage failover
+        # must also preserve the service's monotonically increasing fence by
+        # reading receipts from every policy-approved source ledger.
+        import tomllib
+        policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
+        policy = {**policy, **policy.get("platforms", {}).get("linux", {})}
+        repository_key = hashlib.sha256(str(policy["repository_id"]).encode()).hexdigest()[:20]
+        approved_ledgers = tuple(
+            Path(root).expanduser().resolve() / ".development-build-results" / repository_key
+            for root in [policy["source_root"], *policy.get("source_fallback_roots", [])]
+        )
+        generation = _next_generation(receipt_root, SERVICE, approved_ledgers)
         target = release_root / f"{release_id}-g{generation}"
         if not target.exists():
             staging = release_root / f".{release_id}-g{generation}.{uuid.uuid4().hex}.tmp"

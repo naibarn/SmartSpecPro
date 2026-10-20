@@ -388,6 +388,29 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             prepared = release.prepare_artifact(evidence, evidence.parent / "artifacts")
         self.assertEqual(prepared["status"], "ARTIFACT_READY")
 
+    def test_storage_failover_preserves_the_shared_service_generation(self):
+        first = self.promote(self.prepare())
+        self.assertEqual(first["generation"], 1)
+        evidence, workspace, dist = self.fallback_build(self.root / "fallback-sources")
+        (dist / "public/index.html").write_text("<html>fresh fallback build</html>")
+        record = json.loads(evidence.read_text())
+        record["artifact"] = {**release.build_artifact_manifest(dist), "artifact_path": str(dist)}
+        evidence.write_text(json.dumps(record))
+        with patch.object(release, "canonical_tip", return_value=self.source_sha):
+            prepared = release.prepare_artifact(evidence, evidence.parent / "artifacts")
+        original_receipts = self.receipt_root
+        self.receipt_root = evidence.parent
+        second = self.promote(Path(prepared["artifact_path"]))
+        self.assertEqual(second["generation"], 2)
+        self.assertEqual(second["fencing_generation"], 2)
+        self.receipt_root = original_receipts
+        (self.dist / "public/index.html").write_text("<html>fresh primary build</html>")
+        self.build_record["artifact"] = {**release.build_artifact_manifest(self.dist), "artifact_path": str(self.dist)}
+        self.build_result_path.write_text(json.dumps(self.build_record))
+        third = self.promote(self.prepare())
+        self.assertEqual(third["generation"], 3)
+        self.assertEqual(third["fencing_generation"], 3)
+
     def test_unconfigured_fallback_source_is_rejected(self):
         evidence, _, _ = self.fallback_build(self.root / "unapproved-sources")
         with self.assertRaisesRegex(release.ReleaseError, "outside the configured canonical source/artifact authority"):
