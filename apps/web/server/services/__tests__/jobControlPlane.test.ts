@@ -1998,6 +1998,37 @@ describe("job control plane", () => {
     expect(state.jobs.get(created.jobId).attempt).toBe(allowed ? 2 : 1);
   });
 
+  it.each([
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", true, true],
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", false, false],
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_RESPONSE_UNCERTAIN", "worker_jobs.admin_requeue", true, false],
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v2", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", true, false],
+    ["cloudflare.staging.native.provision", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.user_retry", true, false],
+    ["unrelated.job", "cloudflare-staging-native-provision-v1", "NATIVE_PROVIDER_READBACK_MISMATCH", "worker_jobs.admin_requeue", true, false],
+  ])("bounds one native readback recovery by exact job, contract, error, scope and operation key: %s %s %s %s %s", async (jobType, contractVersion, code, authorizationScope, correctKey, allowed) => {
+    const state = makeRepository(), controlPlane = createJobControlPlane(state.repository);
+    const planDigest = "a".repeat(64);
+    const created = await controlPlane.create({ ...definition, jobType: jobType as string, contractVersion: contractVersion as string,
+      input: { planDigest }, retryPolicy: { ...definition.retryPolicy, maxAttempts: 1 }, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "staging-test", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: code as string, message: code as string, class: "permanent" });
+    const evidence = { disposition: "provider_operation_resolved" as const, knownRuntime: "cloudflare_staging_native_readback" as const,
+      operationKey: `native-provision:${created.jobId}:${correctKey ? planDigest : "b".repeat(64)}` };
+    const scope = { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId, authorizationScope: authorizationScope as string };
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000091", "native_readback_reconciled", evidence,
+      definition.requestedByUserId, scope)).resolves.toBe(allowed);
+    expect(state.jobs.get(created.jobId).attempt).toBe(allowed ? 2 : 1);
+    expect(state.jobs.get(created.jobId).maxAttempts).toBe(allowed ? 2 : 1);
+    if (allowed) {
+      const second = await controlPlane.claim({ jobId: created.jobId, runnerId: "staging-test", adapter: "test" });
+      await controlPlane.start(second!);
+      await controlPlane.fail(second!, { code: code as string, message: code as string, class: "permanent" });
+      await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000092", "no_unbounded_retries", evidence,
+        definition.requestedByUserId, scope)).resolves.toBe(false);
+    }
+  });
+
   it.each(["bootstrap", "deploy"])("bounds bootstrap receipt recovery to the bootstrap action: %s", async action => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

@@ -4,9 +4,10 @@ import { nativeProvisionGrantSchema, nativeResourceNames, type NativeProvisionGr
 const resource = z.object({ name: z.string().min(1), id: z.string().optional() }).strict();
 export const nativeProvisionCheckpointSchema = z.object({
   planDigest: z.string(), preflightComplete: z.boolean().optional(),
-  pending: z.enum(["queue", "bucket", "vector"]).optional(),
+  pending: z.enum(["queue", "bucket", "vector", "metadata:tenantId", "metadata:sourceJobId"]).optional(),
   queue: resource.optional(), bucket: resource.optional(), vector: resource.optional(),
   metadata: z.array(z.enum(["tenantId", "sourceJobId"])).default([]),
+  metadataMutations: z.record(z.enum(["tenantId", "sourceJobId"]), z.string().uuid()).optional(),
 }).strict();
 export type NativeProvisionCheckpoint = z.infer<typeof nativeProvisionCheckpointSchema>;
 
@@ -20,6 +21,8 @@ export async function provisionCloudflareNative(input: {
   grant: NativeProvisionGrant; token: string; checkpoint: NativeProvisionCheckpoint;
   assertAuthorized: () => Promise<void>; saveCheckpoint: (state: NativeProvisionCheckpoint) => Promise<void>;
   fetchImpl?: typeof fetch;
+  waitForMetadata?: () => Promise<void>;
+  readOnly?: boolean;
 }) {
   const grant = nativeProvisionGrantSchema.parse(input.grant);
   const state = nativeProvisionCheckpointSchema.parse(input.checkpoint);
@@ -28,7 +31,7 @@ export async function provisionCloudflareNative(input: {
   let requests = 0;
   const api = async (path: string, body?: unknown) => {
     await input.assertAuthorized();
-    if (++requests > 20) throw new NativeProvisionError("NATIVE_PROVIDER_REQUEST_BUDGET_EXCEEDED");
+    if (++requests > 40) throw new NativeProvisionError("NATIVE_PROVIDER_REQUEST_BUDGET_EXCEEDED");
     let response: Response;
     try {
       response = await (input.fetchImpl ?? fetch)(base + path, {
@@ -53,6 +56,9 @@ export async function provisionCloudflareNative(input: {
     return result.result as Array<{ queue_id?: string; queue_name?: string; consumers_total_count?: number }>;
   };
   if (state.pending) throw new NativeProvisionError("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
+  if (input.readOnly && (!state.preflightComplete || !state.queue || !state.bucket || !state.vector
+    || !["tenantId", "sourceJobId"].every(name => state.metadata.includes(name as "tenantId" | "sourceJobId"))))
+    throw new NativeProvisionError("NATIVE_READ_ONLY_CHECKPOINT_INCOMPLETE");
   if (!state.preflightComplete) {
     if (state.queue || state.bucket || state.vector) throw new NativeProvisionError("NATIVE_CHECKPOINT_INVALID");
     const queue = (await queueList()).find(item => item.queue_name === names.queue);
@@ -82,18 +88,38 @@ export async function provisionCloudflareNative(input: {
     const indexes = before?.result?.metadataIndexes;
     if (!Array.isArray(indexes)) throw new NativeProvisionError("NATIVE_METADATA_INVENTORY_INVALID");
     const existing = indexes.find((item: any) => item.propertyName === propertyName);
-    if (existing && existing.indexType !== "string") throw new NativeProvisionError("NATIVE_METADATA_TYPE_MISMATCH");
-    if (!existing) await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/create`, { propertyName, indexType: "string" });
+    if (existing && !["string", "String"].includes(existing.indexType)) throw new NativeProvisionError("NATIVE_METADATA_TYPE_MISMATCH");
+    if (!existing) {
+      state.pending = `metadata:${propertyName}`; await persist();
+      const mutation = await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/create`, { propertyName, indexType: "string" });
+      const mutationId = z.string().uuid().safeParse(mutation?.result?.mutationId);
+      if (!mutationId.success) throw new NativeProvisionError("NATIVE_METADATA_MUTATION_INVALID");
+      state.metadataMutations = { ...state.metadataMutations, [propertyName]: mutationId.data };
+      delete state.pending;
+    }
     state.metadata.push(propertyName); await persist();
   }
   const queues = await queueList(), queue = queues.find(item => item.queue_id === state.queue?.id);
   const bucket = await api(`/r2/buckets/${names.bucket}`), vector = await api(`/vectorize/v2/indexes/${names.vector}`);
-  const metadata = await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/list`);
   if (queue?.queue_name !== names.queue || (queue.consumers_total_count ?? 0) !== 0
     || bucket?.result?.name !== names.bucket || vector?.result?.name !== names.vector
-    || vector.result.config?.dimensions !== 768 || vector.result.config?.metric !== "cosine"
-    || !["tenantId", "sourceJobId"].every(name => metadata?.result?.metadataIndexes?.some((item: any) => item.propertyName === name && item.indexType === "string")))
+    || vector.result.config?.dimensions !== 768 || vector.result.config?.metric !== "cosine")
     throw new NativeProvisionError("NATIVE_PROVIDER_READBACK_MISMATCH");
+  // Metadata mutations are asynchronous. The provider currently returns
+  // capitalized types in readback, although creation accepts lowercase types.
+  let metadataReady = false;
+  for (let attempt = 0; attempt < 19; attempt++) {
+    const metadata = await api(`/vectorize/v2/indexes/${names.vector}/metadata_index/list`);
+    if (!Array.isArray(metadata?.result?.metadataIndexes)) throw new NativeProvisionError("NATIVE_METADATA_INVENTORY_INVALID");
+    metadataReady = ["tenantId", "sourceJobId"].every(name => metadata.result.metadataIndexes
+      .some((item: any) => item.propertyName === name && ["string", "String"].includes(item.indexType)));
+    if (metadataReady) break;
+    if (attempt < 18) {
+      await input.assertAuthorized();
+      await (input.waitForMetadata ?? (() => new Promise(resolve => setTimeout(resolve, 10_000))))();
+    }
+  }
+  if (!metadataReady) throw new NativeProvisionError("NATIVE_METADATA_PROPAGATION_PENDING");
   await input.assertAuthorized();
   return { namespace: grant.plan.namespace, accountRef: grant.accountRef, queue: state.queue!, bucket: state.bucket!, vector: state.vector!,
     metadataIndexes: state.metadata, providerConfigurationVerified: true, activation: "disabled", jobHandlerQualified: false };

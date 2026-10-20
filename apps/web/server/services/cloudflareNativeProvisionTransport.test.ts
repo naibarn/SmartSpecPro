@@ -24,13 +24,13 @@ function fixture() {
     else if (path === `/r2/buckets/${names.bucket}`) result = bucket;
     else if (path === "/vectorize/v2/indexes" && body) result = vector = { name: body.name, config: body.config };
     else if (path.endsWith("/metadata_index/list")) result = { metadataIndexes: [...indexes] };
-    else if (path.endsWith("/metadata_index/create")) { indexes.push(body); result = { mutationId: "metadata-mutation" }; }
+    else if (path.endsWith("/metadata_index/create")) { indexes.push(body); result = { mutationId: "33333333-3333-4333-8333-333333333333" }; }
     else if (path === `/vectorize/v2/indexes/${names.vector}`) result = vector;
     else throw new Error("Unexpected provider operation");
     return Response.json({ success: result !== null, result }, { status: result === null ? 404 : 200 });
   });
   const input = { grant, token: "private-test-fixture-token", checkpoint: { planDigest: grant.planDigest, metadata: [] } as NativeProvisionCheckpoint,
-    fetchImpl: fetchImpl as typeof fetch, assertAuthorized: vi.fn(async () => {}),
+    fetchImpl: fetchImpl as typeof fetch, assertAuthorized: vi.fn(async () => {}), waitForMetadata: vi.fn(async () => {}),
     saveCheckpoint: vi.fn(async (value: NativeProvisionCheckpoint) => { checkpoints.push(structuredClone(value)); }) };
   return { input, fetchMock: fetchImpl, checkpoints, indexes, setQueue: (value: any) => { queue = value; } };
 }
@@ -58,10 +58,55 @@ describe("bounded native staging provisioning", () => {
     expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
   });
 
+  it("refuses read-only recovery from an incomplete checkpoint before any provider call", async () => {
+    const f = fixture();
+    await expect(provisionCloudflareNative({ ...f.input, readOnly: true })).rejects.toThrow("NATIVE_READ_ONLY_CHECKPOINT_INCOMPLETE");
+    expect(f.fetchMock).not.toHaveBeenCalled();
+  });
+
   it("does not adopt or overwrite an existing same-name queue", async () => {
     const f = fixture(); f.setQueue({ queue_name: nativeResourceNames(plan).queue });
     await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_UNOWNED_RESOURCE_COLLISION");
     expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+  });
+
+  it("waits for asynchronous metadata visibility and accepts the provider's capitalized String type", async () => {
+    const f = fixture(), original = f.fetchMock.getMockImplementation()!;
+    let reads = 0;
+    f.fetchMock.mockImplementation(async (url, init) => {
+      const response = await original(url, init);
+      if (String(url).endsWith("/metadata_index/list")) {
+        reads++;
+        return Response.json({ success: true, result: { metadataIndexes: reads < 5 ? [] : f.indexes.map(item => ({ ...item, indexType: "String" })) } });
+      }
+      return response;
+    });
+    await expect(provisionCloudflareNative(f.input)).resolves.toMatchObject({ providerConfigurationVerified: true });
+    expect(f.input.waitForMetadata).toHaveBeenCalledTimes(2);
+    expect(f.fetchMock.mock.calls.filter(([, init]) => init.method === "POST")).toHaveLength(5);
+    expect(Object.keys(f.checkpoints.at(-1)!.metadataMutations!)).toEqual(["tenantId", "sourceJobId"]);
+  });
+
+  it("bounds propagation polling without repeating accepted mutations", async () => {
+    const f = fixture(); await provisionCloudflareNative(f.input);
+    f.input.checkpoint = f.checkpoints.at(-1)!;
+    const original = f.fetchMock.getMockImplementation()!; f.fetchMock.mockClear();
+    f.fetchMock.mockImplementation((url, init) => String(url).endsWith("/metadata_index/list")
+      ? Promise.resolve(Response.json({ success: true, result: { metadataIndexes: [] } })) : original(url, init));
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_METADATA_PROPAGATION_PENDING");
+    expect(f.input.waitForMetadata).toHaveBeenCalledTimes(18);
+    expect(f.fetchMock.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+  });
+
+  it("preserves uncertain metadata intent rather than repeating a possibly accepted mutation", async () => {
+    const f = fixture(), original = f.fetchMock.getMockImplementation()!;
+    f.fetchMock.mockImplementation((url, init) => String(url).endsWith("/metadata_index/create")
+      ? Promise.reject(new Error("response lost")) : original(url, init));
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVIDER_RESPONSE_UNCERTAIN");
+    f.input.checkpoint = f.checkpoints.at(-1)!; f.fetchMock.mockClear();
+    expect(f.input.checkpoint.pending).toBe("metadata:tenantId");
+    await expect(provisionCloudflareNative(f.input)).rejects.toThrow("NATIVE_PROVISION_UNCERTAIN_RECONCILIATION_REQUIRED");
+    expect(f.fetchMock).not.toHaveBeenCalled();
   });
 
   it("stops all provider calls when authorization is revoked", async () => {

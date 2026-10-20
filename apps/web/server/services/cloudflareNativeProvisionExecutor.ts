@@ -112,12 +112,18 @@ export function createCloudflareNativeProvisionExecutor(runtime: Runtime | (() =
     const grant = nativeProvisionGrantSchema.parse(await active.resolveGrant(job.grantRef));
     const scope = { tenantId: context.tenantId, projectId: job.projectId, provider: "cloudflare", environment: "staging" };
     let fingerprint: string | undefined;
+    if (lease.expiresAt && (!Number.isFinite(Date.parse(lease.expiresAt)) || Date.parse(lease.expiresAt) <= Date.now()))
+      throw new NativeProvisionError("NATIVE_AUTHORITY_EXPIRED");
+    let lastHeartbeat = Date.now();
     const assertAuthorized = async () => {
       await reporter.assertActive(lease);
+      if (Date.now() - lastHeartbeat >= 20_000) {
+        await reporter.heartbeat(lease);
+        lastHeartbeat = Date.now();
+      }
       const now = Date.now(), createdAt = Date.parse(context.createdAt);
       if (!Number.isFinite(createdAt) || Date.parse(grant.expiresAt) <= now || Date.parse(grant.plan.configurationExpiresAt) <= now
-        || createdAt + getEffectiveWorkerJobDeadlineMs({ ...context, runtimeType: "node_job_worker" }) <= now
-        || (lease.expiresAt && Date.parse(lease.expiresAt) <= now)) throw new NativeProvisionError("NATIVE_AUTHORITY_EXPIRED");
+        || createdAt + getEffectiveWorkerJobDeadlineMs({ ...context, runtimeType: "node_job_worker" }) <= now) throw new NativeProvisionError("NATIVE_AUTHORITY_EXPIRED");
       const live = nativeProvisionGrantSchema.safeParse(await active.resolveGrant(job.grantRef));
       if (!live.success || JSON.stringify(live.data) !== JSON.stringify(grant) || grant.jobId !== context.jobId
         || grant.tenantId !== context.tenantId || grant.requesterUserId !== context.requestedByUserId || grant.projectId !== job.projectId
@@ -132,6 +138,7 @@ export function createCloudflareNativeProvisionExecutor(runtime: Runtime | (() =
     const output = await active.withCredential(scope, token => {
       fingerprint = createHash("sha256").update(token).digest("hex");
       return provisionCloudflareNative({ grant, token, checkpoint, assertAuthorized, fetchImpl: active.fetchImpl,
+        readOnly: context.attempt > 1,
         saveCheckpoint: async state => { await reporter.assertActive(lease); await active.saveCheckpoint(grant, state); } });
     });
     return { output };

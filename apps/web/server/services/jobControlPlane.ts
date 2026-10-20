@@ -4715,7 +4715,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback";
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4737,7 +4737,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "remotion_revision_id" &&
           evidence.knownRuntime !== "content_protection_provider" &&
           evidence.knownRuntime !== "cloudflare_staging_compile" &&
-          evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt")
+          evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt" &&
+          evidence.knownRuntime !== "cloudflare_staging_native_readback")
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4811,6 +4812,19 @@ export function createJobControlPlane(
             "Job deadline has elapsed",
             "Job hard deadline has elapsed",
           ].some(marker => failureText.includes(marker));
+        // One explicit recovery of the original, single-attempt provisioning
+        // job. Its executor retains the original grant and persisted resource
+        // checkpoint, so verification never adopts another job's resources.
+        const knownNativeReadbackFailure =
+          evidence.knownRuntime === "cloudflare_staging_native_readback" &&
+          evidence.disposition === "provider_operation_resolved" &&
+          scope?.authorizationScope === "worker_jobs.admin_requeue" &&
+          job?.jobType === "cloudflare.staging.native.provision" &&
+          job.contractVersion === "cloudflare-staging-native-provision-v1" &&
+          job.status === "failed" && job.attempt === 1 && job.maxAttempts === 1 &&
+          job.errorCode === "NATIVE_PROVIDER_READBACK_MISMATCH" &&
+          typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
+          evidence.operationKey === `native-provision:${job.id}:${job.inputJson.planDigest}`;
         if (
           !job ||
           !["failed", "expired"].includes(job.status) ||
@@ -4818,8 +4832,9 @@ export function createJobControlPlane(
             !knownRemotionRevisionFailure &&
             !knownProtectionProviderFailure &&
             !knownCloudflareCompileRejection &&
-            !knownCloudflareBootstrapReceipt) ||
-          job.attempt >= job.maxAttempts
+            !knownCloudflareBootstrapReceipt &&
+            !knownNativeReadbackFailure) ||
+          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure)
         )
           return false;
 
@@ -4854,6 +4869,7 @@ export function createJobControlPlane(
             attempt: nextAttempt,
             nextRetryAt: null,
             statusReason: "operator_review_recovery",
+            ...(knownNativeReadbackFailure ? { maxAttempts: nextAttempt } : {}),
             errorCode: null,
             errorMessage: null,
             failureReason: null,
