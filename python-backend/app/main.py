@@ -202,22 +202,25 @@ async def lifespan(app: FastAPI):
     )
     # Shared production data must not be changed by dev schema creation or seeding.
     if not shared_production_debug:
-        # Initialize services
-        try:
-            await init_db()
-            logger.info("Database initialized successfully")
-
-            # Seed default admin user and tenant on first startup
+        if settings.ENVIRONMENT == "production":
+            logger.info("Production API uses externally managed schema; startup create/seed disabled")
+        else:
+            # Initialize services
             try:
-                from app.core.seed import run_seed
+                await init_db()
+                logger.info("Database initialized successfully")
 
-                await run_seed()
-                logger.info("Database seeding completed")
-            except Exception as seed_error:
-                logger.warning("Database seeding skipped", error=str(seed_error))
+                # Seed default admin user and tenant on first startup
+                try:
+                    from app.core.seed import run_seed
 
-        except Exception as e:
-            logger.warning("Database initialization failed", error=str(e))
+                    await run_seed()
+                    logger.info("Database seeding completed")
+                except Exception as seed_error:
+                    logger.warning("Database seeding skipped", error=str(seed_error))
+
+            except Exception as e:
+                logger.warning("Database initialization failed", error=str(e))
 
     else:
         logger.info("Shared production debug: schema initialization and seed disabled")
@@ -249,16 +252,18 @@ async def lifespan(app: FastAPI):
             else:
                 await _check_gateway_reachability(gateway_url)
 
-    # Production owns startup schema setup and background config watchers.
+    # Production schema is externally managed; keep background config watchers.
     if not shared_production_debug:
-        # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
-        try:
-            from app.core.checkpointer import get_postgres_checkpointer
+        # API startup must not run checkpoint schema migrations on production.
+        if settings.ENVIRONMENT != "production":
+            # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
+            try:
+                from app.core.checkpointer import get_postgres_checkpointer
 
-            await get_postgres_checkpointer()
-            logger.info("PostgreSQL checkpointer initialized successfully")
-        except Exception as e:
-            logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
+                await get_postgres_checkpointer()
+                logger.info("PostgreSQL checkpointer initialized successfully")
+            except Exception as e:
+                logger.warning("PostgreSQL checkpointer initialization failed (workflows will use in-memory)", error=str(e))
 
         # Initialize MCP Client Manager + Config Watcher
         try:
@@ -318,14 +323,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("PostHog flush failed", error=str(e))
 
-    # Close checkpointer connection pool
-    try:
-        from app.core.checkpointer import cleanup_checkpointers
+    if not shared_production_debug and settings.ENVIRONMENT != "production":
+        # Close checkpointer connection pool
+        try:
+            from app.core.checkpointer import cleanup_checkpointers
 
-        await cleanup_checkpointers()
-        logger.info("Checkpointer connection pool closed")
-    except Exception as e:
-        logger.warning("Checkpointer cleanup failed", error=str(e))
+            await cleanup_checkpointers()
+            logger.info("Checkpointer connection pool closed")
+        except Exception as e:
+            logger.warning("Checkpointer cleanup failed", error=str(e))
 
     try:
         await close_db()
