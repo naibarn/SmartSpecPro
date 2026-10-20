@@ -1,5 +1,6 @@
 import json
 import hashlib
+import errno
 import os
 import shutil
 import subprocess
@@ -101,6 +102,100 @@ class CanonicalSourceTests(unittest.TestCase):
         if result.returncode:
             raise AssertionError(result.stderr)
         return json.loads(result.stdout)
+
+    def published_fallback_receipt(self):
+        from canonical_source import load_policy
+
+        shutil.copyfile(self.policy, self.shared / ".development-repository.toml")
+        policy = load_policy(self.shared, self.policy)
+        key = hashlib.sha256(policy["repository_id"].encode()).hexdigest()[:20]
+        result = self.fallback_root / ".development-build-results" / key / f"{self.revision}-fixture.json"
+        result.parent.mkdir(parents=True)
+        payload = {
+            "status": "BUILD_PASSED", "source_verified": True,
+            "canonical_ref": policy["canonical_ref"], "source_revision": self.revision,
+            "canonical_tip_after_build": self.revision, "result_file": str(result),
+            "isolated_workspace": str(self.fallback_root / key / f"{self.revision}-build"),
+            "cloudflare_staging_artifact": {
+                "status": "PUBLISHED", "source_sha": self.revision,
+                "build_digest": "a" * 64, "artifact_ref": "sha256:" + "a" * 64,
+            },
+        }
+        result.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+        return policy, result
+
+    def test_fallback_published_receipt_is_byte_identical_in_primary_authority(self) -> None:
+        from canonical_source import _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        # The CLI may select an approved fallback with an explicit policy file.
+        policy["source_root"] = str(self.fallback_root)
+        original = source.read_bytes()
+        destination = _sync_published_build_receipt(self.shared, policy, source)
+        self.assertEqual(destination.parents[2], self.source_root)
+        self.assertEqual(destination.read_bytes(), original)
+        self.assertEqual(source.read_bytes(), original)
+        self.assertEqual(_sync_published_build_receipt(self.shared, policy, source), destination)
+
+    def test_fallback_receipt_replication_preserves_a_conflicting_primary_receipt(self) -> None:
+        from canonical_source import LifecycleError, _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        destination = self.source_root / ".development-build-results" / source.parent.name / source.name
+        destination.parent.mkdir(parents=True)
+        destination.write_bytes(b"existing receipt\n")
+        with self.assertRaisesRegex(LifecycleError, "REPLICATION_CONFLICT"):
+            _sync_published_build_receipt(self.shared, policy, source)
+        self.assertEqual(destination.read_bytes(), b"existing receipt\n")
+        self.assertTrue(source.is_file())
+
+    def test_fallback_receipt_replication_rejects_unapproved_roots_and_foreign_policy(self) -> None:
+        from canonical_source import LifecycleError, _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        outside = self.root / source.name
+        shutil.copyfile(source, outside)
+        with self.assertRaisesRegex(LifecycleError, "ROOT_NOT_APPROVED"):
+            _sync_published_build_receipt(self.shared, policy, outside)
+        policy["repository_id"] = "another-repository"
+        with self.assertRaisesRegex(LifecycleError, "POLICY_MISMATCH"):
+            _sync_published_build_receipt(self.shared, policy, source)
+
+    def test_fallback_receipt_replication_rejects_unpublished_or_mixed_workspace(self) -> None:
+        from canonical_source import LifecycleError, _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        original = json.loads(source.read_text())
+        for changed in (dict(original, status="BUILD_FAILED"),
+                        dict(original, isolated_workspace=str(self.source_root / "foreign-build")),
+                        dict(original, cloudflare_staging_artifact={"status": "PUBLISH_PENDING"})):
+            source.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(LifecycleError, "PUBLISHED_RECEIPT_REQUIRED"):
+                _sync_published_build_receipt(self.shared, policy, source)
+
+    def test_fallback_receipt_replication_classifies_full_disk_and_preserves_source(self) -> None:
+        from canonical_source import LifecycleError, _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        original = source.read_bytes()
+        with mock.patch("canonical_source.os.link", side_effect=OSError(errno.ENOSPC, "full")):
+            with self.assertRaisesRegex(LifecycleError, "RESOURCE_BLOCKED.*ENOSPC"):
+                _sync_published_build_receipt(self.shared, policy, source)
+        self.assertEqual(source.read_bytes(), original)
+        self.assertEqual(list((self.source_root / ".development-build-results" / source.parent.name).iterdir()), [])
+
+    @unittest.skipIf(os.name == "nt", "POSIX symlink fixture")
+    def test_fallback_receipt_replication_rejects_redirected_primary_before_creating_paths(self) -> None:
+        from canonical_source import LifecycleError, _sync_published_build_receipt
+
+        policy, source = self.published_fallback_receipt()
+        outside = self.root / "foreign-store"
+        outside.mkdir()
+        self.source_root.mkdir()
+        (self.source_root / ".development-build-results").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(LifecycleError, "ROOT_NOT_APPROVED"):
+            _sync_published_build_receipt(self.shared, policy, source)
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_dirty_wrong_branch_checkout_is_untouched_and_exact_source_is_prepared(self) -> None:
         before_status = command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--branch")

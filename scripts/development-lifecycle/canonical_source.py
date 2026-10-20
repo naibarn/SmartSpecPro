@@ -522,6 +522,74 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
             os.unlink(temporary)
 
 
+def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_path: Path) -> Path:
+    """Keep fallback build receipts visible to the existing primary authority.
+
+    Copy only the final authentic bytes, within this repository's approved
+    platform roots. Never expand the runtime's receipt search path or replace
+    a different receipt. The source remains available if replication fails.
+    """
+    authoritative = load_policy(repo) if (repo / ".development-repository.toml").is_file() else policy
+    for key in ("repository_id", "remote", "canonical_ref", "lease_root", "build_target"):
+        if policy[key] != authoritative[key]:
+            raise LifecycleError("CANONICAL_RECEIPT_POLICY_MISMATCH")
+    repository_key = _hash(authoritative["repository_id"])[:20]
+    approved = [root.resolve() for root in _workspace_roots(authoritative)]
+    source = result_path.absolute()
+    if source.is_symlink() or source.resolve() != source or source.parent not in [
+        root / ".development-build-results" / repository_key for root in approved
+    ]:
+        raise LifecycleError("CANONICAL_RECEIPT_ROOT_NOT_APPROVED")
+    receipt_bytes = source.read_bytes()
+    receipt = json.loads(receipt_bytes)
+    revision = receipt.get("source_revision", "")
+    bundle = receipt.get("cloudflare_staging_artifact", {})
+    source_root = source.parents[2]
+    if (
+        receipt.get("status") != "BUILD_PASSED"
+        or receipt.get("source_verified") is not True
+        or receipt.get("canonical_ref") != authoritative["canonical_ref"]
+        or receipt.get("canonical_tip_after_build") != revision
+        or not re.fullmatch(r"[a-f0-9]{40}", revision)
+        or not source.name.startswith(revision + "-")
+        or receipt.get("result_file") != str(source)
+        or receipt.get("isolated_workspace") != str(source_root / repository_key / f"{revision}-build")
+        or bundle.get("status") != "PUBLISHED"
+        or bundle.get("source_sha") != revision
+        or not re.fullmatch(r"[a-f0-9]{64}", bundle.get("build_digest", ""))
+        or bundle.get("artifact_ref") != "sha256:" + bundle.get("build_digest", "")
+    ):
+        raise LifecycleError("CANONICAL_PUBLISHED_RECEIPT_REQUIRED")
+    destination = approved[0] / ".development-build-results" / repository_key / source.name
+    if destination == source:
+        return source
+    temporary = None
+    try:
+        if destination.parent.resolve() != destination.parent or destination.is_symlink():
+            raise LifecycleError("CANONICAL_RECEIPT_ROOT_NOT_APPROVED")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.parent.resolve() != destination.parent or destination.is_symlink():
+            raise LifecycleError("CANONICAL_RECEIPT_ROOT_NOT_APPROVED")
+        if not destination.exists():
+            fd, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(receipt_bytes)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, destination)
+            except FileExistsError:
+                pass  # A concurrent identical copy is safe; compare below.
+        if destination.is_symlink() or destination.read_bytes() != receipt_bytes:
+            raise LifecycleError("CANONICAL_RECEIPT_REPLICATION_CONFLICT")
+    except OSError as exc:
+        raise _os_resource_failure(destination, exc) from exc
+    finally:
+        if temporary is not None:
+            os.unlink(temporary)
+    return destination
+
+
 def prepare_source(
     repo: Path,
     *,
@@ -1032,6 +1100,9 @@ def build_canonical(
             except (OSError, subprocess.TimeoutExpired):
                 result["cloudflare_staging_artifact"].update({"status": "PUBLISH_PENDING", "reason": "publisher_unavailable"})
             _write_json_atomic(result_path, result)
+            if result["cloudflare_staging_artifact"]["status"] == "PUBLISHED":
+                primary_receipt = _sync_published_build_receipt(repo, policy, result_path)
+                print(f"[canonical-build] primary receipt={primary_receipt}", file=sys.stderr, flush=True)
         if primary_workspace_sync["status"].startswith("BLOCKED"):
             print(
                 f"[canonical-build] primary workspace was left unchanged: {primary_workspace_sync['status']}",
