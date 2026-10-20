@@ -54,10 +54,8 @@ describe("Cloudflare API route manifest", () => {
     const ids = API_ROUTE_MANIFEST.map(route => route.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(new Set(API_ROUTE_MANIFEST.map(route => route.classification))).toEqual(
-      new Set(["WORKER_NATIVE", "ORIGIN_PROXY", "NATIVE_RUNTIME_ONLY"]),
+      new Set(["WORKER_NATIVE", "ORIGIN_PROXY", "NATIVE_RUNTIME_ONLY", "WORKER_COMPATIBLE_WITH_CHANGES"]),
     );
-    // This category is intentionally declared for reviewed, evidence-backed
-    // future slices; no route currently qualifies for it.
     expect(classifyApiRoute("GET", "/future-worker-route").classification).not.toBe(
       "WORKER_COMPATIBLE_WITH_CHANGES",
     );

@@ -5,7 +5,8 @@
  *
  * Worker-native routes must execute a registered Fetch handler; health checks
  * and public verification-key metadata do not proxy to the Linux runtime.
- * Auth, tRPC, provider APIs, uploads, and application APIs remain origin-owned.
+ * Auth, tRPC, provider APIs and uploads retain their existing owner. Explicit
+ * compatible entries require their immutable capability before native execution.
  */
 export type ApiRouteClassification =
   | "WORKER_NATIVE"
@@ -52,6 +53,22 @@ export const API_ROUTE_MANIFEST: readonly ApiRouteManifestEntry[] = [
     methods: ["GET", "HEAD"],
     classification: "WORKER_NATIVE",
     reason: "Public verification-key metadata is stateless and uses the shared content-protection contract.",
+  },
+  {
+    id: "runner-releases.catalog",
+    path: "/api/runner-releases",
+    match: "exact",
+    methods: ["GET", "HEAD"],
+    classification: "WORKER_COMPATIBLE_WITH_CHANGES",
+    reason: "Public catalog uses Hyperdrive only under an immutable bounded capability; otherwise the existing origin owns it.",
+  },
+  {
+    id: "runner-releases.latest",
+    path: "/api/runner-releases/latest",
+    match: "exact",
+    methods: ["GET", "HEAD"],
+    classification: "WORKER_COMPATIBLE_WITH_CHANGES",
+    reason: "Public latest-version selection shares the Node contract; reviews, downloads and administration retain their owner.",
   },
   {
     id: "ops.metrics",

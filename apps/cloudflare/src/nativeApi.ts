@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { handleRunnerReleaseCatalog } from "./runnerReleaseCatalog";
 import { getPublicEvidenceVerificationKeys } from "@smartspec/shared/src/contentProtection";
 import type { ApiRouteManifestEntry } from "./apiRouteManifest";
 import type { CloudflareEnvironment } from "./contracts";
@@ -10,6 +11,9 @@ const MAX_PUBLIC_KEYS_REQUEST_BYTES = 1024;
 
 /** Fetch-standard HTTP router. Its handlers run unchanged in workerd and Node.js. */
 export const nativeApiApp = new Hono<{ Bindings: CloudflareEnvironment }>();
+
+nativeApiApp.on(["GET", "HEAD"], ["/api/runner-releases", "/api/runner-releases/latest"], context =>
+  handleRunnerReleaseCatalog(context.req.raw, context.env));
 
 nativeApiApp.on(["GET", "HEAD"], PUBLIC_EVIDENCE_KEYS_PATH, async (context) => {
   const contentLength = context.req.header("content-length");
@@ -66,6 +70,13 @@ export async function dispatchManifestRoute(
   });
   if (!route) return null;
 
+  if (route.classification === "WORKER_COMPATIBLE_WITH_CHANGES" && route.id.startsWith("runner-releases.")) {
+    if (env.CLOUDFLARE_RUNNER_RELEASE_CATALOG === undefined) {
+      return (options.originProxy ?? proxyAuthToOrigin)(request, env);
+    }
+    const nativeFetch = options.nativeFetch ?? ((nativeRequest, nativeEnv) => nativeApiApp.fetch(nativeRequest, nativeEnv));
+    return nativeFetch(request, env);
+  }
   if (route.classification === "WORKER_NATIVE") {
     const nativeFetch = options.nativeFetch ?? ((nativeRequest, nativeEnv) => nativeApiApp.fetch(nativeRequest, nativeEnv));
     return nativeFetch(request, env);

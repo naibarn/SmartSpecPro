@@ -29,6 +29,27 @@ function fixture() {
 
 describe("exact bounded Workflow deployment configuration", () => {
 
+  it("binds public Runner catalog reads independently of paid job transport, and rejects capability injection", () => {
+    const { value, target } = fixture();
+    delete value.descriptor.workflowExecution;
+    delete value.secrets.workflowRuntimeToken; delete value.secrets.controlPlaneToken;
+    value.descriptor.runnerReleaseCatalog = "hyperdrive";
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`; target.runtimePolicy = value.configurationRef;
+    const validated = validateCloudflareOriginVersionBindings(value, target);
+    const bindings = cloudflareWorkflowVersionBindings(validated);
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: "hyperdrive" });
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt });
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_JOB_TRANSPORT")).toBe(false);
+    expect(() => assertCloudflareWorkflowVersionBindings(bindings, validated)).not.toThrow();
+    expect(() => assertCloudflareWorkflowVersionBindings(bindings.map(binding => binding.name === "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT"
+      ? { ...binding, text: new Date(Date.now()+86_400_000).toISOString() } : binding), validated)).toThrow("MISMATCH");
+    const disabled = fixture().value;
+    expect(() => assertCloudflareWorkflowVersionBindings([...cloudflareWorkflowVersionBindings(disabled), ...bindings], disabled)).toThrow("MISMATCH");
+    delete value.descriptor.nativeResources.privateDatabase;
+    expect(() => cloudflareWorkflowVersionBindings(value)).toThrow("DENIED");
+  });
+
   it("pins fixed media capability and image to a new immutable configuration, rejecting unapproved env injection", () => {
     const { value, target } = fixture(), imageRef = `registry.cloudflare.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/runner/image@sha256:${"e".repeat(64)}`;
     const original = cloudflareWorkflowVersionBindings(value);

@@ -24,6 +24,8 @@ export const cloudflareOriginSettingsSchema = z.object({
   workflowExecution: z.literal("emergency-intake").optional(),
   /** Opt-in domain SQL only; canonical admission/lease/settlement stay on Node. */
   workflowDatabase: z.literal("hyperdrive-intake").optional(),
+  /** Public read capability, independent of job/Container activation. */
+  runnerReleaseCatalog: z.literal("hyperdrive").optional(),
   jobTransport: z.enum(["workflows", "queues"]).optional(),
   retentionSchedule: z.literal("evidence-retention").optional(),
   mediaProbe: z.object({ containerPolicy: z.literal(CLOUDFLARE_CONTAINER_ON_DEMAND), capability: z.literal("container-media-probe-v1"),
@@ -48,7 +50,8 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
-      Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken)) {
+      Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
+      (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
 }
@@ -57,10 +60,16 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
  * by the deployment grant, never inferred from a caller's runtime flags. */
 export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersionBindings) {
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
-  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule) return [];
+  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog) return [];
   return [
-    { name: "PLATFORM_EDGE_ORIGIN", type: "plain_text", text: value.descriptor.origin },
-    { name: "PLATFORM_EDGE_PRIVATE_HOST", type: "plain_text", text: new URL(value.descriptor.origin).host },
+    ...(value.descriptor.runnerReleaseCatalog ? [
+      { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
+      { name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+    ] : []),
+    ...((value.descriptor.workflowExecution || value.descriptor.retentionSchedule) ? [
+      { name: "PLATFORM_EDGE_ORIGIN", type: "plain_text", text: value.descriptor.origin },
+      { name: "PLATFORM_EDGE_PRIVATE_HOST", type: "plain_text", text: new URL(value.descriptor.origin).host },
+    ] : []),
     ...(value.descriptor.workflowExecution ? [
       { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: value.descriptor.jobTransport ?? "workflows" },
       { name: "CLOUDFLARE_WORKFLOW_TENANT_ID", type: "plain_text", text: value.descriptor.tenantId },
@@ -89,7 +98,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
-  }) || actual.some(binding => (binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
+  }) || actual.some(binding => (binding?.name?.startsWith("CLOUDFLARE_RUNNER_RELEASE_") || binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

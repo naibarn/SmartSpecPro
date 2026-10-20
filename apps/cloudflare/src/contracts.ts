@@ -105,6 +105,9 @@ export type VectorRecord = {
 export type CloudflareEnvironment = {
   CLOUDFLARE_ACTIVATION?: string;
   CLOUDFLARE_ENVIRONMENT?: string;
+  /** Immutable opt-in for public catalog reads; no auth/download activation. */
+  CLOUDFLARE_RUNNER_RELEASE_CATALOG?: string;
+  CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT?: string;
   /** Workflow-only activation never enables Queue delivery or Cron. */
   CLOUDFLARE_JOB_TRANSPORT?: string;
   CLOUDFLARE_WORKFLOW_TENANT_ID?: string;

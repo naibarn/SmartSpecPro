@@ -6,10 +6,10 @@ import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
 
 import { runnerReleaseAssets } from "../../drizzle/schema";
 import {
-  runnerReleaseAssetSchema,
-  runnerReleaseCatalogResponseSchema,
   runnerReleaseIdentitySchema,
   runnerReleaseTargetKey,
+  projectRunnerReleaseRow as mapRow,
+  projectRunnerReleaseCatalog,
   type RunnerReleaseAsset,
   type RunnerReleaseCatalogResponse,
   type RunnerReleaseChannel,
@@ -41,77 +41,6 @@ type ReleaseFilter = {
   profile?: RunnerReleaseProfile;
   channel?: RunnerReleaseChannel;
 };
-
-function asIso(value: Date | string | null | undefined): string | null {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function toNumber(value: number | bigint): number {
-  return typeof value === "bigint" ? Number(value) : value;
-}
-
-function compareVersions(left: string, right: string): number {
-  const leftParts = left.replace(/^v/i, "").split(/[.+-]/);
-  const rightParts = right.replace(/^v/i, "").split(/[.+-]/);
-  const length = Math.max(leftParts.length, rightParts.length);
-  for (let index = 0; index < length; index += 1) {
-    const a = leftParts[index] ?? "0";
-    const b = rightParts[index] ?? "0";
-    if (/^\d+$/.test(a) && /^\d+$/.test(b)) {
-      const diff = Number(a) - Number(b);
-      if (diff !== 0) return diff > 0 ? 1 : -1;
-    } else if (a !== b) {
-      return a.localeCompare(b);
-    }
-  }
-  return 0;
-}
-
-function sortLatest<T extends { version: string; publishedAt: string | null; uploadedAt: string }>(
-  left: T,
-  right: T,
-): number {
-  const version = compareVersions(right.version, left.version);
-  if (version !== 0) return version;
-  return (right.publishedAt ?? right.uploadedAt).localeCompare(
-    left.publishedAt ?? left.uploadedAt,
-  );
-}
-
-function buildDownloadUrl(id: number): string {
-  return `/api/runner-releases/${id}/download`;
-}
-
-function mapRow(row: typeof runnerReleaseAssets.$inferSelect): RunnerReleaseAsset {
-  return runnerReleaseAssetSchema.parse({
-    id: row.id,
-    version: row.version,
-    platform: row.platform,
-    architecture: row.architecture,
-    profile: row.profile,
-    channel: row.channel,
-    assetKind: row.assetKind,
-    fileName: row.fileName,
-    contentType: row.contentType,
-    fileSizeBytes: toNumber(row.fileSizeBytes),
-    fileSha256: row.fileSha256,
-    signature: row.signature ?? null,
-    contractVersion: row.contractVersion,
-    manifest: row.manifestJson ?? null,
-    validationStatus: row.validationStatus,
-    validationChecks: row.validationChecksJson,
-    provenance: row.provenanceJson,
-    releaseNotes: row.releaseNotes ?? null,
-    isPublished: row.isPublished,
-    publishedAt: asIso(row.publishedAt),
-    withdrawnAt: asIso(row.withdrawnAt),
-    uploadedAt: asIso(row.uploadedAt) ?? new Date(0).toISOString(),
-    updatedAt: asIso(row.updatedAt) ?? new Date(0).toISOString(),
-    downloadUrl: buildDownloadUrl(row.id),
-  });
-}
 
 function safeFileName(value: string): string {
   const fileName = path.basename(value).trim();
@@ -169,33 +98,7 @@ export async function listRunnerReleaseAssets(filter: ReleaseFilter = {}): Promi
 
 export async function listRunnerReleaseCatalog(filter: ReleaseFilter = {}): Promise<RunnerReleaseCatalogResponse> {
   const releases = await listRunnerReleaseAssets(filter);
-  const groups = new Map<string, RunnerReleaseAsset[]>();
-  for (const release of releases) {
-    const key = runnerReleaseTargetKey(release);
-    const values = groups.get(key) ?? [];
-    values.push(release);
-    groups.set(key, values);
-  }
-  const latestByTarget = [...groups.entries()].map(([targetKey, assets]) => {
-    const first = assets[0];
-    const packageAsset = assets.filter(asset => asset.assetKind === "package").sort(sortLatest)[0] ?? null;
-    const updateBinary = assets.filter(asset => asset.assetKind === "update_binary").sort(sortLatest)[0] ?? null;
-    return {
-      targetKey,
-      platform: first.platform,
-      architecture: first.architecture,
-      profile: first.profile,
-      channel: first.channel,
-      version: [packageAsset?.version, updateBinary?.version].filter(Boolean).sort((a, b) => compareVersions(String(b), String(a)))[0] ?? first.version,
-      package: packageAsset,
-      updateBinary,
-    };
-  });
-  return runnerReleaseCatalogResponseSchema.parse({
-    generatedAt: new Date().toISOString(),
-    releases,
-    latestByTarget,
-  });
+  return projectRunnerReleaseCatalog(releases);
 }
 
 export async function getRunnerReleaseAssetById(id: number, includeUnpublished = false): Promise<RunnerReleaseAsset | null> {

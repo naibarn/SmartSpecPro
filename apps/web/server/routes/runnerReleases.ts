@@ -153,6 +153,7 @@ export function registerRunnerReleaseRoutes(app: Express): void {
   });
 
   app.get("/api/runner-releases", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
     try {
       const query = runnerReleaseCatalogQuerySchema.parse({
         platform: typeof req.query.platform === "string" ? req.query.platform : undefined,
@@ -167,6 +168,7 @@ export function registerRunnerReleaseRoutes(app: Express): void {
   });
 
   app.get("/api/runner-releases/latest", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
     try {
       const query = runnerReleaseCatalogQuerySchema.parse(req.query);
       if (!query.platform || !query.architecture || !query.profile) {

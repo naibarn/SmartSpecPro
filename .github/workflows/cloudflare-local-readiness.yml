@@ -21,6 +21,8 @@ on:
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
       - "packages/shared/src/cloudflareMediaProbe.ts"
+      - "packages/shared/src/runnerReleases.ts"
+      - "packages/shared/package.json"
       - "apps/runner-app/Containerfile*"
       - "apps/runner-app/MediaProbe.Containerfile*"
       - "apps/runner-app/containerMediaProbe*"
@@ -61,6 +63,8 @@ on:
       - "packages/shared/src/contentProtection.ts"
       - "packages/shared/src/cloudflareOrigin.ts"
       - "packages/shared/src/cloudflareMediaProbe.ts"
+      - "packages/shared/src/runnerReleases.ts"
+      - "packages/shared/package.json"
       - "apps/runner-app/Containerfile*"
       - "apps/runner-app/MediaProbe.Containerfile*"
       - "apps/runner-app/containerMediaProbe*"
@@ -196,7 +200,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y postgresql
       - name: Exercise staging executor through disposable PostgreSQL
-        run: npm --workspace @smartspec/web run test -- server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
+        run: npm --workspace @smartspec/web run test -- server/services/cloudflareRunnerReleaseCatalog.postgres.integration.test.ts server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
         env:
           RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"
           RUN_DESKTOP_SCHEMA_DB_INTEGRATION: "true"
