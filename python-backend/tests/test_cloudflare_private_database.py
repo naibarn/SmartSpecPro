@@ -68,6 +68,17 @@ async def test_private_database_policy_preserves_owner_budget_and_revocation_che
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
+async def test_private_database_policy_can_be_revoked_through_existing_authority():
+    service, rule, _, _ = service_fixture()
+    policy = private_definition()
+    rule.conditions = {"schemaVersion": POLICY_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}
+    result = await service.revoke_cloudflare_staging_policy(tenant_id="tenant-1", actor_id=17, policy_id=rule.id)
+    assert not rule.is_active
+    service._require_cloudflare_policy_owner.assert_awaited_once_with("tenant-1", 17)
+
+
+@pytest.mark.unit
 def test_private_database_policy_cannot_purchase_or_activate():
     policy = private_definition()
     for change in [{"maxOperations": 2}, {"environment": "production"}, {"billing": True}, {"activation": "enabled"}]:

@@ -154,7 +154,9 @@ class CloudflareStagingPolicyAuthority:
         await self._require_cloudflare_policy_owner(tenant_id, actor_id)
         result = await self.db.execute(select(ApprovalRule).where(ApprovalRule.id == policy_id, ApprovalRule.tenant_id == tenant_id).with_for_update())
         rule = result.scalar_one_or_none()
-        if not rule or (rule.conditions or {}).get("schemaVersion") not in (SCHEMA, ORIGIN_SCHEMA, PROVISION_SCHEMA, NATIVE_SCHEMA):
+        if not rule or (rule.conditions or {}).get("schemaVersion") not in (
+            SCHEMA, ORIGIN_SCHEMA, *(item[0] for item in PROVISION_CONTRACTS.values())
+        ):
             raise ValueError("CLOUDFLARE_STAGING_POLICY_NOT_FOUND")
         if rule.is_active:
             rule.is_active = False
