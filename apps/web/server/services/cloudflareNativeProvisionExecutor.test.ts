@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createCloudflareNativeProvisionExecutor } from "./cloudflareNativeProvisionExecutor";
-import { nativeProvisionPlanDigest, nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
+import { nativeProvisionPlanDigest, nativeProvisionNamespace, nativeResourceNames } from "./cloudflareNativeProvisionContract";
 
 function fixture() {
   const plan = { namespace: nativeProvisionNamespace("tenant-test", "project-test"), vectorDimensions: 768 as const,
@@ -49,5 +49,37 @@ describe("canonical native provisioning admission fences", () => {
     f.runtime.resolveGrant.mockResolvedValueOnce(f.grant).mockResolvedValue(null as never);
     await expect(createCloudflareNativeProvisionExecutor(f.runtime as never)(f.input as never)).rejects.toThrow("AUTHORITY_DENIED");
     expect(f.runtime.withCredential).not.toHaveBeenCalled();
+  });
+
+  it("renews the real reporter lease during slow provider work instead of using the stale initial expiry", async () => {
+    const f = fixture(), names = nativeResourceNames(f.grant.plan as never);
+    let now = Date.now(), liveExpiry = now + 30_000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const heartbeat = vi.fn(async () => { liveExpiry = now + 30_000; });
+    f.input.reporter.assertActive.mockImplementation(async () => { if (now >= liveExpiry) throw Error("lease expired"); });
+    f.runtime.withCredential.mockImplementation(async (_scope, operation) => operation("test-private-token"));
+    let queue: any = null, bucket: any = null, vector: any = null;
+    const metadataIndexes: any[] = [];
+    const fetchImpl = vi.fn(async (url: any, init: any) => {
+      const path = new URL(url).pathname.split(`/accounts/${f.grant.accountRef}`)[1];
+      const body = init.method === "POST" ? JSON.parse(init.body) : undefined;
+      let result: any;
+      if (path === "/queues") result = body ? (queue = { queue_name: names.queue, queue_id: "b".repeat(32) }) : queue ? [queue] : [];
+      else if (path === "/r2/buckets") result = bucket = { name: names.bucket };
+      else if (path === `/r2/buckets/${names.bucket}`) result = bucket;
+      else if (path === "/vectorize/v2/indexes") result = vector = { name: names.vector, config: body.config };
+      else if (path.endsWith("/metadata_index/list")) result = { metadataIndexes: [...metadataIndexes] };
+      else if (path.endsWith("/metadata_index/create")) { metadataIndexes.push({ ...body, indexType: "String" }); result = { mutationId: "33333333-3333-4333-8333-333333333333" }; }
+      else if (path === `/vectorize/v2/indexes/${names.vector}`) result = vector;
+      else throw Error("unexpected provider call");
+      now += 10_000;
+      return Response.json({ success: result !== null, result }, { status: result === null ? 404 : 200 });
+    });
+    try {
+      await expect(createCloudflareNativeProvisionExecutor({ ...f.runtime, fetchImpl } as never)({ ...f.input,
+        reporter: { ...f.input.reporter, heartbeat } } as never)).resolves.toMatchObject({ output: { providerConfigurationVerified: true } });
+      expect(now).toBeGreaterThan(Date.parse(f.input.lease.expiresAt));
+      expect(heartbeat).toHaveBeenCalled();
+    } finally { clock.mockRestore(); }
   });
 });
