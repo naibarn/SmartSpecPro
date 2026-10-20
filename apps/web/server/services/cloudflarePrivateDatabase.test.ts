@@ -167,6 +167,11 @@ describe("private database canonical executor fences", () => {
     await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).rejects.toThrow("AMBIGUOUS_WRITE_REVIEW_REQUIRED");
     expect(f.runtime.prepareDatabase).not.toHaveBeenCalled(); expect(f.fetchImpl).not.toHaveBeenCalled();
   });
+  it("fences the old executor after its checkpoint was continued", async () => {
+    const f = execution(); f.input.checkpoint.continuedByJobId = "77777777-7777-4777-8777-777777777777";
+    await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).rejects.toThrow("CHECKPOINT_CONTINUED");
+    expect(f.runtime.prepareDatabase).not.toHaveBeenCalled(); expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
   it.each(["tenantId", "jobId", "requestedByUserId"])("denies substituted %s before database/provider work", async field => {
     const f = execution(); Object.assign(f.args.context, { [field]: field === "requestedByUserId" ? 2 : "foreign" });
     await expect(createCloudflarePrivateDatabaseExecutor(f.runtime)(f.args as never)).rejects.toThrow("AUTHORITY_DENIED");

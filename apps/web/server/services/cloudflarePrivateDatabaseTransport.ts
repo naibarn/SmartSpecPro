@@ -5,6 +5,7 @@ import { certificateDigest, privateDatabaseGrantSchema, privateDatabaseRole, typ
 const id = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 export const privateDatabaseCheckpointSchema = z.object({
   planDigest: z.string().regex(/^[a-f0-9]{64}$/), pending: z.string().optional(),
+  resumedFromJobId: z.string().uuid().optional(), continuedByJobId: z.string().uuid().optional(),
   databasePassword: z.string().min(32).optional(), databaseRolePrepared: z.literal(true).optional(),
   caId: id.optional(), appId: id.optional(), policyId: id.optional(), dnsRecordId: id.optional(), hyperdriveId: id.optional(),
   serviceToken: z.object({ id, clientId: z.string().min(16), secret: z.string().min(16), expiresAt: z.string().datetime({ offset: true }) }).strict().optional(),
@@ -29,6 +30,7 @@ export async function provisionCloudflarePrivateDatabase(input: {
   const state = privateDatabaseCheckpointSchema.parse(input.checkpoint);
   if (state.planDigest !== grant.planDigest || !state.databaseRolePrepared || !state.databasePassword) fail("PRIVATE_DATABASE_CHECKPOINT_DENIED");
   if (state.pending) fail("PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED");
+  if (state.continuedByJobId) fail("PRIVATE_DATABASE_CHECKPOINT_CONTINUED");
   let certificate: X509Certificate;
   try { certificate = new X509Certificate(input.caCertificate); } catch { return fail("PRIVATE_DATABASE_CA_INVALID"); }
   if (!certificate.ca || certificateDigest(certificate.raw) !== plan.caSha256

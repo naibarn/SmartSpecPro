@@ -1,7 +1,7 @@
 import { createHash, randomBytes, X509Certificate } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
-import { systemSettings } from "../../drizzle/schema";
+import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import type { DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { createCloudflareNativeProvisionRuntime, nativeProvisionCredentialRef } from "./cloudflareNativeProvisionExecutor";
@@ -46,6 +46,7 @@ type Runtime = {
   prepareDatabase(grant: PrivateDatabaseGrant): Promise<void>;
   loadCheckpoint(grant: PrivateDatabaseGrant): Promise<PrivateDatabaseCheckpoint>;
   saveCheckpoint(grant: PrivateDatabaseGrant, checkpoint: PrivateDatabaseCheckpoint): Promise<void>;
+  continueCheckpoint?(grant: PrivateDatabaseGrant, sourceJobId: string): Promise<void>;
   fetchImpl?: typeof fetch;
 };
 
@@ -94,11 +95,53 @@ export function createCloudflarePrivateDatabaseRuntime(options: { fetchImpl?: ty
     async saveCheckpoint(g, checkpoint) {
       await db.transaction(async tx => { await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${g.jobId}))`); await save(tx, g, checkpoint); });
     },
+    async continueCheckpoint(g, sourceJobId) {
+      // A new bounded grant/job may receive the exact failed job's encrypted
+      // state once. Never reset its deadline, silently adopt resources or chain
+      // continuations. Lock the source before the destination in every caller.
+      if (sourceJobId === g.jobId) throw new PrivateDatabaseError("PRIVATE_DATABASE_CONTINUATION_DENIED");
+      await db.transaction(async tx => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sourceJobId}))`);
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${g.jobId}))`);
+        const [source] = await tx.select().from(workerJobs).where(eq(workerJobs.id, sourceJobId)).for("update");
+        const [target] = await tx.select().from(workerJobs).where(eq(workerJobs.id, g.jobId)).for("update");
+        const sourceInput = privateDatabaseJobSchema.safeParse(source?.inputJson);
+        const targetInput = privateDatabaseJobSchema.safeParse(target?.inputJson);
+        if (!source || !target || !sourceInput.success || !targetInput.success
+          || source.jobType !== PRIVATE_DATABASE_JOB || target.jobType !== PRIVATE_DATABASE_JOB
+          || source.contractVersion !== PRIVATE_DATABASE_CONTRACT || target.contractVersion !== PRIVATE_DATABASE_CONTRACT
+          || source.tenantId !== g.tenantId || target.tenantId !== g.tenantId
+          || source.requestedByUserId !== g.requesterUserId || target.requestedByUserId !== g.requesterUserId
+          || sourceInput.data.projectId !== g.projectId || targetInput.data.projectId !== g.projectId
+          || sourceInput.data.planDigest !== g.planDigest || targetInput.data.planDigest !== g.planDigest
+          || sourceInput.data.resumeFromJobId || targetInput.data.resumeFromJobId !== sourceJobId
+          || targetInput.data.grantRef !== g.grantRef || source.status !== "failed"
+          || source.errorCode !== "PRIVATE_DATABASE_DNS_NOT_READY" || source.outputJson || source.leaseOwnerToken
+          || source.createdAt.getTime() + getEffectiveWorkerJobDeadlineMs({ ...source, input: source.inputJson, retryPolicy: source.retryPolicyJson }) > Date.now()
+          || !["leased", "running"].includes(target.status) || !target.leaseOwnerToken
+          || !target.leaseExpiresAt || target.leaseExpiresAt.getTime() <= Date.now()
+          || Date.parse(g.expiresAt) <= Date.now()) throw new PrivateDatabaseError("PRIVATE_DATABASE_CONTINUATION_DENIED");
+        const sourceGrant = { ...g, jobId: sourceJobId };
+        const oldState = await load(tx, sourceGrant), current = await load(tx, g);
+        if (oldState.pending || oldState.hyperdriveId || oldState.resumedFromJobId
+          || oldState.continuedByJobId && oldState.continuedByJobId !== g.jobId
+          || !oldState.databaseRolePrepared || !oldState.databasePassword || !oldState.caId || !oldState.appId
+          || !oldState.policyId || !oldState.dnsRecordId || !oldState.serviceToken
+          || Date.parse(oldState.serviceToken.expiresAt) < Date.parse(g.plan.configurationExpiresAt))
+          throw new PrivateDatabaseError("PRIVATE_DATABASE_CONTINUATION_DENIED");
+        if (current.resumedFromJobId === sourceJobId && oldState.continuedByJobId === g.jobId) return;
+        if (Object.keys(current).length !== 1 || oldState.continuedByJobId)
+          throw new PrivateDatabaseError("PRIVATE_DATABASE_CONTINUATION_DENIED");
+        await save(tx, sourceGrant, { ...oldState, continuedByJobId: g.jobId });
+        await save(tx, g, { ...oldState, resumedFromJobId: sourceJobId });
+      });
+    },
     async prepareDatabase(g) {
       try {
         await db.transaction(async tx => {
           await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${g.jobId}))`);
           const state = await load(tx, g), role = privateDatabaseRole(g.plan.namespace);
+          if (state.continuedByJobId) throw new PrivateDatabaseError("PRIVATE_DATABASE_CHECKPOINT_CONTINUED");
           const current: any = await tx.execute(sql`SELECT current_database() AS name`);
           if (current[0]?.name !== g.plan.databaseName) throw new PrivateDatabaseError("PRIVATE_DATABASE_LOCAL_SCOPE_DENIED");
           const roles: any = await tx.execute(sql`SELECT rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls, rolcanlogin, rolconnlimit, rolconfig, rolvaliduntil FROM pg_roles WHERE rolname=${role}`);
@@ -160,7 +203,13 @@ export function createCloudflarePrivateDatabaseExecutor(runtime: Runtime | (() =
     } catch { throw new PrivateDatabaseError("PRIVATE_DATABASE_CA_INVALID"); }
     // A definite pre-submission failure may resume the same bounded plan.
     // Uncertain provider writes remain fenced before any local/provider work.
-    if ((await active.loadCheckpoint(grant)).pending)
+    if (input.resumeFromJobId) {
+      if (!active.continueCheckpoint) throw new PrivateDatabaseError("PRIVATE_DATABASE_CONTINUATION_DENIED");
+      await active.continueCheckpoint(grant, input.resumeFromJobId); await assertAuthorized();
+    }
+    const checkpoint = await active.loadCheckpoint(grant);
+    if (checkpoint.continuedByJobId) throw new PrivateDatabaseError("PRIVATE_DATABASE_CHECKPOINT_CONTINUED");
+    if (checkpoint.pending)
       throw new PrivateDatabaseError("PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED");
     await assertAuthorized(); await active.prepareDatabase(grant); await assertAuthorized();
     const output = await active.withCredential(scope, async token => {

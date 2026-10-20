@@ -30,5 +30,6 @@ export type PrivateDatabaseGrant = z.infer<typeof privateDatabaseGrantSchema>;
 export const privateDatabaseJobSchema = z.object({
   contractVersion: z.literal(PRIVATE_DATABASE_CONTRACT), grantRef: z.string().uuid(),
   projectId: z.string().min(1).max(36), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  resumeFromJobId: z.string().uuid().optional(),
 }).strict();
 export const certificateDigest = (der: Uint8Array) => createHash("sha256").update(der).digest("hex");

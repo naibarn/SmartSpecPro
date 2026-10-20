@@ -91,4 +91,47 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     const [row] = await client`SELECT "publishedAt", "quarantinedAt" FROM worker_job_outbox WHERE id=${outbox.id}`;
     expect(row.publishedAt).not.toBeNull(); expect(row.quarantinedAt).toBeNull();
   });
+  async function continuationFixture(projectId: string) {
+    await client`UPDATE worker_jobs SET status='canceled' WHERE status IN ('queued','leased','running')`;
+    const g = grant(projectId), source = { ...g, jobId: randomUUID(), grantRef: randomUUID() };
+    const controlPlane = (await import("./jobControlPlane")).createJobControlPlane();
+    for (const current of [source, g]) await controlPlane.create({ contractVersion: PRIVATE_DATABASE_CONTRACT,
+      tenantId: current.tenantId, requestedByUserId: current.requesterUserId, jobType: PRIVATE_DATABASE_JOB, executionClass: "long",
+      input: { contractVersion: PRIVATE_DATABASE_CONTRACT, projectId: current.projectId, grantRef: current.grantRef, planDigest: current.planDigest,
+        ...(current === g ? { resumeFromJobId: source.jobId } : {}) }, idempotencyKey: `continuation-fixture-${current.jobId}`,
+      retryPolicy: { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 5000, jitter: "none", deadlineMs: 600000,
+        deadlineMode: "fixed", allowedErrorClasses: ["retryable"] }, timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 600000 } }, { canonicalJobId: current.jobId });
+    await runtime.prepareDatabase(source);
+    const checkpoint = { ...await runtime.loadCheckpoint(source), caId: "c".repeat(32), appId: randomUUID(), policyId: randomUUID(),
+      dnsRecordId: "d".repeat(32), serviceToken: { id: randomUUID(), clientId: "disposable-service-token-id", secret: "disposable-service-token-secret", expiresAt: g.plan.configurationExpiresAt } };
+    await runtime.saveCheckpoint(source, checkpoint);
+    await client`UPDATE worker_jobs SET status='failed', "errorCode"='PRIVATE_DATABASE_DNS_NOT_READY',
+      "createdAt"=now()-interval '2 hours', "finishedAt"=now() WHERE id=${source.jobId}`;
+    const lease = await controlPlane.claim({ jobId: g.jobId, runnerId: "disposable-continuation", adapter: "postgres-pull" });
+    expect(lease).not.toBeNull(); await controlPlane.start(lease!);
+    return { g, source, checkpoint };
+  }
+  it("continues one expired definite rejection under a fresh canonical job without rewriting history or duplicating secrets", async () => {
+    const { g, source, checkpoint } = await continuationFixture("continuation-owned");
+    await runtime.continueCheckpoint(g, source.jobId);
+    await runtime.continueCheckpoint(g, source.jobId);
+    const state = await runtime.loadCheckpoint(g);
+    expect(state).toMatchObject({ ...checkpoint, resumedFromJobId: source.jobId });
+    expect((await runtime.loadCheckpoint(source)).continuedByJobId).toBe(g.jobId);
+    await runtime.prepareDatabase(g);
+    await expect(runtime.prepareDatabase(source)).rejects.toThrow("CHECKPOINT_CONTINUED");
+    const [old] = await client`SELECT status, "errorCode", "createdAt" FROM worker_jobs WHERE id=${source.jobId}`;
+    expect(old).toMatchObject({ status: "failed", errorCode: "PRIVATE_DATABASE_DNS_NOT_READY" });
+    expect(Date.now() - old.createdAt.getTime()).toBeGreaterThan(3600000);
+  });
+  it.each(["pending", "foreign-owner", "unexpired", "already-created", "continuation-chain"])("refuses unsafe continuation: %s", async kind => {
+    const { g, source, checkpoint } = await continuationFixture("continuation-" + kind);
+    if (kind === "foreign-owner") await client`UPDATE worker_jobs SET "requestedByUserId"=NULL WHERE id=${source.jobId}`;
+    else if (kind === "unexpired") await client`UPDATE worker_jobs SET "createdAt"=now() WHERE id=${source.jobId}`;
+    else await runtime.saveCheckpoint(source, { ...checkpoint, ...(kind === "pending" ? { pending: "hyperdrive.create" }
+      : kind === "already-created" ? { hyperdriveId: "e".repeat(32) } : { resumedFromJobId: randomUUID() }) });
+    await expect(runtime.continueCheckpoint(g, source.jobId)).rejects.toThrow("CONTINUATION_DENIED");
+    expect((await runtime.loadCheckpoint(g)).databasePassword).toBeUndefined();
+    expect((await runtime.loadCheckpoint(source)).continuedByJobId).toBeUndefined();
+  });
 });
