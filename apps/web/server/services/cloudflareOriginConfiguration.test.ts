@@ -117,6 +117,15 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
         serviceToken: { id: privateDatabase.serviceTokenId, clientId: "disposable-client-id", secret: "disposable-client-secret", expiresAt: privatePlan.configurationExpiresAt } })) });
     const privateSaved = await saveCloudflareOriginConfiguration(db, privateInput);
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).resolves.toMatchObject({ status: "STORED" });
+    const catalogSaved = await saveCloudflareOriginConfiguration(db, { ...privateInput,
+      settings: { ...privateInput.settings, runnerReleaseCatalog: "hyperdrive" } });
+    const catalogMetadata = await getCloudflareOriginConfiguration(db, { identity, configurationRef: catalogSaved.configurationRef });
+    expect(catalogMetadata.descriptor.runnerReleaseCatalog).toBe("hyperdrive");
+    expect(catalogMetadata.descriptor.workflowExecution).toBeUndefined();
+    expect(JSON.stringify(catalogMetadata)).not.toContain(secrets.token);
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: catalogSaved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    await expect(withCloudflareOriginConfiguration(db, { identity, configurationRef: catalogSaved.configurationRef,
+      configurationDigest: catalogSaved.configurationDigest }, async value => value.descriptor.runnerReleaseCatalog)).resolves.toBe("hyperdrive");
     await db.update(schema.systemSettings).set({ updatedBy: actorUserId + 1 }).where(eq(schema.systemSettings.key, privateDatabase.provisionJobId));
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).rejects.toThrow();
   });
