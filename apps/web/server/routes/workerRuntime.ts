@@ -1362,12 +1362,6 @@ export function registerWorkerRuntimeRoutes(
   const connectLimiter = rateLimit("worker-connect", { rpm: 60 });
   const runtimePackLimiter = rateLimit("worker-runtime-pack", { rpm: 60 });
 
-  app.get("/releases/runtime/:fileName", (req, res, next) => {
-    if (!isRuntimePackFilePaused(String(req.params.fileName))) return next();
-    res.setHeader("Cache-Control", "no-store");
-    sendApiError(res, 410, "runtime_pack_paused", RUNTIME_PACK_PAUSED_MESSAGE, "invalid_request_error");
-  });
-
   app.get(
     "/api/workers/runtime-pack/manifest",
     runtimePackLimiter,

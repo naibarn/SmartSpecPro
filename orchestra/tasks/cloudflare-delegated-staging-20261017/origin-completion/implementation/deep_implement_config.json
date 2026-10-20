@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries.",
+      "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries. First CI rejected a new Express static-file route; removed that unnecessary route and retain existing API download guard plus artifact exclusion. Focused API/release tests passed; rerun canonical CI on repair SHA before deployment.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7",
       "merged_main_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7"
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 37,
-  "updated_at": "2026-10-20T07:47:29.846651+00:00",
+  "generation": 38,
+  "updated_at": "2026-10-20T07:51:41.541961+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410/direct link guard, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries.",
+    "next_action": "Reversible macOS rendering pack distribution pause implemented: shared availability, public manifest paused200/download410, catalog/publish/upload guard, dashboard and connected-device fetch exclusion, Linux/Cloudflare artifact exclusion. Focused74 tests + packaging Node/Python guards passed. Integrate this slice then canonical build, release compatible Linux and staging Worker preserving config16d/native3bindings; verify actual dashboard no Mac request/404. Archives/DB history and independent Hermes/native Mac installer retained. Full migration remains partial at four missing bindings and genuine VPC/TLS/handler/image/auth-context boundaries. First CI rejected a new Express static-file route; removed that unnecessary route and retain existing API download guard plus artifact exclusion. Focused API/release tests passed; rerun canonical CI on repair SHA before deployment.",
     "merged_main_sha": "33f9d6e58835fdac2fbe29f01d3cc0ce8ec45fb7",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

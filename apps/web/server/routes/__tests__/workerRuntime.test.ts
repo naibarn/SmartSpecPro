@@ -1302,8 +1302,6 @@ describe("workerRuntime routes", () => {
     expect(manifest.body.archiveUrl).toBeUndefined();
     for (const url of [
       `/api/workers/runtime-pack/download/${fileName}`,
-      `/releases/runtime/${fileName}`,
-      `/releases/runtime/${fileName}.manifest.json`,
     ]) {
       const download = await request(app).get(url);
       expect(download.status).toBe(410);
