@@ -16,12 +16,14 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE", "true");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "https://staging.example.workers.dev");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "test-workflow-runtime-token");
-    const job = { runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short" };
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+    const job = { runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short", tenantId: "tenant-a" };
     expect(createFeature186RuntimeAdapter(job).name).toBe("cloudflare-workflows");
     expect(createFeature186RuntimeAdapter().name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, jobType: "database.backup" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, runtimeType: "python_job_worker" }).name).toBe("postgres-pull");
     expect(createFeature186RuntimeAdapter({ ...job, executionClass: "long" }).name).toBe("postgres-pull");
+    expect(createFeature186RuntimeAdapter({ ...job, tenantId: "tenant-b" }).name).toBe("postgres-pull");
     vi.stubEnv("FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE", "false");
     expect(createFeature186RuntimeAdapter(job).name).toBe("postgres-pull");
   });
@@ -30,7 +32,8 @@ describe("Feature 186 runtime adapter policy", () => {
     vi.stubEnv("FEATURE_186_CLOUDFLARE_WORKFLOW_INTAKE", "true");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_URL", "");
     vi.stubEnv("CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN", "");
-    expect(() => createFeature186RuntimeAdapter({ runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short" }))
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+    expect(() => createFeature186RuntimeAdapter({ runtimeType: "node_job_worker", jobType: "emergency.report.intake", executionClass: "short", tenantId: "tenant-a" }))
       .toThrow("CLOUDFLARE_WORKFLOW_RUNTIME_CONFIG_INCOMPLETE");
   });
 

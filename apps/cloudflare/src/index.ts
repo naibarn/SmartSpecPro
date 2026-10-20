@@ -21,7 +21,7 @@ import { createSpec260EvidenceRetentionSweep } from "./spec260BackgroundWork";
 import { classifyApiRoute } from "./apiRouteManifest";
 import { proxyAuthToOrigin, proxyWebSocketToOrigin } from "./authOriginProxy";
 import { dispatchManifestRoute } from "./nativeApi";
-import { handleCanonicalWorkflowRequest } from "./workflowRuntime";
+import { handleCanonicalWorkflowRequest, isCanonicalWorkflowEnabled } from "./workflowRuntime";
 import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
 
 const failClosedConsumer = createFailClosedConsumer();
@@ -96,7 +96,7 @@ export function createCloudflareWorker(
         try { assertCanonicalControlPlaneConfiguration(env); controlPlaneConfigured = true; } catch { /* fail closed */ }
         const selectedHandlerConfigured = workflows ? Boolean(runtime?.workflowHandlerConfigured) : jobHandlerConfigured;
         const ready = readiness.ready && selectedHandlerConfigured && (workflows
-          ? controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
+          ? isCanonicalWorkflowEnabled(env) && controlPlaneConfigured && Boolean(env.CLOUDFLARE_RUNTIME_TOKEN?.trim()) : spec260EvidenceRetentionReady);
         return json({
           ok: ready,
           readiness: { ...readiness, required: readiness.required, jobHandlerConfigured: selectedHandlerConfigured, controlPlaneConfigured, spec260EvidenceRetentionReady },

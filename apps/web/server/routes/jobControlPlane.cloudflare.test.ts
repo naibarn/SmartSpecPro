@@ -34,6 +34,8 @@ const send = (action: string, extra: Record<string, unknown> = {}) => request(ap
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.stubEnv("CLOUDFLARE_CONTROL_PLANE_TOKEN", "test-control-plane-token");
+  vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "tenant-a");
+  vi.stubEnv("CLOUDFLARE_WORKFLOW_EXPIRES_AT", new Date(Date.now() + 60_000).toISOString());
   row = { ...context, requestedByUserId: 7, runtimeType: "node_job_worker", status: "running", operatorReviewRequired: false,
     dispatchId: envelope.dispatch_id, dispatchAttemptId: null, dispatchDedupeKey: envelope.dedupe_key,
     dispatchAdapter: "cloudflare-workflows", publicationStatus: "published", publishedAt: new Date(), leaseExpiresAt: new Date(Date.now() + 60_000) };
@@ -136,6 +138,17 @@ describe("Cloudflare canonical job boundary", () => {
 
   it("rejects a cross-tenant business payload even with a valid transport credential", async () => {
     mocks.plane.getContext.mockResolvedValue({ ...context, input: { reportId: "report-1", tenantId: "tenant-b" } });
+    await send("execute", { claim }).expect(409);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("does not admit another tenant or an unconfigured deployment scope", async () => {
+    row.tenantId = "tenant-b";
+    await send("context").expect(409);
+    await send("claim").expect(409);
+    await send("execute", { claim }).expect(409);
+    row.tenantId = "tenant-a";
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TENANT_ID", "");
     await send("execute", { claim }).expect(409);
     expect(mocks.execute).not.toHaveBeenCalled();
   });

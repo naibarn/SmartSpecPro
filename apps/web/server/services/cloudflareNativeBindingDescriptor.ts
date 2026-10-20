@@ -60,7 +60,7 @@ export function nativeWorkerBindings(value: CloudflareNativeBindingDescriptor) {
 }
 
 /** Check the immutable uploaded version before activating it, including retries. */
-export function assertNativeWorkerBindings(actual: unknown, value: CloudflareNativeBindingDescriptor) {
+export function assertNativeWorkerBindings(actual: unknown, value: CloudflareNativeBindingDescriptor, workflowExecution = false) {
   const expected = nativeWorkerBindings(value);
   if (!Array.isArray(actual) || expected.some(binding => {
     const matches = actual.filter(item => item?.name === binding.name);
@@ -68,7 +68,8 @@ export function assertNativeWorkerBindings(actual: unknown, value: CloudflareNat
   }) || actual.some(item => ["queue", "r2_bucket", "vectorize", "hyperdrive", "workflow"].includes(item?.type)
     && !expected.some(binding => binding.name === item.name))
     || actual.filter(item => item?.name === "CLOUDFLARE_ACTIVATION").length !== 1
-    || !actual.some(item => item?.name === "CLOUDFLARE_ACTIVATION" && item.type === "plain_text" && item.text === "disabled"))
+    || (workflowExecution && !value.plan.workflow)
+    || !actual.some(item => item?.name === "CLOUDFLARE_ACTIVATION" && item.type === "plain_text" && item.text === (workflowExecution ? "enabled" : "disabled")))
     denied("CLOUDFLARE_NATIVE_VERSION_BINDINGS_MISMATCH");
 }
 

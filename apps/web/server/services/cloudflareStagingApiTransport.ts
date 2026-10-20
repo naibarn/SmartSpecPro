@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
-import { validateCloudflareOriginVersionBindings, type CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
+import { validateCloudflareOriginVersionBindings, cloudflareWorkflowVersionBindings, assertCloudflareWorkflowVersionBindings, type CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { assertNativeWorkerBindings, nativeWorkerBindings, type CloudflareNativeBindingDescriptor } from "./cloudflareNativeBindingDescriptor";
 import { cloudflareStagingAssetContentType } from "./cloudflareStagingAssetMetadata";
 import type {
@@ -246,9 +246,10 @@ export function createCloudflareStagingApiTransport(input: {
       compatibility_date: bundle.compatibilityDate,
       bindings: [
         { name: "ASSETS", type: "assets" },
-        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
+        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: origin?.descriptor.workflowExecution ? "enabled" : "disabled" },
         { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
+        ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
         ...(origin ? [
           { name: "AUTH_ORIGIN", type: "plain_text", text: origin.descriptor.origin },
           { name: "AUTH_ORIGIN_PRIVATE_HOST", type: "plain_text", text: new URL(origin.descriptor.origin).host },
@@ -457,7 +458,8 @@ export function createCloudflareStagingApiTransport(input: {
               priorVersion.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest)) {
             throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
           }
-          if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources);
+          if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
+          if (origin?.descriptor.workflowExecution) assertCloudflareWorkflowVersionBindings(priorVersion.resources?.bindings, origin);
           const subdomain = await getWorkersDevSubdomain(token, target);
           return { deploymentId: prior.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest, ...(origin ? { configurationDigest: origin.configurationDigest } : {}) };
         }
@@ -466,7 +468,8 @@ export function createCloudflareStagingApiTransport(input: {
           const uploaded = await api<Version>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/versions/${versionId}`);
           if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest))
             throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
-          assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources);
+          assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
+          if (origin.descriptor.workflowExecution) assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
           await assertMutationAuthorized?.();
           await input.verifyNativeResources!(origin.descriptor.nativeResources, target);
         }

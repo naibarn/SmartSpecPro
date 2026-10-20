@@ -105,6 +105,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_ENVIRONMENT?: string;
   /** Workflow-only activation never enables Queue delivery or Cron. */
   CLOUDFLARE_JOB_TRANSPORT?: string;
+  CLOUDFLARE_WORKFLOW_TENANT_ID?: string;
+  CLOUDFLARE_WORKFLOW_EXPIRES_AT?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;

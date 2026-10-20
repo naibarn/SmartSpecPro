@@ -55,7 +55,9 @@ export function createCanonicalControlPlaneHandler(input: {
     const claim = await repository.claim({ job, envelope });
     if (claim === "already_terminal") return "completed";
     if (claim === "quarantine") return "quarantined";
-    if (claim === "retry") return "retry";
+    // No lease means no durable business retry was written. Let the transport
+    // retry this delivery instead of completing a Workflow with a queued job.
+    if (claim === "retry") throw new Error("CANONICAL_CLAIM_UNAVAILABLE");
 
     try {
       const execution = await input.execute({ job, envelope, claim, env });

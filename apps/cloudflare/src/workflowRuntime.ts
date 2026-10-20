@@ -10,6 +10,12 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { "content-type": "application/json", "cache-control": "no-store" },
 });
 
+export function isCanonicalWorkflowEnabled(env: CloudflareEnvironment): boolean {
+  return env.CLOUDFLARE_ACTIVATION === "enabled" && env.CLOUDFLARE_JOB_TRANSPORT === "workflows" &&
+    Boolean(env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim()) &&
+    Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now();
+}
+
 export async function canonicalWorkflowInstanceId(dedupeKey: string): Promise<string> {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(dedupeKey));
   return `cfw-${Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("")}`;
@@ -20,7 +26,7 @@ export async function canonicalWorkflowInstanceId(dedupeKey: string): Promise<st
 export async function runCanonicalWorkflow(
   payload: unknown, env: CloudflareEnvironment, step: Pick<WorkflowStep, "do">, handler: CanonicalJobHandler = canonicalHandler,
 ) {
-  if (env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_JOB_TRANSPORT !== "workflows") throw new Error("CLOUDFLARE_WORKFLOW_DISABLED");
+  if (!isCanonicalWorkflowEnabled(env)) throw new Error("CLOUDFLARE_WORKFLOW_DISABLED");
   assertCanonicalControlPlaneConfiguration(env);
   const envelope = parseCanonicalEnvelope(payload);
   if (envelope.contract_version !== "feature-186-v1") throw new Error("UNSUPPORTED_CONTRACT_VERSION");
@@ -39,7 +45,7 @@ function assertInstance(instance: CloudflareWorkflowInstance, expectedId: string
  * Create first, then inspect on failure: never infer 'missing' from an opaque
  * provider exception or suppress permission/network failures as absence. */
 export async function handleCanonicalWorkflowRequest(request: Request, env: CloudflareEnvironment): Promise<Response> {
-  if (env.CLOUDFLARE_ACTIVATION !== "enabled" || env.CLOUDFLARE_JOB_TRANSPORT !== "workflows") return json({ error: "CLOUDFLARE_WORKFLOW_DISABLED" }, 503);
+  if (!isCanonicalWorkflowEnabled(env)) return json({ error: "CLOUDFLARE_WORKFLOW_DISABLED" }, 503);
   const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   if (!env.CLOUDFLARE_RUNTIME_TOKEN?.trim() || provided !== env.CLOUDFLARE_RUNTIME_TOKEN.trim()) return json({ error: "UNAUTHORIZED" }, 401);
   const action = new URL(request.url).pathname.split("/").at(-1);

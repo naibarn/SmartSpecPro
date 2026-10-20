@@ -190,6 +190,8 @@ async function getAuthorizedCloudflareJob(envelope: z.infer<typeof canonicalClou
       !(row.dispatchDedupeKey === attemptDedupeKey || row.dispatchDedupeKey.startsWith(`${attemptDedupeKey}:`)) ||
       row.dispatchAttemptId !== envelope.attempt_id || !row.publishedAt ||
       !(row.publicationStatus === "published" || (row.publicationStatus === "consumed" && row.consumedAt)) ||
+      (row.dispatchAdapter === "cloudflare-workflows" && (row.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||
+        !(Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()))) ||
       !CLOUDFLARE_CANONICAL_RUNTIMES.has(row.runtimeType) || Object.keys(envelope.routing_metadata).length > 16) {
     return { state: "envelope_mismatch" as const };
   }
@@ -277,6 +279,8 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     try {
       const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
       if (authorized.state !== "authorized" || authorized.row.attempt !== parsed.data.envelope.business_attempt ||
+          authorized.row.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||
+          !(Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
           authorized.row.dispatchAdapter !== "cloudflare-workflows" ||
           authorized.row.runtimeType !== "node_job_worker" || authorized.row.jobType !== "emergency.report.intake" ||
           authorized.row.contractVersion !== "feature-186-v1" || authorized.row.executionClass !== "short" ||

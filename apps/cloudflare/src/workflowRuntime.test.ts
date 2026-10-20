@@ -9,6 +9,7 @@ function setup() {
   const instance = { id: "", status: vi.fn().mockResolvedValue({ status: "running" }), terminate: vi.fn() };
   const binding = { create: vi.fn(async ({ id }) => ({ ...instance, id })), get: vi.fn(async id => ({ ...instance, id })) };
   const env: CloudflareEnvironment = { CLOUDFLARE_ACTIVATION: "enabled", CLOUDFLARE_JOB_TRANSPORT: "workflows",
+    CLOUDFLARE_WORKFLOW_TENANT_ID: "tenant-a", CLOUDFLARE_WORKFLOW_EXPIRES_AT: new Date(Date.now() + 60_000).toISOString(),
     CLOUDFLARE_RUNTIME_TOKEN: "test-runtime-token", HYPERDRIVE: { connectionString: "postgres://test" }, JOB_WORKFLOW: binding,
     PLATFORM_EDGE_ORIGIN: "https://platform.private.example", PLATFORM_EDGE_PRIVATE_HOST: "platform.private.example",
     CLOUDFLARE_CONTROL_PLANE_TOKEN: "test-dedicated-control-plane-token" };
@@ -57,6 +58,8 @@ describe("native canonical Workflow transport", () => {
     const { env, binding } = setup();
     expect((await handleCanonicalWorkflowRequest(request(), { ...env, CLOUDFLARE_ACTIVATION: "disabled" })).status).toBe(503);
     expect((await handleCanonicalWorkflowRequest(request(), { ...env, CLOUDFLARE_JOB_TRANSPORT: undefined })).status).toBe(503);
+    expect((await handleCanonicalWorkflowRequest(request(), { ...env, CLOUDFLARE_WORKFLOW_TENANT_ID: undefined })).status).toBe(503);
+    expect((await handleCanonicalWorkflowRequest(request(), { ...env, CLOUDFLARE_WORKFLOW_EXPIRES_AT: "2000-01-01T00:00:00Z" })).status).toBe(503);
     expect((await handleCanonicalWorkflowRequest(request(), { ...env, CLOUDFLARE_RUNTIME_TOKEN: "different" })).status).toBe(401);
     expect((await handleCanonicalWorkflowRequest(request("publish", { ...envelope, routing_metadata: { token: "secret" } }), env)).status).toBe(400);
     expect(binding.create).not.toHaveBeenCalled(); expect(binding.get).not.toHaveBeenCalled();

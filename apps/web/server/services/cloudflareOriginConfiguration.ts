@@ -15,6 +15,7 @@ import {
   cloudflareOriginDescriptorSchema as descriptorSchema,
   cloudflareOriginDescriptorDigest as digest,
   type CloudflareOriginDescriptor as Descriptor,
+  assertCloudflareWorkflowConfiguration,
 } from "./cloudflareOriginVersionBindings";
 const category = "cloudflare_origin_versions";
 const targetId = "smartspec-cloudflare-staging";
@@ -70,6 +71,7 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
 }) {
   const settings = validateSettings(input.settings, Date.now());
   const secrets = cloudflareOriginSecretsSchema.parse(input.secrets);
+  assertCloudflareWorkflowConfiguration(settings, secrets);
   if (input.identity.provider !== "cloudflare" || input.identity.environment !== "staging" ||
       !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0) denied();
   return db.transaction(async tx => {
@@ -107,6 +109,7 @@ async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, co
   try { stored = storedSchema.parse(JSON.parse(decrypt(rows[0]!.value!))); }
   catch { return denied(); }
   if (!matches(stored.descriptor, identity) || reference(stored.descriptor) !== configurationRef) denied();
+  assertCloudflareWorkflowConfiguration(stored.descriptor, stored.secrets);
   validateSettings(cloudflareOriginSettingsSchema.parse({ origin: stored.descriptor.origin,
     allowedPublicOrigins: stored.descriptor.allowedPublicOrigins, accessApplicationId: stored.descriptor.accessApplicationId,
     accessTeamName: stored.descriptor.accessTeamName, accessAudience: stored.descriptor.accessAudience,

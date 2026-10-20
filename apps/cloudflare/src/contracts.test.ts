@@ -53,6 +53,17 @@ describe("Cloudflare local runtime contracts", () => {
     await expect(handler(envelope, {})).resolves.toBe("completed");
     expect(repository.claim).not.toHaveBeenCalled();
   });
+  it("retries the transport when no canonical lease was acquired", async () => {
+    const repository = {
+      loadJob: vi.fn().mockResolvedValue({ jobId: "job-1", contractVersion: "feature-186-v1", businessAttempt: 1, status: "queued", operatorReviewRequired: false }),
+      recordDispatch: vi.fn().mockResolvedValue("recorded"), claim: vi.fn().mockResolvedValue("retry"), complete: vi.fn(), retry: vi.fn(),
+    };
+    const execute = vi.fn();
+    const handler = createCanonicalControlPlaneHandler({ repository: repository as never, execute });
+    await expect(handler(envelope, {})).rejects.toThrow("CANONICAL_CLAIM_UNAVAILABLE");
+    expect(execute).not.toHaveBeenCalled(); expect(repository.complete).not.toHaveBeenCalled();
+    expect(repository.retry).not.toHaveBeenCalled();
+  });
   it("fails closed until all account bindings are injected and activation is enabled", () => {
     const disabled = inspectBindingReadiness({ CLOUDFLARE_ACTIVATION: "disabled" });
     expect(disabled.ready).toBe(false);
