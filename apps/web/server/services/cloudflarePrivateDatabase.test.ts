@@ -9,6 +9,7 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   privateDatabaseGrantSchema, privateDatabasePlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
+import { validateJobDefinition } from "./jobCanonicalization";
 
 let caCertificate: string, certDirectory: string;
 beforeAll(() => {
@@ -119,6 +120,14 @@ describe("private PostgreSQL staging provisioning", () => {
 });
 
 describe("private database canonical executor fences", () => {
+  it("fits the canonical job identity limits before policy issuance", () => {
+    const f = fixture();
+    expect(() => validateJobDefinition({ contractVersion: PRIVATE_DATABASE_CONTRACT, tenantId: f.grant.tenantId,
+      jobType: PRIVATE_DATABASE_JOB, executionClass: "long", requestedByUserId: 1,
+      retryPolicy: { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 5000, jitter: "none", deadlineMs: 600000, deadlineMode: "fixed", allowedErrorClasses: ["transient"] },
+      timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 600000 },
+      input: { contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: f.grant.grantRef, projectId: f.grant.projectId, planDigest: f.grant.planDigest } } as never)).not.toThrow();
+  });
   function execution() {
     const f = fixture();
     const runtime = { resolveGrant: vi.fn(async () => f.grant), resolveAccount: vi.fn(async () => f.grant.accountRef),

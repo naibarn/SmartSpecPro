@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 
-export const PRIVATE_DATABASE_CONTRACT = "cloudflare-staging-private-database-provision-v1";
+export const PRIVATE_DATABASE_CONTRACT = "cloudflare-staging-private-db-v1";
 export const PRIVATE_DATABASE_JOB = "cloudflare.staging.private_database.provision";
 export const PRIVATE_DATABASE_GRANT = "cloudflare.staging-private-database-provision-grant.v1";
 export const privateDatabaseRole = (namespace: string) => `sah_cf_staging_${namespace.slice(-12)}`;

@@ -4,7 +4,7 @@ from datetime import datetime
 from app.services.cloudflare_origin_provision_contract import validate_grant_identity, plan_digest
 from app.services.cloudflare_native_provision_contract import namespace
 
-CONTRACT = "cloudflare-staging-private-database-provision-v1"
+CONTRACT = "cloudflare-staging-private-db-v1"
 POLICY_SCHEMA = "cloudflare.staging-private-database-provision-policy.v1"
 GRANT_SCHEMA = "cloudflare.staging-private-database-provision-grant.v1"
 
