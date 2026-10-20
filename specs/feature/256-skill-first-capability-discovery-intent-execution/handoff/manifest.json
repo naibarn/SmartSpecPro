@@ -5,45 +5,30 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/feature/256-skill-first-capability-discovery-intent-execution",
-          "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution"
-        ]
-      },
-      {
-        "kind": "DUPLICATE_SPEC_REVISION",
-        "paths": [
-          "specs/feature/256-skill-first-capability-discovery-intent-execution",
-          "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution"
-        ]
-      }
-    ],
+    "confidence": "MEDIUM",
+    "conflicts": [],
     "evidence": [
-      {
-        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
-      }
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/MANIFEST.json",
+      "git:6fffb7478",
+      "git:440c9e5",
+      "Current user request: amend existing SPEC256; documentary identity only"
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe"
+    "expected_spec_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target.",
+    "next_ready_workunit": "UWAC_WP34_SPEC256_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -75,24 +60,25 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
-      {
-        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
-      }
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/MANIFEST.json",
+      "git:6fffb7478",
+      "git:440c9e5",
+      "Current user request: amend existing SPEC256; documentary identity only"
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "Explicit pack README canonical path and sibling pack provenance select this outer document for the user-directed additive amendment. Not runtime acceptance. Preserved nested copy is historical.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-    "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+    "digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-11T02:00:58.484519Z",
+      "last_evidence_at": "2026-10-20T23:27:53.474451Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -122,6 +108,54 @@
     "updated_at": "2026-10-11T02:00:58.484519Z"
   },
   "manual_decisions": {
+    "authority": {
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/MANIFEST.json",
+        "git:6fffb7478",
+        "git:440c9e5",
+        "Current user request: amend existing SPEC256; documentary identity only"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+        }
+      ],
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/MANIFEST.json",
+        "git:6fffb7478",
+        "git:440c9e5",
+        "Current user request: amend existing SPEC256; documentary identity only"
+      ],
+      "rationale": "Explicit pack README canonical path and sibling pack provenance select this outer document for the user-directed additive amendment. Not runtime acceptance. Preserved nested copy is historical.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "VALIDATION_PENDING",
+      "state_evidence": [],
+      "updated_at": "2026-10-11T02:00:58.484519Z"
+    },
     "requirements": {
       "REQ-139229B5316B": {
         "applicability": "APPLICABLE",
@@ -141,10 +175,54 @@
         "requirement_digest": "65ef1d5d0741920517bd91241025828efa8776bc0edf9f25b01a1b139dae01a0",
         "requirement_id": "REQ-139229B5316B",
         "requirement_text": "Mini App scope SHALL be the **intersection** of explicit app-granted capability IDs, current user permissions, current project and per-asset rights. Universal Chat may request a wider scope only by an explicit user handoff and fresh authorization. Agent/tool output text, generated UI and untrusted captions cannot add a hidden search filter that broadens permissions. A permitted lookup cannot leak private reference names in an alternative suggestion or free-text error message.",
-        "source_spec_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+        "source_spec_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-256-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L996"
+        ],
+        "authority_source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L996",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "031885d3a4f622288cfa33f5e04ce3ae25e2d3d35ed6b2e7e5f15e7d1785d7b5",
+        "requirement_id": "REQ-256-UWAC-01",
+        "requirement_text": "- REQ-256-UWAC-01: Skill-first discovery MUST reuse the existing registry/catalog projection and return tenant-filtered version/trust/capability/freshness/owner references for direct invocation or authoring handoff. Discovery MUST NOT grant execution rights, force Git/workflows, create another Skill Registry or silently select a costly composite.",
+        "source_spec_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-05 UW-10 UW-17 UW-18 UW-25 UW-28 UW-32; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-256-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L997"
+        ],
+        "authority_source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L997",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "795cac64db59224b39c0ce44dbb6c5269c320c7fd8d1fb5214ac23fa1cd5f240",
+        "requirement_id": "REQ-256-UWAC-02",
+        "requirement_text": "- REQ-256-UWAC-02: Invocation MUST pin Skill version/digest and revalidate capability, permissions, health and budget before canonical job admission when durable. Creation/improvement/evaluation/release MUST hand off to SPEC-221; stale/revoked/retired offers MUST fail closed, with discovery visibility and execution enablement independently governed.",
+        "source_spec_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-05 UW-10 UW-17 UW-18 UW-25 UW-28 UW-32; retain source/target/policy/evidence/time and distinct document/runtime evidence."
       }
     }
   },
@@ -156,10 +234,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-11T02:00:58.484519Z",
+    "reconciled_at": "2026-10-20T23:27:53.474451Z",
     "sources": [
       {
-        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+        "digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       },
@@ -171,7 +249,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-        "source_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+        "source_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
         "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
       }
     ],
@@ -202,14 +280,14 @@
         "excerpt": "status: R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED",
         "line": 6,
         "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-        "source_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+        "source_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
         "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
+        "digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       }
@@ -220,16 +298,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 162,
-    "unresolved": 162
+    "total": 164,
+    "unresolved": 164
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T01:30:08.153745Z",
+  "updated_at": "2026-10-20T23:39:55.149693Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

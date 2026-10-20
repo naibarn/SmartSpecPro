@@ -1,0 +1,61 @@
+# Executable acceptance design — all scenarios NOT_RUN
+
+These are Given/When/Then test specifications, not executed acceptance receipts. Run against an authorized isolated target with existing policy decisions. For each case record scenario ID, owner requirement IDs, fixture revision, source SHA/artifact digest, target/environment, actor/tenant/profile/authority scope, method/command, timestamps, observed result, evidence refs, limitations and recovery. Never place credentials, signed tokens or private transcripts in a receipt. Local fixtures, document checks, authenticated integration, rendered UI and production acceptance are distinct evidence classes.
+
+The original R0.6 UW-01–30 identities are retained. UW-31–36 close command, security, responsive, provenance and recovery gaps. Traceability is in [traceability.md](traceability.md); owner requirements reference case IDs directly.
+
+| ID | Given / action | Required observable result and evidence |
+|---|---|---|
+| UW-01 | Plain Chat question, no requested background effect; submit once and replay request | Answer retains conversation context; no unexpected durable job/repository/development run or charge; ingress/job/economic audit |
+| UW-02 | Explicit authorized long Work from Chat; disconnect and reopen conversation | One admitted parent/canonical job with context, criteria and next action; reconnect observes same IDs and queue/event history |
+| UW-03 | Non-Git report from permitted data; generate and verify | Accepted PDF/spreadsheet ArtifactRef with revision/digest and access/QC receipt; no Git binding needed |
+| UW-04 | Non-Git media Skill with known QC criteria; render | Version-pinned inputs/output digests and QC evidence; media completion distinct from publication/sharing |
+| UW-05 | One eligible Skill/function satisfies request; invoke | Direct selection receipt and exact loaded version/result; no forced composite, Git or development run; permission/effect receipt |
+| UW-06 | Author without GitHub account; create private prompt Skill | Existing Studio/registry stores immutable private package/version, input/output contract and eval/release records; no repository creation |
+| UW-07 | Executable Skill without Git remote; evaluate with locked dependencies | Approved Cloudflare isolation and canonical job admission before execution, reproducible digest/eval/security receipts; no retired/local unsafe bypass |
+| UW-08 | Candidate has failed eval or lacks publish privilege; request broadened visibility | Existing governance denies publication, keeps draft/eval state; no side effect and durable deny receipt; later authorized release remains distinct |
+| UW-09 | One Work delegates to three agents and two Skills; duplicate return, fail one child | Single parent graph with bounded delegation, attenuated budget, partial criteria and idempotent return; siblings continue and parent is not falsely complete |
+| UW-10 | User pins permitted subscription harness; selected route unavailable | Honored account route or explicit unavailable/waiting reason; no silent provider switch, credential disclosure or platform token charge for subscription use |
+| UW-11 | Runner disappears mid non-Git Work; reconnect | DISCONNECTED/UNKNOWN health with last liveness/progress and preserved job; recovery revalidates lease/grant; no false success or sibling termination |
+| UW-12 | External browser action timed out after possible effect | Attempt and uncertainty shown; reconcile permitted external record revision before safe retry; draft/attempt never shown as sent/applied |
+| UW-13 | General Work source NONE then applicable Git source unavailable | First shows Git NOT_APPLICABLE with useful inputs/results; second shows unknown/unavailable reason; no fabricated branch or common Git-error empty state |
+| UW-14 | Software task starts from Chat/Work; attempt direct unchecked mutation | Explicit development child and registered source lineage; protected integration policy denies bypass; parent retains independent outcome criteria |
+| UW-15 | Agent A produces verified checkpoint while B continues in dirty owned worktree | Immutable A checkpoint integrates through single authority; B files/HEAD unchanged and remains running; parent stays open until its outcome passes |
+| UW-16 | Dirty agent worktree or unauthorized/mutable source offered for release build | Canonical-source admission rejects it; no artifact publication/deploy; later approved exact-source build uses clean isolated SHA and required ancestors |
+| UW-17 | Skill is discoverable but actor lacks a required tool permission | Invocation rejects before effect; no right gained from SkillRef/discovery; audit explains permitted reason without leaking restricted metadata |
+| UW-18 | Revoke Skill version/grant while waiting/running; replay stale command | New effects denied; running operation follows existing safe-stop policy and reconciles already-applied effects; stale version/grant cannot resume; revocation receipt |
+| UW-19 | Mixed Work/Skill/Develop from multiple sessions; duplicate/out-of-order events | One normalized timeline with stable source/native identities, dedup, gaps and causal bindings; expand reveals allowed provenance/evidence and original state |
+| UW-20 | Open Simple and Developer lenses with same scoped token | Identical as-of/outcome/blockers/accepted outputs; only detail differs; conditional Git/log/release detail and token/version comparison |
+| UW-21 | Switch tenants or revoke read privilege during pagination/drilldown | Fresh ACL applied before aggregation/dereference; stale token cannot expose data/counts or execute cards; inaccessible-source state remains privacy-safe |
+| UW-22 | Continue same Work from Desktop to Tablet/Mobile and another session | Same context/work IDs/history and facts, no new run; local-only assets disclose recovery limits; authenticated cross-device receipt and rendered evidence |
+| UW-23 | Mix fresh remote evidence, stale local observations and absent Git history | Per-source watermarks/as-of/coverage/confidence; liveness differs from progress; stale source never inferred fresh from another source |
+| UW-24 | Platform metered service plus pinned user subscription; replay/repair | Existing billing ledger records actual platform cost once, reservation/settlement lineage and funding source; no duplicated provider subscription token billing |
+| UW-25 | Successful repeated Work with secrets in trace; Save as Skill | Deduplicated redacted draft through SPEC-221, explicit examples/eval plan and policy-gated publication; no automatic install/publish or raw secret retention |
+| UW-26 | Missing/expired source history or snapshot token; open timeline | Explicit NOT_AVAILABLE/SNAPSHOT_EXPIRED/HISTORY_UNAVAILABLE with scope and refresh action; no reconstructed fictitious historical proof |
+| UW-27 | Replay 50 heterogeneous sessions under bounded tenant scope | Record observed query/stream latency, pagination/replay coverage and dropped/backpressure events against a predeclared target budget; scope-safe filtering; no unmeasured performance PASS |
+| UW-28 | Non-code task/Skill uses Python or files; inspect dispatch | Correct existing work/Skill owner and worker_jobs/outbox trace; no forced SPEC-224, worktree or retired runtime; inline long execution is a failing case |
+| UW-29 | Work requires an optional software child; child merges before report accepted | Versioned explicit handoff and separate acceptance; child Git gates enforced while parent non-code criteria remain pending |
+| UW-30 | origin/main cache differs from remote main during build/admission | Distinct remote/local/tracking/worktree/verified/deployed refs; source/drift recheck and policy-correct rejection/re-admission; exact SHA/digest survives into runtime proof |
+| UW-31 | Unsupported pause/resume/steer; valid cancel; duplicate command | Unsupported action disabled/denied; valid command follows current authority with idempotent requested/accepted/applied receipts; ACK alone not terminal cancellation |
+| UW-32 | Malicious Skill/tool description, hidden tenant candidate, stale offer or retired type | No prompt-derived privilege or hidden metadata leak; source/capability/egress policy rechecked; retired paths excluded from discovery, admission and dispatch |
+| UW-33 | At 390×844, 820×1180 and 1440×900, use keyboard/screen reader; collector fails | Accessible timeline expansion, task next action and Skill result links; same facts/lens semantics; bounded stale/error state; workers keep progressing despite observation outage |
+| UW-34 | Local and Actions builds of same admitted SHA; tamper digest or change mutable ref | Comparable provenance fields bind exact checkout, builder revision/config/toolchain/locks/run and artifact digest; tampering/policy drift rejected before publication; remote parity unverified until both receipts exist |
+| UW-35 | Inject CI failure, resource OOM/137, build failure and failed deployment health | Distinct phase/source/check evidence; OOM=RESOURCE_BLOCKED with fresh capacity before retry; bounded repair/rollback via existing authority; no success claim from a failed or stale run |
+| UW-36 | Build succeeds but target serves older frontend/backend/worker or migration is incompatible | Separate publication/deploy/component runtime evidence shows mismatch; block serving-verified claim, use existing migration/promotion controls and authorized rollback; no extra deploy lane |
+
+## Running order and proof boundaries
+
+Start with pure contract/negative fixtures for UW-01/05/13/17/19/26/31/32. Persisted authorized integration then covers admission, parent-child, event replay, revocation and economic effects. Rendered tests cover UW-20/22/27/33 with the same projection fixture and device sizes; SPEC-287 owns visual/accessibility evidence. Development/source/build tests cover UW-14–16/29–30/34–36 on disposable repos/artifacts using existing authority. Production observations require existing release authorization and are outside this phase.
+
+Each scenario must include a negative and recovery variant where applicable, use fake/private disposable external targets, and record exactly which assertion was exercised. An unexecuted table row remains NOT_RUN. An authorization boundary can block its affected live test while deterministic work continues. Do not mark all cases PASS because documents validate or tests for a helper pass.
+
+## R0.4 / R0.5 development-specific variants
+
+These extend existing UW cases rather than allocating another registry. All remain NOT_RUN.
+
+- UW-15: run four sessions across at least two harness profiles; merge A1 while its session continues A2. After squash/cherry-pick, A2 excludes A1's already-integrated delta and preserves original/effective/merged ancestry. Replay a lost merge response and prove one logical integration; let a disjoint checkpoint progress while another repairs conflict. Covers embedded SCI-01–04/08–09.
+- UW-30: advance remote during candidate preparation and distinguish merge-group, effective candidate, actual merged and last-verified main SHAs. Old-tree checks cannot authorize a changed tree. Post-merge failure keeps latest main unverified while scoped repair continues. Covers SCI-05–07/12–14.
+- UW-16/32: an authorized AI conflict patch is still a proposal when independent exact-tree verification fails. Verify approved isolation denies unintended network, secrets and another tenant's source; no new privileged resolver service. Covers SCI-10–11/20.
+- UW-35: crash during integration, replay provider events and rewrite a branch; preserve lineage or show UNKNOWN_RECONCILE. Automatic source revert remains disabled without exact authority. Covers SCI-15/21.
+- UW-19/20/34/36: use the same authorized projection for twenty-session source observations and Chat/lens answers; distinguish preview from canonical release, exact local/Actions build, publication and observed runtime. Covers SCI-16–19 and R0.4 UXR source/release constraints.
+- UW-27: if optional batching is later authorized, shadow-test a bounded cohort and measure per-checkpoint p50/p95 time-to-merge and errors against the existing default path. No protected-main mutation or batching activation is allowed by this planning document. Covers SCI-22.

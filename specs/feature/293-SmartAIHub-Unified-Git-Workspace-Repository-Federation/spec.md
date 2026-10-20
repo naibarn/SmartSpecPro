@@ -2292,3 +2292,15 @@ MAY bind convergence to their managed project workspace, with the same receipt
 semantics. Cross-host ownership and Mission Control UI remain dependent on
 their registered runner/provider adapters and MUST report `UNKNOWN` when proof
 is stale or absent.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C1/C8. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-293-UWAC-01: GitWorkspaceBinding MUST be optional for general Work/Skill contexts. For applicable Git work, expose distinct observed remote canonical ref, cached origin/main, local main, worktree HEAD, last verified main with check scope/time, and production source from SPEC-295; missing observation MUST NOT be synthesized from another ref.
+- REQ-293-UWAC-02: All sessions/harnesses MUST use existing workspace/integration authority with owner/fencing and source-freshness receipts. Immutable checkpoints MAY merge incrementally under actual protection while siblings continue. Dirty/unknown/active worktrees MUST be preserved; stale source admission MUST be reconciled without arbitrary reset/rebase or bypass.
+
+Acceptance coverage: `UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

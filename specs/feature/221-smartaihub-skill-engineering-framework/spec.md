@@ -4272,3 +4272,15 @@ Spec 221 certification SHALL include Skill-discovery evals covering:
 - index-lag revalidation preventing stale execution.
 
 The discovery system SHALL measure retrieval quality independently from execution success so a powerful Skill does not mask a poor resolver.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C6/C7. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-221-UWAC-01: Existing Skill Studio/registry MUST support discovery handoff, create/improve, reproducible evaluation, immutable versioning and governed release without universally requiring GitHub or Git. Pin package/version/digest and approved storage references; platform source changes retain their source release policy and executable evaluation uses approved Cloudflare isolation.
+- REQ-221-UWAC-02: Skill draft, evaluation, publication, installation, invocation and accepted result MUST remain separate facts. Save-as-Skill MUST redact traces and create a deduplicated draft; authorization, visibility, revocation, tool grants and rollback MUST use existing owners. Long authoring/evaluation work MUST enter worker_jobs/outbox before execution.
+
+Acceptance coverage: `UW-06 UW-07 UW-08 UW-17 UW-18 UW-25 UW-32` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

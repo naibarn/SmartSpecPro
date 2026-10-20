@@ -22,13 +22,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "43336e21ce5d2c25d6d5f1f1fe0a0392d5717877",
-    "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
+    "expected_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f"
   },
   "continuation": {
-    "next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch.",
+    "next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence.",
     "next_ready_workunit": "EPISODE_281_PRODUCTION_FUNCTIONAL_SMOKE",
     "reactivation_predicate": null,
-    "resume_point": "Production generation 13 uses source 43336e21ce5d2c25d6d5f1f1fe0a0392d5717877 and artifact sha256:5f456e5c2efe2ae9e857c128f2e178a546cae0c01376b071f08b3f5433f86dc9. Confirmed root cause: compact bridge events omit position, but validator incorrectly required it when source position was known. Fix now permits omission but rejects explicit wrong positions. Focused tests 49/49; web/worker revisions aligned, health 200, SDK bridge available 0.22.2. Owner must hard-refresh Episode 281 and generate Enhanced once to complete functional production smoke. No DB migration or mutation occurred.",
+    "resume_point": "Production generation 13 uses source 43336e21ce5d2c25d6d5f1f1fe0a0392d5717877 and artifact sha256:5f456e5c2efe2ae9e857c128f2e178a546cae0c01376b071f08b3f5433f86dc9. Confirmed root cause: compact bridge events omit position, but validator incorrectly required it when source position was known. Fix now permits omission but rejects explicit wrong positions. Focused tests 49/49; web/worker revisions aligned, health 200, SDK bridge available 0.22.2. Owner must hard-refresh Episode 281 and generate Enhanced once to complete functional production smoke. No DB migration or mutation occurred. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -161,13 +161,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 78,
+  "generation": 83,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-    "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+    "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-07T04:18:10.947322Z",
+      "last_evidence_at": "2026-10-20T23:27:53.935975Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -361,6 +361,21 @@
     "updated_at": "2026-10-07T03:50:23Z"
   },
   "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
     "continuation_assessment": {
       "confidence": "HIGH",
       "decision": "RECONCILIATION_REQUIRED",
@@ -442,6 +457,18 @@
         "remaining WU-4C regression matrix and acceptance evidence",
         "safe convergence of the dirty primary user checkout after preserving its existing work"
       ]
+    },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
     },
     "lifecycle": {
       "current_state": "PARTIAL_INTEGRATED",
@@ -541,10 +568,54 @@
         "requirement_digest": "e378aee3d42ec4f149d00c8272967958fc27839e937c8ed8e1e663b32492e02a",
         "requirement_id": "REQ-253CBC2B31E7",
         "requirement_text": "SPEC-304 owns stable `AppIdentity`/`publicAppId`, canonical app route and mutable aliases, App Shell/startup semantics, runtime requirement declarations, and app/channel-to-release/deployment references. SPEC-295 remains sole authority for release sets, migration execution, deployment lifecycle, desired/observed state, health, rollback, and production operations. A route resolution or App identity receipt MUST NOT imply deployment health, rollout completion, or acceptance. A domain/slug/owner change MUST NOT mutate historical deployment or release identity. Runtime requirements declared by SPEC-304 are inputs to SPEC-295's existing target/capacity/security gates, not a second provisioner or deployment executor. This is a contract alignment only; no production migration or deployment is authorized.",
-        "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+        "source_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-295-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2218"
+        ],
+        "authority_source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2218",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "c59dbe9a9f69490f1bbeccc46d44f1157b900457874a701bbc1d45449279150b",
+        "requirement_id": "REQ-295-UWAC-01",
+        "requirement_text": "- REQ-295-UWAC-01: Release builds MUST bind the authorized immutable source SHA and required integrated ancestors to identical local/GitHub-Actions provenance semantics, including builder/workflow revision, run, toolchain/locks, input/config reference digests, artifact digest and checks. Promotion MUST reject mutable-ref-only, dirty, unauthorized, stale-policy or digest-mismatched inputs; every session MUST use the existing release authority.",
+        "source_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-14 UW-16 UW-24 UW-30 UW-34 UW-35 UW-36; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-295-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2219"
+        ],
+        "authority_source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2219",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "af91e769274f32e8f77abe6e6fcfaecf671b93b2e2b84b5334943ccdadcac095",
+        "requirement_id": "REQ-295-UWAC-02",
+        "requirement_text": "- REQ-295-UWAC-02: Build, publication, deployment and observed serving state MUST have separate source/digest/target/time evidence. CI/build/deploy failures MUST carry exact-SHA phase/check/resource classification, bounded recovery and rollback/health receipts. Non-Git results and Skill releases MUST use their applicable owner acceptance, not fabricate Git/deployment success; no production action is authorized by this consolidation.",
+        "source_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-14 UW-16 UW-24 UW-30 UW-34 UW-35 UW-36; retain source/target/policy/evidence/time and distinct document/runtime evidence."
       }
     }
   },
@@ -556,10 +627,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-07T04:18:10.947322Z",
+    "reconciled_at": "2026-10-20T23:27:53.935975Z",
     "sources": [
       {
-        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+        "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       },
@@ -599,7 +670,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+        "source_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
@@ -659,14 +730,14 @@
         "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+        "source_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+        "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       }
@@ -677,16 +748,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 166,
-    "unresolved": 166
+    "total": 168,
+    "unresolved": 168
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T07:21:21.850440Z",
+  "updated_at": "2026-10-20T23:39:55.340821Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

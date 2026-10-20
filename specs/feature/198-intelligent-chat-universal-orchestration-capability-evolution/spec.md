@@ -6268,3 +6268,15 @@ As a user, I can ask in Thai or English from any page, receive grounded Help or 
 The feature is accepted only when all applicable cross-plane contracts pass focused tests for tenant/auth safety, retrieval quality, event/idempotency semantics, durable Job handoff, Runner control, Help/UI accessibility, mixed versions, evaluation hygiene, observability and rollback; the verified missing surfaces in Section 207 must be implemented or explicitly out of scope for the release.
 
 # End of Spec
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C1/C3/C5. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-198-UWAC-01: Chat MUST remain the primary general-user entry and distinguish answer, authorized Work, Skill invocation/authoring and Develop conversion while retaining the same authorized work/conversation context. Direct answers and single functions MUST NOT silently create a background composite, repository or DevelopmentRun.
+- REQ-198-UWAC-02: Chat task tracking and conversions MUST consume canonical work/projection references and current permissions; agent commands MUST use SPEC-279 and user/client actions their existing SPEC-226/220 domain authority. Duplicate submissions MUST reuse canonical idempotency; no client-supplied tenant/context elevation or new Chat execution engine.
+
+Acceptance coverage: `UW-01 UW-02 UW-05 UW-25 UW-28 UW-29` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

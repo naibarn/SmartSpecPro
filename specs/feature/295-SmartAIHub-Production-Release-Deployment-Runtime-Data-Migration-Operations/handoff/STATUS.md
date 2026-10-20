@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
-- Requirements: 0 pass / 166 unresolved of 166
+- Requirements: 0 pass / 168 unresolved of 168
 - Next action: Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.
-- Manifest generation: 78
+- Manifest generation: 83
 
 ## Source-declared status and relationship claims
 

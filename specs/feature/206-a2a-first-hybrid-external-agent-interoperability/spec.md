@@ -7115,3 +7115,15 @@ Web UI
 ```
 
 That parity contract is the central success criterion of Spec 206.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C2/C3/C4. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-206-UWAC-01: Negotiated A2A and provider-native observations MUST map to the same versioned work/session/event/evidence consumer contract while retaining protocol/native IDs and unsupported/unknown fields. A2A discovery, MCP tools, native adapters and subscription entitlement MUST remain distinct capabilities.
+- REQ-206-UWAC-02: Cross-protocol controls and continuation MUST revalidate supported operations and authority through SPEC-200/205/279 and existing jobs. Transport completion MUST NOT prove accepted work or cross-session recovery; absence of certified A2A/native support MUST remain unavailable rather than fabricated parity.
+
+Acceptance coverage: `UW-09 UW-10 UW-11 UW-19 UW-31` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

@@ -1584,3 +1584,15 @@ Runner/harness adapters MUST NOT create hidden local vector indexes over SmartAI
 DevelopmentJob evidence SHOULD record retrieval/context snapshot references sufficient to reproduce which source revisions were supplied to the harness, without storing provider credentials or unnecessary private text.
 
 External harness native search features MAY search the checked-out repository locally; they do not replace SmartAIHub retrieval authorization for Library, Help, private RAG, Marketplace or cross-project knowledge.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C1/C8. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-218-UWAC-01: DevelopmentWorkspace/DevelopmentJob source requirements MUST apply to explicitly admitted development children, not to every WorkContext, file-processing task or executable Skill. Development children MUST preserve parent/context lineage and existing source/ChangeSet/release policy.
+- REQ-218-UWAC-02: Development checkpoints MUST bind immutable source revision, scoped ownership, base generation, focused verification and integration receipt through SPEC-224/293 and existing integration-controller. Safe checkpoints MAY integrate while other sessions continue; no forced reset/rebase or alternate deploy route.
+
+Acceptance coverage: `UW-14 UW-15 UW-29 UW-30` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

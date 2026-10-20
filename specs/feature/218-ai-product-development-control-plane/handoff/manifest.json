@@ -83,13 +83,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5"
+    "expected_spec_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields.",
+    "next_ready_workunit": "UWAC_WP38_SPEC218_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -202,13 +202,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/218-ai-product-development-control-plane/spec.md",
-    "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+    "digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.590907Z",
+      "last_evidence_at": "2026-10-20T23:27:53.251340Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -237,6 +237,232 @@
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:17.590907Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "218",
+          "referenced_spec_id": "218",
+          "referencing_spec_id": "223",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/223-zcode-external-harness-adapter/spec.md#L191",
+          "source_digest": "e64e0a641a1396c934bd6bb03e6557969c423001de897ee9deed1984b06f5e61",
+          "successor_spec_id": "223"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "218",
+          "referenced_spec_id": "218",
+          "referencing_spec_id": "224",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
+          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "successor_spec_id": "224"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "218",
+          "referenced_spec_id": "218",
+          "referencing_spec_id": "224",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
+          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "successor_spec_id": "224"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "218",
+          "referenced_spec_id": "218",
+          "referencing_spec_id": "250",
+          "relation_text": "merge",
+          "requirement_ids": [],
+          "source": "specs/feature/250-Development-Reliability/spec.md#L1092",
+          "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+          "successor_spec_id": "250"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "230",
+          "referenced_spec_id": "230",
+          "referencing_spec_id": "218",
+          "relation_text": "supersedes",
+          "requirement_ids": [],
+          "source": "specs/feature/218-ai-product-development-control-plane/spec.md#L1295",
+          "source_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+          "successor_spec_id": "218"
+        }
+      ],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\";",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 27,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\";",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 45,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\";",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 58,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\";",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 73,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\",",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 189,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\",",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 226,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\",",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 251,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "contractVersion: \"spec-218-v3\" as const,",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 284,
+          "path": "apps/web/server/services/developmentControlPlaneContracts.ts"
+        },
+        {
+          "excerpt": "describe(\"Spec 218 development control-plane contracts\", () => {",
+          "identity_ambiguous": false,
+          "kind": "TEST",
+          "line": 28,
+          "path": "apps/web/server/services/__tests__/developmentControlPlaneContracts.test.ts"
+        },
+        {
+          "excerpt": "\"The Runner shall apply Spec 218 isolation levels.\"",
+          "identity_ambiguous": false,
+          "kind": "TEST",
+          "line": 53,
+          "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
+        }
+      ],
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
+    "lifecycle": {
+      "current_state": "DISCOVERING",
+      "previous_state": null,
+      "state_evidence": [],
+      "updated_at": "2026-10-06T03:28:17.590907Z"
+    },
+    "requirements": {
+      "REQ-218-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/218-ai-product-development-control-plane/spec.md#L1595"
+        ],
+        "authority_source": "specs/feature/218-ai-product-development-control-plane/spec.md#L1595",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "f0e8e8073a9fd6d0830c245990ab7c9c4b8285d308028ce98635069a8b5ce88e",
+        "requirement_id": "REQ-218-UWAC-01",
+        "requirement_text": "- REQ-218-UWAC-01: DevelopmentWorkspace/DevelopmentJob source requirements MUST apply to explicitly admitted development children, not to every WorkContext, file-processing task or executable Skill. Development children MUST preserve parent/context lineage and existing source/ChangeSet/release policy.",
+        "source_spec_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-14 UW-15 UW-29 UW-30; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-218-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/218-ai-product-development-control-plane/spec.md#L1596"
+        ],
+        "authority_source": "specs/feature/218-ai-product-development-control-plane/spec.md#L1596",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "0fd9a0f53a52d7f03a699e79bf27d269a7259d398d7efc90f26f32205d6e2006",
+        "requirement_id": "REQ-218-UWAC-02",
+        "requirement_text": "- REQ-218-UWAC-02: Development checkpoints MUST bind immutable source revision, scoped ownership, base generation, focused verification and integration receipt through SPEC-224/293 and existing integration-controller. Safe checkpoints MAY integrate while other sessions continue; no forced reset/rebase or alternate deploy route.",
+        "source_spec_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-14 UW-15 UW-29 UW-30; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      }
+    }
+  },
   "reconciliation": {
     "confidence": "LOW",
     "inferred_fields": [
@@ -245,10 +471,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.590907Z",
+    "reconciled_at": "2026-10-20T23:27:53.251340Z",
     "sources": [
       {
-        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
       },
@@ -330,11 +556,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/218-ai-product-development-control-plane/spec.md",
-        "source_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "source_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
         "value": "Proposed / Partial development contract slice present; control-plane integration pending"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -415,7 +646,7 @@
         "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
       }
     ],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
@@ -427,14 +658,14 @@
         "excerpt": "**Status:** Proposed / Partial development contract slice present; control-plane integration pending",
         "line": 4,
         "source": "specs/feature/218-ai-product-development-control-plane/spec.md",
-        "source_digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "source_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
         "value": "Proposed / Partial development contract slice present; control-plane integration pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5",
+        "digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/218-ai-product-development-control-plane/spec.md"
       }
@@ -442,19 +673,19 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 163,
-    "unresolved": 163
+    "total": 165,
+    "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.590907Z",
+  "updated_at": "2026-10-20T23:39:55.070214Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

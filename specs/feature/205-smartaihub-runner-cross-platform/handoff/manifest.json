@@ -136,13 +136,13 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
-    "expected_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c"
+    "expected_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb"
   },
   "continuation": {
-    "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745 through the existing runner-desktop-release workflow (platform=windows), then install/accept that candidate on the Windows host and capture fresh session, WSS reconnect, capability acknowledgement, Codex readiness, and workspace binding evidence. Do not reconnect/reinstall the currently active installation as a diagnostic. Keep SPEC-224 protected dispatch DENY.",
+    "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745 through the existing runner-desktop-release workflow (platform=windows), then install/accept that candidate on the Windows host and capture fresh session, WSS reconnect, capability acknowledgement, Codex readiness, and workspace binding evidence. Do not reconnect/reinstall the currently active installation as a diagnostic. Keep SPEC-224 protected dispatch DENY. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic.",
     "next_ready_workunit": "WINDOWS_WSS_ROTATION_REVIEW_BUILD_AND_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "PR #415 merged at 79805356f9252e1ba6858d993dbcc42476788745. Local regression suite passed 173 unit + 8 integration tests. The active-loop A→B WSS credential rotation mechanism is reproduced and fixed; socket close alone retains A. Windows Tauri build and installed candidate acceptance remain pending owner authorization. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md.",
+    "resume_point": "PR #415 merged at 79805356f9252e1ba6858d993dbcc42476788745. Local regression suite passed 173 unit + 8 integration tests. The active-loop A→B WSS credential rotation mechanism is reproduced and fixed; socket close alone retains A. Windows Tauri build and installed candidate acceptance remain pending owner authorization. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": "Reactivate when the owner authorizes the manual unsigned Windows review build for exact source SHA 79805356f9252e1ba6858d993dbcc42476788745; then build from that SHA and obtain native Windows acceptance evidence."
   },
   "continuation_assessment": {
@@ -380,13 +380,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 29,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-    "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+    "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-18T09:07:03.333190Z",
+      "last_evidence_at": "2026-10-20T23:27:53.147364Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-10-05T06:44:29+07:00"
@@ -425,6 +425,116 @@
     "updated_at": "2026-10-09T14:50:08Z"
   },
   "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
+        },
+        {
+          "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        },
+        {
+          "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        },
+        {
+          "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        },
+        {
+          "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        },
+        {
+          "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        },
+        {
+          "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        },
+        {
+          "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        },
+        {
+          "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        },
+        {
+          "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        },
+        {
+          "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        },
+        {
+          "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        },
+        {
+          "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        },
+        {
+          "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        },
+        {
+          "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
     "continuation_assessment": {
       "confidence": "UNRESOLVED",
       "decision": "RECONCILIATION_REQUIRED",
@@ -539,6 +649,113 @@
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
+        },
+        {
+          "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        },
+        {
+          "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        },
+        {
+          "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        },
+        {
+          "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        },
+        {
+          "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        },
+        {
+          "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        },
+        {
+          "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        },
+        {
+          "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        },
+        {
+          "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        },
+        {
+          "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        },
+        {
+          "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        },
+        {
+          "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        },
+        {
+          "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        },
+        {
+          "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
     "lifecycle": {
       "current_state": "VALIDATION_PENDING",
       "previous_state": "DISCOVERING",
@@ -548,6 +765,50 @@
       "updated_at": "2026-10-09T14:50:08Z"
     },
     "requirements": {
+      "REQ-205-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L917"
+        ],
+        "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L917",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "1735078a37afdcdb779a60e485305e6ac7236cd60c8d544e4965692dbe7813ab",
+        "requirement_id": "REQ-205-UWAC-01",
+        "requirement_text": "- REQ-205-UWAC-01: Runner capability snapshots MUST distinguish logical work context from filesystem/worktree attachments, advertise only supported pause/resume/cancel/steer controls and carry freshness, session identity and account-route coverage for authorized code and non-code jobs.",
+        "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-10 UW-11 UW-18 UW-22 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-205-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L918"
+        ],
+        "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L918",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+        "requirement_digest": "0d518b0186166be19287b70c692075fa8a15da68a95e257a0a8125a04ca858d6",
+        "requirement_id": "REQ-205-UWAC-02",
+        "requirement_text": "- REQ-205-UWAC-02: Runner reconnect/restart MUST resume or reconcile the same canonical job/attempt through existing lease/fencing/outbox authority. Heartbeat loss MUST yield disconnected/unknown observation rather than accepted completion; replay MUST NOT duplicate side effects or billing, and stale grants MUST NOT authorize continuation.",
+        "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-10 UW-11 UW-18 UW-22 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
       "REQ-663D83B30437": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -585,10 +846,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-18T09:07:03.333190Z",
+    "reconciled_at": "2026-10-20T23:27:53.147364Z",
     "sources": [
       {
-        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+        "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -946,7 +1207,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+        "source_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
@@ -1159,14 +1420,14 @@
         "excerpt": "**Status:** Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+        "source_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+        "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -1327,16 +1588,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 187,
-    "unresolved": 187
+    "total": 189,
+    "unresolved": 189
   },
   "schema_version": 1,
-  "updated_at": "2026-10-18T09:07:03.333190Z",
+  "updated_at": "2026-10-20T23:39:55.027937Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

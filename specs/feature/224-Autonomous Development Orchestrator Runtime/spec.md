@@ -17286,3 +17286,15 @@ This revision sets the default Mini-App workflow to creation, development, verif
 - [ ] A real internet HTTPS Browser passes functional acceptance on the deployed artifact and records app/run/source/tenant/principal/target binding. Local Browser PASS is explicitly excluded.
 - [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.
 - [ ] Functional Mini-App Delivery, SPEC-224 normative completion, and Protected Runner acceptance are reported and evidenced independently.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C1/C8/C9/C10. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-224-UWAC-01: This is a consumer-side compatibility amendment: DevelopmentRun MUST remain specific to admitted software/source work, preserving all current phases, grants, live acceptance, blockers and recovery predicates. A general Work parent MUST bind its development child and immutable checkpoints without routing ordinary Skills/non-code work through DevelopmentRun.
+- REQ-224-UWAC-02: Existing integration/continuation MUST permit verified scoped checkpoints while siblings run, with current source/ownership authority and required checks. Merge, build, release and runtime acceptance MUST remain separate; this amendment MUST NOT reset or close outstanding SPEC-224 acceptance or add a competing phase controller.
+
+Acceptance coverage: `UW-14 UW-15 UW-16 UW-29 UW-30 UW-35` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

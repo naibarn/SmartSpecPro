@@ -1,0 +1,122 @@
+# Task-owned changed files
+
+Specification/planning and existing HandOff/index artifacts only; no application runtime code. Generated HandOff ledgers rebind the derived source_spec_digest on existing rows after additive spec edits; prior row evidence/state is preserved.
+
+- `specs/_status/SPEC-STATUS.md`
+- `specs/_status/ambiguity-review.json`
+- `specs/_status/continuation-queue.json`
+- `specs/_status/reconciliation-report.json`
+- `specs/_status/spec-index.json`
+- `specs/feature/196-universal-goal-orchestration/handoff/STATUS.md`
+- `specs/feature/196-universal-goal-orchestration/handoff/history.jsonl`
+- `specs/feature/196-universal-goal-orchestration/handoff/manifest.json`
+- `specs/feature/196-universal-goal-orchestration/handoff/requirement-ledger.json`
+- `specs/feature/196-universal-goal-orchestration/spec.md`
+- `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/handoff/STATUS.md`
+- `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/handoff/history.jsonl`
+- `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/handoff/manifest.json`
+- `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/handoff/requirement-ledger.json`
+- `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md`
+- `specs/feature/200-universal-coding-agent-control-plane/handoff/STATUS.md`
+- `specs/feature/200-universal-coding-agent-control-plane/handoff/history.jsonl`
+- `specs/feature/200-universal-coding-agent-control-plane/handoff/manifest.json`
+- `specs/feature/200-universal-coding-agent-control-plane/handoff/requirement-ledger.json`
+- `specs/feature/200-universal-coding-agent-control-plane/spec.md`
+- `specs/feature/205-smartaihub-runner-cross-platform/handoff/STATUS.md`
+- `specs/feature/205-smartaihub-runner-cross-platform/handoff/history.jsonl`
+- `specs/feature/205-smartaihub-runner-cross-platform/handoff/manifest.json`
+- `specs/feature/205-smartaihub-runner-cross-platform/handoff/requirement-ledger.json`
+- `specs/feature/205-smartaihub-runner-cross-platform/spec.md`
+- `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/handoff/STATUS.md`
+- `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/handoff/history.jsonl`
+- `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/handoff/manifest.json`
+- `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/handoff/requirement-ledger.json`
+- `specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md`
+- `specs/feature/218-ai-product-development-control-plane/handoff/STATUS.md`
+- `specs/feature/218-ai-product-development-control-plane/handoff/history.jsonl`
+- `specs/feature/218-ai-product-development-control-plane/handoff/manifest.json`
+- `specs/feature/218-ai-product-development-control-plane/handoff/requirement-ledger.json`
+- `specs/feature/218-ai-product-development-control-plane/spec.md`
+- `specs/feature/221-smartaihub-skill-engineering-framework/handoff/STATUS.md`
+- `specs/feature/221-smartaihub-skill-engineering-framework/handoff/history.jsonl`
+- `specs/feature/221-smartaihub-skill-engineering-framework/handoff/manifest.json`
+- `specs/feature/221-smartaihub-skill-engineering-framework/handoff/requirement-ledger.json`
+- `specs/feature/221-smartaihub-skill-engineering-framework/spec.md`
+- `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/STATUS.md`
+- `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/history.jsonl`
+- `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/manifest.json`
+- `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/requirement-ledger.json`
+- `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/STATUS.md`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/history.jsonl`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/manifest.json`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/requirement-ledger.json`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/STATUS.md`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/history.jsonl`
+- `specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/handoff/manifest.json`
+- `specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/handoff/STATUS.md`
+- `specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/handoff/history.jsonl`
+- `specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/handoff/manifest.json`
+- `specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/handoff/requirement-ledger.json`
+- `specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md`
+- `specs/feature/277-task-control-experience-r1-6/handoff/STATUS.md`
+- `specs/feature/277-task-control-experience-r1-6/handoff/history.jsonl`
+- `specs/feature/277-task-control-experience-r1-6/handoff/manifest.json`
+- `specs/feature/277-task-control-experience-r1-6/handoff/requirement-ledger.json`
+- `specs/feature/277-task-control-experience-r1-6/spec.md`
+- `specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/handoff/STATUS.md`
+- `specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/handoff/history.jsonl`
+- `specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/handoff/manifest.json`
+- `specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/handoff/requirement-ledger.json`
+- `specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md`
+- `specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/STATUS.md`
+- `specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/history.jsonl`
+- `specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/manifest.json`
+- `specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/requirement-ledger.json`
+- `specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md`
+- `specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/STATUS.md`
+- `specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/history.jsonl`
+- `specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/manifest.json`
+- `specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/requirement-ledger.json`
+- `specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/baseline-validation.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/changed-files.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan-tdd.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-spec.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/deep_plan_config.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-snapshot.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/handoff-writer-evidence.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/reference-r06.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/review-evidence.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/review-log.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/index.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-01-work-profiles.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-02-event-projection.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-03-unified-experience.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-04-skill-invocation.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-05-skill-authoring.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-06-delegation-controls.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-07-artifact-evidence.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-08-development-source-release.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-09-cross-boundary-acceptance.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/traceability.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/verification.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/STATUS.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/uwac-r06-checkpoint-20261021.md`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/history.jsonl`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/manifest.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/requirement-ledger.json`
+- `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md`
+- `specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/STATUS.md`
+- `specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/history.jsonl`
+- `specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/manifest.json`
+- `specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/requirement-ledger.json`
+- `specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md`
+
+Integration uses a normal non-force direct push because main branch protection/rules were absent at the policy check. No PR, build or production deployment is part of this checkpoint. Exact source/canonical integration receipt is recorded in the existing SPEC294 HandOff after promotion.

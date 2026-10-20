@@ -906,3 +906,15 @@ Feature 205 is complete only when:
    the implementation completion/review documents.
 
 **End of Spec 205**
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C2/C3/C4. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-205-UWAC-01: Runner capability snapshots MUST distinguish logical work context from filesystem/worktree attachments, advertise only supported pause/resume/cancel/steer controls and carry freshness, session identity and account-route coverage for authorized code and non-code jobs.
+- REQ-205-UWAC-02: Runner reconnect/restart MUST resume or reconcile the same canonical job/attempt through existing lease/fencing/outbox authority. Heartbeat loss MUST yield disconnected/unknown observation rather than accepted completion; replay MUST NOT duplicate side effects or billing, and stale grants MUST NOT authorize continuation.
+
+Acceptance coverage: `UW-10 UW-11 UW-18 UW-22 UW-31` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

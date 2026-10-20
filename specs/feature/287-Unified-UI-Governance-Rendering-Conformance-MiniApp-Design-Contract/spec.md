@@ -2073,3 +2073,15 @@ Shared UI contracts MAY provide `ProjectContextChip`, `ProjectPicker`, `ProjectA
 R1.5 replaces the stale future-invocation dependency with the verified cross-Spec ownership map in §16. It aligns generated interactive UI with Spec 240, design-time provider behavior with Spec 270, user/client action mapping with Spec 226, agent delegation with Spec 279, and canonical policy/economic/execution authority with Specs 220/207 and Feature 195. It adds no second component registry, action bus, permission engine, billing ledger, memory store, task queue, or workflow runtime.
 
 The product-level architecture and evidence-backed impact matrix, ten-pass gap audit, P0–P7 roadmap, test/acceptance matrix, and current implementation limitations are recorded in `handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md`. That artifact is a document/repository audit; it does not certify production implementation, deployment, or acceptance.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C5/C10. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-287-UWAC-01: Unified Work/Skill/Develop views MUST reuse the existing versioned Design Contract and SPEC-277 interaction semantics. Lenses and device layout MUST NOT change authorization, status meanings or evidence; no new UI renderer, action mapping protocol or parallel navigation app.
+- REQ-287-UWAC-02: Acceptance MUST include rendered Desktop/Tablet/Mobile and keyboard/screen-reader checks for timeline expansion, task next actions, Skill states, no-Git context and conditional developer details, with measured loading/stale/error states. Source/CSS inspection and fixture tests alone MUST NOT certify responsive production acceptance.
+
+Acceptance coverage: `UW-13 UW-20 UW-22 UW-27 UW-33` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

@@ -5,243 +5,17 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "186",
-        "referenced_spec_id": "186",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "186",
-        "referenced_spec_id": "186",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "207",
-        "referenced_spec_id": "207",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "207",
-        "referenced_spec_id": "207",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "215",
-        "referenced_spec_id": "215",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "215",
-        "referenced_spec_id": "215",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "221",
-        "referenced_spec_id": "221",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "221",
-        "referenced_spec_id": "221",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "248",
-        "referenced_spec_id": "248",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "248",
-        "referenced_spec_id": "248",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "252",
-        "referenced_spec_id": "252",
-        "referencing_spec_id": "256",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "252",
-        "referenced_spec_id": "252",
-        "referencing_spec_id": "256",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation/specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      }
-    ],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/feature/256-skill-first-capability-discovery-intent-execution"
-        ]
-      }
-    ],
+    "confidence": "MEDIUM",
+    "conflicts": [],
     "evidence": [
-      {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
-      }
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
-    "successors": []
+    "status": "HISTORICAL_ONLY",
+    "successors": [
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+    ]
   },
   "blockers": [],
   "concurrency": {
@@ -256,17 +30,14 @@
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "DO_NOT_CONTINUE_HISTORICAL",
     "evidence": [
-      {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
-      }
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "next_action": "Read outer SPEC256 and its existing HandOff; preserve this historical copy.",
+    "rationale": "Continue the outer owner only; never implement from this packaging copy.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -284,18 +55,15 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
-      {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
-      }
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "Preserved embedded distribution copy; the pack README explicitly names the outer canonical document and sibling contracts. No deletion, renumber, runtime change or acceptance.",
+    "value": "HISTORICAL_ONLY"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
     "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
@@ -329,6 +97,41 @@
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T00:43:01.567624Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
+      ],
+      "predecessors": [],
+      "status": "HISTORICAL_ONLY",
+      "successors": [
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      ]
+    },
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "DO_NOT_CONTINUE_HISTORICAL",
+      "evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
+      ],
+      "next_action": "Read outer SPEC256 and its existing HandOff; preserve this historical copy.",
+      "rationale": "Continue the outer owner only; never implement from this packaging copy.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md#spec-256-documentary-identity-resolution",
+        "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md#canonical-spec"
+      ],
+      "rationale": "Preserved embedded distribution copy; the pack README explicitly names the outer canonical document and sibling contracts. No deletion, renumber, runtime change or acceptance.",
+      "value": "HISTORICAL_ONLY"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -406,7 +209,7 @@
     "unresolved": 161
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T00:43:01.567624Z",
+  "updated_at": "2026-10-20T23:27:53.967396Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
