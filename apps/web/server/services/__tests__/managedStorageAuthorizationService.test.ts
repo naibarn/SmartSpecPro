@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
@@ -40,6 +41,50 @@ function setFeedbackAttachment(row: FeedbackAttachmentRow) {
 describe("managedStorageAuthorizationService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it.each([
+    ["logo", "logoUrl"],
+    ["website-logo", "websiteLogoUrl"],
+    ["favicon", "faviconUrl"],
+  ])("allows only the saved %s of the viewer's active tenant", async (kind, field) => {
+    const key = `tenants/tenant-1/${kind}/saved.png`;
+    const db = makeDb([], [{ [field]: `/api/storage/files/${key}` }]);
+    mocks.mockGetDb.mockResolvedValue(db);
+    await expect(canReadManagedStorageKey(key, { tenantId: "tenant-1", userId: 24 })).resolves.toBe(true);
+    const query = new PgDialect().sqlToQuery(db.select.mock.results[1].value.where.mock.calls[0][0]);
+    expect(query.params).toEqual(["tenant-1", true]);
+    expect(query.sql).toContain('"tenants"."id"');
+    expect(query.sql).toContain('"tenants"."isActive"');
+  });
+
+  it("rejects another tenant's branding even for an admin", async () => {
+    const db = makeDb([]);
+    mocks.mockGetDb.mockResolvedValue(db);
+    await expect(canReadManagedStorageKey("tenants/tenant-2/logo/saved.png", {
+      tenantId: "tenant-1", userId: 24, role: "admin",
+    })).resolves.toBe(false);
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    undefined,
+    {},
+    { logoUrl: "/api/storage/files/tenants/tenant-1/logo/replaced.png" },
+    { websiteLogoUrl: "/api/storage/files/tenants/tenant-1/logo/saved.png" },
+    { logoUrl: "https://external.invalid/api/storage/files/tenants/tenant-1/logo/saved.png" },
+  ])("denies missing, inactive, replaced or incorrectly registered branding: %j", async tenant => {
+    mocks.mockGetDb.mockResolvedValue(makeDb([], tenant ? [tenant] : []));
+    await expect(canReadManagedStorageKey("tenants/tenant-1/logo/saved.png", {
+      tenantId: "tenant-1", userId: 24,
+    })).resolves.toBe(false);
+  });
+
+  it("requires an authenticated viewer for tenant branding", async () => {
+    const db = makeDb([]);
+    mocks.mockGetDb.mockResolvedValue(db);
+    await expect(canReadManagedStorageKey("tenants/tenant-1/logo/saved.png")).resolves.toBe(false);
+    expect(db.select).toHaveBeenCalledTimes(1);
   });
 
   it("allows the owner to read tenant-scoped Media Studio uploads", async () => {

@@ -18,11 +18,12 @@ import {
   workerJobs,
   mcpMediaTasks,
   presentationExports,
+  tenants,
   userGroups,
   verticalDramaSeries,
 } from "../../drizzle/schema";
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
-import { normalizeManagedMediaKey } from "./managedMediaAccessService";
+import { normalizeManagedMediaKey, parseManagedMediaUrl } from "./managedMediaAccessService";
 
 export interface ManagedStorageViewer {
   tenantId: string;
@@ -63,6 +64,21 @@ export async function canReadManagedStorageKey(
     viewer.userId <= 0
   ) {
     return false;
+  }
+
+  // Tenant uploads persist their URL on the tenant, rather than in media_assets.
+  // Authorize only the currently registered asset of an active matching tenant.
+  const brandingMatch = normalizedKey.match(/^tenants\/([^/]+)\/(logo|website-logo|favicon)\/[^/]+$/);
+  if (brandingMatch) {
+    if (brandingMatch[1] !== viewer.tenantId) return false;
+    const [tenant] = await db
+      .select({ logoUrl: tenants.logoUrl, websiteLogoUrl: tenants.websiteLogoUrl, faviconUrl: tenants.faviconUrl })
+      .from(tenants)
+      .where(and(eq(tenants.id, viewer.tenantId), eq(tenants.isActive, true)))
+      .limit(1);
+    const registeredUrl = brandingMatch[2] === "logo" ? tenant?.logoUrl
+      : brandingMatch[2] === "website-logo" ? tenant?.websiteLogoUrl : tenant?.faviconUrl;
+    return parseManagedMediaUrl(registeredUrl)?.key === normalizedKey;
   }
 
   // Marketplace Capture images are tenant-protected R2 objects. They are

@@ -1,9 +1,9 @@
 {
   "plugin_root": "/home/dev/.codex/skills/deep-implement",
-  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections",
-  "target_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020",
-  "state_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/implementation",
-  "git_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020",
+  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections",
+  "target_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
+  "state_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/implementation",
+  "git_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
   "commit_style": "simple",
   "test_command": "pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts",
   "sections": [
@@ -42,8 +42,8 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Native transport code679e1050b integrated and actual private-origin negative credential test401 passed; Python7cab actual analytics/refresh/revocation passed. Python CI46 new identity cases passed with identical53 baseline failures. Remaining: obtain exact native provisioning/IAM scope (actual target Hyperdrive/R2/Vectorize403; Queues/Workflows/Hyperdrive inventory0), compose allowed business executors and real adapters/recovery; actual user-controlled Google/OTP and second tenant still unverified. Desktop Host absent table is separate, no migration applied. Keep native activation disabled.",
-      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020"
+      "next_action": "Desktop schema0409 applied from bb5af4847 on actual target, catalog/349 ledger rows preserved; actual prod/staging lists and analytics200, anonymous401, browser transport passed. Branding authorization repair27 focused tests passed, integrate and release via existing Linux controller then verify both hosts. macOS pack has no real published archive. Native IAM403/resources/executor/recovery and actual user-controlled Google/OTP/second-tenant acceptance remain; keep native activation disabled.",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020"
     }
   },
   "pre_commit": {
@@ -55,13 +55,13 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 29,
-  "updated_at": "2026-10-20T03:38:44.167192+00:00",
+  "generation": 30,
+  "updated_at": "2026-10-20T04:01:02.339853+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Native transport code679e1050b integrated and actual private-origin negative credential test401 passed; Python7cab actual analytics/refresh/revocation passed. Python CI46 new identity cases passed with identical53 baseline failures. Remaining: obtain exact native provisioning/IAM scope (actual target Hyperdrive/R2/Vectorize403; Queues/Workflows/Hyperdrive inventory0), compose allowed business executors and real adapters/recovery; actual user-controlled Google/OTP and second tenant still unverified. Desktop Host absent table is separate, no migration applied. Keep native activation disabled.",
-    "merged_main_sha": "679e1050b01472342e40fb59ffd20db0700f563b",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-completion-20261020",
+    "next_action": "Desktop schema0409 applied from bb5af4847 on actual target, catalog/349 ledger rows preserved; actual prod/staging lists and analytics200, anonymous401, browser transport passed. Branding authorization repair27 focused tests passed, integrate and release via existing Linux controller then verify both hosts. macOS pack has no real published archive. Native IAM403/resources/executor/recovery and actual user-controlled Google/OTP/second-tenant acceptance remain; keep native activation disabled.",
+    "merged_main_sha": "bb5af484786dacb4bfa79a5b47619798f4fcd458",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/desktop-schema-repair-20261020",
     "gaps": [
       "Second authorized tenant and successful password/2FA flow unavailable; no synthetic sessions or password resets",
       "Full native Cloudflare binding/job/recovery qualification and scoped activation authority remain unverified; activation disabled"

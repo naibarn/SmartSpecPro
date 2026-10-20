@@ -29,9 +29,11 @@ describe("desktop registry migration source contract", () => {
 
   it("registers a new journal entry without rewriting earlier migration identities", async () => {
     const journal = JSON.parse(await readFile(new URL("../../drizzle/meta/_journal.json", import.meta.url), "utf8"));
-    const latest = journal.entries.at(-1);
-    expect(latest).toMatchObject({ idx: 409, version: "7", tag: DESKTOP_DEVICE_SCHEMA_SOURCE.tag, breakpoints: true });
-    expect(latest.when).toBeGreaterThan(journal.entries.at(-2).when);
+    const entries = journal.entries.filter((entry: { tag: string }) => entry.tag === DESKTOP_DEVICE_SCHEMA_SOURCE.tag);
+    expect(entries).toHaveLength(1);
+    const [entry] = entries;
+    expect(entry).toMatchObject({ idx: 409, version: "7", tag: DESKTOP_DEVICE_SCHEMA_SOURCE.tag, breakpoints: true });
+    expect(entry.when).toBeGreaterThan(journal.entries.find((previous: { idx: number }) => previous.idx === 408).when);
   });
 });
 
