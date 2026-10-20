@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
-import { PRIVATE_DATABASE_GRANT, privateDatabaseRole, privateDatabasePlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_GRANT, privateDatabaseRole, privateDatabasePlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 
 const suite = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true" ? describe : describe.skip;
 suite("private staging database role atomicity in disposable PostgreSQL", () => {
@@ -18,7 +18,9 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     vi.resetModules();
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     const schema = await import("../../drizzle/schema");
-    await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client, [schema.systemSettings]);
+    await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client, [schema.systemSettings,
+      schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions]);
+    await client`INSERT INTO users(id,"openId",role) VALUES (17,'private-db-disposable-fixture','admin')`;
     ({ closeDb } = await import("../db"));
     runtime = (await import("./cloudflarePrivateDatabaseExecutor")).createCloudflarePrivateDatabaseRuntime();
   }, 30_000);
@@ -69,5 +71,24 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     const g = grant("wrong-database"); g.plan.databaseName = "foreign_database";
     await expect(runtime.prepareDatabase(g)).rejects.toThrow("LOCAL_SCOPE_DENIED");
     expect(await client`SELECT 1 FROM pg_roles WHERE rolname=${privateDatabaseRole(g.plan.namespace)}`).toHaveLength(0);
+  });
+  it("admits and publishes the exact new contract through the real canonical outbox and default transport", async () => {
+    const g = grant("canonical-admission");
+    const { createJobControlPlane } = await import("./jobControlPlane");
+    const { defaultJobExecutorRegistry } = await import("./jobExecutorRegistry");
+    expect(defaultJobExecutorRegistry.resolve(PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_CONTRACT)).toBeDefined();
+    const controlPlane = createJobControlPlane();
+    const created = await controlPlane.create({ contractVersion: PRIVATE_DATABASE_CONTRACT, tenantId: g.tenantId,
+      requestedByUserId: g.requesterUserId, jobType: PRIVATE_DATABASE_JOB, executionClass: "long",
+      input: { contractVersion: PRIVATE_DATABASE_CONTRACT, projectId: g.projectId, grantRef: g.grantRef, planDigest: g.planDigest },
+      idempotencyKey: `private-db-fixture-${g.jobId}`, retryPolicy: { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 5000,
+        jitter: "none", deadlineMs: 600000, deadlineMode: "fixed", allowedErrorClasses: ["transient"] },
+      timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 600000 } });
+    const [outbox] = await client`SELECT id FROM worker_job_outbox WHERE "workerJobId"=${created.jobId}`;
+    const { publishJobOutboxRow } = await import("./jobOutboxPublisher");
+    const { PostgresPullJobTransportAdapter } = await import("./jobTransportAdapters");
+    expect(await publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter())).toMatchObject({ state: "published" });
+    const [row] = await client`SELECT "publishedAt", "quarantinedAt" FROM worker_job_outbox WHERE id=${outbox.id}`;
+    expect(row.publishedAt).not.toBeNull(); expect(row.quarantinedAt).toBeNull();
   });
 });

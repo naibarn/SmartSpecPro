@@ -10,6 +10,7 @@ import {
 import { RESEARCH_NOTES_SUMMARY_CONTRACT } from "./researchNotesSummaryContract";
 import { DEVELOPER_FAST_LANE_CONTRACT } from "./spec224DeveloperFastLaneContract";
 import { NATIVE_PROVISION_CONTRACT } from "./cloudflareNativeProvisionContract";
+import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
 
 /**
  * Canonical transports carry the envelope unchanged. Keep every contract
@@ -31,6 +32,7 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   "cloudflare-staging-origin-v2",
   "cloudflare-staging-origin-provision-v1",
   NATIVE_PROVISION_CONTRACT,
+  PRIVATE_DATABASE_CONTRACT,
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";
