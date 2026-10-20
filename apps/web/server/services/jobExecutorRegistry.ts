@@ -1,4 +1,6 @@
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB } from "./cloudflareNativeProvisionContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB } from "./cloudflarePrivateDatabaseContract";
+import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { createCloudflareNativeProvisionExecutor } from "./cloudflareNativeProvisionExecutor";
 import { ORIGIN_PROVISION_CONTRACT, ORIGIN_PROVISION_JOB } from "./cloudflareOriginProvisionContract";
 import { createCloudflareOriginProvisionExecutor } from "./cloudflareOriginProvisionExecutor";
@@ -385,6 +387,12 @@ defaultJobExecutorRegistry.register({
   jobType: NATIVE_PROVISION_JOB, executionClass: "long",
   contractVersions: new Set([NATIVE_PROVISION_CONTRACT]),
   executor: createCloudflareNativeProvisionExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: PRIVATE_DATABASE_JOB, executionClass: "long",
+  contractVersions: new Set([PRIVATE_DATABASE_CONTRACT]),
+  executor: createCloudflarePrivateDatabaseExecutor(),
 });
 
 // Development-only local Node executor. It uses a server-owned private pipe

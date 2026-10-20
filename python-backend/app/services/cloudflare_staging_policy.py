@@ -17,9 +17,12 @@ from app.services.cloudflare_origin_provision_contract import (CONTRACT as PROVI
 
 from app.services.cloudflare_native_provision_contract import (CONTRACT as NATIVE_CONTRACT, POLICY_SCHEMA as NATIVE_SCHEMA,
     GRANT_SCHEMA as NATIVE_GRANT, validate_plan as validate_native_plan, namespace as native_namespace)
+from app.services.cloudflare_private_database_contract import (CONTRACT as DATABASE_CONTRACT, POLICY_SCHEMA as DATABASE_SCHEMA,
+    GRANT_SCHEMA as DATABASE_GRANT, validate_plan as validate_database_plan)
 
-PROVISION_CONTRACTS = {PROVISION_CONTRACT: (PROVISION_SCHEMA, validate_plan), NATIVE_CONTRACT: (NATIVE_SCHEMA, validate_native_plan)}
-PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT}
+PROVISION_CONTRACTS = {PROVISION_CONTRACT: (PROVISION_SCHEMA, validate_plan), NATIVE_CONTRACT: (NATIVE_SCHEMA, validate_native_plan),
+    DATABASE_CONTRACT: (DATABASE_SCHEMA, validate_database_plan)}
+PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT, DATABASE_GRANT: DATABASE_CONTRACT}
 
 SCHEMA = "cloudflare.staging-policy.v1"
 ORIGIN_SCHEMA = "cloudflare.staging-origin-policy.v2"
@@ -112,7 +115,7 @@ class CloudflareStagingPolicyAuthority:
             'AND r.profile = \'cloudflare_staging_executor\' AND r."snapshotExpiresAt" >= :expiry'
         ), {"tenant": tenant_id, "project": project_id, "executor": policy["executorId"], "account": policy["accountRef"],
             "target": TARGET, "principal": f"user:{policy['actorUserId']}", "actor": policy["actorUserId"], "expiry": expires_at})
-        if policy.get("contractVersion") == NATIVE_CONTRACT and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
+        if policy.get("contractVersion") in (NATIVE_CONTRACT, DATABASE_CONTRACT) and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
             raise PermissionError("CLOUDFLARE_NATIVE_PROVISION_SCOPE_DENIED")
         binding = result.mappings().first()
         if binding is None:

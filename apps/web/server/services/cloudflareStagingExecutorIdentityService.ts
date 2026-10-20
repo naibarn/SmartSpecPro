@@ -1,5 +1,6 @@
 import { ORIGIN_PROVISION_CONTRACT, originProvisionAuthoritySchema, type OriginProvisionAuthority } from "./cloudflareOriginProvisionContract";
 import { NATIVE_PROVISION_CONTRACT } from "./cloudflareNativeProvisionContract";
+import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
 import crypto from "crypto";
 import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT, cloudflareStagingOriginAuthoritySchema, type CloudflareStagingOriginAuthority } from "./cloudflareStagingOriginContract";
 import { eq } from "drizzle-orm";
@@ -57,7 +58,7 @@ export type CloudflareStagingExecutorAttemptBinding = {
   /** v2 authority is signed in full; it never follows from executor identity. */
   originAuthority?: CloudflareStagingOriginAuthority;
   provisionAuthority?: OriginProvisionAuthority;
-  provisionContract?: typeof ORIGIN_PROVISION_CONTRACT | typeof NATIVE_PROVISION_CONTRACT;
+  provisionContract?: typeof ORIGIN_PROVISION_CONTRACT | typeof NATIVE_PROVISION_CONTRACT | typeof PRIVATE_DATABASE_CONTRACT;
 };
 
 /** Canonical bytes the registered Ed25519 executor must sign for each operation. */
@@ -91,7 +92,7 @@ function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
   const parsedProvision = originProvisionAuthoritySchema.safeParse(binding.provisionAuthority);
   if (provision !== (binding.provisionAuthority !== undefined) || (provision &&
       (!parsedProvision.success || parsedProvision.data.planDigest !== binding.artifactSha256 || binding.originAuthority !== undefined))
-      || (binding.provisionContract !== undefined && (!provision || ![ORIGIN_PROVISION_CONTRACT, NATIVE_PROVISION_CONTRACT].includes(binding.provisionContract)))) {
+      || (binding.provisionContract !== undefined && (!provision || ![ORIGIN_PROVISION_CONTRACT, NATIVE_PROVISION_CONTRACT, PRIVATE_DATABASE_CONTRACT].includes(binding.provisionContract)))) {
     throw new CloudflareStagingExecutorIdentityError("executor_attempt_binding_invalid");
   }
   let originAuthority: CloudflareStagingOriginAuthority | undefined;

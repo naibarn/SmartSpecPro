@@ -29,6 +29,7 @@ from app.models.tenant import Tenant, TenantUser
 from app.models.user import Role, User
 from app.services.cloudflare_origin_provision_contract import GRANT_SCHEMA as PROVISION_GRANT, normalize_grant as normalize_provision_grant
 from app.services.cloudflare_native_provision_contract import GRANT_SCHEMA as NATIVE_GRANT, normalize_grant as normalize_native_grant
+from app.services.cloudflare_private_database_contract import GRANT_SCHEMA as DATABASE_GRANT, normalize_grant as normalize_database_grant
 from app.services.cloudflare_staging_policy import CloudflareStagingPolicyAuthority, ORIGIN_GRANT, validate_origin_configuration_pair
 from app.services.spec224_development_policy import (
     SPEC224_DEVELOPMENT_POLICY_SCHEMA,
@@ -61,6 +62,8 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         raise ValueError("CLOUDFLARE_STAGING_GRANT_PAYLOAD_INVALID")
     if value.get("schemaVersion") == NATIVE_GRANT:
         return normalize_native_grant(value)
+    if value.get("schemaVersion") == DATABASE_GRANT:
+        return normalize_database_grant(value)
     if value.get("schemaVersion") == PROVISION_GRANT:
         return normalize_provision_grant(value)
     required = {
