@@ -38,6 +38,7 @@ describe("Cloudflare canonical control-plane proxy", () => {
     expect(request.headers.get("x-cloudflare-origin-token")).toBe(pairedEnvironment.AUTH_ORIGIN_TOKEN);
     expect(request.headers.get("x-cloudflare-control-plane-token")).toBe(pairedEnvironment.CLOUDFLARE_CONTROL_PLANE_TOKEN);
     expect(request.headers.get("x-smartaihub-public-origin")).toBe("https://stage.example.workers.dev");
+    expect(request.headers.get("origin")).toBe("https://stage.example.workers.dev");
     expect(request.headers.has("authorization")).toBe(false);
     expect(request.redirect).toBe("manual");
     expect(await request.json()).toEqual({ jobId: "job-1", envelope });

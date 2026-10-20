@@ -56,7 +56,12 @@ async function callPlatform<T>(
   try {
     const init: RequestInit = {
       method: "POST",
-      headers: { "content-type": "application/json", "cache-control": "no-store", "x-cloudflare-control-plane-token": token },
+      headers: {
+        "content-type": "application/json", "cache-control": "no-store", "x-cloudflare-control-plane-token": token,
+        // Bind the server-generated service POST to the same attested public
+        // origin, preserving the platform's existing edge CSRF checks.
+        ...(publicOrigin ? { origin: publicOrigin } : {}),
+      },
       body: bodyJson,
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
