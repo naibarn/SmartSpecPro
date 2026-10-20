@@ -87,7 +87,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac"
+    "expected_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f"
   },
   "continuation": {
     "next_action": null,
@@ -266,13 +266,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/196-universal-goal-orchestration/spec.md",
-    "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+    "digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-17T00:36:15.493352Z",
+      "last_evidence_at": "2026-10-20T23:27:52.831511Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -302,6 +302,248 @@
     "updated_at": "2026-10-17T00:36:15.493352Z"
   },
   "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/196-universal-goal-orchestration/spec.md"
+        },
+        {
+          "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        },
+        {
+          "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        },
+        {
+          "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        },
+        {
+          "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        },
+        {
+          "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
+        },
+        {
+          "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        },
+        {
+          "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        },
+        {
+          "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        },
+        {
+          "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        },
+        {
+          "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        },
+        {
+          "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/196-universal-goal-orchestration/spec.md"
+        },
+        {
+          "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        },
+        {
+          "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        },
+        {
+          "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        },
+        {
+          "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        },
+        {
+          "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
+        },
+        {
+          "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        },
+        {
+          "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        },
+        {
+          "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        },
+        {
+          "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        },
+        {
+          "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        },
+        {
+          "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        }
+      ],
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/196-universal-goal-orchestration/spec.md"
+        },
+        {
+          "digest": "f7731182d1e71b1f111026ae77ca4eb21be306c57f8f3631a5d0bead0e6e82ee",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-plan.md"
+        },
+        {
+          "digest": "29143b2c82d7683aac61f8fdeb53b7ae00e242dbe118bc146a93c13ca95bb7b3",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/claude-spec.md"
+        },
+        {
+          "digest": "73e4e0986f0b744e07460509b5ce1b362ac07bd3ae3c7e89ff9d3de5f4c7c3fe",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/completion.md"
+        },
+        {
+          "digest": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "325da9e9e0f1a336c5b7ae3f5e64bf7abbf510d5fca81adbd660bacca1054eb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/review.md"
+        },
+        {
+          "digest": "04f696a4b85f723a29da355878ad2018916ce1b2299f108b40340cb8b7fc07ba",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/index.md"
+        },
+        {
+          "digest": "a8b2d4ff6a9c7fce8d52226d2e55c499e162c6337cffee91b94653299df20bc9",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-01-contracts-and-command.md"
+        },
+        {
+          "digest": "642a578b801ed41771d812df4d0760e05221da5df24ba78d7a1712e4e5884f5c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-02-goal-plan-persistence.md"
+        },
+        {
+          "digest": "8514349a06e8290c28ad67afef48747934cc62a9492ee1fb37bf577fa86a9bd0",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-03-capability-resolution.md"
+        },
+        {
+          "digest": "c5dda0e60d2d9c2f70236bb81d418b7270dabdb636597d99aa3e81077cd3ac41",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-04-planner-policy-and-approval.md"
+        },
+        {
+          "digest": "21d1a3a60ec5da0b61ccfcb0a85482e79b1f9986d523f3060c108b1930a26f62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-05-gateway-and-ui.md"
+        },
+        {
+          "digest": "5b028fb32f2b84d3a4b4ef23b1b68a7fa90a7490486ca9ba89f682225d9fc465",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/196-universal-goal-orchestration/sections/section-06-cross-spec-release.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "VALIDATION_PENDING",
+      "state_evidence": [],
+      "updated_at": "2026-10-17T00:36:15.493352Z"
+    },
     "requirements": {
       "REQ-196-OBS-01": {
         "applicability": "APPLICABLE",
@@ -331,7 +573,7 @@
         "requirement_digest": "55685026409d0bf2bd8c578b415c25f5fc7c79121b8d8e956ae54087cfbd7971",
         "requirement_id": "REQ-196-OBS-01",
         "requirement_text": "- REQ-196-OBS-01: A Goal baseline MUST identify goal, baseline ID/version/digest/source, milestones, deliverables, stable acceptance-criterion IDs, declared nonnegative weights, required/live obligations and WorkUnit/dependency links. Missing, malformed or unbound baseline MUST produce BASELINE_MISSING/UNKNOWN with no invented percentage. Monitoring MUST NOT create a new execution Goal or infer a baseline from commits/tests/tokens.",
-        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -370,7 +612,7 @@
         "requirement_digest": "9d016683db2b85c9cbd68ff7a7255dbeb2b9de600eebdec4be19b8aa2d758921",
         "requirement_id": "REQ-196-OBS-02",
         "requirement_text": "- REQ-196-OBS-02: Execution Progress, Work Completion and Verified Goal Completion MUST be separate. Milestone, deliverable and criterion weights compose multiplicatively into each unique criterion's effective goal weight; WorkUnit weights divide their criterion's effective weight. Shared criteria/deliverables and retried WorkUnits MUST count once. Each progress axis MUST remain UNKNOWN until its required evidence covers the declared baseline. Verified percentage MUST use only current baseline/digest-bound, non-invalidated criterion evidence and declared effective weights. Every required criterion, including a zero-weight/live requirement, MUST pass before reporting 100 percent. Optional scope MUST NOT hide a required gap.",
-        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -409,7 +651,7 @@
         "requirement_digest": "b8b2b9bed3975c89a34ed2637d576f0b1b1182a70dadae3c1f24acb24769b34a",
         "requirement_id": "REQ-196-OBS-03",
         "requirement_text": "- REQ-196-OBS-03: Scope changes MUST create a distinct baseline revision; reopened/regressed work or newer failing evidence MUST reduce completion truthfully. Equal-revision conflicts MUST be UNKNOWN/CONFLICT rather than last-writer wins. Remaining/blocked/unverified scope, evidence coverage, dependency refs, next autonomous action and genuinely human-required blockers MUST be inspectable.",
-        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -448,7 +690,7 @@
         "requirement_digest": "293b20271487b9c8d61a43d388becef8bed1d1e45f004a24e90aa59c84fd4b99",
         "requirement_id": "REQ-196-OBS-04",
         "requirement_text": "- REQ-196-OBS-04: Fixtures MUST demonstrate weighted progress, shared deliverable dedupe, physical retry/replan identity continuity, missing baseline, wrong digest, stale/reopened/regressed evidence, required live and zero-weight gates. Existing canonical closure graphs MAY be adapted without modifying their execution semantics; undeclared weights MUST remain unknown.",
-        "source_spec_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -458,6 +700,50 @@
           }
         ],
         "verification_method": "Focused taskGoalProgress and read-model Vitest suites; no live source binding acceptance."
+      },
+      "REQ-196-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6339"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6339",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-09 UW-28 UW-29. This phase delivered specification/planning only.",
+        "requirement_digest": "9566eb96f1cc95679fc2380bf2e2774654b0db20d3b0fe6efbdba6c2c4bd5413",
+        "requirement_id": "REQ-196-UWAC-01",
+        "requirement_text": "- REQ-196-UWAC-01: Goal/Plan semantics MUST support GENERAL_WORK and typed non-code acceptance without requiring repository, branch or worktree. WorkContext/Work references MUST extend existing records and capability selection, with durable execution in worker_jobs/outbox; no second Goal/task scheduler or legacy workflow path.",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-01 UW-02 UW-09 UW-28 UW-29; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-196-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/196-universal-goal-orchestration/spec.md#L6340"
+        ],
+        "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6340",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-09 UW-28 UW-29. This phase delivered specification/planning only.",
+        "requirement_digest": "34d7d89c8e6a30be28af514437f1c8b35c4db5e11e48f3d1677c8899c635dc58",
+        "requirement_id": "REQ-196-UWAC-02",
+        "requirement_text": "- REQ-196-UWAC-02: Parent-child goal bindings MUST carry objective, acceptance, attenuated authority/budget and canonical job/return receipts across sessions. Parent completion MUST use its accepted outcome and required children; one child/session exit or merged checkpoint MUST NOT close the parent.",
+        "source_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-01 UW-02 UW-09 UW-28 UW-29; retain source/target/policy/evidence/time and distinct document/runtime evidence."
       }
     }
   },
@@ -469,10 +755,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-17T00:36:15.493352Z",
+    "reconciled_at": "2026-10-20T23:27:52.831511Z",
     "sources": [
       {
-        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -633,7 +919,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-        "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "value": "Architecture & Implementation Specification"
       }
     ],
@@ -742,14 +1028,14 @@
         "excerpt": "**Status:** Architecture & Implementation Specification",
         "line": 4,
         "source": "specs/feature/196-universal-goal-orchestration/spec.md",
-        "source_digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "source_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "value": "Architecture & Implementation Specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "0643bea96fe4f808786214ca1dfc06d01091ed0397b31a4cdb824d5df10420ac",
+        "digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/196-universal-goal-orchestration/spec.md"
       },
@@ -825,16 +1111,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 4,
+    "applicable": 6,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 207,
-    "unresolved": 207
+    "total": 209,
+    "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-17T01:00:45.472630Z",
+  "updated_at": "2026-10-20T23:27:52.996744Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
-    "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
+    "expected_spec_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e"
   },
   "continuation": {
     "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
@@ -139,13 +139,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 69,
+  "generation": 72,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-    "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+    "digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T09:28:58.193296Z",
+      "last_evidence_at": "2026-10-20T23:27:53.830553Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -338,6 +338,21 @@
     "updated_at": "2026-10-07T03:50:23Z"
   },
   "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
     "continuation_assessment": {
       "confidence": "HIGH",
       "decision": "RECONCILIATION_REQUIRED",
@@ -420,6 +435,18 @@
         "safe convergence of the dirty primary user checkout after preserving its existing work"
       ]
     },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
     "lifecycle": {
       "current_state": "PARTIAL_INTEGRATED",
       "previous_state": "PARTIAL_INTEGRATED",
@@ -498,6 +525,52 @@
         "git:d08d7973ba80f04299d90f24044a83eb08cbb69a"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
+    },
+    "requirements": {
+      "REQ-293-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2303"
+        ],
+        "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2303",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34. This phase delivered specification/planning only.",
+        "requirement_digest": "24b0418b239624d7d4d18aa19e953fd557930d3e6b6477b17a38dcd7455db098",
+        "requirement_id": "REQ-293-UWAC-01",
+        "requirement_text": "- REQ-293-UWAC-01: GitWorkspaceBinding MUST be optional for general Work/Skill contexts. For applicable Git work, expose distinct observed remote canonical ref, cached origin/main, local main, worktree HEAD, last verified main with check scope/time, and production source from SPEC-295; missing observation MUST NOT be synthesized from another ref.",
+        "source_spec_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-293-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2304"
+        ],
+        "authority_source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md#L2304",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34. This phase delivered specification/planning only.",
+        "requirement_digest": "465bfab6cea05cd46046b2828489e2d0acd17bcd59e46a81ecfed8430dc39a47",
+        "requirement_id": "REQ-293-UWAC-02",
+        "requirement_text": "- REQ-293-UWAC-02: All sessions/harnesses MUST use existing workspace/integration authority with owner/fencing and source-freshness receipts. Immutable checkpoints MAY merge incrementally under actual protection while siblings continue. Dirty/unknown/active worktrees MUST be preserved; stale source admission MUST be reconciled without arbitrary reset/rebase or bypass.",
+        "source_spec_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      }
     }
   },
   "reconciliation": {
@@ -508,10 +581,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T09:28:58.193296Z",
+    "reconciled_at": "2026-10-20T23:27:53.830553Z",
     "sources": [
       {
-        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+        "digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       },
@@ -523,7 +596,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-        "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+        "source_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
         "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
@@ -554,14 +627,14 @@
         "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
         "line": 4,
         "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-        "source_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+        "source_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
         "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
+        "digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
@@ -572,16 +645,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 235,
-    "unresolved": 235
+    "total": 237,
+    "unresolved": 237
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T13:27:37.460313Z",
+  "updated_at": "2026-10-20T23:27:53.864638Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

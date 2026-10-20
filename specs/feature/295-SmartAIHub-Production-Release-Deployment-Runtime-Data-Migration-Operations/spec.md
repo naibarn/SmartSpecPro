@@ -2207,3 +2207,15 @@ migration authorities.
 ## R1.3 Additive SPEC-304 stable App identity integration — 2026-10-07
 
 SPEC-304 owns stable `AppIdentity`/`publicAppId`, canonical app route and mutable aliases, App Shell/startup semantics, runtime requirement declarations, and app/channel-to-release/deployment references. SPEC-295 remains sole authority for release sets, migration execution, deployment lifecycle, desired/observed state, health, rollback, and production operations. A route resolution or App identity receipt MUST NOT imply deployment health, rollout completion, or acceptance. A domain/slug/owner change MUST NOT mutate historical deployment or release identity. Runtime requirements declared by SPEC-304 are inputs to SPEC-295's existing target/capacity/security gates, not a second provisioner or deployment executor. This is a contract alignment only; no production migration or deployment is authorized.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C8/C9/C10. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-295-UWAC-01: Release builds MUST bind the authorized immutable source SHA and required integrated ancestors to identical local/GitHub-Actions provenance semantics, including builder/workflow revision, run, toolchain/locks, input/config reference digests, artifact digest and checks. Promotion MUST reject mutable-ref-only, dirty, unauthorized, stale-policy or digest-mismatched inputs; every session MUST use the existing release authority.
+- REQ-295-UWAC-02: Build, publication, deployment and observed serving state MUST have separate source/digest/target/time evidence. CI/build/deploy failures MUST carry exact-SHA phase/check/resource classification, bounded recovery and rollback/health receipts. Non-Git results and Skill releases MUST use their applicable owner acceptance, not fabricate Git/deployment success; no production action is authorized by this consolidation.
+
+Acceptance coverage: `UW-14 UW-16 UW-24 UW-30 UW-34 UW-35 UW-36` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

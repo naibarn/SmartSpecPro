@@ -3569,3 +3569,15 @@ Delegation SHALL include only the context needed for the target's responsibility
 
 A release candidate FAILS if any pass is unresolved without an explicit owner, blocker and rollback-safe mitigation.
 
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C2/C3. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-279-UWAC-01: Agent-originated Chat/Task/Mission/delegation controls MUST enter this existing command profile and then the applicable canonical mutation authority. User/client actions MUST retain SPEC-226/220 mapping and the same domain policy. Commands MUST bind live tenant/principal/target generation, attenuated scope/budget, expiry, idempotency and effect receipt; views MUST NOT own execution.
+- REQ-279-UWAC-02: All work profiles MUST use current policy/economic admission and canonical jobs/outbox for long execution. Reuse exact valid autonomous non-production decisions without a second approval gate; unsupported controls, revoked grants and stale context MUST fail closed. Requested/accepted/applied cancellation and uncertain external effects MUST remain distinct.
+
+Acceptance coverage: `UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

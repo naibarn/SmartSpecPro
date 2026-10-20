@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 187 unresolved of 187
+- Requirements: 0 pass / 189 unresolved of 189
 - Next action: Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.
-- Manifest generation: 29
+- Manifest generation: 32
 
 ## Source-declared status and relationship claims
 

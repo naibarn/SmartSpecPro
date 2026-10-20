@@ -1,0 +1,14 @@
+{
+  "source_sha": "ce126996921bf710526dfac9949de77210cfb70d",
+  "observed_at": "2026-10-20T23:28:44.800302+00:00",
+  "method": "git show baseline manifest+ledger passed to official tools.spec_handoff.contracts validators",
+  "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/",
+  "outcome": "BASELINE_FAILURE_UNRELATED",
+  "errors": [
+    "requirements[1] evidence_sha does not match canonical SHA",
+    "requirements[2] evidence_sha does not match canonical SHA",
+    "requirements[3] evidence_sha does not match canonical SHA",
+    "requirements[4] evidence_sha does not match canonical SHA"
+  ],
+  "action": "Report separately; do not modify SPEC014"
+}

@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/uwac-consolidation-20261021/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06",
+  "initial_file": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/uwac-consolidation-20261021/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md",
+  "review_mode": "self_review"
+}

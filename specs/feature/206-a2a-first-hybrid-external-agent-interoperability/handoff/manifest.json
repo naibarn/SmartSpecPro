@@ -52,7 +52,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
-    "expected_spec_digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511"
+    "expected_spec_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc"
   },
   "continuation": {
     "next_action": "Keep billing-budget/v1 as transport-only budget metadata. Future adapter work consumes SPEC-207 payment and SPEC-280 commerce contracts; do not implement payment execution or create a second ledger in SPEC-206.",
@@ -161,13 +161,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 16,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
-    "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+    "digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-19T00:04:40.927149Z",
+      "last_evidence_at": "2026-10-20T23:27:53.182099Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T20:44:09+07:00",
       "spec_last_changed_at": "2026-09-18T20:44:09+07:00"
@@ -196,6 +196,191 @@
     "state_evidence": [],
     "updated_at": "2026-10-19T00:04:40.927149Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
+        },
+        {
+          "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        },
+        {
+          "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        },
+        {
+          "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        },
+        {
+          "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
+        },
+        {
+          "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        },
+        {
+          "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        },
+        {
+          "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        },
+        {
+          "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        }
+      ],
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
+        },
+        {
+          "digest": "3362f7a66cf8514301a365a55c41db5284da8b076d866f0454265258a772707b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-codebase-convergence-2026-09-18.md"
+        },
+        {
+          "digest": "e4139e6bd0d875598a70f129d9c731961619cfc6de41913be87abaaa834fe44d",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-followup-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "2ac5b85ef1b424341b693cc17c1a486eb53bb890c71dc4c28f7c0025d61be772",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-lifecycle-event-followup-2026-09-18.md"
+        },
+        {
+          "digest": "84fd827162fd91de377737be7c6b49c554f3326acad155d5680da4cb6a242ccc",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-provider-a2a-selection-2026-09-18.md"
+        },
+        {
+          "digest": "1909aae31d0189df43a785c4cffafdc426f187b2cfea1f4aeb98a9d59f4af8fd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-reaudit-2026-09-18.md"
+        },
+        {
+          "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "VALIDATION_PENDING",
+      "state_evidence": [],
+      "updated_at": "2026-10-19T00:04:40.927149Z"
+    },
+    "requirements": {
+      "REQ-206-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L7126"
+        ],
+        "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L7126",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "requirement_digest": "a8a1adad0ac889e4e7335370e2bb03839ecd8d10ebd40138a38486a65e494e2c",
+        "requirement_id": "REQ-206-UWAC-01",
+        "requirement_text": "- REQ-206-UWAC-01: Negotiated A2A and provider-native observations MUST map to the same versioned work/session/event/evidence consumer contract while retaining protocol/native IDs and unsupported/unknown fields. A2A discovery, MCP tools, native adapters and subscription entitlement MUST remain distinct capabilities.",
+        "source_spec_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-09 UW-10 UW-11 UW-19 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-206-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L7127"
+        ],
+        "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L7127",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "requirement_digest": "24913c533e8a631432f67480f42a1f8b3f9128d080948461ae7048e0a0d8a86e",
+        "requirement_id": "REQ-206-UWAC-02",
+        "requirement_text": "- REQ-206-UWAC-02: Cross-protocol controls and continuation MUST revalidate supported operations and authority through SPEC-200/205/279 and existing jobs. Transport completion MUST NOT prove accepted work or cross-session recovery; absence of certified A2A/native support MUST remain unavailable rather than fabricated parity.",
+        "source_spec_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-09 UW-10 UW-11 UW-19 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      }
+    }
+  },
   "reconciliation": {
     "confidence": "LOW",
     "inferred_fields": [
@@ -204,10 +389,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-19T00:04:40.927149Z",
+    "reconciled_at": "2026-10-20T23:27:53.182099Z",
     "sources": [
       {
-        "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+        "digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
       },
@@ -249,7 +434,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
-        "source_digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+        "source_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
         "value": "Proposed / Ready for implementation planning"
       }
     ],
@@ -280,14 +465,14 @@
         "excerpt": "**Status:** Proposed / Ready for implementation planning",
         "line": 3,
         "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
-        "source_digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+        "source_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
         "value": "Proposed / Ready for implementation planning"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5895764154c72fd56db0e915f0b967f3b0e9e49e8df75309f89ab446c7cbb511",
+        "digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md"
       },
@@ -328,16 +513,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 603,
-    "unresolved": 603
+    "total": 605,
+    "unresolved": 605
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T00:06:04.156447Z",
+  "updated_at": "2026-10-20T23:27:53.240225Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

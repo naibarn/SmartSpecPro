@@ -1,0 +1,237 @@
+{
+  "observed_at": "2026-10-20T23:27:53.982290+00:00",
+  "writer_apis": [
+    "tools.spec_handoff.reconcile.reconcile_one",
+    "tools.spec_handoff.store.update_manifest",
+    "tools.spec_handoff.store.update_requirement_ledger_batch"
+  ],
+  "scope": "16 owner amendments; document identity decision for embedded SPEC256",
+  "owners": [
+    {
+      "owner": "196",
+      "path": "specs/feature/196-universal-goal-orchestration",
+      "spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
+      "old_rows_preserved": 207,
+      "new_requirement_ids": [
+        "REQ-196-UWAC-01",
+        "REQ-196-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 14,
+      "ledger_generation": 8
+    },
+    {
+      "owner": "198",
+      "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution",
+      "spec_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+      "old_rows_preserved": 399,
+      "new_requirement_ids": [
+        "REQ-198-UWAC-01",
+        "REQ-198-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 11,
+      "ledger_generation": 5
+    },
+    {
+      "owner": "200",
+      "path": "specs/feature/200-universal-coding-agent-control-plane",
+      "spec_digest": "13a476b5f715fff356197de4b6f39fda82b4b98b1edcba1b842f33127f047b0b",
+      "old_rows_preserved": 229,
+      "new_requirement_ids": [
+        "REQ-200-UWAC-01",
+        "REQ-200-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 11,
+      "ledger_generation": 5
+    },
+    {
+      "owner": "205",
+      "path": "specs/feature/205-smartaihub-runner-cross-platform",
+      "spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+      "old_rows_preserved": 187,
+      "new_requirement_ids": [
+        "REQ-205-UWAC-01",
+        "REQ-205-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 32,
+      "ledger_generation": 8
+    },
+    {
+      "owner": "206",
+      "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability",
+      "spec_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
+      "old_rows_preserved": 603,
+      "new_requirement_ids": [
+        "REQ-206-UWAC-01",
+        "REQ-206-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 19,
+      "ledger_generation": 8
+    },
+    {
+      "owner": "218",
+      "path": "specs/feature/218-ai-product-development-control-plane",
+      "spec_digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
+      "old_rows_preserved": 163,
+      "new_requirement_ids": [
+        "REQ-218-UWAC-01",
+        "REQ-218-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 9,
+      "ledger_generation": 5
+    },
+    {
+      "owner": "221",
+      "path": "specs/feature/221-smartaihub-skill-engineering-framework",
+      "spec_digest": "38925f054581a77eb72d133f2d8e02bb19a5364c7fefb32de3a01877a3a27e1d",
+      "old_rows_preserved": 430,
+      "new_requirement_ids": [
+        "REQ-221-UWAC-01",
+        "REQ-221-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 10,
+      "ledger_generation": 5
+    },
+    {
+      "owner": "224",
+      "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+      "old_rows_preserved": 1259,
+      "new_requirement_ids": [
+        "REQ-224-UWAC-01",
+        "REQ-224-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 118,
+      "ledger_generation": 14
+    },
+    {
+      "owner": "256",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "spec_digest": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b",
+      "old_rows_preserved": 162,
+      "new_requirement_ids": [
+        "REQ-256-UWAC-01",
+        "REQ-256-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 15,
+      "ledger_generation": 9
+    },
+    {
+      "owner": "269",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "spec_digest": "00e444043fa63058317e0db40aa62235252370f56ddf2e21fd27e938a0750592",
+      "old_rows_preserved": 1677,
+      "new_requirement_ids": [
+        "REQ-269-UWAC-01",
+        "REQ-269-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 36,
+      "ledger_generation": 10
+    },
+    {
+      "owner": "277",
+      "path": "specs/feature/277-task-control-experience-r1-6",
+      "spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+      "old_rows_preserved": 440,
+      "new_requirement_ids": [
+        "REQ-277-UWAC-01",
+        "REQ-277-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 71,
+      "ledger_generation": 11
+    },
+    {
+      "owner": "279",
+      "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0",
+      "spec_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
+      "old_rows_preserved": 328,
+      "new_requirement_ids": [
+        "REQ-279-UWAC-01",
+        "REQ-279-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 5,
+      "ledger_generation": 2
+    },
+    {
+      "owner": "287",
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+      "old_rows_preserved": 205,
+      "new_requirement_ids": [
+        "REQ-287-UWAC-01",
+        "REQ-287-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 21,
+      "ledger_generation": 10
+    },
+    {
+      "owner": "293",
+      "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
+      "spec_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+      "old_rows_preserved": 235,
+      "new_requirement_ids": [
+        "REQ-293-UWAC-01",
+        "REQ-293-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 72,
+      "ledger_generation": 3
+    },
+    {
+      "owner": "294",
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
+      "spec_digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+      "old_rows_preserved": 497,
+      "new_requirement_ids": [
+        "REQ-294-UWAC-01",
+        "REQ-294-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 84,
+      "ledger_generation": 9
+    },
+    {
+      "owner": "295",
+      "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
+      "spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+      "old_rows_preserved": 166,
+      "new_requirement_ids": [
+        "REQ-295-UWAC-01",
+        "REQ-295-UWAC-02"
+      ],
+      "new_requirement_state": "OPEN",
+      "runtime_acceptance": "UNVERIFIED",
+      "manifest_generation": 81,
+      "ledger_generation": 8
+    }
+  ],
+  "preservation": "Every pre-existing row retained field-for-field except derived source_spec_digest; exact SPEC224 lifecycle/authority/blockers/continuation/implementation/integration/verification/deployment/acceptance/dependencies unchanged. New rows OPEN/UNVERIFIED. Nested source and ledger bytes unchanged.",
+  "identity_resolution": "Outer 256 ACTIVE_CANONICAL document identity; nested HISTORICAL_ONLY; raw duplicate diagnostic retained."
+}

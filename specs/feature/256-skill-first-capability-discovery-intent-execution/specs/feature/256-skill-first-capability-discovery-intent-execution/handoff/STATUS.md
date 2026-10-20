@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 256 — Spec 256 — Skill-First Capability Discovery & Intent Execution (R1.2)
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
+- Disposition: `HISTORICAL_ONLY` (MEDIUM)
 - Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Continuation: `DO_NOT_CONTINUE_HISTORICAL` (MEDIUM)
 - Requirements: 0 pass / 161 unresolved of 161
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Next action: Read outer SPEC256 and its existing HandOff; preserve this historical copy.
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

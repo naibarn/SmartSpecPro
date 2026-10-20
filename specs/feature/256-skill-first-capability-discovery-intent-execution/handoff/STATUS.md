@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 256 — SmartAIHub Skill-First Capability Discovery & Intent Execution
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (MEDIUM)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 162 unresolved of 162
+- Requirements: 0 pass / 164 unresolved of 164
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 12
+- Manifest generation: 15
 
 ## Source-declared status and relationship claims
 

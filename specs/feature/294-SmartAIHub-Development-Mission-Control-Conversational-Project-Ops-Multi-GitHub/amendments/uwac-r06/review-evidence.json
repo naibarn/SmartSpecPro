@@ -1,0 +1,390 @@
+[
+  {
+    "round": 1,
+    "lens": "Ownership",
+    "observed_at": "2026-10-20T23:27:01.670894+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(owner|authority|registry)",
+      "specs/feature/256-skill-first-capability-discovery-intent-execution/README.md"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "3:**Status:** implementation **proposal**, not code-certified, live-protocol-certified or approved for production. The number `256` is **provisional** until the canonical SmartSpecPro main/worktree/PR/spec registry G0 check. Prepared 2026-09-28.",
+      "17:- `AUDIT-12-ADDITIONAL-PASSES-R1.2.md`: twelve additional pass-by-pass evidence/findings/fixes and outstanding owner/runtime gates.",
+      "20:- `CROSS-SPEC-IMPACT-R1.2.md`: ownership boundary and proposed additions without editing frozen specs.",
+      "22:- `contracts/`: closed illustrative schema definitions. **These do not replace existing deployed owner APIs.**",
+      "43:No retroactive edits of Specs 1\u2013214. No change to actively implemented Spec 224. No second Capability/Skill Registry, Chat, Workflow, physical job ledger, approval authority, billing ledger or Film domain tables. Feature 196, Specs 221/229/248/253/254/255/215 and existing owner APIs are definitive. G0 current-code reconciliation and owner approval precede actual code/DDL/deploy; all flags default OFF. The public catalog is a **strict display-only proposal**, not a new MCP `skills/*` method."
+    ],
+    "finding": "A preserved duplicate file must not claim competing authority; user request plus pack README selects outer document only.",
+    "normative_fix": "C10/G0 resolution",
+    "correction": "Document identity does not certify runtime; retain raw duplicate diagnostic and historical bytes.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 2,
+    "lens": "UX",
+    "observed_at": "2026-10-20T23:27:01.675696+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(snapshot|consistency|mutable|projectionToken)",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "19:  const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get(\"projectionToken\"));",
+      "30:    ...(projectionToken ? { projectionToken } : {}),",
+      "39:    ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}),",
+      "40:  }, { enabled: Boolean((projectFilter || specFilter) && (query.data?.snapshot.projectionToken || projectionToken)), staleTime: 60_000, retry: false });",
+      "44:    { jobId: selected?.id ?? \"\", ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}) },",
+      "51:  const snapshotExpired = query.error?.data?.code === \"PRECONDITION_FAILED\";",
+      "69:            <Text type=\"supporting\">Snapshot {query.data?.snapshot.asOf ?? \"loading\"} \u00b7 {query.data?.snapshot.consistency ?? \"consistency unknown\"}; mutable task state can remain live.</Text>"
+    ],
+    "finding": "Existing UI explicitly says mutable task state can remain live; snapshot token cannot be described as immutable history for all fields.",
+    "normative_fix": "C4/WP32",
+    "correction": "Declare field-level snapshot/live coverage and never silently present live state as a historical snapshot.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 3,
+    "lens": "General Work",
+    "observed_at": "2026-10-20T23:27:01.680666+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(repositoryRef|DevelopmentJob|workPackageRef)",
+      "apps/web/server/services/developmentControlPlaneContracts.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "3:export type DevelopmentJobState =",
+      "26:export type DevelopmentJob = {",
+      "28:  developmentJobId: string;",
+      "31:  workPackageRef: string;",
+      "32:  repositoryRef: string;",
+      "40:  state: DevelopmentJobState;",
+      "47:  developmentJobId: string;"
+    ],
+    "finding": "DevelopmentJob repositoryRef must not spread into a universal Work requirement.",
+    "normative_fix": "C1/WP31",
+    "correction": "Use profile-conditional bindings; mixed inputs declare Git applicability per development child/output, not by parent label.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 4,
+    "lens": "Skills",
+    "observed_at": "2026-10-20T23:27:01.686736+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(autoApplyProposal|desiredVisibility|targetPlatform|startPythonSkillTask)",
+      "apps/web/server/services/skillStudioService.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "9:import { startPythonSkillTask, type SkillExecutionResult } from \"./skillExecutor\";",
+      "49:type DesiredVisibility = \"private\" | \"pending_approval\" | \"public\";",
+      "58:  targetPlatform?: \"classic\" | \"agents_python\";",
+      "59:  targetPlatformHint?: \"classic\" | \"agents_python\";",
+      "66:  desiredVisibility?: DesiredVisibility;",
+      "67:  autoApplyProposal?: boolean;",
+      "259:function normalizeDesiredVisibility("
+    ],
+    "finding": "Studio create/improve options do not establish publication rights or immutable version acceptance.",
+    "normative_fix": "C6/WP35",
+    "correction": "Bind evaluation to candidate/package and evaluator version; edits invalidate old eval, rollback/revoke retain prior immutable versions.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 5,
+    "lens": "Multi-Agent",
+    "observed_at": "2026-10-20T23:27:01.691135+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(AgentTaskManifest|goalId|planId|session|policyBinding)",
+      "apps/web/server/services/agentControlPlaneContracts.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "16:export type AgentTaskPolicyBinding = {",
+      "18:  runnerSessionId: string;",
+      "30:export type AgentTaskManifest = {",
+      "34:  goalId: string;",
+      "35:  planId: string;",
+      "52:  policyBinding?: AgentTaskPolicyBinding;",
+      "73:  start(manifest: AgentTaskManifest): Promise<{ providerSessionId: string }>;"
+    ],
+    "finding": "Graph-level permission/budget attenuation and loop bounds must survive independent provider sessions.",
+    "normative_fix": "C2/WP36",
+    "correction": "Enforce cycle/depth/fanout and aggregate reservations via existing authority; duplicate child/result/settlement cannot multiply credit or close parent.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 6,
+    "lens": "Session Lifecycle",
+    "observed_at": "2026-10-20T23:27:01.696563+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(start|repair|revoke|expired|activeByRunner)",
+      "apps/web/server/services/runnerSessionContracts.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "8:  | \"revoked\"",
+      "9:  | \"expired\";",
+      "29:    | \"runner_pairing_started\"",
+      "33:    | \"runner_session_revoked\"",
+      "34:    | \"runner_session_expired\";",
+      "49:      | \"SESSION_REVOKED\"",
+      "50:      | \"SESSION_EXPIRED\""
+    ],
+    "finding": "Repaired Runner authentication sessions are different from work continuity; provider ID reuse is not resumption proof.",
+    "normative_fix": "C2/C3/WP36",
+    "correction": "Resume from durable work/job/attempt and confirmed checkpoint, rebind new session with fresh grant and account capability; never treat process restart as completed work.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 7,
+    "lens": "Git",
+    "observed_at": "2026-10-20T23:27:01.703057+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(canonical_ref|remote_canonical_tip|origin/main|source_revision)",
+      "scripts/development-lifecycle/canonical_source.py"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "132:            \"canonical_ref\": str(values[\"canonical_ref\"]).strip(),",
+      "143:    if not all(policy[key] for key in (\"repository_id\", \"remote\", \"canonical_ref\", \"source_root\", \"lease_root\", \"build_target\")):",
+      "145:    if not policy[\"canonical_ref\"].startswith(\"refs/heads/\"):",
+      "146:        raise LifecycleError(\"REPOSITORY_POLICY_INVALID: canonical_ref must be a fully qualified branch ref\")",
+      "327:    git(repo, \"fetch\", \"--no-tags\", policy[\"remote\"], policy[\"canonical_ref\"])",
+      "331:    canonical_branch = policy[\"canonical_ref\"].removeprefix(\"refs/heads/\")",
+      "360:        \"canonical_ref\": policy[\"canonical_ref\"],"
+    ],
+    "finding": "main is policy data and remote/tracking/local/last-green/deployed observations need explicit scope/generation.",
+    "normative_fix": "C8/WP38",
+    "correction": "Use configured remote/canonical_ref per repository; last verified main binds check set and source, not assumed latest or production.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 8,
+    "lens": "Merge",
+    "observed_at": "2026-10-20T23:27:01.709098+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(expected_head|expected_base|merge_sha|base_ref_ancestry)",
+      "skills/integration-controller/scripts/promote_ready_pr.py"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "61:        \"merge conflict\", \"conflict\", \"expected_head_mismatch\", \"base_ref_stale\",",
+      "229:    expected_head: str | None,",
+      "230:    expected_base_sha: str | None = None,",
+      "231:    base_ref_ancestry_verified: bool = False,",
+      "249:    if expected_head and head_sha != expected_head:",
+      "250:        blockers.append(\"EXPECTED_HEAD_MISMATCH\")",
+      "251:    if expected_base_sha and pull_request.get(\"baseRefOid\") != expected_base_sha and not base_ref_ancestry_verified:"
+    ],
+    "finding": "Integration source/head/base can change between review and mutation.",
+    "normative_fix": "C8/WP38",
+    "correction": "Guard exact checkpoint head and current base/protection generation at mutation; record integrated commit ancestry and invalidate only affected check evidence.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 9,
+    "lens": "Build/Deploy",
+    "observed_at": "2026-10-20T23:27:01.716524+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(source_revision|artifact_digest|canonical_tip_after_build|dirty|health)",
+      "apps/web/scripts/linux_backend_release.py"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "78:        \"artifact_digest\": f\"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}\",",
+      "93:        \"artifact_digest\": f\"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}\",",
+      "158:        or record.get(\"source_revision\") != record.get(\"canonical_tip_after_build\")",
+      "165:    source_sha = str(record[\"source_revision\"])",
+      "175:    dirty = subprocess.run(",
+      "183:    if dirty:",
+      "244:    source_sha = str(record[\"source_revision\"])"
+    ],
+    "finding": "Local provenance guards exist but generic remote workflow is not equivalent evidence.",
+    "normative_fix": "C9/WP38",
+    "correction": "Promotion rechecks provenance and scoped source policy; config references are redacted digests, artifact secrets excluded; component serving mismatch cannot be hidden by build success.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 10,
+    "lens": "Security",
+    "observed_at": "2026-10-20T23:27:01.722425+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(require|Scope|tenantId|cursor|token|sign)",
+      "apps/web/server/services/taskObservabilityReadModel.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "28:const CURSOR_TTL_MS = 10 * 60_000;",
+      "29:const CURSOR_SECRET = process.env.JWT_SECRET?.trim() ?? \"\";",
+      "32:  constructor(public readonly code: \"TASK_NOT_FOUND\" | \"SNAPSHOT_EXPIRED\" | \"SNAPSHOT_INVALID\" | \"SCOPE_REQUIRED\") {",
+      "38:type Scope = { tenantId: string; userId: number; isAdmin?: boolean };",
+      "39:type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; conversationId: number | null; asOf: string; beforeAt: string; beforeId: string; exp: number };",
+      "40:type ProjectionSnapshotPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; asOf: string; exp: number };",
+      "42:function assertScope(scope: Scope): void {"
+    ],
+    "finding": "Cursor integrity does not grant current source/evidence read or mutation scope; event text remains untrusted.",
+    "normative_fix": "C3/C4/WP32/36",
+    "correction": "Apply current ACL/redaction before counts and dereference; remote transcripts/Skills/logs never provide executable instructions or credentials to controls.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 11,
+    "lens": "Billing",
+    "observed_at": "2026-10-20T23:27:01.728243+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(aggregateUsageEvidence|Settlements|Reservations|economicEvents|unique)",
+      "apps/web/server/services/taskObservabilityReadModel.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "12:  workerJobProviderReservations,",
+      "13:  workerJobSettlements,",
+      "14:  economicEvents,",
+      "20:import { aggregateUsageEvidence, taskUsageEvidenceCallSchema } from \"../../shared/taskUsageEvidence\";",
+      "214:function reservationEvidence(row: typeof workerJobProviderReservations.$inferSelect, job: typeof workerJobs.$inferSelect, corrections: Map<string, Record<string, unknown>>) {",
+      "383:  const settlementMarkers = await db.select({ id: workerJobSettlements.id, attemptId: workerJobSettlements.attemptId, settlementType: workerJobSettlements.settlementType, committedAt: workerJobSettlements.committedAt })",
+      "384:    .from(workerJobSettlements).where(and(eq(workerJobSettlements.workerJobId, job.id), ...(snapshotAt ? [lte(workerJobSettlements.committedAt, snapshotAt)] : [])))"
+    ],
+    "finding": "Usage union/dedup is necessary across overlapping tasks/sessions and subscription/platform routes.",
+    "normative_fix": "C3/WP36",
+    "correction": "Reserve/settle through existing economic ledger once by canonical effect/call identity, carry funding/currency/units and corrections; unknown consumption is not zero or a billable estimate.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 12,
+    "lens": "Multi-Tenant",
+    "observed_at": "2026-10-20T23:27:01.733630+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(tenantId|userId|isAdmin|assertScope|SNAPSHOT_INVALID)",
+      "apps/web/server/services/taskObservabilityReadModel.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "32:  constructor(public readonly code: \"TASK_NOT_FOUND\" | \"SNAPSHOT_EXPIRED\" | \"SNAPSHOT_INVALID\" | \"SCOPE_REQUIRED\") {",
+      "38:type Scope = { tenantId: string; userId: number; isAdmin?: boolean };",
+      "39:type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; conversationId: number | null; asOf: string; beforeAt: string; beforeId: string; exp: number };",
+      "40:type ProjectionSnapshotPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; asOf: string; exp: number };",
+      "42:function assertScope(scope: Scope): void {",
+      "43:  if (!scope.tenantId.trim() || !Number.isSafeInteger(scope.userId) || scope.userId <= 0) {",
+      "49:  if (CURSOR_SECRET.length < 32) throw new TaskObservabilityError(\"SNAPSHOT_INVALID\");"
+    ],
+    "finding": "Source permission changes can invalidate a previously signed scope token and cached cards.",
+    "normative_fix": "C3/C4/WP32",
+    "correction": "Bind tenant/principal/context policy epoch in observations; reauthorize at query, aggregation, drilldown and mutation, with no hidden-scope counts/inference.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 13,
+    "lens": "Cross-Device",
+    "observed_at": "2026-10-20T23:27:01.739655+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(projectionToken|conversationId|refetch|selected|snapshot)",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "19:  const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get(\"projectionToken\"));",
+      "25:  const [selectedId, setSelectedId] = useState<string | null>(null);",
+      "26:  const conversationCandidate = Number(new URLSearchParams(window.location.search).get(\"conversationId\"));",
+      "27:  const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;",
+      "30:    ...(projectionToken ? { projectionToken } : {}),",
+      "31:    ...(conversationId ? { conversationId } : {}),",
+      "34:  }, { staleTime: 15_000, refetchInterval: 15_000, retry: false });"
+    ],
+    "finding": "Device/session change must preserve work identity but cannot preserve stale read grants or local-only bytes.",
+    "normative_fix": "C5/WP33",
+    "correction": "Keep lens preference separate from scope; invalidate cached cards/links on tenant or permission change and disclose inaccessible local-only outputs.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 14,
+    "lens": "Recovery",
+    "observed_at": "2026-10-20T23:27:01.745268+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(TERMINAL|workerJobOutbox|lease|redact|retry)",
+      "apps/web/server/services/jobControlPlaneMonitor.ts"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "6:import { workerHeartbeats, workerJobDispatches, workerJobEvents, workerJobOutbox, workerJobSettlements, workerJobs, workers } from \"../../drizzle/schema\";",
+      "7:import { redactJobPayload } from \"./jobCanonicalization\";",
+      "12:const TERMINAL = [\"succeeded\", \"failed\", \"cancelled\", \"expired\"] as const;",
+      "16:  leased: [\"leased\", \"claimed\"],",
+      "19:  retry_scheduled: [\"retry_scheduled\"],",
+      "85:      \"leased\", \"claimed\", \"running\", \"preparing\", \"uploading\", \"publishing\", \"indexing\", \"waiting_external\",",
+      "87:    isNotNull(workerJobs.leaseExpiresAt),"
+    ],
+    "finding": "Observation and execution recovery must not share a blocking dependency; uncertain effect retries can duplicate external changes.",
+    "normative_fix": "C4/C7/WP32/37",
+    "correction": "Prove monitor outage noninterference with continuing job/event watermarks; reconcile uncertain effects before retry and retain failed-attempt/rollback lineage.",
+    "runtime_acceptance": "NOT_RUN"
+  },
+  {
+    "round": 15,
+    "lens": "Production Acceptance",
+    "observed_at": "2026-10-20T23:27:01.750708+00:00",
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "(Build|source|sudo|health|verified|receipt)",
+      "scripts/release-linux-web.sh"
+    ],
+    "returncode": 0,
+    "source_excerpt": [
+      "6:Build and promote the latest compatible origin/main full-stack Linux release.",
+      "10:  pnpm run build:deploy              # compatibility alias",
+      "13:This builds an immutable artifact, prepares it, then invokes the existing",
+      "14:sudo-gated smartspec-web.service promotion with health checks and rollback.",
+      "34:BUILD_ENTRYPOINT=\"${REPOSITORY_ROOT}/skills/canonical-checkout-sync/scripts/build-canonical-main.sh\"",
+      "36:if [[ ! -f \"${BUILD_ENTRYPOINT}\" ]]; then",
+      "37:  echo \"Canonical build entrypoint is missing: ${BUILD_ENTRYPOINT}\" >&2"
+    ],
+    "finding": "A document, helper suite or build flag cannot establish the live target source/effects.",
+    "normative_fix": "C9/C10/WP39",
+    "correction": "Receipt assertions remain scoped to exact source/target/method/time; integration/build/publish/deploy/serving are independent and production remains NOT_RUN here.",
+    "runtime_acceptance": "NOT_RUN"
+  }
+]

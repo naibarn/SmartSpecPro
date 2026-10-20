@@ -6388,3 +6388,15 @@ rollback evidence passes.
 ---
 
 **End of Spec 200**
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/amendment.md), clauses C2/C3/C4. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/g0-audit.md), [ownership](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/ownership.md) and [acceptance scenarios](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-200-UWAC-01: External worker adapters MUST accept non-code work when capability policy permits without coercing it into a Git-backed DevelopmentRun. Bind canonical work/job/attempt/session, harness/account route, provider-native identity and normalization version; report missing provider fields and unsupported controls explicitly.
+- REQ-200-UWAC-02: Provider stop/turn-end/ACK MUST NOT prove task acceptance or applied cancellation. Reconnect, return delivery and control actions MUST reconcile durable receipts with fresh scoped authority, preserve sibling/parent truth and honor pinned subscription routes without silent paid substitution.
+
+Acceptance coverage: `UW-09 UW-10 UW-11 UW-19 UW-31` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

@@ -8,39 +8,18 @@
       "rationale": "Reconcile the 191 open requirement candidates against Feature 151 and current architecture; move only proven residual requirements to the governing Spec.",
       "record_key": "canonical:specs/feature/130-hybrid-flow-openai-agents-sdk-runtime",
       "spec_id": "130"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "DO_NOT_CONTINUE_HISTORICAL",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "priority": "EXCLUDED",
+      "rationale": "Read outer SPEC256 and its existing HandOff; preserve this historical copy.",
+      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "spec_id": "256"
     }
   ],
   "reconciliation_review": [
-    {
-      "authority": "AUTHORITY_CONFLICT",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "priority": "R1_IDENTITY_CONFLICT",
-      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "256"
-    },
-    {
-      "authority": "AUTHORITY_CONFLICT",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "priority": "R1_IDENTITY_CONFLICT",
-      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "256"
-    },
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
@@ -3400,6 +3379,36 @@
         "TEST": 0
       },
       "spec_id": "255"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "256"
+    },
+    {
+      "authority": "HISTORICAL_ONLY",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Read outer SPEC256 and its existing HandOff; preserve this historical copy.",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "256"
     },
     {
       "authority": "UNRESOLVED",

@@ -4055,3 +4055,15 @@ Consume SPEC-277's task-observability contract and SPEC-196's Goal baseline sema
 - REQ-294-OBS-03: Pagination and drilldown MUST preserve the same snapshot and scope, reject mismatched cursor/filter/token, reauthorize after revocation and fail closed across tenants. Late correction/reopen/regression MUST affect a new projection version without rewriting historical answers.
 - REQ-294-OBS-04: Rebuild/replay MUST yield identical totals and unknown/coverage states from existing records. Tests MUST cover duplicate sessions/retries/shared SPECs, late correction, scope changes, current authorization, cursor expiry, and Task/Web/Chat parity. No read-model outage may block job execution.
 - REQ-294-OBS-05: Mission Control MUST display verified Goal progress/remaining scope plus Runner/Agent/job stage/heartbeat/recovery/freshness and model/usage evidence through existing Task Control/Agent Monitor surfaces, including responsive/mobile hierarchy and source-bound comparison. Live verification requirements MUST remain explicitly separate from integration/unit test results.
+
+
+# 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
+
+Additive normative scope: [SAH-UWAC R0.6](amendments/uwac-r06/amendment.md), clauses C2/C4/C5/C7/C10. Existing owner authorities and prior requirements remain in force; this is specification/planning work, not runtime acceptance. [Source audit](amendments/uwac-r06/g0-audit.md), [ownership](amendments/uwac-r06/ownership.md) and [acceptance scenarios](amendments/uwac-r06/acceptance.md) provide the consumer contract and evidence boundaries.
+
+## Requirements and acceptance criteria
+
+- REQ-294-UWAC-01: Mission Control MUST project one versioned, authorization-scoped activity/evidence timeline across work, Skills, agents, harnesses and sessions using existing task/job/event sources. Each event MUST expose provenance/class, source/native identity, original and normalized state, reason/progress, freshness/coverage, cursor and permitted evidence drilldown; task/session/parent scope MUST remain distinct.
+- REQ-294-UWAC-02: Task/Mission/Chat consumers MUST preserve identical snapshot/outcome facts and explicit unknowns. Stall/stop inference MUST distinguish liveness from progress and lifecycle from health/delivery, with next actor/action. Collector/UI failures MUST NOT gate execution; source, artifact, Skill and optional Git/release acceptance MUST remain separate and current tenant permissions MUST apply before aggregation/drilldown.
+
+Acceptance coverage: `UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.

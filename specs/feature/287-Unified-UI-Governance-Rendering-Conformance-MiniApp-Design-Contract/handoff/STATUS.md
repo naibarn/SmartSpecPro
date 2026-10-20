@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_SUPPORTING` (MEDIUM)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 205 unresolved of 205
+- Requirements: 0 pass / 207 unresolved of 207
 - Next action: Reconcile the canonical owner/requirement handoffs for SPEC-240/270/226/279/220/207 and Feature 195, preserve the unresolved SPEC-256 duplicate, then define P1 work against the current integrated SHA.
-- Manifest generation: 18
+- Manifest generation: 21
 
 ## Source-declared status and relationship claims
 

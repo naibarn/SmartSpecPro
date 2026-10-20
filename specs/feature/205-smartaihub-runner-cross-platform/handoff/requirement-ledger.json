@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 8,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "fc17651af4a3d3f0bf3c23f50f7ef1fb1853774165323e0102c98a05b4cf16e2",
       "requirement_id": "REQ-E5FCAF1AFA2F",
       "requirement_text": "SmartAIHub SHALL add a dedicated Feature 205 implementation specification for",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "f7b7591e3ba272529e6a5a7ab06cfc40f2443a8b0f076d577bf67ef0462e8b73",
       "requirement_id": "REQ-0EDF53D9320C",
       "requirement_text": "Feature 205 owns that implementation boundary. It MUST NOT turn Feature",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "2d28f5066e316a7b001a7bea874e26e0df9ddefb72dd09bc79b9e85c1baf4e49",
       "requirement_id": "REQ-E4988CAD9378",
       "requirement_text": "197 or Feature 200 into another product-specific job system, and it MUST NOT",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "a95e4693023feee1741d3aab72344d41c4463743d859ef09f9d61f164a770c19",
       "requirement_id": "REQ-40150B7DB511",
       "requirement_text": "libraries, but they MUST have separate package identities, executable names,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "a6a55206be2385228c0973379f96b633a4428841838cc628a8014010163232e5",
       "requirement_id": "REQ-3EE87CA3B5E6",
       "requirement_text": "runtime feature flags. The Runner MUST NOT register as the existing Worker",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "b8fcace6d6788a9f95ea0e98222cf7bcd96334ff5b7ffc69626d7e40d5a29222",
       "requirement_id": "REQ-3FCDCC303216",
       "requirement_text": "The local Runner and Shared Container Runner MUST implement the same",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "ba7710871245dcb9903387b75b0ee7845eaa2108fe1998d28adfef0fec7fafb2",
       "requirement_id": "REQ-3250E4161B08",
       "requirement_text": "Feature 205 MUST NOT redefine any field that is authoritative in Features",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "0f42cf5a0deed2d3d34781233e860c2c73ac2d86ef751c8d075499c6d0ff3132",
       "requirement_id": "REQ-720EC8BA0C55",
       "requirement_text": "the plan MUST add a versioned additive contract and update the owning spec",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "b271f5be48e76dab92c91459bece8eeaebd2ba0f40fa5727978b5e48410a51b2",
       "requirement_id": "REQ-831E17D27AF8",
       "requirement_text": "The initial product SHALL be a headless Rust binary. It MAY expose a local CLI",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "7f3f7af59c2ff5776275b862f9d06ff9bcd7cd73162858df62d724868e739775",
       "requirement_id": "REQ-E51A5D154DC1",
       "requirement_text": "for diagnostics and controlled lifecycle commands, but it MUST NOT require a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "8033cab54a0c22a4dde364e8d66277ddaaa987c712f587a5e45fa3bd4b2ab8b3",
       "requirement_id": "REQ-91E037BB03D4",
       "requirement_text": "webview or Tauri UI to execute work. The same runner-core contract SHALL also be",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "aca66a3a04a9616ee5fe29f8c6300e6857dbbea3cfc807ae7ff6ac8988b6a801",
       "requirement_id": "REQ-A09985E642B2",
       "requirement_text": "use a separately packaged Linux runtime process, but it MUST NOT import the",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "a6f8ca1f228a0f7d4ad6ca023d40f365bf8235ca7dda4cbfdbdd388a2273567d",
       "requirement_id": "REQ-0C4C4F3A9ACC",
       "requirement_text": "The Runner MUST have one process supervisor and one control client. Provider",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "1a14544713eb6ec750918a6bd8b880f86b949e5ec5faab259febcd5a700d46c3",
       "requirement_id": "REQ-F090F80E6D72",
       "requirement_text": "adapters MUST be plugins/modules behind the Runner adapter interface; they MUST",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "f40c3373887944b80486d1c08334d525c3457c2db2b737170c8be6fc9baaf7c8",
       "requirement_id": "REQ-046FF7841043",
       "requirement_text": "The release workflow MUST build the Runner from the pinned Rust toolchain and",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "26daa62a21c03b33568826e47f75cf83b5ec6cd10312e179405e8ef94999fb87",
       "requirement_id": "REQ-D0D2066430BA",
       "requirement_text": "symbol stripping against the measured baseline. The selected profile MUST be",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "ac3e0d044f5c030a7561fb9aa36efbf193e605e244724fa5f914c2d5320177f3",
       "requirement_id": "REQ-1DB8A1E1BA2B",
       "requirement_text": "measurements; optimization MUST preserve useful crash diagnostics and MUST NOT",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "0afc5c077a3e293b162dcbb9269531bc9cf25ff0197a2b3a36d64ddd88f0f5d2",
       "requirement_id": "REQ-208C701E7096",
       "requirement_text": "build. The same `smartaihub-runner` binary and version MUST be usable in the",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "26e42a93e738154d161f673c5251d5cca536203ccc785107a8d27540dcabb791",
       "requirement_id": "REQ-A9D039430ACC",
       "requirement_text": "VMs. Linux VM installation MUST NOT require Docker, a container runtime, or",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "6cf22f5142deda85fb287b242bf309da1051db6c29ded0f7d657fa77f4553b30",
       "requirement_id": "REQ-4BC3000384D5",
       "requirement_text": "administrator privileges when run as a user service. A release MUST state the",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "4015bacbb9f68529aa54dee245b6519b96649fe0eb6371a7283817ef95d9033c",
       "requirement_id": "REQ-E114F94649A5",
       "requirement_text": "image; it MUST NOT claim compatibility with arbitrary Linux distributions.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "61b08d6a93aef5b7a7e30718ec270e4232007a1bb7b31cc9d71006cbd1006ee3",
       "requirement_id": "REQ-825FA84E16C3",
       "requirement_text": "Cloudflare packaging MUST use a compatible pinned glibc runtime. A second",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "86d79810bf380df88b53c0892da3fa8e80c48b27951acc52652604e539eb082e",
       "requirement_id": "REQ-0A9E5FBC44CA",
       "requirement_text": "Linux binary target MUST NOT be introduced solely for container versus VM",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "61fb8c4ecb01b8a58ccfc59f5426ac74d8628ee7b0aa2b704063ba3a832a89a4",
       "requirement_id": "REQ-DC7B6C42B6F9",
       "requirement_text": "The Runner's runtime dependency set MUST remain limited to dependencies needed",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "fae36f492c0e9dcb1d23a33ab5be78efc39402d54a58ee610609a1022d1add8d",
       "requirement_id": "REQ-5E4DEEE60B3B",
       "requirement_text": "support MUST NOT be copied into the minimal Runner runtime unless that profile",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "eba29181dc40d0856a9e6e0f3d841d3ca925f60fe536f9c23a213e8c15a0b4cb",
       "requirement_id": "REQ-68945176DF17",
       "requirement_text": "not the only record. A disconnected Runner MUST preserve active process state",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "ae3cf4b213f2741b0725414fe994ca167cbf0a4f05fcb7c1b88f62d1cc322790",
       "requirement_id": "REQ-EB7469EB8E76",
       "requirement_text": "Every command/event MUST carry the versioned Runner protocol, runner identity,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "20990cecf013eb8f133e7f70c466be3c6ab6fb3e388161f40378e8f440c353f0",
       "requirement_id": "REQ-96BCEAC1ED10",
       "requirement_text": "idempotency key where applicable. The Runner MUST distinguish accepted,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "eaeed32509c8618c6201953a6422861e7d9e344f40975d09f549d35ef655710c",
       "requirement_id": "REQ-52BFC87240DD",
       "requirement_text": "Tool-scoped offers, sessions and events MUST additionally carry the normalized",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "6510ce601fbc8207b3011394acd364d6b6140b35cef6cdc9d0673519a79eddce",
       "requirement_id": "REQ-0FAAD6FC2D74",
       "requirement_text": "The Shared Container Runner MUST NOT depend on a container-local journal for",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "02194600ea18c74e0fa8810195db0101b1088091aa7246998c08083dc7beeaff",
       "requirement_id": "REQ-13941A839E23",
       "requirement_text": "and terminal transition MUST be acknowledged through the canonical",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "1e3baa06cd8de9f09e676237fc11d851c2aacf0c0b06463afe2fee71efe5c4f0",
       "requirement_id": "REQ-09D19D50B4CF",
       "requirement_text": "The local Runner MUST enroll as a distinct execution-node kind, with a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "d962aad4b3022a8e4f42eb297455e05499220045363f26d6db8af26fdac0abd8",
       "requirement_id": "REQ-8F23CB789934",
       "requirement_text": "Enrollment MUST bind the Runner to the authenticated tenant/user/device policy",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "c3facdbb434f0e8ff3fde024513c526b7f8c54072f093100091a65b61bd4a672",
       "requirement_id": "REQ-D8A2015EF047",
       "requirement_text": "and MUST support revocation, re-enrollment, key rotation and offboarding.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "5f4121c9b50b5fc8490ea86972c690a12ca9a90eb782d29a505490633b8b9f75",
       "requirement_id": "REQ-565451FA3F6F",
       "requirement_text": "fencing context. A container MUST NOT reuse one user's identity, workspace,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "5aae63d1f6b6892aed637a3a09bd953a37b7b8f125ea59f42c0f1305ebf88362",
       "requirement_id": "REQ-14D992EB2196",
       "requirement_text": "The implementation MUST reuse the shared Execution Node Registry contract from",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "01d3a45d57a1d410ea054089153663e6fc96f9a280f9a53fe7f02bf0e01b73ae",
       "requirement_id": "REQ-7D6D15AB25D2",
       "requirement_text": "Features 197/199/200. It MUST NOT create a Runner-only registry if an additive",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "2abb45a8887e1ff119718651cfa9862f3cd71e173e833d3f63ad79675be3362b",
       "requirement_id": "REQ-7EDFD404EDAE",
       "requirement_text": "represent both legacy Workers and Runner nodes safely, the plan MUST introduce",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "e8dd559517debf04a2dc18a8c35b13a15e4374d30fd161440e98a4321e6d61e1",
       "requirement_id": "REQ-22350D5656CA",
       "requirement_text": "the legacy `workers` identity and claim semantics MUST remain unchanged.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "7f5464f6d15abb349f36e503b59696cf12d338ca06bd6c42b9a15fbc04a41f9f",
       "requirement_id": "REQ-B58819AA6106",
       "requirement_text": "client-supplied tenant ID, hostname, machine name or queue value MUST never",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "93e1ecc16683b3e3268ba68975072e97523e87446ceac4e19f8f9c294d4ec6ae",
       "requirement_id": "REQ-FF871C6D7892",
       "requirement_text": "The local Runner MUST follow the same server-side authentication invariants as",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "6a757d86e53f99718e93c08d5ba8b4e707512688f2998dfc3d31c0c155d970e5",
       "requirement_id": "REQ-4C965BC8FCA4",
       "requirement_text": "Section 01 MUST freeze the minimum values",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "4a7af3741231b4a4ff4f1fac0815563655fb73ffe08e63f7ffe3dc44ddf24857",
       "requirement_id": "REQ-17FB1FDDC8C5",
       "requirement_text": "- required operation scopes plus the durable connected-device effective policy;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "f67f7759fa9df1d7eebec1142cefc44512d38f2f724b72f8807fbb43696480dc",
       "requirement_id": "REQ-52343F93689B",
       "requirement_text": "Runner MUST reuse the established Worker authentication primitives and policy",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "522c7e0289e60c1e5c006865ca64aa6298e9833978906bef0eb284ef4b5e297a",
       "requirement_id": "REQ-7A9A6EDFB12B",
       "requirement_text": "semantics where safe, but MUST NOT reuse `worker_registration`,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "aaca66b2a01c20d310a00fb82361330af7454217ac97c5bddb3b297d666433c6",
       "requirement_id": "REQ-D34B594FFC9F",
       "requirement_text": "enrollment exchange; it MUST NOT authorize WSS control or Job execution.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "75a039eb4161ca1749ddf386a3b1178f41338786bdd76d8cff684cb040624a86",
       "requirement_id": "REQ-DE58452D146B",
       "requirement_text": "WSS authentication MUST use an Authorization header or a single-use",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "d4cd32ff1ec26def34e4ec0dca4d2d7d78e678b01ede0839a616dfd5df7897c2",
       "requirement_id": "REQ-83E2E6A44859",
       "requirement_text": "handshake exchange and MUST NOT put bearer/refresh credentials in a WSS URL",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "58ccbab9305a6658aa2bcfa613b54fe3cd837406eab083f7d431353d2def73a3",
       "requirement_id": "REQ-9FCF524130F3",
       "requirement_text": "query string. Device-proof headers/nonces MUST use a Runner-specific",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "3be9e4601dc0ed9dd712a637e2e4cc023a8d4853d8ea6616195e89769e18ce6f",
       "requirement_id": "REQ-F7705325CB2F",
       "requirement_text": "Runner endpoints MUST reject Worker tokens, and Worker endpoints MUST reject",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "968acda1fd3e11e1addc52c83932104896635d074386afc704ca5aefcb72a14f",
       "requirement_id": "REQ-89154F9F5B9E",
       "requirement_text": "boundary and its tests. Runner MUST NOT register through",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "2f016c17ed4ff974efd70f7cf097dc53f9a6ec66937dfe6dddeb11d6d5331c02",
       "requirement_id": "REQ-0BF196150618",
       "requirement_text": "per-user device proof, but it MUST enforce the same signature, audience,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "2fc2592a3886bf656826053f01c4297bc689ae06c507cee94d965013d096a3e0",
       "requirement_id": "REQ-1F591EA93C3E",
       "requirement_text": "At startup and on material changes, the Runner MUST probe and report a bounded",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "44545190ce45c22a6c28995b7ccde18f49bebc51ff91050e608a0e2007700f44",
       "requirement_id": "REQ-433D8208C7ED",
       "requirement_text": "Discovery MUST distinguish installed, configured, authenticated, healthy,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "1e4b9e43d7196d0eff741f0b286984cb868419270c244c07ff125ae8845c1a29",
       "requirement_id": "REQ-8FC5DDC2C998",
       "requirement_text": "available and policy-allowed. It MUST fail closed for malformed probes and MUST",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "468b9b8ee3b2f1271f6a2689daa64ba99c5161956bbc7c12e173ae687c32bbf1",
       "requirement_id": "REQ-43BCF73543AC",
       "requirement_text": "The normalized tool trust vocabulary MUST include `discovered`, `probed`,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "ba0eceea785a0f213e663d9622224c17c4442c06ef9142a4b01835237264fc83",
       "requirement_id": "REQ-AB3D299C91DA",
       "requirement_text": "valid approved adapter/manifest, a successful bounded probe, healthy required",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "80b2fc0d91270f169db9fb7a2478719010602c7a11e0394b74f7778299c0e8cc",
       "requirement_id": "REQ-FBD9C4BBDAAA",
       "requirement_text": "Process liveness and work readiness are distinct. The Runner MUST report ready",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "392bc2b1bb76abffd16cda33693d25a378f639a8c10c746a0d6b37177202fd45",
       "requirement_id": "REQ-4F3CB3813506",
       "requirement_text": "only after required configuration is valid, its profile-specific supervisor",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "fd9b611970b15b9a5daa3bf014724fc1700e200a145ac52e6de69544021e8d9f",
       "requirement_id": "REQ-52304E2CF3CB",
       "requirement_text": "usable. A local Linux service may be live while disconnected and MUST expose",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "df05e5f27a7c7426830cdb5a2f0a2a6f73ab6f31d8742c41f08e1d897fea38c1",
       "requirement_id": "REQ-B082BAE94AF2",
       "requirement_text": "contract; readiness MUST NOT imply a new job queue, job authority, or bypass of",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "c2ee6a12a474fefb418709fc70ab65db6aafc8c7d909fcaaa088b53d14424297",
       "requirement_id": "REQ-B390B20F97F7",
       "requirement_text": "MUST be bounded and MUST NOT delay process liveness indefinitely on an",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "97cfe99ed9eac48cb2d8d4d97565780b4b813a5761097b404b3aadaab990d79c",
       "requirement_id": "REQ-AB7358009BC5",
       "requirement_text": "The initial local catalog MUST recognize these external agent/tool families",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "c85fb8984d8afe7aeb73eb125f994abd9305298ae198fbaf67d6b965b9551e4e",
       "requirement_id": "REQ-46F6E31148A0",
       "requirement_text": "The same discovery contract MUST also support non-agent tools that the system",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "66c4bb16e07df9362aace11024d2a77eb1204811fa176c0cbaa4d3335444aad1",
       "requirement_id": "REQ-1EBB8136A98B",
       "requirement_text": "manifest or explicitly approved generic CLI profile is required.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "c42e2909be9a672f7ae41d775daf366d79b8baf67292e6c3ffec414b0d4a0bf4",
       "requirement_id": "REQ-0990E69D825E",
       "requirement_text": "For `LOCAL_DEVICE_RUNNER`, discovery MUST run at first start, Runner upgrade,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "8b61561377e1c169a55a2847a12056f5fe5c9e0022516662fcfde54614306c22",
       "requirement_id": "REQ-6E8075520BD7",
       "requirement_text": "The scanner MUST fingerprint a candidate before probing it, use the immutable",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "937c0b948ac3b71549d46657b39c0c63d81a580a2cd80531c58b111bec6526b5",
       "requirement_id": "REQ-FFE6CD1DC645",
       "requirement_text": "and treat unknown executables as `discovered` but not executable. It MUST NOT",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "a5affddf1420266f41dd201b6f0e97e6f6d788d8a1db55cf5ec6e602eb81f5a2",
       "requirement_id": "REQ-74708385BB8F",
       "requirement_text": "The Runner MUST publish one bounded snapshot revision for the Runner node,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "65e766fb5ea8053f652448961d06d0f54df48b06a2c1e6ce66e539a7818391b3",
       "requirement_id": "REQ-BBF8F3CA6AB6",
       "requirement_text": "must not register as its own Runner/device.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "242450882aacafc8a86ccc69bad0c56bd31c00a4db1e879b5707deed415d4880",
       "requirement_id": "REQ-ADF5B282DA5B",
       "requirement_text": "Runner identity and an idempotency key. Its bounded request MUST contain one",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "fde967671232af5926a1a77c3a96e94500b1d0451d0eeccfea28f71486510989",
       "requirement_id": "REQ-D5DD10E0C958",
       "requirement_text": "the redacted shapes from Section 8.2. The response MUST return the accepted",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "56ea342be8c5ce4e8a6d13128ce28d54f7bb1f44a068bdcf4e92717b99ad3e3b",
       "requirement_id": "REQ-836FADD87F41",
       "requirement_text": "must tombstone or mark absent entries unavailable, and an older revision must",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "a9181d0c618b17ffebf0976d891c4dc49789cd9c6fbb0a831fd747d2fa03ba6d",
       "requirement_id": "REQ-132EA1D7059C",
       "requirement_text": "profile. The Container MUST register image/runtime capabilities and health;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,7 +1647,7 @@
       "requirement_digest": "df1dfe673aa02a6a47edfa790ce35666e48e77a30db5f896889ea5a6dc9579d0",
       "requirement_id": "REQ-311F3907D16C",
       "requirement_text": "it MUST NOT scan or expose a host user's tools, use a local-user credential or",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1669,7 +1669,7 @@
       "requirement_digest": "411a69295d7bfb697c61262ed974454dee35c292481f4282b6f55981d07446aa",
       "requirement_id": "REQ-AB8E2A0051CD",
       "requirement_text": "The server MUST use the snapshot revision and expiry during offer/lease",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1691,7 +1691,7 @@
       "requirement_digest": "c699bacaeab5aad7ec55e32fa3c5bbeb7aff3d9d4bc288bf34efaf3436d4cad3",
       "requirement_id": "REQ-1C307F7B1B59",
       "requirement_text": "selection. The Runner MUST reject stale offers, cross-tenant offers, missing",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1713,7 +1713,7 @@
       "requirement_digest": "c9da09b0a144be5a82d6a29da5ff409665e7e5882efc97a8e8a0548b30599b4a",
       "requirement_id": "REQ-8F171F0B0233",
       "requirement_text": "Cloudflare Container capability snapshots MUST represent pool capacity and",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1735,7 +1735,7 @@
       "requirement_digest": "c03d058f047d2aa2ef8f66e766f012a694925381f07cc8685dd16837da586960",
       "requirement_id": "REQ-5DD5C0FBE453",
       "requirement_text": "The Runner MUST NOT browse arbitrary Jobs. It requests authorized compatible",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1757,7 +1757,7 @@
       "requirement_digest": "bd825d3dbd603c90b09de198ffd52927df3b5154312fb3392f814bf367bb7944",
       "requirement_id": "REQ-662EB52A8E33",
       "requirement_text": "work or receives a targeted offer for a pinned/affine device. It MUST report",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1779,7 +1779,7 @@
       "requirement_digest": "1bda247b2e18cd2f9da34826f53b200e349448c763c0b1f3fa31317a413acf25",
       "requirement_id": "REQ-C8D9453740C5",
       "requirement_text": "local transport is available. The adapter MUST preserve native evidence and",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1801,7 +1801,7 @@
       "requirement_digest": "c84a6529e06a8f2da732a017dfdf88e69945dec79c78777a7c7b4b1aa59f5da4",
       "requirement_id": "REQ-878C10290960",
       "requirement_text": "map it to the shared normalized event contract; it MUST NOT claim visibility",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1823,7 +1823,7 @@
       "requirement_digest": "fc2c34c679b33fe32624724b60d236ea2a07338addcb0a35ec41992771e50671",
       "requirement_id": "REQ-EDF62407617A",
       "requirement_text": "The Runner MUST supervise process trees, collect exit/crash state, enforce",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1845,7 +1845,7 @@
       "requirement_digest": "27ca29e0d894dc9c602e98a62a008d4b80bc7b2f7cf2fcceead14038a15e274b",
       "requirement_id": "REQ-693CC9C9493A",
       "requirement_text": "For the Shared Container Runner, every Job execution MUST use a fresh isolated",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1867,7 +1867,7 @@
       "requirement_digest": "c994c958f15a83d6188b7ead71163999b17549e64820f3ffbed53a3d5a269f6c",
       "requirement_id": "REQ-EC4A021C0258",
       "requirement_text": "workspace/process scope and MUST release all ephemeral state at terminal or",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1889,7 +1889,7 @@
       "requirement_digest": "bec6d690914ed616d5531cd5ea5713841e31554ec017b6f8af7c16c935605e21",
       "requirement_id": "REQ-63EC922EF39C",
       "requirement_text": "reconciled shutdown. Long external-provider waits MUST persist the provider task",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1911,7 +1911,7 @@
       "requirement_digest": "bad2624829d5ef27d1a0e03c80437e06886f14f21fa97f9a02e44b9d1a41ea63",
       "requirement_id": "REQ-3A3B9AD73B5D",
       "requirement_text": "MUST NOT remain alive only to poll an external provider.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1933,7 +1933,7 @@
       "requirement_digest": "d97624fbe466ad11cd52d13d04c86c0c97c003b2456d9382aa6539bf3a77e66f",
       "requirement_id": "REQ-4C51B5F022BA",
       "requirement_text": "- Absolute paths, traversal, symlink escapes and unapproved roots MUST fail",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1955,7 +1955,7 @@
       "requirement_digest": "fcfff79d13addc81a784767dc2f1dea807f31f46aa7010fbfa766669655679ec",
       "requirement_id": "REQ-724FD52E725A",
       "requirement_text": "allowed; the Runner MUST not send them to the Web UI, model context, event",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1977,7 +1977,7 @@
       "requirement_digest": "dd1abe7c48221411b850bcb889ceaa249aa827068b821a0d31edbd8e7c07a2ab",
       "requirement_id": "REQ-C8C5DCC04922",
       "requirement_text": "- Unknown/reconciled state MUST block unsafe completion and new claims when",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1999,7 +1999,7 @@
       "requirement_digest": "e9423a69c73839d55596138fa1d1a6c420d757a60499cee60361c4321a11599a",
       "requirement_id": "REQ-16DF1E709EE2",
       "requirement_text": "| Platform | Initial target | Packaging | Required runtime proof |",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2021,7 +2021,7 @@
       "requirement_digest": "74f0cbfa32052b1512738da3a1a436e59e3cd661579b676c270ee64e70e33216",
       "requirement_id": "REQ-AB71E91B565F",
       "requirement_text": "The first release MUST produce native artifacts for both macOS architectures;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2043,7 +2043,7 @@
       "requirement_digest": "49fe7833acee49da81aa217ee2c9c7f41f132295b82bf0c9c3add1d4aa97cb9a",
       "requirement_id": "REQ-5CED81032530",
       "requirement_text": "it MUST NOT silently cross-run an Intel binary on Apple Silicon or vice versa.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2065,7 +2065,7 @@
       "requirement_digest": "62d0a7be7104793eea827f4f6eab7c6b0415fe1e726664b2e55e42dc5a5a28d5",
       "requirement_id": "REQ-B9A40ECAAC71",
       "requirement_text": "The Linux `.tar.gz` MUST contain the same `smartaihub-runner` executable used",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2087,7 +2087,7 @@
       "requirement_digest": "783f5a055948b4f6030ab719c4a6086c760d062d39a629db31e68655f1fe5398",
       "requirement_id": "REQ-EB2D27ECF59F",
       "requirement_text": "MUST work without Docker. Compatibility claims are bounded by the minimum",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2109,7 +2109,7 @@
       "requirement_digest": "51b6ab2491c806184fdb43c1e42736906a35b9b56a7829a60ae98345476bd211",
       "requirement_id": "REQ-77A0F7A331C4",
       "requirement_text": "The local Runner Desktop UI MUST separate tool discovery from verification.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2131,7 +2131,7 @@
       "requirement_digest": "87fffcb774bafeebcc73b62a9b3c2e99c22a86135acc159e5ce3a298d3371c9f",
       "requirement_id": "REQ-6A6C5C2FD28C",
       "requirement_text": "Discovery MUST report presence without launching tools. Each discovered tool",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2153,7 +2153,7 @@
       "requirement_digest": "9f38ca2fd2a78174f36ea88f78eb2360e16c0ce4b104d252885a9201bb523b2e",
       "requirement_id": "REQ-1B9D61731303",
       "requirement_text": "MUST have an explicit user-triggered Verify action with bounded execution and a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2175,7 +2175,7 @@
       "requirement_digest": "f142ee58077bc5199c2a7c600520fdc3fcf3754f6098d090ab8e21eb0270b74c",
       "requirement_id": "REQ-7542C20ECDF4",
       "requirement_text": "clear result. A version/health response MUST be described only as command",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2197,7 +2197,7 @@
       "requirement_digest": "23fac88b2899de1f3e03f1fd39185eb8ec15dcb04dec42c270915bd88925435e",
       "requirement_id": "REQ-AF1104DFC62A",
       "requirement_text": "responsiveness; it MUST NOT claim provider authentication or successful task",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2219,7 +2219,7 @@
       "requirement_digest": "cb01cb1129e6de4d9dfb0b370d86412285d64855237db4b396f69bd80d73818b",
       "requirement_id": "REQ-CC1AE5537603",
       "requirement_text": "must be a separate, explicitly described action and report its own evidence.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2241,7 +2241,7 @@
       "requirement_digest": "ae807dd2b61c7cfc417930a3058868e4310e977b823450139c3560210d402eb6",
       "requirement_id": "REQ-4C2FB1854BCB",
       "requirement_text": "adapters MUST offer a user-triggered smoke task when their documented one-shot",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2263,7 +2263,7 @@
       "requirement_digest": "2e19b97262145945274d18f0fb7b2ec2d997ed1e87ab85f56c879102daeb95a4",
       "requirement_id": "REQ-3247051B2E1F",
       "requirement_text": "a version result alone MUST NOT count as a passed task check. Codex runs in a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2285,7 +2285,7 @@
       "requirement_digest": "10b2191e4d7139ccf53f12522f561b4d1e3294bb225ef528e49565e9a84bc386",
       "requirement_id": "REQ-70FC6B0311C5",
       "requirement_text": "a fresh isolated session key; Hermes uses one-shot mode. The UI MUST tell the",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2307,7 +2307,7 @@
       "requirement_digest": "46f38482b8a72b907f599986582420850880b3a44fabe822b08db7ea40998578",
       "requirement_id": "REQ-BCB48123B515",
       "requirement_text": "MUST be labeled unsupported for task verification until a documented adapter",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2329,7 +2329,7 @@
       "requirement_digest": "a6be176462a8975a1f9e26edf49f2e3e05d5d8c2c27e81d9928c7a509907169f",
       "requirement_id": "REQ-F4F94FD95BCB",
       "requirement_text": "is implemented. Discovery itself MUST NOT execute any harness.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2351,7 +2351,7 @@
       "requirement_digest": "ef87805f3b4edd755ef38e021cb0959b8d87c60db3a25eb26c3ea33cec442be9",
       "requirement_id": "REQ-E99DEE9893B4",
       "requirement_text": "The desktop UI MUST show the packaged app version, setup build timestamp,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2373,7 +2373,7 @@
       "requirement_digest": "aff2d55e31be3042fcdfd3cbfef4d4ba2f84033863e923f267e6988e6d5e87ca",
       "requirement_id": "REQ-FDB46110E596",
       "requirement_text": "is required only when refresh cannot continue.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2395,7 +2395,7 @@
       "requirement_digest": "a467968a2aa80f6a1382b275e891a15bccef3e79b06281538018396fd625dcb2",
       "requirement_id": "REQ-9B8D63E202C2",
       "requirement_text": "The UI MUST show “Runner unavailable”, “waiting for compatible Runner”,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2417,7 +2417,7 @@
       "requirement_digest": "f2bba51f78c94e27bf94acf51407df1c4f4109c0a44ea1085fd1815498be0209",
       "requirement_id": "REQ-D2FFECCDB966",
       "requirement_text": "alone MUST NOT be presented as proof that a local Runner or provider process is",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2439,7 +2439,7 @@
       "requirement_digest": "389c1bc478782bdb691978c077e85e5059a43d470c15cc1c55d26699f4ca4f04",
       "requirement_id": "REQ-EACA2046AB39",
       "requirement_text": "Feature 205 SHALL add a dedicated workflow, tentatively",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2461,7 +2461,7 @@
       "requirement_digest": "672ccc1ab2c09f1d9ae1d22f75114fbb93113c9157636ad6dbe02d7d28376dd3",
       "requirement_id": "REQ-D31AA0321FAA",
       "requirement_text": "trigger. It MUST NOT trigger on `push`, `pull_request`, `release`, `schedule`,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2483,7 +2483,7 @@
       "requirement_digest": "3c77b00c1d7824d2623f7aa0ff9cb37cf8188b5dbd8dbba979e25d3ab106d370",
       "requirement_id": "REQ-1E15A1C47D28",
       "requirement_text": "The manual workflow MUST accept explicit inputs for at least:",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2505,7 +2505,7 @@
       "requirement_digest": "ed6927c563c589e8a3a2a0dffc23a0a3c6335e3b6d6e0a30d51d136fbe5f5c9c",
       "requirement_id": "REQ-70E94D1CDEAE",
       "requirement_text": "- signing mode/required secret availability (without printing secrets).",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2527,7 +2527,7 @@
       "requirement_digest": "b0f9643646044c56db86984865a1a2effc7fe2e40ac3c1db430780e95d3769a0",
       "requirement_id": "REQ-E4954D577EA1",
       "requirement_text": "The workflow MUST:",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2549,7 +2549,7 @@
       "requirement_digest": "c4140603281a8f6a315c08a8229612a5cb2b3d0384e209b7b00ad3d9abadb7ea",
       "requirement_id": "REQ-D6133BFFE76F",
       "requirement_text": "`publish=true` MUST require `required-secret` signing;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2571,7 +2571,7 @@
       "requirement_digest": "19b6c7f0e90fc81f89172098e462b73a7d9272487072f85a838a14867d4221f3",
       "requirement_id": "REQ-0DEA49AC48CA",
       "requirement_text": "local development commands MUST NOT imply that a local unsigned build is a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2593,7 +2593,7 @@
       "requirement_digest": "47d57e914729bb84ca1b74bc4764f13f39eea82a3d01722565baa63ab1f51a31",
       "requirement_id": "REQ-CD5CE3BE7908",
       "requirement_text": "GitHub is an internal build/provenance source. SmartAIHub SHALL be the public",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2615,7 +2615,7 @@
       "requirement_digest": "f7e7b2cca12041a476d9b2926bf35fd3bbdf5b8b418a43d6941cff85f18fcc6f",
       "requirement_id": "REQ-685BAC80AA3C",
       "requirement_text": "release surface for normal users. Feature 205 SHALL maintain a dedicated",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2637,7 +2637,7 @@
       "requirement_digest": "2102496ae502359c32495e3481a688735517ac62484a69da7c8dec7156b1d217",
       "requirement_id": "REQ-8107C50479DA",
       "requirement_text": "Each published native release MUST register:",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2659,7 +2659,7 @@
       "requirement_digest": "2586ea03d923da56fa7fad3fb8f934f73a32db19c43443af84073cceca44f672",
       "requirement_id": "REQ-61AA1A2C8DD1",
       "requirement_text": "The server SHALL download and validate release assets before making them",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2681,7 +2681,7 @@
       "requirement_digest": "296f7ea7da955da8468481b963cd581c199395205bea7c1940ef43ed79cec616",
       "requirement_id": "REQ-B03AF318BF08",
       "requirement_text": "available. It SHALL recompute hashes, verify the manifest/signature policy and",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2703,7 +2703,7 @@
       "requirement_digest": "368b6ee7c36b5809cdb23cc207e7fbd2e71e5d309bc4b30c9f4886df8c3b1cd0",
       "requirement_id": "REQ-264564C54146",
       "requirement_text": "download URLs MUST be SmartAIHub same-origin paths; GitHub repository names,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2725,7 +2725,7 @@
       "requirement_digest": "bce83aaa0d568f367affde3072210caa0db2402b184db1a2a7c7861f41582887",
       "requirement_id": "REQ-59082E8D8F39",
       "requirement_text": "workflow URLs and access tokens MUST NOT be returned to normal users.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2747,7 +2747,7 @@
       "requirement_digest": "bd4485d3ffc2a712651fb5f675ea68463d410261d01d3955e6b8beec793e275b",
       "requirement_id": "REQ-9CF1F4B8BF0A",
       "requirement_text": "The Dashboard SHALL provide one SmartAIHub Runner card, distinct from Worker",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2769,7 +2769,7 @@
       "requirement_digest": "1634e1943211a0859e96c779252ef438627534865f28d4c9d6a64b9d948d662d",
       "requirement_id": "REQ-ADBBC3A105DF",
       "requirement_text": "actions. It SHALL show the current Runner version from the authenticated",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2791,7 +2791,7 @@
       "requirement_digest": "c81a6df1bb9e56dee7d7b2178d9269b9d5a744a89a6695f611086e98e8efccb0",
       "requirement_id": "REQ-AE0D54985102",
       "requirement_text": "explicit unavailable/offline/busy/reconciling/verification states. The UI MUST",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2813,7 +2813,7 @@
       "requirement_digest": "f8c6336472440ba3afce0e577f8b34eafc2fee938695a465595326f4bba92d7f",
       "requirement_id": "REQ-7C4E862380DB",
       "requirement_text": "The local Runner update protocol SHALL use a server-queued command and a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2835,7 +2835,7 @@
       "requirement_digest": "46e151397d49fe62a2e611acee31dacd5029d000abbd132c23ca702172c095b9",
       "requirement_id": "REQ-3E9677852F4F",
       "requirement_text": "dedicated `runner:update` scope. The Runner MUST:",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2857,7 +2857,7 @@
       "requirement_digest": "5b4ad25fd6625d4583c36fcbaf7bff5f212f1f64a54d9bab8d0b3ff3f9fa7a05",
       "requirement_id": "REQ-F6BF6F07ACD5",
       "requirement_text": "3. verify SHA-256 and required signature before touching the installed binary;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2879,7 +2879,7 @@
       "requirement_digest": "01b84dabf6fdec5387205a6540a882bbf992945c292ef69ed2bdd95243dab6b4",
       "requirement_id": "REQ-0464B00077E9",
       "requirement_text": "The update state MUST be idempotent and durable enough to recover after a",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2901,7 +2901,7 @@
       "requirement_digest": "1cccc7fff12585e8d8b2b25d9816eed78ab284f25553499362954a32c3e9a6fd",
       "requirement_id": "REQ-081C576901BD",
       "requirement_text": "process or network restart. Browser code MUST never write local Runner state",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2923,7 +2923,7 @@
       "requirement_digest": "b56446d47869b8a872001ef7f3282ef41c7ecd8343332ee5a28a49c7365fd8dc",
       "requirement_id": "REQ-B7F60B299B1F",
       "requirement_text": "The release management API MUST include public latest/catalog/download",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2945,7 +2945,7 @@
       "requirement_digest": "ebd6f6a428d955a94027d4f1e7babcb0d6d89da9142463ebd0d23fdd401c88b8",
       "requirement_id": "REQ-A068AAAEE831",
       "requirement_text": "The implementation plan MUST evaluate and then establish this boundary:",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2967,7 +2967,7 @@
       "requirement_digest": "e8c93b37f7a88d081d188da580a5493100ad467a0e3c8a02d0ce9c02894cf92c",
       "requirement_id": "REQ-329D676CD95F",
       "requirement_text": "The plan MUST first check whether `apps/web/server/services/runnerContracts.ts`",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2989,7 +2989,7 @@
       "requirement_digest": "6fd63d188fb787d6c0fd649b45147ae1989551b76321ec1aa0217262f0cec37f",
       "requirement_id": "REQ-6729ACADA2AA",
       "requirement_text": "The Runner MUST not import the Worker App's media executor or Tauri state.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3011,7 +3011,7 @@
       "requirement_digest": "134a59b945cea12bcd2a862afc92c08ad5c48cbdc3f1d8a02fa9939f7796e70d",
       "requirement_id": "REQ-582BA3256DA7",
       "requirement_text": "Feature 205 is not complete when the binary merely compiles. Acceptance SHALL",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3033,7 +3033,7 @@
       "requirement_digest": "255421fd75ba4d09d025196123b367846035e1b7a26cac7b59490d4635df11de",
       "requirement_id": "REQ-47BE2E9EAC55",
       "requirement_text": "- The release manifest records the Linux target, minimum tested glibc/Linux",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3055,7 +3055,7 @@
       "requirement_digest": "4e7760b0775f5b3240363db510dda7b0b280b4bf3326462fee1460eb69ed8923",
       "requirement_id": "REQ-AE5DF043037D",
       "requirement_text": "- The `smartaihub-runner` artifact hash is identical between the native Linux",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3077,7 +3077,7 @@
       "requirement_digest": "90e92d4f98fb55d26d5e112c50d54ae917b6cca5747febfae3887c13ff155933",
       "requirement_id": "REQ-3D8364B9727F",
       "requirement_text": "- A clean compatible Linux VM runs the binary directly and through the",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3099,7 +3099,7 @@
       "requirement_digest": "700eccbd748f403c8f424c56e39434e62d754c98674737cc997901248c4fea95",
       "requirement_id": "REQ-E9BEA24A3605",
       "requirement_text": "- Performance baselines, sample sizes, image/binary size and startup/first-job",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3121,7 +3121,7 @@
       "requirement_digest": "d4f96bc208ba3fcc2c404663c3042e190b9130b6e5b52787798f060238ecf55c",
       "requirement_id": "REQ-7F28CC9E150E",
       "requirement_text": "The Feature 205 evidence MUST identify the exact Linux binary hash and build",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3143,7 +3143,7 @@
       "requirement_digest": "856901a78cac2242faec7ef01dc25526c149ba17c03cee5b69ee6a9f67f65a3f",
       "requirement_id": "REQ-609874C5B638",
       "requirement_text": "- Cloudflare acceptance covers first pull, cold/warm start, sleep/wake,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3165,7 +3165,7 @@
       "requirement_digest": "052d358d0e3021353d7d277a2d016961840acb49618555ace8148d994191b21d",
       "requirement_id": "REQ-7A89001B99DE",
       "requirement_text": "- Every supported restart/replacement case verifies truthful readiness,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3187,7 +3187,7 @@
       "requirement_digest": "ecc7f53a2942e1f72ea3069dc0cb3af19f6640d47e0a904e0e772979d40407e5",
       "requirement_id": "REQ-F13882A1E567",
       "requirement_text": "- protocol version negotiation and malformed envelope rejection;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3209,7 +3209,7 @@
       "requirement_digest": "78286cf8a5d0a83e4bf5dd874d6da4526e7a55589d729a1b8a6d9c04df9cf6da",
       "requirement_id": "REQ-766899B47830",
       "requirement_text": "- known-tool scan, adapter/manifest recognition, version/auth/health probe,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3231,7 +3231,7 @@
       "requirement_digest": "2f78d7f168632bd449dfb8942291bfe592397a0f66c1aa715e2bdde090296a1d",
       "requirement_id": "REQ-52C121B8AF8A",
       "requirement_text": "- tenant/user/device binding and revocation;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3253,7 +3253,7 @@
       "requirement_digest": "c0cfbcc13439b8dfa3441b44eeaaaf66a0cb6011d2c0dd601cb4738c5c8f2c02",
       "requirement_id": "REQ-CDBDF140C8CF",
       "requirement_text": "- Runner/Worker audience, token-use, scope, JTI, device-proof and endpoint",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3275,7 +3275,7 @@
       "requirement_digest": "9673c4891fae05e2f5ab61686faf27b8409feedad89e09a143a224ac397d5853",
       "requirement_id": "REQ-3BAF2247BD0D",
       "requirement_text": "- stale offer, expired snapshot, expired lease and fencing rejection;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3297,7 +3297,7 @@
       "requirement_digest": "ba0499262c57ac39c7ba17f643dce461225aca4176ef4fffea5dc2fd04abe13f",
       "requirement_id": "REQ-EE71044FC401",
       "requirement_text": "- duplicate/out-of-order command/event behavior;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3319,7 +3319,7 @@
       "requirement_digest": "d81278e33838fd04bcdcb91baf48953bbac3866c6fabd68f26a01e8e4250369d",
       "requirement_id": "REQ-18821EC4A5C9",
       "requirement_text": "- path confinement, symlink/traversal rejection and bounded payloads;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3341,7 +3341,7 @@
       "requirement_digest": "1d19b4b2aaeb940dc22f244fc12c51e88c7fb767303f10b90ee3acf084256600",
       "requirement_id": "REQ-9464C9BE7784",
       "requirement_text": "- credential/log/event redaction;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3363,7 +3363,7 @@
       "requirement_digest": "23ebfa7e95cf059bf84c027d32592a1d52522ac524d612ff05589a6016655434",
       "requirement_id": "REQ-EB20AF09892C",
       "requirement_text": "- direct MCP upstream bypass rejection;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3385,7 +3385,7 @@
       "requirement_digest": "e7199d1a181fe670327ac381da1d4f82ce63e5be6fbc448fba3a068628dce919",
       "requirement_id": "REQ-D0245E4EA7D2",
       "requirement_text": "- no use of retired execution systems.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3407,7 +3407,7 @@
       "requirement_digest": "dc8afd2c340f0722572b7f2945b3aeb43f7384e8a201c169419fa319078cdadf",
       "requirement_id": "REQ-D12A944A2F03",
       "requirement_text": "- startup/enrollment/heartbeat/capability snapshot;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3429,7 +3429,7 @@
       "requirement_digest": "d85a4a7ec404c2b8900c586d5c2c6821b618f51c38bbd802221287877a991062",
       "requirement_id": "REQ-47C1D14724EA",
       "requirement_text": "- capability change and expiry;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3451,7 +3451,7 @@
       "requirement_digest": "f6009d99aabd4171647c264d826a4747feed293573f26712a547bda80dacf4cb",
       "requirement_id": "REQ-02CC15137A18",
       "requirement_text": "- WSS fast path and HTTPS durable fallback;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3473,7 +3473,7 @@
       "requirement_digest": "4c8f3445f2048b0a873ac19302f4925218456193aa1ecf4814c13ac3be209ac7",
       "requirement_id": "REQ-ABA8A9653F06",
       "requirement_text": "- disconnect during idle, offer, process execution and terminal reporting;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3495,7 +3495,7 @@
       "requirement_digest": "4396b3982e8d3c51a4e094a79c8de85142e9f86d4841a54d346e81a1ec2b5107",
       "requirement_id": "REQ-8DA58B8EE270",
       "requirement_text": "- bounded journal replay after clean restart and crash recovery;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3517,7 +3517,7 @@
       "requirement_digest": "3247e56b653eb0a6cf3236a56b087ad2bca28fcdee0211e3f05c97be3c137916",
       "requirement_id": "REQ-00B480504F6D",
       "requirement_text": "- unknown state fencing and safe reconciliation;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3539,7 +3539,7 @@
       "requirement_digest": "efb6f5d68ea114906be96a5b95dbd13ae4bb15e0a0a92a97173d58bbcd4ca37b",
       "requirement_id": "REQ-D3604F236CA7",
       "requirement_text": "- process tree cancellation and no orphaned child process where supported;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3561,7 +3561,7 @@
       "requirement_digest": "e264a565311e536eb6b59624101de52b0493002204a403259104afc49f11498d",
       "requirement_id": "REQ-97F250316433",
       "requirement_text": "- artifact/result verification before terminal success.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3583,7 +3583,7 @@
       "requirement_digest": "253cf8d7efdfec0a20e3ce973920d64c0596eb7ea350e42fb1ff8bd60931c74d",
       "requirement_id": "REQ-922A2685D8C9",
       "requirement_text": "- Windows x86_64 build and install/start/stop proof;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3605,7 +3605,7 @@
       "requirement_digest": "e852dc3e08aea96bb1465fc9a3a1c526ba473c5bea971d96bc9627c74a46bf03",
       "requirement_id": "REQ-85374B962E19",
       "requirement_text": "- macOS Intel build and native launch proof;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3627,7 +3627,7 @@
       "requirement_digest": "0759417151f39715d1ea3ede9a4c233343d1c13aee4851cd31bd1c6a3369145e",
       "requirement_id": "REQ-EE652C967351",
       "requirement_text": "- macOS arm64 (Apple Silicon) build and native launch proof;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3649,7 +3649,7 @@
       "requirement_digest": "b47f715345b5eef69a9990acd691cd1c00a1aa3896b9a9748870d918886f8089",
       "requirement_id": "REQ-F3ABFB0A6721",
       "requirement_text": "- Linux x86_64 build and foreground/systemd proof;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3671,7 +3671,7 @@
       "requirement_digest": "ba9f391139ca47533fc7273f78dd604075723de5cd514482bb5e532291e95ffa",
       "requirement_id": "REQ-2B99695FB0F7",
       "requirement_text": "- Shared Container Runner proof with two isolated tenants, concurrent Job lease,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3693,7 +3693,7 @@
       "requirement_digest": "6d6fdb246e364c32b65abbd65cb0417c6f612a2c14da8ca6290195aa0b989f5c",
       "requirement_id": "REQ-F3C40C702CC3",
       "requirement_text": "- checksums/manifest/signature verification;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3715,7 +3715,7 @@
       "requirement_digest": "5dcab9d98a28e1aec115fe25ad23bbf8cdee8b5106dfdc4c35db048ce50bf2a3",
       "requirement_id": "REQ-ABE7D24B0FB1",
       "requirement_text": "- manual workflow dispatch proof;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3737,7 +3737,7 @@
       "requirement_digest": "a2eb0f699e30f83880ef35d1c0095ce5ea6424dba846d01f0074869bde06d0f0",
       "requirement_id": "REQ-FD64772736DB",
       "requirement_text": "- explicit proof that Container publishing/deployment is not triggered by",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3759,7 +3759,7 @@
       "requirement_digest": "3a9a6140cc637874d4abe8e95066dc08c36c66a7336715552815bb9a82e75ad9",
       "requirement_id": "REQ-4A30279ACFE7",
       "requirement_text": "- negative proof that push/PR does not invoke the Runner release workflow;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3781,7 +3781,7 @@
       "requirement_digest": "9b6a10c492f2307bdff3c18425df318cc643e49f7d593a4b4efa8b7a9de6f4f6",
       "requirement_id": "REQ-59BEF54C7BA5",
       "requirement_text": "- explicit proof that Worker App workflows/artifacts remain unchanged.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3803,7 +3803,7 @@
       "requirement_digest": "5299444cad031510be5003227592a1f6a6f46baf2f310f619503748f7d5e9c36",
       "requirement_id": "REQ-AD81E6F392BB",
       "requirement_text": "- Task Control distinguishes Worker from Runner;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3825,7 +3825,7 @@
       "requirement_digest": "7553f32ff2a99ff39a9bf3b3db5f0a8abd0768c8ca6a4c2505a7d11cda036b8c",
       "requirement_id": "REQ-C22611B714B1",
       "requirement_text": "- the single Feedback/Chat surface can reach Runner connection and active task",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3847,7 +3847,7 @@
       "requirement_digest": "f8571bb1d65201e5945669006e3e0973d2137b0f46e964c46345e329994cbf82",
       "requirement_id": "REQ-96FE352BF93D",
       "requirement_text": "- no raw local path, token, provider payload or unverified result is displayed;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3869,7 +3869,7 @@
       "requirement_digest": "520371aaa2c42a891db153a93d2dd6abbe6eb4a036410921df9a439e0909c612",
       "requirement_id": "REQ-B59674121514",
       "requirement_text": "- same Job/Runner state is visible from the inline panel and `/chat`.",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3891,7 +3891,7 @@
       "requirement_digest": "cbc5c653e8253738b56e22a9dd83cd8dd8ec8940b27c195cb66d612ec16663bb",
       "requirement_id": "REQ-50976F3A9D0E",
       "requirement_text": "- manual workflow produces package, raw update binary, manifest, checksum and",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3913,7 +3913,7 @@
       "requirement_digest": "c4319fa940765407e0d32bbfc0409fcb1ef67ea1b43e2733de1eeaa875142430",
       "requirement_id": "REQ-49C12D11F6A6",
       "requirement_text": "- explicit publish creates a GitHub Release while artifact-only mode does not;",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3935,7 +3935,7 @@
       "requirement_digest": "b9da9867279b2bf7b4dfda75650dc20aaed866067196269508261b81e859dc45",
       "requirement_id": "REQ-FF2A8B06B525",
       "requirement_text": "- server-side sync validates and stores the release without exposing GitHub to",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3957,7 +3957,7 @@
       "requirement_digest": "af14c425e35fb82d22cf302a348e73bedb279371d23203a8f479383f97cca4ce",
       "requirement_id": "REQ-BDC499B1902E",
       "requirement_text": "- Dashboard latest/download/version-check actions select the correct platform",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3979,7 +3979,7 @@
       "requirement_digest": "6681f968640af83778baf9760252864b71731412fed24df6b112cd542e0e2f2f",
       "requirement_id": "REQ-FF7EF27C7971",
       "requirement_text": "- authenticated Dashboard users can download available unsigned Desktop review",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4001,7 +4001,7 @@
       "requirement_digest": "e9369521c082363a915b4980202380afc81c040673d5f9817a67d6761f68d923",
       "requirement_id": "REQ-41B80CC5300B",
       "requirement_text": "- update requests enforce tenant ownership, Runner auth scope, idempotency,",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4023,7 +4023,7 @@
       "requirement_digest": "ce0a787a4455c031f8c21e1cd344a7770a9060077d51b39be61f88ec3efa2850",
       "requirement_id": "REQ-F697D5D8DD1B",
       "requirement_text": "- offline, busy, revoked, incompatible and withdrawn releases produce explicit",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4045,7 +4045,7 @@
       "requirement_digest": "d6da0b2655a1992ff95743f161aa5169f99235706fab332005cf0a5502a33e96",
       "requirement_id": "REQ-2EC3F275E1AE",
       "requirement_text": "- shared Container versioning is handed to Feature 204 and never performed by",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4067,7 +4067,7 @@
       "requirement_digest": "b071e5838ecf791cdce297eb58d62c94d3524e4da8e46a7760f77dec5664a270",
       "requirement_id": "REQ-47F628EFDA39",
       "requirement_text": "The first rollout MUST be opt-in behind a Runner capability/feature gate. A",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4089,7 +4089,7 @@
       "requirement_digest": "46de237cd03932aff3b5b5eaa69f220b9f48badc6eb345d6be0bf0e44602071f",
       "requirement_id": "REQ-28079FF716F3",
       "requirement_text": "Runner that is unavailable, revoked, incompatible or disconnected MUST leave",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4111,13 +4111,57 @@
       "requirement_digest": "384a8799594d018b4cc296b12f9892b3f29a77ce06b84e66f9df3b6a6ad84dca",
       "requirement_id": "REQ-70F54389408D",
       "requirement_text": "Rollback MUST be possible by disabling Runner eligibility and revoking Runner",
-      "source_spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L917"
+      ],
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L917",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-10 UW-11 UW-18 UW-22 UW-31. This phase delivered specification/planning only.",
+      "requirement_digest": "1735078a37afdcdb779a60e485305e6ac7236cd60c8d544e4965692dbe7813ab",
+      "requirement_id": "REQ-205-UWAC-01",
+      "requirement_text": "- REQ-205-UWAC-01: Runner capability snapshots MUST distinguish logical work context from filesystem/worktree attachments, advertise only supported pause/resume/cancel/steer controls and carry freshness, session identity and account-route coverage for authorized code and non-code jobs.",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Execute owner-scoped UW-10 UW-11 UW-18 UW-22 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L918"
+      ],
+      "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L918",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-10 UW-11 UW-18 UW-22 UW-31. This phase delivered specification/planning only.",
+      "requirement_digest": "0d518b0186166be19287b70c692075fa8a15da68a95e257a0a8125a04ca858d6",
+      "requirement_id": "REQ-205-UWAC-02",
+      "requirement_text": "- REQ-205-UWAC-02: Runner reconnect/restart MUST resume or reconcile the same canonical job/attempt through existing lease/fencing/outbox authority. Heartbeat loss MUST yield disconnected/unknown observation rather than accepted completion; replay MUST NOT duplicate side effects or billing, and stale grants MUST NOT authorize continuation.",
+      "source_spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Execute owner-scoped UW-10 UW-11 UW-18 UW-22 UW-31; retain source/target/policy/evidence/time and distinct document/runtime evidence."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "fdec8f70e35e6e4989aecb692b8c1dd347885381b4fbd40382e45d0f168e399c",
+  "spec_digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
   "spec_id": "205"
 }

@@ -47,7 +47,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909"
+    "expected_spec_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0"
   },
   "continuation": {
     "next_action": null,
@@ -96,13 +96,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
-    "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+    "digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.855555Z",
+      "last_evidence_at": "2026-10-20T23:27:53.734754Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -131,6 +131,126 @@
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:18.855555Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "224",
+          "referenced_spec_id": "224",
+          "referencing_spec_id": "279",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L2442",
+          "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+          "successor_spec_id": "279"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "256",
+          "referenced_spec_id": "256",
+          "referencing_spec_id": "279",
+          "relation_text": "replace",
+          "requirement_ids": [],
+          "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L2444",
+          "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+          "successor_spec_id": "279"
+        }
+      ],
+      "confidence": "UNRESOLVED",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
+        }
+      ],
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "UNRESOLVED",
+      "evidence": [
+        {
+          "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
+        }
+      ],
+      "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+      "value": "DORMANT_UNRESOLVED"
+    },
+    "lifecycle": {
+      "current_state": "DISCOVERING",
+      "previous_state": null,
+      "state_evidence": [],
+      "updated_at": "2026-10-06T03:28:18.855555Z"
+    },
+    "requirements": {
+      "REQ-279-UWAC-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L3580"
+        ],
+        "authority_source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L3580",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32. This phase delivered specification/planning only.",
+        "requirement_digest": "6d97a87ddc8b81d255ae0d98623d5d1e0bd06f38491338e6721cfa1f02055439",
+        "requirement_id": "REQ-279-UWAC-01",
+        "requirement_text": "- REQ-279-UWAC-01: Agent-originated Chat/Task/Mission/delegation controls MUST enter this existing command profile and then the applicable canonical mutation authority. User/client actions MUST retain SPEC-226/220 mapping and the same domain policy. Commands MUST bind live tenant/principal/target generation, attenuated scope/budget, expiry, idempotency and effect receipt; views MUST NOT own execution.",
+        "source_spec_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-279-UWAC-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L3581"
+        ],
+        "authority_source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L3581",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32. This phase delivered specification/planning only.",
+        "requirement_digest": "bda482ed0aba5a55a21ea5e9a043acea95d534770c618207c0faf7838d091710",
+        "requirement_id": "REQ-279-UWAC-02",
+        "requirement_text": "- REQ-279-UWAC-02: All work profiles MUST use current policy/economic admission and canonical jobs/outbox for long execution. Reuse exact valid autonomous non-production decisions without a second approval gate; unsupported controls, revoked grants and stale context MUST fail closed. Requested/accepted/applied cancellation and uncertain external effects MUST remain distinct.",
+        "source_spec_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Execute owner-scoped UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      }
+    }
+  },
   "reconciliation": {
     "confidence": "LOW",
     "inferred_fields": [
@@ -139,10 +259,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.855555Z",
+    "reconciled_at": "2026-10-20T23:27:53.734754Z",
     "sources": [
       {
-        "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+        "digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
       },
@@ -154,11 +274,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
-        "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+        "source_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
         "value": "Proposed / Additive / Implementation-Ready / 14-Pass Hardened"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -168,7 +293,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -180,14 +305,14 @@
         "excerpt": "**Status:** Proposed / Additive / Implementation-Ready / 14-Pass Hardened",
         "line": 5,
         "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
-        "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+        "source_digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
         "value": "Proposed / Additive / Implementation-Ready / 14-Pass Hardened"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
+        "digest": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md"
       }
@@ -195,19 +320,19 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 328,
-    "unresolved": 328
+    "total": 330,
+    "unresolved": 330
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.855555Z",
+  "updated_at": "2026-10-20T23:27:53.781029Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
