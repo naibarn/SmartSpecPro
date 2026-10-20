@@ -35,17 +35,17 @@
     },
     "section-04-provision-release": {
       "status": "checkpointed",
-      "next_action": "Mac rendering pack distribution pause completed and live verified on production+staging sourceb2eeaabf3, Linux generation27 and Worker00269359/versionad06b486. Both full dashboards passed with zero paused-pack requests and no API errors;14/14 live distribution probes,74 scoped tests, CI and canonical publication passed; original archives/.env hashes unchanged. Native3bindings preserved, latest canonical job2d74a49e succeeded, outbox published and bounded policy revoked. Full migration remains partial only at real VPC403/TLSoff, four missing runtime bindings, concrete handler/image/retention/recovery qualifications and genuine interactive-login/second-tenant contexts. Do not rerun completed deploy operators or enable consumers/cron/DNS to make readiness green.",
+      "next_action": "Application source9d38 is DEPLOYED_VERIFIED on production Linux and staging49a7ee02/version468779bd; both Admin desktop/mobile and full device-authorized Dashboard passed, API/WS/attestation verified, canonical jobe5ab49f7/outbox published and temporary policy revoked. PostgreSQL TLS1.3 verify-full enabled without restart; .env unchanged. Mac rendering pause and archives retained. CLI-only repairs de25 (shared-ledger generation continuity, next29) and9e901 (automatic byte-identical approved receipt sync) integrated;24 release,36 canonical-source,5 retry tests passed. Completed engineering remains live; do not replay deploys or rebuild solely for controller/docs. Full migration PARTIAL only at real Workers Paid/WFP billing authority, private Hyperdrive trust/connectivity, concrete native handler/image/retention/recovery qualification and genuine interactive-login/second-tenant contexts. Resume those exact paths on real authority/evidence; keep consumers/cron/DNS disabled and refresh configuration through existing authority before2026-10-26 expiry.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01",
-      "merged_main_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01"
+      "checkpoint_sha": "9e901f3f6d8877bab147a110c6d689bc8a5de1e8",
+      "merged_main_sha": "9e901f3f6d8877bab147a110c6d689bc8a5de1e8"
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Actual UI source9d38ab2b7 is serving on Linux from approved /home fallback, health/exact web+worker revisions verified. Production Admin desktop+mobile passed real tab click, two product explanations, masked token, no overflow/errors. Canonical build/PUBLISHED and CI39394718265 passed. Final staging deploy is running as mobile-diagnostics-deployment.json; reconcile canonical job/provider receipt before replay. A storage failover exposed receipt-local generation numbering (home generation1 after primary generation28); preserve that actual history. CLI-only repair now scans every approved ledger under the existing shared promotion lock;24 full release tests prove primary→fallback→primary monotonic generations. Integrate this controller-only repair and verify computed next live generation29; no repeated app build solely for CLI change. Finish staging browser/core/provider proof, revoke bounded policy, then document full migration still external at Workers Paid/WFP billing, private Hyperdrive CA/connectivity, qualified handler/image/retention and genuine auth contexts.",
+      "next_action": "Application source9d38 is DEPLOYED_VERIFIED on production Linux and staging49a7ee02/version468779bd; both Admin desktop/mobile and full device-authorized Dashboard passed, API/WS/attestation verified, canonical jobe5ab49f7/outbox published and temporary policy revoked. PostgreSQL TLS1.3 verify-full enabled without restart; .env unchanged. Mac rendering pause and archives retained. CLI-only repairs de25 (shared-ledger generation continuity, next29) and9e901 (automatic byte-identical approved receipt sync) integrated;24 release,36 canonical-source,5 retry tests passed. Completed engineering remains live; do not replay deploys or rebuild solely for controller/docs. Full migration PARTIAL only at real Workers Paid/WFP billing authority, private Hyperdrive trust/connectivity, concrete native handler/image/retention/recovery qualification and genuine interactive-login/second-tenant contexts. Resume those exact paths on real authority/evidence; keep consumers/cron/DNS disabled and refresh configuration through existing authority before2026-10-26 expiry.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01",
-      "merged_main_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01"
+      "checkpoint_sha": "9e901f3f6d8877bab147a110c6d689bc8a5de1e8",
+      "merged_main_sha": "9e901f3f6d8877bab147a110c6d689bc8a5de1e8"
     }
   },
   "pre_commit": {
@@ -57,12 +57,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 44,
-  "updated_at": "2026-10-20T08:46:10.525191+00:00",
+  "generation": 45,
+  "updated_at": "2026-10-20T08:58:49.349906+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Actual UI source9d38ab2b7 is serving on Linux from approved /home fallback, health/exact web+worker revisions verified. Production Admin desktop+mobile passed real tab click, two product explanations, masked token, no overflow/errors. Canonical build/PUBLISHED and CI39394718265 passed. Final staging deploy is running as mobile-diagnostics-deployment.json; reconcile canonical job/provider receipt before replay. A storage failover exposed receipt-local generation numbering (home generation1 after primary generation28); preserve that actual history. CLI-only repair now scans every approved ledger under the existing shared promotion lock;24 full release tests prove primary→fallback→primary monotonic generations. Integrate this controller-only repair and verify computed next live generation29; no repeated app build solely for CLI change. Finish staging browser/core/provider proof, revoke bounded policy, then document full migration still external at Workers Paid/WFP billing, private Hyperdrive CA/connectivity, qualified handler/image/retention and genuine auth contexts.",
-    "merged_main_sha": "b2eeaabf36870644e2ce0ae7aaed51876bfdfb01",
+    "next_action": "Application source9d38 is DEPLOYED_VERIFIED on production Linux and staging49a7ee02/version468779bd; both Admin desktop/mobile and full device-authorized Dashboard passed, API/WS/attestation verified, canonical jobe5ab49f7/outbox published and temporary policy revoked. PostgreSQL TLS1.3 verify-full enabled without restart; .env unchanged. Mac rendering pause and archives retained. CLI-only repairs de25 (shared-ledger generation continuity, next29) and9e901 (automatic byte-identical approved receipt sync) integrated;24 release,36 canonical-source,5 retry tests passed. Completed engineering remains live; do not replay deploys or rebuild solely for controller/docs. Full migration PARTIAL only at real Workers Paid/WFP billing authority, private Hyperdrive trust/connectivity, concrete native handler/image/retention/recovery qualification and genuine interactive-login/second-tenant contexts. Resume those exact paths on real authority/evidence; keep consumers/cron/DNS disabled and refresh configuration through existing authority before2026-10-26 expiry.",
+    "merged_main_sha": "9e901f3f6d8877bab147a110c6d689bc8a5de1e8",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "HYPERDRIVE/JOB_WORKFLOW/JOB_CONTAINERS/WORKER_APP absent; native3bindings verified. PostgreSQL TLS1.3 now enabled with verified private CA and no restart. Hyperdrive trust registration/private connection remains undone; VPC still lacks Connectivity Directory permission. Supported Tunnel+Access alternative identified, not yet provisioned. No DB relocation.",
