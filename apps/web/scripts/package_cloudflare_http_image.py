@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import tempfile
 
 from linux_backend_release import ReleaseError, validate_build_result
@@ -44,11 +45,21 @@ def validate_runtime(root: Path, source_sha: str) -> None:
                 raise ReleaseError("HTTP_IMAGE_SPECIAL_FILE_DENIED")
 
 
-def prepare_context(build_result: Path, output: Path, base_image: str) -> dict:
-    if not PINNED_IMAGE.fullmatch(base_image):
+def packager_source_sha() -> str:
+    root = Path(__file__).parents[3]
+    owned = ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs"]
+    dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "--", *owned], capture_output=True, text=True, check=True).stdout
+    if dirty:
+        raise ReleaseError("HTTP_IMAGE_PACKAGER_SOURCE_DIRTY")
+    return subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def prepare_context(build_result: Path, output: Path, base_image: str, connector_image: str) -> dict:
+    if not PINNED_IMAGE.fullmatch(base_image) or not PINNED_IMAGE.fullmatch(connector_image):
         raise ReleaseError("HTTP_IMAGE_PINNED_BASE_REQUIRED")
     # Reuse the existing receipt/path/digest/source authority, not a second ledger.
     record, artifact, _ = validate_build_result(build_result)
+    packager_sha = packager_source_sha()
     runtime = artifact / "backend-runtime"
     validate_runtime(runtime, record["source_revision"])
     if output.exists() or output.is_symlink():
@@ -61,9 +72,10 @@ def prepare_context(build_result: Path, output: Path, base_image: str) -> dict:
             return [name for name in names if name in {"dist", ".data", "logs", "uploads"}] if Path(directory) == runtime else []
         shutil.copytree(runtime, stage / "runtime", symlinks=True, ignore=ignore)
         shutil.copyfile(Path(__file__).parents[1] / "CloudflareHttp.Containerfile", stage / "Containerfile")
-        proof = {"schemaVersion": 1, "sourceSha": record["source_revision"], "canonicalArtifactDigest": record["artifact"]["artifact_digest"],
+        shutil.copyfile(Path(__file__).with_name("cloudflare-http-entrypoint.mjs"), stage / "cloudflare-http-entrypoint.mjs")
+        proof = {"schemaVersion": 1, "packagerSourceSha": packager_sha, "connectorImage": connector_image, "sourceSha": record["source_revision"], "canonicalArtifactDigest": record["artifact"]["artifact_digest"],
                  "baseImage": base_image, "runtime": "node-http", "containerPolicy": "on-demand", "port": 3000,
-                 "buildArguments": {"NODE_HTTP_IMAGE": base_image, "SOURCE_SHA": record["source_revision"]}, "publish": False, "providerMutations": 0}
+                 "buildArguments": {"NODE_HTTP_IMAGE": base_image, "ACCESS_CONNECTOR_IMAGE": connector_image, "SOURCE_SHA": record["source_revision"]}, "publish": False, "providerMutations": 0}
         (stage / "image-input.json").write_text(json.dumps(proof, indent=2) + "\n")
         os.rename(stage, output)
         return {**proof, "context": str(output)}
@@ -77,8 +89,9 @@ def main() -> None:
     parser.add_argument("--build-result", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--base-image", required=True)
+    parser.add_argument("--connector-image", required=True)
     args = parser.parse_args()
-    print(json.dumps(prepare_context(args.build_result, args.output.absolute(), args.base_image)))
+    print(json.dumps(prepare_context(args.build_result, args.output.absolute(), args.base_image, args.connector_image)))
 
 
 if __name__ == "__main__":

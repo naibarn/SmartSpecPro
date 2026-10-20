@@ -16,6 +16,9 @@ class HttpImageTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
+        self.patch_source = patch("package_cloudflare_http_image.packager_source_sha", return_value="d" * 40)
+        self.patch_source.start()
+        self.addCleanup(self.patch_source.stop)
         self.root = Path(self.tmp.name)
         self.runtime = self.root / "artifact/backend-runtime"
         for name in ("server/_core/index.ts", "server/_core/applicationRuntime.ts", "server/_core/applicationDatabaseTls.ts", "node_modules/tsx/package.json", "dist/public/index.html"):
@@ -45,14 +48,14 @@ class HttpImageTest(unittest.TestCase):
 
     def test_only_pinned_base_and_matching_source_are_accepted(self):
         with self.assertRaisesRegex(ReleaseError, "PINNED_BASE_REQUIRED"):
-            prepare_context(self.root / "result.json", self.root / "image", "node:latest")
+            prepare_context(self.root / "result.json", self.root / "image", "node:latest", IMAGE)
         with self.assertRaisesRegex(ReleaseError, "SOURCE_MISMATCH"):
             validate_runtime(self.runtime, "c" * 40)
 
     def test_context_reuses_existing_authority_and_preserves_source(self):
         record = {"source_revision": SHA, "artifact": {"artifact_digest": "sha256:" + "c" * 64}}
         with patch("package_cloudflare_http_image.validate_build_result", return_value=(record, self.runtime.parent, self.root)) as authority:
-            result = prepare_context(self.root / "receipt.json", self.root / "image", IMAGE)
+            result = prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)
         authority.assert_called_once_with(self.root / "receipt.json")
         self.assertFalse(result["publish"])
         self.assertEqual(result["providerMutations"], 0)
@@ -60,4 +63,4 @@ class HttpImageTest(unittest.TestCase):
         self.assertFalse((self.root / "image/runtime/dist").exists())
         self.assertTrue((self.root / "image/runtime/server/_core/index.ts").exists())
         with self.assertRaisesRegex(ReleaseError, "OUTPUT_ALREADY_EXISTS"), patch("package_cloudflare_http_image.validate_build_result", return_value=(record, self.runtime.parent, self.root)):
-            prepare_context(self.root / "receipt.json", self.root / "image", IMAGE)
+            prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)

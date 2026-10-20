@@ -22,6 +22,7 @@ on:
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
       - "apps/web/CloudflareHttp.Containerfile"
+      - "apps/web/scripts/cloudflare-http-entrypoint*"
       - "apps/web/scripts/package_cloudflare_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
@@ -74,6 +75,7 @@ on:
       - "apps/web/scripts/verify-linux-runtime-dependencies*"
       - "apps/web/scripts/package-linux-backend.sh"
       - "apps/web/CloudflareHttp.Containerfile"
+      - "apps/web/scripts/cloudflare-http-entrypoint*"
       - "apps/web/scripts/package_cloudflare_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
@@ -129,7 +131,9 @@ jobs:
       - name: Guard standalone Linux runtime import boundaries
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
       - name: Verify canonical on-demand HTTP image preparation
-        run: python3 -m unittest discover -s apps/web/scripts -p test_package_cloudflare_http_image.py
+        run: |
+          python3 -m unittest discover -s apps/web/scripts -p test_package_cloudflare_http_image.py
+          node --test apps/web/scripts/cloudflare-http-entrypoint.test.mjs
       - name: Verify Linux release permissions and recovery
         run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
       - name: Verify tenant branding and desktop bearer authorization
