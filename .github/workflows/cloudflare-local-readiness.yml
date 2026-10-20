@@ -9,6 +9,11 @@ on:
       - "python-backend/app/services/cloudflare_origin_provision_contract.py"
       - "python-backend/app/services/cloudflare_native_provision_contract.py"
       - "python-backend/app/services/cloudflare_private_database_contract.py"
+      - "python-backend/app/core/application_*.py"
+      - "python-backend/app/core/database.py"
+      - "python-backend/tests/unit/test_application_database_tls.py"
+      - "python-backend/tests/test_application_runtime.py"
+      - "python-backend/tests/unit/test_production_api_startup.py"
       - "python-backend/app/services/approval_db_service.py"
       - "python-backend/app/api/approvals.py"
       - "apps/cloudflare/**"
@@ -53,6 +58,11 @@ on:
       - "python-backend/app/services/cloudflare_origin_provision_contract.py"
       - "python-backend/app/services/cloudflare_native_provision_contract.py"
       - "python-backend/app/services/cloudflare_private_database_contract.py"
+      - "python-backend/app/core/application_*.py"
+      - "python-backend/app/core/database.py"
+      - "python-backend/tests/unit/test_application_database_tls.py"
+      - "python-backend/tests/test_application_runtime.py"
+      - "python-backend/tests/unit/test_production_api_startup.py"
       - "python-backend/app/services/approval_db_service.py"
       - "python-backend/app/api/approvals.py"
       - "apps/cloudflare/**"
@@ -191,6 +201,8 @@ jobs:
           test "$(curl -sSI http://127.0.0.1:8800/ | awk 'tolower($1) == "cache-control:" { gsub("\r", ""); print tolower($0) }' | grep -c 'no-cache')" -ge 1
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
+      - name: Verify application HTTP ownership and database trust policy
+        run: pnpm --filter @smartspec/web exec vitest run server/_core/applicationRuntime.test.ts server/_core/sharedProductionDebug.test.ts server/_core/applicationDatabaseTls.test.ts
       - name: Verify session cookies on staging and production hostnames
         run: pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts server/__tests__/cloudflare-origin-attestation.test.ts server/__tests__/cloudflare-origin-middleware.test.ts server/__tests__/cloudflare-origin-upgrade.test.ts server/__tests__/cloudflare-public-origin.test.ts server/__tests__/csrf-protection.test.ts server/__tests__/csrf-middleware.test.ts
       - name: Verify OAuth readiness and callbacks on verified public origins
@@ -204,7 +216,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y postgresql
       - name: Exercise staging executor through disposable PostgreSQL
-        run: npm --workspace @smartspec/web run test -- server/services/cloudflareRunnerReleaseCatalog.postgres.integration.test.ts server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
+        run: npm --workspace @smartspec/web run test -- server/_core/applicationDatabaseTls.postgres.integration.test.ts server/services/cloudflareRunnerReleaseCatalog.postgres.integration.test.ts server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
         env:
           RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"
           RUN_DESKTOP_SCHEMA_DB_INTEGRATION: "true"

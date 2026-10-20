@@ -1,6 +1,7 @@
 import { eq, desc, asc, and, sql, like, or, inArray, isNull, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { createApplicationDatabaseTls } from "./_core/applicationDatabaseTls";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages, type User } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { normalizeAuthEmail } from "./services/emailNormalization";
@@ -19,7 +20,9 @@ export function getDb(): DrizzleDB {
 
     try {
       const poolSize = parseInt(process.env.DB_POOL_SIZE || "5", 10);
+      const ssl = createApplicationDatabaseTls(process.env.DATABASE_URL);
       _client = postgres(process.env.DATABASE_URL, {
+        ...(ssl ? { ssl } : {}),
         max: poolSize,
         idle_timeout: 20,       // Close idle connections after 20s
         connect_timeout: 10,    // Timeout connection attempts after 10s

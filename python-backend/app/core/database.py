@@ -14,6 +14,7 @@ from typing import AsyncGenerator
 import structlog
 
 from app.core.config import settings
+from app.core.application_database_tls import application_database_connect_args
 
 logger = structlog.get_logger()
 
@@ -34,7 +35,10 @@ def sanitize_db_url(url: str) -> str:
 
 def _create_engine():
     """Create the async engine with appropriate pool settings."""
+    connect_args = application_database_connect_args(settings.ENVIRONMENT, database_url=settings.DATABASE_URL)
     if settings.DATABASE_URL.startswith("sqlite"):
+        if connect_args:
+            raise ValueError("APPLICATION_DATABASE_TLS_REQUIRED")
         return create_async_engine(
             settings.DATABASE_URL,
             echo=settings.DEBUG,
@@ -47,6 +51,7 @@ def _create_engine():
         # eliminating "cannot perform operation: another operation is in progress" errors.
         return create_async_engine(
             settings.DATABASE_URL,
+            connect_args=connect_args,
             echo=settings.DEBUG,
             poolclass=NullPool,
         )
@@ -56,6 +61,7 @@ def _create_engine():
     _max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "5"))
     return create_async_engine(
         settings.DATABASE_URL,
+        connect_args=connect_args,
         echo=settings.DEBUG,
         pool_pre_ping=False,
         pool_size=_pool_size,
