@@ -11,13 +11,14 @@ function releaseRow(changes: Record<string, unknown> = {}) {
     releaseNotes: null, isPublished: true, publishedAt: new Date("2026-10-20T00:00:00Z"), withdrawnAt: null,
     uploadedAt: new Date("2026-10-19T00:00:00Z"), updatedAt: new Date("2026-10-20T00:00:00Z"), storageKey: "private/internal/key", uploadedBy: 999, ...changes };
 }
-const env = () => ({ CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+60_000).toISOString(), HYPERDRIVE: { connectionString: "postgres://fixture" } });
+const namespace = "smartspec-staging-aaaaaaaaaaaa";
+const env = () => ({ CLOUDFLARE_RUNNER_RELEASE_NAMESPACE: namespace, CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+60_000).toISOString(), HYPERDRIVE: { connectionString: "postgres://fixture" } });
 const request = (path = "") => new Request("https://smartaihub.app/api/runner-releases" + path);
 
 describe("native public Runner release catalog", () => {
   it("preserves public schema, per-target semantic version choice and separate package/update selection", async () => {
     const sql = { unsafe: vi.fn(async () => [releaseRow(), releaseRow({ id: 2, version: "1.10.0" }), releaseRow({ id: 3, version: "1.11.0", assetKind: "update_binary" })]) };
-    const result = await readPublicRunnerReleaseCatalog(sql as unknown as HyperdriveSqlClient, { channel: "stable" });
+    const result = await readPublicRunnerReleaseCatalog(sql as unknown as HyperdriveSqlClient, { channel: "stable" }, namespace);
     expect(runnerReleaseCatalogResponseSchema.parse(result)).toEqual(result);
     expect(result.latestByTarget[0]).toMatchObject({ version: "1.11.0", package: { id: 2 }, updateBinary: { id: 3 } });
     expect(JSON.stringify(result)).not.toContain("private/internal/key"); expect(JSON.stringify(result)).not.toContain("uploadedBy");
@@ -66,7 +67,7 @@ describe("native public Runner release catalog", () => {
   });
   it("rejects a malformed/private row even if an adapter incorrectly returns it", async () => {
     const sql = { unsafe: async () => [releaseRow({ isPublished: false })] };
-    await expect(readPublicRunnerReleaseCatalog(sql as never, { channel: "stable" })).rejects.toThrow();
+    await expect(readPublicRunnerReleaseCatalog(sql as never, { channel: "stable" }, namespace)).rejects.toThrow();
   });
 });
 

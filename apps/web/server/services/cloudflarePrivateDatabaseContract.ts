@@ -12,11 +12,18 @@ export const privateDatabasePlanSchema = z.object({
   zoneId: z.string().regex(/^[a-f0-9]{32}$/), tunnelId: z.string().uuid(),
   databaseName: z.string().regex(/^[a-zA-Z0-9_]{1,63}$/),
   caSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Add public-view access only by reusing one exact successful probe receipt. */
+  publicRunnerCatalogSourceJobId: z.string().uuid().optional(),
   connectionLimit: z.literal(5), configurationExpiresAt: z.string().datetime({ offset: true }),
 }).strict();
 export type PrivateDatabasePlan = z.infer<typeof privateDatabasePlanSchema>;
 export const privateDatabasePlanDigest = (plan: PrivateDatabasePlan) =>
   createHash("sha256").update(JSON.stringify(Object.fromEntries(Object.entries(plan).sort(([a], [b]) => a.localeCompare(b))))).digest("hex");
+/** Provider resource names keep the original immutable connection-plan digest. */
+export const privateDatabaseResourceDigest = (plan: PrivateDatabasePlan) => {
+  const { publicRunnerCatalogSourceJobId: _source, ...connection } = plan;
+  return privateDatabasePlanDigest(connection);
+};
 export const privateDatabaseGrantSchema = z.object({
   schemaVersion: z.literal(PRIVATE_DATABASE_GRANT), grantRef: z.string().uuid(),
   tenantId: z.string().min(1).max(36), projectId: z.string().min(1).max(36), requesterUserId: z.number().int().positive(),

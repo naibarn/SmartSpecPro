@@ -1,11 +1,13 @@
 import { X509Certificate } from "node:crypto";
 import { z } from "zod";
-import { certificateDigest, privateDatabaseGrantSchema, privateDatabaseRole, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
+import { certificateDigest, privateDatabaseResourceDigest, privateDatabaseGrantSchema, privateDatabaseRole, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 
 const id = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 export const privateDatabaseCheckpointSchema = z.object({
   planDigest: z.string().regex(/^[a-f0-9]{64}$/), pending: z.string().optional(),
   resumedFromJobId: z.string().uuid().optional(), continuedByJobId: z.string().uuid().optional(),
+  publicCatalog: z.object({ viewName: z.string().regex(/^sah_cf_releases_[a-f0-9]{12}$/), sourceProvisionJobId: z.string().uuid(),
+    definitionSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
   databasePassword: z.string().min(32).optional(), databaseRolePrepared: z.literal(true).optional(),
   caId: id.optional(), appId: id.optional(), policyId: id.optional(), dnsRecordId: id.optional(), hyperdriveId: id.optional(),
   serviceToken: z.object({ id, clientId: z.string().min(16), secret: z.string().min(16), expiresAt: z.string().datetime({ offset: true }) }).strict().optional(),
@@ -29,6 +31,7 @@ export async function provisionCloudflarePrivateDatabase(input: {
   const grant = privateDatabaseGrantSchema.parse(input.grant), plan = grant.plan;
   const state = privateDatabaseCheckpointSchema.parse(input.checkpoint);
   if (state.planDigest !== grant.planDigest || !state.databaseRolePrepared || !state.databasePassword) fail("PRIVATE_DATABASE_CHECKPOINT_DENIED");
+  if (plan.publicRunnerCatalogSourceJobId && (!input.readOnly || state.publicCatalog?.sourceProvisionJobId !== plan.publicRunnerCatalogSourceJobId)) fail("PRIVATE_DATABASE_PUBLIC_CATALOG_CHECKPOINT_DENIED");
   if (state.pending) fail("PRIVATE_DATABASE_AMBIGUOUS_WRITE_REVIEW_REQUIRED");
   if (state.continuedByJobId) fail("PRIVATE_DATABASE_CHECKPOINT_CONTINUED");
   let certificate: X509Certificate;
@@ -36,7 +39,7 @@ export async function provisionCloudflarePrivateDatabase(input: {
   if (!certificate.ca || certificateDigest(certificate.raw) !== plan.caSha256
     || Date.parse(certificate.validTo) < Date.parse(plan.configurationExpiresAt)
     || Date.parse(certificate.validFrom) > Date.now()) fail("PRIVATE_DATABASE_CA_INVALID");
-  const account = `/accounts/${grant.accountRef}`, marker = `${plan.namespace}-database-${grant.planDigest.slice(0, 12)}`;
+  const account = `/accounts/${grant.accountRef}`, marker = `${plan.namespace}-database-${privateDatabaseResourceDigest(plan).slice(0, 12)}`;
   const fetchImpl = input.fetchImpl ?? fetch;
   async function request(path: string, body?: Record<string, unknown>, step?: string): Promise<any> {
     await input.assertAuthorized();
@@ -129,5 +132,6 @@ export async function provisionCloudflarePrivateDatabase(input: {
   return { accountRef: grant.accountRef, namespace: plan.namespace, planDigest: grant.planDigest, hyperdriveId: state.hyperdriveId,
     caId: state.caId, accessApplicationId: state.appId, accessPolicyId: state.policyId, serviceTokenId: state.serviceToken.id,
     dnsRecordId: state.dnsRecordId, hostname: plan.hostname, tunnelId: plan.tunnelId, sslmode: "verify-full", cachingDisabled: true,
-    databaseAccess: "read_only_connection_probe", providerConfigurationVerified: true, workerBound: false, activation: "disabled" };
+    databaseAccess: plan.publicRunnerCatalogSourceJobId ? "read_only_public_runner_catalog" : "read_only_connection_probe",
+    ...(state.publicCatalog ? { publicCatalog: state.publicCatalog } : {}), providerConfigurationVerified: true, workerBound: false, activation: "disabled" };
 }

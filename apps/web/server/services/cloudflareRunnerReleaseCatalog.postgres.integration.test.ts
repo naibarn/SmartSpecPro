@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
+import { PUBLIC_RUNNER_RELEASE_SELECT, PUBLIC_RUNNER_RELEASE_PREDICATE } from "../../../../packages/shared/src/cloudflarePublicReleases";
 import { handleRunnerReleaseCatalog } from "../../../cloudflare/src/runnerReleaseCatalog";
 
 const suite = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true" ? describe : describe.skip;
@@ -12,7 +13,8 @@ suite("native public Runner catalog against disposable PostgreSQL", () => {
   let disposable: Awaited<ReturnType<typeof import("./__tests__/support/spec277DisposablePostgres").createSpec277DisposablePostgres>>;
   let sql: postgres.Sql, closeDb: () => Promise<void>;
   const previousUrl = process.env.DATABASE_URL;
-  const env = () => ({ CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+120_000).toISOString(), HYPERDRIVE: { connectionString: disposable.databaseUrl } });
+  const namespace = "smartspec-staging-aaaaaaaaaaaa", viewName = "sah_cf_releases_aaaaaaaaaaaa";
+  const env = () => ({ CLOUDFLARE_RUNNER_RELEASE_NAMESPACE: namespace, CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+120_000).toISOString(), HYPERDRIVE: { connectionString: disposable.databaseUrl } });
   const request = (suffix = "") => new Request("https://smartaihub.app/api/runner-releases"+suffix);
   beforeAll(async () => {
     disposable = await (await import("./__tests__/support/spec277DisposablePostgres")).createSpec277DisposablePostgres();
@@ -36,8 +38,9 @@ suite("native public Runner catalog against disposable PostgreSQL", () => {
         VALUES (${id},${version},${platform},${platform === "container" ? "multi" : "x64"},${platform === "container" ? "shared_container" : "local_device"},${channel},${assetKind},'runner.zip',${"runner-releases/private/"+id},
         100,${"a".repeat(64)},${sql.json({ sourceCommit: "b".repeat(40), workflowRunId: null, releaseTag: null, signatureAlgorithm: null })},${isPublished},${withdrawnAt},${validationStatus})`;
     }
+    await sql.unsafe(`CREATE VIEW public."${viewName}" WITH (security_barrier=true) AS SELECT ${PUBLIC_RUNNER_RELEASE_SELECT} FROM public.runner_release_assets WHERE ${PUBLIC_RUNNER_RELEASE_PREDICATE}`);
     await sql.unsafe("CREATE ROLE public_release_reader LOGIN");
-    await sql.unsafe("GRANT SELECT ON runner_release_assets TO public_release_reader");
+    await sql.unsafe("GRANT SELECT ON sah_cf_releases_aaaaaaaaaaaa TO public_release_reader");
   }, 30_000);
   afterAll(async () => {
     if (closeDb) await closeDb(); if (sql) await sql.end({ timeout: 5 }); if (disposable) await disposable.close();
@@ -99,7 +102,7 @@ suite("native public Runner catalog against disposable PostgreSQL", () => {
     const localUrl = new URL(disposable.databaseUrl); localUrl.password = "disposable-loopback-only";
     const configuration = { name: "sah-native-public-catalog-fixture", main: resolve(process.cwd(), "../cloudflare/src/entrypoint.ts"),
       compatibility_date: "2026-10-19", compatibility_flags: ["nodejs_compat"],
-      vars: { CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+120_000).toISOString() },
+      vars: { CLOUDFLARE_RUNNER_RELEASE_NAMESPACE: namespace, CLOUDFLARE_RUNNER_RELEASE_CATALOG: "hyperdrive", CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT: new Date(Date.now()+120_000).toISOString() },
       hyperdrive: [{ binding: "HYPERDRIVE", id: "a".repeat(32), localConnectionString: localUrl.href }] };
     await writeFile(join(directory, "wrangler.json"), JSON.stringify(configuration));
     const child = spawn("pnpm", ["dlx", "wrangler@4.151.1", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--persist-to", join(directory, "state")],

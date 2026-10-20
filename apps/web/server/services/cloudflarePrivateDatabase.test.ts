@@ -75,6 +75,30 @@ describe("private PostgreSQL staging provisioning", () => {
       expect(String(url)).not.toMatch(/subscriptions|tokens\/create|connectivity|consumers|dispatch/);
     }
   });
+  it("qualifies an upgraded public view using GET-only provider checks and preserves original resource names", async () => {
+    const f = fixture(); await provisionCloudflarePrivateDatabase(f.input);
+    const sourceProvisionJobId = f.grant.jobId;
+    const grant = { ...f.grant, jobId: "77777777-7777-4777-8777-777777777777", plan: { ...f.grant.plan, publicRunnerCatalogSourceJobId: sourceProvisionJobId } };
+    grant.planDigest = privateDatabasePlanDigest(grant.plan);
+    const publicCatalog = { viewName: `sah_cf_releases_${grant.plan.namespace.slice(-12)}`, sourceProvisionJobId, definitionSha256: "f".repeat(64) };
+    const checkpoint = { ...f.checkpoints.at(-1)!, planDigest: grant.planDigest, publicCatalog };
+    f.fetchImpl.mockClear();
+    const output = await provisionCloudflarePrivateDatabase({ ...f.input, grant, checkpoint, readOnly: true });
+    expect(output).toMatchObject({ databaseAccess: "read_only_public_runner_catalog", publicCatalog });
+    expect(f.fetchImpl.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
+    const descriptor = { provisionJobId: grant.jobId, plan: grant.plan, planDigest: grant.planDigest,
+      hyperdriveId: output.hyperdriveId!, caId: output.caId!, accessApplicationId: output.accessApplicationId!, accessPolicyId: output.accessPolicyId!,
+      serviceTokenId: output.serviceTokenId, dnsRecordId: output.dnsRecordId! };
+    const receipt = { id: grant.jobId, tenantId: grant.tenantId, requestedByUserId: grant.requesterUserId, jobType: PRIVATE_DATABASE_JOB,
+      contractVersion: PRIVATE_DATABASE_CONTRACT, status: "succeeded", operatorReviewRequired: false,
+      inputJson: { contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: grant.grantRef, projectId: grant.projectId, planDigest: grant.planDigest }, outputJson: output };
+    const scope = { tenantId: grant.tenantId, projectId: grant.projectId, accountRef: grant.accountRef, actorUserId: grant.requesterUserId };
+    expect(() => assertPrivateDatabaseProvisionReceipt(descriptor, receipt, scope)).toThrow("DENIED");
+    expect(() => assertPrivateDatabaseProvisionReceipt(descriptor, receipt, scope, { jobId: grant.jobId, actorUserId: scope.actorUserId, state: checkpoint })).not.toThrow();
+    expect(() => assertPrivateDatabaseProvisionReceipt(descriptor, { ...receipt, outputJson: { ...output, publicCatalog: { ...publicCatalog, definitionSha256: "a".repeat(64) } } }, scope,
+      { jobId: grant.jobId, actorUserId: scope.actorUserId, state: checkpoint })).toThrow("DENIED");
+    await verifyPrivateDatabaseProviderResources({ descriptor, accountRef: grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl });
+  });
   it("replays a completed checkpoint through reads only", async () => {
     const f = fixture(); await provisionCloudflarePrivateDatabase(f.input);
     f.fetchImpl.mockClear(); f.input.checkpoint = f.checkpoints.at(-1)!;

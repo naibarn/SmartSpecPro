@@ -19,7 +19,7 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     const schema = await import("../../drizzle/schema");
     await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client, [schema.systemSettings,
-      schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions]);
+      schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.runnerReleaseAssets]);
     await client`INSERT INTO users(id,"openId",role) VALUES (17,'private-db-disposable-fixture','admin')`;
     ({ closeDb } = await import("../db"));
     runtime = (await import("./cloudflarePrivateDatabaseExecutor")).createCloudflarePrivateDatabaseRuntime();
@@ -51,6 +51,75 @@ suite("private staging database role atomicity in disposable PostgreSQL", () => 
     expect(stored.isSensitive).toBe(true); expect(stored.updatedBy).toBe(17); expect(stored.value).not.toContain(state.databasePassword);
     await runtime.prepareDatabase(g);
     expect((await runtime.loadCheckpoint(g)).databasePassword).toBe(state.databasePassword);
+  });
+  async function catalogUpgradeFixture(project = "public-catalog") {
+    const source = grant(project), ids = { hyperdriveId: "c".repeat(32), caId: "d".repeat(32), appId: "e".repeat(32),
+      policyId: "f".repeat(32), dnsRecordId: "a".repeat(32) };
+    await runtime.prepareDatabase(source);
+    await runtime.saveCheckpoint(source, { ...await runtime.loadCheckpoint(source), ...ids,
+      serviceToken: { id: "b".repeat(32), clientId: "fixture-access-client", secret: "fixture-access-secret", expiresAt: source.plan.configurationExpiresAt } });
+    await client`INSERT INTO worker_jobs (id,"tenantId","requestedByUserId","runtimeType","jobType","contractVersion",status,"inputJson","outputJson")
+      VALUES (${source.jobId},${source.tenantId},${source.requesterUserId},'node_job_worker',${PRIVATE_DATABASE_JOB},${PRIVATE_DATABASE_CONTRACT},'succeeded',
+      ${client.json({ contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: source.grantRef, projectId: source.projectId, planDigest: source.planDigest })},
+      ${client.json({ accountRef: source.accountRef, namespace: source.plan.namespace, planDigest: source.planDigest, ...ids,
+        accessApplicationId: ids.appId, accessPolicyId: ids.policyId, serviceTokenId: "b".repeat(32), hostname: source.plan.hostname,
+        tunnelId: source.plan.tunnelId, sslmode: "verify-full", cachingDisabled: true, databaseAccess: "read_only_connection_probe",
+        providerConfigurationVerified: true, workerBound: false, activation: "disabled" })})`;
+    const upgraded = { ...source, jobId: randomUUID(), grantRef: randomUUID(), plan: { ...source.plan, publicRunnerCatalogSourceJobId: source.jobId } };
+    upgraded.planDigest = privateDatabasePlanDigest(upgraded.plan);
+    return { source, upgraded, role: privateDatabaseRole(source.plan.namespace), viewName: `sah_cf_releases_${source.plan.namespace.slice(-12)}` };
+  }
+  it("qualifies public catalog through an owned barrier view without table SELECT or provider/credential replacement", async () => {
+    const { source, upgraded, role, viewName } = await catalogUpgradeFixture();
+    await client`INSERT INTO runner_release_assets (version,platform,architecture,profile,channel,"assetKind","fileName","storageKey","fileSizeBytes","fileSha256","provenanceJson","isPublished")
+      VALUES ('disposable-public','linux','x64','local_device','stable','package','runner.zip','runner-releases/public',1,${"a".repeat(64)},'{}',true),
+      ('disposable-private','linux','x64','local_device','stable','package','hidden.zip','runner-releases/private',1,${"a".repeat(64)},'{}',false)`;
+    await runtime.prepareDatabase(upgraded);
+    const sourceState = await runtime.loadCheckpoint(source), state = await runtime.loadCheckpoint(upgraded);
+    expect(state.databasePassword).toBe(sourceState.databasePassword); expect(state.hyperdriveId).toBe(sourceState.hyperdriveId);
+    expect(state.publicCatalog).toMatchObject({ viewName, sourceProvisionJobId: source.jobId });
+    const [permissions] = await client`SELECT has_table_privilege(${role},'public.runner_release_assets','SELECT') AS table_select,
+      has_table_privilege(${role},${"public."+viewName},'SELECT') AS view_select`;
+    expect(permissions).toEqual({ table_select: false, view_select: true });
+    const url = new URL(disposable.databaseUrl); url.username = role; url.password = state.databasePassword;
+    const reader = (await import("postgres")).default(url.href, { max: 1 });
+    try {
+      const rows = await reader.unsafe(`SELECT * FROM public."${viewName}"`);
+      expect(rows.map(row => row.version)).toEqual(["disposable-public"]);
+      expect(rows[0]).not.toHaveProperty("storageKey"); expect(rows[0]).not.toHaveProperty("uploadedBy");
+      await expect(reader.unsafe('SELECT * FROM public.runner_release_assets')).rejects.toThrow();
+      await expect(reader.unsafe(`UPDATE public."${viewName}" SET version='forbidden'`)).rejects.toThrow();
+    } finally { await reader.end({ timeout: 1 }); }
+    await runtime.prepareDatabase(upgraded);
+    expect((await runtime.loadCheckpoint(upgraded)).publicCatalog).toEqual(state.publicCatalog);
+  });
+  it.each(["foreign-owner", "account", "not-succeeded", "digest", "deadline", "collision"])("rejects unsafe public catalog upgrade %s without adopting a view", async kind => {
+    const { source, upgraded, viewName } = await catalogUpgradeFixture("catalog-"+kind);
+    if (kind === "foreign-owner") await client`UPDATE worker_jobs SET "requestedByUserId"=NULL WHERE id=${source.jobId}`;
+    if (kind === "account") upgraded.accountRef="f".repeat(32);
+    if (kind === "not-succeeded") await client`UPDATE worker_jobs SET status='failed' WHERE id=${source.jobId}`;
+    if (kind === "digest") await client`UPDATE worker_jobs SET "inputJson"='{}' WHERE id=${source.jobId}`;
+    if (kind === "deadline") { upgraded.plan.configurationExpiresAt = new Date(Date.now()+2*86400_000).toISOString(); upgraded.planDigest=privateDatabasePlanDigest(upgraded.plan); }
+    if (kind === "collision") await client.unsafe(`CREATE VIEW public."${viewName}" AS SELECT 'foreign' AS version`);
+    await expect(runtime.prepareDatabase(upgraded)).rejects.toThrow(/PUBLIC_CATALOG/);
+    expect((await runtime.loadCheckpoint(upgraded)).databasePassword).toBeUndefined();
+  });
+  it("rolls view and SELECT grant back atomically when encrypted upgrade ownership cannot commit", async () => {
+    const { upgraded, role, viewName } = await catalogUpgradeFixture("catalog-rollback");
+    await client.unsafe(`CREATE FUNCTION reject_catalog_state() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.key='${upgraded.jobId}' THEN RAISE EXCEPTION 'fixture catalog denied'; END IF; RETURN NEW; END $$`);
+    await client.unsafe(`CREATE TRIGGER reject_catalog_state BEFORE INSERT ON system_settings FOR EACH ROW EXECUTE FUNCTION reject_catalog_state()`);
+    try {
+      await expect(runtime.prepareDatabase(upgraded)).rejects.toThrow("ROLE_PREPARATION_FAILED");
+      expect((await client`SELECT to_regclass(${"public."+viewName}) AS view`)[0].view).toBeNull();
+      expect((await runtime.loadCheckpoint(upgraded)).databasePassword).toBeUndefined();
+      expect((await client`SELECT has_table_privilege(${role},'public.runner_release_assets','SELECT') AS allowed`)[0].allowed).toBe(false);
+    } finally { await client.unsafe("DROP TRIGGER reject_catalog_state ON system_settings"); }
+  });
+  it("detects a changed view security barrier instead of regranting or adopting it", async () => {
+    const { upgraded, viewName } = await catalogUpgradeFixture("catalog-drift");
+    await runtime.prepareDatabase(upgraded);
+    await client.unsafe(`ALTER VIEW public."${viewName}" SET (security_barrier=false)`);
+    await expect(runtime.prepareDatabase(upgraded)).rejects.toThrow("PUBLIC_CATALOG_VIEW_DRIFT");
   });
   it("rolls role DDL back if encrypted ownership persistence cannot commit", async () => {
     const g = grant("rollback"), role = privateDatabaseRole(g.plan.namespace);

@@ -1,3 +1,4 @@
+import { PUBLIC_RUNNER_RELEASE_SELECT, PUBLIC_RUNNER_RELEASE_PREDICATE, publicRunnerReleaseView } from "../../../packages/shared/src/cloudflarePublicReleases";
 import { projectRunnerReleaseCatalog, projectRunnerReleaseRow, runnerReleaseCatalogQuerySchema,
   runnerReleaseTargetKey, type RunnerReleaseCatalogResponse, type RunnerReleaseChannel,
   type RunnerReleasePlatform, type RunnerReleaseArchitecture, type RunnerReleaseProfile } from "../../../packages/shared/src/runnerReleases";
@@ -11,13 +12,12 @@ const FILTERS = ["channel", "platform", "architecture", "profile"] as const;
 
 /** Publication reads use the existing DB directly, never a KV/HTTP cache.
  * The approved Hyperdrive descriptor must have query caching disabled. */
-export async function readPublicRunnerReleaseCatalog(client: HyperdriveSqlClient, filter: CatalogFilter): Promise<RunnerReleaseCatalogResponse> {
-  const values: string[] = [], predicates = ['"isPublished" = true', '"withdrawnAt" IS NULL', '"validationStatus" = \'valid\''];
+export async function readPublicRunnerReleaseCatalog(client: HyperdriveSqlClient, filter: CatalogFilter, namespace: string): Promise<RunnerReleaseCatalogResponse> {
+  const values: string[] = [], predicates = [PUBLIC_RUNNER_RELEASE_PREDICATE];
   for (const key of FILTERS) if (filter[key]) { values.push(filter[key]!); predicates.push(`"${key}" = $${values.length}`); }
-  const rows = await client.unsafe<Record<string, unknown>[]>(`SELECT id,version,platform,architecture,profile,channel,
-    "assetKind","fileName","contentType","fileSizeBytes","fileSha256",signature,"contractVersion","manifestJson",
-    "validationStatus","validationChecksJson","provenanceJson","releaseNotes","isPublished","publishedAt","withdrawnAt","uploadedAt","updatedAt"
-    FROM runner_release_assets WHERE ${predicates.join(" AND ")} ORDER BY "updatedAt" DESC`, values);
+  const viewName = publicRunnerReleaseView(namespace);
+  const rows = await client.unsafe<Record<string, unknown>[]>(`SELECT ${PUBLIC_RUNNER_RELEASE_SELECT}
+    FROM public."${viewName}" WHERE ${predicates.join(" AND ")} ORDER BY "updatedAt" DESC`, values);
   const assets = rows.map(row => {
     if (row.isPublished !== true || row.withdrawnAt != null || row.validationStatus !== "valid") throw new Error("RUNNER_RELEASE_PUBLICATION_INVALID");
     return projectRunnerReleaseRow(row);
@@ -34,7 +34,7 @@ export async function handleRunnerReleaseCatalog(request: Request, env: Cloudfla
   });
   const expiresAt = Date.parse(env.CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT ?? "");
   if (env.CLOUDFLARE_RUNNER_RELEASE_CATALOG !== "hyperdrive" || !Number.isFinite(expiresAt) || expiresAt <= Date.now() ||
-      !env.HYPERDRIVE?.connectionString?.trim()) return reply({ error: "runner_release_catalog_unavailable" }, 503);
+      !/^smartspec-staging-[a-f0-9]{12}$/.test(env.CLOUDFLARE_RUNNER_RELEASE_NAMESPACE ?? "") || !env.HYPERDRIVE?.connectionString?.trim()) return reply({ error: "runner_release_catalog_unavailable" }, 503);
   const url = new URL(request.url), latest = url.pathname === "/api/runner-releases/latest";
   if (!["GET", "HEAD"].includes(request.method) || !["/api/runner-releases", "/api/runner-releases/latest"].includes(url.pathname)) {
     return reply({ error: "runner_release_request_invalid" }, 400);
@@ -49,7 +49,7 @@ export async function handleRunnerReleaseCatalog(request: Request, env: Cloudfla
       await transaction.unsafe("SET TRANSACTION READ ONLY");
       await transaction.unsafe("SET LOCAL statement_timeout = '5000ms'");
       await transaction.unsafe("SET LOCAL lock_timeout = '1000ms'");
-      return readPublicRunnerReleaseCatalog(transaction, filter);
+      return readPublicRunnerReleaseCatalog(transaction, filter, env.CLOUDFLARE_RUNNER_RELEASE_NAMESPACE!);
     }));
     // Configuration can expire while a connection waits. Never return data
     // after the approved read window; this path does not silently fall back.

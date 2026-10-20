@@ -11,7 +11,7 @@ GRANT_SCHEMA = "cloudflare.staging-private-database-provision-grant.v1"
 
 def validate_plan(value):
     fields = {"namespace", "hostname", "zoneId", "tunnelId", "databaseName", "caSha256", "connectionLimit", "configurationExpiresAt"}
-    if (not isinstance(value, dict) or set(value) != fields
+    if (not isinstance(value, dict) or set(value) not in (fields, fields | {"publicRunnerCatalogSourceJobId"})
         or value["hostname"] != "db-staging.smartaihub.app"
         or not isinstance(value["namespace"], str) or not re.fullmatch(r"smartspec-staging-[a-f0-9]{12}", value["namespace"])
         or not isinstance(value["zoneId"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["zoneId"])
@@ -20,6 +20,9 @@ def validate_plan(value):
         or not isinstance(value["caSha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", value["caSha256"])
         or type(value["connectionLimit"]) is not int or value["connectionLimit"] != 5):
         raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_PLAN_INVALID")
+    source = value.get("publicRunnerCatalogSourceJobId")
+    if "publicRunnerCatalogSourceJobId" in value and (not isinstance(source, str) or not re.fullmatch(r"[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", source)):
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_PUBLIC_CATALOG_SOURCE_INVALID")
     try:
         if datetime.fromisoformat(value["configurationExpiresAt"].replace("Z", "+00:00")).tzinfo is None:
             raise ValueError()

@@ -1,3 +1,4 @@
+import { reusePublicCatalogCheckpoint, preparePublicCatalogView } from "./cloudflarePublicCatalogAccess";
 import { createHash, randomBytes, X509Certificate } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
@@ -140,7 +141,9 @@ export function createCloudflarePrivateDatabaseRuntime(options: { fetchImpl?: ty
       try {
         await db.transaction(async tx => {
           await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${g.jobId}))`);
-          const state = await load(tx, g), role = privateDatabaseRole(g.plan.namespace);
+          let state = await load(tx, g);
+          const role = privateDatabaseRole(g.plan.namespace);
+          if (g.plan.publicRunnerCatalogSourceJobId && !state.databaseRolePrepared) state = await reusePublicCatalogCheckpoint(tx, g, load);
           if (state.continuedByJobId) throw new PrivateDatabaseError("PRIVATE_DATABASE_CHECKPOINT_CONTINUED");
           const current: any = await tx.execute(sql`SELECT current_database() AS name`);
           if (current[0]?.name !== g.plan.databaseName) throw new PrivateDatabaseError("PRIVATE_DATABASE_LOCAL_SCOPE_DENIED");
@@ -149,6 +152,10 @@ export function createCloudflarePrivateDatabaseRuntime(options: { fetchImpl?: ty
             const r = roles[0];
             if (!r || r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.rolreplication || r.rolbypassrls || !r.rolcanlogin || r.rolconnlimit !== 5
               || !r.rolconfig?.includes("default_transaction_read_only=on") || new Date(r.rolvaliduntil).getTime() !== Date.parse(g.plan.configurationExpiresAt)) throw new PrivateDatabaseError("PRIVATE_DATABASE_ROLE_DRIFT");
+            if (g.plan.publicRunnerCatalogSourceJobId) {
+              state = await preparePublicCatalogView(tx, g, state, role);
+              await save(tx, g, state);
+            }
             return;
           }
           if (roles.length) throw new PrivateDatabaseError("PRIVATE_DATABASE_EXISTING_ROLE_REVIEW_REQUIRED");
@@ -215,7 +222,8 @@ export function createCloudflarePrivateDatabaseExecutor(runtime: Runtime | (() =
     const output = await active.withCredential(scope, async token => {
       fingerprint = createHash("sha256").update(token).digest("hex");
       return provisionCloudflarePrivateDatabase({ grant, token, caCertificate, checkpoint: await active.loadCheckpoint(grant),
-        assertAuthorized, saveCheckpoint: state => active.saveCheckpoint(grant, state), fetchImpl: active.fetchImpl });
+        assertAuthorized, saveCheckpoint: state => active.saveCheckpoint(grant, state), fetchImpl: active.fetchImpl,
+        readOnly: Boolean(grant.plan.publicRunnerCatalogSourceJobId) });
     });
     await assertAuthorized(); await active.prepareDatabase(grant);
     return { output };

@@ -117,8 +117,23 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
         serviceToken: { id: privateDatabase.serviceTokenId, clientId: "disposable-client-id", secret: "disposable-client-secret", expiresAt: privatePlan.configurationExpiresAt } })) });
     const privateSaved = await saveCloudflareOriginConfiguration(db, privateInput);
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).resolves.toMatchObject({ status: "STORED" });
+    await expect(saveCloudflareOriginConfiguration(db, { ...privateInput,
+      settings: { ...privateInput.settings, runnerReleaseCatalog: "hyperdrive" } })).rejects.toThrow("DENIED");
+    const publicPlan = { ...privatePlan, publicRunnerCatalogSourceJobId: privateDatabase.provisionJobId };
+    const publicDatabase = { ...privateDatabase, provisionJobId: randomUUID(), plan: publicPlan, planDigest: privateDatabasePlanDigest(publicPlan) };
+    const publicCatalog = { viewName: `sah_cf_releases_${plan.namespace.slice(-12)}`, sourceProvisionJobId: privateDatabase.provisionJobId, definitionSha256: "e".repeat(64) };
+    const [probeReceipt] = await db.select().from(schema.workerJobs).where(eq(schema.workerJobs.id, privateDatabase.provisionJobId));
+    await db.insert(schema.workerJobs).values({ id: publicDatabase.provisionJobId, tenantId: identity.tenantId, requestedByUserId: actorUserId,
+      runtimeType: "node_job_worker", jobType: PRIVATE_DATABASE_JOB, contractVersion: PRIVATE_DATABASE_CONTRACT, status: "succeeded",
+      inputJson: { contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: randomUUID(), projectId: identity.projectId, planDigest: publicDatabase.planDigest },
+      outputJson: { ...probeReceipt.outputJson as Record<string, unknown>, planDigest: publicDatabase.planDigest, databaseAccess: "read_only_public_runner_catalog", publicCatalog } });
+    await db.insert(schema.systemSettings).values({ category: "cloudflare_private_database_runs", key: publicDatabase.provisionJobId,
+      isSensitive: true, updatedBy: actorUserId, value: encrypt(JSON.stringify({ planDigest: publicDatabase.planDigest, publicCatalog,
+        hyperdriveId: privateDatabase.hyperdriveId, caId: privateDatabase.caId, appId: privateDatabase.accessApplicationId,
+        policyId: privateDatabase.accessPolicyId, dnsRecordId: privateDatabase.dnsRecordId,
+        serviceToken: { id: privateDatabase.serviceTokenId, clientId: "disposable-client-id", secret: "disposable-client-secret", expiresAt: privatePlan.configurationExpiresAt } })) });
     const catalogSaved = await saveCloudflareOriginConfiguration(db, { ...privateInput,
-      settings: { ...privateInput.settings, runnerReleaseCatalog: "hyperdrive" } });
+      settings: { ...privateInput.settings, nativeResources: { ...nativeResources, privateDatabase: publicDatabase }, runnerReleaseCatalog: "hyperdrive" } });
     const catalogMetadata = await getCloudflareOriginConfiguration(db, { identity, configurationRef: catalogSaved.configurationRef });
     expect(catalogMetadata.descriptor.runnerReleaseCatalog).toBe("hyperdrive");
     expect(catalogMetadata.descriptor.workflowExecution).toBeUndefined();

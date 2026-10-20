@@ -1,7 +1,8 @@
+import { publicRunnerReleaseView } from "../../../../packages/shared/src/cloudflarePublicReleases";
 import { X509Certificate } from "node:crypto";
 import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
-  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseResourceDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 
@@ -39,13 +40,23 @@ checkpoint?: { jobId: string; actorUserId: number; state: unknown }) {
     && state.data.caId === descriptor.caId && state.data.appId === descriptor.accessApplicationId
     && state.data.policyId === descriptor.accessPolicyId && state.data.dnsRecordId === descriptor.dnsRecordId
     && state.data.serviceToken?.id === descriptor.serviceTokenId;
+  const publicCatalog = output?.publicCatalog as Record<string, unknown> | undefined;
+  const catalogVerified = !descriptor.plan.publicRunnerCatalogSourceJobId
+    ? !publicCatalog
+    : state.success && checkpoint?.jobId === descriptor.provisionJobId && checkpoint.actorUserId === scope.actorUserId &&
+      state.data.planDigest === descriptor.planDigest && !state.data.pending && !state.data.continuedByJobId &&
+      state.data.publicCatalog?.viewName === publicRunnerReleaseView(descriptor.plan.namespace) &&
+      state.data.publicCatalog.sourceProvisionJobId === descriptor.plan.publicRunnerCatalogSourceJobId &&
+      publicCatalog?.viewName === state.data.publicCatalog.viewName &&
+      publicCatalog.sourceProvisionJobId === state.data.publicCatalog.sourceProvisionJobId &&
+      publicCatalog.definitionSha256 === state.data.publicCatalog.definitionSha256;
   if (!receipt || receipt.id !== descriptor.provisionJobId || receipt.tenantId !== scope.tenantId || receipt.requestedByUserId !== scope.actorUserId
     || receipt.jobType !== PRIVATE_DATABASE_JOB || receipt.contractVersion !== PRIVATE_DATABASE_CONTRACT || receipt.status !== "succeeded" || receipt.operatorReviewRequired
     || !input.success || input.data.projectId !== scope.projectId || input.data.planDigest !== descriptor.planDigest
     || !output || output.accountRef !== scope.accountRef || output.namespace !== descriptor.plan.namespace || output.planDigest !== descriptor.planDigest
     || output.hostname !== descriptor.plan.hostname || output.tunnelId !== descriptor.plan.tunnelId || output.sslmode !== "verify-full"
     || output.cachingDisabled !== true || output.providerConfigurationVerified !== true || output.activation !== "disabled"
-    || output.databaseAccess !== "read_only_connection_probe"
+    || !catalogVerified || output.databaseAccess !== (descriptor.plan.publicRunnerCatalogSourceJobId ? "read_only_public_runner_catalog" : "read_only_connection_probe")
     || ids.some(field => output[field] !== descriptor[field] && !(field === "serviceTokenId" && redactedIdVerified)))
     denied("PRIVATE_DATABASE_PROVISION_RECEIPT_DENIED");
 }
@@ -57,7 +68,7 @@ export async function verifyPrivateDatabaseProviderResources(input: {
   const d = privateDatabaseBindingSchema.parse(input.descriptor), p = d.plan;
   if (!/^[a-f0-9]{32}$/.test(input.accountRef) || Date.parse(p.configurationExpiresAt) <= Date.now()) denied("PRIVATE_DATABASE_BINDING_SCOPE_DENIED");
   const fetchImpl = input.fetchImpl ?? fetch, account = `/accounts/${input.accountRef}`;
-  const marker = `${p.namespace}-database-${d.planDigest.slice(0, 12)}`;
+  const marker = `${p.namespace}-database-${privateDatabaseResourceDigest(p).slice(0, 12)}`;
   async function get(path: string): Promise<any> {
     let r: Response, body: any;
     try {

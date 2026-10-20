@@ -84,3 +84,18 @@ def test_private_database_policy_cannot_purchase_or_activate():
     for change in [{"maxOperations": 2}, {"environment": "production"}, {"billing": True}, {"activation": "enabled"}]:
         with pytest.raises(ValueError):
             validate_staging_policy({**policy, **change}, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+def test_public_catalog_intent_is_exact_parent_bound_and_uses_existing_grant_authority():
+    from uuid import uuid4
+    policy = private_definition()
+    plan = {**policy["plan"], "publicRunnerCatalogSourceJobId": str(uuid4())}
+    policy = {**policy, "plan": plan, "planDigest": plan_digest(plan)}
+    assert validate_staging_policy(policy, datetime.now(timezone.utc)) == policy
+    assert normalize_grant(private_grant(policy))["plan"] == plan
+    for source in [None, 17, "any", "../../foreign", "", True]:
+        with pytest.raises(ValueError):
+            validate_plan({**plan, "publicRunnerCatalogSourceJobId": source})
+    with pytest.raises(ValueError):
+        validate_plan({**plan, "readTables": ["users"]})

@@ -34,6 +34,9 @@ describe("exact bounded Workflow deployment configuration", () => {
     delete value.descriptor.workflowExecution;
     delete value.secrets.workflowRuntimeToken; delete value.secrets.controlPlaneToken;
     value.descriptor.runnerReleaseCatalog = "hyperdrive";
+    value.descriptor.nativeResources!.privateDatabase!.plan.publicRunnerCatalogSourceJobId = randomUUID();
+    value.descriptor.nativeResources!.privateDatabase!.planDigest = privateDatabasePlanDigest(value.descriptor.nativeResources!.privateDatabase!.plan);
+    value.descriptor = cloudflareOriginDescriptorSchema.parse(value.descriptor);
     value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
     value.configurationRef = `cf-origin:${value.configurationDigest}`; target.runtimePolicy = value.configurationRef;
     const validated = validateCloudflareOriginVersionBindings(value, target);

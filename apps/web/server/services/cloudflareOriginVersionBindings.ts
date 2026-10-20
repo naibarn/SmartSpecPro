@@ -51,7 +51,7 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
-      (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase)) {
+      (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
 }
@@ -65,6 +65,7 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
       { name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
+      { name: "CLOUDFLARE_RUNNER_RELEASE_NAMESPACE", type: "plain_text", text: value.descriptor.nativeResources!.privateDatabase!.plan.namespace },
     ] : []),
     ...((value.descriptor.workflowExecution || value.descriptor.retentionSchedule) ? [
       { name: "PLATFORM_EDGE_ORIGIN", type: "plain_text", text: value.descriptor.origin },
