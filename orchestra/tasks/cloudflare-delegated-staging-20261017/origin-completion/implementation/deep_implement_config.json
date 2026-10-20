@@ -34,13 +34,15 @@
       "merged_main_sha": "6491cb159874579a571f55c271b9b452e41c45b2"
     },
     "section-04-provision-release": {
-      "status": "in_progress",
-      "next_action": "Source96765f185f64c03041ccb5a70afbb81acb9ebcf8 actually serves on Node generation22 and Worker2901afa8-0df5-4507-86fc-b383ca4b558c; CI39359088373, API/WSS and actual4-way Admin Chromium passed. Encrypted Google staging credentials prepared; callback remains unset because actual Google redirect_uri_mismatch. Resume profile activation only after real Google Console registration and passing Python production env preflight/release; do not replace production profile or bypass test-Stripe/ENVIRONMENT checks.",
-      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019"
+      "status": "checkpointed",
+      "next_action": "Protected origin and compatible release are deployed; Node/Worker96765f185 and production Python b93223406 health verified. Registered Google staging callback is active, real Google email page reached by button-click on both hosts, owner2FA enrolled. Keep bounded configuration valid and compatible rollback52d14561d; section05 real user-controlled login/two-tenant/native-job acceptance remains pending.",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
+      "checkpoint_sha": "b9322340644a86514aae4aef89696a862611a47c",
+      "merged_main_sha": "b9322340644a86514aae4aef89696a862611a47c"
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Current96765f185 Node/Worker API,8 WSS, Admin OAuth/2FA desktop/mobile and core device-authorized browser passed; SSE delivery/cancellation passed on unchanged transport. Actual owner account is not TOTP enrolled despite system2FA enabled. Await real Authenticator enrollment/password and second-tenant contexts, registered staging Google callback and Python profile release; full dashboard/native bindings/job activation remain unaccepted. Preserve private receipts and current compatible rollback52d14561d."
+      "next_action": "Google button-click reaches actual provider email field on both hosts; active-profile API/state-negative, Admin4-way/core browser/WSS8/SSE passed. Complete user-controlled Google code-exchange/password/OTP/revocation and second-tenant acceptance; independently qualify7 native bindings, canonical job handler and retention/recovery under exact authority. Generic b932 CI baseline remains53 Python failures/527 TS diagnostics, identical parent identifiers/locations; new startup regression passed. Keep native activation disabled until qualification."
     }
   },
   "pre_commit": {
@@ -52,16 +54,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 23,
-  "updated_at": "2026-10-20T02:43:05.589517+00:00",
+  "generation": 27,
+  "updated_at": "2026-10-20T03:12:14.848212+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Current96765f185 Node/Worker API,8 WSS, Admin OAuth/2FA desktop/mobile and core device-authorized browser passed; SSE delivery/cancellation passed on unchanged transport. Actual owner account is not TOTP enrolled despite system2FA enabled. Await real Authenticator enrollment/password and second-tenant contexts, registered staging Google callback and Python profile release; full dashboard/native bindings/job activation remain unaccepted. Preserve private receipts and current compatible rollback52d14561d.",
-    "merged_main_sha": "51dfab20b545a5e3a5f94900ca8e3fa2b4801e1f",
+    "next_action": "Google button-click reaches actual provider email field on both hosts; active-profile API/state-negative, Admin4-way/core browser/WSS8/SSE passed. Complete user-controlled Google code-exchange/password/OTP/revocation and second-tenant acceptance; independently qualify7 native bindings, canonical job handler and retention/recovery under exact authority. Generic b932 CI baseline remains53 Python failures/527 TS diagnostics, identical parent identifiers/locations; new startup regression passed. Keep native activation disabled until qualification.",
+    "merged_main_sha": "b9322340644a86514aae4aef89696a862611a47c",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
       "Second authorized tenant and successful password/2FA flow unavailable; no synthetic sessions or password resets",
-      "Staging OAuth deliberately unavailable until isolated client/callback profile and actual provider registration; production callback remains intact",
       "Full native Cloudflare binding/job/recovery qualification and scoped activation authority remain unverified; activation disabled"
     ]
   }
