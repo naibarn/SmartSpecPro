@@ -177,6 +177,7 @@ import {
   setPendingTwoFactorCookie,
 } from "./services/pendingTwoFactor";
 import { buildOAuthProviderAvailability } from "./services/oauthProviderAvailability";
+import { getVerifiedCloudflarePublicOrigin } from "./_core/cloudflareOriginMiddleware";
 import { normalizeGalleryTenantId } from "./services/galleryTenantScope";
 import { parseManagedMediaUrl } from "./services/managedMediaAccessService";
 
@@ -1205,7 +1206,7 @@ const authRouter = router({
       }
     }),
   /** Check which OAuth providers are configured (public — no auth required) */
-  oauthProviders: publicProcedure.query(async () => {
+  oauthProviders: publicProcedure.query(async ({ ctx }) => {
     const { getDb } = await import("./db");
     const { systemSettings } = await import("../drizzle/schema");
     const { eq } = await import("drizzle-orm");
@@ -1236,7 +1237,7 @@ const authRouter = router({
       // Fall back to environment variables when DB is unavailable.
     }
 
-    return buildOAuthProviderAvailability(values);
+    return buildOAuthProviderAvailability(values, getVerifiedCloudflarePublicOrigin(ctx.req));
   }),
   getRecoveryCapabilities: publicProcedure.query(async () => {
     const smsEnabled = await isSmsRecoveryConfigured();

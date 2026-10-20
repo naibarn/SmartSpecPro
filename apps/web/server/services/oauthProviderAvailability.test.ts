@@ -51,4 +51,25 @@ describe("buildOAuthProviderAvailability", () => {
     expect(result.google).toBe(false);
     expect(result.details.google.invalid).toEqual(["redirectUri"]);
   });
+
+  it("does not advertise production login callbacks on a verified staging public origin", () => {
+    const values = {
+      googleClientId: "google-client", googleClientSecret: "google-secret",
+      googleRedirectUri: "https://smartaihub.app/auth/callback/google",
+      githubClientId: "github-client", githubClientSecret: "github-secret",
+      githubRedirectUri: "https://smartaihub.app/auth/callback/github",
+    };
+    expect(buildOAuthProviderAvailability(values)).toMatchObject({ google: true, github: true });
+    const staged = buildOAuthProviderAvailability(values, "https://staging.account.workers.dev");
+    expect(staged).toMatchObject({ google: false, github: false });
+    expect(staged.details.google.invalid).toEqual(["redirectUri"]);
+    expect(staged.details.github.invalid).toEqual(["redirectUri"]);
+  });
+
+  it("accepts an explicitly configured callback for that verified origin", () => {
+    const publicOrigin = "https://staging.account.workers.dev";
+    const result = buildOAuthProviderAvailability({ googleClientId: "google-client", googleClientSecret: "google-secret",
+      googleRedirectUri: `${publicOrigin}/auth/callback/google` }, publicOrigin);
+    expect(result.google).toBe(true);
+  });
 });

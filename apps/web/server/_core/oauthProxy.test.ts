@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { registerOAuthProxyRoutes } from "./oauthProxy";
+import { createCloudflareOriginMiddleware } from "./cloudflareOriginMiddleware";
 
 const getAppRuntimeConfigMock = vi.hoisted(() => vi.fn());
 
@@ -10,9 +11,14 @@ vi.mock("../services/appRuntimeConfig", () => ({
   getAppRuntimeConfig: getAppRuntimeConfigMock,
 }));
 
-function makeApp() {
+const stagedOrigin = "https://staging.account.workers.dev";
+const ingress = { AUTH_ORIGIN_PRIVATE_HOST: "origin-staging.example.com", AUTH_ORIGIN_TOKEN: "fixture-attestation",
+  AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify([stagedOrigin]) };
+
+function makeApp(protectedOrigin = false) {
   const app = express();
   app.use(express.json());
+  if (protectedOrigin) app.use(createCloudflareOriginMiddleware(() => ingress));
   registerOAuthProxyRoutes(app);
   return app;
 }
@@ -91,5 +97,34 @@ describe("OAuth proxy routes", () => {
 
     expect(response.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["https://smartaihub.app/auth/callback/google", "https://staging.account.workers.dev/auth/callback/drive", null])("fails closed when an attested staged authorize response has an unusable callback: %s", async callback => {
+    getAppRuntimeConfigMock.mockResolvedValue({ pythonBackendUrl: "http://python-backend.test" });
+    const authorization = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    if (callback) authorization.searchParams.set("redirect_uri", callback);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ authorization_url: authorization.href, state: "private-state" }));
+    const response = await request(makeApp(true)).get("/api/oauth/google/authorize")
+      .set("host", ingress.AUTH_ORIGIN_PRIVATE_HOST).set("x-cloudflare-origin-token", ingress.AUTH_ORIGIN_TOKEN)
+      .set("x-smartaihub-public-origin", stagedOrigin);
+    expect(response.status).toBe(503);
+    expect(response.body.error.code).toBe("OAUTH_CALLBACK_ORIGIN_MISMATCH");
+    expect(JSON.stringify(response.body)).not.toMatch(/private-state|authorization_url/);
+    expect(response.headers["cache-control"]).toContain("no-store");
+  });
+
+  it("preserves authorize URL/state for an explicit same-site callback and ignores unsigned forwarding", async () => {
+    getAppRuntimeConfigMock.mockResolvedValue({ pythonBackendUrl: "http://python-backend.test" });
+    const payload = { authorization_url: `https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=${encodeURIComponent(stagedOrigin + "/auth/callback/google")}`, state: "fixture-state" };
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json(payload));
+    const staged = await request(makeApp(true)).get("/api/oauth/google/authorize")
+      .set("host", ingress.AUTH_ORIGIN_PRIVATE_HOST).set("x-cloudflare-origin-token", ingress.AUTH_ORIGIN_TOKEN)
+      .set("x-smartaihub-public-origin", stagedOrigin);
+    expect(staged.status).toBe(200);
+    expect(staged.body).toEqual(payload);
+    const unsigned = await request(makeApp(true)).get("/api/oauth/google/authorize")
+      .set("host", "smartaihub.app").set("x-forwarded-host", "attacker.example.com");
+    expect(unsigned.status).toBe(200);
+    expect(unsigned.body).toEqual(payload);
   });
 });

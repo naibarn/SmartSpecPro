@@ -51,7 +51,8 @@ function isValidRedirectUri(value: SettingValue, expectedPath?: string) {
 
 function buildProviderStatus(
   config: ProviderConfig,
-  expectedRedirectPath?: string
+  expectedRedirectPath?: string,
+  expectedPublicOrigin?: string,
 ): ProviderStatus {
   const missing: ProviderStatus["missing"] = [];
   const invalid: ProviderStatus["invalid"] = [];
@@ -66,7 +67,8 @@ function buildProviderStatus(
 
   if (!hasValue(config.redirectUri)) {
     missing.push("redirectUri");
-  } else if (!isValidRedirectUri(config.redirectUri, expectedRedirectPath)) {
+  } else if (!isValidRedirectUri(config.redirectUri, expectedRedirectPath) ||
+    (expectedPublicOrigin !== undefined && new URL(config.redirectUri!.trim()).origin !== expectedPublicOrigin)) {
     invalid.push("redirectUri");
   }
 
@@ -78,7 +80,9 @@ function buildProviderStatus(
 }
 
 export function buildOAuthProviderAvailability(
-  values: Record<string, SettingValue>
+  values: Record<string, SettingValue>,
+  /** Only a server-verified public origin may constrain a staged login profile. */
+  expectedPublicOrigin?: string,
 ): OAuthProviderAvailability {
   const google = buildProviderStatus(
     {
@@ -90,7 +94,8 @@ export function buildOAuthProviderAvailability(
         process.env.GOOGLE_REDIRECT_URI ??
         DEFAULT_REDIRECTS.google,
     },
-    "/auth/callback/google"
+    "/auth/callback/google",
+    expectedPublicOrigin,
   );
 
   const github = buildProviderStatus({
@@ -100,7 +105,7 @@ export function buildOAuthProviderAvailability(
       values.githubRedirectUri ??
       process.env.GITHUB_REDIRECT_URI ??
       DEFAULT_REDIRECTS.github,
-  });
+  }, undefined, expectedPublicOrigin);
 
   const microsoft = buildProviderStatus({
     clientId: values.microsoftClientId ?? process.env.MICROSOFT_CLIENT_ID,

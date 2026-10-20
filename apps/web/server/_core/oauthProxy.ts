@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { getVerifiedCloudflarePublicOrigin } from "./cloudflareOriginMiddleware";
 
 const SUPPORTED_PROVIDERS = new Set(["google", "github"]);
 const FORWARDED_REQUEST_HEADERS = [
@@ -16,6 +17,19 @@ const FORWARDED_RESPONSE_HEADERS = [
   "vary",
   "x-request-id",
 ] as const;
+
+function authorizationReturnsToOrigin(payload: Buffer, provider: string, publicOrigin: string): boolean {
+  try {
+    const authorization = new URL(JSON.parse(payload.toString("utf8")).authorization_url);
+    const redirects = authorization.searchParams.getAll("redirect_uri");
+    if (redirects.length !== 1) return false;
+    const callback = new URL(redirects[0]!);
+    return callback.origin === publicOrigin && callback.pathname === `/auth/callback/${provider}` &&
+      !callback.username && !callback.password && !callback.search && !callback.hash;
+  } catch {
+    return false;
+  }
+}
 
 function requestBody(req: Request): string | undefined {
   if (req.method !== "POST") return undefined;
@@ -67,13 +81,21 @@ async function proxyOAuthRequest(req: Request, res: Response) {
       body,
     });
 
+    const payload = Buffer.from(await upstream.arrayBuffer());
+    const publicOrigin = getVerifiedCloudflarePublicOrigin(req);
+    if (action === "authorize" && upstream.ok && publicOrigin &&
+      !authorizationReturnsToOrigin(payload, provider, publicOrigin)) {
+      return res.status(503).set("cache-control", "private, no-store").json({
+        error: { code: "OAUTH_CALLBACK_ORIGIN_MISMATCH", message: "OAuth login is not configured for this site." },
+      });
+    }
+
     for (const header of FORWARDED_RESPONSE_HEADERS) {
       const value = upstream.headers.get(header);
       if (value) res.setHeader(header, value);
     }
     res.setHeader("cache-control", "no-store");
 
-    const payload = Buffer.from(await upstream.arrayBuffer());
     return res.status(upstream.status).send(payload);
   } catch (error) {
     console.error("[OAuthProxy] Python backend request failed", error);
