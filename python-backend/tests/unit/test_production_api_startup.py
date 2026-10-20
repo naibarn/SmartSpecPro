@@ -7,11 +7,13 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.core.application_runtime import get_application_runtime_profile
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_production_api_preserves_external_schema_and_keeps_provider_bootstrap():
+@pytest.mark.parametrize("request_mode", [False, True])
+async def test_production_api_preserves_external_schema_and_keeps_provider_bootstrap(request_mode):
     # Load the actual lifespan body only, so this safety test cannot import or
     # execute retired routers, table creation, seeds or checkpoint migrations.
     source = Path(__file__).resolve().parents[2] / "app/main.py"
@@ -46,7 +48,9 @@ async def test_production_api_preserves_external_schema_and_keeps_provider_boots
         "asynccontextmanager": asynccontextmanager, "FastAPI": object,
         "settings": SimpleNamespace(ENVIRONMENT="production", APP_VERSION="test", DEBUG=False, SMARTSPEC_USE_WEB_GATEWAY=False),
         "logger": MagicMock(), "ConfigValidator": SimpleNamespace(validate_and_report=MagicMock()),
-        "os": SimpleNamespace(getenv=lambda key: None), "init_db": init_db, "close_db": close_db,
+        "get_application_runtime_profile": lambda environment: get_application_runtime_profile(
+            environment, {"SMARTAIHUB_APPLICATION_RUNTIME": "cloudflare-http", "CLOUDFLARE_CONTAINER_POLICY": "on-demand"} if request_mode else {}
+        ), "init_db": init_db, "close_db": close_db,
     }
     exec(compile(ast.Module(body=[fn], type_ignores=[]), str(source), "exec"), namespace)
     with patch.dict("sys.modules", modules):
@@ -57,6 +61,11 @@ async def test_production_api_preserves_external_schema_and_keeps_provider_boots
     checkpointer.assert_not_called()
     checkpoint_cleanup.assert_not_called()
     initialize.assert_awaited_once()
-    watcher.start.assert_awaited_once()
+    if request_mode:
+        watcher.start.assert_not_called()
+        watcher.stop.assert_not_called()
+    else:
+        watcher.start.assert_awaited_once()
+        watcher.stop.assert_awaited_once()
     manager.disconnect_all.assert_awaited_once()
     close_db.assert_awaited_once()

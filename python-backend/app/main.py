@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.middleware import setup_middleware
 from app.core.database import init_db, close_db
+from app.core.application_runtime import get_application_runtime_profile
 from app.core.config_validator import ConfigValidator
 from app.core.openapi import setup_openapi
 from app.core.exceptions import register_exception_handlers
@@ -196,12 +197,9 @@ async def lifespan(app: FastAPI):
         if not settings.DEBUG:
             raise
 
-    shared_production_debug = (
-        settings.ENVIRONMENT == "development"
-        and os.getenv("SMARTSPEC_DEV_DATABASE_MODE") == "shared-production"
-    )
+    runtime_profile = get_application_runtime_profile(settings.ENVIRONMENT)
     # Shared production data must not be changed by dev schema creation or seeding.
-    if not shared_production_debug:
+    if runtime_profile.owns_background_work:
         if settings.ENVIRONMENT == "production":
             logger.info("Production API uses externally managed schema; startup create/seed disabled")
         else:
@@ -223,7 +221,7 @@ async def lifespan(app: FastAPI):
                 logger.warning("Database initialization failed", error=str(e))
 
     else:
-        logger.info("Shared production debug: schema initialization and seed disabled")
+        logger.info("Request runtime: schema initialization and seed disabled", mode=runtime_profile.mode)
 
     # Initialize LLM Proxy
     try:
@@ -252,8 +250,14 @@ async def lifespan(app: FastAPI):
             else:
                 await _check_gateway_reachability(gateway_url)
 
-    # Production schema is externally managed; keep background config watchers.
-    if not shared_production_debug:
+    # The request runtime keeps a lazy MCP manager, without a polling task.
+    if runtime_profile.mode == "cloudflare-http":
+        from app.services.mcp_client_manager import get_mcp_client_manager
+
+        app.state.mcp_client_manager = get_mcp_client_manager()
+
+    # Only the standard service owns background configuration watchers.
+    if runtime_profile.owns_background_work:
         # API startup must not run checkpoint schema migrations on production.
         if settings.ENVIRONMENT != "production":
             # Initialize PostgreSQL Checkpointer (for LangGraph workflow state persistence)
@@ -323,7 +327,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("PostHog flush failed", error=str(e))
 
-    if not shared_production_debug and settings.ENVIRONMENT != "production":
+    if runtime_profile.initialize_schema:
         # Close checkpointer connection pool
         try:
             from app.core.checkpointer import cleanup_checkpointers

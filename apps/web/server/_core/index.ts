@@ -1,6 +1,6 @@
 import "dotenv/config";
 import "./nodeVersionGuard";
-import { isSharedProductionDebug } from "./sharedProductionDebug";
+import { getApplicationRuntimeProfile } from "./applicationRuntime";
 import { initSentry, Sentry } from "../services/sentry";
 
 // Initialize Sentry BEFORE Express app creation (captures startup errors)
@@ -304,6 +304,7 @@ export const dbAdapter = new PostgresAdapter();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const applicationRuntimeProfile = getApplicationRuntimeProfile();
 const app = express();
 app.disable("x-powered-by");
 void refreshAppRuntimeConfigCache().catch(() => {});
@@ -2264,7 +2265,7 @@ async function main() {
 
   // The production process owns timers, recovery, sync and scheduled jobs.
   // A debug process sharing its database serves requests without duplicating them.
-  if (!isSharedProductionDebug()) {
+  if (applicationRuntimeProfile.ownsBackgroundWork) {
   // Initialize skill registry - auto-sync skills from folder to database
   try {
     await initializeSkillRegistry();
@@ -2753,13 +2754,15 @@ async function main() {
   }
 
   } else {
-    console.log("[Startup] Shared production debug: background processing and skill auto-sync disabled");
+    console.log("[Startup] Request runtime: background processing and skill auto-sync disabled", { mode: applicationRuntimeProfile.mode });
   }
 
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  if (applicationRuntimeProfile.serveSpaAssets) {
+    if (process.env.NODE_ENV === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
   }
 
   // Warm the model registry cache from the DB BEFORE accepting traffic, so the
@@ -2800,7 +2803,7 @@ async function main() {
 
   server.listen(port, host, () => {
     console.log(`SmartAIHub Web listening on http://${host}:${port}`);
-    if (isSharedProductionDebug()) return;
+    if (!applicationRuntimeProfile.ownsBackgroundWork) return;
 
     // Start background scheduler to resolve pending media images
     import("../services/aiPresentationService")

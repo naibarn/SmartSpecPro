@@ -17,12 +17,12 @@ describe("shared production debugging", () => {
   });
   it("keeps startup synchronization and recovery within the background ownership boundary", () => {
     const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-    const guardedStart = source.indexOf("if (!isSharedProductionDebug()) {");
-    const guardedEnd = source.indexOf('console.log("[Startup] Shared production debug:');
+    const guardedStart = source.indexOf("if (applicationRuntimeProfile.ownsBackgroundWork) {");
+    const guardedEnd = source.indexOf('console.log("[Startup] Request runtime:');
     for (const call of ["await initializeSkillRegistry()", "await recoverActiveRunsOnStartup()", "await initializeUnifiedJobControlPlaneRuntime()", "await initializeDatabaseBackupJob()"])
       expect(source.indexOf(call)).toBeGreaterThan(guardedStart);
     for (const call of ["await initializeSkillRegistry()", "await recoverActiveRunsOnStartup()", "await initializeUnifiedJobControlPlaneRuntime()", "await initializeDatabaseBackupJob()"])
       expect(source.indexOf(call)).toBeLessThan(guardedEnd);
-    expect(source).toContain('if (isSharedProductionDebug()) return;');
+    expect(source).toContain('if (!applicationRuntimeProfile.ownsBackgroundWork) return;');
   });
 });
