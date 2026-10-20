@@ -229,6 +229,17 @@ describe("immutable private database binding authority", () => {
     const { privateDatabase, ...legacy } = descriptor;
     expect(() => assertNativeWorkerBindings(actual, legacy)).toThrow("BINDINGS_MISMATCH");
   });
+  it("attests a redacted service-token resource ID only against the same job's encrypted owned checkpoint", async () => {
+    const f = await bindingFixture();
+    const receipt = { ...f.receipt, outputJson: { ...f.output, serviceTokenId: "[REDACTED]" } };
+    const checkpoint = { jobId: f.grant.jobId, actorUserId: 1, state: f.checkpoints.at(-1)! };
+    expect(() => assertPrivateDatabaseProvisionReceipt(f.descriptor, receipt, f.scope)).toThrow("RECEIPT_DENIED");
+    expect(() => assertPrivateDatabaseProvisionReceipt(f.descriptor, receipt, f.scope, checkpoint)).not.toThrow();
+    for (const changed of [{ ...checkpoint, actorUserId: 2 }, { ...checkpoint, jobId: "77777777-7777-4777-8777-777777777777" },
+      { ...checkpoint, state: { ...checkpoint.state, planDigest: "f".repeat(64) } },
+      { ...checkpoint, state: { ...checkpoint.state, serviceToken: { ...checkpoint.state.serviceToken!, id: "88888888-8888-4888-8888-888888888888" } } }])
+      expect(() => assertPrivateDatabaseProvisionReceipt(f.descriptor, receipt, f.scope, changed)).toThrow("RECEIPT_DENIED");
+  });
   it("verifies eight dedicated provider resources using GET only and rejects TLS/cache/policy drift", async () => {
     const f = await bindingFixture();
     await verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl });

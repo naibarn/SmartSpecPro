@@ -95,6 +95,30 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     await expect(withCloudflareOriginConfiguration(db, request, operation)).rejects.toThrow("RECEIPT_DENIED");
     expect(operation).toHaveBeenCalledOnce();
     await db.update(schema.workerJobs).set({ outputJson }).where(eq(schema.workerJobs.id, nativeResources.provisionJobId));
+    const { PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_CONTRACT, privateDatabasePlanDigest } = await import("./cloudflarePrivateDatabaseContract");
+    const privatePlan = { namespace: plan.namespace, hostname: "db-staging.smartaihub.app" as const, zoneId: "a".repeat(32),
+      tunnelId: randomUUID(), databaseName: "disposable_database", caSha256: "b".repeat(64), connectionLimit: 5 as const,
+      configurationExpiresAt: plan.configurationExpiresAt };
+    const privateDatabase = { provisionJobId: randomUUID(), plan: privatePlan, planDigest: privateDatabasePlanDigest(privatePlan),
+      hyperdriveId: "c".repeat(32), caId: randomUUID(), accessApplicationId: randomUUID(), accessPolicyId: randomUUID(), serviceTokenId: randomUUID(), dnsRecordId: "d".repeat(32) };
+    await db.insert(schema.workerJobs).values({ id: privateDatabase.provisionJobId, tenantId: identity.tenantId, requestedByUserId: actorUserId,
+      runtimeType: "node_job_worker", jobType: PRIVATE_DATABASE_JOB, contractVersion: PRIVATE_DATABASE_CONTRACT, status: "succeeded",
+      inputJson: { contractVersion: PRIVATE_DATABASE_CONTRACT, grantRef: randomUUID(), projectId: identity.projectId, planDigest: privateDatabase.planDigest },
+      outputJson: { ...privateDatabase, accountRef: outputJson.accountRef, namespace: plan.namespace, hostname: privatePlan.hostname, tunnelId: privatePlan.tunnelId,
+        serviceTokenId: "[REDACTED]", sslmode: "verify-full", cachingDisabled: true, providerConfigurationVerified: true,
+        activation: "disabled", databaseAccess: "read_only_connection_probe" } });
+    const privateInput = { ...input, settings: { ...input.settings, nativeResources: { ...nativeResources, privateDatabase } } };
+    await expect(saveCloudflareOriginConfiguration(db, privateInput)).rejects.toThrow();
+    const { encrypt } = await import("./crypto");
+    await db.insert(schema.systemSettings).values({ category: "cloudflare_private_database_runs", key: privateDatabase.provisionJobId,
+      isSensitive: true, updatedBy: actorUserId, value: encrypt(JSON.stringify({ planDigest: privateDatabase.planDigest,
+        hyperdriveId: privateDatabase.hyperdriveId, caId: privateDatabase.caId, appId: privateDatabase.accessApplicationId,
+        policyId: privateDatabase.accessPolicyId, dnsRecordId: privateDatabase.dnsRecordId,
+        serviceToken: { id: privateDatabase.serviceTokenId, clientId: "disposable-client-id", secret: "disposable-client-secret", expiresAt: privatePlan.configurationExpiresAt } })) });
+    const privateSaved = await saveCloudflareOriginConfiguration(db, privateInput);
+    await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).resolves.toMatchObject({ status: "STORED" });
+    await db.update(schema.systemSettings).set({ updatedBy: actorUserId + 1 }).where(eq(schema.systemSettings.key, privateDatabase.provisionJobId));
+    await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).rejects.toThrow();
   });
 
   it("stores provisioning credentials separately without violating or replacing the unique Worker credential scope", async () => {

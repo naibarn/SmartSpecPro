@@ -52,7 +52,15 @@ async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: De
       jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
       operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
       .from(workerJobs).where(eq(workerJobs.id, privateDatabase.provisionJobId)).limit(1);
-    assertPrivateDatabaseProvisionReceipt(privateDatabase, databaseReceipt, { ...descriptor, actorUserId });
+    let checkpoint: { jobId: string; actorUserId: number; state: unknown } | undefined;
+    if ((databaseReceipt?.outputJson as Record<string, unknown> | null)?.serviceTokenId === "[REDACTED]") {
+      const rows = await db.select({ value: systemSettings.value, isSensitive: systemSettings.isSensitive, updatedBy: systemSettings.updatedBy })
+        .from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_private_database_runs"), eq(systemSettings.key, privateDatabase.provisionJobId))).limit(2);
+      if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].value || rows[0].updatedBy !== actorUserId) denied();
+      try { checkpoint = { jobId: privateDatabase.provisionJobId, actorUserId, state: JSON.parse(decrypt(rows[0].value)) }; }
+      catch { denied(); }
+    }
+    assertPrivateDatabaseProvisionReceipt(privateDatabase, databaseReceipt, { ...descriptor, actorUserId }, checkpoint);
   }
 }
 

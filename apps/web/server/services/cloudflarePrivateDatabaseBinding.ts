@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
   privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
+import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 
 const id = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 export const privateDatabaseBindingSchema = z.object({
@@ -24,16 +25,28 @@ export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, sc
 export function assertPrivateDatabaseProvisionReceipt(value: PrivateDatabaseBinding, receipt: {
   id: string; tenantId: string; requestedByUserId: number | null; jobType: string; contractVersion: string;
   status: string; operatorReviewRequired: boolean; inputJson: unknown; outputJson: unknown;
-} | undefined, scope: { tenantId: string; projectId: string; accountRef: string; actorUserId: number }) {
+} | undefined, scope: { tenantId: string; projectId: string; accountRef: string; actorUserId: number },
+checkpoint?: { jobId: string; actorUserId: number; state: unknown }) {
   const descriptor = privateDatabaseBindingSchema.parse(value), input = privateDatabaseJobSchema.safeParse(receipt?.inputJson);
   const output = receipt?.outputJson as Record<string, unknown> | null;
+  // Canonical output redaction intentionally hides keys containing "token".
+  // Keep that policy intact and corroborate this resource ID using only the
+  // same successful job's server-decrypted, actor-owned step checkpoint.
+  const state = privateDatabaseCheckpointSchema.safeParse(checkpoint?.state);
+  const redactedIdVerified = output?.serviceTokenId === "[REDACTED]" && checkpoint?.jobId === descriptor.provisionJobId
+    && checkpoint.actorUserId === scope.actorUserId && state.success && !state.data.pending && !state.data.continuedByJobId
+    && state.data.planDigest === descriptor.planDigest && state.data.hyperdriveId === descriptor.hyperdriveId
+    && state.data.caId === descriptor.caId && state.data.appId === descriptor.accessApplicationId
+    && state.data.policyId === descriptor.accessPolicyId && state.data.dnsRecordId === descriptor.dnsRecordId
+    && state.data.serviceToken?.id === descriptor.serviceTokenId;
   if (!receipt || receipt.id !== descriptor.provisionJobId || receipt.tenantId !== scope.tenantId || receipt.requestedByUserId !== scope.actorUserId
     || receipt.jobType !== PRIVATE_DATABASE_JOB || receipt.contractVersion !== PRIVATE_DATABASE_CONTRACT || receipt.status !== "succeeded" || receipt.operatorReviewRequired
     || !input.success || input.data.projectId !== scope.projectId || input.data.planDigest !== descriptor.planDigest
     || !output || output.accountRef !== scope.accountRef || output.namespace !== descriptor.plan.namespace || output.planDigest !== descriptor.planDigest
     || output.hostname !== descriptor.plan.hostname || output.tunnelId !== descriptor.plan.tunnelId || output.sslmode !== "verify-full"
     || output.cachingDisabled !== true || output.providerConfigurationVerified !== true || output.activation !== "disabled"
-    || output.databaseAccess !== "read_only_connection_probe" || ids.some(field => output[field] !== descriptor[field]))
+    || output.databaseAccess !== "read_only_connection_probe"
+    || ids.some(field => output[field] !== descriptor[field] && !(field === "serviceTokenId" && redactedIdVerified)))
     denied("PRIVATE_DATABASE_PROVISION_RECEIPT_DENIED");
 }
 
