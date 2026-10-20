@@ -1,5 +1,9 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Confirmed on-demand checkpoint — 2026-10-21 00:09 Asia/Bangkok
+
+Functional sourceb47d84186d206daed05fdcf65e6df4bd984dd4ea is confirmed reachable from origin/main; registered primary workspace converged clean to that exact SHA. Python .env digest unchanged. Exact previouse91 readiness CI39462766580SUCCESS. Latestb47 readiness CI39463377950was still running (both jobs, no failed step observed); never label it PASS without a completed result. Scoped216Worker/68web/actual workerd default-off+cache and local image evidence below are final passing local proof. No automatic deployment/publication accompanies source integration. The user's Container cost constraint is implemented; the larger migration is still PARTIAL and all live acceptance gaps remain explicit.
+
 ## Per-job necessity and idle-zero preparation — 2026-10-21 00:07 Asia/Bangkok
 
 On-demand deployment readiness alone is insufficient for paid compute. Canonical persisted requiredCapabilities must explicitly request cloudflare-container, container-media-probe-v1 and media-inspection-isolation. The outbox loads those requirements and the private canonical context carries them; producer/private preparation/Worker reject normal probes and prewarm intent. Existing normal Python media producers remain on their worker by default. After actual claim and input validation, verified R2 cache replay performs no boot/CPU; corrupt cache does not trigger paid recompute. The actual DO gate is tested in local workerd with no Container binding and correctly returns COMPUTE_DISABLED before trying to create an instance.
