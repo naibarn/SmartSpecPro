@@ -35,11 +35,11 @@
     },
     "section-04-provision-release": {
       "status": "in_progress",
-      "next_action": "Actual provision, paired Linux f25 release and v2 deploy/rollback/restore succeeded; staging core API passed; source main b4d6a3e9b. Release Access-cookie filter and WS/raw-upgrade slice, then repeat API/browser/WS. OAuth staging registration and second tenant remain separate acceptance gaps."
+      "next_action": "Protected origin provisioning, Node/Worker52 source deployment and layered recovery are actually verified. Remaining section04 boundary: isolated staging OAuth profile/client and real provider-console registration; do not replace production global callback."
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Live final50 API deploy/rollback/restore, WSS three paths and browser transport verified. Integrate embedded-widget Origin parity correction, release exact canonical Node/Worker artifacts, repeat live cross-site widget auth rejection and browser/API. OAuth provider registration and real password/2FA/two-tenant acceptance remain open."
+      "next_action": "Code52d14561d is integrated and actually serving on Node generation18 and Worker deployment6c49abc3-ded7-4f9c-8e5d-91d0fa88eda7. API/WSS passed deploy/rollback/restore; final Chromium core/provider readiness passed. Resume OAuth registration/profile and legitimate password/2FA/two-user isolation when real external contexts are available; keep full native jobs/cutover unaccepted."
     }
   },
   "pre_commit": {
@@ -51,17 +51,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 18,
-  "updated_at": "2026-10-20T00:44:20.692248+00:00",
+  "generation": 20,
+  "updated_at": "2026-10-20T01:01:52.197965+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Live final50 API deploy/rollback/restore, WSS three paths and browser transport verified. Integrate embedded-widget Origin parity correction, release exact canonical Node/Worker artifacts, repeat live cross-site widget auth rejection and browser/API. OAuth provider registration and real password/2FA/two-tenant acceptance remain open.",
+    "next_action": "Code52d14561d is integrated and actually serving on Node generation18 and Worker deployment6c49abc3-ded7-4f9c-8e5d-91d0fa88eda7. API/WSS passed deploy/rollback/restore; final Chromium core/provider readiness passed. Resume OAuth registration/profile and legitimate password/2FA/two-user isolation when real external contexts are available; keep full native jobs/cutover unaccepted.",
     "merged_main_sha": "51dfab20b545a5e3a5f94900ca8e3fa2b4801e1f",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019",
     "gaps": [
-      "Google staging authorize returns production callback; provider registration/client and full OAuth acceptance unverified",
       "Second authorized tenant and successful password/2FA flow unavailable; no synthetic sessions or password resets",
-      "Embedded-widget Origin parity correction needs fresh paired Node/Worker release and live foreign-Origin token-rejection evidence"
+      "Staging OAuth deliberately unavailable until isolated client/callback profile and actual provider registration; production callback remains intact",
+      "Full native Cloudflare binding/job/recovery qualification and scoped activation authority remain unverified; activation disabled"
     ]
   }
 }
