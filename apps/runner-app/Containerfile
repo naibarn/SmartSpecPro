@@ -1,0 +1,16 @@
+# Cloudflare Container image only; this does not introduce a local execution dispatcher.
+# Both arguments must be approved immutable registry references ending @sha256:<digest>.
+ARG RUST_BUILD_IMAGE
+ARG RUNNER_RUNTIME_IMAGE
+FROM ${RUST_BUILD_IMAGE} AS build
+WORKDIR /source
+COPY apps/runner-app/Cargo.toml apps/runner-app/Cargo.lock ./
+COPY apps/runner-app/src ./src
+RUN cargo build --locked --release --bin smartaihub-runner
+
+FROM ${RUNNER_RUNTIME_IMAGE}
+COPY --from=build /source/target/release/smartaihub-runner /usr/local/bin/smartaihub-runner
+USER 65532:65532
+ENV SAH_RUNNER_PROFILE=shared_container SAH_RUNNER_HEALTH_PORT=8787
+EXPOSE 8787
+ENTRYPOINT ["smartaihub-runner", "run"]

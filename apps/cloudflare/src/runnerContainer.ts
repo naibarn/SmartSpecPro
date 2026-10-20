@@ -10,6 +10,8 @@ export type RunnerContainerAssignment = {
   workspaceRef: string;
   artifactRefs: string[];
   resourceProfile: "small" | "medium" | "large";
+  /** Required by the native provider; admission owns this absolute deadline. */
+  expiresAt?: string;
 };
 
 export type RunnerContainerManifest = {
@@ -59,7 +61,7 @@ export function validateRunnerContainerAssignment(
     !SAFE_SCOPE.test(input.workspaceRef)
   )
     throw new Error("RUNNER_CONTAINER_SCOPE_INVALID");
-  if (!Number.isSafeInteger(input.fencingVersion) || input.fencingVersion < 0)
+  if (!Number.isSafeInteger(input.fencingVersion) || input.fencingVersion < 1)
     throw new Error("RUNNER_CONTAINER_FENCE_INVALID");
   if (
     input.artifactRefs.length > 32 ||
@@ -110,6 +112,7 @@ export async function startRunnerContainer(
     env,
     `runner:${assignment.envelope.job_id}:${assignment.attemptId}`,
     assignment.envelope,
+    assignment,
   );
 }
 

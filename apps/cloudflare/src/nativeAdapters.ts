@@ -15,8 +15,9 @@ export async function createCanonicalWorkflow(env: CloudflareEnvironment, instan
   return assertNativeBindings(env, "JOB_WORKFLOW").JOB_WORKFLOW!.create({ id: instanceId, params: envelope });
 }
 
-export async function startCanonicalContainer(env: CloudflareEnvironment, instanceId: string, envelope: CanonicalJobEnvelope): Promise<{ id?: string; status?: string }> {
-  return assertNativeBindings(env, "JOB_CONTAINERS").JOB_CONTAINERS!.start({ instanceId, envelope });
+export async function startCanonicalContainer(env: CloudflareEnvironment, instanceId: string, envelope: CanonicalJobEnvelope,
+  assignment?: import("./runnerContainer").RunnerContainerAssignment): Promise<{ id?: string; status?: string }> {
+  return assertNativeBindings(env, "JOB_CONTAINERS").JOB_CONTAINERS!.start({ instanceId, envelope, ...(assignment ? { assignment } : {}) });
 }
 
 export async function dispatchCanonicalWorkerApp(env: CloudflareEnvironment, envelope: CanonicalJobEnvelope): Promise<{ referenceId: string }> {

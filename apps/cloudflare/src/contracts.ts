@@ -61,7 +61,7 @@ export type CloudflareWorkflowBinding = {
 };
 
 export type CloudflareContainerBinding = {
-  start(input: { instanceId: string; envelope: CanonicalJobEnvelope }): Promise<{ id?: string; status?: string }>;
+  start(input: { instanceId: string; envelope: CanonicalJobEnvelope; assignment?: import("./runnerContainer").RunnerContainerAssignment }): Promise<{ id?: string; status?: string }>;
   find?(instanceId: string): Promise<{ id?: string; status?: string } | null>;
   stop?(instanceId: string): Promise<void>;
 };
@@ -109,6 +109,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_WORKFLOW_EXPIRES_AT?: string;
   /** Explicit immutable capability; absent keeps the existing Node executor. */
   CLOUDFLARE_WORKFLOW_DATABASE?: string;
+  /** Exact registry digest approved for the private Runner DO deployment. */
+  CLOUDFLARE_RUNNER_IMAGE_REF?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
