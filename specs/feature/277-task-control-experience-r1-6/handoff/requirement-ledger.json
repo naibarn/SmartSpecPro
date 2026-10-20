@@ -1,5 +1,5 @@
 {
-  "generation": 11,
+  "generation": 12,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -10212,7 +10212,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C4/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "1fb8580f7396865e873a1c8046443f788c5e245a8e9a2406ec42805c1febeee7",
       "requirement_id": "REQ-277-UWAC-01",
       "requirement_text": "- REQ-277-UWAC-01: Chat, Task Control and Mission Control MUST provide one responsive navigation/context model with Simple and Developer lenses over identical authorized projection facts. Task Control MUST show active work, blockers, next actor/action and outputs; Mission Control MUST expand cross-session/agent/harness/Skill activity with evidence drilldown.",
@@ -10234,7 +10234,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C4/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "563d1905946a66338fa01bddc53b8a0066a481200e96359d5ed5ac44d49389e0",
       "requirement_id": "REQ-277-UWAC-02",
       "requirement_text": "- REQ-277-UWAC-02: Non-Git work MUST show source/output/Skill context with Git NOT_APPLICABLE and no Git error. Developer details MUST conditionally expose worktree/branch/SHA/logs/CI/diff/release evidence. Desktop/Tablet/Mobile MUST retain the same projection/as-of/outcome semantics, accessible controls and truthful stale/offline/unsupported states; monitoring failure MUST NOT pause execution.",

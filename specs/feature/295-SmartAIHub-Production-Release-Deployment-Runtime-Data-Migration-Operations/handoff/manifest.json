@@ -25,10 +25,10 @@
     "expected_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f"
   },
   "continuation": {
-    "next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch.",
+    "next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence.",
     "next_ready_workunit": "EPISODE_281_PRODUCTION_FUNCTIONAL_SMOKE",
     "reactivation_predicate": null,
-    "resume_point": "Production generation 13 uses source 43336e21ce5d2c25d6d5f1f1fe0a0392d5717877 and artifact sha256:5f456e5c2efe2ae9e857c128f2e178a546cae0c01376b071f08b3f5433f86dc9. Confirmed root cause: compact bridge events omit position, but validator incorrectly required it when source position was known. Fix now permits omission but rejects explicit wrong positions. Focused tests 49/49; web/worker revisions aligned, health 200, SDK bridge available 0.22.2. Owner must hard-refresh Episode 281 and generate Enhanced once to complete functional production smoke. No DB migration or mutation occurred.",
+    "resume_point": "Production generation 13 uses source 43336e21ce5d2c25d6d5f1f1fe0a0392d5717877 and artifact sha256:5f456e5c2efe2ae9e857c128f2e178a546cae0c01376b071f08b3f5433f86dc9. Confirmed root cause: compact bridge events omit position, but validator incorrectly required it when source position was known. Fix now permits omission but rejects explicit wrong positions. Focused tests 49/49; web/worker revisions aligned, health 200, SDK bridge available 0.22.2. Owner must hard-refresh Episode 281 and generate Enhanced once to complete functional production smoke. No DB migration or mutation occurred. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 81,
+  "generation": 83,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
@@ -586,7 +586,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C8/C9/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-16 UW-24 UW-30 UW-34 UW-35 UW-36. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "c59dbe9a9f69490f1bbeccc46d44f1157b900457874a701bbc1d45449279150b",
         "requirement_id": "REQ-295-UWAC-01",
         "requirement_text": "- REQ-295-UWAC-01: Release builds MUST bind the authorized immutable source SHA and required integrated ancestors to identical local/GitHub-Actions provenance semantics, including builder/workflow revision, run, toolchain/locks, input/config reference digests, artifact digest and checks. Promotion MUST reject mutable-ref-only, dirty, unauthorized, stale-policy or digest-mismatched inputs; every session MUST use the existing release authority.",
@@ -608,7 +608,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C8/C9/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-16 UW-24 UW-30 UW-34 UW-35 UW-36. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "af91e769274f32e8f77abe6e6fcfaecf671b93b2e2b84b5334943ccdadcac095",
         "requirement_id": "REQ-295-UWAC-02",
         "requirement_text": "- REQ-295-UWAC-02: Build, publication, deployment and observed serving state MUST have separate source/digest/target/time evidence. CI/build/deploy failures MUST carry exact-SHA phase/check/resource classification, bounded recovery and rollback/health receipts. Non-Git results and Skill releases MUST use their applicable owner acceptance, not fabricate Git/deployment success; no production action is authorized by this consolidation.",
@@ -757,7 +757,7 @@
     "unresolved": 168
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.960406Z",
+  "updated_at": "2026-10-20T23:39:55.340821Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

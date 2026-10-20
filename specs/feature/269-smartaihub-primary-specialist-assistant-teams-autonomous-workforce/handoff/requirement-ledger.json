@@ -1,5 +1,5 @@
 {
-  "generation": 10,
+  "generation": 11,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -36932,7 +36932,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-02 UW-03 UW-04 UW-09 UW-12 UW-28 UW-29. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "306af7b8ce6d48f1e2fe82321e756dc3ac9a751606f4bfd0f4a4d2c096060f75",
       "requirement_id": "REQ-269-UWAC-01",
       "requirement_text": "- REQ-269-UWAC-01: Assistant/team Work lifecycle MUST support persistent logical context, explicit parent-child/session bindings and non-code artifact/external-result acceptance without Git. Reuse SPEC-196 goal semantics and canonical jobs; no new workforce task database, scheduler or registry.",
@@ -36954,7 +36954,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-02 UW-03 UW-04 UW-09 UW-12 UW-28 UW-29. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "bb8e1d914e1896e218d7b9d20317107e00db67ee6dd586d80c9503aec2fbf3c6",
       "requirement_id": "REQ-269-UWAC-02",
       "requirement_text": "- REQ-269-UWAC-02: Delegation MUST consume authorized capability/Skill selections, attenuate scope/budget, bound depth/fanout/retries and preserve return/cancel/recovery receipts across sessions. Parent success MUST require outcome-specific evidence; partial children, disconnected providers and unconfirmed external effects MUST remain visible and unresolved.",

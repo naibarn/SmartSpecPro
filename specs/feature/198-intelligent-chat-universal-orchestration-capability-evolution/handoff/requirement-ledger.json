@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -8794,7 +8794,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C3/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-05 UW-25 UW-28 UW-29. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "679962a4511ea5c254c596bc128f375922c6555101e7019be745af8d43019a34",
       "requirement_id": "REQ-198-UWAC-01",
       "requirement_text": "- REQ-198-UWAC-01: Chat MUST remain the primary general-user entry and distinguish answer, authorized Work, Skill invocation/authoring and Develop conversion while retaining the same authorized work/conversation context. Direct answers and single functions MUST NOT silently create a background composite, repository or DevelopmentRun.",
@@ -8816,7 +8816,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C3/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-05 UW-25 UW-28 UW-29. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "4217b2303da8b90dee926ac52568ef0e63af65465dce38c1e36dcee127edfc5c",
       "requirement_id": "REQ-198-UWAC-02",
       "requirement_text": "- REQ-198-UWAC-02: Chat task tracking and conversions MUST consume canonical work/projection references and current permissions; agent commands MUST use SPEC-279 and user/client actions their existing SPEC-226/220 domain authority. Duplicate submissions MUST reuse canonical idempotency; no client-supplied tenant/context elevation or new Chat execution engine.",

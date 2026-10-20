@@ -55,10 +55,10 @@
     "expected_spec_digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc"
   },
   "continuation": {
-    "next_action": "Keep billing-budget/v1 as transport-only budget metadata. Future adapter work consumes SPEC-207 payment and SPEC-280 commerce contracts; do not implement payment execution or create a second ledger in SPEC-206.",
+    "next_action": "Keep billing-budget/v1 as transport-only budget metadata. Future adapter work consumes SPEC-207 payment and SPEC-280 commerce contracts; do not implement payment execution or create a second ledger in SPEC-206. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-206, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain the existing A2A budget-metadata compatibility WorkUnit. Negotiate only supported A2A/native mappings and versioned observations; no second payment ledger or fabricated protocol support.",
     "next_ready_workunit": "SPEC-206-WU-A2A-BUDGET-METADATA-COMPATIBILITY",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-206 section 19.3 billing-budget/v1 and the companion ownership table.",
+    "resume_point": "SPEC-206 section 19.3 billing-budget/v1 and the companion ownership table. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-206, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain the existing A2A budget-metadata compatibility WorkUnit. Negotiate only supported A2A/native mappings and versioned observations; no second payment ledger or fabricated protocol support. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "digest": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc",
@@ -348,7 +348,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-206, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain the existing A2A budget-metadata compatibility WorkUnit. Negotiate only supported A2A/native mappings and versioned observations; no second payment ledger or fabricated protocol support. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "a8a1adad0ac889e4e7335370e2bb03839ecd8d10ebd40138a38486a65e494e2c",
         "requirement_id": "REQ-206-UWAC-01",
         "requirement_text": "- REQ-206-UWAC-01: Negotiated A2A and provider-native observations MUST map to the same versioned work/session/event/evidence consumer contract while retaining protocol/native IDs and unsupported/unknown fields. A2A discovery, MCP tools, native adapters and subscription entitlement MUST remain distinct capabilities.",
@@ -370,7 +370,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-206, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain the existing A2A budget-metadata compatibility WorkUnit. Negotiate only supported A2A/native mappings and versioned observations; no second payment ledger or fabricated protocol support. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "24913c533e8a631432f67480f42a1f8b3f9128d080948461ae7048e0a0d8a86e",
         "requirement_id": "REQ-206-UWAC-02",
         "requirement_text": "- REQ-206-UWAC-02: Cross-protocol controls and continuation MUST revalidate supported operations and authority through SPEC-200/205/279 and existing jobs. Transport completion MUST NOT prove accepted work or cross-session recovery; absence of certified A2A/native support MUST remain unavailable rather than fabricated parity.",
@@ -522,7 +522,7 @@
     "unresolved": 605
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.240225Z",
+  "updated_at": "2026-10-20T23:39:55.053016Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

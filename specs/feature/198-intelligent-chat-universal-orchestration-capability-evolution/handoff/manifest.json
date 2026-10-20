@@ -90,10 +90,10 @@
     "expected_spec_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing.",
+    "next_ready_workunit": "UWAC_WP33_SPEC198_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
     "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
@@ -558,7 +558,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C3/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-05 UW-25 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "679962a4511ea5c254c596bc128f375922c6555101e7019be745af8d43019a34",
         "requirement_id": "REQ-198-UWAC-01",
         "requirement_text": "- REQ-198-UWAC-01: Chat MUST remain the primary general-user entry and distinguish answer, authorized Work, Skill invocation/authoring and Develop conversion while retaining the same authorized work/conversation context. Direct answers and single functions MUST NOT silently create a background composite, repository or DevelopmentRun.",
@@ -580,7 +580,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C3/C5; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-05 UW-25 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "4217b2303da8b90dee926ac52568ef0e63af65465dce38c1e36dcee127edfc5c",
         "requirement_id": "REQ-198-UWAC-02",
         "requirement_text": "- REQ-198-UWAC-02: Chat task tracking and conversions MUST consume canonical work/projection references and current permissions; agent commands MUST use SPEC-279 and user/client actions their existing SPEC-226/220 domain authority. Duplicate submissions MUST reuse canonical idempotency; no client-supplied tenant/context elevation or new Chat execution engine.",
@@ -964,7 +964,7 @@
     "unresolved": 401
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.086574Z",
+  "updated_at": "2026-10-20T23:39:54.889956Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

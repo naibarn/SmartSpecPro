@@ -82,10 +82,10 @@
     "expected_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f"
   },
   "continuation": {
-    "next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan.",
-    "next_ready_workunit": null,
+    "next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests.",
+    "next_ready_workunit": "UWAC_WP33_SPEC287_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -128,7 +128,7 @@
     "rationale": "The user explicitly designated SPEC-287 as the starting UI governance authority; R1.5 defines its supporting role in rendering conformance while leaving generated surface/runtime ownership with SPEC-240 and implementation status unresolved.",
     "value": "ACTIVE_SUPPORTING"
   },
-  "generation": 21,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
     "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
@@ -282,7 +282,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C5/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-20 UW-22 UW-27 UW-33. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "9e1035aa6d7ba44e97160847eb9db6b6c5d9c24adccdb91eedccd877108ac2e1",
         "requirement_id": "REQ-287-UWAC-01",
         "requirement_text": "- REQ-287-UWAC-01: Unified Work/Skill/Develop views MUST reuse the existing versioned Design Contract and SPEC-277 interaction semantics. Lenses and device layout MUST NOT change authorization, status meanings or evidence; no new UI renderer, action mapping protocol or parallel navigation app.",
@@ -304,7 +304,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C5/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-20 UW-22 UW-27 UW-33. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "43922ac22b42ae63a926fe41d13c690f14e61fac67d3d8a630f645c14b0a7798",
         "requirement_id": "REQ-287-UWAC-02",
         "requirement_text": "- REQ-287-UWAC-02: Acceptance MUST include rendered Desktop/Tablet/Mobile and keyboard/screen-reader checks for timeline expansion, task next actions, Skill states, no-Git context and conditional developer details, with measured loading/stale/error states. Source/CSS inspection and fixture tests alone MUST NOT certify responsive production acceptance.",
@@ -442,7 +442,7 @@
     "unresolved": 207
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.818642Z",
+  "updated_at": "2026-10-20T23:39:55.264395Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

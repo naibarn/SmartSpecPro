@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3601,7 +3601,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-15 UW-29 UW-30. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "f0e8e8073a9fd6d0830c245990ab7c9c4b8285d308028ce98635069a8b5ce88e",
       "requirement_id": "REQ-218-UWAC-01",
       "requirement_text": "- REQ-218-UWAC-01: DevelopmentWorkspace/DevelopmentJob source requirements MUST apply to explicitly admitted development children, not to every WorkContext, file-processing task or executable Skill. Development children MUST preserve parent/context lineage and existing source/ChangeSet/release policy.",
@@ -3623,7 +3623,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-15 UW-29 UW-30. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-218, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "0fd9a0f53a52d7f03a699e79bf27d269a7259d398d7efc90f26f32205d6e2006",
       "requirement_id": "REQ-218-UWAC-02",
       "requirement_text": "- REQ-218-UWAC-02: Development checkpoints MUST bind immutable source revision, scoped ownership, base generation, focused verification and integration receipt through SPEC-224/293 and existing integration-controller. Safe checkpoints MAY integrate while other sessions continue; no forced reset/rebase or alternate deploy route.",

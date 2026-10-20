@@ -1,5 +1,5 @@
 {
-  "generation": 2,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -7231,7 +7231,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-279, WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Map actual command/domain endpoints and policy/economic admission first; extend only missing work-profile delegation/control receipts. Do not infer a ready universal ingress from spec text or add an authority. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "6d97a87ddc8b81d255ae0d98623d5d1e0bd06f38491338e6721cfa1f02055439",
       "requirement_id": "REQ-279-UWAC-01",
       "requirement_text": "- REQ-279-UWAC-01: Agent-originated Chat/Task/Mission/delegation controls MUST enter this existing command profile and then the applicable canonical mutation authority. User/client actions MUST retain SPEC-226/220 mapping and the same domain policy. Commands MUST bind live tenant/principal/target generation, attenuated scope/budget, expiry, idempotency and effect receipt; views MUST NOT own execution.",
@@ -7253,7 +7253,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-17 UW-18 UW-21 UW-29 UW-31 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-279, WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Map actual command/domain endpoints and policy/economic admission first; extend only missing work-profile delegation/control receipts. Do not infer a ready universal ingress from spec text or add an authority. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "bda482ed0aba5a55a21ea5e9a043acea95d534770c618207c0faf7838d091710",
       "requirement_id": "REQ-279-UWAC-02",
       "requirement_text": "- REQ-279-UWAC-02: All work profiles MUST use current policy/economic admission and canonical jobs/outbox for long execution. Reuse exact valid autonomous non-production decisions without a second approval gate; unsupported controls, revoked grants and stale context MUST fail closed. Requested/accepted/applied cancellation and uncertain external effects MUST remain distinct.",

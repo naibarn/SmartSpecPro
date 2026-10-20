@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -4129,7 +4129,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-10 UW-11 UW-18 UW-22 UW-31. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "1735078a37afdcdb779a60e485305e6ac7236cd60c8d544e4965692dbe7813ab",
       "requirement_id": "REQ-205-UWAC-01",
       "requirement_text": "- REQ-205-UWAC-01: Runner capability snapshots MUST distinguish logical work context from filesystem/worktree attachments, advertise only supported pause/resume/cancel/steer controls and carry freshness, session identity and account-route coverage for authorized code and non-code jobs.",
@@ -4151,7 +4151,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-10 UW-11 UW-18 UW-22 UW-31. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-205, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "0d518b0186166be19287b70c692075fa8a15da68a95e257a0a8125a04ca858d6",
       "requirement_id": "REQ-205-UWAC-02",
       "requirement_text": "- REQ-205-UWAC-02: Runner reconnect/restart MUST resume or reconcile the same canonical job/attempt through existing lease/fencing/outbox authority. Heartbeat loss MUST yield disconnected/unknown observation rather than accepted completion; replay MUST NOT duplicate side effects or billing, and stale grants MUST NOT authorize continuation.",

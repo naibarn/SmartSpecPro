@@ -81,3 +81,5 @@ Sequence: WP31/32 contract agreement → WP33/34/35/37 independent scopes → WP
 ## Plan-level done
 
 Nine coherent section packets, 32 owner requirement IDs, 36 executable acceptance designs, source/status/ownership traceability and official HandOff updates validate. This planning exit does not set any runtime requirement PASS. Future engineering begins with WP31 after refreshing source/contracts.
+
+Resume rule: before executing these delta packages, follow [Resume existing implementation](resume-existing-work.md). Reuse existing integrated code, section state and valid proof; these packets do not reset or replace any existing SPEC implementation plan. Continue only genuinely missing requirements/acceptance assertions and preserve the existing primary WorkUnit and live blockers.

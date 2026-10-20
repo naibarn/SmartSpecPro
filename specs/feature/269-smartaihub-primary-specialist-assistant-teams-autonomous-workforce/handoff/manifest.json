@@ -38,10 +38,10 @@
     "expected_spec_digest": "00e444043fa63058317e0db40aa62235252370f56ddf2e21fd27e938a0750592"
   },
   "continuation": {
-    "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
+    "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #482 merged at 866f718fb40b14eb6782c5dda425dd7c6db6ae16. Exact post-merge chatUnifiedWiring suite: 1 file / 17 passed. The real executeSkill request enters startSkillTask / worker_jobs and returns before legacy inline unified/fallback code; client App/Project/tenant fields do not enter the queued task and authenticated user/tenant remain authoritative. Current queue path does not propagate trusted App context. Combined with PR #478 HTTP/runtime spoof tests (3 / 61), this establishes fail-closed local request/queue boundaries only. No deployed ingress, positive trusted-context propagation, direct T-01–T-23 acceptance, durable process restart, or protected dispatch is proved. Next: obtain authenticated ingress and fresh worker-side binding authorization before adding App context to queued execution; run direct acceptance only in authorized non-production persisted runtime.",
+    "resume_point": "PR #482 merged at 866f718fb40b14eb6782c5dda425dd7c6db6ae16. Exact post-merge chatUnifiedWiring suite: 1 file / 17 passed. The real executeSkill request enters startSkillTask / worker_jobs and returns before legacy inline unified/fallback code; client App/Project/tenant fields do not enter the queued task and authenticated user/tenant remain authoritative. Current queue path does not propagate trusted App context. Combined with PR #478 HTTP/runtime spoof tests (3 / 61), this establishes fail-closed local request/queue boundaries only. No deployed ingress, positive trusted-context propagation, direct T-01–T-23 acceptance, durable process restart, or protected dispatch is proved. Next: obtain authenticated ingress and fresh worker-side binding authorization before adding App context to queued execution; run direct acceptance only in authorized non-production persisted runtime. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 36,
+  "generation": 38,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "00e444043fa63058317e0db40aa62235252370f56ddf2e21fd27e938a0750592",
@@ -287,7 +287,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-02 UW-03 UW-04 UW-09 UW-12 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "306af7b8ce6d48f1e2fe82321e756dc3ac9a751606f4bfd0f4a4d2c096060f75",
         "requirement_id": "REQ-269-UWAC-01",
         "requirement_text": "- REQ-269-UWAC-01: Assistant/team Work lifecycle MUST support persistent logical context, explicit parent-child/session bindings and non-code artifact/external-result acceptance without Git. Reuse SPEC-196 goal semantics and canonical jobs; no new workforce task database, scheduler or registry.",
@@ -309,7 +309,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-02 UW-03 UW-04 UW-09 UW-12 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-269, WP31/WP36/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "bb8e1d914e1896e218d7b9d20317107e00db67ee6dd586d80c9503aec2fbf3c6",
         "requirement_id": "REQ-269-UWAC-02",
         "requirement_text": "- REQ-269-UWAC-02: Delegation MUST consume authorized capability/Skill selections, attenuate scope/budget, bound depth/fanout/retries and preserve return/cancel/recovery receipts across sessions. Parent success MUST require outcome-specific evidence; partial children, disconnected providers and unconfirmed external effects MUST remain visible and unresolved.",
@@ -526,7 +526,7 @@
     "unresolved": 1679
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.641607Z",
+  "updated_at": "2026-10-20T23:39:55.188700Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

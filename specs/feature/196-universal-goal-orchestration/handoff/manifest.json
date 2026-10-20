@@ -90,10 +90,10 @@
     "expected_spec_digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-196, WP31). Reuse existing source/section state and valid evidence; do not restart the old plan. Reconcile the existing trusted Goal/WU source with current tenant/digest/revision binding; add only missing GENERAL_WORK/non-Git/parent-acceptance metadata. Do not rebuild the six existing sections.",
+    "next_ready_workunit": "UWAC_WP31_SPEC196_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-196, WP31). Reuse existing source/section state and valid evidence; do not restart the old plan. Reconcile the existing trusted Goal/WU source with current tenant/digest/revision binding; add only missing GENERAL_WORK/non-Git/parent-acceptance metadata. Do not rebuild the six existing sections. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 14,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/196-universal-goal-orchestration/spec.md",
     "digest": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f",
@@ -714,7 +714,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-09 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-196, WP31). Reuse existing source/section state and valid evidence; do not restart the old plan. Reconcile the existing trusted Goal/WU source with current tenant/digest/revision binding; add only missing GENERAL_WORK/non-Git/parent-acceptance metadata. Do not rebuild the six existing sections. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "9566eb96f1cc95679fc2380bf2e2774654b0db20d3b0fe6efbdba6c2c4bd5413",
         "requirement_id": "REQ-196-UWAC-01",
         "requirement_text": "- REQ-196-UWAC-01: Goal/Plan semantics MUST support GENERAL_WORK and typed non-code acceptance without requiring repository, branch or worktree. WorkContext/Work references MUST extend existing records and capability selection, with durable execution in worker_jobs/outbox; no second Goal/task scheduler or legacy workflow path.",
@@ -736,7 +736,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C2; implement the bounded package after fresh source/compatibility audit, then execute UW-01 UW-02 UW-09 UW-28 UW-29. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-196, WP31). Reuse existing source/section state and valid evidence; do not restart the old plan. Reconcile the existing trusted Goal/WU source with current tenant/digest/revision binding; add only missing GENERAL_WORK/non-Git/parent-acceptance metadata. Do not rebuild the six existing sections. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "34d7d89c8e6a30be28af514437f1c8b35c4db5e11e48f3d1677c8899c635dc58",
         "requirement_id": "REQ-196-UWAC-02",
         "requirement_text": "- REQ-196-UWAC-02: Parent-child goal bindings MUST carry objective, acceptance, attenuated authority/budget and canonical job/return receipts across sessions. Parent completion MUST use its accepted outcome and required children; one child/session exit or merged checkpoint MUST NOT close the parent.",
@@ -1120,7 +1120,7 @@
     "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:52.996744Z",
+  "updated_at": "2026-10-20T23:39:54.795335Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

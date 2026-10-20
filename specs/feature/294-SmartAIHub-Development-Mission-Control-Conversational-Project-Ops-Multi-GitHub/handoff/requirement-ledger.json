@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -11207,7 +11207,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C4/C5/C7/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "90020d38253d47b6b433fdf83df6c744435c4e19d089ab9a4b83e70d4233d1ce",
       "requirement_id": "REQ-294-UWAC-01",
       "requirement_text": "- REQ-294-UWAC-01: Mission Control MUST project one versioned, authorization-scoped activity/evidence timeline across work, Skills, agents, harnesses and sessions using existing task/job/event sources. Each event MUST expose provenance/class, source/native identity, original and normalized state, reason/progress, freshness/coverage, cursor and permitted evidence drilldown; task/session/parent scope MUST remain distinct.",
@@ -11229,7 +11229,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C4/C5/C7/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "b2ef85146a42ffb080f18f96ceff4ba63246c82acd45e3e8c07bd8d86f29ae1c",
       "requirement_id": "REQ-294-UWAC-02",
       "requirement_text": "- REQ-294-UWAC-02: Task/Mission/Chat consumers MUST preserve identical snapshot/outcome facts and explicit unknowns. Stall/stop inference MUST distinguish liveness from progress and lifecycle from health/delivery, with next actor/action. Collector/UI failures MUST NOT gate execution; source, artifact, Skill and optional Git/release acceptance MUST remain separate and current tenant permissions MUST apply before aggregation/drilldown.",

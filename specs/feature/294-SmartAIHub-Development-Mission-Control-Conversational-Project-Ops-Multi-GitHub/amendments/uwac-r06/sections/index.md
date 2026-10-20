@@ -29,3 +29,5 @@ Planning complete; runtime implementation has not started. This task is document
 | [07 artifact-evidence](section-07-artifact-evidence.md) | WP37 | P1 | 269/294 consumers; existing Library/R2/domain owners | WP31 source/deliverable types and WP32 evidence envelope |
 | [08 development-source-release](section-08-development-source-release.md) | WP38 | P0 | 218/224/293/295 | WP31/32 conditional bindings; current SPEC224 live work and source policies preserved |
 | [09 cross-boundary-acceptance](section-09-cross-boundary-acceptance.md) | WP39 | P1 | 287 with all evidence owners | WP31–38 independently integrated; current authorized test environments |
+
+Resume rule: before executing these delta packages, follow [Resume existing implementation](../resume-existing-work.md). Reuse existing integrated code, section state and valid proof; these packets do not reset or replace any existing SPEC implementation plan. Continue only genuinely missing requirements/acceptance assertions and preserve the existing primary WorkUnit and live blockers.

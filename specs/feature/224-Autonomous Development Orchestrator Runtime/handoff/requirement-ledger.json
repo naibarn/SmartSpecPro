@@ -1,5 +1,5 @@
 {
-  "generation": 14,
+  "generation": 15,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -27720,7 +27720,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8/C9/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-15 UW-16 UW-29 UW-30 UW-35. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-224, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "8a76a6b790ee678abb93e31cacb6ebc420cf39d79fb4b697cb0a92b0d6e194a7",
       "requirement_id": "REQ-224-UWAC-01",
       "requirement_text": "- REQ-224-UWAC-01: This is a consumer-side compatibility amendment: DevelopmentRun MUST remain specific to admitted software/source work, preserving all current phases, grants, live acceptance, blockers and recovery predicates. A general Work parent MUST bind its development child and immutable checkpoints without routing ordinary Skills/non-code work through DevelopmentRun.",
@@ -27742,7 +27742,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8/C9/C10; implement the bounded package after fresh source/compatibility audit, then execute UW-14 UW-15 UW-16 UW-29 UW-30 UW-35. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-224, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "ff6c4566ce050329d404b6694df3183322e7f9c431082e621159411cf3c6728b",
       "requirement_id": "REQ-224-UWAC-02",
       "requirement_text": "- REQ-224-UWAC-02: Existing integration/continuation MUST permit verified scoped checkpoints while siblings run, with current source/ownership authority and required checks. Merge, build, release and runtime acceptance MUST remain separate; this amendment MUST NOT reset or close outstanding SPEC-224 acceptance or add a competing phase controller.",

@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -5185,7 +5185,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "24b0418b239624d7d4d18aa19e953fd557930d3e6b6477b17a38dcd7455db098",
       "requirement_id": "REQ-293-UWAC-01",
       "requirement_text": "- REQ-293-UWAC-01: GitWorkspaceBinding MUST be optional for general Work/Skill contexts. For applicable Git work, expose distinct observed remote canonical ref, cached origin/main, local main, worktree HEAD, last verified main with check scope/time, and production source from SPEC-295; missing observation MUST NOT be synthesized from another ref.",
@@ -5207,7 +5207,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C8; implement the bounded package after fresh source/compatibility audit, then execute UW-13 UW-14 UW-15 UW-16 UW-23 UW-30 UW-34. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "465bfab6cea05cd46046b2828489e2d0acd17bcd59e46a81ecfed8430dc39a47",
       "requirement_id": "REQ-293-UWAC-02",
       "requirement_text": "- REQ-293-UWAC-02: All sessions/harnesses MUST use existing workspace/integration authority with owner/fencing and source-freshness receipts. Immutable checkpoints MAY merge incrementally under actual protection while siblings continue. Dirty/unknown/active worktrees MUST be preserved; stale source admission MUST be reconciled without arbitrary reset/rebase or bypass.",

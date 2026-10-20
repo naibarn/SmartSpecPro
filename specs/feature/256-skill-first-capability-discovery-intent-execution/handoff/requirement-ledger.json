@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3580,7 +3580,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C6; implement the bounded package after fresh source/compatibility audit, then execute UW-05 UW-10 UW-17 UW-18 UW-25 UW-28 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "031885d3a4f622288cfa33f5e04ce3ae25e2d3d35ed6b2e7e5f15e7d1785d7b5",
       "requirement_id": "REQ-256-UWAC-01",
       "requirement_text": "- REQ-256-UWAC-01: Skill-first discovery MUST reuse the existing registry/catalog projection and return tenant-filtered version/trust/capability/freshness/owner references for direct invocation or authoring handoff. Discovery MUST NOT grant execution rights, force Git/workflows, create another Skill Registry or silently select a costly composite.",
@@ -3602,7 +3602,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C1/C6; implement the bounded package after fresh source/compatibility audit, then execute UW-05 UW-10 UW-17 UW-18 UW-25 UW-28 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-256, WP34). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "795cac64db59224b39c0ce44dbb6c5269c320c7fd8d1fb5214ac23fa1cd5f240",
       "requirement_id": "REQ-256-UWAC-02",
       "requirement_text": "- REQ-256-UWAC-02: Invocation MUST pin Skill version/digest and revalidate capability, permissions, health and budget before canonical job admission when durable. Creation/improvement/evaluation/release MUST hand off to SPEC-221; stale/revoked/retired offers MUST fail closed, with discovery visibility and execution enablement independently governed.",

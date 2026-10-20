@@ -1,0 +1,1127 @@
+{
+  "profile": "quick",
+  "source_revision": "c4f8e8a44f83d68f793ae7aed5c105aefd028fe3",
+  "comparison_base": "ce126996921bf710526dfac9949de77210cfb70d",
+  "observed_at": "2026-10-20T23:39:54.235003+00:00",
+  "resource_evidence": {
+    "MemAvailable": "MemAvailable:   25248284 kB",
+    "disk_available_bytes": 57888382976
+  },
+  "owners": [
+    {
+      "owner": "196",
+      "path": "specs/feature/196-universal-goal-orchestration",
+      "prior_lifecycle": "VALIDATION_PENDING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 207,
+      "old_partial_requirement_ids": [
+        "REQ-196-OBS-01",
+        "REQ-196-OBS-02",
+        "REQ-196-OBS-03",
+        "REQ-196-OBS-04"
+      ],
+      "reuse_boundary": "Existing Goal baseline/progress helpers and REQ-196-OBS-01..04 PARTIAL evidence; six implementation sections already marked complete.",
+      "uwac_packages": "WP31",
+      "delta_resume_action": "Reconcile the existing trusted Goal/WU source with current tenant/digest/revision binding; add only missing GENERAL_WORK/non-Git/parent-acceptance metadata. Do not rebuild the six existing sections.",
+      "implementation_artifacts": [
+        {
+          "path": "specs/feature/196-universal-goal-orchestration/implementation/deep_implement_config.json",
+          "sha256": "ceda8f89906fa943b3ab8b7db1cfb1f37f79f48cf7d59caf51ffefa9cc88d74e",
+          "section_state_claim_counts": {
+            "complete": 6
+          },
+          "section_commit_observations": [
+            {
+              "section": "section-01-contracts-and-command",
+              "state_claim": "complete",
+              "recorded_ref": "a34b7385a",
+              "resolved_sha": "a34b7385a2ce0226a8697d87469bc10130a61dcf",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-03-capability-resolution",
+              "state_claim": "complete",
+              "recorded_ref": "a34b7385a",
+              "resolved_sha": "a34b7385a2ce0226a8697d87469bc10130a61dcf",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-04-planner-policy-and-approval",
+              "state_claim": "complete",
+              "recorded_ref": "a34b7385a",
+              "resolved_sha": "a34b7385a2ce0226a8697d87469bc10130a61dcf",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-05-gateway-and-ui",
+              "state_claim": "complete",
+              "recorded_ref": "a34b7385a",
+              "resolved_sha": "a34b7385a2ce0226a8697d87469bc10130a61dcf",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-02-goal-plan-persistence",
+              "state_claim": "complete",
+              "recorded_ref": "978f8c9b1",
+              "resolved_sha": "978f8c9b15b3db1b604694994ff984a8192f75c9",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-06-cross-spec-release",
+              "state_claim": "complete",
+              "recorded_ref": "566ff7808",
+              "resolved_sha": "566ff78085f3a30e37c35e7af1adb0e33169bc80",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            }
+          ]
+        },
+        {
+          "path": "specs/feature/196-universal-goal-orchestration/sections/index.md",
+          "sha256": "29fe10f1c8a7efa14a7502d9be82e9d07d08f87df698410e358b03ab6cd6480a"
+        }
+      ],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "198",
+      "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution",
+      "prior_lifecycle": "DISCOVERING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 399,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing chat contracts, canonical queued executeSkill route and six completed section markers.",
+      "uwac_packages": "WP33/WP34/WP35",
+      "delta_resume_action": "Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing.",
+      "implementation_artifacts": [
+        {
+          "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/implementation/deep_implement_config.json",
+          "sha256": "56e60d74e0a3009e5f38172f2021846ccf0bcdeb92e64c40e19503c425abb1e3",
+          "section_state_claim_counts": {
+            "complete": 6
+          },
+          "section_commit_observations": [
+            {
+              "section": "section-01-chat-contracts",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-03-task-state-and-provenance",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-02-brokers-and-runtime",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-04-ui-surfaces",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-05-evolution-and-governance",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-06-browser-and-release-gates",
+              "state_claim": "complete",
+              "recorded_ref": "013c9847c",
+              "resolved_sha": "013c9847c4c841942c7a086454fa3b1074a7162a",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            }
+          ]
+        },
+        {
+          "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/sections/index.md",
+          "sha256": "0ee20ed711dc27c8337b3ddd83f3952e74e572ca5693a952c3b2afe13010740f"
+        }
+      ],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "200",
+      "path": "specs/feature/200-universal-coding-agent-control-plane",
+      "prior_lifecycle": "DISCOVERING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 229,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing agent contracts/adapters/job handoff and six completed section markers.",
+      "uwac_packages": "WP32/WP36",
+      "delta_resume_action": "Extend current adapter/event/session contracts for non-code bindings and truthful supported-control evidence; preserve job/Runner authorization and exact existing sections.",
+      "implementation_artifacts": [
+        {
+          "path": "specs/feature/200-universal-coding-agent-control-plane/implementation/deep_implement_config.json",
+          "sha256": "61065167a542dda4ddec0fcbc083e909b857c5cf3aa0bbfad8ef79fd70ddc733",
+          "section_state_claim_counts": {
+            "complete": 6
+          },
+          "section_commit_observations": [
+            {
+              "section": "section-04-context-skills-assets-mcp",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-01-agent-contracts-and-job-handoff",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-02-provider-adapters",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-03-runner-and-runtime",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-05-verification-and-ui",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-06-migration-tests-and-acceptance",
+              "state_claim": "complete",
+              "recorded_ref": "b9dfd23b2",
+              "resolved_sha": "b9dfd23b204e8f9d6740e4115ff2515b8b2a0870",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            }
+          ]
+        },
+        {
+          "path": "specs/feature/200-universal-coding-agent-control-plane/sections/index.md",
+          "sha256": "d68cce79f378fd2150e3fd8cc03b326ba63d3cb2973554c025bf4523ef19640f"
+        }
+      ],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "205",
+      "path": "specs/feature/205-smartaihub-runner-cross-platform",
+      "prior_lifecycle": "VALIDATION_PENDING",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
+        "integrated": true,
+        "integrated_at": "2026-10-09T14:48:44Z"
+      },
+      "prior_next_ready_workunit": "WINDOWS_WSS_ROTATION_REVIEW_BUILD_AND_ACCEPTANCE",
+      "prior_next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745 through the existing runner-desktop-release workflow (platform=windows), then install/accept that candidate on the Windows host and capture fresh session, WSS reconnect, capability acknowledgement, Codex readiness, and workspace binding evidence. Do not reconnect/reinstall the currently active installation as a diagnostic. Keep SPEC-224 protected dispatch DENY.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 187,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing Runner implementation with nine complete and five pending section markers; Windows WSS review-build/native acceptance remains the primary lane.",
+      "uwac_packages": "WP32/WP36",
+      "delta_resume_action": "Keep the existing Windows review-build/acceptance WorkUnit and owner boundary. Independently reconcile additive non-code capability/session projection with current Runner contracts; never reconnect/reinstall an active host as a diagnostic.",
+      "implementation_artifacts": [
+        {
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json",
+          "sha256": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
+          "section_state_claim_counts": {
+            "complete": 9,
+            "pending": 5
+          },
+          "section_commit_observations": [
+            {
+              "section": "section-01-contracts-and-profile-boundary",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-02-backend-registry-and-gateway",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-03-runner-foundation-and-local-journal",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-04-local-discovery-and-control-channel",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-05-job-execution-and-adapters",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-06-shared-container-runner",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-07-ui-task-control-and-connection",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-08-manual-release-workflow",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-09-platform-and-rollout-evidence",
+              "state_claim": "complete",
+              "recorded_ref": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "resolved_sha": "3a1b8f125c95493d8821a38d7db17333e38be582",
+              "in_observed_canonical_history": true,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            }
+          ]
+        },
+        {
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md",
+          "sha256": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b"
+        }
+      ],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "206",
+      "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability",
+      "prior_lifecycle": "VALIDATION_PENDING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "4bc113a39fab0aa0125a2cac8742e9455b6d4055",
+        "integrated": true,
+        "integrated_at": "2026-10-19T00:06:03Z"
+      },
+      "prior_next_ready_workunit": "SPEC-206-WU-A2A-BUDGET-METADATA-COMPATIBILITY",
+      "prior_next_action": "Keep billing-budget/v1 as transport-only budget metadata. Future adapter work consumes SPEC-207 payment and SPEC-280 commerce contracts; do not implement payment execution or create a second ledger in SPEC-206.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 603,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing transport-only billing-budget/v1 ownership checkpoint and native-provider foundations.",
+      "uwac_packages": "WP32/WP36",
+      "delta_resume_action": "Retain the existing A2A budget-metadata compatibility WorkUnit. Negotiate only supported A2A/native mappings and versioned observations; no second payment ledger or fabricated protocol support.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "218",
+      "path": "specs/feature/218-ai-product-development-control-plane",
+      "prior_lifecycle": "DISCOVERING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 163,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing DevelopmentJob/ChangeSet/ReleaseCandidate pure contracts.",
+      "uwac_packages": "WP38",
+      "delta_resume_action": "Reuse source-specific development contracts and admitted child binding; add only conditional WorkContext metadata. Do not replace DevelopmentJob or force general Work into its required repository fields.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "221",
+      "path": "specs/feature/221-smartaihub-skill-engineering-framework",
+      "prior_lifecycle": "DISCOVERING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 430,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing Skill Studio create/improve, registry, visibility and queued Skill execution foundations.",
+      "uwac_packages": "WP35",
+      "delta_resume_action": "Audit existing authoring/publisher/eval/storage behavior first, then fill only missing non-Git immutable package/eval/release/revocation handoffs. Do not rebuild Studio or create a registry.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "224",
+      "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "prior_lifecycle": "WAITING_APPROVAL",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "b8b433963d624aac0dbb771b725470e90daec72c",
+        "integrated": true,
+        "integrated_at": "2026-10-18T12:12:32Z",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
+        "source_sha": "5a320640c88e228d0959767ccd6ff6d2cb6f55e3"
+      },
+      "prior_next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: Database Owner authorization and an available protected migration operation targeting exact production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f / migration 0395; operation must validate drift and prove enum postcondition. Do not run full-journal db:migrate.",
+      "prior_next_action": "Database recovery is now the active SPEC-224 blocker: Admin diagnostics verified the current production Backend database and showed 0395 pending, external_runtime absent, 88 pending migrations, 41 unknown hashes, and no matching historical failure audit. Obtain Database Owner authorization for a protected operation scoped only to 0395 through the canonical migration authority; that target-scoped operation is not currently available. Do not run the full journal. After an authorized postcondition succeeds, retry authenticated startWorkspaceRun and continue exact-run Windows binding, admission, certification, lease/fencing, Recovery Grant if required, dispatch, settlement, and Final Verify. Source Trust readiness remains recorded as separate work.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 1259,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing development controller/continuation, checkpointed implementation state and exact current DB/source-trust/Windows live blockers.",
+      "uwac_packages": "WP38",
+      "delta_resume_action": "The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task.",
+      "implementation_artifacts": [
+        {
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+          "sha256": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "section_state_claim_counts": {
+            "checkpointed": 3
+          },
+          "section_commit_observations": [
+            {
+              "section": "section-01-local-fast-lane",
+              "state_claim": "checkpointed",
+              "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+              "resolved_sha": null,
+              "in_observed_canonical_history": false,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-02-atomic-continuation",
+              "state_claim": "checkpointed",
+              "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+              "resolved_sha": null,
+              "in_observed_canonical_history": false,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            },
+            {
+              "section": "section-04-working-ui-acceptance",
+              "state_claim": "checkpointed",
+              "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+              "resolved_sha": null,
+              "in_observed_canonical_history": false,
+              "limit": "Commit presence/ancestry and section markers do not prove runtime acceptance or semantic equivalence after a squash."
+            }
+          ]
+        },
+        {
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md",
+          "sha256": "cb84fd855b9aa6ef7c0edcb15d2116921a21b09de867ebaf5f34eb0f6fdb8baf"
+        },
+        {
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/index.md",
+          "sha256": "6549cb43db6d155403f1417ecb61a30eac205455e820f380ac70221ee2041b47"
+        }
+      ],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "256",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "prior_lifecycle": "VALIDATION_PENDING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 162,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing tenant-filtered catalog/Skill registry and explicitly resolved outer document identity.",
+      "uwac_packages": "WP34",
+      "delta_resume_action": "Reuse current catalog/registry; reconcile missing selection/version/freshness/permission receipts and queued invocation, excluding retired types. Historical nested copy is not a second implementation target.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "269",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "prior_lifecycle": "PARTIAL_INTEGRATED",
+      "prior_implementation_status": "PARTIAL_INTEGRATED",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
+        "integrated": true,
+        "integrated_at": "2026-10-10T09:17:55Z"
+      },
+      "prior_next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
+      "prior_next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01\u2013T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 1677,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing assistant/team and fail-closed Chat/App/Project memory boundary; T01_T23_DIRECT_MEMORY_ACCEPTANCE remains primary.",
+      "uwac_packages": "WP31/WP36/WP37",
+      "delta_resume_action": "Retain trusted ingress and worker-side binding prerequisites; reuse existing assistant/context/job records for non-Git Work and bounded delegation. Do not repeat integrated spoof/queue helper tests as full live acceptance or enable denied writes.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "277",
+      "path": "specs/feature/277-task-control-experience-r1-6",
+      "prior_lifecycle": "CONTINUATION_REQUIRED",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "integrated": true,
+        "integrated_at": "2026-10-17T07:04:29Z"
+      },
+      "prior_next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
+      "prior_next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 440,
+      "old_partial_requirement_ids": [
+        "REQ-277-OBS-01",
+        "REQ-277-OBS-02",
+        "REQ-277-OBS-03",
+        "REQ-277-OBS-04",
+        "REQ-277-OBS-05",
+        "REQ-277-OBS-06",
+        "REQ-277-OBS-07",
+        "REQ-277-OBS-08",
+        "REQ-277-OBS-09"
+      ],
+      "reuse_boundary": "Existing Task Observability UI/shared projection and REQ-277-OBS-01..09 PARTIAL evidence; callback producer/attempt-correlation review remains primary.",
+      "uwac_packages": "WP33",
+      "delta_resume_action": "Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "279",
+      "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0",
+      "prior_lifecycle": "DISCOVERING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": null,
+        "canonical_sha": null,
+        "integrated": false,
+        "integrated_at": null
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": null,
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 328,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing detailed ingress/domain authority contracts and Runner command primitives; full universal ingress is not demonstrated.",
+      "uwac_packages": "WP36",
+      "delta_resume_action": "Map actual command/domain endpoints and policy/economic admission first; extend only missing work-profile delegation/control receipts. Do not infer a ready universal ingress from spec text or add an authority.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "287",
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "prior_lifecycle": "VALIDATION_PENDING",
+      "prior_implementation_status": "UNKNOWN",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
+        "integrated": true,
+        "integrated_at": "2026-10-08T00:59:00Z"
+      },
+      "prior_next_ready_workunit": null,
+      "prior_next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan.",
+      "prior_resume_point_present": false,
+      "old_requirement_rows_verified": 205,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing Design Contract/render governance and upstream-safe UI planning action.",
+      "uwac_packages": "WP33/WP39",
+      "delta_resume_action": "Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "293",
+      "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
+      "prior_lifecycle": "PARTIAL_INTEGRATED",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+        "integrated": true,
+        "integrated_at": "2026-10-07T13:26:20Z"
+      },
+      "prior_next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
+      "prior_next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 235,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing workspace_authority/canonical_source/integration-controller and current P0 internal gap-closure lane.",
+      "uwac_packages": "WP38",
+      "delta_resume_action": "Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "294",
+      "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
+      "prior_lifecycle": "PARTIAL_INTEGRATED",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+        "integrated": true,
+        "integrated_at": "2026-10-17T07:04:29Z"
+      },
+      "prior_next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
+      "prior_next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 497,
+      "old_partial_requirement_ids": [
+        "REQ-294-OBS-01",
+        "REQ-294-OBS-02",
+        "REQ-294-OBS-03",
+        "REQ-294-OBS-04",
+        "REQ-294-OBS-05"
+      ],
+      "reuse_boundary": "Existing Task Observability reducer/API/pilot and REQ-294-OBS-01..05 PARTIAL evidence; UWAC planning already integrated.",
+      "uwac_packages": "WP32/WP37",
+      "delta_resume_action": "Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    },
+    {
+      "owner": "295",
+      "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
+      "prior_lifecycle": "PARTIAL_INTEGRATED",
+      "prior_implementation_status": "PARTIAL",
+      "prior_integration": {
+        "canonical_ref": "refs/heads/main",
+        "canonical_sha": "43336e21ce5d2c25d6d5f1f1fe0a0392d5717877",
+        "integrated": true,
+        "integrated_at": "2026-10-19T11:29:00+07:00"
+      },
+      "prior_next_ready_workunit": "EPISODE_281_PRODUCTION_FUNCTIONAL_SMOKE",
+      "prior_next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch.",
+      "prior_resume_point_present": true,
+      "old_requirement_rows_verified": 166,
+      "old_partial_requirement_ids": [],
+      "reuse_boundary": "Existing canonical builder/Linux release provenance and source-scoped prior release evidence; EPISODE_281_PRODUCTION_FUNCTIONAL_SMOKE remains primary.",
+      "uwac_packages": "WP38",
+      "delta_resume_action": "Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence.",
+      "implementation_artifacts": [],
+      "verified_after": {
+        "resume_point_nonempty": true,
+        "next_action_nonempty": true,
+        "next_ready_workunit_nonempty": true,
+        "existing_primary_preserved": true,
+        "runtime_and_existing_requirement_state_preserved": true,
+        "implementation_artifacts_unchanged": true,
+        "new_requirements_still_open": true
+      }
+    }
+  ],
+  "runtime_acceptance": "NOT_RUN",
+  "findings_before": {
+    "old_requirement_rows_preserved": 7187,
+    "empty_next_action_count": 7,
+    "empty_next_workunit_count": 8,
+    "empty_resume_point_count": 8,
+    "uwac_resume_reference_count": 1
+  },
+  "findings_after": {
+    "owners_with_explicit_resume": 16,
+    "owners_with_next_action": 16,
+    "owners_with_next_ready_workunit": 16,
+    "pre_UWAC_requirement_rows_preserved": 7187,
+    "UWAC_next_action_only_updates": 32,
+    "existing_runtime_state_and_blockers_preserved": true,
+    "existing_implementation_configs_unchanged": true,
+    "runtime_code_changes": 0
+  },
+  "verification": {
+    "profile": "quick",
+    "source_revision": "c4f8e8a44f83d68f793ae7aed5c105aefd028fe3",
+    "checked_at": "2026-10-20T23:43:18.024071+00:00",
+    "outcome": "PASS",
+    "checks": [
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/196-universal-goal-orchestration"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/200-universal-coding-agent-control-plane"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/205-smartaihub-runner-cross-platform"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/206-a2a-first-hybrid-external-agent-interoperability"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/218-ai-product-development-control-plane"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/221-smartaihub-skill-engineering-framework"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/256-skill-first-capability-discovery-intent-execution"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/277-task-control-experience-r1-6"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "index",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "/home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py",
+          "--planning-dir",
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "python3",
+          "skills/development-lifecycle/git_capabilities.py",
+          "inspect"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS"
+      }
+    ],
+    "invariants": [
+      "16 owners have resume_point/next_action/next_ready_workunit",
+      "All existing primary WorkUnits, next-action prefixes and predicates retained",
+      "SPEC224 primary workunit/next_action/waiting/reactivation exactly unchanged",
+      "All old ledger rows unchanged; only 32 UWAC next_action values changed",
+      "Existing implementation files/section states unchanged by digest",
+      "Author-written links resolve; no code paths changed; added content conflict/secret scan passed"
+    ],
+    "not_run": [
+      "runtime tests (documentation-only change)",
+      "build/deploy",
+      "production acceptance",
+      "local repository-wide typecheck (prohibited)"
+    ],
+    "baseline_note": "Previous global validation found four pre-existing SPEC014 evidence SHA errors; SPEC014 is unchanged. Task uses owner-scoped validation."
+  },
+  "section_commit_summary": {
+    "observations": 30,
+    "canonical_ancestors": 27,
+    "nonancestor_or_unresolved": [
+      {
+        "owner": "224",
+        "section": "section-01-local-fast-lane",
+        "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+        "resolved_sha": null
+      },
+      {
+        "owner": "224",
+        "section": "section-02-atomic-continuation",
+        "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+        "resolved_sha": null
+      },
+      {
+        "owner": "224",
+        "section": "section-04-working-ui-acceptance",
+        "recorded_ref": "6b88efc57d1013a19c98e377b50714d6e218796b",
+        "resolved_sha": null
+      }
+    ],
+    "next_action": "Reconcile recorded commit with its PR/squash/canonical diff before reusing proof or repeating implementation; a nonancestor marker alone is not proof of missing code."
+  }
+}

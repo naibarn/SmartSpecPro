@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -9475,7 +9475,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C6/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-06 UW-07 UW-08 UW-17 UW-18 UW-25 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-221, WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Audit existing authoring/publisher/eval/storage behavior first, then fill only missing non-Git immutable package/eval/release/revocation handoffs. Do not rebuild Studio or create a registry. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "ae122f00b75c23dd742870ba7863245bbd876f259c869222894658e1f5f434f5",
       "requirement_id": "REQ-221-UWAC-01",
       "requirement_text": "- REQ-221-UWAC-01: Existing Skill Studio/registry MUST support discovery handoff, create/improve, reproducible evaluation, immutable versioning and governed release without universally requiring GitHub or Git. Pin package/version/digest and approved storage references; platform source changes retain their source release policy and executable evaluation uses approved Cloudflare isolation.",
@@ -9497,7 +9497,7 @@
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C6/C7; implement the bounded package after fresh source/compatibility audit, then execute UW-06 UW-07 UW-08 UW-17 UW-18 UW-25 UW-32. This phase delivered specification/planning only.",
+      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-221, WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Audit existing authoring/publisher/eval/storage behavior first, then fill only missing non-Git immutable package/eval/release/revocation handoffs. Do not rebuild Studio or create a registry. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
       "requirement_digest": "189f06a7172c6beba2405215f9a504afdb829d28a1baf8428dba0cd1a404539d",
       "requirement_id": "REQ-221-UWAC-02",
       "requirement_text": "- REQ-221-UWAC-02: Skill draft, evaluation, publication, installation, invocation and accepted result MUST remain separate facts. Save-as-Skill MUST redact traces and create a deduplicated draft; authorization, visibility, revocation, tool grants and rollback MUST use existing owners. Long authoring/evaluation work MUST enter worker_jobs/outbox before execution.",

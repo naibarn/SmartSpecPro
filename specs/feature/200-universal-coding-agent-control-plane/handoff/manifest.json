@@ -423,10 +423,10 @@
     "expected_spec_digest": "13a476b5f715fff356197de4b6f39fda82b4b98b1edcba1b842f33127f047b0b"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-200, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Extend current adapter/event/session contracts for non-code bindings and truthful supported-control evidence; preserve job/Runner authorization and exact existing sections.",
+    "next_ready_workunit": "UWAC_WP32_SPEC200_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-200, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Extend current adapter/event/session contracts for non-code bindings and truthful supported-control evidence; preserve job/Runner authorization and exact existing sections. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -666,7 +666,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
     "digest": "13a476b5f715fff356197de4b6f39fda82b4b98b1edcba1b842f33127f047b0b",
@@ -1358,7 +1358,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-200, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Extend current adapter/event/session contracts for non-code bindings and truthful supported-control evidence; preserve job/Runner authorization and exact existing sections. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "2cfbdb9f019fea471199ecfaf159debadc4a9f3cf5d54644ad45d824b3ce3dca",
         "requirement_id": "REQ-200-UWAC-01",
         "requirement_text": "- REQ-200-UWAC-01: External worker adapters MUST accept non-code work when capability policy permits without coercing it into a Git-backed DevelopmentRun. Bind canonical work/job/attempt/session, harness/account route, provider-native identity and normalization version; report missing provider fields and unsupported controls explicitly.",
@@ -1380,7 +1380,7 @@
         "final_state": "OPEN",
         "implementation_evidence": [],
         "implementation_status": "UNVERIFIED",
-        "next_action": "Follow specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md and owner scope C2/C3/C4; implement the bounded package after fresh source/compatibility audit, then execute UW-09 UW-10 UW-11 UW-19 UW-31. This phase delivered specification/planning only.",
+        "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-200, WP32/WP36). Reuse existing source/section state and valid evidence; do not restart the old plan. Extend current adapter/event/session contracts for non-code bindings and truthful supported-control evidence; preserve job/Runner authorization and exact existing sections. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
         "requirement_digest": "c5ee19744838b1bf338f2c0982797d47f8d7ef95ca4b09c9190797df0c04eb3c",
         "requirement_id": "REQ-200-UWAC-02",
         "requirement_text": "- REQ-200-UWAC-02: Provider stop/turn-end/ACK MUST NOT prove task acceptance or applied cancellation. Reconnect, return delivery and control actions MUST reconcile durable receipts with fresh scoped authority, preserve sibling/parent truth and honor pinned subscription routes without silent paid substitution.",
@@ -1879,7 +1879,7 @@
     "unresolved": 231
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:27:53.138761Z",
+  "updated_at": "2026-10-20T23:39:54.997020Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
