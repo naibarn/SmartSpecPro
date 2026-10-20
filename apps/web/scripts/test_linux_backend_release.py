@@ -599,6 +599,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             "cp \"$PWD/apps/web/tsconfig.json\" \"$target/tsconfig.json\"\n"
             "cp \"$PWD/apps/web/package.json\" \"$target/package.json\"\n"
             "ln -s \"$PWD/apps/web\" \"$target/node_modules/.pnpm/node_modules/@smartspec/web\"\n"
+            "printf 'FIXTURE=not-a-secret\\n' > \"$target/.env\"\n"
+            "printf 'FIXTURE=template\\n' > \"$target/.env.example\"\n"
             "printf 'export const entry = true;\\n' > \"$target/server/_core/index.ts\"\n"
             "printf 'export const middleware = true;\\n' > \"$target/server/_core/cloudflareOriginMiddleware.ts\"\n"
             "printf 'export const bindings = true;\\n' > \"$target/server/services/cloudflareOriginVersionBindings.ts\"\n"
@@ -618,6 +620,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         runtime = web / "dist/backend-runtime"
+        self.assertFalse((runtime / ".env").exists())
+        self.assertTrue((runtime / ".env.example").exists())
         self.assertTrue((runtime / "server/_core/index.ts").is_file())
         self.assertTrue((runtime / "node_modules/tsx/package.json").is_file())
         runtime_tsconfig = json.loads((runtime / "tsconfig.json").read_text())

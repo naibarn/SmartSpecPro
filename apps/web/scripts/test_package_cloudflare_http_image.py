@@ -53,10 +53,15 @@ class HttpImageTest(unittest.TestCase):
             validate_runtime(self.runtime, "c" * 40)
 
     def test_context_reuses_existing_authority_and_preserves_source(self):
+        dependency_env = self.runtime / "node_modules/fixture/.env"
+        dependency_env.parent.mkdir()
+        dependency_env.write_text("FIXTURE=example")
         record = {"source_revision": SHA, "artifact": {"artifact_digest": "sha256:" + "c" * 64}}
         with patch("package_cloudflare_http_image.validate_build_result", return_value=(record, self.runtime.parent, self.root)) as authority:
             result = prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)
         authority.assert_called_once_with(self.root / "receipt.json")
+        self.assertFalse((self.root / "image/runtime/node_modules/fixture/.env").exists())
+        self.assertTrue(dependency_env.exists())
         self.assertFalse(result["publish"])
         self.assertEqual(result["providerMutations"], 0)
         self.assertTrue((self.runtime / "dist/public/index.html").exists())

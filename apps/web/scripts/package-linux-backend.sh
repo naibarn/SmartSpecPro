@@ -48,6 +48,10 @@ trap cleanup EXIT
 PACKAGE_ROOT="$STAGING_ROOT/runtime"
 
 pnpm --filter @smartspec/web --prod deploy --legacy "$PACKAGE_ROOT"
+# Some npm packages ship their own test .env (for example Bottleneck's Redis
+# fixture). Runtime environments are supplied outside the immutable artifact.
+# find does not follow pnpm symlinks; deletion affects only this owned staging tree.
+find "$PACKAGE_ROOT" -type f \( -name '.env' -o -name '.env.*' \) ! -name '.env.example' -delete
 # pnpm deploy creates a self-reference to the workspace package in the
 # virtual-store links. That points back into this temporary build checkout and
 # would make the supposedly immutable runtime depend on its source workspace.

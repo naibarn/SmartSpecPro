@@ -30,7 +30,7 @@ def validate_runtime(root: Path, source_sha: str) -> None:
     for parent, directories, files in os.walk(root):
         for name in directories + files:
             path = Path(parent) / name
-            if name == ".env" or (name.startswith(".env.") and name != ".env.example"):
+            if (name == ".env" or (name.startswith(".env.") and name != ".env.example")) and not path.is_relative_to(root / "node_modules"):
                 raise ReleaseError("HTTP_IMAGE_ENV_FILE_DENIED")
             if path.is_symlink():
                 if Path(os.readlink(path)).is_absolute():
@@ -69,7 +69,8 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
     try:
         def ignore(directory: str, names: list[str]) -> list[str]:
             # SPA assets are already published to the Worker ASSETS binding.
-            return [name for name in names if name in {"dist", ".data", "logs", "uploads"}] if Path(directory) == runtime else []
+            return [name for name in names if name == ".env" or (name.startswith(".env.") and name != ".env.example")
+                    or (Path(directory) == runtime and name in {"dist", ".data", "logs", "uploads"})]
         shutil.copytree(runtime, stage / "runtime", symlinks=True, ignore=ignore)
         shutil.copyfile(Path(__file__).parents[1] / "CloudflareHttp.Containerfile", stage / "Containerfile")
         shutil.copyfile(Path(__file__).with_name("cloudflare-http-entrypoint.mjs"), stage / "cloudflare-http-entrypoint.mjs")
