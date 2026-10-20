@@ -690,7 +690,7 @@ export default function InfrastructureSettingsPanel({ initialTab }: { initialTab
     <div className="space-y-6">
       <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 md:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 md:grid-cols-9" style={{ height: "auto" }}>
           <TabsTrigger
             value="app-runtime"
             aria-label={copy.tabs.runtime}
