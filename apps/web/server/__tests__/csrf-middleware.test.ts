@@ -6,12 +6,17 @@ import { COOKIE_NAME } from "@shared/const";
 import { createAllowedBrowserOrigin } from "../_core/browserOriginPolicy";
 import { createCsrfProtection } from "../_core/csrfProtection";
 
-function app() {
+function app(getPublicAppUrl?: () => string) {
   const server = express();
   server.use(cookieParser());
   server.use("/api", createCsrfProtection({
     isProduction: () => true,
-    isAllowedOrigin: createAllowedBrowserOrigin({ production: true, appUrl: "https://smartaihub.app" }),
+    isAllowedOrigin: createAllowedBrowserOrigin({
+      production: true,
+      allowedOrigins: getPublicAppUrl ? "https://staging.account.workers.dev" : undefined,
+      appUrl: getPublicAppUrl ? undefined : "https://smartaihub.app",
+      getPublicAppUrl,
+    }),
     isAllowedMarketplaceOrigin: origin => origin === "chrome-extension://approved-fixture",
   }));
   server.post("/api/fixture", (_req, res) => res.sendStatus(204));
@@ -21,6 +26,21 @@ function app() {
 }
 
 describe("actual production CSRF middleware", () => {
+  it("allows browser writes from the configured public site alongside staging", async () => {
+    const server = app(() => "https://smartaihub.app/");
+    expect((await request(server).post("/api/fixture").set("Origin", "https://smartaihub.app")).status).toBe(204);
+    expect((await request(server).post("/api/fixture").set("Origin", "https://staging.account.workers.dev")).status).toBe(204);
+    expect((await request(server).post("/api/fixture").set("Origin", "https://unconfigured.smartaihub.app")).status).toBe(403);
+    expect((await request(server).post("/api/fixture").set("Origin", "https://evil.invalid")).status).toBe(403);
+  });
+  it("uses refreshed public URL settings without retaining the previous origin", async () => {
+    let publicUrl = "https://old.example.com";
+    const server = app(() => publicUrl);
+    expect((await request(server).post("/api/fixture").set("Origin", publicUrl)).status).toBe(204);
+    publicUrl = "https://new.example.com";
+    expect((await request(server).post("/api/fixture").set("Origin", publicUrl)).status).toBe(204);
+    expect((await request(server).post("/api/fixture").set("Origin", "https://old.example.com")).status).toBe(403);
+  });
   it("rejects cookie-authenticated writes without Origin", async () => {
     const response = await request(app()).post("/api/fixture").set("Cookie", `${COOKIE_NAME}=fixture-only`);
     expect(response.status).toBe(403);

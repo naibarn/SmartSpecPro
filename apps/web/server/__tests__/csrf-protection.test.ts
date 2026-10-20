@@ -8,6 +8,26 @@ function isAllowedOrigin(origin: string | undefined, isProduction = false): bool
 }
 
 describe("CSRF Origin Validation", () => {
+  it("restricts production fallback domains when the runtime public URL is configured", () => {
+    const allowed = createAllowedBrowserOrigin({
+      production: true,
+      getPublicAppUrl: () => "https://smartaihub.app",
+    });
+    expect(allowed("https://smartaihub.app")).toBe(true);
+    expect(allowed("https://unconfigured.smartaihub.app")).toBe(false);
+    expect(allowed("https://smartspec.pro")).toBe(false);
+  });
+
+  it.each(["https://smartaihub.app/path", "https://user@smartaihub.app", "javascript:alert(1)"])("does not trust malformed runtime public URL %s", publicUrl => {
+    const allowed = createAllowedBrowserOrigin({
+      production: true,
+      allowedOrigins: "https://staging.account.workers.dev",
+      getPublicAppUrl: () => publicUrl,
+    });
+    expect(allowed(publicUrl)).toBe(false);
+    expect(allowed("https://smartaihub.app")).toBe(false);
+  });
+
   it("should accept requests from smartaihub.app", () => {
     expect(isAllowedOrigin("https://smartaihub.app")).toBe(true);
   });

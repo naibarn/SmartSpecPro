@@ -63,6 +63,7 @@ import { createBeamPaymentMethodSetupRouter } from "../routes/beamPaymentMethodS
 import {
   compareCachedInternalToken,
   getAppRuntimeConfig,
+  getCachedPublicAppUrl,
   refreshAppRuntimeConfigCache,
 } from "../services/appRuntimeConfig";
 import { refreshMcpRuntimeConfigCache } from "../services/mcpRuntimeConfig";
@@ -356,6 +357,7 @@ const isAllowedOrigin = createAllowedBrowserOrigin({
   allowedOrigins: process.env.SMARTSPEC_ALLOWED_ORIGINS,
   appUrl: process.env.APP_URL,
   publicAppUrl: process.env.PUBLIC_APP_URL,
+  getPublicAppUrl: getCachedPublicAppUrl,
 });
 
 // CORS for cross-domain access (Docker Status, etc.)

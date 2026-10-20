@@ -4,6 +4,7 @@ export function createAllowedBrowserOrigin(input: {
   allowedOrigins?: string;
   appUrl?: string;
   publicAppUrl?: string;
+  getPublicAppUrl?: () => string;
 }): (origin: string | undefined) => boolean {
   const configured = [
     ...(input.allowedOrigins ?? "").split(","), input.appUrl ?? "", input.publicAppUrl ?? "",
@@ -14,13 +15,18 @@ export function createAllowedBrowserOrigin(input: {
   const exact = new Set(["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost", ...configured]);
   return origin => {
     if (!origin) return false;
+    // Admin-managed public URL is authoritative alongside deployment origins.
+    // Read the cache per request so refreshed platform settings take effect.
+    const publicAppUrl = input.getPublicAppUrl?.().trim().replace(/\/+$/, "");
     if (exact.has(origin)) return true;
     try {
       const url = new URL(origin);
       if (!["http:", "https:"].includes(url.protocol) || url.origin !== origin) return false;
+      if (origin === publicAppUrl) return true;
       return url.hostname === "localhost" ||
         (!input.production && /^(\d{1,3}\.){3}\d{1,3}$/.test(url.hostname)) ||
-        suffixes.some(suffix => url.hostname === suffix.slice(1) || url.hostname.endsWith(suffix));
+        ((!input.production || !publicAppUrl) &&
+          suffixes.some(suffix => url.hostname === suffix.slice(1) || url.hostname.endsWith(suffix)));
     } catch {
       return false;
     }
