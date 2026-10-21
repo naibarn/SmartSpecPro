@@ -115,14 +115,16 @@ export async function forwardApplicationHttpBridge(request: Request, runtime: Ap
 
 /** Resolving the fixed private DO never invokes its start/HTTP forwarding path. */
 export function resolveApplicationHttpStub(runtime: ApplicationHttpProfile["runtime"], env: ApplicationHttpBindings) {
-  if (env.CLOUDFLARE_ENVIRONMENT !== "staging" || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw new Error("APPLICATION_HTTP_BRIDGE_DISABLED");
+  const expectedTarget = env.CLOUDFLARE_ENVIRONMENT === "staging" ? "smartspec-cloudflare-staging" :
+    env.CLOUDFLARE_ENVIRONMENT === "production" ? "smartspec-cloudflare-runtime" : null;
+  if (!expectedTarget || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw new Error("APPLICATION_HTTP_BRIDGE_DISABLED");
   const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
   const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
   if (!node || !python) throw new Error("APPLICATION_HTTP_PROFILE_PAIR_DENIED");
   validateApplicationHttpProfilePair(node, python);
   const profile = runtime === "node-http" ? node : python;
-  if (profile.runtime !== runtime) throw new Error("APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH");
+  if (profile.runtime !== runtime || profile.targetId !== expectedTarget) throw new Error("APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH");
   const namespace = runtime === "node-http" ? env.NODE_HTTP : env.PYTHON_HTTP;
   if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") throw new Error("APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED");
-  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime, profile.configurationRef)));
+  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime, profile.namespace, profile.targetId)));
 }

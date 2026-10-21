@@ -1,20 +1,20 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB, httpImageProvisionJobSchema } from "./cloudflareHttpImageProvisionContract";
-import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 
 const sha = z.string().regex(/^[a-f0-9]{40}$/), hash = z.string().regex(/^[a-f0-9]{64}$/);
 const image = z.object({ provisionJobId: z.string().uuid(), planDigest: hash,
-  image: z.string().regex(/^registry\.cloudflare\.com\/[a-f0-9]{32}\/smartspec-staging-[a-f0-9]{12}-(node|python)-http@sha256:[a-f0-9]{64}$/) }).strict();
+  image: z.string().regex(/^registry\.cloudflare\.com\/[a-f0-9]{32}\/smartspec-(staging|production)-[a-f0-9]{12}-(node|python)-http@sha256:[a-f0-9]{64}$/) }).strict();
 /** One paired, bounded private canary capability. Public API traffic and job
  * execution are independent owners and cannot be enabled by this setting. */
 export const cloudflareHttpApplicationSettingsSchema = z.object({
-  mode: z.literal("private-canary"), namespace: z.string().regex(/^smartspec-staging-[a-f0-9]{12}$/), sourceSha: sha,
-  /** Explicitly route API/auth/REST HTTP traffic to the paired Node Container in staging. */
-  traffic: z.literal("staging-full-http-v1").optional(),
-  /** Explicitly route the currently supported WebSocket paths to the paired Node Container. */
-  realtime: z.literal("staging-allowlisted-v1").optional(),
+  mode: z.literal("private-canary"), namespace: z.string().regex(/^smartspec-(staging|production)-[a-f0-9]{12}$/), sourceSha: sha,
+  /** Exact-environment opt-in for API/auth/REST ingress to the paired Node Container. */
+  traffic: z.enum(["staging-full-http-v1", "production-full-http-v1"]).optional(),
+  /** Exact-environment opt-in for the supported WebSocket paths. */
+  realtime: z.enum(["staging-allowlisted-v1", "production-allowlisted-v1"]).optional(),
   node: image, python: image, issuedAt: z.string().datetime({ offset: true }), expiresAt: z.string().datetime({ offset: true }),
-  maxStarts: z.number().int().min(1).max(2), maxComputeSeconds: z.number().int().min(1).max(1200),
+  maxStarts: z.number().int().min(1).max(600), maxComputeSeconds: z.number().int().min(1).max(360_000),
   hardLifetimeSeconds: z.number().int().min(1).max(600), idleTimeoutSeconds: z.number().int().min(1).max(30),
   instance: z.enum(["basic", "standard-1"]),
   startupDiagnostics: z.literal("container-logs").optional(),
@@ -24,15 +24,34 @@ const environment = z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), z.string().m
   Object.keys(value).length <= 128 && JSON.stringify(value).length <= 65_536 && Object.entries(value).every(([key, entry]) =>
     !entry.includes("\0") && !/^(?:NODE_OPTIONS|NODE_PATH|TSX_TSCONFIG_PATH|PYTHONPATH|PYTHONHOME|LD_.*|PATH|CLOUDFLARE_API_TOKEN|CLOUDFLARE_STAGING_EXECUTOR_.*)$/.test(key)));
 export const cloudflareHttpApplicationSecretsSchema = z.object({ node: environment, python: environment }).strict();
-type Scope = { tenantId: string; projectId: string; accountRef: string };
+type Scope = { tenantId: string; projectId: string; accountRef: string; environment?: "staging" | "production" };
+export function httpApplicationNamespace(tenantId: string, projectId: string, environment: "staging" | "production" = "staging") {
+  const prefix = environment === "staging" ? "smartspec-staging" : "smartspec-production";
+  return `${prefix}-${createHash("sha256").update(`${tenantId}|${projectId}`).digest("hex").slice(0, 12)}`;
+}
 export function validateHttpApplicationSettings(value: HttpApplicationSettings, scope: Scope, now = Date.now(), namespaceOnly = false) {
   const parsed = cloudflareHttpApplicationSettingsSchema.parse(value), issued = Date.parse(parsed.issuedAt), expiry = Date.parse(parsed.expiresAt);
-  if (parsed.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId) || !/^[a-f0-9]{32}$/.test(scope.accountRef) ||
-      issued > now || (!namespaceOnly && expiry <= now) || expiry <= issued || expiry - issued > 3600_000 || parsed.maxComputeSeconds < parsed.hardLifetimeSeconds ||
+  const environment = scope.environment ?? "staging";
+  const prefix = environment === "staging" ? "smartspec-staging-" : "smartspec-production-";
+  const traffic = environment === "staging" ? "staging-full-http-v1" : "production-full-http-v1";
+  const realtime = environment === "staging" ? "staging-allowlisted-v1" : "production-allowlisted-v1";
+  const maxLifetimeMs = environment === "staging" ? 3_600_000 : 31 * 86_400_000;
+  const budgetExceeded = environment === "staging"
+    ? parsed.maxStarts > 2 || parsed.maxComputeSeconds > 1200
+    : parsed.maxStarts > 600 || parsed.maxComputeSeconds > 360_000 || parsed.instance !== "basic";
+  // Images are immutable code artifacts and contain no environment secrets.
+  // Until a production image publisher exists, production reuses the exact
+  // same-project staging image receipt while keeping DO namespaces isolated.
+  const imageNamespace = httpApplicationNamespace(scope.tenantId, scope.projectId, "staging");
+  if (parsed.namespace !== httpApplicationNamespace(scope.tenantId, scope.projectId, environment) || !parsed.namespace.startsWith(prefix) ||
+      !/^[a-f0-9]{32}$/.test(scope.accountRef) ||
+      (parsed.traffic !== undefined && parsed.traffic !== traffic) || (parsed.realtime !== undefined && parsed.realtime !== realtime) ||
+      issued > now || (!namespaceOnly && expiry <= now) || expiry <= issued || expiry - issued > maxLifetimeMs || budgetExceeded ||
+      parsed.maxComputeSeconds < parsed.hardLifetimeSeconds ||
       parsed.idleTimeoutSeconds > parsed.hardLifetimeSeconds || parsed.node.provisionJobId === parsed.python.provisionJobId)
     throw new Error("CLOUDFLARE_HTTP_APPLICATION_SCOPE_DENIED");
   for (const runtime of ["node", "python"] as const) {
-    const expected = `registry.cloudflare.com/${scope.accountRef}/${parsed.namespace}-${runtime}-http@sha256:`;
+    const expected = `registry.cloudflare.com/${scope.accountRef}/${imageNamespace}-${runtime}-http@sha256:`;
     if (!parsed[runtime].image.startsWith(expected)) throw new Error("CLOUDFLARE_HTTP_APPLICATION_IMAGE_DENIED");
   }
   return parsed;
@@ -46,12 +65,15 @@ export function assertHttpImageProvisionReceipt(value: HttpApplicationSettings, 
 } | undefined, scope: Scope & { actorUserId: number }) {
   const expected = value[runtime], input = httpImageProvisionJobSchema.safeParse(receipt?.inputJson);
   const output = receipt?.outputJson as Record<string, unknown> | null;
+  const imageNamespace = `smartspec-staging-${createHash("sha256").update(`${scope.tenantId}|${scope.projectId}`).digest("hex").slice(0, 12)}`;
   if (!receipt || receipt.id !== expected.provisionJobId || receipt.tenantId !== scope.tenantId || receipt.requestedByUserId !== scope.actorUserId ||
       receipt.jobType !== HTTP_IMAGE_PROVISION_JOB || receipt.contractVersion !== HTTP_IMAGE_PROVISION_CONTRACT || receipt.status !== "succeeded" ||
       receipt.operatorReviewRequired || !input.success || input.data.projectId !== scope.projectId || input.data.planDigest !== expected.planDigest ||
       !output || output.schemaVersion !== "cloudflare-http-image-receipt-v1" || output.jobId !== expected.provisionJobId ||
       output.planDigest !== expected.planDigest || output.sourceSha !== value.sourceSha || output.runtime !== `${runtime}-http` ||
-      output.accountRef !== scope.accountRef || output.namespace !== value.namespace || output.image !== expected.image ||
+      output.accountRef !== scope.accountRef || output.namespace !== imageNamespace ||
+      output.image !== `registry.cloudflare.com/${scope.accountRef}/${imageNamespace}-${runtime}-http@sha256:${expected.image.split("@sha256:")[1]}` ||
+      output.image !== expected.image ||
       output.registryVerified !== true || output.containerStarts !== 0 || output.applicationCreated !== false || output.activation !== "disabled")
     throw new Error("CLOUDFLARE_HTTP_IMAGE_PROVISION_RECEIPT_DENIED");
 }
@@ -64,19 +86,21 @@ export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, sc
   // binding. Its recovery lifetime follows the enclosing origin configuration;
   // API execution always retains the shorter, strict canary expiry.
   validateHttpApplicationSettings(value, scope, Date.now(), namespaceOnly);
+  const nodeClass = scope.environment === "production" ? "ProductionNodeHttpContainer" : "StagingNodeHttpContainer";
+  const pythonClass = scope.environment === "production" ? "ProductionPythonHttpContainer" : "StagingPythonHttpContainer";
   return {
     exports: {
-      StagingNodeHttpContainer: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-node-http` },
-      StagingPythonHttpContainer: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-python-http` },
+      [nodeClass]: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-node-http` },
+      [pythonClass]: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-python-http` },
       ApplicationHttpBridge: { type: "worker" },
     },
     containers: [
-      { name: `${value.namespace}-node-http`, class_name: "StagingNodeHttpContainer", images: { node: value.node.image } },
-      { name: `${value.namespace}-python-http`, class_name: "StagingPythonHttpContainer", images: { python: value.python.image } },
+      { name: `${value.namespace}-node-http`, class_name: nodeClass, images: { node: value.node.image } },
+      { name: `${value.namespace}-python-http`, class_name: pythonClass, images: { python: value.python.image } },
     ],
     bindings: [
-      { name: "NODE_HTTP", type: "durable_object_namespace", class_name: "StagingNodeHttpContainer" },
-      { name: "PYTHON_HTTP", type: "durable_object_namespace", class_name: "StagingPythonHttpContainer" },
+      { name: "NODE_HTTP", type: "durable_object_namespace", class_name: nodeClass },
+      { name: "PYTHON_HTTP", type: "durable_object_namespace", class_name: pythonClass },
     ],
   };
 }
@@ -92,7 +116,8 @@ export function httpApplicationVersionBindings(value: HttpApplicationSettings, s
   }
   if (!/^cf-origin:[a-f0-9]{64}$/.test(scope.configurationRef)) throw new Error("CLOUDFLARE_HTTP_APPLICATION_SCOPE_DENIED");
   const profile = (runtime: "node" | "python") => ({ configurationRef: scope.configurationRef, sourceSha: value.sourceSha,
-    targetId: "smartspec-cloudflare-staging", runtime: `${runtime}-http`, accountRef: scope.accountRef, namespace: value.namespace,
+    targetId: scope.environment === "production" ? "smartspec-cloudflare-runtime" : "smartspec-cloudflare-staging",
+    runtime: `${runtime}-http`, accountRef: scope.accountRef, namespace: value.namespace,
     image: value[runtime].image, issuedAt: value.issuedAt, expiresAt: value.expiresAt, maxStarts: value.maxStarts,
     maxComputeSeconds: value.maxComputeSeconds, hardLifetimeSeconds: value.hardLifetimeSeconds, idleTimeoutSeconds: value.idleTimeoutSeconds,
     instance: value.instance, networkAccess: "application-outbound" });
@@ -103,6 +128,6 @@ export function httpApplicationVersionBindings(value: HttpApplicationSettings, s
     { name: "CLOUDFLARE_NODE_HTTP_SECRETS", type: "secret_text", text: JSON.stringify(secret.node) },
     { name: "CLOUDFLARE_PYTHON_HTTP_SECRETS", type: "secret_text", text: JSON.stringify(secret.python) },
     ...(value.traffic ? [{ name: "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", type: "plain_text", text: value.traffic }] : []),
-    ...(value.realtime ? [{ name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "enabled" }] : []),
+    ...(value.realtime ? [{ name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: value.realtime }] : []),
   ];
 }

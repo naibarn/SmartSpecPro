@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Implement production Node/Python HTTP Container admission with bounded spend and retained PostgreSQL; add separately authorized zero-traffic baseline staging/route attachment and then qualify canary, realtime, jobs, media, storage and rollback.",
+      "next_action": "Finish production Node/Python HTTP Container binding and private deployment provisioning; run focused Worker/web tests and package build, then checkpoint this source slice and record live authority/cutover gaps.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "0ebb4d534",
       "merged_main_sha": "e98e479c0",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 140,
-  "updated_at": "2026-10-21T19:37:50.139323+00:00",
+  "generation": 141,
+  "updated_at": "2026-10-21T19:49:00.469352+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Implement production Node/Python HTTP Container admission with bounded spend and retained PostgreSQL; add separately authorized zero-traffic baseline staging/route attachment and then qualify canary, realtime, jobs, media, storage and rollback.",
+    "next_action": "Finish production Node/Python HTTP Container binding and private deployment provisioning; run focused Worker/web tests and package build, then checkpoint this source slice and record live authority/cutover gaps.",
     "merged_main_sha": "e98e479c0",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

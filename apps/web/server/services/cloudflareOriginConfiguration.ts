@@ -89,9 +89,10 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
   const expectedTargetId = targetForEnvironment(input.identity.environment);
   if (input.identity.provider !== "cloudflare" || !expectedTargetId ||
       !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0) denied();
-  // Production origin credentials may be recorded independently. Production
-  // Containers and job bindings require their own admission contracts.
-  if (input.identity.environment === "production" && (settings.nativeResources || settings.applicationHttp || settings.workflowExecution ||
+  // Production application HTTP Containers use the same independently bounded
+  // image receipts and on-demand runtime profiles as staging. Background
+  // resource/job capabilities retain their separate admission contracts.
+  if (input.identity.environment === "production" && (settings.nativeResources || settings.workflowExecution ||
       settings.workflowDatabase || settings.runnerReleaseCatalog || settings.jobTransport || settings.retentionSchedule || settings.mediaProbe)) denied();
   return db.transaction(async tx => {
     // Serialize against target disable/rebinding without a new lock registry.

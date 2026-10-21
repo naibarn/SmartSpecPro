@@ -23,7 +23,7 @@ describe("bounded read-only API migration canary", () => {
     expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ running: false, starts: 0 });
     expect(diagnostics).toHaveBeenCalledOnce(); expect(f.fetch).not.toHaveBeenCalled();
-    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${"c".repeat(64)}`);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${f.profile.namespace}`);
     f.namespace.get.mockClear();
     expect((await handleApplicationHttpCanary(f.request("node/status", { headers: { "x-smartaihub-application-canary-token": "invalid" } }), f.env)).status).toBe(404);
     expect(f.namespace.get).not.toHaveBeenCalled();
@@ -33,7 +33,7 @@ describe("bounded read-only API migration canary", () => {
     for (const token of ["", "wrong", "a".repeat(5000)]) {
       expect((await handleApplicationHttpCanary(f.request("node/health", { headers: { "x-smartaihub-application-canary-token": token } }), f.env)).status).toBe(404);
     }
-    expect((await handleApplicationHttpCanary(f.request("node/health"), { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).status).toBe(404);
+    expect((await handleApplicationHttpCanary(f.request("node/health"), { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).status).toBe(503);
     expect(f.namespace.get).not.toHaveBeenCalled();
   });
   it.each(["node/auth", "node/database", "python/auth", "python/database"])("forwards only app credentials to the fixed %s probe", async path => {

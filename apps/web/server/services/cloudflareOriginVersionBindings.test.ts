@@ -4,6 +4,7 @@ import { cloudflareOriginDescriptorDigest, cloudflareOriginDescriptorSchema, clo
   assertCloudflareWorkflowVersionBindings, cloudflareOriginSecretsSchema } from "./cloudflareOriginVersionBindings";
 import { nativeProvisionNamespace, nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 import { privateDatabasePlanDigest } from "./cloudflarePrivateDatabaseContract";
+import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 
 function fixture() {
   const tenantId = "tenant-a", projectId = "project-a", namespace = nativeProvisionNamespace(tenantId, projectId);
@@ -46,6 +47,49 @@ describe("exact bounded Workflow deployment configuration", () => {
     expect(() => validateCloudflareOriginVersionBindings(value, { ...target, targetId: "smartspec-cloudflare-staging" })).toThrow();
     expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, targetId: "smartspec-cloudflare-staging" })).toThrow();
     expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, workflowExecution: "emergency-intake" })).toThrow();
+  });
+
+  it("admits only an exact production Node/Python Container pair in a production origin version", () => {
+    const { value, target } = fixture();
+    delete value.descriptor.nativeResources;
+    delete value.descriptor.workflowExecution;
+    delete value.secrets.workflowRuntimeToken;
+    delete value.secrets.controlPlaneToken;
+    value.descriptor.environment = "production";
+    value.descriptor.targetId = "smartspec-cloudflare-runtime";
+    const namespace = httpApplicationNamespace(value.descriptor.tenantId, value.descriptor.projectId, "production");
+    value.descriptor.applicationHttp = {
+      mode: "private-canary", namespace, sourceSha: "e".repeat(40),
+      traffic: "production-full-http-v1", realtime: "production-allowlisted-v1",
+      node: { provisionJobId: randomUUID(), planDigest: "f".repeat(64), image: `registry.cloudflare.com/${value.descriptor.accountRef}/${nativeProvisionNamespace(value.descriptor.tenantId, value.descriptor.projectId)}-node-http@sha256:${"1".repeat(64)}` },
+      python: { provisionJobId: randomUUID(), planDigest: "2".repeat(64), image: `registry.cloudflare.com/${value.descriptor.accountRef}/${nativeProvisionNamespace(value.descriptor.tenantId, value.descriptor.projectId)}-python-http@sha256:${"3".repeat(64)}` },
+      issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 50_000).toISOString(),
+      maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 30, instance: "basic",
+    };
+    value.secrets.applicationHttp = {
+      node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890", JWT_SECRET: "node-runtime-secret-value" },
+      python: { SECRET_KEY: "python-runtime-secret-value" },
+    };
+    value.secrets.applicationCanaryToken = "application-canary-token-" + "a".repeat(32);
+    value.descriptor = cloudflareOriginDescriptorSchema.parse(value.descriptor);
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`;
+    target.environment = "production";
+    target.targetId = "smartspec-cloudflare-runtime";
+    target.runtimePolicy = value.configurationRef;
+    const validated = validateCloudflareOriginVersionBindings(value, target);
+    const bindings = cloudflareWorkflowVersionBindings(validated);
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_NODE_HTTP_PROFILE")?.text).toContain("smartspec-cloudflare-runtime");
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")?.text).toBe("production-full-http-v1");
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_NODE_HTTP_SECRETS")?.type).toBe("secret_text");
+    expect(() => assertCloudflareWorkflowVersionBindings(bindings, validated)).not.toThrow();
+    const wrongNamespace = cloudflareOriginDescriptorSchema.parse({ ...value.descriptor,
+      applicationHttp: { ...value.descriptor.applicationHttp!, namespace: nativeProvisionNamespace("tenant-a", "project-a") } });
+    const wrongNamespaceDigest = cloudflareOriginDescriptorDigest(wrongNamespace);
+    const wrongNamespaceRef = `cf-origin:${wrongNamespaceDigest}`;
+    expect(() => validateCloudflareOriginVersionBindings({ ...validated, descriptor: wrongNamespace,
+      configurationDigest: wrongNamespaceDigest, configurationRef: wrongNamespaceRef }, { ...target, runtimePolicy: wrongNamespaceRef })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, nativeResources: fixture().value.descriptor.nativeResources })).toThrow();
   });
 
   it("binds public Runner catalog reads independently of paid job transport, and rejects capability injection", () => {

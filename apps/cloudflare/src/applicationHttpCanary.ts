@@ -15,7 +15,7 @@ async function sameToken(actual: string | null, expected: string | undefined) {
 export async function handleApplicationHttpCanary(request: Request, env: ApplicationHttpBindings): Promise<Response> {
   const url = new URL(request.url), route = url.pathname.slice(APPLICATION_HTTP_CANARY_PREFIX.length);
   const hidden = () => new Response(null, { status: 404, headers: { "cache-control": "no-store" } });
-  if (!url.pathname.startsWith(APPLICATION_HTTP_CANARY_PREFIX) || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
+  if (!url.pathname.startsWith(APPLICATION_HTTP_CANARY_PREFIX) || !["staging", "production"].includes(env.CLOUDFLARE_ENVIRONMENT ?? "") ||
       !await sameToken(request.headers.get("x-smartaihub-application-canary-token"), env.CLOUDFLARE_APPLICATION_CANARY_TOKEN)) return hidden();
   if (request.method !== "GET") return new Response(null, { status: 405, headers: { allow: "GET", "cache-control": "no-store" } });
   if (url.search || request.headers.has("upgrade")) return hidden();

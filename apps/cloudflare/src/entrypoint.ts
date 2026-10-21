@@ -10,7 +10,8 @@ import { executeCanonicalJob } from "./canonicalExecution";
 import { APPLICATION_HTTP_CANARY_PREFIX, handleApplicationHttpCanary } from "./applicationHttpCanary";
 import { dispatchApplicationHttpRealtime } from "./applicationHttpRealtime";
 export { CanonicalRunnerContainer } from "./runnerContainerEntrypoint";
-export { ApplicationHttpBridge, StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
+export { ApplicationHttpBridge, ProductionNodeHttpContainer, ProductionPythonHttpContainer,
+  StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
 
 export class CanonicalJobWorkflow extends WorkflowEntrypoint<CloudflareEnvironment, CanonicalJobEnvelope> {
   async run(event: Readonly<WorkflowEvent<CanonicalJobEnvelope>>, step: WorkflowStep) {

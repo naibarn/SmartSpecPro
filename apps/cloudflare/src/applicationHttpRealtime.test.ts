@@ -17,7 +17,7 @@ function fixture() {
   const namespace = { idFromName: vi.fn(name => name), get: vi.fn(() => ({ fetch })) };
   const env: ApplicationHttpBindings = {
     CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_CONTAINER_POLICY: "on-demand",
-    CLOUDFLARE_CONTAINER_REALTIME_ROUTES: "enabled", AUTH_ORIGIN_TOKEN: "s".repeat(40),
+    CLOUDFLARE_CONTAINER_REALTIME_ROUTES: "staging-allowlisted-v1", AUTH_ORIGIN_TOKEN: "s".repeat(40),
     AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://staging.smartaihub.app"]),
     CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile),
     CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify({ ...profile, runtime: "python-http", image: profile.image.replace("-node-http@", "-python-http@") }),
@@ -42,12 +42,34 @@ describe("optional Cloudflare Container realtime routing", () => {
     const f = fixture();
     const response = await dispatchApplicationHttpRealtime(f.handshake("/api/voice/stream"), f.env);
     expect(response?.status).toBe(101);
-    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${"c".repeat(64)}`);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${f.env.CLOUDFLARE_NODE_HTTP_PROFILE && (JSON.parse(f.env.CLOUDFLARE_NODE_HTTP_PROFILE) as ApplicationHttpProfile).namespace}`);
     const forwarded = f.fetch.mock.calls[0][0] as Request;
     expect(forwarded.url).toBe("http://127.0.0.1:3000/api/voice/stream?ticket=opaque");
     expect(forwarded.headers.get("origin")).toBe("https://staging.smartaihub.app");
     expect(forwarded.headers.get("x-smartaihub-public-origin")).toBe("https://staging.smartaihub.app");
     expect(forwarded.headers.get("x-cloudflare-origin-token")).toBe("s".repeat(40));
+  });
+
+  it("requires a production profile and exact production realtime mode before resolving its namespace", async () => {
+    const f = fixture(), productionNamespace = "smartspec-production-abcdef012345";
+    const toProduction = (value: ApplicationHttpProfile): ApplicationHttpProfile => ({ ...value,
+      targetId: "smartspec-cloudflare-runtime", namespace: productionNamespace, instance: "basic",
+    });
+    const env: ApplicationHttpBindings = { ...f.env, CLOUDFLARE_ENVIRONMENT: "production",
+      CLOUDFLARE_CONTAINER_REALTIME_ROUTES: "production-allowlisted-v1",
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://smartaihub.app"]),
+      CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(toProduction(JSON.parse(f.env.CLOUDFLARE_NODE_HTTP_PROFILE!) as ApplicationHttpProfile)),
+      CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(toProduction(JSON.parse(f.env.CLOUDFLARE_PYTHON_HTTP_PROFILE!) as ApplicationHttpProfile)),
+    };
+    const request = new Request("https://smartaihub.app/api/voice/stream?ticket=opaque", { headers: {
+      upgrade: "websocket", connection: "Upgrade", "sec-websocket-version": "13", "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+      origin: "https://smartaihub.app", "x-smartaihub-public-origin": "https://attacker.example", "x-cloudflare-origin-token": "attacker",
+    } });
+    const response = await dispatchApplicationHttpRealtime(request, env);
+    expect(response?.status).toBe(101);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-runtime:node-http:${productionNamespace}`);
+    const denied = await dispatchApplicationHttpRealtime(request, { ...env, CLOUDFLARE_CONTAINER_REALTIME_ROUTES: "staging-allowlisted-v1" });
+    expect(denied).toBeUndefined();
   });
 
   it("rejects invalid or foreign-origin handshakes before the paid Container is resolved", async () => {

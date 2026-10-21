@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationWorkerMetadata,
-  httpApplicationVersionBindings, cloudflareHttpApplicationSecretsSchema, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+  httpApplicationNamespace, httpApplicationVersionBindings, cloudflareHttpApplicationSecretsSchema,
+  type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 function fixture() {
   const scope = { tenantId: "tenant-test", projectId: "project-test", accountRef: "a".repeat(32), actorUserId: 1 };
   const namespace = nativeProvisionNamespace(scope.tenantId, scope.projectId);
@@ -57,8 +58,34 @@ describe("paired HTTP API deployment capabilities", () => {
     const bindings = httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
       { node: { JWT_SECRET: "app-fixture", CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "app-fixture" } });
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES")).toEqual({
-      name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "enabled",
+      name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "staging-allowlisted-v1",
     });
+  });
+  it("declares a separate production Container pair and binds its target and traffic mode exactly", () => {
+    const f = fixture(), namespace = httpApplicationNamespace(f.scope.tenantId, f.scope.projectId, "production");
+    const scope = { ...f.scope, environment: "production" as const };
+    const settings: HttpApplicationSettings = { ...f.settings, namespace, traffic: "production-full-http-v1",
+      realtime: "production-allowlisted-v1",
+      issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      maxStarts: 600, maxComputeSeconds: 360_000, hardLifetimeSeconds: 600, idleTimeoutSeconds: 30, instance: "basic",
+    };
+    expect(validateHttpApplicationSettings(settings, scope)).toEqual(settings);
+    expect(() => assertHttpImageProvisionReceipt(settings, "node", f.receipt, { ...scope, actorUserId: 1 })).not.toThrow();
+    const metadata = httpApplicationWorkerMetadata(settings, scope);
+    expect(metadata.containers.map(container => container.class_name)).toEqual(["ProductionNodeHttpContainer", "ProductionPythonHttpContainer"]);
+    expect(metadata.exports.ProductionNodeHttpContainer).toMatchObject({ type: "durable-object", storage: "sqlite" });
+    const bindings = httpApplicationVersionBindings(settings, { ...scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
+      { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "app-fixture" } });
+    const node = JSON.parse(bindings.find(binding => binding.name === "CLOUDFLARE_NODE_HTTP_PROFILE")!.text);
+    expect(node).toMatchObject({ targetId: "smartspec-cloudflare-runtime", namespace, image: settings.node.image,
+      maxStarts: 600, maxComputeSeconds: 360_000 });
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", type: "plain_text", text: "production-full-http-v1" });
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "production-allowlisted-v1" });
+    expect(() => validateHttpApplicationSettings({ ...settings, traffic: "staging-full-http-v1" }, scope)).toThrow();
+    expect(() => validateHttpApplicationSettings({ ...settings, namespace: f.settings.namespace }, scope)).toThrow();
+    expect(() => validateHttpApplicationSettings({ ...settings, maxComputeSeconds: 360_001 }, scope)).toThrow();
+    expect(() => validateHttpApplicationSettings({ ...settings, instance: "standard-1" }, scope)).toThrow();
+    expect(() => validateHttpApplicationSettings({ ...settings, expiresAt: new Date(Date.now() + 32 * 86_400_000).toISOString() }, scope)).toThrow();
   });
   it.each([undefined, "short-bootstrap-key"])("rejects a missing or short server bootstrap key before API binding creation", key => {
     const f = fixture();

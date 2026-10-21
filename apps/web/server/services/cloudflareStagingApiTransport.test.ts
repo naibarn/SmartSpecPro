@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { cloudflareOriginDescriptorDigest, type CloudflareOriginDescriptor } from "./cloudflareOriginVersionBindings";
 import { nativeProvisionNamespace, nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
+import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 import { nativeWorkerBindings, type CloudflareNativeBindingDescriptor } from "./cloudflareNativeBindingDescriptor";
 import { describe, expect, it, vi } from "vitest";
 import type { CloudflareStagingTarget } from "./cloudflareStagingDeploymentExecutor";
@@ -97,6 +98,57 @@ describe("Cloudflare staging API transport", () => {
     expect(requests.some(({ url, init }) => url.endsWith("/deployments") || url.includes("/zones/"))).toBe(false);
     expect(requests.filter(({ init }) => init.method === "POST")).toHaveLength(2);
     expect(assertMutationAuthorized).toHaveBeenCalledTimes(3);
+  });
+
+  it("prepares and creates production HTTP Container applications before returning a canary candidate", async () => {
+    const productionTarget: CloudflareStagingTarget = { ...target, targetId: "smartspec-cloudflare-runtime",
+      environment: "production", workerRef: "smartspec-cloudflare-runtime", runtimePolicy: "pending" };
+    const namespace = httpApplicationNamespace(target.tenantId, target.projectId, "production");
+    const imageNamespace = nativeProvisionNamespace(target.tenantId, target.projectId);
+    const descriptor: CloudflareOriginDescriptor = {
+      schemaVersion: "cloudflare.origin-configuration.v1", versionId: "33333333-3333-4333-8333-333333333333",
+      tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare",
+      accountRef: accountId, targetId: "smartspec-cloudflare-runtime", origin: "https://origin.example.com",
+      allowedPublicOrigins: ["https://smartaihub.app"], accessApplicationId: "44444444-4444-4444-8444-444444444444",
+      accessTeamName: "test-team", accessAudience: "test-audience", expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      applicationHttp: { mode: "private-canary", namespace, sourceSha,
+        node: { provisionJobId: "11111111-1111-4111-8111-111111111111", planDigest: "b".repeat(64), image: `registry.cloudflare.com/${accountId}/${imageNamespace}-node-http@sha256:${"c".repeat(64)}` },
+        python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "d".repeat(64), image: `registry.cloudflare.com/${accountId}/${imageNamespace}-python-http@sha256:${"e".repeat(64)}` },
+        issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 50_000).toISOString(),
+        maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 30, instance: "basic" },
+    };
+    const configurationDigest = cloudflareOriginDescriptorDigest(descriptor);
+    const originConfiguration = { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
+      secrets: { token: "t".repeat(32), clientId: "i".repeat(24), secret: "s".repeat(32),
+        applicationHttp: { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: {} },
+        applicationCanaryToken: "application-canary-token-" + "a".repeat(32) } };
+    const scopedTarget = { ...productionTarget, runtimePolicy: originConfiguration.configurationRef };
+    let versionMetadata: any;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      if (url.endsWith("/assets-upload-session")) return json({ jwt: "upload-jwt", buckets: [] });
+      if (url.endsWith("/versions") && init.method === "POST") {
+        versionMetadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
+        return json({ id: versionId });
+      }
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
+        annotations: { "workers/message": `SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}` },
+        resources: { bindings: versionMetadata.bindings.map((value: any, index: number) => ({ ...value,
+          ...(value.type === "durable_object_namespace" ? { namespace_id: String(index + 1).repeat(32) } : {}) })),
+        script_runtime: { containers: versionMetadata.containers } } });
+      throw new Error(`Unexpected provider request ${url}`);
+    }) as typeof fetch;
+    const prepareHttpApplications = vi.fn(async (_origin, _target, assertAuthorized) => assertAuthorized());
+    const ensureHttpApplications = vi.fn(async (_origin, _target, _version, _operationKey, assertAuthorized) => assertAuthorized());
+    const transport = createCloudflareStagingApiTransport({ fetchImpl, resolveBundle: async () => bundle,
+      prepareHttpApplications, ensureHttpApplications });
+    const assertMutationAuthorized = vi.fn(async () => undefined);
+    await expect(transport.prepareVersion({ token: "provider-token", target: scopedTarget, artifact,
+      originConfiguration, assertMutationAuthorized })).resolves.toMatchObject({ trafficShifted: false });
+    expect(prepareHttpApplications).toHaveBeenCalledOnce();
+    expect(ensureHttpApplications).toHaveBeenCalledOnce();
+    expect(ensureHttpApplications.mock.calls[0][3]).toMatch(/^[a-f0-9]{64}$/);
+    expect(fetchImpl.mock.calls.some(([url]) => String(url).includes("/zones/"))).toBe(false);
   });
 
   it("accepts canonical codepoint digests for localized assets before provider mutation", async () => {

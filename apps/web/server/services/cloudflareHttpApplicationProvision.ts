@@ -3,14 +3,16 @@ import { and, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
+import { deploymentCredentialRef } from "./providerDeploymentTargetAuthority";
+import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { validateHttpApplicationSettings, httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 
-type Scope = { tenantId: string; projectId: string; accountRef: string; actorUserId: number };
+type Scope = { tenantId: string; projectId: string; accountRef: string; actorUserId: number; environment?: "staging" | "production" };
 type Checkpoint = Scope & { runtime: "node" | "python"; namespaceId: string; name: string;
   operationRef: string; pending: boolean; applicationId?: string };
 const CATEGORY = "cloudflare_http_application_credentials";
-export function httpApplicationCredentialRef(scope: Pick<Scope, "tenantId" | "projectId">) {
-  return `cloudflare:http-application:${encodeURIComponent(scope.tenantId)}:${encodeURIComponent(scope.projectId)}:staging`;
+export function httpApplicationCredentialRef(scope: Pick<Scope, "tenantId" | "projectId"> & { environment?: "staging" | "production" }) {
+  return `cloudflare:http-application:${encodeURIComponent(scope.tenantId)}:${encodeURIComponent(scope.projectId)}:${scope.environment ?? "staging"}`;
 }
 class HttpApplicationProvisionError extends Error {
   readonly diagnosticCode: string;
@@ -97,7 +99,7 @@ export async function ensureHttpApplications(settings: HttpApplicationSettings, 
     const expectedBinding = expected.bindings.find(value => value.name === `${runtime.toUpperCase()}_HTTP`)!;
     const matches = bindings.filter(value => value?.name === expectedBinding.name);
     if (matches.length !== 1 || matches[0].type !== "durable_object_namespace" || matches[0].class_name !== expectedBinding.class_name ||
-        (matches[0].script_name !== undefined && matches[0].script_name !== "smartspec-cloudflare-staging") ||
+        (matches[0].script_name !== undefined && matches[0].script_name !== (scope.environment === "production" ? "smartspec-cloudflare-runtime" : "smartspec-cloudflare-staging")) ||
         !/^[a-f0-9]{32}$/.test(matches[0].namespace_id)) fail("NAMESPACE_SCOPE_DENIED");
     const namespaceId = matches[0].namespace_id, name = `${settings.namespace}-${runtime}-http`;
     let state = await ports.load(runtime, namespaceId);
@@ -143,17 +145,32 @@ export function createHttpApplicationProvisionPorts(db: DrizzleDB, scope: Scope,
     eq(systemSettings.key, key(`${scope.tenantId}|${scope.projectId}|${runtime}|${namespaceId}`)));
   const withToken = async <T>(operation: (token: string) => Promise<T>) => {
     await assertAuthorized();
-    const ref = httpApplicationCredentialRef(scope);
-    const rows = await db.select().from(systemSettings).where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, key(ref)))).limit(2);
-    if (rows.length !== 1 || !rows[0].value || !rows[0].isSensitive || rows[0].updatedBy !== scope.actorUserId) fail("CREDENTIAL_DENIED");
-    let value: any;
-    try { value = JSON.parse(decrypt(rows[0].value!)); } catch { fail("CREDENTIAL_DENIED"); }
-    if (value.credentialRef !== ref || value.tenantId !== scope.tenantId || value.projectId !== scope.projectId || value.accountRef !== scope.accountRef ||
-        value.actorUserId !== scope.actorUserId || value.revokedAt !== null || !value.token || typeof value.token !== "string") fail("CREDENTIAL_DENIED");
-    const actual = key(value.token);
-    if (fingerprint && fingerprint !== actual) fail("CREDENTIAL_CHANGED");
-    fingerprint = actual;
-    return operation(value.token);
+    // Prefer the legacy exact-purpose credential when one exists. New production
+    // provisioning uses the already-scoped deployment credential configured for
+    // this exact tenant/project/environment, avoiding an unwired second secret UI.
+    const ref = httpApplicationCredentialRef(scope), legacyRows = await db.select().from(systemSettings)
+      .where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, key(ref)))).limit(2);
+    if (legacyRows.length > 1) fail("CREDENTIAL_AMBIGUOUS");
+    if (legacyRows.length === 1) {
+      if (!legacyRows[0].value || !legacyRows[0].isSensitive || legacyRows[0].updatedBy !== scope.actorUserId) fail("CREDENTIAL_DENIED");
+      let value: any;
+      try { value = JSON.parse(decrypt(legacyRows[0].value!)); } catch { fail("CREDENTIAL_DENIED"); }
+      if (value.credentialRef !== ref || value.tenantId !== scope.tenantId || value.projectId !== scope.projectId || value.accountRef !== scope.accountRef ||
+          value.actorUserId !== scope.actorUserId || value.revokedAt !== null || !value.token || typeof value.token !== "string") fail("CREDENTIAL_DENIED");
+      const actual = key(value.token);
+      if (fingerprint && fingerprint !== actual) fail("CREDENTIAL_CHANGED");
+      fingerprint = actual;
+      return operation(value.token);
+    }
+    const identity = { tenantId: scope.tenantId, projectId: scope.projectId, environment: scope.environment ?? "staging", provider: "cloudflare" as const };
+    const credential = await withCloudflareDeploymentCredential(db, { identity, credentialRef: deploymentCredentialRef(identity) }, async token => {
+      const actual = key(token);
+      if (fingerprint && fingerprint !== actual) fail("CREDENTIAL_CHANGED");
+      fingerprint = actual;
+      return operation(token);
+    });
+    if (credential.status !== "CONFIGURED" || credential.value === undefined) fail("CREDENTIAL_DENIED");
+    return credential.value;
   };
   return {
     assertAuthorized,

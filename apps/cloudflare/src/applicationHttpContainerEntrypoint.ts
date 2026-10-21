@@ -30,14 +30,16 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
   constructor(ctx: DurableObjectState, env: ApplicationEnvironment, runtime: ApplicationHttpProfile["runtime"]) {
     super(ctx, env);
     try {
-      if (!ctx.container || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
+      const expectedTarget = env.CLOUDFLARE_ENVIRONMENT === "staging" ? "smartspec-cloudflare-staging" :
+        env.CLOUDFLARE_ENVIRONMENT === "production" ? "smartspec-cloudflare-runtime" : null;
+      if (!ctx.container || !expectedTarget ||
           env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw Error();
       const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
       const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
       if (!node || !python) throw Error();
       validateApplicationHttpProfilePair(node, python);
       const profile = runtime === "node-http" ? node : python;
-      if (ctx.id.name !== applicationHttpInstanceName(runtime, profile.configurationRef)) throw Error();
+      if (profile.targetId !== expectedTarget || ctx.id.name !== applicationHttpInstanceName(runtime, profile.namespace, profile.targetId)) throw Error();
       const secrets: Record<string, string> = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_SECRETS : env.CLOUDFLARE_PYTHON_HTTP_SECRETS) ?? "");
       if (profile.runtime !== runtime || !secrets || Array.isArray(secrets)) throw Error();
       this.controller = new ApplicationHttpContainerController(ctx.container, ctx.storage, profile, secrets);
@@ -95,5 +97,11 @@ export class StagingNodeHttpContainer extends ApplicationHttpContainer {
   constructor(ctx: DurableObjectState, env: ApplicationEnvironment) { super(ctx, env, "node-http"); }
 }
 export class StagingPythonHttpContainer extends ApplicationHttpContainer {
+  constructor(ctx: DurableObjectState, env: ApplicationEnvironment) { super(ctx, env, "python-http"); }
+}
+export class ProductionNodeHttpContainer extends ApplicationHttpContainer {
+  constructor(ctx: DurableObjectState, env: ApplicationEnvironment) { super(ctx, env, "node-http"); }
+}
+export class ProductionPythonHttpContainer extends ApplicationHttpContainer {
   constructor(ctx: DurableObjectState, env: ApplicationEnvironment) { super(ctx, env, "python-http"); }
 }

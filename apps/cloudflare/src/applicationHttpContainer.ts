@@ -4,7 +4,7 @@
 export type ApplicationHttpProfile = {
   configurationRef: string;
   sourceSha: string;
-  targetId: "smartspec-cloudflare-staging";
+  targetId: "smartspec-cloudflare-staging" | "smartspec-cloudflare-runtime";
   runtime: "node-http" | "python-http";
   accountRef: string;
   namespace: string;
@@ -21,6 +21,7 @@ export type ApplicationHttpProfile = {
 type LifecycleState = {
   scope: string;
   issuedAt: number;
+  budgetWindowStartedAt: number;
   starts: number;
   reservedSeconds: number;
   activeUntil: number | null;
@@ -39,27 +40,33 @@ type ContainerRuntimeState = { status: string; lastChange?: number; exitCode?: n
 const KEY = "application-http-lifecycle-v1";
 const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
-/** Give every immutable configuration its own DO identity. DO storage survives
- * Worker deployments, so a fixed runtime-only name would carry old budgets,
- * diagnostics and container bindings into a new image/configuration version. */
-export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"], configurationRef: string) => {
-  const match = /^cf-origin:([a-f0-9]{64})$/.exec(configurationRef);
-  if (!match) throw new Error(DENIED);
-  return `smartspec-cloudflare-staging:${runtime}:${match[1]}`;
+/** Keep one durable budget ledger per environment, runtime and tenant/project.
+ * Configuration revisions must not create a fresh paid-usage allowance. */
+export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"], namespace: string,
+  targetId: ApplicationHttpProfile["targetId"] = "smartspec-cloudflare-staging") => {
+  const expectedPrefix = targetId === "smartspec-cloudflare-staging" ? "smartspec-staging-" : "smartspec-production-";
+  if (!new RegExp(`^${expectedPrefix}[a-f0-9]{12}$`).test(namespace)) throw new Error(DENIED);
+  return `${targetId}:${runtime}:${namespace}`;
 };
 
 export function validateApplicationHttpProfile(value: ApplicationHttpProfile, now = Date.now()): void {
   const issuedAt = Date.parse(value.issuedAt), expiresAt = Date.parse(value.expiresAt);
   const integers = [value.maxStarts, value.maxComputeSeconds, value.hardLifetimeSeconds, value.idleTimeoutSeconds];
-  if (value.targetId !== "smartspec-cloudflare-staging" || !["node-http", "python-http"].includes(value.runtime) ||
+  const expectedNamespacePrefix = value.targetId === "smartspec-cloudflare-staging" ? "smartspec-staging-" :
+    value.targetId === "smartspec-cloudflare-runtime" ? "smartspec-production-" : null;
+  const production = value.targetId === "smartspec-cloudflare-runtime";
+  const maxLifetimeMs = production ? 31 * 86_400_000 : 3_600_000;
+  const namespaceSuffix = /-([a-f0-9]{12})$/.exec(value.namespace)?.[1];
+  if (!expectedNamespacePrefix || !["node-http", "python-http"].includes(value.runtime) ||
       !/^cf-origin:[a-f0-9]{64}$/.test(value.configurationRef) || !/^[a-f0-9]{40}$/.test(value.sourceSha) ||
       !/^[a-f0-9]{32}$/.test(value.accountRef) ||
-      !/^smartspec-staging-[a-f0-9]{12}$/.test(value.namespace) ||
-      value.image !== `registry.cloudflare.com/${value.accountRef}/${value.namespace}-${value.runtime}@sha256:${value.image.split("@sha256:")[1]}` ||
+      !new RegExp(`^${expectedNamespacePrefix}[a-f0-9]{12}$`).test(value.namespace) ||
+      value.image !== `registry.cloudflare.com/${value.accountRef}/smartspec-staging-${namespaceSuffix}-${value.runtime}@sha256:${value.image.split("@sha256:")[1]}` ||
       !/@sha256:[a-f0-9]{64}$/.test(value.image) ||
-      !Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > now || expiresAt <= now || expiresAt - issuedAt > 3_600_000 ||
+      !Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > now || expiresAt <= now || expiresAt - issuedAt > maxLifetimeMs ||
       integers.some(number => !Number.isSafeInteger(number) || number <= 0) ||
-      value.maxStarts > 2 || value.maxComputeSeconds > 1200 || value.hardLifetimeSeconds > 600 ||
+      (production ? value.maxStarts > 600 || value.maxComputeSeconds > 360_000 || value.instance !== "basic" : value.maxStarts > 2 || value.maxComputeSeconds > 1200) ||
+      value.hardLifetimeSeconds > 600 ||
       value.idleTimeoutSeconds > 30 || value.idleTimeoutSeconds > value.hardLifetimeSeconds ||
       value.maxComputeSeconds < value.hardLifetimeSeconds || !["lite", "basic", "standard-1"].includes(value.instance) ||
       value.networkAccess !== "application-outbound") throw new Error(DENIED);
@@ -70,7 +77,7 @@ export function validateApplicationHttpProfile(value: ApplicationHttpProfile, no
 export function validateApplicationHttpProfilePair(node: ApplicationHttpProfile, python: ApplicationHttpProfile, now = Date.now()) {
   validateApplicationHttpProfile(node, now);
   validateApplicationHttpProfile(python, now);
-  const paired = ["configurationRef", "sourceSha", "accountRef", "namespace", "issuedAt", "expiresAt"] as const;
+  const paired = ["configurationRef", "sourceSha", "targetId", "accountRef", "namespace", "issuedAt", "expiresAt"] as const;
   if (node.runtime !== "node-http" || python.runtime !== "python-http" || paired.some(key => node[key] !== python[key]))
     throw new Error("APPLICATION_HTTP_PROFILE_PAIR_DENIED");
 }
@@ -197,19 +204,27 @@ export class ApplicationHttpContainerController {
     try { scope = await this.scope(); }
     catch (error) { if (this.container.running) await this.container.destroy("invalid application configuration"); throw error; }
     let previous = await this.storage.get<LifecycleState>(KEY);
+    const production = this.profile.targetId === "smartspec-cloudflare-runtime";
+    const maxLifetimeStarts = production ? 600 : 2;
+    const maxLifetimeCompute = production ? 360_000 : 1200;
     if (previous && (!/^[a-f0-9]{64}$/.test(previous.scope) || !Number.isFinite(previous.issuedAt) ||
-        !Number.isSafeInteger(previous.starts) || previous.starts < 0 || previous.starts > 2 ||
-        !Number.isSafeInteger(previous.reservedSeconds) || previous.reservedSeconds < 0 || previous.reservedSeconds > 1200 ||
+        !Number.isSafeInteger(previous.starts) || previous.starts < 0 || previous.starts > maxLifetimeStarts ||
+        !Number.isSafeInteger(previous.reservedSeconds) || previous.reservedSeconds < 0 || previous.reservedSeconds > maxLifetimeCompute ||
+        (previous.budgetWindowStartedAt !== undefined && !Number.isFinite(previous.budgetWindowStartedAt)) ||
         (previous.activeUntil !== null && !Number.isFinite(previous.activeUntil)))) {
       if (this.container.running) await this.container.destroy("invalid application lifecycle state");
       throw new Error("APPLICATION_HTTP_STATE_INVALID");
     }
     if (previous && previous.scope !== scope) {
       if (this.container.running) await this.container.destroy("application configuration changed");
-      // Only a newer exact deployment capability can open a fresh budget.
-      // Secrets changes or replayed old configurations cannot reset it.
+      // Only a newer exact deployment capability can replace configuration.
+      // Preserve paid-usage counters through revisions within the same window.
       if (previous.issuedAt >= Date.parse(this.profile.issuedAt)) throw new Error("APPLICATION_HTTP_CONFIGURATION_CHANGED");
-      previous = undefined;
+      const budgetWindowStartedAt = previous.budgetWindowStartedAt ?? previous.issuedAt;
+      const windowMs = production ? 31 * 86_400_000 : 3_600_000;
+      previous = this.now() - budgetWindowStartedAt >= windowMs
+        ? { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(), starts: 0, reservedSeconds: 0, activeUntil: null }
+        : { ...previous, scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt, activeUntil: null };
     }
     if (this.container.running) {
       if (!previous?.activeUntil || previous.activeUntil <= this.now()) {
@@ -236,7 +251,7 @@ export class ApplicationHttpContainerController {
     this.phase = "budget";
     const deadline = Math.min(Date.parse(this.profile.expiresAt), this.now() + this.profile.hardLifetimeSeconds * 1000);
     const reservation = Math.ceil((deadline - this.now()) / 1000);
-    const state: LifecycleState = previous ?? { scope, issuedAt: Date.parse(this.profile.issuedAt), starts: 0, reservedSeconds: 0, activeUntil: null };
+    const state: LifecycleState = previous ?? { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(), starts: 0, reservedSeconds: 0, activeUntil: null };
     if (state.starts >= this.profile.maxStarts || reservation < 1 ||
         state.reservedSeconds + reservation > this.profile.maxComputeSeconds) throw new Error("APPLICATION_HTTP_COMPUTE_BUDGET_EXHAUSTED");
     const env = applicationEnvironment(this.profile, this.environment, deadline);

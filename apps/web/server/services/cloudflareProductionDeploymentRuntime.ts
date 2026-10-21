@@ -1,5 +1,9 @@
+import { createHash } from "node:crypto";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { and, eq } from "drizzle-orm";
+import { systemSettings } from "../../drizzle/schema";
+import { createHttpApplicationProvisionPorts, ensureHttpApplications, prepareHttpApplicationImages } from "./cloudflareHttpApplicationProvision";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { withCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 import {
@@ -23,7 +27,27 @@ export function createCloudflareProductionDeploymentRuntime(input: { fetchImpl?:
   if (!process.env.DATABASE_URL) return undefined;
   const db = getDb();
   const fetchImpl = input.fetchImpl ?? fetch;
-  const stagingVersionTransport = createCloudflareStagingApiTransport({ resolveBundle: resolveCloudflareStagingBundle, fetchImpl });
+  const applicationPorts = async (origin: import("./cloudflareOriginVersionBindings").CloudflareOriginVersionBindings,
+    assertAuthorized: () => Promise<void>) => {
+    await assertAuthorized();
+    const rows = await db.select({ updatedBy: systemSettings.updatedBy, isSensitive: systemSettings.isSensitive })
+      .from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_origin_versions"), eq(systemSettings.key, origin.configurationRef))).limit(2);
+    if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].updatedBy) throw new Error("CLOUDFLARE_HTTP_APPLICATION_CONFIG_OWNER_DENIED");
+    const scope = { ...origin.descriptor, actorUserId: rows[0].updatedBy };
+    return { scope, ports: createHttpApplicationProvisionPorts(db, scope, assertAuthorized, fetchImpl) };
+  };
+  const stagingVersionTransport = createCloudflareStagingApiTransport({ resolveBundle: resolveCloudflareStagingBundle, fetchImpl,
+    prepareHttpApplications: async (origin, _target, assertAuthorized) => {
+      const { scope, ports } = await applicationPorts(origin, assertAuthorized);
+      await prepareHttpApplicationImages(origin.descriptor.applicationHttp!, scope, ports,
+        origin.descriptor.applicationHttpPhase === "namespace-only" ? origin.descriptor.expiresAt : undefined);
+    },
+    ensureHttpApplications: async (origin, _target, version, operationKey, assertAuthorized) => {
+      const { scope, ports } = await applicationPorts(origin, assertAuthorized);
+      return ensureHttpApplications(origin.descriptor.applicationHttp!, scope, version,
+        createHash("sha256").update(`${origin.configurationRef}|${operationKey}`).digest("hex"), ports);
+    },
+  });
   const canaryTransport = createCloudflareProductionCanaryTransport({ fetchImpl });
 
   return {

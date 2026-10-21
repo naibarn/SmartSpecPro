@@ -6,15 +6,18 @@ const HOP_HEADERS = new Set(["connection", "content-length", "host", "keep-alive
   "te", "trailer", "transfer-encoding", "upgrade", "forwarded", "x-real-ip", "true-client-ip", "cf-connecting-ip"]);
 
 /**
- * Full HTTP API ingress is an explicit staging-only migration switch. The
- * existing application Container remains on its bounded on-demand lifecycle;
- * production and the origin fallback are never selected implicitly.
+ * Full HTTP API ingress is an exact-environment, immutable deployment switch.
+ * The application Containers remain on their bounded on-demand lifecycle;
+ * neither the origin fallback nor an unrelated environment is selected implicitly.
  */
 export async function dispatchApplicationHttpIngress(
   request: Request, route: ApiRouteManifestEntry, env: ApplicationHttpBindings,
 ): Promise<Response | null> {
-  if (env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC !== "staging-full-http-v1") return null;
-  if (env.CLOUDFLARE_ENVIRONMENT !== "staging" || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand" ||
+  const trafficMode = env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC;
+  if (!trafficMode) return null;
+  const expectedTrafficMode = env.CLOUDFLARE_ENVIRONMENT === "staging" ? "staging-full-http-v1" :
+    env.CLOUDFLARE_ENVIRONMENT === "production" ? "production-full-http-v1" : null;
+  if (!expectedTrafficMode || trafficMode !== expectedTrafficMode || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand" ||
       route.classification !== "ORIGIN_PROXY" || request.headers.has("upgrade")) {
     return Response.json({ error: "APPLICATION_HTTP_INGRESS_NOT_ADMITTED" }, { status: 503, headers: { "cache-control": "no-store" } });
   }

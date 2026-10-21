@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { prepareHttpApplicationImages, ensureHttpApplications, createHttpApplicationProvisionPorts, httpApplicationCredentialRef, assertHttpApplicationVersionMetadata } from "./cloudflareHttpApplicationProvision";
 import { encrypt } from "./crypto";
+import { providerDeploymentCredentials } from "../../drizzle/schema";
 import { httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 function fixture() {
@@ -121,6 +122,21 @@ describe("private HTTP application metadata preparation", () => {
       f.ports.assertAuthorized.mockRejectedValueOnce(Error("revoked"));
       await expect(ports.request(path, { observability: { logs: { enabled: false } } }, "PATCH")).rejects.toThrow("revoked");
       expect(fetchImpl).toHaveBeenCalledTimes(2); expect(row.value).not.toContain("fixture-api-token");
+    } finally { if (oldKey === undefined) delete process.env.LLM_ENCRYPTION_KEY; else process.env.LLM_ENCRYPTION_KEY = oldKey; }
+  });
+  it("uses the exact production deployment-target credential when no legacy purpose token is stored", async () => {
+    const f = fixture(), token = "production-deployment-token-fixture", oldKey = process.env.LLM_ENCRYPTION_KEY;
+    process.env.LLM_ENCRYPTION_KEY = "disposable-http-application-test-key";
+    try {
+      const db = { select: () => ({ from: (table: unknown) => ({ where: () => ({ limit: async () =>
+        table === providerDeploymentCredentials ? [{ status: "CONFIGURED", encryptedSecret: encrypt(token) }] : [] }) }) }) };
+      const fetchImpl = vi.fn(async (_url: any, init: any) => {
+        expect(init.headers.Authorization).toBe(`Bearer ${token}`);
+        return Response.json({ success: true, result: { image: f.settings.node.image, status: "ready" } });
+      });
+      const ports = createHttpApplicationProvisionPorts(db as never, { ...f.scope, environment: "production" }, f.ports.assertAuthorized, fetchImpl as never);
+      await expect(ports.request("/image-preparations", { image: f.settings.node.image })).resolves.toMatchObject({ status: "ready" });
+      expect(String(fetchImpl.mock.calls[0][0])).toContain(`/accounts/${f.scope.accountRef}/containers/image-preparations`);
     } finally { if (oldKey === undefined) delete process.env.LLM_ENCRYPTION_KEY; else process.env.LLM_ENCRYPTION_KEY = oldKey; }
   });
   it("prepares only the two exact registry images and creates two DO-managed applications without VM starts", async () => {

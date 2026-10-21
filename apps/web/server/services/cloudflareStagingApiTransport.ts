@@ -482,12 +482,23 @@ export function createCloudflareStagingApiTransport(input: {
         await assertMutationAuthorized();
       }, async () => {
         const bundle = await loadVerifiedBundle(artifact);
+        if (origin.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) {
+          if (!input.prepareHttpApplications || !input.ensureHttpApplications)
+            throw new CloudflareStagingTransportError("CLOUDFLARE_HTTP_APPLICATION_PROVISIONER_REQUIRED");
+          await input.prepareHttpApplications(origin, target, assertMutationAuthorized);
+        }
         await assertMutationAuthorized();
         const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
         const uploaded = await readUploadedVersion(token, target, versionId);
         if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !==
             versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest, "production")) {
           throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_VERSION_RECEIPT_MISMATCH");
+        }
+        if (origin.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) {
+          if (!input.ensureHttpApplications) throw new CloudflareStagingTransportError("CLOUDFLARE_HTTP_APPLICATION_PROVISIONER_REQUIRED");
+          assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp, origin.descriptor, uploaded);
+          await input.ensureHttpApplications(origin, target, uploaded,
+            createHash("sha256").update(`${origin.configurationRef}|production-canary|${versionId}`).digest("hex"), assertMutationAuthorized);
         }
         return { versionId, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest,
           configurationDigest: origin.configurationDigest, trafficShifted: false as const };

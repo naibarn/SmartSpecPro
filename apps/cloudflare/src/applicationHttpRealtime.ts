@@ -8,8 +8,10 @@ import { forwardApplicationHttpBridge, isApplicationHttpWebSocketPath, validateA
 export async function dispatchApplicationHttpRealtime(request: Request, env: ApplicationHttpBindings): Promise<Response | undefined> {
   if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return undefined;
   const url = new URL(request.url);
-  if (!isApplicationHttpWebSocketPath(url.pathname) || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
-      env.CLOUDFLARE_CONTAINER_REALTIME_ROUTES !== "enabled") return undefined;
+  const realtimeMode = env.CLOUDFLARE_CONTAINER_REALTIME_ROUTES;
+  const expectedMode = env.CLOUDFLARE_ENVIRONMENT === "staging" ? "staging-allowlisted-v1" :
+    env.CLOUDFLARE_ENVIRONMENT === "production" ? "production-allowlisted-v1" : null;
+  if (!isApplicationHttpWebSocketPath(url.pathname) || !expectedMode || realtimeMode !== expectedMode) return undefined;
 
   const invalid = validateApplicationHttpWebSocket(request);
   if (invalid) return new Response(null, { status: invalid, headers: { "cache-control": "private, no-store" } });

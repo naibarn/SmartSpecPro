@@ -18,7 +18,7 @@ function fixture() {
   return { env, fetch, namespace };
 }
 
-describe("staging full HTTP application ingress", () => {
+describe("environment-bound full HTTP application ingress", () => {
   it("is default-off and leaves the origin route available", async () => {
     const f = fixture();
     const response = await dispatchApplicationHttpIngress(new Request("https://staging.smartaihub.app/trpc/auth.me"),
@@ -52,6 +52,34 @@ describe("staging full HTTP application ingress", () => {
     const response = await createCloudflareWorker().fetch(new Request("https://staging.smartaihub.app/trpc/auth.me"), f.env as never);
     expect(response.status).toBe(200);
     expect(new URL((f.fetch.mock.calls[0][0] as Request).url).hostname).toBe("node.application.internal");
+  });
+
+  it("serves production HTTP only with production profiles and the production traffic switch", async () => {
+    const f = fixture();
+    const replaceNamespace = (profile: Record<string, unknown>) => ({ ...profile,
+      targetId: "smartspec-cloudflare-runtime",
+      namespace: "smartspec-production-abcdef012345",
+      instance: "basic",
+    });
+    const env = { ...f.env, CLOUDFLARE_ENVIRONMENT: "production",
+      CLOUDFLARE_APPLICATION_HTTP_TRAFFIC: "production-full-http-v1",
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://smartaihub.app"]),
+      CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(replaceNamespace(JSON.parse(f.env.CLOUDFLARE_NODE_HTTP_PROFILE))),
+      CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(replaceNamespace(JSON.parse(f.env.CLOUDFLARE_PYTHON_HTTP_PROFILE))),
+    };
+    const response = await dispatchApplicationHttpIngress(new Request("https://smartaihub.app/trpc/auth.me"),
+      classifyApiRoute("GET", "/trpc/auth.me"), env as never);
+    expect(response?.status).toBe(200);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-runtime:node-http:smartspec-production-abcdef012345");
+  });
+
+  it("does not use a production profile under the staging switch", async () => {
+    const f = fixture();
+    const env = { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" };
+    const response = await dispatchApplicationHttpIngress(new Request("https://staging.smartaihub.app/trpc/auth.me"),
+      classifyApiRoute("GET", "/trpc/auth.me"), env as never);
+    expect(response?.status).toBe(503);
+    expect(f.namespace.get).not.toHaveBeenCalled();
   });
 
   it("fails closed outside staging, for unapproved routes/origins, and on Container errors", async () => {

@@ -32,6 +32,17 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it("accepts a monthly bounded production profile and rejects longer or larger compute authority", () => {
+    const f = fixture();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345",
+      expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(), maxStarts: 600,
+      maxComputeSeconds: 360_000, hardLifetimeSeconds: 600, idleTimeoutSeconds: 30, instance: "basic" });
+    expect(() => validateApplicationHttpProfile(f.profile)).not.toThrow();
+    expect(() => validateApplicationHttpProfile({ ...f.profile, maxStarts: 601 })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
+    expect(() => validateApplicationHttpProfile({ ...f.profile, maxComputeSeconds: 360_001 })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
+    expect(() => validateApplicationHttpProfile({ ...f.profile, instance: "standard-1" })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
+    expect(() => validateApplicationHttpProfile({ ...f.profile, expiresAt: new Date(Date.now() + 32 * 86_400_000).toISOString() })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
+  });
   it.each([
     ["node-http", "/readyz"],
     ["python-http", "/health"],
@@ -200,6 +211,35 @@ describe("bounded private application HTTP compute", () => {
     await f.controller.ensureRunning(); f.container.running = false;
     await expect(f.controller.ensureRunning()).rejects.toThrow("COMPUTE_BUDGET_EXHAUSTED");
     expect(f.container.start).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the production usage budget across config revisions and resets only after 31 days", async () => {
+    const f = fixture();
+    let now = Date.now();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345",
+      expiresAt: new Date(now + 30 * 86_400_000).toISOString(), maxStarts: 600, maxComputeSeconds: 360_000,
+      hardLifetimeSeconds: 600, idleTimeoutSeconds: 30, instance: "basic" });
+    const controllerForCurrentProfile = () => new ApplicationHttpContainerController(
+      f.container as never, f.storage, f.profile, f.environment, () => now);
+    await controllerForCurrentProfile().ensureRunning();
+    f.container.running = false;
+
+    f.profile.configurationRef = `cf-origin:${"e".repeat(64)}`;
+    f.profile.issuedAt = new Date(now + 1).toISOString();
+    f.profile.expiresAt = new Date(now + 30 * 86_400_000).toISOString();
+    now += 2;
+    await controllerForCurrentProfile().ensureRunning();
+    const carried = f.records.get("application-http-lifecycle-v1");
+    expect(carried).toMatchObject({ starts: 2, reservedSeconds: 1200 });
+
+    f.container.running = false;
+    now += 31 * 86_400_000;
+    f.profile.configurationRef = `cf-origin:${"f".repeat(64)}`;
+    f.profile.issuedAt = new Date(now - 1).toISOString();
+    f.profile.expiresAt = new Date(now + 30 * 86_400_000).toISOString();
+    await controllerForCurrentProfile().ensureRunning();
+    const renewed = f.records.get("application-http-lifecycle-v1");
+    expect(renewed).toMatchObject({ starts: 1, reservedSeconds: 600 });
   });
 
   it("cannot adopt an unowned instance, reset budget by changing secrets, or run an unbound image", async () => {

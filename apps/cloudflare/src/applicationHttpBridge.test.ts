@@ -26,7 +26,7 @@ describe("private application HTTP binding", () => {
       headers: { authorization: "Bearer real-caller-token", "x-internal-token": "existing-service-token", "x-forwarded-host": "forged.example", "cf-access-client-secret": "do-not-forward", "x-cloudflare-origin-token": "forged-token" } });
     const response = await forwardApplicationHttpBridge(request, "python-http", f.env);
     expect(await response.text()).toBe("actual-private-api-response");
-    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${"c".repeat(64)}`);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${f.profile.namespace}`);
     expect(f.fetch).toHaveBeenCalledOnce();
     const forwarded = f.fetch.mock.calls[0][0] as Request;
     expect(forwarded.url).toBe("http://127.0.0.1:8000/api/action?tenant=a");
@@ -57,7 +57,7 @@ describe("private application HTTP binding", () => {
     await forwardApplicationHttpBridge(new Request("http://node.application.internal/api/internal/read"), "node-http", {
       ...f.env, CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile), NODE_HTTP: f.namespace,
     });
-    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${"c".repeat(64)}`);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${f.profile.namespace}`);
     expect((f.fetch.mock.calls[0][0] as Request).url).toBe("http://127.0.0.1:3000/api/internal/read");
   });
 
@@ -105,7 +105,7 @@ describe("private application HTTP binding", () => {
       ...f.env, CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(newer),
       CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(node),
     });
-    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${"f".repeat(64)}`);
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${f.profile.namespace}`);
   });
 
   it.each(["/workpacks/intake", "/api/v1/workflows/run", "/api/v1/orchestrator/factory/run", "/api/%61gency/run"])("does not boot retired routes: %s", async path => {
@@ -114,10 +114,10 @@ describe("private application HTTP binding", () => {
     expect(f.namespace.get).not.toHaveBeenCalled();
   });
 
-  it("fails closed for an expired capability, missing namespace or production environment", async () => {
+  it("fails closed for an expired capability, missing namespace or mismatched production profile", async () => {
     const f = fixture(), request = () => new Request("http://python.application.internal/health/live");
     await expect(forwardApplicationHttpBridge(request(), "python-http", { ...f.env, PYTHON_HTTP: undefined })).rejects.toThrow("BINDING_REQUIRED");
-    await expect(forwardApplicationHttpBridge(request(), "python-http", { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).rejects.toThrow("DISABLED");
+    await expect(forwardApplicationHttpBridge(request(), "python-http", { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).rejects.toThrow("PROFILE_MISMATCH");
     f.profile.expiresAt = f.profile.issuedAt; f.env.CLOUDFLARE_PYTHON_HTTP_PROFILE = JSON.stringify(f.profile);
     await expect(forwardApplicationHttpBridge(request(), "python-http", f.env)).rejects.toThrow("PROFILE_DENIED");
     expect(f.namespace.get).not.toHaveBeenCalled();

@@ -47,9 +47,9 @@ export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.e
 }).strict().superRefine((value, ctx) => {
   const expectedTarget = value.environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
   if (value.targetId !== expectedTarget) ctx.addIssue({ code: "custom", message: "Origin target/environment mismatch" });
-  if (value.environment === "production" && (value.nativeResources || value.applicationHttp || value.workflowExecution ||
+  if (value.environment === "production" && (value.nativeResources || value.workflowExecution ||
       value.workflowDatabase || value.runnerReleaseCatalog || value.jobTransport || value.retentionSchedule || value.mediaProbe)) {
-    ctx.addIssue({ code: "custom", message: "Production Container and background capabilities require separate admission" });
+    ctx.addIssue({ code: "custom", message: "Production background capabilities require separate admission" });
   }
 });
 export type CloudflareOriginDescriptor = z.infer<typeof cloudflareOriginDescriptorSchema>;
