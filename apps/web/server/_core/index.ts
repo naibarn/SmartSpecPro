@@ -2765,19 +2765,6 @@ async function main() {
     }
   }
 
-  // Warm the model registry cache from the DB BEFORE accepting traffic, so the
-  // first requests after a (re)start don't fall back to the small static model
-  // subset — which omits DB-only models (e.g. the higgsfield/magnific catalog)
-  // and would make the vertical-drama model-resolution guards falsely reject a
-  // valid user selection during the cold-start window. Non-fatal: the resolvers
-  // also tolerate an unloaded catalog (see `isDbModelCatalogLoaded`).
-  try {
-    const { refreshModelCache } = await import("../services/modelRegistry");
-    await refreshModelCache();
-  } catch (error) {
-    console.error("[Startup] Failed to warm model registry cache:", error);
-  }
-
   // Prefer PORT, else pick a free one
   const preferred = parseInt(process.env.PORT || "3000");
   const port = Number.isFinite(preferred) ? preferred : 3000;
@@ -2803,6 +2790,15 @@ async function main() {
 
   server.listen(port, host, () => {
     console.log(`SmartAIHub Web listening on http://${host}:${port}`);
+
+    // The API must accept liveness and application requests as soon as its
+    // required preflight checks pass. Model catalog warming is optional and
+    // can wait on the database, so do it after listen; resolvers support an
+    // unloaded cache during this short warm-up window.
+    void import("../services/modelRegistry")
+      .then(({ refreshModelCache }) => refreshModelCache())
+      .catch(error => console.error("[Startup] Failed to warm model registry cache:", error));
+
     if (!applicationRuntimeProfile.ownsBackgroundWork) return;
 
     // Start background scheduler to resolve pending media images
