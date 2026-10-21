@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 passed paired immutable image preparation, bounded Node/Python health/auth/PostgreSQL canary, correct image identity, and idle teardown. Canary was rolled back to the verified baseline and its policy revoked; staging healthz is 200. Continue remaining migration work for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance; production remains unchanged until its existing production authority issues an exact decision.",
+      "next_action": "HTTP staging qualification for exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 is complete and rolled back cleanly. Continue independent implementation for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance. No production target/policy exists today; do not attempt production rollout outside an exact existing platform/provider authority decision.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "ae269ee025a806b2bdc58bc7a0737a79065bafee",
-      "merged_main_sha": "5248a12f85918923f2382bdb6021c54d12146d59",
+      "merged_main_sha": "c44a51b5c",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,18 +58,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 93,
-  "updated_at": "2026-10-21T15:39:21.198250+00:00",
+  "generation": 94,
+  "updated_at": "2026-10-21T15:40:54.145205+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 passed paired immutable image preparation, bounded Node/Python health/auth/PostgreSQL canary, correct image identity, and idle teardown. Canary was rolled back to the verified baseline and its policy revoked; staging healthz is 200. Continue remaining migration work for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance; production remains unchanged until its existing production authority issues an exact decision.",
-    "merged_main_sha": "5248a12f85918923f2382bdb6021c54d12146d59",
+    "next_action": "HTTP staging qualification for exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 is complete and rolled back cleanly. Continue independent implementation for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance. No production target/policy exists today; do not attempt production rollout outside an exact existing platform/provider authority decision.",
+    "merged_main_sha": "c44a51b5c",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
       "Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.",
       "Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.",
-      "Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion."
+      "Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion.",
+      "No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority."
     ],
     "outcome": "NOT_ACCEPTED"
   }
