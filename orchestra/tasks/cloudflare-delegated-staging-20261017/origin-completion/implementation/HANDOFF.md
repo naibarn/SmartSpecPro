@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `143`
-- Updated (UTC): `2026-10-21T19:57:19.244990+00:00`
+- State generation: `144`
+- Updated (UTC): `2026-10-21T19:57:56.695645+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `15800bb1846e1e2c7180930cdf6a469cc8b12825`
+- Latest recorded merged Main SHA: `5b4867519c937a7d9b3fbca8deccca64b1ca43bf`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Use the existing Admin provider-target authority to create the exact production target and independently approved canary grant only after the retained-PostgreSQL path and production rollback baseline are verified; then run the queued worker_jobs production canary and promote under separately scoped grants. Current read-only DB inventory has no production target, grant request, or production deploy job.
+- Next action: Reconcile the exact production target, independent grant, route/Container provider authority, rollback baseline and live retained-PostgreSQL evidence through the existing Admin and worker_jobs flow; then run bounded canary and promote only after passing live verification. Latest read-only DB has no production target, grant, or deploy job; latest live runtime Worker remains disabled with seven required bindings absent.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 15800bb1846e1e2c7180930cdf6a469cc8b12825 | 15800bb1846e1e2c7180930cdf6a469cc8b12825 | Use the existing Admin provider-target authority to create the exact production target and independently approved canary grant only after the retained-PostgreSQL path and production rollback baseline are verified; then run the queued worker_jobs production canary and promote under separately scoped grants. Current read-only DB inventory has no production target, grant request, or production deploy job. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 5b4867519c937a7d9b3fbca8deccca64b1ca43bf | 5b4867519c937a7d9b3fbca8deccca64b1ca43bf | Reconcile the exact production target, independent grant, route/Container provider authority, rollback baseline and live retained-PostgreSQL evidence through the existing Admin and worker_jobs flow; then run bounded canary and promote only after passing live verification. Latest read-only DB has no production target, grant, or deploy job; latest live runtime Worker remains disabled with seven required bindings absent. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -58,6 +58,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Live proof confirms the apex still serves Node/Linux while the production Worker is disabled, lacks required bindings and is not attached. Production route and Container authority/target/policy/grant plus full app runtime parity remain open.
 - Source now has bounded production Node/Python Containers and version preparation, but no live production target, route/Container IAM grant, promotion authority, or verified rollback baseline is recorded; production activation remains unperformed.
 - Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.
+- Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.
 
 ## Resume
 
