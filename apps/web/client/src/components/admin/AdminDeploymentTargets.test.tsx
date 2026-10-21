@@ -70,6 +70,15 @@ async function chooseScope(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("option", { name: "staging" }));
 }
 
+async function chooseProductionScope(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+  await user.click(await screen.findByRole("option", { name: /Tenant One/ }));
+  await user.click(screen.getByRole("combobox", { name: "Canonical project" }));
+  await user.click(await screen.findByRole("option", { name: /Wiki/ }));
+  await user.click(screen.getByRole("combobox", { name: "Environment" }));
+  await user.click(await screen.findByRole("option", { name: "production" }));
+}
+
 describe("AdminDeploymentTargets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -154,6 +163,35 @@ describe("AdminDeploymentTargets", () => {
       workerRef: null,
       containerApplicationRef: null,
       provenance: "change-123 approved by owner",
+    }));
+  });
+
+  it("allows exact production target metadata without exposing deploy or traffic activation", async () => {
+    const user = userEvent.setup();
+    const productionAccountRef = "a".repeat(32);
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(screen.getByText(/Production target metadata only records the exact deployment destination/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not create a deployment grant or enable a Worker/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /deploy|activate|change traffic/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("Record an explicitly approved Cloudflare target"));
+    await user.type(screen.getByLabelText("Deployment target identity"), "smartspec-cloudflare-runtime");
+    await user.type(screen.getByLabelText("Cloudflare account ID (this target only)"), productionAccountRef);
+    await user.type(screen.getByLabelText("Approval or change provenance"), "owner-approved production target record");
+    await user.click(screen.getByRole("button", { name: "Record approved target" }));
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({
+      tenantId,
+      projectId,
+      environment: "production",
+      provider: "cloudflare",
+      deploymentTargetId: "smartspec-cloudflare-runtime",
+      accountRef: productionAccountRef,
+      workerRef: null,
+      containerApplicationRef: null,
+      provenance: "owner-approved production target record",
     }));
   });
 

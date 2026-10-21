@@ -13,7 +13,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
-const ENVIRONMENTS = ["preview", "staging"] as const;
+const ENVIRONMENTS = ["preview", "staging", "production"] as const;
 
 type DeploymentTarget = {
   id: string;
@@ -89,7 +89,10 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
           event.preventDefault();
           saveCredential.mutate({ ...identity, token: token.trim() });
         }}>
-          <p>{text(
+          <p>{target.environment === "production" ? text(
+            "This token is encrypted and scoped to this tenant, project, and production environment. It is never returned to the browser. Use only the exact production account credential approved for this target. Saving it does not deploy or change traffic.",
+            "Token นี้จะถูกเข้ารหัสและผูกกับ tenant, project และ production environment นี้เท่านั้น ระบบจะไม่ส่ง token กลับไปยัง browser ให้ใช้เฉพาะ credential ของ production account ที่อนุมัติสำหรับ target นี้ การบันทึก token ไม่ได้ deploy หรือเปลี่ยน traffic",
+          ) : text(
             "This token is encrypted and scoped to this tenant, project, and environment. It is never returned to the browser. Use a token from the dedicated non-production Mini-App Cloudflare account.",
             "Token นี้จะถูกเข้ารหัสและผูกกับ tenant, project และ environment นี้เท่านั้น ระบบจะไม่ส่ง token กลับไปยัง browser ให้ใช้ token จาก Cloudflare account สำหรับ Mini-App non-production ที่แยกไว้",
           )}</p>
@@ -209,8 +212,8 @@ export default function AdminDeploymentTargets() {
       <VStack gap={1}>
         <h2>{text("Deployment targets", "Deployment targets")}</h2>
         <p>{text(
-          "Manage Cloudflare targets for preview and staging. This page only records target authority; it does not deploy an app or run migrations.",
-          "จัดการ Cloudflare target สำหรับ preview และ staging หน้านี้บันทึก authority ของ target เท่านั้น ไม่ได้ deploy แอปหรือรัน migration",
+          "Manage Cloudflare target metadata for preview, staging, and production. This page does not deploy an app, enable traffic, change DNS/routes, or run migrations.",
+          "จัดการ metadata ของ Cloudflare target สำหรับ preview, staging และ production หน้านี้ไม่ได้ deploy แอป เปิด traffic เปลี่ยน DNS/routes หรือรัน migration",
         )}</p>
         <p>{text("Project ID and App ID are separate identities. The registry stores project/environment scope, not an App ID.", "Project ID และ App ID เป็นคนละ identity โดย registry เก็บ scope ของ project/environment และไม่ได้เก็บ App ID")}
           {" "}{text("Project Wiki package App ID:", "Project Wiki package App ID:")} <code>{PROJECT_WIKI_APP_ID}</code>
@@ -249,7 +252,11 @@ export default function AdminDeploymentTargets() {
         </VStack>
       </HStack>
 
-      {!validScope ? <p role="status">{text("Select a tenant, an active canonical project, and preview or staging to inspect target authority.", "เลือก tenant, canonical project ที่ active และ preview หรือ staging เพื่อตรวจ target authority")}</p> : null}
+      {validScope && environment === "production" ? <p role="status">{text(
+        "Production target metadata only records the exact deployment destination. It does not create a deployment grant or enable a Worker, Container, DNS record, route, or production traffic. Those actions remain behind their separate production approval and rollback controls.",
+        "metadata ของ production target ใช้บันทึกปลายทาง deployment ที่แน่นอนเท่านั้น ไม่ได้สร้าง deployment grant หรือเปิด Worker, Container, DNS record, route หรือ production traffic การดำเนินการเหล่านั้นยังต้องผ่าน approval และ rollback control ของ production แยกต่างหาก",
+      )}</p> : null}
+      {!validScope ? <p role="status">{text("Select a tenant, an active canonical project, and preview, staging, or production to inspect target authority.", "เลือก tenant, canonical project ที่ active และ preview, staging หรือ production เพื่อตรวจ target authority")}</p> : null}
       {validScope && targetsQuery.isError ? <p role="alert">{text("Target registry could not be read. The current authority state is unknown; exact-admin access may be required.", "อ่าน target registry ไม่สำเร็จ สถานะ authority ยังไม่ทราบ และอาจต้องใช้ exact-admin")}</p> : null}
       {validScope && targetsQuery.isLoading ? <p role="status">{text("Reading target registry…", "กำลังอ่าน target registry…")}</p> : null}
       {validScope && !targetsQuery.isLoading && !targetsQuery.isError && isConflict ? <p role="alert">TARGET_AUTHORITY_CONFLICT: {text("multiple enabled Cloudflare targets exist for this scope. Resolve the conflict before deployment.", "พบ Cloudflare target ที่เปิดใช้งานหลายรายการใน scope นี้ ต้องแก้ conflict ก่อน deploy")}</p> : null}
