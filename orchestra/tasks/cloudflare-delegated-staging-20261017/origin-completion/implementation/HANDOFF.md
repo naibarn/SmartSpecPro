@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `84`
-- Updated (UTC): `2026-10-21T12:56:04.854392+00:00`
+- State generation: `85`
+- Updated (UTC): `2026-10-21T13:20:00+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `13943dfd1`
+- Latest recorded merged Main SHA: `5ce4a0f7b2990bde1f7d2602e56848b6cf4db73f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes.
+- Next action: Preserve the completed staging proof for exact 5ce4a0f7: build/artifact and both images verified, worker deployed, fresh versioned Node DO reports starts=0 before the health probe (confirming lifecycle isolation), health returned 503 after one bounded start, provider app reports active=0/starting=0 with only prior stopped images, and baseline rollback/policy revocation succeeded. Staging healthz is 200 after rollback. Do not retry/start Python. Obtain Cloudflare Container/Worker event logs for the failed Node start (Logs Explorer currently returns no datasets), identify whether allocation/image/runtime or private port routing failed, then fix and revalidate once with a fresh exact configRef and bounded budget.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 13943dfd1 | 13943dfd1 | Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 5ce4a0f7 | 5ce4a0f7 | Build and paired images are exact and published; versioned identity fix is live-verified (starts 0→1 only on authorized probe). Node health still fails 503. Baseline deployment c17e1176-7357-4cca-bc29-fee210114fc5 is restored, staging healthz returns 200 and policy is revoked. Diagnose provider/runtime event before any further Container start; Python remains unstarted. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -41,6 +41,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.
 - aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.
 - dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending.
+- 5ce4a0f7 exact canonical build/artifact and both digest-pinned HTTP images were published; image preparation and Worker deploy each reported zero Container starts. Status proved the new configRef-derived Node DO began with starts=0 and matching configuration. One authorized Node health probe reserved the 180-second/one-start budget but returned 503 in 476ms; status then showed starts=1, running=false, containerState=null, failure=null. Provider app readback showed active=0/starting=0 and inventory contained only old stopped images, so the actual placement/image/runtime versus private bridge failure remains unproven. Cloudflare Logs Explorer dataset listing returned an empty list; app observability logs are enabled. No Python start was attempted. Rollback deployment c17e1176-7357-4cca-bc29-fee210114fc5 to baseline config 05b032... completed and revoked the temporary policy; staging `/healthz` returned 200 afterward. Production DNS/cutover was not touched.
 
 ## Resume
 
