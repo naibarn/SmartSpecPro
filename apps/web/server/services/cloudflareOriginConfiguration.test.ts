@@ -175,13 +175,17 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
     const request = { identity, configurationRef: saved.configurationRef, configurationDigest: saved.configurationDigest };
     await expect(withCloudflareOriginConfiguration(db, request, async value => value.secrets.applicationHttp?.node.JWT_SECRET)).resolves.toBe("disposable-node-secret");
+    const expiredApplicationHttp = { ...applicationHttp, issuedAt: new Date(Date.now() - 120000).toISOString(), expiresAt: new Date(Date.now() - 60000).toISOString() };
+    await expect(saveCloudflareOriginConfiguration(db, { ...input, settings: { ...input.settings, applicationHttp: expiredApplicationHttp } })).rejects.toThrow("SCOPE_DENIED");
     const namespaceSaved = await saveCloudflareOriginConfiguration(db, {
-      ...input, settings: { ...input.settings, applicationHttpPhase: "namespace-only" }, secrets,
+      ...input, settings: { ...input.settings, applicationHttp: expiredApplicationHttp, applicationHttpPhase: "namespace-only" }, secrets,
     });
     const namespaceMetadata = await getCloudflareOriginConfiguration(db, { identity, configurationRef: namespaceSaved.configurationRef });
     expect(namespaceMetadata.descriptor.applicationHttpPhase).toBe("namespace-only");
     await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: namespaceSaved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
     await expect(withCloudflareOriginConfiguration(db, { identity, configurationRef: namespaceSaved.configurationRef, configurationDigest: namespaceSaved.configurationDigest }, async value => value.secrets.applicationHttp)).resolves.toBeUndefined();
+    await expect(saveCloudflareOriginConfiguration(db, { ...input, settings: { ...input.settings, applicationHttp: expiredApplicationHttp,
+      applicationHttpPhase: "namespace-only", expiresAt: expiredApplicationHttp.expiresAt }, secrets })).rejects.toThrow();
     await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
     await db.update(schema.workerJobs).set({ operatorReviewRequired: true }).where(eq(schema.workerJobs.id, applicationHttp.python.provisionJobId));
     const operation = vi.fn(); await expect(withCloudflareOriginConfiguration(db, request, operation)).rejects.toThrow("RECEIPT_DENIED");

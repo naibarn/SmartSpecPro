@@ -44,7 +44,7 @@ describe("bounded read-only API migration canary", () => {
     const forwarded = f.fetch.mock.calls[0][0] as Request;
     expect(forwarded.headers.get("authorization")).toBe("Bearer actual-user-fixture");
     for (const header of ["x-smartaihub-application-canary-token", "x-internal-token", "x-forwarded-for", "cf-access-client-secret"]) expect(forwarded.headers.has(header)).toBe(false);
-    expect(forwarded.url).toBe(path === "node/auth" ? "http://127.0.0.1:3000/trpc/auth.me" : path === "python/auth" ? "http://127.0.0.1:8000/api/v1/auth/me" : "http://127.0.0.1:8000/health");
+    expect(forwarded.url).toBe(path === "node/auth" ? "http://127.0.0.1:3000/trpc/auth.me" : path === "python/auth" ? "http://127.0.0.1:8000/api/users/me" : "http://127.0.0.1:8000/health");
   });
   it("does not accept arbitrary paths, query selectors, writes or upgrades", async () => {
     const f = fixture();

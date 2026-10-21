@@ -125,7 +125,8 @@ export function createCloudflareStagingDeploymentRuntime(input: {
     }, token => verifyNativeProviderResources({ descriptor, accountRef: target.accountRef, token, fetchImpl })),
     prepareHttpApplications: async (origin, _target, assertAuthorized) => {
       const { scope, ports } = await applicationPorts(origin, assertAuthorized);
-      await prepareHttpApplicationImages(origin.descriptor.applicationHttp!, scope, ports);
+      await prepareHttpApplicationImages(origin.descriptor.applicationHttp!, scope, ports,
+        origin.descriptor.applicationHttpPhase === "namespace-only" ? origin.descriptor.expiresAt : undefined);
     },
     ensureHttpApplications: async (origin, _target, version, operationKey, assertAuthorized) => {
       const { scope, ports } = await applicationPorts(origin, assertAuthorized);

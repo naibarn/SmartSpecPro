@@ -246,7 +246,7 @@ export function createCloudflareStagingApiTransport(input: {
 
   async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string, origin?: CloudflareOriginVersionBindings) {
     const completionJwt = await uploadAssets(token, target, bundle);
-    const http = origin?.descriptor.applicationHttp ? httpApplicationWorkerMetadata(origin.descriptor.applicationHttp, origin.descriptor) : undefined;
+    const http = origin?.descriptor.applicationHttp ? httpApplicationWorkerMetadata(origin.descriptor.applicationHttp, origin.descriptor, origin.descriptor.applicationHttpPhase === "namespace-only") : undefined;
     const metadata = {
       main_module: bundle.mainModule,
       compatibility_date: bundle.compatibilityDate,

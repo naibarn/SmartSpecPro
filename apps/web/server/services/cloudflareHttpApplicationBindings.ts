@@ -20,10 +20,10 @@ const environment = z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), z.string().m
     !entry.includes("\0") && !/^(?:NODE_OPTIONS|NODE_PATH|TSX_TSCONFIG_PATH|PYTHONPATH|PYTHONHOME|LD_.*|PATH|CLOUDFLARE_API_TOKEN|CLOUDFLARE_STAGING_EXECUTOR_.*)$/.test(key)));
 export const cloudflareHttpApplicationSecretsSchema = z.object({ node: environment, python: environment }).strict();
 type Scope = { tenantId: string; projectId: string; accountRef: string };
-export function validateHttpApplicationSettings(value: HttpApplicationSettings, scope: Scope, now = Date.now()) {
+export function validateHttpApplicationSettings(value: HttpApplicationSettings, scope: Scope, now = Date.now(), namespaceOnly = false) {
   const parsed = cloudflareHttpApplicationSettingsSchema.parse(value), issued = Date.parse(parsed.issuedAt), expiry = Date.parse(parsed.expiresAt);
   if (parsed.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId) || !/^[a-f0-9]{32}$/.test(scope.accountRef) ||
-      issued > now || expiry <= now || expiry - issued > 3600_000 || parsed.maxComputeSeconds < parsed.hardLifetimeSeconds ||
+      issued > now || (!namespaceOnly && expiry <= now) || expiry <= issued || expiry - issued > 3600_000 || parsed.maxComputeSeconds < parsed.hardLifetimeSeconds ||
       parsed.idleTimeoutSeconds > parsed.hardLifetimeSeconds || parsed.node.provisionJobId === parsed.python.provisionJobId)
     throw new Error("CLOUDFLARE_HTTP_APPLICATION_SCOPE_DENIED");
   for (const runtime of ["node", "python"] as const) {
@@ -54,8 +54,11 @@ export function assertHttpImageProvisionReceipt(value: HttpApplicationSettings, 
 /** Provider-shape metadata matches Wrangler's Durable Object-managed image
  * map. It declares capabilities only; no VM is prewarmed or public start route
  * added. DO name checks in the runtime bound execution to one instance/API. */
-export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, scope: Scope) {
-  validateHttpApplicationSettings(value, scope);
+export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, scope: Scope, namespaceOnly = false) {
+  // A retained namespace/image declaration carries no runtime secrets or VM
+  // binding. Its recovery lifetime follows the enclosing origin configuration;
+  // API execution always retains the shorter, strict canary expiry.
+  validateHttpApplicationSettings(value, scope, Date.now(), namespaceOnly);
   return {
     exports: {
       StagingNodeHttpContainer: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-node-http` },

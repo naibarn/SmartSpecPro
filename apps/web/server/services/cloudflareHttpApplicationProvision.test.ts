@@ -30,6 +30,18 @@ function fixture() {
   return { settings, scope, version, ports, states, applications };
 }
 describe("private HTTP application metadata preparation", () => {
+  it("retains namespace recovery after API expiry without granting any API execution", async () => {
+    const f = fixture();
+    f.settings.issuedAt = new Date(Date.now() - 120000).toISOString();
+    f.settings.expiresAt = new Date(Date.now() - 60000).toISOString();
+    await expect(prepareHttpApplicationImages(f.settings, f.scope, f.ports)).rejects.toThrow("SCOPE_DENIED");
+    expect(f.ports.request).not.toHaveBeenCalled();
+    const namespaceExpiry = new Date(Date.now() + 60000).toISOString();
+    await prepareHttpApplicationImages(f.settings, f.scope, f.ports, namespaceExpiry);
+    expect(f.ports.request).toHaveBeenCalledTimes(2);
+    await expect(prepareHttpApplicationImages(f.settings, f.scope, f.ports, f.settings.expiresAt)).rejects.toThrow("PREPARATION_DENIED");
+    expect(f.ports.request).toHaveBeenCalledTimes(2);
+  });
   it("requires exact image metadata and no VM-access binding during namespace preparation", () => {
     const f = fixture();
     expect(() => assertHttpApplicationVersionMetadata(f.settings, f.scope, f.version, true)).toThrow("NAMESPACE_PREPARATION_BINDING_DENIED");

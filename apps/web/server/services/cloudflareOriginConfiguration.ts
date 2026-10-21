@@ -42,7 +42,7 @@ function matches(descriptor: Descriptor, identity: DeploymentTargetIdentity) {
 async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: Descriptor, actorUserId: number | null, now = Date.now()) {
   if (descriptor.applicationHttp) {
     if (!actorUserId) denied();
-    validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now || Date.parse(descriptor.applicationHttp.issuedAt));
+    validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now || Date.parse(descriptor.applicationHttp.issuedAt), descriptor.applicationHttpPhase === "namespace-only");
     for (const runtime of ["node", "python"] as const) {
       const [imageReceipt] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
         jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
@@ -156,7 +156,7 @@ export async function withCloudflareOriginConfigurationForTransition<T>(db: Driz
   const { stored } = await readVersion(db, input.identity, input.configurationRef);
   const target = await resolveProviderDeploymentTarget(db, input.identity);
   if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now() ||
-      (stored.descriptor.applicationHttp && Date.parse(stored.descriptor.applicationHttp.expiresAt) <= Date.now()) ||
+      (stored.descriptor.applicationHttp && !stored.descriptor.applicationHttpPhase && Date.parse(stored.descriptor.applicationHttp.expiresAt) <= Date.now()) ||
       digest(stored.descriptor) !== input.configurationDigest || target.status !== "CONFIGURED" ||
       target.target.runtimePolicy !== input.activeConfigurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
       target.target.workerRef !== targetId || target.target.deploymentTargetId !== targetId || target.target.containerApplicationRef) denied();

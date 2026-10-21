@@ -50,13 +50,17 @@ type Ports = {
 };
 /** Image preparation and metadata application creation only. VM execution
  * remains in the private DO controller, with independent start/compute bounds. */
-export async function prepareHttpApplicationImages(settings: HttpApplicationSettings, scope: Scope, ports: Pick<Ports, "request" | "assertAuthorized" | "wait">) {
-  validateHttpApplicationSettings(settings, scope);
-  const deadline = Math.min(Date.parse(settings.expiresAt), Date.now() + 120_000);
+export async function prepareHttpApplicationImages(settings: HttpApplicationSettings, scope: Scope, ports: Pick<Ports, "request" | "assertAuthorized" | "wait">,
+  namespacePreparationExpiresAt?: string) {
+  const namespaceOnly = namespacePreparationExpiresAt !== undefined;
+  validateHttpApplicationSettings(settings, scope, Date.now(), namespaceOnly);
+  const expiry = Date.parse(namespacePreparationExpiresAt ?? settings.expiresAt);
+  if (!Number.isFinite(expiry) || expiry <= Date.now()) fail("IMAGE_PREPARATION_DENIED");
+  const deadline = Math.min(expiry, Date.now() + 120_000);
   for (const runtime of ["node", "python"] as const) {
     let ready = false;
     for (let attempt = 0; attempt < 24 && Date.now() < deadline; attempt++) {
-      await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope);
+      await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope, Date.now(), namespaceOnly);
       const result = await ports.request("/image-preparations", { image: settings[runtime].image });
       if (result?.status === "ready" && Date.now() < deadline) { ready = true; break; }
       if (result?.status !== "pending") fail("IMAGE_PREPARATION_DENIED");
@@ -69,7 +73,7 @@ export async function prepareHttpApplicationImages(settings: HttpApplicationSett
 type ApplicationVersion = { resources?: { bindings?: unknown; script_runtime?: { containers?: unknown } } };
 export function assertHttpApplicationVersionMetadata(settings: HttpApplicationSettings, scope: Scope,
   version: ApplicationVersion, namespaceOnly = false) {
-  const expected = httpApplicationWorkerMetadata(settings, scope);
+  const expected = httpApplicationWorkerMetadata(settings, scope, namespaceOnly);
   const bindings = version.resources?.bindings, containers = version.resources?.script_runtime?.containers;
   if (!Array.isArray(bindings) || !Array.isArray(containers)) fail("VERSION_METADATA_DENIED");
   for (const item of expected.containers) {

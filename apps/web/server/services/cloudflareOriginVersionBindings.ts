@@ -144,7 +144,7 @@ export function validateCloudflareOriginVersionBindings(value: CloudflareOriginV
     try { validateNativeBindingScope(descriptor.nativeResources, descriptor, now); } catch { return denied(); }
   }
   if (descriptor.applicationHttp) {
-    try { validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now); } catch { return denied(); }
+    try { validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now, descriptor.applicationHttpPhase === "namespace-only"); } catch { return denied(); }
   }
   if ((descriptor.mediaProbe && !isCloudflareMediaProbeImage(descriptor.mediaProbe.imageRef, descriptor.accountRef)) || !origin || !allowed || allowed.includes(origin.origin) || Date.parse(descriptor.expiresAt) <= now ||
       descriptor.tenantId !== target.tenantId || descriptor.projectId !== target.projectId ||

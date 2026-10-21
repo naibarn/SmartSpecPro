@@ -33,7 +33,7 @@ export async function handleApplicationHttpCanary(request: Request, env: Applica
     "node/auth": { runtime: "node-http", path: "/trpc/auth.me" },
     "python/health": { runtime: "python-http", path: "/health/live" },
     "python/database": { runtime: "python-http", path: "/health" },
-    "python/auth": { runtime: "python-http", path: "/api/v1/auth/me" },
+    "python/auth": { runtime: "python-http", path: "/api/users/me" },
   };
   const selected = paths[route]; if (!selected) return hidden();
   // Public request headers cannot acquire service/edge trust. Only the actual
