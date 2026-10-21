@@ -3,11 +3,14 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
 import { cloudflareNativeBindingDescriptorSchema, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
+import { cloudflareHttpApplicationSettingsSchema, cloudflareHttpApplicationSecretsSchema,
+  validateHttpApplicationSettings, httpApplicationVersionBindings } from "./cloudflareHttpApplicationBindings";
 
 const credential = z.string().min(16).max(4096).regex(/^[\x21-\x7e]+$/);
 export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32), clientId: credential, secret: credential,
   workflowRuntimeToken: credential.min(32).optional(), controlPlaneToken: credential.min(32).optional(),
   retentionToken: credential.min(32).optional(),
+  applicationHttp: cloudflareHttpApplicationSecretsSchema.optional(),
 }).strict().refine(value => {
   const values = Object.values(value).filter(item => item !== undefined);
   return new Set(values).size === values.length && Boolean(value.workflowRuntimeToken) === Boolean(value.controlPlaneToken);
@@ -30,6 +33,7 @@ export const cloudflareOriginSettingsSchema = z.object({
   retentionSchedule: z.literal("evidence-retention").optional(),
   mediaProbe: z.object({ containerPolicy: z.literal(CLOUDFLARE_CONTAINER_ON_DEMAND), capability: z.literal("container-media-probe-v1"),
     imageRef: z.string().refine(value => isCloudflareMediaProbeImage(value)) }).strict().optional(),
+  applicationHttp: cloudflareHttpApplicationSettingsSchema.optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -51,6 +55,8 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
+      Boolean(settings.applicationHttp) !== Boolean(secrets.applicationHttp) ||
+      (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
   }
@@ -60,8 +66,10 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
  * by the deployment grant, never inferred from a caller's runtime flags. */
 export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersionBindings) {
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
-  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog) return [];
+  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp) return [];
   return [
+    ...(value.descriptor.applicationHttp ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
+      { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
       { name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
@@ -100,6 +108,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     return matches.length !== 1 || matches[0].type !== binding.type ||
       (binding.type === "plain_text" && matches[0].text !== binding.text);
   }) || actual.some(binding => (binding?.name?.startsWith("CLOUDFLARE_RUNNER_RELEASE_") || binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
+    binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }
@@ -125,6 +134,9 @@ export function validateCloudflareOriginVersionBindings(value: CloudflareOriginV
   const allowed = parseCloudflarePublicOrigins(JSON.stringify(descriptor.allowedPublicOrigins));
   if (descriptor.nativeResources) {
     try { validateNativeBindingScope(descriptor.nativeResources, descriptor, now); } catch { return denied(); }
+  }
+  if (descriptor.applicationHttp) {
+    try { validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now); } catch { return denied(); }
   }
   if ((descriptor.mediaProbe && !isCloudflareMediaProbeImage(descriptor.mediaProbe.imageRef, descriptor.accountRef)) || !origin || !allowed || allowed.includes(origin.origin) || Date.parse(descriptor.expiresAt) <= now ||
       descriptor.tenantId !== target.tenantId || descriptor.projectId !== target.projectId ||

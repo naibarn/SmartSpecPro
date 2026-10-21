@@ -22,7 +22,8 @@ export class ApplicationHttpBridge extends WorkerEntrypoint<ApplicationEnvironme
 
 /** Private namespaces only. No binding or provider app is created by exporting
  * these classes. Existing canonical deployment authority must supply profiles,
- * secrets, max_instances=1 per runtime, and the matching immutable images. */
+ * secrets and matching immutable images. DO-managed apps use one fixed DO
+ * name per runtime; scheduler max_instances does not apply to this policy. */
 class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
   private readonly controller: ApplicationHttpContainerController;
 

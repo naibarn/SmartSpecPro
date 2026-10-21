@@ -5,6 +5,7 @@ import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { assertPrivateDatabaseProvisionReceipt } from "./cloudflarePrivateDatabaseBinding";
+import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
@@ -39,6 +40,17 @@ function matches(descriptor: Descriptor, identity: DeploymentTargetIdentity) {
 }
 
 async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: Descriptor, actorUserId: number | null, now = Date.now()) {
+  if (descriptor.applicationHttp) {
+    if (!actorUserId) denied();
+    validateHttpApplicationSettings(descriptor.applicationHttp, descriptor, now || Date.parse(descriptor.applicationHttp.issuedAt));
+    for (const runtime of ["node", "python"] as const) {
+      const [imageReceipt] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+        jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+        operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+        .from(workerJobs).where(eq(workerJobs.id, descriptor.applicationHttp[runtime].provisionJobId)).limit(1);
+      assertHttpImageProvisionReceipt(descriptor.applicationHttp, runtime, imageReceipt, { ...descriptor, actorUserId });
+    }
+  }
   if (!descriptor.nativeResources) return;
   if (!actorUserId) denied();
   validateNativeBindingScope(descriptor.nativeResources, descriptor, now);
@@ -113,6 +125,7 @@ async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, co
   validateSettings(cloudflareOriginSettingsSchema.parse({ origin: stored.descriptor.origin,
     allowedPublicOrigins: stored.descriptor.allowedPublicOrigins, accessApplicationId: stored.descriptor.accessApplicationId,
     accessTeamName: stored.descriptor.accessTeamName, accessAudience: stored.descriptor.accessAudience,
+    ...(stored.descriptor.applicationHttp ? { applicationHttp: stored.descriptor.applicationHttp } : {}),
     expiresAt: stored.descriptor.expiresAt, ...(stored.descriptor.nativeResources ? { nativeResources: stored.descriptor.nativeResources } : {}) }), 0);
   await verifyNativeReceipt(db, stored.descriptor, rows[0]!.updatedBy, 0);
   return { rowId: rows[0]!.id, stored };
@@ -142,6 +155,7 @@ export async function withCloudflareOriginConfigurationForTransition<T>(db: Driz
   const { stored } = await readVersion(db, input.identity, input.configurationRef);
   const target = await resolveProviderDeploymentTarget(db, input.identity);
   if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now() ||
+      (stored.descriptor.applicationHttp && Date.parse(stored.descriptor.applicationHttp.expiresAt) <= Date.now()) ||
       digest(stored.descriptor) !== input.configurationDigest || target.status !== "CONFIGURED" ||
       target.target.runtimePolicy !== input.activeConfigurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
       target.target.workerRef !== targetId || target.target.deploymentTargetId !== targetId || target.target.containerApplicationRef) denied();

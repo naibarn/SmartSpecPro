@@ -145,6 +145,41 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).rejects.toThrow();
   });
 
+  it("stores HTTP API secrets encrypted only after both canonical image receipts succeed", async () => {
+    const { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } = await import("./cloudflareHttpImageProvisionContract");
+    const namespace = nativeProvisionNamespace(identity.tenantId, identity.projectId), accountRef = "0123456789abcdef0123456789abcdef";
+    const descriptor = (runtime: string) => ({ provisionJobId: randomUUID(), planDigest: (runtime === "node" ? "a" : "b").repeat(64),
+      image: `registry.cloudflare.com/${accountRef}/${namespace}-${runtime}-http@sha256:${"c".repeat(64)}` });
+    const applicationHttp = { mode: "private-canary" as const, namespace, sourceSha: "d".repeat(40), node: descriptor("node"), python: descriptor("python"),
+      issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString(),
+      maxStarts: 1, maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic" as const };
+    const httpSecrets = { node: { JWT_SECRET: "disposable-node-secret" }, python: { SECRET_KEY: "disposable-python-secret" } };
+    const input = { identity, settings: { ...settings(), applicationHttp }, secrets: { ...secrets, applicationHttp: httpSecrets }, actorUserId };
+    for (const runtime of ["node", "python"] as const) {
+      const expected = applicationHttp[runtime];
+      await db.insert(schema.workerJobs).values({ id: expected.provisionJobId, tenantId: identity.tenantId, requestedByUserId: actorUserId,
+        runtimeType: "node_job_worker", jobType: HTTP_IMAGE_PROVISION_JOB, contractVersion: HTTP_IMAGE_PROVISION_CONTRACT, status: runtime === "node" ? "succeeded" : "failed",
+        inputJson: { contractVersion: HTTP_IMAGE_PROVISION_CONTRACT, grantRef: randomUUID(), projectId: identity.projectId, planDigest: expected.planDigest },
+        outputJson: { schemaVersion: "cloudflare-http-image-receipt-v1", jobId: expected.provisionJobId, planDigest: expected.planDigest,
+          sourceSha: applicationHttp.sourceSha, runtime: `${runtime}-http`, accountRef, namespace, image: expected.image,
+          registryVerified: true, containerStarts: 0, applicationCreated: false, activation: "disabled" } });
+    }
+    await expect(saveCloudflareOriginConfiguration(db, input)).rejects.toThrow("RECEIPT_DENIED");
+    await db.update(schema.workerJobs).set({ status: "succeeded" }).where(eq(schema.workerJobs.id, applicationHttp.python.provisionJobId));
+    const saved = await saveCloudflareOriginConfiguration(db, input);
+    const metadata = await getCloudflareOriginConfiguration(db, { identity, configurationRef: saved.configurationRef });
+    expect(metadata.descriptor.applicationHttp?.node.image).toBe(applicationHttp.node.image);
+    expect(JSON.stringify(metadata)).not.toContain("disposable-node-secret");
+    const [stored] = await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.key, saved.configurationRef));
+    expect(stored!.value).not.toContain("disposable-python-secret"); expect(stored!.valueJson).toBeNull();
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    const request = { identity, configurationRef: saved.configurationRef, configurationDigest: saved.configurationDigest };
+    await expect(withCloudflareOriginConfiguration(db, request, async value => value.secrets.applicationHttp?.node.JWT_SECRET)).resolves.toBe("disposable-node-secret");
+    await db.update(schema.workerJobs).set({ operatorReviewRequired: true }).where(eq(schema.workerJobs.id, applicationHttp.python.provisionJobId));
+    const operation = vi.fn(); await expect(withCloudflareOriginConfiguration(db, request, operation)).rejects.toThrow("RECEIPT_DENIED");
+    expect(operation).not.toHaveBeenCalled();
+  });
+
   it("round trips the independently encrypted bounded retention configuration without exposing its token", async () => {
     const retentionToken="disposable-retention-token-not-a-real-secret";
     const saved=await saveCloudflareOriginConfiguration(db,{identity,settings:{...settings(),retentionSchedule:"evidence-retention"},

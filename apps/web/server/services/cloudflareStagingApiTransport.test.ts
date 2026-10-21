@@ -413,6 +413,36 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(f.mutations.every(call => !/\/queues|\/r2|\/vectorize|\/routes|\/schedules/.test(call.url))).toBe(true);
   });
 
+  it("prepares paired HTTP images and verifies application metadata before activating a version", async () => {
+    const f = fixture(), namespace = nativeProvisionNamespace(target.tenantId, target.projectId);
+    f.config.descriptor.applicationHttp = { mode: "private-canary", namespace, sourceSha,
+      node: { provisionJobId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-node-http@sha256:${"b".repeat(64)}` },
+      python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-python-http@sha256:${"d".repeat(64)}` },
+      issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: f.config.descriptor.expiresAt,
+      maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10, instance: "basic" };
+    Object.assign(f.config.secrets, { applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
+    f.config.configurationDigest = cloudflareOriginDescriptorDigest(f.config.descriptor);
+    f.config.configurationRef = `cf-origin:${f.config.configurationDigest}`;
+    f.originTarget.runtimePolicy = f.config.configurationRef;
+    const prepare = vi.fn(async () => { expect(f.metadata()).toBeUndefined(); });
+    const ensure = vi.fn(async (_origin, _target, uploaded) => {
+      expect(uploaded.id).toBe(versionId);
+      expect(f.metadata().containers).toHaveLength(2);
+      expect(f.metadata().exports.StagingNodeHttpContainer).toMatchObject({ storage: "sqlite", type: "durable-object" });
+      expect(f.mutations.some(call => call.url.endsWith("/deployments"))).toBe(false);
+    });
+    const request = { token: "fixture", target: f.originTarget, artifact, idempotencyKey: "application-http-test",
+      originConfiguration: f.config, assertMutationAuthorized: async () => {} };
+    await expect(f.api.deploy(request)).rejects.toThrow("PROVISIONER_REQUIRED");
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+    const api = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: f.fetchImpl,
+      prepareHttpApplications: prepare, ensureHttpApplications: ensure });
+    await expect(api.deploy(request)).resolves.toMatchObject({ deploymentId });
+    expect(prepare).toHaveBeenCalledOnce(); expect(ensure).toHaveBeenCalledOnce();
+    expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
+    expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_ACTIVATION").text).toBe("disabled");
+  });
+
   it.each([false, true])("refuses missing uploaded native bindings even with a matching digest annotation (retry=%s)", async prior => {
     const f = fixture({ native: nativeDescriptor(), versionBindings: [], prior });
     await expect(deploy(f)).rejects.toThrow("VERSION_BINDINGS_MISMATCH");
