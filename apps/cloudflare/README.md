@@ -113,12 +113,18 @@ key parser as the existing Express endpoint and does not access auth, tenant,
 database, or job services. `/healthz` and `/readyz` also remain Worker-native;
 `/readyz` reports Worker bindings/job wiring only, not Linux app or PostgreSQL
 readiness. Auth/OAuth, tRPC, other public APIs, and uploads continue to use the
-existing Linux Express authority. Metrics and ordinary HTTP streams also remain on that
-origin. Unknown paths and WebSocket upgrade endpoints fail closed when they reach this Worker; keep
-`/ws` and `/socket.io` on the Linux ingress until a separately tested WebSocket
-bridge exists. The Worker does not import the Express application or its
-background dependency graph, so it cannot start Linux schedulers or job
-workers.
+existing Linux Express authority. Metrics and ordinary HTTP streams also remain
+on that origin. The three existing Node WebSocket routes (voice stream, runner
+control and widget) have a separate optional Container bridge. It is disabled
+unless `CLOUDFLARE_CONTAINER_REALTIME_ROUTES=enabled` is explicitly composed for
+staging, and requires a pinned Node image profile, the origin attestation secret
+and an exact HTTPS public-origin allowlist. Invalid handshakes are rejected
+before resolving/starting a Container. The bridge forwards only those exact
+routes and leaves the existing app's user/ticket authorization in place. It has
+unit coverage but still requires staged browser/runtime acceptance before
+activation. `/ws` and `/socket.io` remain on the Linux ingress. The Worker does
+not import the Express application or its background dependency graph, so it
+cannot start Linux schedulers or job workers.
 
 New Worker HTTP routes should use Hono and be listed in the explicit manifest.
 Existing Express routes move incrementally. The diff-aware

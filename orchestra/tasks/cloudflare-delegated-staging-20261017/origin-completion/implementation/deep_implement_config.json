@@ -42,11 +42,11 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Expanded-scope inventory is integrated at e4a7445df615b51ab60f1094b1e2ee6c5bbbf817. Full migration remains open: establish a secure Container-to-retained-PostgreSQL path, complete supported app/auth/realtime parity, transfer canonical background families and prove staging recovery before any production action.",
+      "next_action": "Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
       "merged_main_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
-      "session_id": "codex-cloudflare-native-completion-20261021"
+      "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
   "pre_commit": {
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 98,
-  "updated_at": "2026-10-21T16:59:39.311295+00:00",
+  "generation": 99,
+  "updated_at": "2026-10-21T17:04:23.301135+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Expanded-scope inventory is integrated at e4a7445df615b51ab60f1094b1e2ee6c5bbbf817. Full migration remains open: establish a secure Container-to-retained-PostgreSQL path, complete supported app/auth/realtime parity, transfer canonical background families and prove staging recovery before any production action.",
+    "next_action": "Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched.",
     "merged_main_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
@@ -73,8 +73,8 @@
       "No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority.",
       "Current app HTTP Container and profile are staging-only with short bounded canary lifecycle; no production container runtime admission or full route activation.",
       "Node/Python Container profiles do not receive Worker Hyperdrive bindings; only one bounded Python database health request was proven, not application-wide SQL semantics/load or a private end-to-end DB path.",
-      "Auth/tRPC/general REST still route to origin; Container bridge rejects upgrades; Socket.IO and /ws remain native-only; scheduled/business job ownership is not comprehensively transferred.",
-      "Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence."
+      "Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence.",
+      "Optional default-off Container bridge source now covers voice, runner-control and widget upgrades; real staging handshake/reconnect/expiry and browser auth are still unverified, and Socket.IO plus /ws remain on the existing runtime."
     ],
     "outcome": "NOT_ACCEPTED"
   }

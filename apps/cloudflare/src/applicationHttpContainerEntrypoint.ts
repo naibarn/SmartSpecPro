@@ -1,6 +1,6 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { ApplicationHttpContainerController, applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
-import { applicationHttpHostname, forwardApplicationHttpBridge, type ApplicationHttpBindings } from "./applicationHttpBridge";
+import { applicationHttpHostname, forwardApplicationHttpBridge, validateApplicationHttpWebSocket, type ApplicationHttpBindings } from "./applicationHttpBridge";
 
 type ApplicationEnvironment = ApplicationHttpBindings & {
   CLOUDFLARE_NODE_HTTP_SECRETS?: string;
@@ -68,7 +68,12 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
   }
 
   async fetch(request: Request) {
-    if (request.headers.has("upgrade")) return new Response(null, { status: 426 });
+    if (request.headers.has("upgrade") && request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response(null, { status: 400 });
+    if (request.headers.get("upgrade")?.toLowerCase() === "websocket") {
+      const invalid = validateApplicationHttpWebSocket(request,
+        request.headers.get("x-smartaihub-public-origin") ?? undefined);
+      if (invalid) return new Response(null, { status: invalid, headers: { "cache-control": "private, no-store" } });
+    }
     if (request.signal.aborted) return new Response(null, { status: 499 });
     try {
       const deadline = await this.ctx.blockConcurrencyWhile(() => this.controller.ensureRunning({ deferInactivityTimeout: true }));

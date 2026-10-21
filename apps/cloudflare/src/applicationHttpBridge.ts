@@ -1,4 +1,5 @@
 import { applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
+import { isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
 
 export type ApplicationHttpNamespace = {
   idFromName(name: string): unknown;
@@ -8,6 +9,10 @@ export type ApplicationHttpBindings = {
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_CONTAINER_POLICY?: string;
   CLOUDFLARE_APPLICATION_CANARY_TOKEN?: string;
+  /** Explicit, default-off migration switch for the three Node WebSocket routes. */
+  CLOUDFLARE_CONTAINER_REALTIME_ROUTES?: string;
+  AUTH_ORIGIN_TOKEN?: string;
+  AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS?: string;
   CLOUDFLARE_NODE_HTTP_PROFILE?: string;
   CLOUDFLARE_PYTHON_HTTP_PROFILE?: string;
   NODE_HTTP?: ApplicationHttpNamespace;
@@ -22,6 +27,24 @@ const HOP_HEADERS = new Set(["host", "content-length", "connection", "keep-alive
   "te", "trailer", "transfer-encoding", "upgrade", "forwarded", "x-forwarded", "x-real-ip", "true-client-ip", "cf-connecting-ip",
   "x-cloudflare-origin-token", "x-smartaihub-public-origin"]);
 
+export function isApplicationHttpWebSocketPath(path: string): boolean {
+  return path === "/api/voice/stream" || path === "/widget/v1/ws" ||
+    /^\/api\/runners\/[A-Za-z0-9._:-]+\/control$/.test(path);
+}
+
+export function validateApplicationHttpWebSocket(request: Request, expectedPublicOrigin = new URL(request.url).origin): 400 | 403 | null {
+  const url = new URL(request.url);
+  if (!isApplicationHttpWebSocketPath(url.pathname) || request.method !== "GET" ||
+      request.headers.get("upgrade")?.toLowerCase() !== "websocket" ||
+      !request.headers.get("connection")?.split(",").some(value => value.trim().toLowerCase() === "upgrade") ||
+      request.headers.get("sec-websocket-version") !== "13" ||
+      !/^[A-Za-z0-9+/]{22}==$/.test(request.headers.get("sec-websocket-key") ?? "")) return 400;
+  const browserOrigin = request.headers.get("origin");
+  if (url.pathname === "/widget/v1/ws" ? !isCanonicalWidgetBrowserOrigin(browserOrigin)
+    : browserOrigin !== null && browserOrigin !== expectedPublicOrigin) return 403;
+  return null;
+}
+
 export function retiredApplicationHttpPath(path: string): boolean {
   let decoded: string;
   try { decoded = decodeURIComponent(path).toLowerCase(); }
@@ -32,12 +55,23 @@ export function retiredApplicationHttpPath(path: string): boolean {
 /** Addresses are fixed by the private Container network binding, never a user
  * URL. Preserve application auth/internal credentials already supplied by the
  * calling service; do not mint or elevate an application identity here. */
-export function prepareApplicationHttpBridgeRequest(request: Request, runtime: ApplicationHttpProfile["runtime"]) {
+export function prepareApplicationHttpBridgeRequest(request: Request, runtime: ApplicationHttpProfile["runtime"], env?: ApplicationHttpBindings) {
   const source = new URL(request.url);
   if (source.protocol !== "http:" || source.hostname !== applicationHttpHostname(runtime) || source.username || source.password || source.port) {
     throw new Error("APPLICATION_HTTP_BRIDGE_DESTINATION_DENIED");
   }
-  if (request.headers.has("upgrade")) throw new Error("APPLICATION_HTTP_REALTIME_OWNER_REQUIRED");
+  const websocket = request.headers.get("upgrade")?.toLowerCase() === "websocket";
+  const publicOrigin = request.headers.get("x-smartaihub-public-origin");
+  if (websocket) {
+    const error = validateApplicationHttpWebSocket(request, publicOrigin ?? undefined);
+    const allowedOrigins = parseCloudflarePublicOrigins(env?.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
+    let parsedOrigin: URL | null = null;
+    try { parsedOrigin = publicOrigin ? new URL(publicOrigin) : null; } catch { /* invalid public origin */ }
+    if (error || !parsedOrigin || parsedOrigin.origin !== publicOrigin || parsedOrigin.protocol !== "https:" ||
+        !allowedOrigins?.includes(parsedOrigin.origin) || !env?.AUTH_ORIGIN_TOKEN || env.AUTH_ORIGIN_TOKEN.length < 32) {
+      throw new Error("APPLICATION_HTTP_REALTIME_ATTESTATION_REQUIRED");
+    }
+  }
   const headers = new Headers();
   const connectionHeaders = new Set((request.headers.get("connection") ?? "").split(",").map(name => name.trim().toLowerCase()));
   request.headers.forEach((value, name) => {
@@ -45,6 +79,15 @@ export function prepareApplicationHttpBridgeRequest(request: Request, runtime: A
       headers.set(name, value);
     }
   });
+  if (websocket) {
+    const origin = new URL(publicOrigin!);
+    headers.set("upgrade", "websocket");
+    headers.set("connection", "Upgrade");
+    headers.set("x-cloudflare-origin-token", env!.AUTH_ORIGIN_TOKEN!);
+    headers.set("x-smartaihub-public-origin", origin.origin);
+    headers.set("x-forwarded-host", origin.host);
+    headers.set("x-forwarded-proto", "https");
+  }
   const cookie = headers.get("cookie");
   if (cookie) {
     const applicationCookies = cookie.split(";").filter(part => !/^\s*CF_Authorization=/i.test(part)).join(";");
@@ -64,7 +107,7 @@ export async function forwardApplicationHttpBridge(request: Request, runtime: Ap
   if (retiredApplicationHttpPath(new URL(request.url).pathname)) {
     return Response.json({ error: "LEGACY_RUNTIME_RETIRED" }, { status: 410, headers: { "cache-control": "no-store" } });
   }
-  const prepared = prepareApplicationHttpBridgeRequest(request, runtime);
+  const prepared = prepareApplicationHttpBridgeRequest(request, runtime, env);
   return resolveApplicationHttpStub(runtime, env).fetch(prepared);
 }
 

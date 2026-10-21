@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `98`
-- Updated (UTC): `2026-10-21T16:59:39.311295+00:00`
+- State generation: `99`
+- Updated (UTC): `2026-10-21T17:04:23.301135+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `e4a7445df615b51ab60f1094b1e2ee6c5bbbf817`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Expanded-scope inventory is integrated at e4a7445df615b51ab60f1094b1e2ee6c5bbbf817. Full migration remains open: establish a secure Container-to-retained-PostgreSQL path, complete supported app/auth/realtime parity, transfer canonical background families and prove staging recovery before any production action.
+- Next action: Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e4a7445df615b51ab60f1094b1e2ee6c5bbbf817 | e4a7445df615b51ab60f1094b1e2ee6c5bbbf817 | Expanded-scope inventory is integrated at e4a7445df615b51ab60f1094b1e2ee6c5bbbf817. Full migration remains open: establish a secure Container-to-retained-PostgreSQL path, complete supported app/auth/realtime parity, transfer canonical background families and prove staging recovery before any production action. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e4a7445df615b51ab60f1094b1e2ee6c5bbbf817 | e4a7445df615b51ab60f1094b1e2ee6c5bbbf817 | Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -32,8 +32,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority.
 - Current app HTTP Container and profile are staging-only with short bounded canary lifecycle; no production container runtime admission or full route activation.
 - Node/Python Container profiles do not receive Worker Hyperdrive bindings; only one bounded Python database health request was proven, not application-wide SQL semantics/load or a private end-to-end DB path.
-- Auth/tRPC/general REST still route to origin; Container bridge rejects upgrades; Socket.IO and /ws remain native-only; scheduled/business job ownership is not comprehensively transferred.
 - Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence.
+- Optional default-off Container bridge source now covers voice, runner-control and widget upgrades; real staging handshake/reconnect/expiry and browser auth are still unverified, and Socket.IO plus /ws remain on the existing runtime.
 
 ## Resume
 

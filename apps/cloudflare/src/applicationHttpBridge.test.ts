@@ -61,6 +61,42 @@ describe("private application HTTP binding", () => {
     expect((f.fetch.mock.calls[0][0] as Request).url).toBe("http://127.0.0.1:3000/api/internal/read");
   });
 
+  it("forwards only an explicitly attested WebSocket handshake to the fixed Node port", async () => {
+    const f = fixture();
+    const wsResponse = { status: 101, headers: new Headers({ upgrade: "websocket" }), webSocket: { close: vi.fn() }, body: null } as unknown as Response;
+    f.fetch.mockResolvedValueOnce(wsResponse);
+    const env = { ...f.env, NODE_HTTP: f.namespace, AUTH_ORIGIN_TOKEN: "a".repeat(40),
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://staging.smartaihub.app"]) };
+    const request = new Request("http://node.application.internal/api/voice/stream?ticket=opaque", { headers: {
+      upgrade: "websocket", connection: "keep-alive, Upgrade", "sec-websocket-version": "13",
+      "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==", origin: "https://staging.smartaihub.app",
+      "x-smartaihub-public-origin": "https://staging.smartaihub.app", "x-cloudflare-origin-token": "attacker",
+      "x-forwarded-host": "attacker.example", cookie: "app_session=session; CF_Authorization=private",
+    } });
+    const response = await forwardApplicationHttpBridge(request, "node-http", env);
+    expect(response).toBe(wsResponse);
+    const forwarded = f.fetch.mock.calls[0][0] as Request;
+    expect(forwarded.url).toBe("http://127.0.0.1:3000/api/voice/stream?ticket=opaque");
+    expect(forwarded.headers.get("upgrade")).toBe("websocket");
+    expect(forwarded.headers.get("connection")).toBe("Upgrade");
+    expect(forwarded.headers.get("x-cloudflare-origin-token")).toBe("a".repeat(40));
+    expect(forwarded.headers.get("x-smartaihub-public-origin")).toBe("https://staging.smartaihub.app");
+    expect(forwarded.headers.get("x-forwarded-host")).toBe("staging.smartaihub.app");
+    expect(forwarded.headers.get("cookie")).toBe("app_session=session");
+  });
+
+  it("denies a WebSocket without its exact configured public-origin attestation before namespace dispatch", async () => {
+    const f = fixture();
+    await expect(forwardApplicationHttpBridge(new Request("http://node.application.internal/api/voice/stream", { headers: {
+      upgrade: "websocket", connection: "Upgrade", "sec-websocket-version": "13",
+      "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==", origin: "https://staging.smartaihub.app",
+      "x-smartaihub-public-origin": "https://attacker.example",
+    } }), "node-http", { ...f.env, AUTH_ORIGIN_TOKEN: "a".repeat(40),
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://staging.smartaihub.app"]), NODE_HTTP: f.namespace }))
+      .rejects.toThrow("REALTIME_ATTESTATION_REQUIRED");
+    expect(f.namespace.get).not.toHaveBeenCalled();
+  });
+
   it("isolates durable object identities across immutable configuration versions", async () => {
     const f = fixture();
     const newer = { ...f.profile, configurationRef: `cf-origin:${"f".repeat(64)}` };

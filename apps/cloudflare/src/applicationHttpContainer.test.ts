@@ -224,4 +224,17 @@ describe("bounded private application HTTP compute", () => {
     await expect(f.controller.forward(request, deadline)).rejects.toThrow("uncertain application response");
     expect(f.fetch.mock.calls.filter(([input]) => input instanceof Request)).toHaveLength(1);
   });
+
+  it("returns a WebSocket upgrade directly without the bounded HTTP response timeout", async () => {
+    const f = fixture(), deadline = await f.controller.ensureRunning();
+    const request = new Request("https://origin-staging.smartaihub.app/api/voice/stream", { headers: {
+      upgrade: "websocket", connection: "Upgrade", "sec-websocket-version": "13",
+      "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==", origin: "https://origin-staging.smartaihub.app",
+    } });
+    const socketResponse = { status: 101, headers: new Headers({ upgrade: "websocket" }), webSocket: { close: vi.fn() }, body: null } as unknown as Response;
+    f.fetch.mockImplementation(async input => input instanceof Request ? socketResponse : new Response(null, { status: 200 }));
+    expect(await f.controller.forward(request, deadline)).toBe(socketResponse);
+    const options = f.fetch.mock.calls.find(([input]) => input instanceof Request)?.[1] as RequestInit;
+    expect(options.signal).toBe(request.signal);
+  });
 });

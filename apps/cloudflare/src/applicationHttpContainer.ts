@@ -269,7 +269,7 @@ export class ApplicationHttpContainerController {
 
   async forward(request: Request, deadline: number) {
     this.phase = "readiness";
-    if (request.headers.has("upgrade")) throw new Error("APPLICATION_HTTP_REALTIME_OWNER_REQUIRED");
+    const websocket = request.headers.get("upgrade")?.toLowerCase() === "websocket";
     const port = this.container.getTcpPort(this.profile.runtime === "node-http" ? 3000 : 8000);
     const readinessPath = this.profile.runtime === "node-http" ? "/healthz" : "/health/live";
     // Registry placement plus the request-only API startup can exceed 30s.
@@ -305,7 +305,10 @@ export class ApplicationHttpContainerController {
       throw new Error("APPLICATION_HTTP_READINESS_UNAVAILABLE");
     }
     this.phase = "forward";
-    return port.fetch(request, { signal: AbortSignal.any([
+    // A successfully upgraded socket is bounded by the existing hard Container
+    // deadline/alarm. A normal HTTP response-header timeout would incorrectly
+    // disconnect a legitimate long-lived realtime session after two minutes.
+    return port.fetch(request, { signal: websocket ? request.signal : AbortSignal.any([
       request.signal, AbortSignal.timeout(Math.max(1, Math.min(120_000, deadline - this.now()))),
     ]) });
   }
