@@ -5,8 +5,8 @@ function fixture() {
   let now = Date.now();
   const profile: ApplicationHttpProfile = {
     configurationRef: `cf-origin:${"c".repeat(64)}`, sourceSha: "d".repeat(40), targetId: "smartspec-cloudflare-staging",
-    runtime: "node-http", accountRef: "a".repeat(32),
-    image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-node-http@sha256:${"b".repeat(64)}`,
+    runtime: "node-http", accountRef: "a".repeat(32), namespace: "smartspec-staging-abcdef012345",
+    image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:${"b".repeat(64)}`,
     issuedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 600_000).toISOString(),
     maxStarts: 2, maxComputeSeconds: 120, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10,
     instance: "lite", networkAccess: "application-outbound",
@@ -109,7 +109,7 @@ describe("bounded private application HTTP compute", () => {
     const f = fixture();
     if (scenario === "expired") f.profile.expiresAt = f.profile.issuedAt;
     if (scenario === "unbounded") f.profile.hardLifetimeSeconds = 601;
-    if (scenario === "tagged") f.profile.image = "registry.cloudflare.com/account/smartspec-node-http:latest";
+    if (scenario === "tagged") f.profile.image = "registry.cloudflare.com/account/smartspec-staging-abcdef012345-node-http:latest";
     if (scenario === "foreign account") f.profile.accountRef = "f".repeat(32);
     if (scenario === "excess starts") f.profile.maxStarts = 3;
     if (scenario === "excess compute") f.profile.maxComputeSeconds = 1201;

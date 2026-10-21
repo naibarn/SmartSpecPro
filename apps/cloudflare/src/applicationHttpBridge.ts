@@ -1,4 +1,4 @@
-import { applicationHttpInstanceName, validateApplicationHttpProfile, type ApplicationHttpProfile } from "./applicationHttpContainer";
+import { applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
 
 export type ApplicationHttpNamespace = {
   idFromName(name: string): unknown;
@@ -64,8 +64,11 @@ export async function forwardApplicationHttpBridge(request: Request, runtime: Ap
     return Response.json({ error: "LEGACY_RUNTIME_RETIRED" }, { status: 410, headers: { "cache-control": "no-store" } });
   }
   if (env.CLOUDFLARE_ENVIRONMENT !== "staging" || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw new Error("APPLICATION_HTTP_BRIDGE_DISABLED");
-  const profile: ApplicationHttpProfile = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_PROFILE : env.CLOUDFLARE_PYTHON_HTTP_PROFILE) ?? "");
-  validateApplicationHttpProfile(profile);
+  const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
+  const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
+  if (!node || !python) throw new Error("APPLICATION_HTTP_PROFILE_PAIR_DENIED");
+  validateApplicationHttpProfilePair(node, python);
+  const profile = runtime === "node-http" ? node : python;
   if (profile.runtime !== runtime) throw new Error("APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH");
   const prepared = prepareApplicationHttpBridgeRequest(request, runtime);
   const namespace = runtime === "node-http" ? env.NODE_HTTP : env.PYTHON_HTTP;

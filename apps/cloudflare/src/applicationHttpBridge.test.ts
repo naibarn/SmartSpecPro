@@ -5,8 +5,8 @@ import type { ApplicationHttpProfile } from "./applicationHttpContainer";
 function fixture() {
   const profile: ApplicationHttpProfile = {
     configurationRef: `cf-origin:${"c".repeat(64)}`, sourceSha: "d".repeat(40), targetId: "smartspec-cloudflare-staging",
-    runtime: "python-http", accountRef: "a".repeat(32),
-    image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-python-http@sha256:${"b".repeat(64)}`,
+    runtime: "python-http", accountRef: "a".repeat(32), namespace: "smartspec-staging-abcdef012345",
+    image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-python-http@sha256:${"b".repeat(64)}`,
     issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString(),
     maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10,
     instance: "lite", networkAccess: "application-outbound",
@@ -14,7 +14,8 @@ function fixture() {
   const fetch = vi.fn(async () => new Response("actual-private-api-response"));
   const namespace = { idFromName: vi.fn(name => name), get: vi.fn(() => ({ fetch })) };
   const env: ApplicationHttpBindings = { CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_CONTAINER_POLICY: "on-demand",
-    CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(profile), PYTHON_HTTP: namespace };
+    CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(profile),
+    CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify({ ...profile, runtime: "node-http", image: profile.image.replace("-python-http@", "-node-http@") }), PYTHON_HTTP: namespace };
   return { profile, env, namespace, fetch };
 }
 
@@ -52,7 +53,7 @@ describe("private application HTTP binding", () => {
 
   it("routes Python-to-Node calls to the Node namespace and its fixed local port", async () => {
     const f = fixture();
-    const profile = { ...f.profile, runtime: "node-http", image: f.profile.image.replace("smartspec-python-http", "smartspec-node-http") };
+    const profile = { ...f.profile, runtime: "node-http", image: f.profile.image.replace("smartspec-staging-abcdef012345-python-http", "smartspec-staging-abcdef012345-node-http") };
     await forwardApplicationHttpBridge(new Request("http://node.application.internal/api/internal/read"), "node-http", {
       ...f.env, CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile), NODE_HTTP: f.namespace,
     });
@@ -79,6 +80,19 @@ describe("private application HTTP binding", () => {
     const f = fixture(), signal = new AbortController(); signal.abort();
     await expect(forwardApplicationHttpBridge(new Request("http://python.application.internal/health/live", { signal: signal.signal }), "python-http", f.env))
       .rejects.toThrow("CALLER_CANCELLED");
+    expect(f.namespace.get).not.toHaveBeenCalled();
+  });
+
+  it.each(["namespace", "accountRef", "configurationRef", "sourceSha", "issuedAt", "expiresAt"])("rejects a separately valid foreign %s before starting either API", async key => {
+    const f = fixture(), node = JSON.parse(f.env.CLOUDFLARE_NODE_HTTP_PROFILE!);
+    if (key === "namespace") { node.namespace = "smartspec-staging-111111111111"; node.image = node.image.replace("abcdef012345", "111111111111"); }
+    if (key === "accountRef") { node.accountRef = "f".repeat(32); node.image = node.image.replace("a".repeat(32), "f".repeat(32)); }
+    if (key === "configurationRef") node.configurationRef = `cf-origin:${"f".repeat(64)}`;
+    if (key === "sourceSha") node.sourceSha = "f".repeat(40);
+    if (key === "issuedAt") node.issuedAt = new Date(Date.parse(node.issuedAt) - 1000).toISOString();
+    if (key === "expiresAt") node.expiresAt = new Date(Date.parse(node.expiresAt) + 1000).toISOString();
+    f.env.CLOUDFLARE_NODE_HTTP_PROFILE = JSON.stringify(node);
+    await expect(forwardApplicationHttpBridge(new Request("http://python.application.internal/health/live"), "python-http", f.env)).rejects.toThrow("PROFILE_PAIR_DENIED");
     expect(f.namespace.get).not.toHaveBeenCalled();
   });
 });

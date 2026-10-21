@@ -139,7 +139,9 @@ export function createHttpImageRegistryTransport(token: string, assertAuthorized
       const repository = `${g.accountRef}/${g.plan.namespace}-${g.plan.runtime}`;
       const tag = `${g.plan.sourceSha}-${g.jobId}`;
       const response = await fetchImpl(`https://registry.cloudflare.com/v2/${repository}/manifests/${tag}`, {
-        headers: { Authorization: `Bearer ${credential.password}`, Accept: MEDIA.join(", ") },
+        // Cloudflare returns Docker login credentials. The password is not
+        // itself an OAuth bearer token; retain the issued username binding.
+        headers: { Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString("base64")}`, Accept: MEDIA.join(", ") },
         redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000),
       });
       if (response.status === 404) { await response.body?.cancel(); return null; }

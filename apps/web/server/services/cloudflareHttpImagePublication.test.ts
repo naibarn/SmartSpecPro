@@ -90,7 +90,7 @@ describe("fixed Cloudflare registry transport", () => {
         return Response.json({ success: true, result: f.credential });
       }
       expect(String(url)).toBe(`https://registry.cloudflare.com/v2/${f.grant.accountRef}/${f.grant.plan.namespace}-node-http/manifests/${f.grant.plan.sourceSha}-${f.grant.jobId}`);
-      expect(init.headers.Authorization).toBe("Bearer private-fixture");
+      expect(init.headers.Authorization).toBe(`Basic ${Buffer.from("fixture:private-fixture").toString("base64")}`);
       return new Response(body, { headers: { "docker-content-digest": manifestDigest } });
     });
     const transport = createHttpImageRegistryTransport("api-fixture", f.ports.assertAuthorized, fetchImpl as never);

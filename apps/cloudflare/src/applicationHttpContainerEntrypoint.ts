@@ -1,5 +1,5 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
-import { ApplicationHttpContainerController, applicationHttpInstanceName, type ApplicationHttpProfile } from "./applicationHttpContainer";
+import { ApplicationHttpContainerController, applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
 import { applicationHttpHostname, forwardApplicationHttpBridge, type ApplicationHttpBindings } from "./applicationHttpBridge";
 
 type ApplicationEnvironment = ApplicationHttpBindings & {
@@ -31,7 +31,11 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
     try {
       if (!ctx.container || ctx.id.name !== applicationHttpInstanceName(runtime) || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
           env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw Error();
-      const profile: ApplicationHttpProfile = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_PROFILE : env.CLOUDFLARE_PYTHON_HTTP_PROFILE) ?? "");
+      const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
+      const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
+      if (!node || !python) throw Error();
+      validateApplicationHttpProfilePair(node, python);
+      const profile = runtime === "node-http" ? node : python;
       const secrets: Record<string, string> = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_SECRETS : env.CLOUDFLARE_PYTHON_HTTP_SECRETS) ?? "");
       if (profile.runtime !== runtime || !secrets || Array.isArray(secrets)) throw Error();
       this.controller = new ApplicationHttpContainerController(ctx.container, ctx.storage, profile, secrets);

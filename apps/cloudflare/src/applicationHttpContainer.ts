@@ -7,6 +7,7 @@ export type ApplicationHttpProfile = {
   targetId: "smartspec-cloudflare-staging";
   runtime: "node-http" | "python-http";
   accountRef: string;
+  namespace: string;
   image: string;
   issuedAt: string;
   expiresAt: string;
@@ -14,7 +15,7 @@ export type ApplicationHttpProfile = {
   maxComputeSeconds: number;
   hardLifetimeSeconds: number;
   idleTimeoutSeconds: number;
-  instance: "lite" | "standard-1";
+  instance: "lite" | "basic" | "standard-1";
   networkAccess: "application-outbound";
 };
 type LifecycleState = {
@@ -40,14 +41,25 @@ export function validateApplicationHttpProfile(value: ApplicationHttpProfile, no
   if (value.targetId !== "smartspec-cloudflare-staging" || !["node-http", "python-http"].includes(value.runtime) ||
       !/^cf-origin:[a-f0-9]{64}$/.test(value.configurationRef) || !/^[a-f0-9]{40}$/.test(value.sourceSha) ||
       !/^[a-f0-9]{32}$/.test(value.accountRef) ||
-      value.image !== `registry.cloudflare.com/${value.accountRef}/smartspec-${value.runtime}@sha256:${value.image.split("@sha256:")[1]}` ||
+      !/^smartspec-staging-[a-f0-9]{12}$/.test(value.namespace) ||
+      value.image !== `registry.cloudflare.com/${value.accountRef}/${value.namespace}-${value.runtime}@sha256:${value.image.split("@sha256:")[1]}` ||
       !/@sha256:[a-f0-9]{64}$/.test(value.image) ||
       !Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > now || expiresAt <= now || expiresAt - issuedAt > 3_600_000 ||
       integers.some(number => !Number.isSafeInteger(number) || number <= 0) ||
       value.maxStarts > 2 || value.maxComputeSeconds > 1200 || value.hardLifetimeSeconds > 600 ||
       value.idleTimeoutSeconds > 30 || value.idleTimeoutSeconds > value.hardLifetimeSeconds ||
-      value.maxComputeSeconds < value.hardLifetimeSeconds || !["lite", "standard-1"].includes(value.instance) ||
+      value.maxComputeSeconds < value.hardLifetimeSeconds || !["lite", "basic", "standard-1"].includes(value.instance) ||
       value.networkAccess !== "application-outbound") throw new Error(DENIED);
+}
+
+/** Both services must belong to the same exact deployment capability. A
+ * separately valid Python profile must never become another tenant's bridge. */
+export function validateApplicationHttpProfilePair(node: ApplicationHttpProfile, python: ApplicationHttpProfile, now = Date.now()) {
+  validateApplicationHttpProfile(node, now);
+  validateApplicationHttpProfile(python, now);
+  const paired = ["configurationRef", "sourceSha", "accountRef", "namespace", "issuedAt", "expiresAt"] as const;
+  if (node.runtime !== "node-http" || python.runtime !== "python-http" || paired.some(key => node[key] !== python[key]))
+    throw new Error("APPLICATION_HTTP_PROFILE_PAIR_DENIED");
 }
 
 function applicationEnvironment(profile: ApplicationHttpProfile, values: Record<string, string>, deadline: number) {
