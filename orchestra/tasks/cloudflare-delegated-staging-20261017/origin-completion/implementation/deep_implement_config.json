@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution.",
+      "next_action": "Connect the production-only worker_jobs executor to the v2 stage-bound grant and version uploader, then implement a separately authorized zero-traffic route-attach baseline phase; retain canary/promotion guards and prove no provider writes when route/baseline/grant are absent.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
-      "merged_main_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
+      "checkpoint_sha": "e603f109081d47f203b16e2cb11e723a259b9b18",
+      "merged_main_sha": "e603f109081d47f203b16e2cb11e723a259b9b18",
       "session_id": "codex-cloudflare-cutover-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 133,
-  "updated_at": "2026-10-21T19:11:12.982658+00:00",
+  "generation": 135,
+  "updated_at": "2026-10-21T19:23:56.833128+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution.",
-    "merged_main_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
+    "next_action": "Connect the production-only worker_jobs executor to the v2 stage-bound grant and version uploader, then implement a separately authorized zero-traffic route-attach baseline phase; retain canary/promotion guards and prove no provider writes when route/baseline/grant are absent.",
+    "merged_main_sha": "e603f109081d47f203b16e2cb11e723a259b9b18",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -94,7 +94,11 @@
       "A production grant request/resolver is now implemented and independently approved only; no production worker_jobs executor consumes it yet, and no production policy/approved grant exists.",
       "The published production artifact is from source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9; after executor/runtime integration, rebuild and publish from the final canonical main SHA before any authorized deploy.",
       "Production worker_jobs execution and route/canary cutover are not yet implemented; production ingress remains on Debian.",
-      "Production grant and exact approved production policy do not yet exist; no production provider mutation is authorized by current evidence."
+      "Production grant and exact approved production policy do not yet exist; no production provider mutation is authorized by current evidence.",
+      "No production job executor consumes v2 grant; production route is still absent and no production Worker deployment target/policy has been admitted.",
+      "Production job executor and full origin/version uploader are not yet connected to the v2 grant; current release path stops before Cloudflare mutation.",
+      "No production route or verified active rollback baseline exists; canary remains correctly denied until a proxy-compatible baseline Worker is attached to smartaihub.app with exact zone/route authority.",
+      "Current production origin descriptor still rejects Container and background/job bindings, so Node/Python service cutover parity remains unimplemented."
     ],
     "outcome": "NOT_ACCEPTED"
   }

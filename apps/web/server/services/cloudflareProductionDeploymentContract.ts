@@ -26,6 +26,10 @@ export const cloudflareProductionDeploymentGrantSchema = z.object({
   expectedRouteId: z.string().min(1).max(32).nullable(),
   expectedRouteScript: z.literal(CLOUDFLARE_PRODUCTION_TARGET_ID).nullable(),
   rolloutStage: z.enum(["canary", "promote", "rollback"]),
+  canaryGrantRef: z.string().uuid().nullable(),
+  canaryDeploymentId: z.string().uuid().nullable(),
+  canaryVerifiedAt: z.string().datetime({ offset: true }).nullable(),
+  candidateVersionId: z.string().uuid().nullable(),
   jobId: z.string().uuid(),
   artifactRef,
   sourceSha: sha,
@@ -52,7 +56,11 @@ export const cloudflareProductionDeploymentGrantSchema = z.object({
   }
   if ((grant.expectedRouteId === null) !== (grant.expectedRouteScript === null) ||
       (grant.rolloutStage === "rollback") !== (grant.actions[0] === "rollback") ||
-      (grant.rolloutStage === "canary" || grant.rolloutStage === "promote") !== (grant.actions[0] === "deploy")) {
+      (grant.rolloutStage === "canary" || grant.rolloutStage === "promote") !== (grant.actions[0] === "deploy") ||
+      (grant.rolloutStage === "promote") !== (grant.canaryGrantRef !== null) ||
+      (grant.rolloutStage === "promote") !== (grant.canaryDeploymentId !== null) ||
+      (grant.rolloutStage === "promote") !== (grant.canaryVerifiedAt !== null) ||
+      (grant.rolloutStage === "rollback") === (grant.candidateVersionId !== null)) {
     ctx.addIssue({ code: "custom", message: "Production route or rollout stage binding invalid" });
   }
 });
@@ -70,6 +78,10 @@ export const cloudflareProductionDeploymentJobSchema = z.object({
   expectedRouteId: z.string().min(1).max(32).nullable(),
   expectedRouteScript: z.literal(CLOUDFLARE_PRODUCTION_TARGET_ID).nullable(),
   rolloutStage: z.enum(["canary", "promote", "rollback"]),
+  canaryGrantRef: z.string().uuid().nullable(),
+  canaryDeploymentId: z.string().uuid().nullable(),
+  canaryVerifiedAt: z.string().datetime({ offset: true }).nullable(),
+  candidateVersionId: z.string().uuid().nullable(),
   grantRef: z.string().uuid(),
   projectId: z.string().min(1).max(36),
   artifactRef,
@@ -81,6 +93,14 @@ export const cloudflareProductionDeploymentJobSchema = z.object({
   if (job.artifactRef !== `sha256:${job.buildDigest}` ||
       job.configurationRef !== `cf-origin:${job.configurationDigest}`) {
     ctx.addIssue({ code: "custom", message: "Production job digest binding invalid" });
+  }
+  if ((job.expectedRouteId === null) !== (job.expectedRouteScript === null) ||
+      (job.rolloutStage === "rollback") !== (job.action === "rollback") ||
+      (job.rolloutStage === "promote") !== (job.canaryGrantRef !== null) ||
+      (job.rolloutStage === "promote") !== (job.canaryDeploymentId !== null) ||
+      (job.rolloutStage === "promote") !== (job.canaryVerifiedAt !== null) ||
+      (job.rolloutStage === "rollback") === (job.candidateVersionId !== null)) {
+    ctx.addIssue({ code: "custom", message: "Production job route or rollout stage binding invalid" });
   }
 });
 
@@ -134,6 +154,9 @@ export function cloudflareProductionGrantAllowsJob(
     grant.zoneId === job.zoneId && grant.routePattern === job.routePattern &&
     grant.expectedRouteId === job.expectedRouteId && grant.expectedRouteScript === job.expectedRouteScript &&
     grant.rolloutStage === job.rolloutStage &&
+    grant.canaryGrantRef === job.canaryGrantRef && grant.canaryDeploymentId === job.canaryDeploymentId &&
+    grant.canaryVerifiedAt === job.canaryVerifiedAt &&
+    grant.candidateVersionId === job.candidateVersionId &&
     grant.jobId === binding.jobId && job.grantRef === grant.grantRef &&
     grant.executorId === binding.executorId && grant.accountRef === binding.accountRef &&
     grant.actions[0] === job.action && Date.parse(grant.expiresAt) > binding.now.getTime() &&

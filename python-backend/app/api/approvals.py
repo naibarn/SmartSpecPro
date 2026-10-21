@@ -303,6 +303,10 @@ class CloudflareProductionGrantIssue(BaseModel):
     expected_route_id: StrictStr | None = Field(..., alias="expectedRouteId", max_length=32)
     expected_route_script: Literal["smartspec-cloudflare-runtime"] | None = Field(..., alias="expectedRouteScript")
     rollout_stage: Literal["canary", "promote", "rollback"] = Field(..., alias="rolloutStage")
+    canary_grant_ref: StrictStr | None = Field(..., alias="canaryGrantRef", pattern=r"^[a-f0-9-]{36}$")
+    canary_deployment_id: StrictStr | None = Field(..., alias="canaryDeploymentId", pattern=r"^[a-f0-9-]{36}$")
+    canary_verified_at: datetime | None = Field(..., alias="canaryVerifiedAt")
+    candidate_version_id: StrictStr | None = Field(..., alias="candidateVersionId", pattern=r"^[a-f0-9-]{36}$")
     job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
     artifact_ref: StrictStr = Field(..., alias="artifactRef", pattern=r"^sha256:[a-f0-9]{64}$")
     source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[a-f0-9]{40}$")
@@ -1650,7 +1654,11 @@ async def create_cloudflare_production_grant_request(
         "executorId": data.executor_id, "targetId": data.target_id, "environment": data.environment,
         "accountRef": data.account_ref, "zoneId": data.zone_id, "routePattern": data.route_pattern,
         "expectedRouteId": data.expected_route_id, "expectedRouteScript": data.expected_route_script,
-        "rolloutStage": data.rollout_stage, "jobId": data.job_id, "artifactRef": data.artifact_ref,
+        "rolloutStage": data.rollout_stage, "canaryGrantRef": data.canary_grant_ref,
+        "canaryDeploymentId": data.canary_deployment_id,
+        "canaryVerifiedAt": data.canary_verified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if data.canary_verified_at else None,
+        "candidateVersionId": data.candidate_version_id,
+        "jobId": data.job_id, "artifactRef": data.artifact_ref,
         "sourceSha": data.source_sha, "buildDigest": data.build_digest,
         "configurationRef": data.configuration_ref, "configurationDigest": data.configuration_digest,
         "actions": data.actions, "rollbackDeploymentId": data.rollback_deployment_id,

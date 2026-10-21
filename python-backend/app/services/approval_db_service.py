@@ -65,7 +65,10 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
     required = {
         "schemaVersion", "grantRef", "tenantId", "requesterUserId", "projectId", "executorId",
         "targetId", "environment", "accountRef", "zoneId", "routePattern", "expectedRouteId",
-        "expectedRouteScript", "rolloutStage", "jobId", "artifactRef", "sourceSha", "buildDigest",
+        "expectedRouteScript", "rolloutStage", "canaryGrantRef", "canaryDeploymentId",
+        "canaryVerifiedAt",
+        "candidateVersionId",
+        "jobId", "artifactRef", "sourceSha", "buildDigest",
         "configurationRef", "configurationDigest", "actions", "rollbackDeploymentId",
         "rollbackArtifactRef", "rollbackSourceSha", "rollbackBuildDigest", "rollbackConfigurationRef",
         "rollbackConfigurationDigest", "canaryRequired", "maxDurationSeconds", "expiresAt", "revokedAt",
@@ -102,8 +105,29 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
             (value["expectedRouteId"] is None) != (value["expectedRouteScript"] is None) or
             (value["expectedRouteScript"] is not None and value["expectedRouteScript"] != _CF_PRODUCTION_TARGET) or
             (value["rolloutStage"] == "rollback") != (value["actions"] == ["rollback"]) or
-            (value["rolloutStage"] in ("canary", "promote")) != (value["actions"] == ["deploy"])):
+            (value["rolloutStage"] in ("canary", "promote")) != (value["actions"] == ["deploy"]) or
+            (value["rolloutStage"] == "promote") != (value["canaryGrantRef"] is not None) or
+            (value["rolloutStage"] == "promote") != (value["canaryDeploymentId"] is not None) or
+            (value["rolloutStage"] == "promote") != (value["canaryVerifiedAt"] is not None)):
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ROUTE_OR_STAGE_INVALID")
+    if (value["rolloutStage"] == "rollback") == (value["candidateVersionId"] is not None):
+        raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANDIDATE_VERSION_INVALID")
+    if value["rolloutStage"] == "promote":
+        for field in ("canaryGrantRef", "canaryDeploymentId"):
+            if not isinstance(value[field], str) or not _SPEC224_CANONICAL_UUID.fullmatch(value[field]):
+                raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANARY_BINDING_INVALID")
+        if not isinstance(value["canaryVerifiedAt"], str):
+            raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANARY_BINDING_INVALID")
+        try:
+            verified_at = datetime.fromisoformat(value["canaryVerifiedAt"].replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANARY_BINDING_INVALID") from exc
+        if verified_at.tzinfo is None:
+            raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANARY_BINDING_INVALID")
+    if value["candidateVersionId"] is not None and (
+            not isinstance(value["candidateVersionId"], str) or
+            not _SPEC224_CANONICAL_UUID.fullmatch(value["candidateVersionId"])):
+        raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANDIDATE_VERSION_INVALID")
     if value["artifactRef"] != f"sha256:{value['buildDigest']}" or value["rollbackArtifactRef"] != f"sha256:{value['rollbackBuildDigest']}":
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ARTIFACT_BINDING_INVALID")
     validate_origin_configuration_pair(value["configurationRef"], value["configurationDigest"])

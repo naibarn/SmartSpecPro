@@ -83,7 +83,7 @@ describe("Cloudflare production canary contract", () => {
       { version_id: candidate.versionId, percentage: 100 },
     ]);
     expect(() => buildProductionPromotionWeights({ candidate,
-      canaryEvidence: { ...canaryEvidence, verifiedAt: "2026-10-22T09:54:59Z" }, now }))
+      canaryEvidence: { ...canaryEvidence, verifiedAt: "2026-10-22T09:29:59Z" }, now }))
       .toThrow("CLOUDFLARE_PRODUCTION_PROMOTION_CANDIDATE_INVALID");
   });
 });

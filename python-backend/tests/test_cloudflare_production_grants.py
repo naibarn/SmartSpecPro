@@ -31,6 +31,9 @@ def _grant_payload(**overrides):
         "targetId": "smartspec-cloudflare-runtime", "environment": "production",
         "accountRef": "c" * 32, "zoneId": "9" * 32, "routePattern": "smartaihub.app/*",
         "expectedRouteId": None, "expectedRouteScript": None, "rolloutStage": "canary",
+        "canaryGrantRef": None, "canaryDeploymentId": None,
+        "canaryVerifiedAt": None,
+        "candidateVersionId": "66666666-6666-4666-8666-666666666666",
         "jobId": "22222222-2222-4222-8222-222222222222",
         "artifactRef": f"sha256:{digest}", "sourceSha": "d" * 40, "buildDigest": digest,
         "configurationRef": f"cf-origin:{digest}", "configurationDigest": digest,
@@ -50,6 +53,10 @@ def _grant_payload(**overrides):
 @pytest.mark.unit
 def test_production_grant_payload_is_exact_bounded_and_separate_from_staging():
     assert normalize_cloudflare_production_grant_payload(_grant_payload())["environment"] == "production"
+    promote = _grant_payload(rolloutStage="promote", canaryGrantRef="44444444-4444-4444-8444-444444444444",
+                             canaryDeploymentId="55555555-5555-4555-8555-555555555555",
+                             canaryVerifiedAt=datetime.now(timezone.utc).isoformat())
+    assert normalize_cloudflare_production_grant_payload(promote)["rolloutStage"] == "promote"
     with pytest.raises(ValueError, match="TARGET_INVALID"):
         normalize_cloudflare_production_grant_payload(_grant_payload(environment="staging"))
     with pytest.raises(ValueError, match="TARGET_INVALID"):
@@ -75,6 +82,9 @@ async def test_production_grant_api_is_admin_only_and_never_auto_approves(monkey
         "environment": "production", "accountRef": "c" * 32,
         "zoneId": "9" * 32, "routePattern": "smartaihub.app/*",
         "expectedRouteId": None, "expectedRouteScript": None, "rolloutStage": "canary",
+        "canaryGrantRef": None, "canaryDeploymentId": None,
+        "canaryVerifiedAt": None,
+        "candidateVersionId": "66666666-6666-4666-8666-666666666666",
         "jobId": "22222222-2222-4222-8222-222222222222",
         "artifactRef": "sha256:" + "a" * 64, "sourceSha": "d" * 40, "buildDigest": "a" * 64,
         "configurationRef": "cf-origin:" + "a" * 64, "configurationDigest": "a" * 64,

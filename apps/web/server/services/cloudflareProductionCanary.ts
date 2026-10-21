@@ -26,6 +26,9 @@ export type CloudflareProductionVersion = Readonly<{
   sourceSha: string;
   buildDigest: string;
   configurationDigest: string;
+}>;
+
+export type CloudflareProductionBaseline = CloudflareProductionVersion & Readonly<{
   deploymentId: string;
 }>;
 
@@ -64,8 +67,8 @@ export function assertProductionRouteMatchesGrant(input: {
  * and cannot be smuggled in as a percentage deployment.
  */
 export function buildProductionCanaryWeights(input: {
-  baseline: CloudflareProductionVersion | null;
-  expectedBaseline: Omit<CloudflareProductionVersion, "versionId" | "deploymentId">;
+  baseline: CloudflareProductionBaseline | null;
+  expectedBaseline: Omit<CloudflareProductionVersion, "versionId">;
   candidate: CloudflareProductionVersion;
   expectedCandidate: Omit<CloudflareProductionVersion, "versionId" | "deploymentId">;
   candidatePercent?: number;
@@ -106,11 +109,10 @@ export function buildProductionPromotionWeights(input: {
       !/^[a-f0-9]{40}$/.test(candidate.sourceSha) ||
       !/^[a-f0-9]{64}$/.test(candidate.buildDigest) ||
       !/^[a-f0-9]{64}$/.test(candidate.configurationDigest) ||
-      !/^[a-f0-9-]{36}$/i.test(candidate.deploymentId) ||
       !/^[a-f0-9-]{36}$/i.test(input.canaryEvidence.deploymentId) ||
       input.canaryEvidence.candidateVersionId !== candidate.versionId ||
       input.canaryEvidence.candidatePercent !== CLOUDFLARE_PRODUCTION_CANARY_PERCENT ||
-      !Number.isFinite(verifiedAt) || verifiedAt > now.getTime() || now.getTime() - verifiedAt > 5 * 60_000) {
+      !Number.isFinite(verifiedAt) || verifiedAt > now.getTime() || now.getTime() - verifiedAt > 30 * 60_000) {
     throw new CloudflareProductionCanaryError("CLOUDFLARE_PRODUCTION_PROMOTION_CANDIDATE_INVALID");
   }
   return [{ version_id: candidate.versionId, percentage: 100 }] as const;
