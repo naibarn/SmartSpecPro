@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `117`
-- Updated (UTC): `2026-10-21T18:04:07.897123+00:00`
+- State generation: `118`
+- Updated (UTC): `2026-10-21T18:05:03.927400+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `8010f0f6dfd3f64cc229e12a05f600d524b72040`
+- Latest recorded merged Main SHA: `67b7d45f98e5584a9d7babd42ff6098088ae3155`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Continue from current Main; qualify the node/database and full HTTP paths on fresh bounded staging deployment, then migrate the next independently supported background-job family. Preserve Debian and existing PostgreSQL until live proof and production target authority are established.
+- Next action: Continue from current Main; qualify Node database and full HTTP paths through fresh bounded staging deployment, then migrate supported background job families incrementally. Keep production on Debian and retain the original PostgreSQL until current live evidence and production authority exist.
 
 ## Sections
 
@@ -21,14 +21,14 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 8010f0f6dfd3f64cc229e12a05f600d524b72040 | 8010f0f6dfd3f64cc229e12a05f600d524b72040 | Continue from current Main; qualify the node/database and full HTTP paths on fresh bounded staging deployment, then migrate the next independently supported background-job family. Preserve Debian and existing PostgreSQL until live proof and production target authority are established. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 67b7d45f98e5584a9d7babd42ff6098088ae3155 | 67b7d45f98e5584a9d7babd42ff6098088ae3155 | Continue from current Main; qualify Node database and full HTTP paths through fresh bounded staging deployment, then migrate supported background job families incrementally. Keep production on Debian and retain the original PostgreSQL until current live evidence and production authority exist. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- Manifest-owned HTTP APIs now pass through the staging full-HTTP Container switch before origin fallback; HTTP and realtime switches remain default-off and staging-bounded. Cloudflare package check/build and full suite passed (303 tests); storage/config/tenant authorization suites passed 73 cases; latest focused Container/canary/ingress tests passed 40 cases. Cloudflare runtime target verification passes.
+- Manifest-owned HTTP APIs now pass through the staging full-HTTP Container switch before origin fallback; HTTP and realtime switches remain default-off and staging-bounded. Cloudflare package check/build and full suite passed (303 tests); storage/config/tenant authorization suites passed 73 cases; focused Container/canary/ingress tests passed 40 cases. Cloudflare runtime target verification passes.
 - Cloudflare application storage refuses local disk. Existing tenant/user media authorization has tests, but live R2 upload/read/delete and cross-tenant denial still need a bounded Container canary.
-- Node Container traffic now waits for `/readyz` (`SELECT 1`) and Python waits for `/health` (database plus `worker_jobs`). The Admin canary includes a fixed read-only `node/database` probe; no current live staging DB probe has exercised this path.
-- `verify:cloudflare-runtime-target` now checks canonical `worker_jobs` behavior instead of obsolete feature-flag text and passes. Python route pytest was not run because pytest is not installed in this task checkout.
+- Node Container traffic waits for `/readyz` (`SELECT 1`) and Python waits for `/health` (database plus `worker_jobs`). The Admin canary includes a fixed read-only `node/database` probe; live staging DB evidence is pending.
+- Python route pytest was not run because pytest is not installed in this task checkout.
 - Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.
 - Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.
 - Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.
@@ -43,7 +43,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Current integrated staging traffic/realtime selectors and complete app journeys are not qualified against a fresh deployment; need authorized current staging artifact/transport and bounded runtime evidence.
 - Containerized Node/Python cannot inherit Worker Hyperdrive bindings; no end-to-end private path to retained PostgreSQL or full SQL compatibility proof exists.
 - The current task worktree has no Wrangler CLI or Cloudflare deployment executor credentials in its process environment; fresh staging deployment must use the existing Admin-backed authority, which is not connected in this shell.
-- A read-only node/database Admin canary now maps to Node /readyz and Container forwarding is gated on DB readiness; live staging execution has not occurred because no current staging deployment transport or authority is connected in this shell.
+- Previous liveness-only probes allowed traffic before retained PostgreSQL was ready; now Node uses /readyz and Python /health before forwarding, covered by tests, but no current live staging DB probe has yet exercised this gate.
+- A read-only node/database Admin canary now maps to Node /readyz and Container forwarding is gated on DB readiness; live staging execution has not occurred because no current staging deployment transport/authority is connected in this shell.
+- No Wrangler CLI or Cloudflare deployment credentials are available in this task shell. Current Admin-backed deployment transport is not connected, so no current staging artifact was deployed.
 
 ## Resume
 
