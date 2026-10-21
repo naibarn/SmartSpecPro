@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Extend the production Worker to an explicitly admitted HTTP application runtime that preserves PostgreSQL at its current host; build a proxy-safe baseline and exact separately authorized route attachment, then qualify traffic, auth, realtime, jobs, media, storage and rollback.",
+      "next_action": "Implement production Node/Python HTTP Container admission and deployment with the retained PostgreSQL path; then qualify safe baseline routing, canary, realtime, canonical jobs, media, storage and rollback.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "a83977a07",
-      "merged_main_sha": "a83977a07",
+      "checkpoint_sha": "0ebb4d534",
+      "merged_main_sha": "0ebb4d534",
       "session_id": "codex-cloudflare-cutover-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 136,
-  "updated_at": "2026-10-21T19:30:35.019230+00:00",
+  "generation": 137,
+  "updated_at": "2026-10-21T19:33:17.240819+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Extend the production Worker to an explicitly admitted HTTP application runtime that preserves PostgreSQL at its current host; build a proxy-safe baseline and exact separately authorized route attachment, then qualify traffic, auth, realtime, jobs, media, storage and rollback.",
-    "merged_main_sha": "a83977a07",
+    "next_action": "Implement production Node/Python HTTP Container admission and deployment with the retained PostgreSQL path; then qualify safe baseline routing, canary, realtime, canonical jobs, media, storage and rollback.",
+    "merged_main_sha": "0ebb4d534",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -99,7 +99,8 @@
       "Production job executor and full origin/version uploader are not yet connected to the v2 grant; current release path stops before Cloudflare mutation.",
       "No production route or verified active rollback baseline exists; canary remains correctly denied until a proxy-compatible baseline Worker is attached to smartaihub.app with exact zone/route authority.",
       "Current production origin descriptor still rejects Container and background/job bindings, so Node/Python service cutover parity remains unimplemented.",
-      "Production executor and stage-bound version upload are integrated; production target/grant/route are still absent, current production Worker is cache-only, and production HTTP Container parity plus end-to-end live evidence remain unimplemented."
+      "Production executor and stage-bound version upload are integrated; production target/grant/route are still absent, current production Worker is cache-only, and production HTTP Container parity plus end-to-end live evidence remain unimplemented.",
+      "Production executor/version upload integrated and retired legacy ingress paths are blocked. Production target/grant/route are still absent, runtime Worker remains cache-only, production app Container admission/parity and live end-to-end evidence remain open."
     ],
     "outcome": "NOT_ACCEPTED"
   }
