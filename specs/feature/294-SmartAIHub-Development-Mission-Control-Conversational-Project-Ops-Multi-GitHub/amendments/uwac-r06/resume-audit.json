@@ -1122,6 +1122,22 @@
         "resolved_sha": null
       }
     ],
-    "next_action": "Reconcile recorded commit with its PR/squash/canonical diff before reusing proof or repeating implementation; a nonancestor marker alone is not proof of missing code."
+    "next_action": "Reconcile recorded commit with its PR/squash/canonical diff before reusing proof or repeating implementation; a nonancestor marker alone is not proof of missing code.",
+    "resolution": {
+      "status": "RESOLVED_SQUASH_LINEAGE",
+      "source_revision": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+      "pr": 945,
+      "canonical_squash_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+      "equivalent_pr_head_tree": "d0f8e476dad52d8db1cc5107992eb57bf68dae48",
+      "sections": [
+        "section-01-local-fast-lane",
+        "section-02-atomic-continuation",
+        "section-04-working-ui-acceptance"
+      ],
+      "evidence": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md",
+      "status_boundary": "Original objects now fetched; original checkpoint is not an ancestor because of squash. Section state remains checkpointed, new merged_main_sha recorded. Historical source-count observations above remain unchanged.",
+      "remaining": "Full normative/browser/device/Runner acceptance remains partial; PR944 separate."
+    }
   }
 }
