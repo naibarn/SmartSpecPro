@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Deploy a fresh canonical production artifact only through the existing exact production deployment target, provider route authority, bounded production grant and rollback baseline; before cutover, qualify the staging Container path with the live retained-PostgreSQL tunnel and readiness checks. Production route/grant/rollback authority is still absent in the latest recorded live evidence.",
+      "next_action": "Use the existing Admin provider-target authority to create the exact production target and independently approved canary grant only after the retained-PostgreSQL path and production rollback baseline are verified; then run the queued worker_jobs production canary and promote under separately scoped grants. Current read-only DB inventory has no production target, grant request, or production deploy job.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c",
-      "merged_main_sha": "ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c",
+      "checkpoint_sha": "15800bb1846e1e2c7180930cdf6a469cc8b12825",
+      "merged_main_sha": "15800bb1846e1e2c7180930cdf6a469cc8b12825",
       "session_id": "codex-cloudflare-cutover-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 142,
-  "updated_at": "2026-10-21T19:54:54.152753+00:00",
+  "generation": 143,
+  "updated_at": "2026-10-21T19:57:19.244990+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Deploy a fresh canonical production artifact only through the existing exact production deployment target, provider route authority, bounded production grant and rollback baseline; before cutover, qualify the staging Container path with the live retained-PostgreSQL tunnel and readiness checks. Production route/grant/rollback authority is still absent in the latest recorded live evidence.",
-    "merged_main_sha": "ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c",
+    "next_action": "Use the existing Admin provider-target authority to create the exact production target and independently approved canary grant only after the retained-PostgreSQL path and production rollback baseline are verified; then run the queued worker_jobs production canary and promote under separately scoped grants. Current read-only DB inventory has no production target, grant request, or production deploy job.",
+    "merged_main_sha": "15800bb1846e1e2c7180930cdf6a469cc8b12825",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -97,7 +97,8 @@
       "Read-only live checks (2026-10-21 19:34 UTC): smartaihub.app resolves through Cloudflare, but apex /healthz returns the Node origin response and /readyz reports PostgreSQL ok; runtime.smartaihub.app/healthz is the Cloudflare Worker, its /readyz returns 503 with activation disabled and all seven required bindings absent, and its root returns 404. The production Worker is not serving the apex application.",
       "Production deployment executor and version-only upload are integrated; the executor consumes worker_jobs and the v2 stage-bound grant. Retired Agency/workflow paths now return 410 before origin proxying. Provider route/Container permissions, production target/policy/grant and app-runtime Container parity remain open; no provider mutation occurred.",
       "Live proof confirms the apex still serves Node/Linux while the production Worker is disabled, lacks required bindings and is not attached. Production route and Container authority/target/policy/grant plus full app runtime parity remain open.",
-      "Source now has bounded production Node/Python Containers and version preparation, but no live production target, route/Container IAM grant, promotion authority, or verified rollback baseline is recorded; production activation remains unperformed."
+      "Source now has bounded production Node/Python Containers and version preparation, but no live production target, route/Container IAM grant, promotion authority, or verified rollback baseline is recorded; production activation remains unperformed.",
+      "Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted."
     ],
     "outcome": "NOT_ACCEPTED"
   }
