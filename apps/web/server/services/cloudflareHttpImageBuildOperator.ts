@@ -98,11 +98,17 @@ export function createHttpImageBuildOperator(assertAuthorized: () => Promise<voi
       if (dirty.trim()) throw new HttpImageError("HTTP_IMAGE_CANONICAL_SOURCE_DIRTY");
       const output = await mkdtemp(join(tmpdir(), "smartspec-http-image-"));
       await chmod(output, 0o700);
-      const result = await command("python3", [join(workspace, "apps/web/scripts/build_cloudflare_http_image.py"),
-        "--build-result", path, "--output", join(output, "build"), "--runtime", g.plan.runtime,
-        "--tag", httpImageLocalTag(g), "--source-sha", g.plan.sourceSha, "--job-id", g.jobId, "--plan-digest", g.planDigest],
-        { cwd: workspace, timeoutMs: g.plan.buildBudgetSeconds * 1000 });
-      return assertHttpImageBuild(g, JSON.parse(result));
+      try {
+        const result = await command("python3", [join(workspace, "apps/web/scripts/build_cloudflare_http_image.py"),
+          "--build-result", path, "--output", join(output, "build"), "--runtime", g.plan.runtime,
+          "--tag", httpImageLocalTag(g), "--source-sha", g.plan.sourceSha, "--job-id", g.jobId, "--plan-digest", g.planDigest],
+          { cwd: workspace, timeoutMs: g.plan.buildBudgetSeconds * 1000 });
+        return assertHttpImageBuild(g, JSON.parse(result));
+      } finally {
+        // The fixed builder has exited (or its group was cancelled). Retain
+        // logs/digest receipts, but not a second multi-GB copy of runtime files.
+        await rm(join(output, "build/context"), { recursive: true, force: true });
+      }
     },
     async push(g: HttpImageProvisionGrant, build: HttpImageBuild, credential: RegistryCredential) {
       assertHttpImageBuild(g, build);
