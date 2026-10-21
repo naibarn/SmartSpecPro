@@ -1486,6 +1486,11 @@ interface VerticalDramaStoryboardPanelProps {
   onRetryStartFrameSync?: (shotNumber: number) => void;
   /** Opens the Media History/Library picker scoped to a specific character's global portrait (updates that character everywhere, not just this shot). */
   onChangeCharacterReference?: (characterId: string) => void;
+  /** Applies one selected character look to every episode shot that uses this character family. */
+  onSetCharacterLookForShots?: (
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+  ) => void;
+  savingCharacterLookForAllShots?: boolean;
   /** Dragging an image (Library/History/grid-cutter tile, same unified drag contract used across the app) directly onto a shot's character chip replaces that character's reference image immediately — no need to open the swap panel first. */
   onDropCharacterReference?: (characterId: string, url: string) => void;
   /**
@@ -2373,6 +2378,8 @@ export function VerticalDramaStoryboardPanel({
   onRetryStartFrameImage,
   onRetryStartFrameSync,
   onChangeCharacterReference,
+  onSetCharacterLookForShots,
+  savingCharacterLookForAllShots = false,
   onDropCharacterReference,
   onSetShotCharacterReferences,
   onSetShotCastPositionLock,
@@ -2943,6 +2950,8 @@ export function VerticalDramaStoryboardPanel({
     shotNumber: number;
     chipKey: string;
   } | null>(null);
+  const [lookSwitcherForReviewCharacter, setLookSwitcherForReviewCharacter] =
+    useState<string | null>(null);
   /** Shot number currently showing the supplementary reference-frame dialog
    *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — same
    *  single-open-at-a-time convention as `characterRefPickerForShot` above. */
@@ -3378,7 +3387,21 @@ export function VerticalDramaStoryboardPanel({
     const keys = shot.required_character_refs?.length
       ? shot.required_character_refs
       : (shot.characters ?? []);
-    for (const key of keys) reviewCharacterKeys.add(key);
+    for (const key of keys) {
+      const portrait = characterPortraits[key];
+      const rootPortrait = portrait?.parentCharacterId
+        ? Object.values(characterPortraits).find(
+            candidate => candidate.characterId === portrait.parentCharacterId
+          )
+        : undefined;
+      reviewCharacterKeys.add(
+        rootPortrait
+          ? Object.keys(characterPortraits).find(
+              candidateKey => characterPortraits[candidateKey] === rootPortrait
+            ) ?? key
+          : key
+      );
+    }
   }
   const reviewCharacters = Array.from(reviewCharacterKeys)
     .map(key => characterPortraits[key])
@@ -4001,18 +4024,135 @@ export function VerticalDramaStoryboardPanel({
                 {portrait.name}
               </span>
               {portrait.portraitUrl ? (
-                onChangeCharacterReference ? (
-                  <button
-                    type="button"
-                    className="text-[11px] text-primary underline underline-offset-2 hover:text-primary/80"
-                    onClick={() =>
-                      onChangeCharacterReference(portrait.characterId)
-                    }
-                    data-testid={`vd-storyboard-character-review-switch-${portrait.characterId}`}
-                  >
-                    {t(locale, "สลับภาพ", "Switch image")}
-                  </button>
-                ) : null
+                (() => {
+                  const key = Object.keys(characterPortraits).find(
+                    candidateKey =>
+                      characterPortraits[candidateKey] === portrait
+                  );
+                  const lookOptions = key
+                    ? buildShotCharacterLookOptions(characterPortraits, key)
+                    : [];
+                  const isOpen =
+                    lookSwitcherForReviewCharacter === portrait.characterId;
+                  if (lookOptions.length === 0 || !onSetCharacterLookForShots)
+                    return null;
+                  return (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        title={t(
+                          locale,
+                          `เปลี่ยนลุคของ ${portrait.name} ทุกช็อต`,
+                          `Change ${portrait.name}'s look in every shot`
+                        )}
+                        aria-label={t(
+                          locale,
+                          `เปลี่ยนลุคของ ${portrait.name} ทุกช็อต`,
+                          `Change ${portrait.name}'s look in every shot`
+                        )}
+                        aria-expanded={isOpen}
+                        disabled={savingCharacterLookForAllShots}
+                        onClick={() =>
+                          setLookSwitcherForReviewCharacter(current =>
+                            current === portrait.characterId
+                              ? null
+                              : portrait.characterId
+                          )
+                        }
+                        data-testid={`vd-storyboard-character-review-look-switch-${portrait.characterId}`}
+                      >
+                        <Shirt aria-hidden="true" className="h-3.5 w-3.5" />
+                      </button>
+                      {isOpen ? (
+                        <div
+                          className="absolute left-1/2 top-full z-30 mt-1 w-48 -translate-x-1/2 rounded-lg border border-border bg-background p-1.5 text-left shadow-lg"
+                          data-testid={`vd-storyboard-character-review-look-menu-${portrait.characterId}`}
+                        >
+                          <p className="px-1 pb-1 text-[10px] leading-tight text-muted-foreground">
+                            {t(
+                              locale,
+                              "ใช้ลุคนี้กับทุกช็อตของตัวละคร",
+                              "Apply this look to every shot with this character"
+                            )}
+                          </p>
+                          {lookOptions.map(option => (
+                            <button
+                              key={option.key}
+                              type="button"
+                              disabled={savingCharacterLookForAllShots}
+                              className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-[11px] hover:bg-muted disabled:opacity-50"
+                              onClick={() => {
+                                setLookSwitcherForReviewCharacter(null);
+                                const familyKeys = new Set(
+                                  lookOptions.map(item => item.key)
+                                );
+                                const changes = shots.flatMap(
+                                  (shot, index) => {
+                                    const shotNumber =
+                                      shot.shot_number ?? index + 1;
+                                    const frame = frameByShot.get(shotNumber);
+                                    const refs =
+                                      frame?.requiredCharacterRefs !==
+                                      undefined
+                                        ? frame.requiredCharacterRefs
+                                        : shot.required_character_refs?.length
+                                          ? shot.required_character_refs
+                                          : (shot.characters ?? []);
+                                    const familyRefs = refs.filter(ref =>
+                                      familyKeys.has(ref)
+                                    );
+                                    if (
+                                      familyRefs.length === 0 ||
+                                      (familyRefs.length === 1 &&
+                                        familyRefs[0] === option.key)
+                                    )
+                                      return [];
+                                    const firstFamilyIndex = refs.findIndex(
+                                      ref => familyKeys.has(ref)
+                                    );
+                                    const characterRefs = refs.filter(
+                                      ref => !familyKeys.has(ref)
+                                    );
+                                    characterRefs.splice(
+                                      Math.min(
+                                        firstFamilyIndex,
+                                        characterRefs.length
+                                      ),
+                                      0,
+                                      option.key
+                                    );
+                                    return [{ shotNumber, characterRefs }];
+                                  }
+                                );
+                                if (changes.length > 0)
+                                  onSetCharacterLookForShots(changes);
+                              }}
+                              data-testid={`vd-storyboard-character-review-look-option-${portrait.characterId}-${option.key}`}
+                            >
+                              {option.portraitUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={option.portraitUrl}
+                                  alt=""
+                                  className="h-6 w-5 shrink-0 rounded object-cover object-top"
+                                />
+                              ) : (
+                                <span className="flex h-6 w-5 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
+                                  ?
+                                </span>
+                              )}
+                              <span className="min-w-0 flex-1 truncate">
+                                {option.isBase
+                                  ? t(locale, "ลุคหลัก", "Main look")
+                                  : option.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()
               ) : (
                 <span className="flex items-center gap-1 text-[11px] font-medium text-destructive">
                   <AlertTriangle
@@ -6949,6 +7089,7 @@ export function VerticalDramaStoryboardPanel({
                                 <button
                                   type="button"
                                   className="absolute -right-1 -top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                                  disabled={savingCharacterLookForAllShots}
                                   title={t(
                                     locale,
                                     `เปลี่ยนลุคของ ${portrait?.name ?? key} เฉพาะช็อต ${shotNumber}`,

@@ -4525,17 +4525,24 @@ function EpisodeWorkspaceShell({
     savingShotCharacterReferencesForShot,
     setSavingShotCharacterReferencesForShot,
   ] = useState<number | null>(null);
+  const [savingCharacterLookForAllShots, setSavingCharacterLookForAllShots] =
+    useState(false);
+  const applyingCharacterLookBatchRef = useRef(false);
   const setShotCharacterReferenceMutation =
     trpc.verticalDramaEpisodes.setShotCharacterReference.useMutation({
       onSuccess: () => {
-        toast.success(
-          lang === "th"
-            ? "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว"
-            : "This shot's character reference(s) updated."
-        );
-        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        if (!applyingCharacterLookBatchRef.current) {
+          toast.success(
+            lang === "th"
+              ? "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว"
+              : "This shot's character reference(s) updated."
+          );
+          void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        }
       },
-      onError: err => toast.error(err.message),
+      onError: err => {
+        if (!applyingCharacterLookBatchRef.current) toast.error(err.message);
+      },
     });
 
   function handleSetShotCharacterReferences(
@@ -4550,6 +4557,45 @@ function EpisodeWorkspaceShell({
         onSettled: () => setSavingShotCharacterReferencesForShot(null),
       }
     );
+  }
+
+  async function handleSetCharacterLookForShots(
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+  ) {
+    if (changes.length === 0 || applyingCharacterLookBatchRef.current) return;
+    applyingCharacterLookBatchRef.current = true;
+    setSavingCharacterLookForAllShots(true);
+    let completed = 0;
+    try {
+      // The mutation patches a shared JSONB plan. Apply one shot at a time so
+      // concurrent writes cannot overwrite one another's changes.
+      for (const change of changes) {
+        await setShotCharacterReferenceMutation.mutateAsync({
+          seriesId,
+          episodeId,
+          shotNumber: change.shotNumber,
+          characterRefs: change.characterRefs,
+          referenceRole: "scene",
+        });
+        completed += 1;
+      }
+      toast.success(
+        lang === "th"
+          ? `เปลี่ยนลุคตัวละครใน ${completed} ช็อตแล้ว`
+          : `Changed this character's look in ${completed} shots.`
+      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      toast.error(
+        lang === "th"
+          ? `เปลี่ยนลุคแล้ว ${completed}/${changes.length} ช็อต: ${detail}`
+          : `Look changed in ${completed}/${changes.length} shots: ${detail}`
+      );
+    } finally {
+      applyingCharacterLookBatchRef.current = false;
+      setSavingCharacterLookForAllShots(false);
+      void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+    }
   }
 
   function handleSetShotScreenCallerReferences(
@@ -10469,6 +10515,8 @@ function EpisodeWorkspaceShell({
             savingProductReferencesForShot,
             onChangeCharacterReference: characterId =>
               setImageSwapTarget({ type: "characterPortrait", characterId }),
+            onSetCharacterLookForShots: handleSetCharacterLookForShots,
+            savingCharacterLookForAllShots,
             onDropCharacterReference: handleDropCharacterReference,
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
             onSetShotCastPositionLock: handleSetShotCastPositionLock,
