@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import unittest
 
-from build_cloudflare_http_image import image_build_command, inspect_built_image
+from build_cloudflare_http_image import image_build_command, inspect_built_image, validate_build_metadata
 from linux_backend_release import ReleaseError
 
 SHA = "a" * 40
@@ -13,6 +13,16 @@ TAG = f"smartspec-staging-abcdef012345-node-http:{SHA}-{JOB}"
 
 
 class FixedHttpImageBuildTests(unittest.TestCase):
+    def test_containerd_manifest_id_is_not_mistaken_for_the_image_config_digest(self):
+        config, manifest = "sha256:" + "c" * 64, "sha256:" + "d" * 64
+        metadata = {"containerimage.config.digest": config, "containerimage.digest": manifest,
+                    "containerimage.descriptor": {"digest": manifest, "mediaType": "application/vnd.oci.image.manifest.v1+json"}}
+        for observed in ({"Id": config}, {"Id": manifest, "Descriptor": {"digest": manifest}}):
+            self.assertEqual(validate_build_metadata(metadata, observed), {"configDigest": config, "manifestDigest": manifest})
+        changed = deepcopy(metadata)
+        changed["containerimage.descriptor"]["mediaType"] = "application/vnd.oci.image.index.v1+json"
+        with self.assertRaisesRegex(ReleaseError, "BUILD_METADATA_DENIED"):
+            validate_build_metadata(changed, {"Id": manifest})
     def test_fixed_single_architecture_recipe_cannot_select_a_command_or_unpinned_base(self):
         command = image_build_command(Path("/owned/context"), "node-http", TAG, SHA, JOB, PLAN)
         self.assertEqual(command[:3], ["docker", "buildx", "build"])

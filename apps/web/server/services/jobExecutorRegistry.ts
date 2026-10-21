@@ -2,6 +2,8 @@ import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB } from "./cloudflareNat
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB } from "./cloudflarePrivateDatabaseContract";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { createCloudflareNativeProvisionExecutor } from "./cloudflareNativeProvisionExecutor";
+import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
+import { createCloudflareHttpImageProvisionExecutor } from "./cloudflareHttpImageProvisionExecutor";
 import { ORIGIN_PROVISION_CONTRACT, ORIGIN_PROVISION_JOB } from "./cloudflareOriginProvisionContract";
 import { createCloudflareOriginProvisionExecutor } from "./cloudflareOriginProvisionExecutor";
 import { createHash } from "node:crypto";
@@ -393,6 +395,12 @@ defaultJobExecutorRegistry.register({
   jobType: PRIVATE_DATABASE_JOB, executionClass: "long",
   contractVersions: new Set([PRIVATE_DATABASE_CONTRACT]),
   executor: createCloudflarePrivateDatabaseExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: HTTP_IMAGE_PROVISION_JOB, executionClass: "long",
+  contractVersions: new Set([HTTP_IMAGE_PROVISION_CONTRACT]),
+  executor: createCloudflareHttpImageProvisionExecutor(),
 });
 
 // Development-only local Node executor. It uses a server-owned private pipe

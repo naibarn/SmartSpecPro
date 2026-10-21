@@ -30,6 +30,7 @@ def image_build_command(context: Path, runtime: str, tag: str, source_sha: str, 
     # publishing one linux/amd64 manifest, not an index with attestations.
     key = "NODE_HTTP_IMAGE" if runtime == "node-http" else "PYTHON_HTTP_IMAGE"
     return ["docker", "buildx", "build", "--platform", "linux/amd64", "--load", "--provenance=false", "--sbom=false",
+            "--metadata-file", str(context.parent / "build-metadata.json"),
             "--build-arg", f"{key}={BASES[runtime]}", "--build-arg", f"ACCESS_CONNECTOR_IMAGE={CONNECTOR}",
             "--build-arg", f"SOURCE_SHA={source_sha}", "--label", f"org.smartaihub.packager.revision={source_sha}",
             "--label", f"org.smartaihub.provision.job={job_id}", "--label", f"org.smartaihub.provision.plan={plan_digest}",
@@ -51,6 +52,22 @@ def inspect_built_image(value: dict, runtime: str, source_sha: str, job_id: str,
         raise ReleaseError("HTTP_IMAGE_BUILD_READBACK_DENIED")
     return {"imageId": value["Id"], "imageBytes": value["Size"], "layers": len(value["RootFS"]["Layers"]),
             "platform": "linux/amd64", "sourceSha": source_sha, "runtime": runtime, "jobId": job_id, "planDigest": plan_digest}
+
+
+def validate_build_metadata(value: dict, observed: dict) -> dict:
+    config_digest = value.get("containerimage.config.digest", "")
+    manifest_digest = value.get("containerimage.digest", "")
+    descriptor = value.get("containerimage.descriptor", {})
+    if (not re.fullmatch(r"sha256:[a-f0-9]{64}", config_digest)
+        or not re.fullmatch(r"sha256:[a-f0-9]{64}", manifest_digest)
+        or descriptor.get("digest") != manifest_digest
+        or descriptor.get("mediaType") not in ("application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json")
+        or observed.get("Id") not in (config_digest, manifest_digest)
+        or (observed.get("Descriptor") and observed["Descriptor"].get("digest") != manifest_digest)):
+        raise ReleaseError("HTTP_IMAGE_BUILD_METADATA_DENIED")
+    # Docker's containerd store uses the manifest ID; the classic store uses
+    # the config ID. Neither can be substituted for the other at publication.
+    return {"configDigest": config_digest, "manifestDigest": manifest_digest}
 
 
 def build_image(build_result: Path, output: Path, runtime: str, tag: str, source_sha: str, job_id: str, plan_digest: str) -> dict:
@@ -75,6 +92,14 @@ def build_image(build_result: Path, output: Path, runtime: str, tag: str, source
     log_path = output / "build.log"
     with os.fdopen(os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as log:
         child = subprocess.Popen(command, env=environment, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+        def terminate_owned_build(signum, _frame):
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            child.wait(timeout=5)
+            raise SystemExit(128 + signum)
+        previous_handlers = {sig: signal.signal(sig, terminate_owned_build) for sig in (signal.SIGTERM, signal.SIGINT)}
         try:
             status = child.wait(timeout=max(1, 180 - (time.monotonic() - started)))
         except subprocess.TimeoutExpired:
@@ -84,10 +109,14 @@ def build_image(build_result: Path, output: Path, runtime: str, tag: str, source
                 pass
             child.wait(timeout=5)
             raise ReleaseError("HTTP_IMAGE_BUILD_DEADLINE_EXCEEDED") from None
+        finally:
+            for sig, handler in previous_handlers.items():
+                signal.signal(sig, handler)
     if status != 0:
         raise ReleaseError("HTTP_IMAGE_BUILD_FAILED")
     observed = json.loads(subprocess.check_output(["docker", "image", "inspect", tag], env=environment, timeout=10))[0]
     result = inspect_built_image(observed, runtime, source_sha, job_id, plan_digest)
+    result.update(validate_build_metadata(json.loads((output / "build-metadata.json").read_text()), observed))
     result.update(schemaVersion="cloudflare-http-image-build-v1", canonicalArtifactDigest=proof["canonicalArtifactDigest"],
                   packagerSourceSha=proof["packagerSourceSha"], localTag=tag, providerMutations=0, containerStarts=0)
     (output / "image-build.json").write_text(json.dumps(result, indent=2) + "\n")
