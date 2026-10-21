@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `121`
-- Updated (UTC): `2026-10-21T18:24:04.151371+00:00`
+- State generation: `123`
+- Updated (UTC): `2026-10-21T18:29:38.392636+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `cee7e97f`
+- Latest recorded merged Main SHA: `44a36bf5b`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Use the fresh published b79cfba4 artifact through an exact new origin-v2 config and active owner/admin grant authority. Activate bounded full-HTTP staging, run the node/database canary through the short-lived cloudflared Access TCP + TLS connector, then prove full HTTP, storage, realtime and rollback before expanding canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist.
+- Next action: Continue independent Cloudflare runtime implementation and exact staging qualification. The current blocker remains no fresh active staging origin-v2 owner/admin grant; do not invent identity or activate production. Use the current canonical main artifact, then prove node private-Postgres readiness, full HTTP, auth/OAuth/2FA, storage, realtime, canonical jobs and rollback after the existing Admin authority supplies the exact bounded staging action.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | cee7e97f | cee7e97f | Use the fresh published b79cfba4 artifact through an exact new origin-v2 config and active owner/admin grant authority. Activate bounded full-HTTP staging, run the node/database canary through the short-lived cloudflared Access TCP + TLS connector, then prove full HTTP, storage, realtime and rollback before expanding canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 44a36bf5b | 44a36bf5b | Continue independent Cloudflare runtime implementation and exact staging qualification. The current blocker remains no fresh active staging origin-v2 owner/admin grant; do not invent identity or activate production. Use the current canonical main artifact, then prove node private-Postgres readiness, full HTTP, auth/OAuth/2FA, storage, realtime, canonical jobs and rollback after the existing Admin authority supplies the exact bounded staging action. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
