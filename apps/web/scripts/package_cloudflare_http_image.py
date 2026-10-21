@@ -47,7 +47,7 @@ def validate_runtime(root: Path, source_sha: str) -> None:
 
 def packager_source_sha(owned: list[str] | None = None) -> str:
     root = Path(__file__).parents[3]
-    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs"]
+    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs", "apps/web/scripts/build_cloudflare_http_image.py"]
     dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "--", *owned], capture_output=True, text=True, check=True).stdout
     if dirty:
         raise ReleaseError("HTTP_IMAGE_PACKAGER_SOURCE_DIRTY")

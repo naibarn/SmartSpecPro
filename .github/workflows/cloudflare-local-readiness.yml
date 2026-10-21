@@ -8,6 +8,8 @@ on:
       - "python-backend/app/services/cloudflare_staging_policy.py"
       - "python-backend/app/services/cloudflare_origin_provision_contract.py"
       - "python-backend/app/services/cloudflare_native_provision_contract.py"
+      - "python-backend/app/services/cloudflare_http_image_provision_contract.py"
+      - "python-backend/scripts/test_cloudflare_http_image_contract.py"
       - "python-backend/app/services/cloudflare_private_database_contract.py"
       - "python-backend/app/core/application_*.py"
       - "python-backend/app/core/cloudflare_http_entrypoint.py"
@@ -33,6 +35,8 @@ on:
       - "apps/web/scripts/cloudflare-http-entrypoint*"
       - "apps/web/scripts/package_cloudflare_http_image.py"
       - "apps/web/scripts/package_cloudflare_python_http_image.py"
+      - "apps/web/scripts/build_cloudflare_http_image.py"
+      - "apps/web/scripts/test_build_cloudflare_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_python_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
@@ -71,6 +75,8 @@ on:
       - "python-backend/app/services/cloudflare_staging_policy.py"
       - "python-backend/app/services/cloudflare_origin_provision_contract.py"
       - "python-backend/app/services/cloudflare_native_provision_contract.py"
+      - "python-backend/app/services/cloudflare_http_image_provision_contract.py"
+      - "python-backend/scripts/test_cloudflare_http_image_contract.py"
       - "python-backend/app/services/cloudflare_private_database_contract.py"
       - "python-backend/app/core/application_*.py"
       - "python-backend/app/core/cloudflare_http_entrypoint.py"
@@ -96,6 +102,8 @@ on:
       - "apps/web/scripts/cloudflare-http-entrypoint*"
       - "apps/web/scripts/package_cloudflare_http_image.py"
       - "apps/web/scripts/package_cloudflare_python_http_image.py"
+      - "apps/web/scripts/build_cloudflare_http_image.py"
+      - "apps/web/scripts/test_build_cloudflare_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_python_http_image.py"
       - "apps/web/scripts/test_package_cloudflare_http_image.py"
       - "apps/web/scripts/materialize-public-releases.sh"
@@ -148,7 +156,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install scoped Python connector verification dependencies
-        run: python -m pip install pydantic-settings==2.12.0 structlog==25.5.0 asyncpg==0.31.0
+        run: python -m pip install pydantic-settings==2.12.0 structlog==25.5.0 asyncpg==0.31.0 pytest==7.4.4 pytest-asyncio==0.23.3
       - name: Test isolated artifact publisher configuration discovery
         run: python3 -m unittest discover -s scripts/development-lifecycle -p test_cloudflare_artifact_environment.py
       - name: Install dependencies
@@ -160,6 +168,9 @@ jobs:
           python3 -m unittest discover -s apps/web/scripts -p 'test_package_cloudflare*http_image.py'
           DEBUG=false PYTHONPATH=python-backend python -m unittest discover -s python-backend/scripts -p test_cloudflare_http_entrypoint.py
           python -m unittest discover -s python-backend/scripts -p test_application_import_boundaries.py
+          python3 -m unittest discover -s apps/web/scripts -p test_build_cloudflare_http_image.py
+          PYTHONPATH=python-backend python -m unittest discover -s python-backend/scripts -p test_cloudflare_http_image_contract.py
+          DEBUG=false PYTHONPATH=python-backend python -m pytest --noconftest python-backend/tests/unit/test_production_api_startup.py -q -o addopts=
           node --test apps/web/scripts/cloudflare-http-entrypoint.test.mjs
       - name: Verify Linux release permissions and recovery
         run: python3 -m unittest discover -s apps/web/scripts -p test_linux_backend_release.py
@@ -241,7 +252,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Verify application HTTP ownership and database trust policy
-        run: pnpm --filter @smartspec/web exec vitest run server/_core/applicationRuntime.test.ts server/_core/sharedProductionDebug.test.ts server/_core/applicationDatabaseTls.test.ts server/services/skillRegistry.requestRuntime.test.ts server/services/appRuntimeConfig.requestRuntime.test.ts
+        run: pnpm --filter @smartspec/web exec vitest run server/_core/applicationRuntime.test.ts server/_core/sharedProductionDebug.test.ts server/_core/applicationDatabaseTls.test.ts server/services/skillRegistry.requestRuntime.test.ts server/services/appRuntimeConfig.requestRuntime.test.ts server/services/cloudflareHttpImageProvisionContract.test.ts
       - name: Verify session cookies on staging and production hostnames
         run: pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts server/__tests__/cloudflare-origin-attestation.test.ts server/__tests__/cloudflare-origin-middleware.test.ts server/__tests__/cloudflare-origin-upgrade.test.ts server/__tests__/cloudflare-public-origin.test.ts server/__tests__/csrf-protection.test.ts server/__tests__/csrf-middleware.test.ts
       - name: Verify OAuth readiness and callbacks on verified public origins

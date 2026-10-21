@@ -69,3 +69,26 @@ async def test_production_api_preserves_external_schema_and_keeps_provider_boots
         watcher.stop.assert_awaited_once()
     manager.disconnect_all.assert_awaited_once()
     close_db.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_mode,expected_path", [(False, "/health"), (True, "/healthz")])
+async def test_gateway_startup_probe_cannot_reenter_the_starting_python_api(request_mode, expected_path):
+    source = Path(__file__).resolve().parents[2] / "app/main.py"
+    tree = ast.parse(source.read_text())
+    fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "_check_gateway_reachability")
+    get = AsyncMock(return_value=SimpleNamespace(status_code=200))
+
+    @asynccontextmanager
+    async def client(**_kwargs):
+        yield SimpleNamespace(get=get)
+
+    namespace = {
+        "settings": SimpleNamespace(ENVIRONMENT="production"), "logger": MagicMock(),
+        "get_application_runtime_profile": lambda _environment: SimpleNamespace(mode="cloudflare-http" if request_mode else "standard"),
+        "httpx": SimpleNamespace(AsyncClient=client, TimeoutException=TimeoutError, ConnectError=ConnectionError),
+    }
+    exec(compile(ast.Module(body=[fn], type_ignores=[]), str(source), "exec"), namespace)
+    await namespace["_check_gateway_reachability"]("http://node.application.internal/")
+    get.assert_awaited_once_with("http://node.application.internal" + expected_path)

@@ -142,7 +142,10 @@ async def _check_gateway_reachability(url: str) -> None:
 
     Logs a WARNING on any failure — never raises so startup is not blocked.
     """
-    probe_url = url.rstrip("/") + "/health"
+    # In private HTTP bindings, a full health route can call back into the
+    # Python instance that is still starting. Probe Node liveness directly.
+    path = "/healthz" if get_application_runtime_profile(settings.ENVIRONMENT).mode == "cloudflare-http" else "/health"
+    probe_url = url.rstrip("/") + path
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(probe_url)

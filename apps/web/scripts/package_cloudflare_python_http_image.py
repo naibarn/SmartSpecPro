@@ -14,6 +14,7 @@ from linux_backend_release import ReleaseError, validate_build_result
 from package_cloudflare_http_image import PINNED_IMAGE, packager_source_sha
 
 OWNED = [
+    "apps/web/scripts/build_cloudflare_http_image.py",
     "apps/web/scripts/package_cloudflare_python_http_image.py",
     "apps/web/scripts/package_cloudflare_http_image.py",
     "python-backend/CloudflareHttp.Containerfile",
