@@ -152,6 +152,23 @@ describe("Cloudflare local runtime contracts", () => {
     expect((await worker.fetch(new Request("https://runtime.invalid/unknown"), env)).status).toBe(501);
   });
 
+  it("blocks retired runtime paths before any origin proxy or Worker route dispatch", async () => {
+    const worker = createCloudflareWorker();
+    for (const path of ["/workflows/run", "/api/v1/workflows/run", "/api/v1/orchestrator/factory/run", "/api/%61gency/run"]) {
+      const response = await worker.fetch(new Request(`https://runtime.invalid${path}`, { method: "POST", body: "{}" }), {
+        CLOUDFLARE_ENVIRONMENT: "production",
+        AUTH_ORIGIN: "https://origin.example.com",
+        AUTH_ORIGIN_PRIVATE_HOST: "origin.example.com",
+        AUTH_ORIGIN_TOKEN: "t".repeat(40),
+      });
+      expect(response.status, path).toBe(410);
+      expect(await response.json(), path).toEqual({ error: "LEGACY_RUNTIME_RETIRED" });
+    }
+    const malformed = await worker.fetch(new Request("https://runtime.invalid/api/%E0%A4%A"), {});
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toEqual({ error: "APPLICATION_HTTP_PATH_INVALID" });
+  });
+
   it("executes the manifest's business API route in Hono without origin configuration", async () => {
     const worker = createCloudflareWorker();
     const response = await worker.fetch(

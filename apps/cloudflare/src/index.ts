@@ -25,6 +25,7 @@ import { handleCanonicalWorkflowRequest, isCanonicalWorkflowEnabled } from "./wo
 import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
 import { isCanonicalIntakeTransportEnabled } from "./canonicalIntakeTransport";
 import { dispatchApplicationHttpIngress } from "./applicationHttpIngress";
+import { retiredApplicationHttpPath } from "./applicationHttpBridge";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -86,6 +87,13 @@ export function createCloudflareWorker(
   return {
     async fetch(request: Request, env: CloudflareEnvironment): Promise<Response> {
       const url = new URL(request.url);
+      try {
+        if (retiredApplicationHttpPath(url.pathname)) {
+          return json({ error: "LEGACY_RUNTIME_RETIRED" }, 410);
+        }
+      } catch {
+        return json({ error: "APPLICATION_HTTP_PATH_INVALID" }, 400);
+      }
       if (url.pathname === "/healthz" && ["GET", "HEAD"].includes(request.method)) {
         return json({ ok: true, service: "smartspec-cloudflare-runtime" });
       }
