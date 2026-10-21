@@ -17,7 +17,7 @@ function fixture() {
     load: vi.fn(async runtime => states.get(runtime) ?? null),
     save: vi.fn(async (state, previous) => { expect(states.get(state.runtime) ?? null).toEqual(previous); states.set(state.runtime, structuredClone(state)); }),
     request: vi.fn(async (path: string, body?: any): Promise<any> => {
-      if (path === "/images/prepare") return { status: "ready" };
+      if (path === "/image-preparations") return { status: "ready" };
       if (path === "/applications" && !body) return applications;
       if (path === "/applications" && body) {
         const runtime = body.name.endsWith("node-http") ? "node" : "python";
@@ -31,7 +31,7 @@ function fixture() {
 describe("private HTTP application metadata preparation", () => {
   it("prepares only the two exact registry images and creates two DO-managed applications without VM starts", async () => {
     const f = fixture(); await prepareHttpApplicationImages(f.settings, f.scope, f.ports);
-    expect(f.ports.request.mock.calls.filter(([p]) => p === "/images/prepare").map(([, body]) => body.image)).toEqual([f.settings.node.image, f.settings.python.image]);
+    expect(f.ports.request.mock.calls.filter(([p]) => p === "/image-preparations").map(([, body]) => body.image)).toEqual([f.settings.node.image, f.settings.python.image]);
     const output = await ensureHttpApplications(f.settings, f.scope, f.version, "f".repeat(64), f.ports);
     expect(output).toMatchObject({ containerStarts: 0, publicIngressEnabled: false }); expect(output.applications).toHaveLength(2);
     for (const app of f.applications) {

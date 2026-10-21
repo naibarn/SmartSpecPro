@@ -49,7 +49,7 @@ export async function prepareHttpApplicationImages(settings: HttpApplicationSett
     let ready = false;
     for (let attempt = 0; attempt < 24 && Date.now() < deadline; attempt++) {
       await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope);
-      const result = await ports.request("/images/prepare", { image: settings[runtime].image });
+      const result = await ports.request("/image-preparations", { image: settings[runtime].image });
       if (result?.status === "ready" && Date.now() < deadline) { ready = true; break; }
       if (result?.status !== "pending") fail("IMAGE_PREPARATION_DENIED");
       await (ports.wait ?? (() => new Promise(resolve => setTimeout(resolve, 5000))))();
@@ -124,8 +124,8 @@ export function createHttpApplicationProvisionPorts(db: DrizzleDB, scope: Scope,
   return {
     assertAuthorized,
     async request(path, body) {
-      if (!(path === "/images/prepare" || path === "/applications" || /^\/applications\/[a-f0-9-]{32,36}$/.test(path)) ||
-          body && path !== "/images/prepare" && path !== "/applications") fail("ENDPOINT_DENIED");
+      if (!(path === "/image-preparations" || path === "/applications" || /^\/applications\/[a-f0-9-]{32,36}$/.test(path)) ||
+          body && path !== "/image-preparations" && path !== "/applications") fail("ENDPOINT_DENIED");
       return withToken(async token => {
         const response = await fetchImpl(`https://api.cloudflare.com/client/v4/accounts/${scope.accountRef}/containers${path}`, {
           method: body ? "POST" : "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
