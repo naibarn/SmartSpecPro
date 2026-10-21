@@ -1,7 +1,7 @@
-import { CLOUDFLARE_CONTAINER_ON_DEMAND, isCloudflareMediaProbeImage } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, isCloudflareMediaProbeImage } from "./cloudflareMediaProbeContracts";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
+import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "./cloudflareOriginContracts";
 import { cloudflareNativeBindingDescriptorSchema, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { cloudflareHttpApplicationSettingsSchema, cloudflareHttpApplicationSecretsSchema,
   validateHttpApplicationSettings, httpApplicationVersionBindings } from "./cloudflareHttpApplicationBindings";

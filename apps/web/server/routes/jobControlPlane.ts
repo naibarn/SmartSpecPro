@@ -14,7 +14,7 @@ import {
 import { db, getDb } from "../db";
 import { workerJobAttempts, workerJobDispatches, workerJobs } from "../../drizzle/schema";
 import { prepareCloudflareMediaProbe } from "../services/cloudflareMediaProbe";
-import { parseMediaProbeCandidate } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { parseMediaProbeCandidate } from "../services/cloudflareMediaProbeContracts";
 import { createJobReporter } from "../services/jobReporter";
 
 const leaseSchema = z.object({

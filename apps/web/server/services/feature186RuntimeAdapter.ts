@@ -1,4 +1,4 @@
-import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, requiresContainerMediaProbe } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, requiresContainerMediaProbe } from "./cloudflareMediaProbeContracts";
 import {
   assertFeature186RuntimeConfigured,
   isCloudflareHardCutoverEnabled,

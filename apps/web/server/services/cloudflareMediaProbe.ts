@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { mediaAssets } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, requiresContainerMediaProbe, validateMediaProbeSource } from "@smartspec/shared/src/cloudflareMediaProbe";
+import { CLOUDFLARE_CONTAINER_ON_DEMAND, CLOUDFLARE_MEDIA_PROBE, parseMediaProbeCandidate, requiresContainerMediaProbe, validateMediaProbeSource } from "./cloudflareMediaProbeContracts";
 import type { LeaseContext } from "./jobControlPlaneTypes";
 
 type MediaJob = {

@@ -1,4 +1,4 @@
-import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
+import { CLOUDFLARE_PUBLIC_ORIGIN_HEADER, isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "../services/cloudflareOriginContracts";
 import { isValidCloudflareOriginAttestation } from "./cloudflareOriginAttestation";
 
 export type CloudflareOriginConfig = {

@@ -8,7 +8,7 @@ import { assertPrivateDatabaseProvisionReceipt } from "./cloudflarePrivateDataba
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
-import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "@smartspec/shared/src/cloudflareOrigin";
+import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "./cloudflareOriginContracts";
 
 export { cloudflareOriginSecretsSchema, cloudflareOriginSettingsSchema } from "./cloudflareOriginVersionBindings";
 import {

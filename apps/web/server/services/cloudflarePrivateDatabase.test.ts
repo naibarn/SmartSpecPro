@@ -17,6 +17,10 @@ import { PUBLIC_RUNNER_RELEASE_PREDICATE as backendPredicate, PUBLIC_RUNNER_RELE
   publicRunnerReleaseView as backendView } from "./cloudflarePublicReleases";
 import { PUBLIC_RUNNER_RELEASE_PREDICATE as sharedPredicate, PUBLIC_RUNNER_RELEASE_SELECT as sharedSelect,
   publicRunnerReleaseView as sharedView } from "../../../../packages/shared/src/cloudflarePublicReleases";
+import * as backendMediaProbe from "./cloudflareMediaProbeContracts";
+import * as sharedMediaProbe from "../../../../packages/shared/src/cloudflareMediaProbe";
+import * as backendOrigin from "./cloudflareOriginContracts";
+import * as sharedOrigin from "../../../../packages/shared/src/cloudflareOrigin";
 
 let caCertificate: string, certDirectory: string;
 beforeAll(() => {
@@ -69,6 +73,28 @@ describe("private PostgreSQL staging provisioning", () => {
     expect([backendSelect, backendPredicate, backendView("smartspec-staging-aaaaaaaaaaaa")])
       .toEqual([sharedSelect, sharedPredicate, sharedView("smartspec-staging-aaaaaaaaaaaa")]);
     expect(() => backendView("untrusted-namespace")).toThrow("PUBLIC_RUNNER_RELEASE_NAMESPACE_INVALID");
+  });
+
+  it("keeps standalone runtime media and origin admission contracts aligned with shared Cloudflare readers", () => {
+    expect([backendMediaProbe.CLOUDFLARE_CONTAINER_ON_DEMAND, backendMediaProbe.CLOUDFLARE_MEDIA_PROBE,
+      backendMediaProbe.MEDIA_PROBE_TASK, backendMediaProbe.MEDIA_PROBE_MAX_BYTES])
+      .toEqual([sharedMediaProbe.CLOUDFLARE_CONTAINER_ON_DEMAND, sharedMediaProbe.CLOUDFLARE_MEDIA_PROBE,
+        sharedMediaProbe.MEDIA_PROBE_TASK, sharedMediaProbe.MEDIA_PROBE_MAX_BYTES]);
+    const probeJob = { jobType: "python.legacy_task", executionClass: "cpu", input: {
+      taskName: sharedMediaProbe.MEDIA_PROBE_TASK, taskImportPath: sharedMediaProbe.MEDIA_PROBE_TASK,
+      args: [JSON.stringify({ jobType: "probe", jobId: "probe-1", inputs: { assets: [{ uri: "r2://bucket/key" }] } }), "1", "probe-1"],
+      legacyUserId: "1", kwargs: {}, queue: "video",
+    } };
+    expect(backendMediaProbe.parseMediaProbeCandidate(probeJob)).toEqual(sharedMediaProbe.parseMediaProbeCandidate(probeJob));
+    expect(backendMediaProbe.requiresContainerMediaProbe({ ...probeJob, requiredCapabilities: {
+      runtime: "cloudflare-container", operation: sharedMediaProbe.CLOUDFLARE_MEDIA_PROBE, reason: "media-inspection-isolation",
+    } })).toBe(sharedMediaProbe.requiresContainerMediaProbe({ ...probeJob, requiredCapabilities: {
+      runtime: "cloudflare-container", operation: sharedMediaProbe.CLOUDFLARE_MEDIA_PROBE, reason: "media-inspection-isolation",
+    } }));
+    expect([backendOrigin.CLOUDFLARE_PUBLIC_ORIGIN_HEADER, backendOrigin.parseCloudflarePublicOrigin("https://smartaihub.app")?.origin,
+      backendOrigin.parseCloudflarePublicOrigins('["https://smartaihub.app"]')])
+      .toEqual([sharedOrigin.CLOUDFLARE_PUBLIC_ORIGIN_HEADER, sharedOrigin.parseCloudflarePublicOrigin("https://smartaihub.app")?.origin,
+        sharedOrigin.parseCloudflarePublicOrigins('["https://smartaihub.app"]')]);
   });
 
   it("creates dedicated CA/Access/DNS/Hyperdrive metadata with strict TLS, disabled query cache and bounded connections", async () => {
