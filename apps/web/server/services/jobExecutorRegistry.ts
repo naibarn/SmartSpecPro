@@ -36,6 +36,9 @@ import { executeSpec224DeveloperFastLaneJob } from "./spec224DeveloperFastLaneEx
 import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT } from "./cloudflareStagingOriginContract";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, createCloudflareStagingDeploymentExecutor } from "./cloudflareStagingDeploymentExecutor";
 import { createCloudflareStagingDeploymentRuntime } from "./cloudflareStagingDeploymentRuntime";
+import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT } from "./cloudflareProductionDeploymentContract";
+import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB, createCloudflareProductionDeploymentExecutor } from "./cloudflareProductionDeploymentExecutor";
+import { createCloudflareProductionDeploymentRuntime } from "./cloudflareProductionDeploymentRuntime";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -377,6 +380,15 @@ defaultJobExecutorRegistry.register({
   executor: createCloudflareStagingDeploymentExecutor(
     createCloudflareStagingDeploymentRuntime
   ),
+});
+
+// Production uses a separate target, exact route snapshot, and independently
+// approved canary/promotion/rollback grant. Missing config remains fail-closed.
+defaultJobExecutorRegistry.register({
+  jobType: CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB,
+  executionClass: "long",
+  contractVersions: new Set([CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT]),
+  executor: createCloudflareProductionDeploymentExecutor(createCloudflareProductionDeploymentRuntime),
 });
 
 defaultJobExecutorRegistry.register({

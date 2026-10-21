@@ -110,7 +110,7 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
             (value["rolloutStage"] == "promote") != (value["canaryDeploymentId"] is not None) or
             (value["rolloutStage"] == "promote") != (value["canaryVerifiedAt"] is not None)):
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ROUTE_OR_STAGE_INVALID")
-    if (value["rolloutStage"] == "rollback") == (value["candidateVersionId"] is not None):
+    if (value["rolloutStage"] == "promote") != (value["candidateVersionId"] is not None):
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_CANDIDATE_VERSION_INVALID")
     if value["rolloutStage"] == "promote":
         for field in ("canaryGrantRef", "canaryDeploymentId"):

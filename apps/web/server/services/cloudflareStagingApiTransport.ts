@@ -64,6 +64,17 @@ function assertTarget(target: CloudflareStagingTarget) {
   }
 }
 
+function assertVersionTarget(target: CloudflareStagingTarget) {
+  const expected = target.environment === "production" ? "smartspec-cloudflare-runtime" : TARGET_ID;
+  if ((target.environment !== "staging" && target.environment !== "production") ||
+      target.targetId !== expected || target.workerRef !== expected) {
+    throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_TARGET_DENIED");
+  }
+  if (!/^[a-f0-9]{32}$/i.test(target.accountRef)) {
+    throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ACCOUNT_REF_INVALID");
+  }
+}
+
 function assertSafeApiUrl(url: string) {
   const parsed = new URL(url);
   if (parsed.origin !== "https://api.cloudflare.com" || !parsed.pathname.startsWith("/client/v4/") ||
@@ -238,11 +249,11 @@ export function createCloudflareStagingApiTransport(input: {
     return bundle;
   }
 
-  function versionMessage(sourceSha: string, buildDigest: string, configurationDigest?: string) {
+  function versionMessage(sourceSha: string, buildDigest: string, configurationDigest?: string, environment: "staging" | "production" = "staging") {
     if (configurationDigest !== undefined && !SHA256.test(configurationDigest)) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ORIGIN_DIGEST_INVALID");
     }
-    return `SmartAIHub staging ${sourceSha} ${buildDigest}${configurationDigest ? ` origin ${configurationDigest}` : ""}`;
+    return `SmartAIHub ${environment} ${sourceSha} ${buildDigest}${configurationDigest ? ` origin ${configurationDigest}` : ""}`;
   }
 
   async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string, origin?: CloudflareOriginVersionBindings) {
@@ -263,7 +274,7 @@ export function createCloudflareStagingApiTransport(input: {
       bindings: [
         { name: "ASSETS", type: "assets" },
         { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },
-        { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
+        { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: target.environment },
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
         ...(http && !origin?.descriptor.applicationHttpPhase ? http.bindings : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
@@ -292,7 +303,7 @@ export function createCloudflareStagingApiTransport(input: {
       } : undefined,
       annotations: {
         ...(bootstrapKey ? { "workers/tag": bootstrapTag(bootstrapKey) } : {}),
-        "workers/message": versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest),
+        "workers/message": versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest, target.environment as "staging" | "production"),
       },
     };
     const form = new FormData();
@@ -356,7 +367,7 @@ export function createCloudflareStagingApiTransport(input: {
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(primary.version_id)}`);
     const annotations = version.annotations;
     if (version.id !== primary.version_id ||
-        annotations?.["workers/message"] !== versionMessage(sourceSha, buildDigest, configurationDigest)) {
+        annotations?.["workers/message"] !== versionMessage(sourceSha, buildDigest, configurationDigest, target.environment as "staging" | "production")) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
     }
     return { versionId: primary.version_id, deployment };
@@ -454,6 +465,34 @@ export function createCloudflareStagingApiTransport(input: {
   }
 
   return {
+    /** Upload a production candidate version without creating a deployment or shifting traffic. */
+    prepareVersion: async ({ token, target, artifact, originConfiguration, assertMutationAuthorized }: {
+      token: string; target: CloudflareStagingTarget; artifact: CloudflareStagingArtifact;
+      originConfiguration: CloudflareOriginVersionBindings;
+      assertMutationAuthorized: () => Promise<void>;
+    }) => {
+      assertVersionTarget(target);
+      if (target.environment !== "production" || !originConfiguration || !target.runtimePolicy ||
+          originConfiguration.configurationRef !== target.runtimePolicy) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED");
+      }
+      const origin = validateCloudflareOriginVersionBindings(originConfiguration, target);
+      return mutationAuthority.run(async () => {
+        validateCloudflareOriginVersionBindings(origin, target);
+        await assertMutationAuthorized();
+      }, async () => {
+        const bundle = await loadVerifiedBundle(artifact);
+        await assertMutationAuthorized();
+        const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
+        const uploaded = await readUploadedVersion(token, target, versionId);
+        if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !==
+            versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest, "production")) {
+          throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_VERSION_RECEIPT_MISMATCH");
+        }
+        return { versionId, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest,
+          configurationDigest: origin.configurationDigest, trafficShifted: false as const };
+      });
+    },
     deploy: async ({ token, target, artifact, idempotencyKey, bootstrap, originConfiguration, assertMutationAuthorized }) => {
       assertTarget(target);
       if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_IDEMPOTENCY_INVALID");

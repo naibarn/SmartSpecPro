@@ -56,6 +56,49 @@ function json(result: unknown, status = 200) {
 }
 
 describe("Cloudflare staging API transport", () => {
+  it("uploads a production version without attaching a route or shifting traffic", async () => {
+    const productionTarget: CloudflareStagingTarget = { ...target, targetId: "smartspec-cloudflare-runtime",
+      environment: "production", workerRef: "smartspec-cloudflare-runtime", runtimePolicy: "pending" };
+    const descriptor: CloudflareOriginDescriptor = {
+      schemaVersion: "cloudflare.origin-configuration.v1", versionId: "33333333-3333-4333-8333-333333333333",
+      tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare",
+      accountRef: accountId, targetId: "smartspec-cloudflare-runtime", origin: "https://origin.example.com",
+      allowedPublicOrigins: ["https://smartaihub.app"], accessApplicationId: "44444444-4444-4444-8444-444444444444",
+      accessTeamName: "test-team", accessAudience: "test-audience", expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const configurationDigest = cloudflareOriginDescriptorDigest(descriptor);
+    const originConfiguration = { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
+      secrets: { token: "t".repeat(32), clientId: "i".repeat(24), secret: "s".repeat(32) } };
+    const scopedTarget = { ...productionTarget, runtimePolicy: originConfiguration.configurationRef };
+    const requests: Array<{ url: string; init: RequestInit }> = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      requests.push({ url, init });
+      if (url.endsWith("/assets-upload-session")) return json({ jwt: "upload-jwt", buckets: [] });
+      if (url.endsWith("/versions") && init.method === "POST") {
+        const metadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
+        expect(metadata.bindings).toEqual(expect.arrayContaining([
+          { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
+          { name: "AUTH_ORIGIN", type: "plain_text", text: descriptor.origin },
+        ]));
+        expect(metadata.annotations["workers/message"]).toBe(`SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}`);
+        return json({ id: versionId });
+      }
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
+        annotations: { "workers/message": `SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}` } });
+      throw new Error(`Unexpected provider request ${url}`);
+    }) as typeof fetch;
+    const transport = createCloudflareStagingApiTransport({ fetchImpl, resolveBundle: async () => bundle });
+    const assertMutationAuthorized = vi.fn(async () => undefined);
+    await expect(transport.prepareVersion({ token: "provider-token", target: scopedTarget, artifact,
+      originConfiguration, assertMutationAuthorized })).resolves.toMatchObject({
+      versionId, sourceSha, buildDigest, configurationDigest, trafficShifted: false,
+    });
+    expect(requests.some(({ url, init }) => url.endsWith("/deployments") || url.includes("/zones/"))).toBe(false);
+    expect(requests.filter(({ init }) => init.method === "POST")).toHaveLength(2);
+    expect(assertMutationAuthorized).toHaveBeenCalledTimes(3);
+  });
+
   it("accepts canonical codepoint digests for localized assets before provider mutation", async () => {
     const localizedBase = {
       ...bundleBase,

@@ -10,7 +10,7 @@ const grant = {
   routePattern: "smartaihub.app/*", expectedRouteId: "route-1", expectedRouteScript: "smartspec-cloudflare-runtime",
   rolloutStage: "canary", canaryGrantRef: null, canaryDeploymentId: null,
   canaryVerifiedAt: null,
-  candidateVersionId: "55555555-5555-4555-8555-555555555555",
+  candidateVersionId: null,
   jobId: "22222222-2222-4222-8222-222222222222",
   artifactRef: `sha256:${"e".repeat(64)}`, sourceSha: "d".repeat(40), buildDigest: "e".repeat(64),
   configurationRef: `cf-origin:${"f".repeat(64)}`, configurationDigest: "f".repeat(64), actions: ["deploy"],

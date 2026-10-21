@@ -4,6 +4,7 @@ import { authorizeDeploymentTarget, deploymentCredentialRef, resolveProviderDepl
 
 /** Production has its own immutable contract; staging grants cannot cross this boundary. */
 export const CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT = "cloudflare-production-deploy-v1" as const;
+export const CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB = "cloudflare.production.deploy" as const;
 export const CLOUDFLARE_PRODUCTION_DEPLOYMENT_GRANT = "cloudflare.production-deployment-grant.v2" as const;
 export const CLOUDFLARE_PRODUCTION_TARGET_ID = "smartspec-cloudflare-runtime" as const;
 
@@ -60,7 +61,7 @@ export const cloudflareProductionDeploymentGrantSchema = z.object({
       (grant.rolloutStage === "promote") !== (grant.canaryGrantRef !== null) ||
       (grant.rolloutStage === "promote") !== (grant.canaryDeploymentId !== null) ||
       (grant.rolloutStage === "promote") !== (grant.canaryVerifiedAt !== null) ||
-      (grant.rolloutStage === "rollback") === (grant.candidateVersionId !== null)) {
+      (grant.rolloutStage === "promote") !== (grant.candidateVersionId !== null)) {
     ctx.addIssue({ code: "custom", message: "Production route or rollout stage binding invalid" });
   }
 });
@@ -99,7 +100,7 @@ export const cloudflareProductionDeploymentJobSchema = z.object({
       (job.rolloutStage === "promote") !== (job.canaryGrantRef !== null) ||
       (job.rolloutStage === "promote") !== (job.canaryDeploymentId !== null) ||
       (job.rolloutStage === "promote") !== (job.canaryVerifiedAt !== null) ||
-      (job.rolloutStage === "rollback") === (job.candidateVersionId !== null)) {
+      (job.rolloutStage === "promote") !== (job.candidateVersionId !== null)) {
     ctx.addIssue({ code: "custom", message: "Production job route or rollout stage binding invalid" });
   }
 });
@@ -114,6 +115,7 @@ export type CloudflareProductionDeploymentTarget = Readonly<{
   accountRef: string;
   workerRef: typeof CLOUDFLARE_PRODUCTION_TARGET_ID;
   credentialRef: string;
+  runtimePolicy?: string;
   enabled: true;
 }>;
 
@@ -135,7 +137,7 @@ export async function resolveCloudflareProductionDeploymentTarget(input: {
         environment: "production", provider: "cloudflare" }) !== "AUTHORIZED") return null;
   return { targetId: row.deploymentTargetId, tenantId: row.tenantId, projectId: row.projectId,
     environment: "production", accountRef: row.accountRef, workerRef: row.workerRef,
-    credentialRef: row.credentialRef, enabled: true };
+    credentialRef: row.credentialRef, enabled: true, ...(row.runtimePolicy ? { runtimePolicy: row.runtimePolicy } : {}) };
 }
 
 export function cloudflareProductionGrantAllowsJob(

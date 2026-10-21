@@ -20,7 +20,7 @@ const grant = {
   accountRef: "c".repeat(32), zoneId: "9".repeat(32), routePattern: "smartaihub.app/*",
   expectedRouteId: null, expectedRouteScript: null, rolloutStage: "canary",
   canaryGrantRef: null, canaryDeploymentId: null, canaryVerifiedAt: null,
-  candidateVersionId: "66666666-6666-4666-8666-666666666666",
+  candidateVersionId: null,
   jobId: "22222222-2222-4222-8222-222222222222",
   artifactRef: `sha256:${digest}`, sourceSha: source, buildDigest: digest,
   configurationRef: `cf-origin:${digest}`, configurationDigest: digest,
@@ -72,7 +72,8 @@ describe("Cloudflare production deployment contract", () => {
     expect(cloudflareProductionDeploymentGrantSchema.safeParse({ ...grant, rolloutStage: "promote",
       canaryGrantRef: "22222222-2222-4222-8222-222222222222",
       canaryDeploymentId: "33333333-3333-4333-8333-333333333333",
-      canaryVerifiedAt: "2026-10-22T09:30:00Z" }).success).toBe(true);
+      canaryVerifiedAt: "2026-10-22T09:30:00Z",
+      candidateVersionId: "66666666-6666-4666-8666-666666666666" }).success).toBe(true);
     expect(cloudflareProductionDeploymentGrantSchema.safeParse({ ...grant, rolloutStage: "promote" }).success).toBe(false);
     expect(cloudflareProductionDeploymentGrantSchema.safeParse({ ...grant, rolloutStage: "rollback",
       actions: ["rollback"], candidateVersionId: null }).success).toBe(true);
@@ -97,6 +98,7 @@ describe("Cloudflare production deployment contract", () => {
     expect(cloudflareProductionGrantAllowsJob(parsedGrant, cloudflareProductionDeploymentJobSchema.parse({ ...job, rolloutStage: "promote",
       canaryGrantRef: "22222222-2222-4222-8222-222222222222",
       canaryDeploymentId: "33333333-3333-4333-8333-333333333333",
-      canaryVerifiedAt: "2026-10-22T09:30:00Z" }), binding)).toBe(false);
+      canaryVerifiedAt: "2026-10-22T09:30:00Z",
+      candidateVersionId: "66666666-6666-4666-8666-666666666666" }), binding)).toBe(false);
   });
 });

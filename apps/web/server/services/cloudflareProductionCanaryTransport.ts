@@ -146,8 +146,7 @@ export function createCloudflareProductionCanaryTransport(input: {
     }) {
       const { token, target, grant, candidate } = input;
       if (grant.rolloutStage !== "canary" || target.targetId !== grant.targetId || target.workerRef !== grant.targetId ||
-          target.environment !== "production" || target.accountRef !== grant.accountRef ||
-          grant.candidateVersionId !== candidate.versionId) {
+          target.environment !== "production" || target.accountRef !== grant.accountRef || grant.candidateVersionId !== null) {
         throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_GRANT_TARGET_DENIED");
       }
       const route = await exactRoute(token, grant);
