@@ -18,7 +18,7 @@ def validate_plan(value):
         or not isinstance(value["sourceSha"], str) or not re.fullmatch(r"[a-f0-9]{40}", value["sourceSha"])
         or not isinstance(value["buildId"], str)
         or not re.fullmatch(re.escape(value["sourceSha"]) + r"-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", value["buildId"])
-        or type(value["buildBudgetSeconds"]) is not int or value["buildBudgetSeconds"] != 180
+        or type(value["buildBudgetSeconds"]) is not int or value["buildBudgetSeconds"] not in (180, 360)
         or type(value["maxImageBytes"]) is not int or value["maxImageBytes"] != 1073741824
         or type(value["maxPublishedImages"]) is not int or value["maxPublishedImages"] != 1):
         raise ValueError("CLOUDFLARE_HTTP_IMAGE_PLAN_INVALID")

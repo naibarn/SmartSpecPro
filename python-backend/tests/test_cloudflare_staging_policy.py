@@ -375,7 +375,7 @@ async def test_http_image_policy_reuses_owner_job_budget_and_live_revocation():
     service, rule, prior, _ = service_fixture()
     policy = native_definition()
     plan = {"namespace": policy["plan"]["namespace"], "runtime": "python-http", "sourceSha": "c" * 40,
-            "buildId": "c" * 40 + "-" + str(uuid4()), "buildBudgetSeconds": 180,
+            "buildId": "c" * 40 + "-" + str(uuid4()), "buildBudgetSeconds": 360,
             "maxImageBytes": 1073741824, "maxPublishedImages": 1,
             "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(minutes=50)).isoformat()}
     policy.update(contractVersion=CONTRACT, plan=plan, planDigest=plan_digest(plan))
@@ -398,3 +398,16 @@ async def test_http_image_policy_reuses_owner_job_budget_and_live_revocation():
     prior.clear()
     rule.is_active = False
     assert not await service.validate_cloudflare_staging_policy_decision(request, datetime.now(timezone.utc))
+
+
+def test_http_image_budget_accepts_only_fixed_finite_values():
+    from app.services.cloudflare_http_image_provision_contract import validate_plan
+    plan = {"namespace": "smartspec-staging-abcdef012345", "runtime": "python-http", "sourceSha": "c" * 40,
+            "buildId": "c" * 40 + "-11111111-1111-4111-8111-111111111111", "buildBudgetSeconds": 180,
+            "maxImageBytes": 1073741824, "maxPublishedImages": 1,
+            "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(minutes=50)).isoformat()}
+    assert validate_plan(plan)["buildBudgetSeconds"] == 180
+    assert validate_plan({**plan, "buildBudgetSeconds": 360})["buildBudgetSeconds"] == 360
+    for invalid in (181, 359, 600, True):
+        with pytest.raises(ValueError, match="HTTP_IMAGE_PLAN_INVALID"):
+            validate_plan({**plan, "buildBudgetSeconds": invalid})
