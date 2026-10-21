@@ -5,13 +5,15 @@ Loads provider configurations from the database and provides them
 to the LLM client with decrypted API keys.
 """
 
-from typing import List, Dict, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import structlog
+from typing import Dict, List, Optional
 
-from app.models.provider_config import ProviderConfig
+import structlog
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.encryption import encryption_service
+from app.core.smartspecweb_crypto import decrypt_smartspecweb
+from app.models.provider_config import ProviderConfig
 
 logger = structlog.get_logger()
 
@@ -129,12 +131,76 @@ class ProviderConfigService:
             Dictionary mapping provider_name to config dict
         """
         providers = await self.get_enabled_providers(db)
-
-        return {
+        legacy = {
             provider.provider_name: self.get_provider_config_dict(provider)
             for provider in providers
             if self.get_decrypted_api_key(provider)  # Only include if has valid API key
         }
+        # SmartSpecWeb's Admin UI is the canonical provider credential store.
+        # The standalone Python provider_configs table is retained for legacy
+        # deployments, but production accounts now live in llm_providers and
+        # use the shared AES-GCM ciphertext format.
+        canonical = await self._get_smartaihub_provider_configs(db)
+        return {**legacy, **canonical}
+
+    async def _get_smartaihub_provider_configs(self, db: AsyncSession) -> Dict[str, Dict]:
+        try:
+            result = await db.execute(text('''
+                SELECT "providerName", "displayName", "baseUrl", "apiKeyEncrypted",
+                       "defaultModel", "configJson", "isEnabled", "hasApiKey"
+                FROM llm_providers
+                WHERE "isEnabled" = TRUE AND "hasApiKey" = TRUE
+                  AND "apiKeyEncrypted" IS NOT NULL
+                ORDER BY "sortOrder", "providerName"
+            '''))
+            rows = result.mappings().all()
+        except Exception as exc:
+            # Older standalone deployments may not have SmartSpecWeb's provider
+            # catalog. Keep that legacy mode working without hiding other DB
+            # failures; rollback is required to clear PostgreSQL's failed
+            # transaction state after an undefined-table error.
+            original = getattr(exc, "orig", None)
+            sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+            missing_sqlite_catalog = (
+                getattr(getattr(db, "bind", None), "dialect", None).name == "sqlite"
+                and "no such table: llm_providers" in str(exc).lower()
+            ) if getattr(getattr(db, "bind", None), "dialect", None) else False
+            if sqlstate != "42P01" and not missing_sqlite_catalog:
+                raise
+            await db.rollback()
+            logger.info("smartaihub_provider_catalog_unavailable")
+            return {}
+
+        configs: Dict[str, Dict] = {}
+        for row in rows:
+            provider_name = row["providerName"]
+            try:
+                api_key = decrypt_smartspecweb(row["apiKeyEncrypted"])
+            except Exception as exc:
+                logger.warning(
+                    "smartaihub_provider_credential_unavailable",
+                    provider=provider_name,
+                    error_type=type(exc).__name__,
+                )
+                continue
+            if not api_key:
+                continue
+            provider_config = row["configJson"] or {}
+            configs[provider_name] = {
+                "provider_name": provider_name,
+                "display_name": row["displayName"],
+                "api_key": api_key,
+                "base_url": row["baseUrl"],
+                "is_enabled": row["isEnabled"],
+                "default_model": row["defaultModel"],
+                "config": provider_config,
+            }
+        logger.info(
+            "loaded_smartaihub_provider_configs",
+            count=len(configs),
+            providers=list(configs.keys()),
+        )
+        return configs
 
     async def get_default_model(
         self,
