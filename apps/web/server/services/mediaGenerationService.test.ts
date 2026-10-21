@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 
 // Mock dependencies before module import
 vi.mock("./llmRateLimiter", () => ({
@@ -62,6 +62,35 @@ import {
 
 const fetchMock = vi.fn();
 global.fetch = fetchMock as typeof fetch;
+
+describe("production media backend transport", () => {
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMARTAIHUB_APPLICATION_RUNTIME", "cloudflare-http");
+    vi.stubEnv("CLOUDFLARE_CONTAINER_POLICY", "on-demand");
+    vi.stubEnv("CLOUDFLARE_APPLICATION_BRIDGE", "private-http-v1");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async () => Response.json({ detail: "transport-fixture-stop" }, { status: 503 }));
+  });
+  afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+  it.each([
+    ["http://python.application.internal", "http://python.application.internal"],
+    ["http://backend.example", "https://backend.example"],
+    ["http://python.application.internal:8000", "https://python.application.internal:8000"],
+    ["http://python.application.internal/path", "https://python.application.internal/path"],
+  ])("preserves only the exact private binding when polling through %s", async (input, expected) => {
+    await expect(new MediaGenerationService(input).getTask("transport-fixture", "fixture-user-token")).rejects.toThrow("transport-fixture-stop");
+    expect(fetchMock).toHaveBeenCalledWith(`${expected}/api/v1/media/tasks/transport-fixture`, expect.objectContaining({ method: "GET" }));
+  });
+  it("retains HTTPS enforcement without the deployment's private bridge", async () => {
+    vi.stubEnv("SMARTAIHUB_APPLICATION_RUNTIME", "standard");
+    vi.stubEnv("CLOUDFLARE_APPLICATION_BRIDGE", undefined);
+    await expect(new MediaGenerationService("http://python.application.internal").getTask("transport-fixture", "fixture-user-token")).rejects.toThrow("transport-fixture-stop");
+    expect(fetchMock).toHaveBeenCalledWith("https://python.application.internal/api/v1/media/tasks/transport-fixture", expect.anything());
+  });
+});
 
 describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
   it('MEDIA_MODELS["seedream-4-5-251128"] has provider "byteplus_modelark" and type "image"', () => {

@@ -10,6 +10,7 @@ import {
   type MediaType as RateLimiterMediaType,
 } from "./llmRateLimiter";
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
+import { getApplicationRuntimeProfile } from "../_core/applicationRuntime";
 import {
   isReusablePreparedEpisodeCoverSafety,
   isVerticalDramaImageRequest,
@@ -2425,9 +2426,15 @@ function buildApiConfigWithReferenceImageConfig(
  */
 function validateBackendUrl(url: string): string {
   const parsedUrl = new URL(url);
+  const nodeEnv = process.env.NODE_ENV || "development";
+  // This exact address is intercepted by the deployment's private Worker
+  // binding. Upgrading it to HTTPS would bypass that HTTP-only transport.
+  if (parsedUrl.href === "http://python.application.internal/" &&
+      process.env.CLOUDFLARE_APPLICATION_BRIDGE === "private-http-v1" &&
+      getApplicationRuntimeProfile().mode === "cloudflare-http") return url;
 
   // In production, enforce HTTPS
-  if (NODE_ENV === "production") {
+  if (nodeEnv === "production") {
     if (parsedUrl.protocol !== "https:") {
       // Allow localhost in production for containerized deployments
       if (
@@ -2445,7 +2452,7 @@ function validateBackendUrl(url: string): string {
         return parsedUrl.toString().replace(/\/$/, ""); // Remove trailing slash
       }
     }
-  } else if (NODE_ENV !== "development" && NODE_ENV !== "test") {
+  } else if (nodeEnv !== "development" && nodeEnv !== "test") {
     // Staging or other environments - warn but don't block
     if (
       parsedUrl.protocol !== "https:" &&
