@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `77`
-- Updated (UTC): `2026-10-21T09:36:29.118299+00:00`
+- State generation: `78`
+- Updated (UTC): `2026-10-21T09:43:47.065236+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `9bdc429e8c7cfe9eee044e1b18e946822c9d94cb`
+- Latest recorded merged Main SHA: `04c5dda6f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Build canonical main after backend-local public release contract fix, verify standalone Linux backend package and Cloudflare bundle, then provision exact paired images and run bounded staging canary with rollback.
+- Next action: Build canonical main at the next integrated SHA, verify the packaged Cloudflare-origin modules import from standalone backend runtime, then rebuild exact Node/Python image pair and run bounded staging canary with rollback.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 9bdc429e8c7cfe9eee044e1b18e946822c9d94cb | 9bdc429e8c7cfe9eee044e1b18e946822c9d94cb | Build canonical main after backend-local public release contract fix, verify standalone Linux backend package and Cloudflare bundle, then provision exact paired images and run bounded staging canary with rollback. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 04c5dda6f | 04c5dda6f | Build canonical main at the next integrated SHA, verify the packaged Cloudflare-origin modules import from standalone backend runtime, then rebuild exact Node/Python image pair and run bounded staging canary with rollback. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -35,6 +35,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - The 503 provider-readiness repair is source integrated but still requires rebuilt Python image and hosted canary; full production cutover and non-HTTP workflows remain unaccepted.
 - The previous source build passed, but the staging operator exposed a Node 22/tsx runtime import failure in Cloudflare private database binding; fix integrated as fe347f2fe and requires a fresh exact-SHA build.
 - Initial runtime fix exposed a packaging boundary: shared workspace source cannot be imported from the standalone Linux artifact. ad08ef098 adds a backend-local contract with parity coverage; exact current-main build and runtime validation remain pending.
+- Canary preparation found the same workspace-package TS import boundary in origin and media contracts; 04c5dda6f moves these contracts inside the backend artifact and adds parity coverage. A temporary image policy/grant was revoked before any image build or container start.
 
 ## Resume
 
