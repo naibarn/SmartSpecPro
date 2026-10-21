@@ -21,6 +21,7 @@ function fixture() {
     running: false, images: { node: profile.image }, inspect: vi.fn(),
     start: vi.fn(() => { container.running = true; }),
     monitor: vi.fn(() => new Promise<void>(() => {})),
+    getState: vi.fn(async () => ({ status: container.running ? "healthy" : "stopped" })),
     destroy: vi.fn(async () => { container.running = false; }),
     setInactivityTimeout: vi.fn(async () => {}), getTcpPort: vi.fn(() => ({ fetch })),
   };
@@ -66,6 +67,15 @@ describe("bounded private application HTTP compute", () => {
       code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", phase: "readiness", exitCode: 137,
     } });
     expect(JSON.stringify(await f.controller.diagnostics())).not.toContain("provider detail");
+  });
+  it("reads only the provider container state and exit code in diagnostics", async () => {
+    const f = fixture();
+    f.container.getState.mockResolvedValue({ status: "stopped_with_code", exitCode: 137, providerDetail: "fixture-secret" } as never);
+    const diagnostic = await f.controller.diagnostics();
+    expect(diagnostic).toMatchObject({ containerState: { status: "stopped_with_code", exitCode: 137 } });
+    expect(JSON.stringify(diagnostic)).not.toContain("fixture-secret");
+    f.container.getState.mockResolvedValue({ status: "unsafe-provider-detail" } as never);
+    expect(await f.controller.diagnostics()).toMatchObject({ containerState: null });
   });
   it("reports spent budget and safe failures without booting, inspecting processes or returning secrets", async () => {
     const f = fixture();

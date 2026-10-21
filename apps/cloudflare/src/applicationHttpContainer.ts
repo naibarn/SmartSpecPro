@@ -30,8 +30,12 @@ type Storage = {
   put(key: string, value: unknown): Promise<void>;
   setAlarm(time: number): Promise<void>;
 };
-type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout" | "monitor">;
+type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout" | "monitor"> & {
+  /** Added to the platform API after the pinned Workers type snapshot. */
+  getState?: () => Promise<unknown>;
+};
 type ContainerExit = { state: "exited" | "failed"; exitCode?: number };
+type ContainerRuntimeState = { status: string; lastChange?: number; exitCode?: number };
 const KEY = "application-http-lifecycle-v1";
 const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
@@ -102,6 +106,26 @@ export class ApplicationHttpContainerController {
     await this.storage.put(DIAGNOSTIC_KEY, { code, kind, phase: this.phase, at: this.now(), ...(exitCode === undefined ? {} : { exitCode }) });
   }
 
+  private async readContainerState(): Promise<ContainerRuntimeState | null> {
+    if (typeof this.container.getState !== "function") return null;
+    try {
+      const raw = await this.container.getState();
+      const statuses = new Set(["provisioning", "running", "healthy", "stopping", "stopped", "stopped_with_code", "failed", "unhealthy", "inactive", "unknown"]);
+      if (!raw || typeof raw !== "object") return null;
+      const value = raw as Record<string, unknown>;
+      if (typeof value.status !== "string" || !statuses.has(value.status) ||
+          (value.lastChange !== undefined && !Number.isFinite(value.lastChange)) ||
+          (value.exitCode !== undefined && !Number.isSafeInteger(value.exitCode))) return null;
+      return {
+        status: value.status,
+        ...(typeof value.lastChange === "number" ? { lastChange: value.lastChange } : {}),
+        ...(typeof value.exitCode === "number" ? { exitCode: value.exitCode } : {}),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   private watchContainerExit() {
     // `start()` only accepts the request; the separate monitor reports an
     // asynchronous VM startup failure or a process exit without exposing raw
@@ -129,11 +153,12 @@ export class ApplicationHttpContainerController {
   async diagnostics() {
     const scope = await this.scope();
     const state = await this.storage.get<LifecycleState>(KEY);
-    const failure = await this.storage.get<{ code: string; kind: string; phase: string; at: number }>(DIAGNOSTIC_KEY);
+    const failure = await this.storage.get<{ code: string; kind: string; phase: string; at: number; exitCode?: number }>(DIAGNOSTIC_KEY);
     return { runtime: this.profile.runtime, running: this.container.running,
       starts: state?.starts ?? 0, reservedSeconds: state?.reservedSeconds ?? 0,
       activeUntil: state?.activeUntil ?? null,
       maxStarts: this.profile.maxStarts, maxComputeSeconds: this.profile.maxComputeSeconds,
+      containerState: await this.readContainerState(),
       configurationMatches: !state || state.scope === scope, failure: failure ?? null };
   }
 
@@ -239,7 +264,15 @@ export class ApplicationHttpContainerController {
       if (ready) break;
       await new Promise(resolve => setTimeout(resolve, 200));
     }
-    if (!ready || this.now() >= deadline) throw new Error("APPLICATION_HTTP_READINESS_UNAVAILABLE");
+    if (!ready || this.now() >= deadline) {
+      const state = await this.readContainerState();
+      if (state && ["failed", "stopped", "stopped_with_code", "unhealthy"].includes(state.status)) {
+        const error = new Error("APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY");
+        if (state.exitCode !== undefined) Object.assign(error, { exitCode: state.exitCode });
+        throw error;
+      }
+      throw new Error("APPLICATION_HTTP_READINESS_UNAVAILABLE");
+    }
     this.phase = "forward";
     return port.fetch(request, { signal: AbortSignal.any([
       request.signal, AbortSignal.timeout(Math.max(1, Math.min(120_000, deadline - this.now()))),
