@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Node image trusted build/filesystem PASS (local b1c2a0d...,700MB); actual bounded Node API+private DB TLS+genuine auth+45s deadline PASS. CPU-only exact Python candidate309 packages installed fresh in home2.0GiB vs8.3GiB original; exact canonical app imports PASS. Next implement Python fixed request-only connector/entrypoint and pinned CPU lock/image, then existing bounded canonical API-image publication/provision authority, request DO routing, persistent audit and scheduler/realtime evacuation. Production origin exit remains NOT_ACCEPTED.",
+      "next_action": "Canonical4c31 build/CI/image qualification PASS: Node700MB + PythonCPU718MB/307packages, actual Python14s ready+real DB/auth+90s teardown. HTTP DO lifecycle206d1318b integrated through9e8bc1087;16 new+13 Runner tests and scoped tsc PASS. Next implement exact existing canonical image-publication/app-provision capability and immutable profile/secret bindings, then hosted canary. Native provision credential ContainersGET200 with real Workers Containers Write; Admin/target token403 is separate. Preserve no provider VM/start, no prod cutover and original DB. Origin exit NOT_ACCEPTED.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "cf5628760c11de708ab3ea6fbe637db33df62e29",
-      "merged_main_sha": "cf5628760c11de708ab3ea6fbe637db33df62e29"
+      "checkpoint_sha": "9e8bc10878367fdda4d210fde84d104bdb5733cd",
+      "merged_main_sha": "9e8bc10878367fdda4d210fde84d104bdb5733cd"
     }
   },
   "pre_commit": {
@@ -57,20 +57,21 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 64,
-  "updated_at": "2026-10-20T23:36:39.580098+00:00",
+  "generation": 65,
+  "updated_at": "2026-10-21T00:10:24.331132+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Node image trusted build/filesystem PASS (local b1c2a0d...,700MB); actual bounded Node API+private DB TLS+genuine auth+45s deadline PASS. CPU-only exact Python candidate309 packages installed fresh in home2.0GiB vs8.3GiB original; exact canonical app imports PASS. Next implement Python fixed request-only connector/entrypoint and pinned CPU lock/image, then existing bounded canonical API-image publication/provision authority, request DO routing, persistent audit and scheduler/realtime evacuation. Production origin exit remains NOT_ACCEPTED.",
-    "merged_main_sha": "cf5628760c11de708ab3ea6fbe637db33df62e29",
+    "next_action": "Canonical4c31 build/CI/image qualification PASS: Node700MB + PythonCPU718MB/307packages, actual Python14s ready+real DB/auth+90s teardown. HTTP DO lifecycle206d1318b integrated through9e8bc1087;16 new+13 Runner tests and scoped tsc PASS. Next implement exact existing canonical image-publication/app-provision capability and immutable profile/secret bindings, then hosted canary. Native provision credential ContainersGET200 with real Workers Containers Write; Admin/target token403 is separate. Preserve no provider VM/start, no prod cutover and original DB. Origin exit NOT_ACCEPTED.",
+    "merged_main_sha": "9e8bc10878367fdda4d210fde84d104bdb5733cd",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
-      "Production DNS/application remains Debian; actual staging source4539/Worker895a64fd only public Runner catalog executes native via Hyperdrive. Private catalog opt-in expires2026-10-21T01:01:48Z; job activation staysdisabled. No production cutover or provider Container VM/image publication yet.",
-      "Necessary Node API local image trusted system CA repair qualified. Local API authenticated real owner through existing private Access TCP with verified PG TLS and hard45s teardown. This uses existing app credentials in process environment, no new app DB grant; original read-only probe scope remains read-only.",
-      "Python target needs reproducible CPU-only lock and image, fixed supervisor/private connector and actual HTTP lifespan/API proof. Original requirements differs from current working environment; uv.lock onlyPillow. Fresh candidate /home/dev/.cache/smartspec-cloudflare-python-http-cpu imports canonicalce API successfully; final lock is private python-http-cpu-official.lock, torch official direct hash and no Nvidia/retired distributions.",
-      "Exact existing canonical approval/provision contract still needs bounded API registry/app deployment capability, actual max_instances/idle/deadline controls and hosted VM qualification. Do not reuse media CPU grants or bypass through raw Wrangler writes.",
-      "Persistent Node audit/artifact storage, canonical scheduler/admission ownership, realtime and broad authenticated full flows/canary/rollback/production authority remain open. Do not claim retirement from a local image or public-route proof. Genuine interactive Google/password+OTP/independent tenant-B are unverified; existing configured Google/enrolled2FA preserved.",
-      "23GiB RAM/home55GiB/project783MiB last evidence; keep builds/scratch in home and preserve unknown cache/worktrees. Root .env hash unchanged; root has unrelated untracked SmartAIHub-Unified-Work-Agent-Skill-Mission-Control-SPEC-Pack-R0.6.md which must remain untouched. No global local TS, Stripe requirement or macOS rendering archive deletion."
-    ]
+      "Production DNS and all primary app/job ownership remain Debian; live staging only native public catalog plus protected-origin proxy. Catalog capability expires2026-10-21T01:01:48Z; no renewed receipt or job activation is implied.",
+      "Final application images built/inspected at canonical4c31: Node cf833e1c local OCI700MB, Python aa43d39d local OCI718MB. Python actual image-build API/native imports PASS, no archived engine or GPU packages. Real CPU local Python health/auth200, anon401, DB hostname/CA verified, hard90s teardown. Local image proofs do not certify provider publication/VM or every API feature.",
+      "New private HTTP DO controller bounds image, fixed instance names, persisted start/compute reservations, idle/hard expiry, recovery and single-forward semantics. It is exported but no namespace/application/profile/secret binding is provisioned; canonical deploy must enforce max_instances=1 per runtime and grant exact registry/app scope before hosted acceptance.",
+      "Native provision credential current account ContainersGET200/count0 and real Workers Containers Write; separate Admin/deployment-target credentials still403. Do not request duplicate token setup or bypass existing canonical operation/policy fences with raw Wrangler provider writes.",
+      "Remaining: exact canonical OCI publication/provision authority and full app write DB-secret scope, Node/Python bridge/auth routing, persistent audit/artifacts and filesystem-sensitive features, canonical scheduler/job admission ownership, Worker realtime, end-to-end Google/OTP/independent-tenant/canary/rollback and production cutover. Do not reuse read-only catalog role or media CPU grants for general app execution.",
+      "Use home for build/scratch; preserve unknown workspaces/cache, original .env hash1796ce1f..., unrelated root untracked Unified Work Agent R0.6 specification. No local repository TS, Stripe activation or macOS archive deletion."
+    ],
+    "outcome": "NOT_ACCEPTED"
   }
 }
