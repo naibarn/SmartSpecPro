@@ -1354,7 +1354,12 @@ export interface WorkerRuntimeRepository {
   getWorkerPolicyById: (id: string) => Promise<Record<string, any> | null>;
   insertArtifact: (values: Record<string, any>) => Promise<WorkerArtifactRecord>;
   insertHeartbeat: (values: Record<string, any>) => Promise<void>;
-  insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>, identity?: { assignmentId: string; sequence: number }) => Promise<WorkerJobEventRecord | null>;
+  insertJobEvent: (
+    workerJobId: string,
+    eventType: string,
+    payloadJson: Record<string, unknown>,
+    identity?: { assignmentId: string; sequence: number } | { eventSequence: number },
+  ) => Promise<WorkerJobEventRecord | null>;
   listClaimableJobs: (
     tenantId: string,
     runtimeType: WorkerRuntimeType,
@@ -2118,8 +2123,13 @@ const defaultRepo: WorkerRuntimeRepository = {
       payloadJson,
       ...(identity ?? {}),
     });
-    const [event] = identity
-      ? await query.onConflictDoNothing({ target: [workerJobEvents.workerJobId, workerJobEvents.assignmentId, workerJobEvents.sequence] }).returning()
+    const [event] = identity && "eventSequence" in identity
+      ? await query.onConflictDoNothing({
+        target: [workerJobEvents.workerJobId, workerJobEvents.eventSequence],
+        targetWhere: sql`"eventSequence" IS NOT NULL`,
+      }).returning()
+      : identity
+        ? await query.onConflictDoNothing({ target: [workerJobEvents.workerJobId, workerJobEvents.assignmentId, workerJobEvents.sequence] }).returning()
       : await query.returning();
     return event ?? null;
   },
@@ -2962,7 +2972,18 @@ export async function recordWorkerJobEvent(
   }
 
   if (job.jobType !== "llm_invoke") {
-    await repo.insertJobEvent(job.id, input.payload.eventType, eventPayload);
+    const remotionProgress =
+      job.jobType === "hyperframes_final_composite" &&
+      input.payload.eventType === "job.progress";
+    const inserted = await repo.insertJobEvent(
+      job.id,
+      input.payload.eventType,
+      eventPayload,
+      remotionProgress ? { eventSequence: sequenceNumber } : undefined,
+    );
+    if (remotionProgress && !inserted) {
+      return { accepted: false, job: nextJob, replayed: true };
+    }
   }
 
   if (repo === defaultRepo && nextStatus === "completed" && job.jobType === "media_ingest") {
