@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Expanded objective is full Debian-to-Cloudflare application/runtime migration with PostgreSQL retained. Inventory and migration waves are recorded in implementation-plan.md. Next: resolve the Container-to-retained-PostgreSQL data path and service-family ownership, then implement/qualify staging runtime slices; production target/policy/DNS authority remains absent.",
+      "next_action": "Checkpoint 9423a39 expanded the outcome and documented current runtime and database boundary. Continue with the first code slice only after selecting/proving Container-to-retained-PostgreSQL access and mapping one non-HTTP job family; keep production unchanged while exact production target/policy is absent.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "ae269ee025a806b2bdc58bc7a0737a79065bafee",
-      "merged_main_sha": "c44a51b5c",
+      "checkpoint_sha": "9423a39d42219e043a8a784edaeaeac8d8040418",
+      "merged_main_sha": "9423a39d42219e043a8a784edaeaeac8d8040418",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 96,
-  "updated_at": "2026-10-21T16:58:08.113876+00:00",
+  "generation": 97,
+  "updated_at": "2026-10-21T16:58:52.194648+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Expanded objective is full Debian-to-Cloudflare application/runtime migration with PostgreSQL retained. Inventory and migration waves are recorded in implementation-plan.md. Next: resolve the Container-to-retained-PostgreSQL data path and service-family ownership, then implement/qualify staging runtime slices; production target/policy/DNS authority remains absent.",
-    "merged_main_sha": "c44a51b5c",
+    "next_action": "Checkpoint 9423a39 expanded the outcome and documented current runtime and database boundary. Continue with the first code slice only after selecting/proving Container-to-retained-PostgreSQL access and mapping one non-HTTP job family; keep production unchanged while exact production target/policy is absent.",
+    "merged_main_sha": "9423a39d42219e043a8a784edaeaeac8d8040418",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
