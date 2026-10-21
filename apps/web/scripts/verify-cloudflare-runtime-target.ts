@@ -47,16 +47,16 @@ const checks: Array<{ name: string; file: string; forbidden?: RegExp; required?:
     reason: "Cloud Tasks HTTP handlers must not be reachable in production.",
   },
   {
-    name: "Python Celery admin controls are guarded after cutover",
+    name: "Python admin controls use the canonical job control plane",
     file: "python-backend/app/api/virtual_admin.py",
-    required: /FEATURE_186_HARD_CUTOVER/,
-    reason: "Celery health/restart/revoke controls must not remain an active production control plane.",
+    required: /(?=[\s\S]*LEGACY_WORKER_CONTROL_RETIRED)(?=[\s\S]*JobControlPlaneClient)/,
+    reason: "Legacy process restart must stay retired and task cancellation must use canonical worker_jobs.",
   },
   {
-    name: "Python Beat inspection is guarded after cutover",
+    name: "Python scheduled-job inspection reads the canonical ledger",
     file: "python-backend/app/api/scheduled_jobs.py",
-    required: /FEATURE_186_HARD_CUTOVER/,
-    reason: "Celery Beat must not remain the production scheduler after Cloudflare cutover.",
+    required: /(?=[\s\S]*worker_job_schedule_occurrences)(?=[\s\S]*worker_jobs)/,
+    reason: "Schedule inspection must read canonical worker_jobs occurrences rather than Celery Beat state.",
   },
   {
     name: "scale tier service has no Google deployment executor",
