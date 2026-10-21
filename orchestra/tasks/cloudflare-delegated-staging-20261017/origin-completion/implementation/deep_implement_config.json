@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Realtime code is integrated and passed package-level checks. Continue by implementing family-by-family Cloudflare job execution only where canonical tenant fencing, data access and settlement are proven; separately resolve the Container-to-retained-PostgreSQL path and gather live staging realtime proof. Production target/policy remains absent.",
+      "next_action": "Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
-      "merged_main_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
+      "checkpoint_sha": "8705685f0004794889a500d5af69c9203ab80480",
+      "merged_main_sha": "8705685f0004794889a500d5af69c9203ab80480",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 101,
-  "updated_at": "2026-10-21T17:06:07.874227+00:00",
+  "generation": 102,
+  "updated_at": "2026-10-21T17:06:38.825197+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Realtime code is integrated and passed package-level checks. Continue by implementing family-by-family Cloudflare job execution only where canonical tenant fencing, data access and settlement are proven; separately resolve the Container-to-retained-PostgreSQL path and gather live staging realtime proof. Production target/policy remains absent.",
-    "merged_main_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
+    "next_action": "Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified.",
+    "merged_main_sha": "8705685f0004794889a500d5af69c9203ab80480",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
