@@ -7,6 +7,7 @@ export type ApplicationHttpNamespace = {
 export type ApplicationHttpBindings = {
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_CONTAINER_POLICY?: string;
+  CLOUDFLARE_APPLICATION_CANARY_TOKEN?: string;
   CLOUDFLARE_NODE_HTTP_PROFILE?: string;
   CLOUDFLARE_PYTHON_HTTP_PROFILE?: string;
   NODE_HTTP?: ApplicationHttpNamespace;

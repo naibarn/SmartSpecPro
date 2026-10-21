@@ -154,7 +154,7 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString(),
       maxStarts: 1, maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic" as const };
     const httpSecrets = { node: { JWT_SECRET: "disposable-node-secret" }, python: { SECRET_KEY: "disposable-python-secret" } };
-    const input = { identity, settings: { ...settings(), applicationHttp }, secrets: { ...secrets, applicationHttp: httpSecrets }, actorUserId };
+    const input = { identity, settings: { ...settings(), applicationHttp }, secrets: { ...secrets, applicationHttp: httpSecrets, applicationCanaryToken: "disposable-canary-token-12345678901234567890" }, actorUserId };
     for (const runtime of ["node", "python"] as const) {
       const expected = applicationHttp[runtime];
       await db.insert(schema.workerJobs).values({ id: expected.provisionJobId, tenantId: identity.tenantId, requestedByUserId: actorUserId,

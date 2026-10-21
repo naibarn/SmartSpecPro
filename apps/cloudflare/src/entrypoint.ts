@@ -7,6 +7,7 @@ import { normalizeNativeEnvironment } from "./nativeEnvironment";
 import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
 import { createCanonicalControlPlaneProxyRepository } from "./canonicalControlPlaneProxy";
 import { executeCanonicalJob } from "./canonicalExecution";
+import { APPLICATION_HTTP_CANARY_PREFIX, handleApplicationHttpCanary } from "./applicationHttpCanary";
 export { CanonicalRunnerContainer } from "./runnerContainerEntrypoint";
 export { ApplicationHttpBridge, StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
 
@@ -21,7 +22,8 @@ export class CanonicalJobWorkflow extends WorkflowEntrypoint<CloudflareEnvironme
 const queueHandler = createCanonicalControlPlaneHandler({ repository: createCanonicalControlPlaneProxyRepository, execute: executeCanonicalJob });
 const worker = createCloudflareWorker(queueHandler, undefined, undefined, createSpec260EvidenceRetentionSweep(), undefined, undefined, undefined, { workflowHandlerConfigured: true });
 export default {
-  fetch: (request: Request, env: CloudflareEnvironment) => worker.fetch(request, normalizeNativeEnvironment(env)),
+  fetch: (request: Request, env: CloudflareEnvironment) => new URL(request.url).pathname.startsWith(APPLICATION_HTTP_CANARY_PREFIX)
+    ? handleApplicationHttpCanary(request, env) : worker.fetch(request, normalizeNativeEnvironment(env)),
   queue: (batch: Parameters<typeof worker.queue>[0], env: CloudflareEnvironment) => worker.queue(batch, normalizeNativeEnvironment(env)),
   scheduled: (event: Parameters<typeof worker.scheduled>[0], env: CloudflareEnvironment) => worker.scheduled(event, normalizeNativeEnvironment(env)),
 };

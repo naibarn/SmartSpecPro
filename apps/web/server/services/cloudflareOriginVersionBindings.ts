@@ -11,6 +11,7 @@ export const cloudflareOriginSecretsSchema = z.object({ token: credential.min(32
   workflowRuntimeToken: credential.min(32).optional(), controlPlaneToken: credential.min(32).optional(),
   retentionToken: credential.min(32).optional(),
   applicationHttp: cloudflareHttpApplicationSecretsSchema.optional(),
+  applicationCanaryToken: credential.min(32).optional(),
 }).strict().refine(value => {
   const values = Object.values(value).filter(item => item !== undefined);
   return new Set(values).size === values.length && Boolean(value.workflowRuntimeToken) === Boolean(value.controlPlaneToken);
@@ -56,6 +57,7 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
       Boolean(settings.applicationHttp) !== Boolean(secrets.applicationHttp) ||
+      Boolean(settings.applicationHttp) !== Boolean(secrets.applicationCanaryToken) ||
       (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
@@ -70,6 +72,7 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
   return [
     ...(value.descriptor.applicationHttp ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
+    ...(value.descriptor.applicationHttp ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
       { name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },
@@ -109,6 +112,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
       (binding.type === "plain_text" && matches[0].text !== binding.text);
   }) || actual.some(binding => (binding?.name?.startsWith("CLOUDFLARE_RUNNER_RELEASE_") || binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
+    binding?.name === "CLOUDFLARE_APPLICATION_CANARY_TOKEN" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

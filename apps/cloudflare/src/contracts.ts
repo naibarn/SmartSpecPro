@@ -102,7 +102,7 @@ export type VectorRecord = {
   };
 };
 
-export type CloudflareEnvironment = {
+export type CloudflareEnvironment = import("./applicationHttpBridge").ApplicationHttpBindings & {
   CLOUDFLARE_ACTIVATION?: string;
   CLOUDFLARE_ENVIRONMENT?: string;
   /** Immutable opt-in for public catalog reads; no auth/download activation. */

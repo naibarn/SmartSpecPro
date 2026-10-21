@@ -420,7 +420,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-python-http@sha256:${"d".repeat(64)}` },
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: f.config.descriptor.expiresAt,
       maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10, instance: "basic" };
-    Object.assign(f.config.secrets, { applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
+    Object.assign(f.config.secrets, { applicationCanaryToken: "disposable-canary-token-12345678901234567890", applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
     f.config.configurationDigest = cloudflareOriginDescriptorDigest(f.config.descriptor);
     f.config.configurationRef = `cf-origin:${f.config.configurationDigest}`;
     f.originTarget.runtimePolicy = f.config.configurationRef;

@@ -277,6 +277,7 @@ export function createCloudflareStagingApiTransport(input: {
             "/api", "/api/*", "/v1", "/v1/*", "/trpc", "/trpc/*", "/auth", "/auth/*",
             "/oauth", "/oauth/*", "/uploads", "/uploads/*", "/internal", "/internal/*",
             "/.well-known/*", "/healthz", "/readyz", "/metrics", "/socket.io*", "/ws*", "/widget/v1/ws",
+            "/_ops/application-canary/*",
           ],
         },
       } : undefined,
