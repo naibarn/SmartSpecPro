@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `109`
-- Updated (UTC): `2026-10-21T17:52:24.573282+00:00`
+- State generation: `110`
+- Updated (UTC): `2026-10-21T17:53:23.262191+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88`
+- Latest recorded merged Main SHA: `c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.
+- Next action: Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available.
 
 ## Sections
 
@@ -21,10 +21,12 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f | c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f | Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
+- `staging-full-http-v1` and `staging-allowlisted-v1` are now separate default-off fields on the immutable application Container descriptor. The first routes manifest-owned HTTP APIs to the Node Container; the second injects the existing realtime selector for the three allowlisted WebSockets. Deployment still requires a fresh exact staging grant/artifact; no live HTTP, browser-auth, reconnect or tenant-isolation proof has been run. The Container remains capped at 20 total compute minutes and 10-minute hard lifetime.
+- Cloudflare application storage rejects explicit and fallback local disk with `STORAGE_DURABLE_PROVIDER_REQUIRED_FOR_CLOUDFLARE`, while preserving R2/S3/Forge and native Debian/local behavior. The scoped R2 storage suite passes 16 tests; tenant ACL and live object upload/download on the Cloudflare runtime remain to prove.
 - Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.
 - Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.
 - Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.

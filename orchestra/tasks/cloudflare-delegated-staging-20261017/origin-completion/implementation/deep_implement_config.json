@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.",
+      "next_action": "Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
-      "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
+      "checkpoint_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
+      "merged_main_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 109,
-  "updated_at": "2026-10-21T17:52:24.573282+00:00",
+  "generation": 110,
+  "updated_at": "2026-10-21T17:53:23.262191+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.",
-    "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
+    "next_action": "Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available.",
+    "merged_main_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
