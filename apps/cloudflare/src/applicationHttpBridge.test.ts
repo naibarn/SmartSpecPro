@@ -26,7 +26,7 @@ describe("private application HTTP binding", () => {
       headers: { authorization: "Bearer real-caller-token", "x-internal-token": "existing-service-token", "x-forwarded-host": "forged.example", "cf-access-client-secret": "do-not-forward", "x-cloudflare-origin-token": "forged-token" } });
     const response = await forwardApplicationHttpBridge(request, "python-http", f.env);
     expect(await response.text()).toBe("actual-private-api-response");
-    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-staging:python-http");
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${"c".repeat(64)}`);
     expect(f.fetch).toHaveBeenCalledOnce();
     const forwarded = f.fetch.mock.calls[0][0] as Request;
     expect(forwarded.url).toBe("http://127.0.0.1:8000/api/action?tenant=a");
@@ -57,8 +57,19 @@ describe("private application HTTP binding", () => {
     await forwardApplicationHttpBridge(new Request("http://node.application.internal/api/internal/read"), "node-http", {
       ...f.env, CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile), NODE_HTTP: f.namespace,
     });
-    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-staging:node-http");
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${"c".repeat(64)}`);
     expect((f.fetch.mock.calls[0][0] as Request).url).toBe("http://127.0.0.1:3000/api/internal/read");
+  });
+
+  it("isolates durable object identities across immutable configuration versions", async () => {
+    const f = fixture();
+    const newer = { ...f.profile, configurationRef: `cf-origin:${"f".repeat(64)}` };
+    const node = { ...newer, runtime: "node-http", image: newer.image.replace("-python-http@", "-node-http@") };
+    await forwardApplicationHttpBridge(new Request("http://python.application.internal/health/live"), "python-http", {
+      ...f.env, CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(newer),
+      CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(node),
+    });
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:python-http:${"f".repeat(64)}`);
   });
 
   it.each(["/workpacks/intake", "/api/v1/workflows/run", "/api/v1/orchestrator/factory/run", "/api/%61gency/run"])("does not boot retired routes: %s", async path => {

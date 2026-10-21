@@ -79,5 +79,5 @@ export function resolveApplicationHttpStub(runtime: ApplicationHttpProfile["runt
   if (profile.runtime !== runtime) throw new Error("APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH");
   const namespace = runtime === "node-http" ? env.NODE_HTTP : env.PYTHON_HTTP;
   if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") throw new Error("APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED");
-  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime)));
+  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime, profile.configurationRef)));
 }

@@ -39,7 +39,14 @@ type ContainerRuntimeState = { status: string; lastChange?: number; exitCode?: n
 const KEY = "application-http-lifecycle-v1";
 const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
-export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"]) => `smartspec-cloudflare-staging:${runtime}`;
+/** Give every immutable configuration its own DO identity. DO storage survives
+ * Worker deployments, so a fixed runtime-only name would carry old budgets,
+ * diagnostics and container bindings into a new image/configuration version. */
+export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"], configurationRef: string) => {
+  const match = /^cf-origin:([a-f0-9]{64})$/.exec(configurationRef);
+  if (!match) throw new Error(DENIED);
+  return `smartspec-cloudflare-staging:${runtime}:${match[1]}`;
+};
 
 export function validateApplicationHttpProfile(value: ApplicationHttpProfile, now = Date.now()): void {
   const issuedAt = Date.parse(value.issuedAt), expiresAt = Date.parse(value.expiresAt);

@@ -30,13 +30,14 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
   constructor(ctx: DurableObjectState, env: ApplicationEnvironment, runtime: ApplicationHttpProfile["runtime"]) {
     super(ctx, env);
     try {
-      if (!ctx.container || ctx.id.name !== applicationHttpInstanceName(runtime) || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
+      if (!ctx.container || env.CLOUDFLARE_ENVIRONMENT !== "staging" ||
           env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw Error();
       const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
       const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
       if (!node || !python) throw Error();
       validateApplicationHttpProfilePair(node, python);
       const profile = runtime === "node-http" ? node : python;
+      if (ctx.id.name !== applicationHttpInstanceName(runtime, profile.configurationRef)) throw Error();
       const secrets: Record<string, string> = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_SECRETS : env.CLOUDFLARE_PYTHON_HTTP_SECRETS) ?? "");
       if (profile.runtime !== runtime || !secrets || Array.isArray(secrets)) throw Error();
       this.controller = new ApplicationHttpContainerController(ctx.container, ctx.storage, profile, secrets);

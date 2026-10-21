@@ -23,7 +23,7 @@ describe("bounded read-only API migration canary", () => {
     expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ running: false, starts: 0 });
     expect(diagnostics).toHaveBeenCalledOnce(); expect(f.fetch).not.toHaveBeenCalled();
-    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-staging:node-http");
+    expect(f.namespace.idFromName).toHaveBeenCalledWith(`smartspec-cloudflare-staging:node-http:${"c".repeat(64)}`);
     f.namespace.get.mockClear();
     expect((await handleApplicationHttpCanary(f.request("node/status", { headers: { "x-smartaihub-application-canary-token": "invalid" } }), f.env)).status).toBe(404);
     expect(f.namespace.get).not.toHaveBeenCalled();
