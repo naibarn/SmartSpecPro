@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Use the fresh published b79cfba4 staging artifact only through an exact new origin-v2 config and existing owner/admin grant authority; first activate bounded full-HTTP staging settings and authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until their exact authorities and end-to-end evidence exist.",
+      "next_action": "Use the fresh published b79cfba4 artifact only through an exact new origin-v2 config and active owner/admin grant authority; activate bounded full-HTTP staging settings, authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "67b7d45f98e5584a9d7babd42ff6098088ae3155",
-      "merged_main_sha": "67b7d45f98e5584a9d7babd42ff6098088ae3155",
+      "checkpoint_sha": "019428815",
+      "merged_main_sha": "019428815",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 119,
-  "updated_at": "2026-10-21T18:19:12.642798+00:00",
+  "generation": 120,
+  "updated_at": "2026-10-21T18:20:35.999186+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Use the fresh published b79cfba4 staging artifact only through an exact new origin-v2 config and existing owner/admin grant authority; first activate bounded full-HTTP staging settings and authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until their exact authorities and end-to-end evidence exist.",
-    "merged_main_sha": "67b7d45f98e5584a9d7babd42ff6098088ae3155",
+    "next_action": "Use the fresh published b79cfba4 artifact only through an exact new origin-v2 config and active owner/admin grant authority; activate bounded full-HTTP staging settings, authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist.",
+    "merged_main_sha": "019428815",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
