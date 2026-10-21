@@ -67,5 +67,7 @@ class HttpImageTest(unittest.TestCase):
         self.assertTrue((self.runtime / "dist/public/index.html").exists())
         self.assertFalse((self.root / "image/runtime/dist").exists())
         self.assertTrue((self.root / "image/runtime/server/_core/index.ts").exists())
+        self.assertEqual(result["httpApiBundle"]["entrypoint"], "server/_core/cloudflare-http-api/index.mjs")
+        self.assertTrue((self.root / "image/runtime/server/_core/cloudflare-http-api/index.mjs").is_file())
         with self.assertRaisesRegex(ReleaseError, "OUTPUT_ALREADY_EXISTS"), patch("package_cloudflare_http_image.validate_build_result", return_value=(record, self.runtime.parent, self.root)):
             prepare_context(self.root / "receipt.json", self.root / "image", IMAGE, IMAGE)

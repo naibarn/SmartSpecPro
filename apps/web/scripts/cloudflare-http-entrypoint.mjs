@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 const DENIED = "APPLICATION_CONNECTOR_CONFIGURATION_DENIED";
 const CONNECTOR_KEYS = ["DATABASE_ACCESS_CLIENT_ID", "DATABASE_ACCESS_CLIENT_SECRET"];
 const INHERITED_CONNECTOR_KEYS = ["TUNNEL_SERVICE_TOKEN_ID", "TUNNEL_SERVICE_TOKEN_SECRET"];
+const API_ENTRYPOINT = "server/_core/cloudflare-http-api/index.mjs";
 
 /** Immutable deployment inputs only; this is neither admission nor a job runner. */
 export function applicationConnectorConfiguration(env, now = Date.now()) {
@@ -73,7 +74,7 @@ export async function serveApplication(env = process.env) {
       }
       if (!ready || stopped.signal.aborted) throw Error("APPLICATION_CONNECTOR_DATABASE_UNAVAILABLE");
     } finally { await client.end({ timeout: 1 }); }
-    application = spawn(process.execPath, ["--import=tsx", "server/_core/index.ts"], { env: configuration.applicationEnv, stdio: ["ignore", "inherit", "inherit"] });
+    application = spawn(process.execPath, [API_ENTRYPOINT], { env: configuration.applicationEnv, stdio: ["ignore", "inherit", "inherit"] });
     const applicationExit = new Promise(resolve => { application.once("exit", () => resolve("application")); application.once("error", () => resolve("application")); });
     const signal = new Promise(resolve => {
       timeoutSignal = () => resolve("signal");

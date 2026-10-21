@@ -17,6 +17,7 @@ OWNED = [
     "apps/web/scripts/build_cloudflare_http_image.py",
     "apps/web/scripts/package_cloudflare_python_http_image.py",
     "apps/web/scripts/package_cloudflare_http_image.py",
+    "apps/web/scripts/bundle-cloudflare-http-api.mjs",
     "python-backend/CloudflareHttp.Containerfile",
     "python-backend/app/core/cloudflare_http_entrypoint.py",
     "python-backend/requirements-cloudflare-http.lock",
