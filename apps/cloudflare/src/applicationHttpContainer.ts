@@ -271,7 +271,9 @@ export class ApplicationHttpContainerController {
     this.phase = "readiness";
     const websocket = request.headers.get("upgrade")?.toLowerCase() === "websocket";
     const port = this.container.getTcpPort(this.profile.runtime === "node-http" ? 3000 : 8000);
-    const readinessPath = this.profile.runtime === "node-http" ? "/healthz" : "/health/live";
+    // Liveness only proves that the process responds; the application route
+    // must not go live until its retained PostgreSQL control plane is ready.
+    const readinessPath = this.profile.runtime === "node-http" ? "/readyz" : "/health";
     // Registry placement plus the request-only API startup can exceed 30s.
     // Count attempts from the bounded wait rather than cutting off after 100
     // immediate connection refusals (only about 20s at the retry interval).

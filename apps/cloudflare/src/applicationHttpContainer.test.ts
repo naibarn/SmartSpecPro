@@ -32,6 +32,22 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it.each([
+    ["node-http", "/readyz"],
+    ["python-http", "/health"],
+  ] as const)("waits for database readiness before forwarding %s traffic", async (runtime, expectedPath) => {
+    const f = fixture();
+    if (runtime === "python-http") {
+      f.profile.runtime = runtime;
+      f.profile.image = f.profile.image.replace("-node-http@", "-python-http@");
+      f.container.images.python = f.profile.image;
+    }
+    const deadline = await f.controller.ensureRunning();
+    await f.controller.forward(new Request("http://application.internal/trpc/auth.me"), deadline);
+    const probe = f.fetch.mock.calls.find(([input]) => typeof input === "string")?.[0] as string;
+    expect(probe).toBe(`http://application.internal${expectedPath}`);
+  });
+
   it("waits for a cold API beyond 100 immediate refusals without replaying the request or booting again", async () => {
     vi.useFakeTimers();
     try {
