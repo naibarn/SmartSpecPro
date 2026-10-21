@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `85`
-- Updated (UTC): `2026-10-21T13:20:00+00:00`
+- State generation: `86`
+- Updated (UTC): `2026-10-21T13:28:00+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `5ce4a0f7b2990bde1f7d2602e56848b6cf4db73f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Preserve the completed staging proof for exact 5ce4a0f7: build/artifact and both images verified, worker deployed, fresh versioned Node DO reports starts=0 before the health probe (confirming lifecycle isolation), health returned 503 after one bounded start, provider app reports active=0/starting=0 with only prior stopped images, and baseline rollback/policy revocation succeeded. Staging healthz is 200 after rollback. Do not retry/start Python. Obtain Cloudflare Container/Worker event logs for the failed Node start (Logs Explorer currently returns no datasets), identify whether allocation/image/runtime or private port routing failed, then fix and revalidate once with a fresh exact configRef and bounded budget.
+- Next action: Resume only after canonical build capacity recovers. The one bounded diagnostic retry was deferred: exact latest-main `fe59aecd` canonical build hit `ENOSPC` with only 1.1 GB free on the approved canonical source filesystem; its incomplete build directory was removed, while unrelated canonical workspaces/caches were preserved. Then rebuild exact current main, capture safe response diagnostics and provider events, and perform one bounded Node-only staging validation with immediate rollback on failure. Do not start Python.
 
 ## Sections
 
@@ -42,6 +42,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.
 - dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending.
 - 5ce4a0f7 exact canonical build/artifact and both digest-pinned HTTP images were published; image preparation and Worker deploy each reported zero Container starts. Status proved the new configRef-derived Node DO began with starts=0 and matching configuration. One authorized Node health probe reserved the 180-second/one-start budget but returned 503 in 476ms; status then showed starts=1, running=false, containerState=null, failure=null. Provider app readback showed active=0/starting=0 and inventory contained only old stopped images, so the actual placement/image/runtime versus private bridge failure remains unproven. Cloudflare Logs Explorer dataset listing returned an empty list; app observability logs are enabled. No Python start was attempted. Rollback deployment c17e1176-7357-4cca-bc29-fee210114fc5 to baseline config 05b032... completed and revoked the temporary policy; staging `/healthz` returned 200 afterward. Production DNS/cutover was not touched.
+- Diagnostic retry build for current main `fe59aecd7ae0d458a2e49f5e0afa7a9817d7505d` was classified RESOURCE_BLOCKED after pnpm failed with ENOSPC: approved canonical source volume had 38 MB free at failure and 1.1 GB after removing only the failed partial workspace and verified disposable prior 5ce build workspace. Do not remove unrelated canonical source workspaces or shared pnpm cache to force this build; resume when approved source volume has adequate free capacity.
 
 ## Resume
 
