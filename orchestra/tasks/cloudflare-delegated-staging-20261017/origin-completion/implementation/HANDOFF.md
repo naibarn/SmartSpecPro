@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `141`
-- Updated (UTC): `2026-10-21T19:49:00.469352+00:00`
+- State generation: `142`
+- Updated (UTC): `2026-10-21T19:54:54.152753+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `e98e479c0`
+- Latest recorded merged Main SHA: `ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Finish production Node/Python HTTP Container binding and private deployment provisioning; run focused Worker/web tests and package build, then checkpoint this source slice and record live authority/cutover gaps.
+- Next action: Deploy a fresh canonical production artifact only through the existing exact production deployment target, provider route authority, bounded production grant and rollback baseline; before cutover, qualify the staging Container path with the live retained-PostgreSQL tunnel and readiness checks. Production route/grant/rollback authority is still absent in the latest recorded live evidence.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 0ebb4d534 | e98e479c0 | Finish production Node/Python HTTP Container binding and private deployment provisioning; run focused Worker/web tests and package build, then checkpoint this source slice and record live authority/cutover gaps. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c | ceac8bbd1222c8f42f43c7d57ff9a9c779d37a7c | Deploy a fresh canonical production artifact only through the existing exact production deployment target, provider route authority, bounded production grant and rollback baseline; before cutover, qualify the staging Container path with the live retained-PostgreSQL tunnel and readiness checks. Production route/grant/rollback authority is still absent in the latest recorded live evidence. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -56,6 +56,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Read-only live checks (2026-10-21 19:34 UTC): smartaihub.app resolves through Cloudflare, but apex /healthz returns the Node origin response and /readyz reports PostgreSQL ok; runtime.smartaihub.app/healthz is the Cloudflare Worker, its /readyz returns 503 with activation disabled and all seven required bindings absent, and its root returns 404. The production Worker is not serving the apex application.
 - Production deployment executor and version-only upload are integrated; the executor consumes worker_jobs and the v2 stage-bound grant. Retired Agency/workflow paths now return 410 before origin proxying. Provider route/Container permissions, production target/policy/grant and app-runtime Container parity remain open; no provider mutation occurred.
 - Live proof confirms the apex still serves Node/Linux while the production Worker is disabled, lacks required bindings and is not attached. Production route and Container authority/target/policy/grant plus full app runtime parity remain open.
+- Source now has bounded production Node/Python Containers and version preparation, but no live production target, route/Container IAM grant, promotion authority, or verified rollback baseline is recorded; production activation remains unperformed.
 
 ## Resume
 
