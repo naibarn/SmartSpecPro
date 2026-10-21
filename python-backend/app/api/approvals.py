@@ -288,6 +288,41 @@ class CloudflareStagingGrantIssue(BaseModel):
         return value
 
 
+class CloudflareProductionGrantIssue(BaseModel):
+    """Create a production grant request; a different admin must approve it."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    executor_id: StrictStr = Field(..., alias="executorId", min_length=1, max_length=200)
+    target_id: Literal["smartspec-cloudflare-runtime"] = Field(..., alias="targetId")
+    environment: Literal["production"]
+    account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
+    artifact_ref: StrictStr = Field(..., alias="artifactRef", pattern=r"^sha256:[a-f0-9]{64}$")
+    source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[a-f0-9]{40}$")
+    build_digest: StrictStr = Field(..., alias="buildDigest", pattern=r"^[a-f0-9]{64}$")
+    configuration_ref: StrictStr = Field(..., alias="configurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
+    configuration_digest: StrictStr = Field(..., alias="configurationDigest", pattern=r"^[a-f0-9]{64}$")
+    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=1)
+    rollback_deployment_id: StrictStr = Field(..., alias="rollbackDeploymentId", pattern=r"^[a-f0-9-]{36}$")
+    rollback_artifact_ref: StrictStr = Field(..., alias="rollbackArtifactRef", pattern=r"^sha256:[a-f0-9]{64}$")
+    rollback_source_sha: StrictStr = Field(..., alias="rollbackSourceSha", pattern=r"^[a-f0-9]{40}$")
+    rollback_build_digest: StrictStr = Field(..., alias="rollbackBuildDigest", pattern=r"^[a-f0-9]{64}$")
+    rollback_configuration_ref: StrictStr = Field(..., alias="rollbackConfigurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
+    rollback_configuration_digest: StrictStr = Field(..., alias="rollbackConfigurationDigest", pattern=r"^[a-f0-9]{64}$")
+    canary_required: Literal[True] = Field(..., alias="canaryRequired")
+    max_duration_seconds: StrictInt = Field(..., alias="maxDurationSeconds", ge=1, le=900)
+    expires_at: datetime = Field(..., alias="expiresAt")
+
+    @field_validator("actions")
+    @classmethod
+    def validate_action(cls, value: list[str]) -> list[str]:
+        if len(value) != 1:
+            raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ACTION_INVALID")
+        return value
+
+
 def _cloudflare_authenticated_tenant(current_user: User, context_tenant: str | None) -> str:
     """Use the tenant validated by get_current_user, including internal delegation."""
     verified = getattr(current_user, "_media_auth_tenant_id", None) or getattr(current_user, "currentTenantId", None)
@@ -560,6 +595,22 @@ async def resolve_cloudflare_staging_grant(
     grant = await ApprovalDBService(db).resolve_cloudflare_staging_grant(grant_ref)
     if grant is None:
         raise HTTPException(status_code=404, detail="CLOUDFLARE_STAGING_GRANT_NOT_FOUND_OR_INACTIVE")
+    response.headers["Cache-Control"] = "no-store"
+    return {"grant": grant}
+
+
+@router.get("/internal/cloudflare-production-grants/{grant_ref}")
+async def resolve_cloudflare_production_grant(
+    grant_ref: str,
+    response: Response,
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Resolve an independently approved production grant for the trusted worker runtime."""
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    grant = await ApprovalDBService(db).resolve_cloudflare_production_grant(grant_ref)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="CLOUDFLARE_PRODUCTION_GRANT_NOT_FOUND_OR_INACTIVE")
     response.headers["Cache-Control"] = "no-store"
     return {"grant": grant}
 
@@ -1574,6 +1625,68 @@ async def create_cloudflare_staging_grant_request(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.post("/cloudflare-production-grants", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
+async def create_cloudflare_production_grant_request(
+    data: CloudflareProductionGrantIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Request approval for one exact production release; this endpoint never pre-approves it."""
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_PRODUCTION_GRANT_ADMIN_REQUIRED")
+    if data.expires_at.tzinfo is None:
+        raise HTTPException(status_code=422, detail="CLOUDFLARE_PRODUCTION_GRANT_EXPIRY_INVALID")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    grant_payload = {
+        "schemaVersion": "cloudflare.production-deployment-grant.v1",
+        "grantRef": "pending-idempotency-binding", "tenantId": tenant_id,
+        "requesterUserId": int(current_user.id), "projectId": data.project_id,
+        "executorId": data.executor_id, "targetId": data.target_id, "environment": data.environment,
+        "accountRef": data.account_ref, "jobId": data.job_id, "artifactRef": data.artifact_ref,
+        "sourceSha": data.source_sha, "buildDigest": data.build_digest,
+        "configurationRef": data.configuration_ref, "configurationDigest": data.configuration_digest,
+        "actions": data.actions, "rollbackDeploymentId": data.rollback_deployment_id,
+        "rollbackArtifactRef": data.rollback_artifact_ref, "rollbackSourceSha": data.rollback_source_sha,
+        "rollbackBuildDigest": data.rollback_build_digest,
+        "rollbackConfigurationRef": data.rollback_configuration_ref,
+        "rollbackConfigurationDigest": data.rollback_configuration_digest,
+        "canaryRequired": data.canary_required, "maxDurationSeconds": data.max_duration_seconds,
+        "expiresAt": data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "revokedAt": None,
+    }
+    try:
+        return await ApprovalDBService(db).create_cloudflare_production_grant_request(
+            tenant_id=tenant_id, requester_id=int(current_user.id), idempotency_key=data.idempotency_key,
+            payload=grant_payload,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/cloudflare-production-grants/{grant_ref}/revoke", response_model=ApprovalRequestResponse)
+async def revoke_cloudflare_production_grant(
+    grant_ref: str,
+    data: CloudflareStagingGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_PRODUCTION_GRANT_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        return await ApprovalDBService(db).revoke_cloudflare_production_grant(
+            grant_ref=grant_ref, tenant_id=tenant_id, actor_id=int(current_user.id), reason=data.reason,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc).endswith("NOT_FOUND") else 422, detail=str(exc)) from exc
+
+
 @router.post("/cloudflare-staging-grants/{grant_ref}/revoke", response_model=ApprovalRequestResponse)
 async def revoke_cloudflare_staging_grant(
     grant_ref: str,
@@ -1759,6 +1872,14 @@ async def respond_to_approval(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CLOUDFLARE_STAGING_GRANT_REQUIRES_INDEPENDENT_APPROVER",
+        )
+    if (
+        extra_data.get("cloudflareProductionGrantIssuerV1") == "admin_approval_workflow"
+        and approval_request.requester_id == current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CLOUDFLARE_PRODUCTION_GRANT_REQUIRES_INDEPENDENT_APPROVER",
         )
 
     # Check if user is authorized to approve this request
