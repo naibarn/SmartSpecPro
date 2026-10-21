@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory.",
+      "next_action": "Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
-      "merged_main_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
+      "checkpoint_sha": "13943dfd1",
+      "merged_main_sha": "13943dfd1",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 83,
-  "updated_at": "2026-10-21T12:17:45.038520+00:00",
+  "generation": 84,
+  "updated_at": "2026-10-21T12:56:04.854392+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory.",
-    "merged_main_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
+    "next_action": "Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes.",
+    "merged_main_sha": "13943dfd1",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -80,7 +80,8 @@
       "36b3a273 staging Node canary returned 503 after 30.37s; health not accepted. Container log query returned zero rows, while the prior failure diagnostic timestamp was stale. Need current Container runtime state/exit code to distinguish process exit from unresolved startup/readiness.",
       "97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary.",
       "Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.",
-      "aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start."
+      "aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.",
+      "dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending."
     ],
     "outcome": "NOT_ACCEPTED"
   }
