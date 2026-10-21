@@ -333,7 +333,7 @@ describe("Cloudflare staging API transport", () => {
     }) as typeof fetch;
     const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
     expect(await transport.verifyRuntime({ token: "private", target, deploymentId, sourceSha, buildDigest,
-      url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).toMatchObject({ reachable: false });
+      url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).toMatchObject({ reachable: false, verificationFailure: "spa", healthStatus: 200 });
   });
 
 });

@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes.",
+      "next_action": "Integrate safe runtime-verification diagnostics; rebuild exact canonical source and paired Node/Python images. Retry bounded Node-only staging verification and capture whether /healthz (with HTTP status), SPA, or origin auth fails. Roll back and inspect state if failure; do not start Python until Node passes.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "13943dfd1",
-      "merged_main_sha": "13943dfd1",
+      "checkpoint_sha": "pending",
+      "merged_main_sha": "pending",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 84,
-  "updated_at": "2026-10-21T12:56:04.854392+00:00",
+  "generation": 87,
+  "updated_at": "2026-10-21T14:20:00+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Rebuild exact canonical 13943dfd1 artifact and paired Node/Python images from the latest published receipt; deploy staging using a fresh configRef-derived Durable Object name; verify protected status then Node health; rollback and inspect exact instance inventory if any failure. Do not start Python until Node health/status passes.",
-    "merged_main_sha": "13943dfd1",
+    "next_action": "Integrate safe runtime-verification diagnostics; rebuild exact canonical source and paired Node/Python images. Retry bounded Node-only staging verification and capture whether /healthz (with HTTP status), SPA, or origin auth fails. Roll back and inspect state if failure; do not start Python until Node passes.",
+    "merged_main_sha": "pending",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -81,7 +81,8 @@
       "97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary.",
       "Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.",
       "aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.",
-      "dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending."
+      "dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending.",
+      "d8f43a2b staging deployment auto-rolled back after generic runtime verification failure; root diagnostic gap is being fixed by preserving safe check category/status. Current staging healthz 200; production untouched; Python unstarted."
     ],
     "outcome": "NOT_ACCEPTED"
   }

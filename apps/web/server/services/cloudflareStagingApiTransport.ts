@@ -541,10 +541,13 @@ export function createCloudflareStagingApiTransport(input: {
         throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
       }
       let healthy = false;
+      let verificationFailure: "health" | "spa" | "origin-auth" | undefined;
+      let healthStatus: number | undefined;
       // A newly enabled workers.dev endpoint can take a few seconds to propagate.
       for (let attempt = 0; attempt < 6; attempt++) {
         try {
           const response = await fetchImpl(new URL("/healthz", baseUrl), { redirect: "manual", signal: AbortSignal.timeout(5000) });
+          healthStatus = response.status;
           if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
             const health = await response.json() as { ok?: unknown; service?: unknown };
             healthy = health.ok === true && health.service === "smartspec-cloudflare-runtime";
@@ -588,8 +591,13 @@ export function createCloudflareStagingApiTransport(input: {
           `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
         if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
       }
+      if (!healthy) verificationFailure = "health";
+      else if (!spaReady) verificationFailure = "spa";
+      else if (!originReady) verificationFailure = "origin-auth";
       return {
         reachable: healthy && spaReady && originReady,
+        ...(verificationFailure ? { verificationFailure } : {}),
+        ...(healthStatus !== undefined ? { healthStatus } : {}),
         deploymentId,
         sourceSha,
         buildDigest,

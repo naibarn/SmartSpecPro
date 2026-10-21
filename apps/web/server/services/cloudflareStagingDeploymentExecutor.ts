@@ -225,6 +225,8 @@ export type CloudflareStagingApi = Readonly<{
     configurationDigest?: string;
   }) => Promise<{
     reachable: boolean;
+    verificationFailure?: "health" | "spa" | "origin-auth";
+    healthStatus?: number;
     deploymentId: string;
     sourceSha: string;
     buildDigest: string;
@@ -716,6 +718,17 @@ export function createCloudflareStagingDeploymentExecutor(
                     "CLOUDFLARE_STAGING_ROLLBACK_FAILED"
                   );
                 }
+              }
+              if (job.action === "deploy" && verification.verificationFailure) {
+                if (verification.verificationFailure === "health") {
+                  const status = Number.isInteger(verification.healthStatus) ? `_HTTP_${verification.healthStatus}` : "_TRANSPORT";
+                  throw new CloudflareStagingDeploymentError(`CLOUDFLARE_STAGING_HEALTH${status}_FAILED`);
+                }
+                const failureCodes = {
+                  spa: "CLOUDFLARE_STAGING_SPA_VERIFICATION_FAILED",
+                  "origin-auth": "CLOUDFLARE_STAGING_ORIGIN_AUTH_VERIFICATION_FAILED",
+                } as const;
+                throw new CloudflareStagingDeploymentError(failureCodes[verification.verificationFailure]);
               }
               throw new CloudflareStagingDeploymentError(
                 "CLOUDFLARE_STAGING_RUNTIME_VERIFICATION_FAILED"

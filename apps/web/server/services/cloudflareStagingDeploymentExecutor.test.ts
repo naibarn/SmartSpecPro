@@ -444,6 +444,8 @@ describe("Cloudflare staging deployment executor", () => {
         .fn()
         .mockResolvedValueOnce({
           reachable: false,
+          verificationFailure: "health",
+          healthStatus: 503,
           deploymentId: "deployment:new",
           sourceSha,
           buildDigest,
@@ -461,7 +463,7 @@ describe("Cloudflare staging deployment executor", () => {
         invocation().payload
       )
     ).rejects.toMatchObject({
-      diagnosticCode: "CLOUDFLARE_STAGING_RUNTIME_VERIFICATION_FAILED",
+      diagnosticCode: "CLOUDFLARE_STAGING_HEALTH_HTTP_503_FAILED",
     });
     expect(partialApi.rollback).toHaveBeenCalledWith(
       expect.objectContaining({

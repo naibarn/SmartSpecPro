@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `86`
-- Updated (UTC): `2026-10-21T13:28:00+00:00`
+- State generation: `87`
+- Updated (UTC): `2026-10-21T14:20:00+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `5ce4a0f7b2990bde1f7d2602e56848b6cf4db73f`
+- Latest recorded merged Main SHA: `d8f43a2b3e3929f86d227f6911a9fe8192a1eb9f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Resume only after canonical build capacity recovers. The one bounded diagnostic retry was deferred: exact latest-main `fe59aecd` canonical build hit `ENOSPC` with only 1.1 GB free on the approved canonical source filesystem; its incomplete build directory was removed, while unrelated canonical workspaces/caches were preserved. Then rebuild exact current main, capture safe response diagnostics and provider events, and perform one bounded Node-only staging validation with immediate rollback on failure. Do not start Python.
+- Next action: Build and stage the safe runtime-verification diagnostic improvement in this checkpoint. Exact d8f43a2b canonical build and both digest-pinned images are ready; Cloudflare prepared both images and accepted the Worker version, but deployment verification returned generic `CLOUDFLARE_STAGING_RUNTIME_VERIFICATION_FAILED`. Automatic rollback to baseline deployment `de3fb538-aef0-4064-bd74-2efebe901792` passed and temporary policy was revoked; staging `/healthz` is 200. New transport diagnostics distinguish health/SPA/origin-auth failure and preserve the health HTTP status. Rebuild exact integrated source, then perform one bounded Node-only staging validation; do not start Python until Node health/status passes.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 5ce4a0f7 | 5ce4a0f7 | Build and paired images are exact and published; versioned identity fix is live-verified (starts 0→1 only on authorized probe). Node health still fails 503. Baseline deployment c17e1176-7357-4cca-bc29-fee210114fc5 is restored, staging healthz returns 200 and policy is revoked. Diagnose provider/runtime event before any further Container start; Python remains unstarted. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | pending | pending | d8f43a2b canonical artifact and paired images passed registry verification and Cloudflare image preparation. Worker deployment was accepted but runtime verification failed with a generic error; automatic rollback to baseline deployment de3fb538-aef0-4064-bd74-2efebe901792 passed, policy revoked, staging `/healthz` returned 200. Added safe health/SPA/origin-auth diagnostic classification with HTTP status capture; 58 focused tests pass. Integrate this checkpoint, rebuild exact main and paired images, then rerun bounded Node-only staging verification. Python was not started. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -50,3 +50,5 @@ on resume, reconcile recorded SHA values with Git/PR state.
 2. Check current Git HEAD, actual commits, worktree ownership and PR merge status.
 3. Recover any committed-but-unrecorded or merged-but-unrecorded work before replaying.
 4. Continue the next incomplete step; do not reset dirty files or re-open merged PRs.
+
+- 2026-10-21 d8f43a2b staging retry: free-space issue was avoided by using `/mnt/SmartSpecDev/tmp` (52 GB available). The exact canonical artifact and both image receipts are valid. Cloudflare image preparation stayed pending for several minutes, then both Node and Python returned ready. Worker upload and deployment API calls succeeded; application-level runtime verification failed generically. Automated rollback to baseline `de3fb538-aef0-4064-bd74-2efebe901792` was verified and policy revoked. Public staging healthz returned 200. Root cause was not observable because `verifyRuntime` collapsed health, SPA, and origin-auth failures into one boolean. Added safe diagnostic categories and health HTTP status; focused transport/executor tests pass (58). No explicit container canary probe was made; Python was not started. Production remains untouched.
