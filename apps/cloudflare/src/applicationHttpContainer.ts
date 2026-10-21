@@ -32,6 +32,7 @@ type Storage = {
 };
 type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout">;
 const KEY = "application-http-lifecycle-v1";
+const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
 export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"]) => `smartspec-cloudflare-staging:${runtime}`;
 
@@ -82,11 +83,31 @@ function applicationEnvironment(profile: ApplicationHttpProfile, values: Record<
 }
 
 export class ApplicationHttpContainerController {
+  private phase = "initializing";
   constructor(
     private readonly container: NativeContainer, private readonly storage: Storage,
     private readonly profile: ApplicationHttpProfile, private readonly environment: Record<string, string>,
     private readonly now: () => number = Date.now,
   ) {}
+
+  async recordFailure(error: unknown) {
+    const message = error instanceof Error ? error.message : "";
+    const code = /^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/.test(message) ? message : "APPLICATION_HTTP_RUNTIME_FAILURE";
+    const kind = error instanceof Error && ["Error", "TypeError", "RangeError", "TimeoutError", "AbortError"].includes(error.name) ? error.name : "Error";
+    await this.storage.put(DIAGNOSTIC_KEY, { code, kind, phase: this.phase, at: this.now() });
+  }
+
+  /** No start, forwarding, secret, command or environment inspection. */
+  async diagnostics() {
+    const scope = await this.scope();
+    const state = await this.storage.get<LifecycleState>(KEY);
+    const failure = await this.storage.get<{ code: string; kind: string; phase: string; at: number }>(DIAGNOSTIC_KEY);
+    return { runtime: this.profile.runtime, running: this.container.running,
+      starts: state?.starts ?? 0, reservedSeconds: state?.reservedSeconds ?? 0,
+      activeUntil: state?.activeUntil ?? null,
+      maxStarts: this.profile.maxStarts, maxComputeSeconds: this.profile.maxComputeSeconds,
+      configurationMatches: !state || state.scope === scope, failure: failure ?? null };
+  }
 
   private async scope() {
     validateApplicationHttpProfile(this.profile, this.now());
@@ -102,6 +123,7 @@ export class ApplicationHttpContainerController {
   /** Call under the DO concurrency gate. Reserve worst-case compute and persist
    * the cleanup alarm BEFORE boot, including a boot with an uncertain response. */
   async ensureRunning() {
+    this.phase = "scope";
     let scope: string;
     try { scope = await this.scope(); }
     catch (error) { if (this.container.running) await this.container.destroy("invalid application configuration"); throw error; }
@@ -125,12 +147,14 @@ export class ApplicationHttpContainerController {
         await this.container.destroy("unowned or expired application process");
         throw new Error("APPLICATION_HTTP_ACTIVE_SCOPE_REQUIRED");
       }
+      this.phase = "inspect";
       const observed = await this.container.inspect();
       if (!observed || observed.labels.scope !== scope || (observed.image && observed.image !== this.profile.image)) {
         await this.container.destroy("application process scope mismatch");
         throw new Error("APPLICATION_HTTP_ACTIVE_SCOPE_REQUIRED");
       }
       try {
+        this.phase = "restore-bounds";
         await this.storage.setAlarm(previous.activeUntil);
         await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000);
       } catch (error) {
@@ -139,6 +163,7 @@ export class ApplicationHttpContainerController {
       }
       return previous.activeUntil;
     }
+    this.phase = "budget";
     const deadline = Math.min(Date.parse(this.profile.expiresAt), this.now() + this.profile.hardLifetimeSeconds * 1000);
     const reservation = Math.ceil((deadline - this.now()) / 1000);
     const state: LifecycleState = previous ?? { scope, issuedAt: Date.parse(this.profile.issuedAt), starts: 0, reservedSeconds: 0, activeUntil: null };
@@ -147,14 +172,17 @@ export class ApplicationHttpContainerController {
     const env = applicationEnvironment(this.profile, this.environment, deadline);
     await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline });
     await this.storage.setAlarm(deadline);
+    this.phase = "start";
     this.container.start({ image: this.profile.image, instance: this.profile.instance, env,
       enableInternet: true, labels: { scope } });
+    this.phase = "idle-bound";
     try { await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000); }
     catch (error) { await this.container.destroy("application idle bound unavailable"); throw error; }
     return deadline;
   }
 
   async forward(request: Request, deadline: number) {
+    this.phase = "readiness";
     if (request.headers.has("upgrade")) throw new Error("APPLICATION_HTTP_REALTIME_OWNER_REQUIRED");
     const port = this.container.getTcpPort(this.profile.runtime === "node-http" ? 3000 : 8000);
     const readinessPath = this.profile.runtime === "node-http" ? "/healthz" : "/health/live";
@@ -173,6 +201,7 @@ export class ApplicationHttpContainerController {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!ready || this.now() >= deadline) throw new Error("APPLICATION_HTTP_READINESS_UNAVAILABLE");
+    this.phase = "forward";
     return port.fetch(request, { signal: AbortSignal.any([
       request.signal, AbortSignal.timeout(Math.max(1, Math.min(120_000, deadline - this.now()))),
     ]) });

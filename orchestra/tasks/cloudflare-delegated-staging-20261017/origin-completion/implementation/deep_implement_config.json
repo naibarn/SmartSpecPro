@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Actual baseline c84/config51 deployed/verified. bd canary artifact published. First wrong preparation URI fixed6fd; second attempt recovered via actual canonical rollback5380605a deploymentf4b01a24, policy revoked. Third canonical job5e32bcec in progress with safe provisioning diagnostics b33; inspect private v3 log/state, then real hosted API/DB/auth/teardown proof or repair. Full origin exit NOT_ACCEPTED; preserve original DB, production Debian, no prewarm/Stripe/retired systems.",
+      "next_action": "Actual namespace baseline c84/config05 and2apps qualified; real Node VM started/stopped but health timeout/503, Python never started. Canonical canaryc679 succeeded; rollbackca1 restoredcf66534d baseline, policy revoked. Integrate protected no-start status RPC + sanitized failure-phase diagnostics (43 Worker/scoped tsc PASS), build latest canonical Worker once with fresh31GiB scratch, use existing bounded owner policy/deploy to inspect actual spent budget and failure, then repair/requalify API/DB/auth/teardown. No prewarm, quota bypass, unrelated job cancellation or production cutover. Full origin exit NOT_ACCEPTED.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "b33ff9159",
-      "merged_main_sha": "b33ff9159"
+      "checkpoint_sha": "430947bbf",
+      "merged_main_sha": "430947bbf"
     }
   },
   "pre_commit": {
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 68,
-  "updated_at": "2026-10-21T01:53:29.032553+00:00",
+  "generation": 69,
+  "updated_at": "2026-10-21T02:16:23.423946+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Actual registry publication verified: Node job69781390... digest03a6cc55...700168134bytes; Python job8b28c272...digest75cb7d4b...718137037bytes, both canonical5abb source, policies revoked, zero VM starts. e68c57ce3 paired application prepare/namespace metadata composed into existing origin deploy;70 scoped/real-PG PASS. Owned canary follow-up adds fixed GET-only token-protected probes;41 Worker +62 web/real-PG PASS. Next integrate canary source, build latest main once, save exact paired runtime secrets from existing env/DB under owner authority, execute bounded staging deployment with rollback. Production still Debian; original DB unchanged; full origin exit NOT_ACCEPTED.",
+    "next_action": "Actual namespace baseline c84/config05 and2apps qualified; real Node VM started/stopped but health timeout/503, Python never started. Canonical canaryc679 succeeded; rollbackca1 restoredcf66534d baseline, policy revoked. Integrate protected no-start status RPC + sanitized failure-phase diagnostics (43 Worker/scoped tsc PASS), build latest canonical Worker once with fresh31GiB scratch, use existing bounded owner policy/deploy to inspect actual spent budget and failure, then repair/requalify API/DB/auth/teardown. No prewarm, quota bypass, unrelated job cancellation or production cutover. Full origin exit NOT_ACCEPTED.",
     "merged_main_sha": "e68c57ce38067f83b1b8d4ad846a2b264cfb024b",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

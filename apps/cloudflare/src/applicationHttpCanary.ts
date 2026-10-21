@@ -1,4 +1,4 @@
-import { forwardApplicationHttpBridge, type ApplicationHttpBindings } from "./applicationHttpBridge";
+import { forwardApplicationHttpBridge, resolveApplicationHttpStub, type ApplicationHttpBindings } from "./applicationHttpBridge";
 
 export const APPLICATION_HTTP_CANARY_PREFIX = "/_ops/application-canary/";
 async function sameToken(actual: string | null, expected: string | undefined) {
@@ -19,6 +19,15 @@ export async function handleApplicationHttpCanary(request: Request, env: Applica
       !await sameToken(request.headers.get("x-smartaihub-application-canary-token"), env.CLOUDFLARE_APPLICATION_CANARY_TOKEN)) return hidden();
   if (request.method !== "GET") return new Response(null, { status: 405, headers: { allow: "GET", "cache-control": "no-store" } });
   if (url.search || request.headers.has("upgrade")) return hidden();
+  if (route === "node/status" || route === "python/status") {
+    try {
+      const stub = resolveApplicationHttpStub(route === "node/status" ? "node-http" : "python-http", env);
+      if (!stub.diagnostics) throw new Error("APPLICATION_HTTP_DIAGNOSTICS_REQUIRED");
+      return Response.json(await stub.diagnostics(), { headers: { "cache-control": "no-store" } });
+    } catch {
+      return Response.json({ error: "APPLICATION_HTTP_DIAGNOSTICS_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } });
+    }
+  }
   const paths: Record<string, { runtime: "node-http" | "python-http"; path: string }> = {
     "node/health": { runtime: "node-http", path: "/healthz" },
     "node/auth": { runtime: "node-http", path: "/trpc/auth.me" },

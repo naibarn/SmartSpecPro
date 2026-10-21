@@ -16,6 +16,18 @@ function fixture() {
   return { env, namespace, fetch, request, profile };
 }
 describe("bounded read-only API migration canary", () => {
+  it("reads lifecycle diagnostics through a fixed RPC without forwarding a request or booting a VM", async () => {
+    const f = fixture(), diagnostics = vi.fn(async () => ({ running: false, starts: 0 }));
+    f.namespace.get.mockReturnValue({ fetch: f.fetch, diagnostics } as never);
+    const response = await handleApplicationHttpCanary(f.request("node/status"), f.env);
+    expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ running: false, starts: 0 });
+    expect(diagnostics).toHaveBeenCalledOnce(); expect(f.fetch).not.toHaveBeenCalled();
+    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-staging:node-http");
+    f.namespace.get.mockClear();
+    expect((await handleApplicationHttpCanary(f.request("node/status", { headers: { "x-smartaihub-application-canary-token": "invalid" } }), f.env)).status).toBe(404);
+    expect(f.namespace.get).not.toHaveBeenCalled();
+  });
   it("requires the distinct canary credential before resolving any paid namespace", async () => {
     const f = fixture();
     for (const token of ["", "wrong", "a".repeat(5000)]) {

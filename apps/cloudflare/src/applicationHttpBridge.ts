@@ -2,7 +2,7 @@ import { applicationHttpInstanceName, validateApplicationHttpProfilePair, type A
 
 export type ApplicationHttpNamespace = {
   idFromName(name: string): unknown;
-  get(id: unknown): { fetch(request: Request): Promise<Response> };
+  get(id: unknown): { fetch(request: Request): Promise<Response>; diagnostics?(): Promise<unknown> };
 };
 export type ApplicationHttpBindings = {
   CLOUDFLARE_ENVIRONMENT?: string;
@@ -64,6 +64,12 @@ export async function forwardApplicationHttpBridge(request: Request, runtime: Ap
   if (retiredApplicationHttpPath(new URL(request.url).pathname)) {
     return Response.json({ error: "LEGACY_RUNTIME_RETIRED" }, { status: 410, headers: { "cache-control": "no-store" } });
   }
+  const prepared = prepareApplicationHttpBridgeRequest(request, runtime);
+  return resolveApplicationHttpStub(runtime, env).fetch(prepared);
+}
+
+/** Resolving the fixed private DO never invokes its start/HTTP forwarding path. */
+export function resolveApplicationHttpStub(runtime: ApplicationHttpProfile["runtime"], env: ApplicationHttpBindings) {
   if (env.CLOUDFLARE_ENVIRONMENT !== "staging" || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") throw new Error("APPLICATION_HTTP_BRIDGE_DISABLED");
   const node: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null");
   const python: ApplicationHttpProfile = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
@@ -71,8 +77,7 @@ export async function forwardApplicationHttpBridge(request: Request, runtime: Ap
   validateApplicationHttpProfilePair(node, python);
   const profile = runtime === "node-http" ? node : python;
   if (profile.runtime !== runtime) throw new Error("APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH");
-  const prepared = prepareApplicationHttpBridgeRequest(request, runtime);
   const namespace = runtime === "node-http" ? env.NODE_HTTP : env.PYTHON_HTTP;
   if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") throw new Error("APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED");
-  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime))).fetch(prepared);
+  return namespace.get(namespace.idFromName(applicationHttpInstanceName(runtime)));
 }

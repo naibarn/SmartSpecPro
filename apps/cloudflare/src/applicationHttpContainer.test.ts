@@ -30,6 +30,18 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it("reports spent budget and safe failures without booting, inspecting processes or returning secrets", async () => {
+    const f = fixture();
+    expect(await f.controller.diagnostics()).toMatchObject({ running: false, starts: 0, failure: null });
+    expect(f.container.start).not.toHaveBeenCalled();
+    f.container.start.mockImplementationOnce(() => { throw new TypeError("provider detail contains fixture-private-dsn"); });
+    try { await f.controller.ensureRunning(); } catch (error) { await f.controller.recordFailure(error); }
+    const diagnostic = await f.controller.diagnostics();
+    expect(diagnostic).toMatchObject({ starts: 1, reservedSeconds: 60, configurationMatches: true,
+      failure: { kind: "TypeError", phase: "start", code: "APPLICATION_HTTP_RUNTIME_FAILURE" } });
+    expect(JSON.stringify(diagnostic)).not.toMatch(/fixture-private|DATABASE_URL|JWT_SECRET|provider detail/);
+    expect(f.container.start).toHaveBeenCalledOnce(); expect(f.container.getTcpPort).not.toHaveBeenCalled();
+  });
   it("does not prewarm; persists budget and alarm before the first boot without persisting secrets", async () => {
     const f = fixture();
     await f.controller.restore();

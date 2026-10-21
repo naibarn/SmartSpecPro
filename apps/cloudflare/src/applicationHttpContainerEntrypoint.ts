@@ -54,7 +54,8 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
           await ctx.container!.interceptOutboundHttp(applicationHttpHostname(target), bridge);
         }
         await this.controller.restore();
-      } catch {
+      } catch (error) {
+        await this.controller.recordFailure(error).catch(() => undefined);
         if (ctx.container?.running) await ctx.container.destroy("application private bridge unavailable");
         throw new Error("APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED");
       }
@@ -69,12 +70,14 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
       // HTTP I/O stays outside the 30-second concurrency gate. Cleanup alarms
       // and the image's independent supervisor remain able to enforce expiry.
       return await this.controller.forward(request, deadline);
-    } catch {
+    } catch (error) {
+      await this.controller.recordFailure(error).catch(() => undefined);
       return Response.json({ error: "APPLICATION_HTTP_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } });
     }
   }
 
   alarm() { return this.ctx.blockConcurrencyWhile(() => this.controller.expire()); }
+  diagnostics() { return this.ctx.blockConcurrencyWhile(() => this.controller.diagnostics()); }
 }
 
 export class StagingNodeHttpContainer extends ApplicationHttpContainer {
