@@ -8,6 +8,7 @@ lease_root = "/mnt/SmartSpecDev/.cache/codex/canonical-leases"
 build_target = "smartspec-web"
 
 [repository.platforms.linux]
+canonical_user_workspace = "/mnt/SmartSpecDev/projects/SmartSpecPro"
 source_fallback_roots = ["/home/dev/.cache/codex/canonical-sources"]
 
 [repository.platforms.windows]
