@@ -368,7 +368,7 @@ async function provisionMcpOAuthSigningKey(
 
 const deploymentTenantIdSchema = z.string().trim().min(1).max(36);
 const originIdentitySchema = z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100),
-  environment: z.literal("staging"), provider: z.literal("cloudflare") }).strict();
+  environment: z.enum(["staging", "production"]), provider: z.literal("cloudflare") }).strict();
 const originReferenceSchema = originIdentitySchema.extend({ configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/) });
 
 export const infrastructureRouter = router({

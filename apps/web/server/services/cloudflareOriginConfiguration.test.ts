@@ -22,11 +22,27 @@ describe("origin configuration validation before storage", () => {
     await expect(saveCloudflareOriginConfiguration(db as never, { identity, settings: { ...settings(), ...changes }, secrets, actorUserId: 1 })).rejects.toThrow();
     expect(db.transaction).not.toHaveBeenCalled();
   });
-  it("refuses production or incomplete credential material before storage", async () => {
+  it("requires an exact production target before origin credentials can be stored", async () => {
     const db = { transaction: vi.fn() };
-    await expect(saveCloudflareOriginConfiguration(db as never, { identity: { ...identity, environment: "production" }, settings: settings(), secrets, actorUserId: 1 })).rejects.toThrow();
+    const missingTargetDb = { transaction: vi.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation({
+      select: () => ({ from: () => ({ where: () => ({ for: async () => [] }) }) }),
+    })) };
+    await expect(saveCloudflareOriginConfiguration(missingTargetDb as never, {
+      identity: { ...identity, environment: "production" }, settings: settings(), secrets, actorUserId: 1,
+    })).rejects.toThrow("DENIED");
+    expect(missingTargetDb.transaction).toHaveBeenCalledOnce();
+    expect(db.transaction).not.toHaveBeenCalled();
     await expect(saveCloudflareOriginConfiguration(db as never, { identity, settings: settings(), secrets: { ...secrets, secret: "" }, actorUserId: 1 })).rejects.toThrow();
     await expect(saveCloudflareOriginConfiguration(db as never, { identity, settings: settings(), secrets: { ...secrets, secret: secrets.token }, actorUserId: 1 })).rejects.toThrow();
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects staging-only Container and job capabilities from production origin configuration", async () => {
+    const db = { transaction: vi.fn() };
+    await expect(saveCloudflareOriginConfiguration(db as never, {
+      identity: { ...identity, environment: "production" },
+      settings: { ...settings(), applicationHttpPhase: "namespace-only" }, secrets, actorUserId: 1,
+    })).rejects.toThrow();
     expect(db.transaction).not.toHaveBeenCalled();
   });
 });
@@ -40,6 +56,7 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
   let closeDb: typeof import("../db").closeDb;
   const previous = { DATABASE_URL: process.env.DATABASE_URL, NODE_ENV: process.env.NODE_ENV, LLM_ENCRYPTION_KEY: process.env.LLM_ENCRYPTION_KEY };
   let targetRowId: string;
+  let productionTargetRowId: string;
   let actorUserId: number;
 
   beforeAll(async () => {
@@ -61,6 +78,12 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
       workerRef: "smartspec-cloudflare-staging", accountRef: "0123456789abcdef0123456789abcdef", provenance: "disposable origin test" });
     if (target.status !== "CREATED") throw new Error("DISPOSABLE_TARGET_SETUP_FAILED");
     targetRowId = target.target.id;
+    const productionTarget = await createProviderDeploymentTarget(db, {
+      identity: { ...identity, environment: "production" }, deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", accountRef: "0123456789abcdef0123456789abcdef", provenance: "disposable production origin test",
+    });
+    if (productionTarget.status !== "CREATED") throw new Error("DISPOSABLE_PRODUCTION_TARGET_SETUP_FAILED");
+    productionTargetRowId = productionTarget.target.id;
   }, 30_000);
   afterAll(async () => {
     if (closeDb) await closeDb();
@@ -251,6 +274,25 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     expect((await getCloudflareOriginConfiguration(db, request)).status).toBe("REVOKED");
     await expect(withCloudflareOriginConfiguration(db, request, operation)).rejects.toThrow("DENIED");
     expect(operation).toHaveBeenCalledOnce();
+  });
+
+  it("stores an immutable production origin version under its own target and rejects staging runtime capabilities", async () => {
+    const productionIdentity = { ...identity, environment: "production" };
+    const productionSettings = { ...settings(), origin: "https://origin.smartaihub.app", allowedPublicOrigins: ["https://smartaihub.app"] };
+    const saved = await saveCloudflareOriginConfiguration(db, {
+      identity: productionIdentity, settings: productionSettings, secrets, actorUserId,
+    });
+    expect(saved.descriptor).toMatchObject({ environment: "production", targetId: "smartspec-cloudflare-runtime" });
+    expect(saved.deploymentAuthorized).toBe(false);
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef })
+      .where(eq(schema.providerDeploymentTargets.id, productionTargetRowId));
+    await expect(withCloudflareOriginConfiguration(db, {
+      identity: productionIdentity, configurationRef: saved.configurationRef, configurationDigest: saved.configurationDigest,
+    }, value => Promise.resolve(value.descriptor.environment))).resolves.toBe("production");
+    await expect(saveCloudflareOriginConfiguration(db, {
+      identity: productionIdentity, settings: { ...productionSettings, applicationHttpPhase: "namespace-only" },
+      secrets, actorUserId,
+    })).rejects.toThrow();
   });
 
   it("retains prior versions and refuses plaintext or ambiguous duplicate settings", async () => {

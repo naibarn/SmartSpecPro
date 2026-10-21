@@ -42,9 +42,16 @@ export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.e
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
   versionId: z.string().uuid(),
   tenantId: z.string().min(1).max(36), projectId: z.string().min(1).max(100),
-  environment: z.literal("staging"), provider: z.literal("cloudflare"),
-  accountRef: z.string().regex(/^[a-f0-9]{32}$/), targetId: z.literal("smartspec-cloudflare-staging"),
-}).strict();
+  environment: z.enum(["staging", "production"]), provider: z.literal("cloudflare"),
+  accountRef: z.string().regex(/^[a-f0-9]{32}$/), targetId: z.enum(["smartspec-cloudflare-staging", "smartspec-cloudflare-runtime"]),
+}).strict().superRefine((value, ctx) => {
+  const expectedTarget = value.environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
+  if (value.targetId !== expectedTarget) ctx.addIssue({ code: "custom", message: "Origin target/environment mismatch" });
+  if (value.environment === "production" && (value.nativeResources || value.applicationHttp || value.workflowExecution ||
+      value.workflowDatabase || value.runnerReleaseCatalog || value.jobTransport || value.retentionSchedule || value.mediaProbe)) {
+    ctx.addIssue({ code: "custom", message: "Production Container and background capabilities require separate admission" });
+  }
+});
 export type CloudflareOriginDescriptor = z.infer<typeof cloudflareOriginDescriptorSchema>;
 export type CloudflareOriginVersionBindings = Readonly<{
   configurationRef: string;

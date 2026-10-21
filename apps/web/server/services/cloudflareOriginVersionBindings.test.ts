@@ -28,6 +28,25 @@ function fixture() {
 }
 
 describe("exact bounded Workflow deployment configuration", () => {
+  it("supports a separate production origin version while rejecting staging target reuse", () => {
+    const { value, target } = fixture();
+    delete value.descriptor.nativeResources;
+    delete value.descriptor.workflowExecution;
+    delete value.secrets.workflowRuntimeToken;
+    delete value.secrets.controlPlaneToken;
+    value.descriptor.environment = "production";
+    value.descriptor.targetId = "smartspec-cloudflare-runtime";
+    value.descriptor = cloudflareOriginDescriptorSchema.parse(value.descriptor);
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`;
+    target.environment = "production";
+    target.targetId = "smartspec-cloudflare-runtime";
+    target.runtimePolicy = value.configurationRef;
+    expect(validateCloudflareOriginVersionBindings(value, target).descriptor.environment).toBe("production");
+    expect(() => validateCloudflareOriginVersionBindings(value, { ...target, targetId: "smartspec-cloudflare-staging" })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, targetId: "smartspec-cloudflare-staging" })).toThrow();
+    expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, workflowExecution: "emergency-intake" })).toThrow();
+  });
 
   it("binds public Runner catalog reads independently of paid job transport, and rejects capability injection", () => {
     const { value, target } = fixture();

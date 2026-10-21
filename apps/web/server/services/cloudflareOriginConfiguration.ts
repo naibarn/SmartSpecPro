@@ -19,7 +19,9 @@ import {
   assertCloudflareWorkflowConfiguration,
 } from "./cloudflareOriginVersionBindings";
 const category = "cloudflare_origin_versions";
-const targetId = "smartspec-cloudflare-staging";
+const targetForEnvironment = (environment: string) => environment === "staging"
+  ? "smartspec-cloudflare-staging"
+  : environment === "production" ? "smartspec-cloudflare-runtime" : null;
 type OriginSettings = z.infer<typeof cloudflareOriginSettingsSchema>;
 type OriginSecrets = z.infer<typeof cloudflareOriginSecretsSchema>;
 const storedSchema = z.object({ descriptor: descriptorSchema, secrets: cloudflareOriginSecretsSchema,
@@ -84,21 +86,26 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
   const settings = validateSettings(input.settings, Date.now());
   const secrets = cloudflareOriginSecretsSchema.parse(input.secrets);
   assertCloudflareWorkflowConfiguration(settings, secrets);
-  if (input.identity.provider !== "cloudflare" || input.identity.environment !== "staging" ||
+  const expectedTargetId = targetForEnvironment(input.identity.environment);
+  if (input.identity.provider !== "cloudflare" || !expectedTargetId ||
       !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0) denied();
+  // Production origin credentials may be recorded independently. Production
+  // Containers and job bindings require their own admission contracts.
+  if (input.identity.environment === "production" && (settings.nativeResources || settings.applicationHttp || settings.workflowExecution ||
+      settings.workflowDatabase || settings.runnerReleaseCatalog || settings.jobTransport || settings.retentionSchedule || settings.mediaProbe)) denied();
   return db.transaction(async tx => {
     // Serialize against target disable/rebinding without a new lock registry.
     const rows = await tx.select().from(providerDeploymentTargets).where(and(
       eq(providerDeploymentTargets.tenantId, input.identity.tenantId),
       eq(providerDeploymentTargets.projectId, input.identity.projectId),
-      eq(providerDeploymentTargets.environment, "staging"), eq(providerDeploymentTargets.provider, "cloudflare"),
+      eq(providerDeploymentTargets.environment, input.identity.environment), eq(providerDeploymentTargets.provider, "cloudflare"),
       eq(providerDeploymentTargets.enabled, true),
     )).for("update");
-    if (rows.length !== 1 || rows[0]!.deploymentTargetId !== targetId || rows[0]!.workerRef !== targetId ||
+    if (rows.length !== 1 || rows[0]!.deploymentTargetId !== expectedTargetId || rows[0]!.workerRef !== expectedTargetId ||
         rows[0]!.containerApplicationRef || authorizeDeploymentTarget({ target: rows[0]!, callerTenantId: input.identity.tenantId,
-          projectId: input.identity.projectId, environment: "staging", provider: "cloudflare" }) !== "AUTHORIZED") denied();
+          projectId: input.identity.projectId, environment: input.identity.environment, provider: "cloudflare" }) !== "AUTHORIZED") denied();
     const descriptor = descriptorSchema.parse({ ...settings, schemaVersion: "cloudflare.origin-configuration.v1",
-      versionId: randomUUID(), ...input.identity, accountRef: rows[0]!.accountRef, targetId });
+      versionId: randomUUID(), ...input.identity, accountRef: rows[0]!.accountRef, targetId: expectedTargetId });
     await verifyNativeReceipt(tx, descriptor, input.actorUserId);
     const configurationRef = reference(descriptor);
     const existing = await tx.select({ id: systemSettings.id }).from(systemSettings)
@@ -155,11 +162,12 @@ export async function withCloudflareOriginConfigurationForTransition<T>(db: Driz
 }, operation: (value: { descriptor: Descriptor; secrets: OriginSecrets }) => Promise<T>): Promise<T> {
   const { stored } = await readVersion(db, input.identity, input.configurationRef);
   const target = await resolveProviderDeploymentTarget(db, input.identity);
+  const expectedTargetId = targetForEnvironment(input.identity.environment);
   if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now() ||
       (stored.descriptor.applicationHttp && !stored.descriptor.applicationHttpPhase && Date.parse(stored.descriptor.applicationHttp.expiresAt) <= Date.now()) ||
       digest(stored.descriptor) !== input.configurationDigest || target.status !== "CONFIGURED" ||
       target.target.runtimePolicy !== input.activeConfigurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
-      target.target.workerRef !== targetId || target.target.deploymentTargetId !== targetId || target.target.containerApplicationRef) denied();
+      !expectedTargetId || target.target.workerRef !== expectedTargetId || target.target.deploymentTargetId !== expectedTargetId || target.target.containerApplicationRef) denied();
   return operation({ descriptor: stored.descriptor, secrets: stored.secrets });
 }
 
