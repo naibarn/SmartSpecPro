@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Integrate read-only Container getState/exitCode diagnostics; build exact canonical revision, add state snapshot to bounded staging probe, run one Node canary with concurrent status/inventory read, and rollback. Use captured status to fix startup root before any further canary; production/domain and database remain untouched.",
+      "next_action": "Build exact canonical main at d25102b0f with the registered canonical builder; re-publish exact Node/Python images, deploy only staging, and run one Node canary with concurrent getState/instance inventory. Roll back immediately and diagnose before any further start; preserve production DNS and existing database.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "04c5dda6f",
-      "merged_main_sha": "04c5dda6f",
+      "checkpoint_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
+      "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 79,
-  "updated_at": "2026-10-21T11:29:45.705207+00:00",
+  "generation": 80,
+  "updated_at": "2026-10-21T11:30:34.074468+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Integrate read-only Container getState/exitCode diagnostics; build exact canonical revision, add state snapshot to bounded staging probe, run one Node canary with concurrent status/inventory read, and rollback. Use captured status to fix startup root before any further canary; production/domain and database remain untouched.",
-    "merged_main_sha": "04c5dda6f",
+    "next_action": "Build exact canonical main at d25102b0f with the registered canonical builder; re-publish exact Node/Python images, deploy only staging, and run one Node canary with concurrent getState/instance inventory. Roll back immediately and diagnose before any further start; preserve production DNS and existing database.",
+    "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
