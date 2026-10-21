@@ -56,10 +56,12 @@ export async function prepareHttpApplicationImages(settings: HttpApplicationSett
   validateHttpApplicationSettings(settings, scope, Date.now(), namespaceOnly);
   const expiry = Date.parse(namespacePreparationExpiresAt ?? settings.expiresAt);
   if (!Number.isFinite(expiry) || expiry <= Date.now()) fail("IMAGE_PREPARATION_DENIED");
-  const deadline = Math.min(expiry, Date.now() + 120_000);
+  // Cloudflare preparation is durable and may remain pending while large images are staged.
+  // Keep the wait inside the canonical deployment job hard timeout (10 minutes).
+  const deadline = Math.min(expiry, Date.now() + 8 * 60_000);
   for (const runtime of ["node", "python"] as const) {
     let ready = false;
-    for (let attempt = 0; attempt < 24 && Date.now() < deadline; attempt++) {
+    for (let attempt = 0; attempt < 96 && Date.now() < deadline; attempt++) {
       await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope, Date.now(), namespaceOnly);
       const result = await ports.request("/image-preparations", { image: settings[runtime].image });
       if (result?.status === "ready" && Date.now() < deadline) { ready = true; break; }

@@ -75,6 +75,17 @@ describe("private HTTP application metadata preparation", () => {
     f.version.resources.script_runtime.containers[1].images.python = f.settings.node.image;
     expect(() => assertHttpApplicationVersionMetadata(f.settings, f.scope, f.version, true)).toThrow("VERSION_METADATA_DENIED");
   });
+  it("keeps polling durable image preparation beyond the previous two-minute attempt budget", async () => {
+    const f = fixture(); let attempts = 0;
+    f.ports.request.mockImplementation(async path => {
+      if (path !== "/image-preparations") throw Error("unexpected request");
+      attempts++;
+      return { status: attempts < 25 ? "pending" : "ready" };
+    });
+    await prepareHttpApplicationImages(f.settings, f.scope, f.ports);
+    expect(attempts).toBe(26);
+    expect(f.ports.wait).toHaveBeenCalledTimes(24);
+  });
   it("preserves a safe preparation diagnostic through the canonical executor boundary", async () => {
     const f = fixture();
     f.ports.request.mockResolvedValue({ status: "error", error: "untrusted provider detail" });
