@@ -126,6 +126,7 @@ async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, co
     allowedPublicOrigins: stored.descriptor.allowedPublicOrigins, accessApplicationId: stored.descriptor.accessApplicationId,
     accessTeamName: stored.descriptor.accessTeamName, accessAudience: stored.descriptor.accessAudience,
     ...(stored.descriptor.applicationHttp ? { applicationHttp: stored.descriptor.applicationHttp } : {}),
+    ...(stored.descriptor.applicationHttpPhase ? { applicationHttpPhase: stored.descriptor.applicationHttpPhase } : {}),
     expiresAt: stored.descriptor.expiresAt, ...(stored.descriptor.nativeResources ? { nativeResources: stored.descriptor.nativeResources } : {}) }), 0);
   await verifyNativeReceipt(db, stored.descriptor, rows[0]!.updatedBy, 0);
   return { rowId: rows[0]!.id, stored };

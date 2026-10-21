@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { prepareHttpApplicationImages, ensureHttpApplications, createHttpApplicationProvisionPorts, httpApplicationCredentialRef } from "./cloudflareHttpApplicationProvision";
+import { prepareHttpApplicationImages, ensureHttpApplications, createHttpApplicationProvisionPorts, httpApplicationCredentialRef, assertHttpApplicationVersionMetadata } from "./cloudflareHttpApplicationProvision";
 import { encrypt } from "./crypto";
 import { httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
@@ -30,6 +30,14 @@ function fixture() {
   return { settings, scope, version, ports, states, applications };
 }
 describe("private HTTP application metadata preparation", () => {
+  it("requires exact image metadata and no VM-access binding during namespace preparation", () => {
+    const f = fixture();
+    expect(() => assertHttpApplicationVersionMetadata(f.settings, f.scope, f.version, true)).toThrow("NAMESPACE_PREPARATION_BINDING_DENIED");
+    f.version.resources.bindings = [];
+    expect(() => assertHttpApplicationVersionMetadata(f.settings, f.scope, f.version, true)).not.toThrow();
+    f.version.resources.script_runtime.containers[1].images.python = f.settings.node.image;
+    expect(() => assertHttpApplicationVersionMetadata(f.settings, f.scope, f.version, true)).toThrow("VERSION_METADATA_DENIED");
+  });
   it("preserves a safe preparation diagnostic through the canonical executor boundary", async () => {
     const f = fixture();
     f.ports.request.mockResolvedValue({ status: "error", error: "untrusted provider detail" });

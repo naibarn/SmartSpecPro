@@ -373,7 +373,7 @@ describe("Cloudflare version-scoped origin transport", () => {
         annotations: { "workers/message": options.prior ? "SmartAIHub staging idempotency cloudflare-staging:origin-job" : "other-job" } }] });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
-        resources: { bindings: options.versionBindings ?? metadata?.bindings ?? (options.native ? [
+        resources: { script_runtime: { containers: metadata?.containers }, bindings: options.versionBindings ?? metadata?.bindings ?? (options.native ? [
           ...nativeWorkerBindings(options.native), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
         ] : []) },
         annotations: { "workers/message": options.message ?? `SmartAIHub staging ${sourceSha} ${buildDigest} origin ${config.configurationDigest}` } });
@@ -413,14 +413,15 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(f.mutations.every(call => !/\/queues|\/r2|\/vectorize|\/routes|\/schedules/.test(call.url))).toBe(true);
   });
 
-  it("prepares paired HTTP images and verifies application metadata before activating a version", async () => {
+  it.each([false, true])("prepares paired HTTP images with namespace-only phase=%s", async namespaceOnly => {
     const f = fixture(), namespace = nativeProvisionNamespace(target.tenantId, target.projectId);
     f.config.descriptor.applicationHttp = { mode: "private-canary", namespace, sourceSha,
       node: { provisionJobId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-node-http@sha256:${"b".repeat(64)}` },
       python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-python-http@sha256:${"d".repeat(64)}` },
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: f.config.descriptor.expiresAt,
       maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10, instance: "basic" };
-    Object.assign(f.config.secrets, { applicationCanaryToken: "disposable-canary-token-12345678901234567890", applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
+    if (namespaceOnly) f.config.descriptor.applicationHttpPhase = "namespace-only";
+    else Object.assign(f.config.secrets, { applicationCanaryToken: "disposable-canary-token-12345678901234567890", applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
     f.config.configurationDigest = cloudflareOriginDescriptorDigest(f.config.descriptor);
     f.config.configurationRef = `cf-origin:${f.config.configurationDigest}`;
     f.originTarget.runtimePolicy = f.config.configurationRef;
@@ -438,8 +439,21 @@ describe("Cloudflare version-scoped origin transport", () => {
     const api = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: f.fetchImpl,
       prepareHttpApplications: prepare, ensureHttpApplications: ensure });
     await expect(api.deploy(request)).resolves.toMatchObject({ deploymentId });
-    expect(prepare).toHaveBeenCalledOnce(); expect(ensure).toHaveBeenCalledOnce();
-    expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
+    expect(prepare).toHaveBeenCalledOnce();
+    if (namespaceOnly) {
+      expect(ensure).not.toHaveBeenCalled();
+      expect(f.metadata().bindings.some((b: any) => /^(?:NODE_HTTP|PYTHON_HTTP|CLOUDFLARE_(?:NODE|PYTHON)_HTTP_|CLOUDFLARE_APPLICATION_CANARY_TOKEN|CLOUDFLARE_CONTAINER_POLICY)/.test(b.name))).toBe(false);
+      expect(f.metadata().exports.StagingNodeHttpContainer.container).toBe(`${namespace}-node-http`);
+      expect(f.metadata().containers).toHaveLength(2);
+      const { cloudflareWorkflowVersionBindings, assertCloudflareWorkflowConfiguration } = await import("./cloudflareOriginVersionBindings");
+      expect(cloudflareWorkflowVersionBindings(f.config)).toEqual([]);
+      expect(() => assertCloudflareWorkflowConfiguration(f.config.descriptor, { ...f.config.secrets, applicationCanaryToken: "unapproved-canary-" + "a".repeat(32) })).toThrow("CONFIGURATION_DENIED");
+      const changed = { ...f.config.descriptor }; delete changed.applicationHttpPhase;
+      expect(cloudflareOriginDescriptorDigest(changed)).not.toBe(f.config.configurationDigest);
+    } else {
+      expect(ensure).toHaveBeenCalledOnce();
+      expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
+    }
     expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_ACTIVATION").text).toBe("disabled");
   });
 

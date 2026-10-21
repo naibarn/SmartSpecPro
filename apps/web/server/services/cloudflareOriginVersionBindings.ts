@@ -35,6 +35,8 @@ export const cloudflareOriginSettingsSchema = z.object({
   mediaProbe: z.object({ containerPolicy: z.literal(CLOUDFLARE_CONTAINER_ON_DEMAND), capability: z.literal("container-media-probe-v1"),
     imageRef: z.string().refine(value => isCloudflareMediaProbeImage(value)) }).strict().optional(),
   applicationHttp: cloudflareHttpApplicationSettingsSchema.optional(),
+  /** Provision class namespaces without API bindings, runtime secrets or VM access. */
+  applicationHttpPhase: z.literal("namespace-only").optional(),
 }).strict();
 export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.extend({
   schemaVersion: z.literal("cloudflare.origin-configuration.v1"),
@@ -52,12 +54,14 @@ export type CloudflareOriginVersionBindings = Readonly<{
 }>;
 
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
+  const namespaceOnly = settings.applicationHttpPhase === "namespace-only";
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
       (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
-      Boolean(settings.applicationHttp) !== Boolean(secrets.applicationHttp) ||
-      Boolean(settings.applicationHttp) !== Boolean(secrets.applicationCanaryToken) ||
+      (namespaceOnly && !settings.applicationHttp) ||
+      Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationHttp) ||
+      Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationCanaryToken) ||
       (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
@@ -70,9 +74,9 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
   if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp) return [];
   return [
-    ...(value.descriptor.applicationHttp ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
+    ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
-    ...(value.descriptor.applicationHttp ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
+    ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
       { name: "CLOUDFLARE_RUNNER_RELEASE_EXPIRES_AT", type: "plain_text", text: value.descriptor.expiresAt },

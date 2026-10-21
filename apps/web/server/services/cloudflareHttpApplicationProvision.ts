@@ -66,16 +66,25 @@ export async function prepareHttpApplicationImages(settings: HttpApplicationSett
   }
 }
 
-export async function ensureHttpApplications(settings: HttpApplicationSettings, scope: Scope,
-  version: { resources?: { bindings?: unknown; script_runtime?: { containers?: unknown } } }, operationRef: string, ports: Ports) {
+type ApplicationVersion = { resources?: { bindings?: unknown; script_runtime?: { containers?: unknown } } };
+export function assertHttpApplicationVersionMetadata(settings: HttpApplicationSettings, scope: Scope,
+  version: ApplicationVersion, namespaceOnly = false) {
   const expected = httpApplicationWorkerMetadata(settings, scope);
-  if (!/^[a-f0-9]{64}$/.test(operationRef)) fail("OPERATION_SCOPE_DENIED");
   const bindings = version.resources?.bindings, containers = version.resources?.script_runtime?.containers;
   if (!Array.isArray(bindings) || !Array.isArray(containers)) fail("VERSION_METADATA_DENIED");
   for (const item of expected.containers) {
     const actual = containers.filter(value => value?.class_name === item.class_name);
     if (actual.length !== 1 || actual[0].name !== item.name || JSON.stringify(actual[0].images) !== JSON.stringify(item.images)) fail("VERSION_METADATA_DENIED");
   }
+  if (namespaceOnly && bindings.some(value => value?.name === "NODE_HTTP" || value?.name === "PYTHON_HTTP")) fail("NAMESPACE_PREPARATION_BINDING_DENIED");
+}
+
+export async function ensureHttpApplications(settings: HttpApplicationSettings, scope: Scope,
+  version: ApplicationVersion, operationRef: string, ports: Ports) {
+  assertHttpApplicationVersionMetadata(settings, scope, version);
+  const expected = httpApplicationWorkerMetadata(settings, scope);
+  const bindings = version.resources!.bindings as Array<any>;
+  if (!/^[a-f0-9]{64}$/.test(operationRef)) fail("OPERATION_SCOPE_DENIED");
   const output: Array<{ runtime: string; name: string; applicationId: string; namespaceId: string }> = [];
   for (const runtime of ["node", "python"] as const) {
     await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope);
