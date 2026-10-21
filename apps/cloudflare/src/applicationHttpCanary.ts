@@ -30,6 +30,7 @@ export async function handleApplicationHttpCanary(request: Request, env: Applica
   }
   const paths: Record<string, { runtime: "node-http" | "python-http"; path: string }> = {
     "node/health": { runtime: "node-http", path: "/healthz" },
+    "node/database": { runtime: "node-http", path: "/readyz" },
     "node/auth": { runtime: "node-http", path: "/trpc/auth.me" },
     "python/health": { runtime: "python-http", path: "/health/live" },
     "python/database": { runtime: "python-http", path: "/health" },

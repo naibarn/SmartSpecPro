@@ -36,7 +36,7 @@ describe("bounded read-only API migration canary", () => {
     expect((await handleApplicationHttpCanary(f.request("node/health"), { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).status).toBe(404);
     expect(f.namespace.get).not.toHaveBeenCalled();
   });
-  it.each(["node/auth", "python/auth", "python/database"])("forwards only app credentials to the fixed %s probe", async path => {
+  it.each(["node/auth", "node/database", "python/auth", "python/database"])("forwards only app credentials to the fixed %s probe", async path => {
     const f = fixture();
     const result = await handleApplicationHttpCanary(f.request(path, { headers: { authorization: "Bearer actual-user-fixture",
       "x-internal-token": "forged", "x-forwarded-for": "127.0.0.1", "cf-access-client-secret": "forged" } }), f.env);
@@ -44,7 +44,9 @@ describe("bounded read-only API migration canary", () => {
     const forwarded = f.fetch.mock.calls[0][0] as Request;
     expect(forwarded.headers.get("authorization")).toBe("Bearer actual-user-fixture");
     for (const header of ["x-smartaihub-application-canary-token", "x-internal-token", "x-forwarded-for", "cf-access-client-secret"]) expect(forwarded.headers.has(header)).toBe(false);
-    expect(forwarded.url).toBe(path === "node/auth" ? "http://127.0.0.1:3000/trpc/auth.me" : path === "python/auth" ? "http://127.0.0.1:8000/api/users/me" : "http://127.0.0.1:8000/health");
+    expect(forwarded.url).toBe(path === "node/auth" ? "http://127.0.0.1:3000/trpc/auth.me"
+      : path === "node/database" ? "http://127.0.0.1:3000/readyz"
+        : path === "python/auth" ? "http://127.0.0.1:8000/api/users/me" : "http://127.0.0.1:8000/health");
   });
   it("does not accept arbitrary paths, query selectors, writes or upgrades", async () => {
     const f = fixture();
