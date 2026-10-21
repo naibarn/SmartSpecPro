@@ -16,20 +16,26 @@
     "section-01-local-fast-lane": {
       "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Open the normal PR, wait for its CI status, then resume Section 03 separately under its owned candidate task.",
-      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
+      "next_action": "PR945 already squash-merged; original checkpoint reconciled by exact PR-head/merge tree. Reuse existing authenticated Fast Lane and inspect only missing owner-scoped admission/acceptance assertions. Do not reopen PR945 or restart completed code. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+      "merged_main_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+      "review_file": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md"
     },
     "section-02-atomic-continuation": {
       "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Open the normal PR and track CI; extended stale-owner/replay vectors remain pending.",
-      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
+      "next_action": "PR945 already squash-merged; reuse existing atomic claim/fencing and receipt reconciliation. Current scoped fixtures pass; extended stale-owner/replay/cross-host acceptance remains partial. Continue only those missing assertions under current authority, preserving canonical primary blockers. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+      "merged_main_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+      "review_file": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md"
     },
     "section-04-working-ui-acceptance": {
       "status": "checkpointed",
       "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
-      "next_action": "Local browser acceptance passed: Run ID 65b217cf-414c-47d3-b14f-5800ac96b4dc; receipts at /home/dev/.cache/codex/canonical-sources/developer-fast-lane-evidence/m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6. Keep separate from Runner acceptance.",
-      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b"
+      "next_action": "PR945 harness merged; PR950/951 projection repair and PR952 later local browser evidence also merged. Historical browser PASS is scoped, both runs retain modelAcceptance=false and no fresh browser/device acceptance was run. Reuse existing UI harness; verify only remaining expanded criteria when authorized. Section03/PR944 and canonical DB/source-trust/Runner continuation remain separate. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md",
+      "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+      "merged_main_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+      "review_file": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md"
     }
   },
   "pre_commit": {
@@ -41,14 +47,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-14T11:41:57.136867+00:00",
-  "generation": 8,
-  "updated_at": "2026-10-14T11:46:49.266587+00:00",
+  "generation": 11,
+  "updated_at": "2026-10-21T00:03:13.340684+00:00",
   "progress": {
     "active_section": "section-04-working-ui-acceptance",
-    "next_action": "Local browser acceptance passed: Run ID 65b217cf-414c-47d3-b14f-5800ac96b4dc; receipts at /home/dev/.cache/codex/canonical-sources/developer-fast-lane-evidence/m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6. Keep separate from Runner acceptance.",
+    "next_action": "PR945 harness merged; PR950/951 projection repair and PR952 later local browser evidence also merged. Historical browser PASS is scoped, both runs retain modelAcceptance=false and no fresh browser/device acceptance was run. Reuse existing UI harness; verify only remaining expanded criteria when authorized. Section03/PR944 and canonical DB/source-trust/Runner continuation remain separate. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md",
     "worktree": "/tmp/smartspecpro-spec224-dev-fast-lane-20261014",
     "gaps": [
       "Section 03 candidate SHA binding remains outside this checkpoint; use an owner-authorized continuation branch based on PR #944 head."
-    ]
+    ],
+    "merged_main_sha": "1d09faf79086d836f2361f2016b5636f44a535b5"
   }
 }

@@ -899,7 +899,7 @@
     "next_action": "Database recovery is now the active SPEC-224 blocker: Admin diagnostics verified the current production Backend database and showed 0395 pending, external_runtime absent, 88 pending migrations, 41 unknown hashes, and no matching historical failure audit. Obtain Database Owner authorization for a protected operation scoped only to 0395 through the canonical migration authority; that target-scoped operation is not currently available. Do not run the full journal. After an authorized postcondition succeeds, retry authenticated startWorkspaceRun and continue exact-run Windows binding, admission, certification, lease/fencing, Recovery Grant if required, dispatch, settlement, and Final Verify. Source Trust readiness remains recorded as separate work.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: Database Owner authorization and an available protected migration operation targeting exact production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f / migration 0395; operation must validate drift and prove enum postcondition. Do not run full-journal db:migrate.",
     "reactivation_predicate": "Resume production schema recovery only when the Database Owner authorizes a protected and audited operation targeting the current production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f and migration 0395 alone, with drift/concurrency preconditions and enum postcondition. The current db:migrate command applies the full Drizzle journal and is not safe for the observed 88 pending / 41 unknown state. This evidence identifies the DB serving the diagnostics request, but not the connection that handled the historical failed run request; keep that limitation explicit. After postcondition verification, resume canonical run creation and exact Windows admission.",
-    "resume_point": "Latest DB identity observation: production Backend revision 319fbc7a107341b466e5c1e0f4ddf50c630af6e4, instance label production:pid-3876410 (PID fallback), database smartspec/public, role smartspec, fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f. 0395 is PENDING, external_runtime is absent, migration evidence shows 88 pending / 41 unknown, reconciliation FAILURE_HISTORY_UNAVAILABLE, zero observed active candidates, and no matching failure audit. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md. No DB mutation/run/dispatch occurred. Existing db:migrate calls drizzle-kit migrate for the full journal; no protected targeted-0395 path exists. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-224, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
+    "resume_point": "Latest DB identity observation: production Backend revision 319fbc7a107341b466e5c1e0f4ddf50c630af6e4, instance label production:pid-3876410 (PID fallback), database smartspec/public, role smartspec, fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f. 0395 is PENDING, external_runtime is absent, migration evidence shows 88 pending / 41 unknown, reconciliation FAILURE_HISTORY_UNAVAILABLE, zero observed active candidates, and no matching failure audit. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md. No DB mutation/run/dispatch occurred. Existing db:migrate calls drizzle-kit migrate for the full journal; no protected targeted-0395 path exists. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-224, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers. | Historical sections01/02/04 checkpoint 6b88efc57d1013a19c98e377b50714d6e218796b is resolved through merged PR945 at 1d09faf79086d836f2361f2016b5636f44a535b5, with identical PR-head/squash tree. Reuse integrated source and corrected implementation/HANDOFF.md; do not reopen PR945 or replay its checkpoint. Current 37 local focused tests pass; original/later browser receipts remain historical and normative acceptance partial. Comparison: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md. Section03/PR944 remains separate; current primary DB/source-trust/Runner actions and all existing predicates unchanged.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 120,
+  "generation": 121,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -2800,7 +2800,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.124642Z",
+  "updated_at": "2026-10-21T00:03:39.150344Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3021,6 +3021,16 @@
         "scope": "User-provided exact-admin diagnostics screenshot verifies the current production Backend DB fingerprint and reports migration 0395 pending with external_runtime absent, 88 pending entries, 41 unknown hashes, FAILURE_HISTORY_UNAVAILABLE and zero observed active candidates. No matching historical run-creation failure audit was found, so historical error-to-DB correlation is not proven. Source inspection found only full-journal drizzle-kit migrate; no targeted-0395 protected operation. No DB mutation, run creation, or dispatch.",
         "source_sha": "cf43f498a002e42e128837ab0f397f1b672fd930",
         "status": "PARTIAL"
+      },
+      {
+        "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+        "integrated_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+        "kind": "CHECKPOINT_SQUASH_RECONCILIATION",
+        "observed_at": "2026-10-21T00:03:39.147280+00:00",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.json",
+        "scope": "Historical checkpoints01/02/04 source integration/lineage and 37 existing local fixture tests only; no complete section/production/Runner acceptance.",
+        "source_sha": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",

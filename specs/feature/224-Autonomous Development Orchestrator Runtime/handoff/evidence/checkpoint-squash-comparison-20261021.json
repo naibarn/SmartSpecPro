@@ -1,0 +1,566 @@
+{
+  "observed_at": "2026-10-21T00:02:58.142145+00:00",
+  "source_sha": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+  "profile": "package",
+  "checkpoint_sha": "6b88efc57d1013a19c98e377b50714d6e218796b",
+  "pr_head_sha": "f157a6c92bcdc384e1adbd7f28a4658baf26ed42",
+  "squash_merge_sha": "1d09faf79086d836f2361f2016b5636f44a535b5",
+  "scope": "Read-only Git/PR/code and historical local browser receipts, plus focused disposable tests; no production effects or live provider/browser run.",
+  "discovery": "Targeted rg/bounded reads; specialized codebase index not exposed. Existing tools.spec_handoff and Deep Implement state writers used for reconciliation.",
+  "prs": [
+    {
+      "commits": [
+        "6b88efc57d1013a19c98e377b50714d6e218796b",
+        "f157a6c92bcdc384e1adbd7f28a4658baf26ed42"
+      ],
+      "files": [
+        "experiments/agents-sdk-codex-subscription/developer_workunit.py",
+        "experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs",
+        "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+        "experiments/agents-sdk-codex-subscription/spec_workunit_contract.py",
+        "experiments/agents-sdk-codex-subscription/tests/test_developer_workunit.py",
+        "experiments/agents-sdk-codex-subscription/tests/test_spec_workunit_continuation.py",
+        "experiments/agents-sdk-codex-subscription/tests/test_spec_workunit_contract.py",
+        "scripts/development-lifecycle/test_workspace_authority.py",
+        "scripts/development-lifecycle/workspace_authority.py",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-plan-tdd.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-plan.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-spec.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/deep_plan_config.json",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/index.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-01-local-fast-lane.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-02-atomic-continuation.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-03-ci-candidate-binding.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/sections/section-04-working-ui-acceptance.md"
+      ],
+      "headRefOid": "f157a6c92bcdc384e1adbd7f28a4658baf26ed42",
+      "mergeCommit": {
+        "oid": "1d09faf79086d836f2361f2016b5636f44a535b5"
+      },
+      "mergedAt": "2026-10-14T11:49:01Z",
+      "number": 945,
+      "state": "MERGED",
+      "title": "feat(dev): add authenticated local workunit fast lane",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/945"
+    },
+    {
+      "commits": [
+        "cb254a18a3fff4940cecf5fcb4e847da0da37e3c"
+      ],
+      "files": [
+        "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+        "experiments/agents-sdk-codex-subscription/tests/test_browser_completion.py"
+      ],
+      "headRefOid": "cb254a18a3fff4940cecf5fcb4e847da0da37e3c",
+      "mergeCommit": {
+        "oid": "2ed37da69040f178f761595578bc07bc535c2e17"
+      },
+      "mergedAt": "2026-10-14T15:55:37Z",
+      "number": 950,
+      "state": "MERGED",
+      "title": "Project run-bound Browser UAT status accurately",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/950"
+    },
+    {
+      "commits": [
+        "a52f17244b05e279ead70c8ee23d167d9619976a"
+      ],
+      "files": [
+        "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+        "experiments/agents-sdk-codex-subscription/tests/test_browser_completion.py"
+      ],
+      "headRefOid": "a52f17244b05e279ead70c8ee23d167d9619976a",
+      "mergeCommit": {
+        "oid": "b06e292939d468c64508ae460a04dd0900155cbb"
+      },
+      "mergedAt": "2026-10-14T16:03:54Z",
+      "number": 951,
+      "state": "MERGED",
+      "title": "Bind Browser UAT to durable receipt identity",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/951"
+    },
+    {
+      "commits": [
+        "cd56ad1cdb4df9c9ca29fcfeb36a9303064ca13f"
+      ],
+      "files": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/STATUS.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/history.jsonl",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/manifest.json"
+      ],
+      "headRefOid": "cd56ad1cdb4df9c9ca29fcfeb36a9303064ca13f",
+      "mergeCommit": {
+        "oid": "e553245454ec56f7fd7517788fa7bbc055c62477"
+      },
+      "mergedAt": "2026-10-14T16:30:55Z",
+      "number": 952,
+      "state": "MERGED",
+      "title": "docs(spec224): record local fast-lane browser acceptance",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/952"
+    },
+    {
+      "commits": [
+        "d826f71bde6c995260e7dbb9ae6925aef29b08a9"
+      ],
+      "files": [
+        ".github/workflows/ci.yml",
+        "apps/runner-app/src/checkpoint_store.rs",
+        "apps/runner-app/src/spec224_candidate.rs",
+        "apps/runner-app/src/workspace_registry.rs",
+        "apps/web/server/services/__tests__/spec224RequirementClosureContracts.test.ts",
+        "scripts/ci/candidate_gate.py",
+        "scripts/ci/tests/test_candidate_gate.py"
+      ],
+      "headRefOid": "d826f71bde6c995260e7dbb9ae6925aef29b08a9",
+      "mergeCommit": null,
+      "mergedAt": null,
+      "number": 944,
+      "state": "OPEN",
+      "title": "test: enforce candidate-bound autonomous completion gates",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/944"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "experiments/agents-sdk-codex-subscription/developer_workunit.py",
+      "checkpoint_blob": "958280c5526c9609f1fb2498e7ba2f2952f1d68f",
+      "merge_blob": "958280c5526c9609f1fb2498e7ba2f2952f1d68f",
+      "current_blob": "ea1adf9ba16da14db2a02b2e9f455b5832b68029",
+      "current_sha256": "c951a434547dac8ca730b11a3c4441409e3ee3d425c7e85952a694c83bf1218a",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [
+        {
+          "line": 109,
+          "text": "def _request_contract(request: dict[str, Any], *, identity: dict[str, str], workspace: Path,"
+        },
+        {
+          "line": 183,
+          "text": "def _verify_resume_scope(contract: dict[str, Any], request: dict[str, Any], binding: dict[str, Any],"
+        },
+        {
+          "line": 241,
+          "text": "def _validate_continuation_grant(grant: dict[str, Any] | None, *, contract: dict[str, Any],"
+        },
+        {
+          "line": 523,
+          "text": "def resume(args: argparse.Namespace) -> int:"
+        }
+      ],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/spec_workunit_contract.py",
+      "checkpoint_blob": "34373cee1c0eb9af36a50d37aa7aea6956559aae",
+      "merge_blob": "34373cee1c0eb9af36a50d37aa7aea6956559aae",
+      "current_blob": "c4082864854855ff162c79bbe2f06713237e5e05",
+      "current_sha256": "1b62441f3159156c05a8e977cd6d245c1bb7a10b3f3e0ef00eae56a8d46b4c29",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [
+        {
+          "line": 145,
+          "text": "def verify_developer_workspace_claim(root: Path, raw: dict[str, Any]) -> int:"
+        },
+        {
+          "line": 195,
+          "text": "def developer_workspace_write_guard(root: Path, raw: dict[str, Any]):"
+        },
+        {
+          "line": 289,
+          "text": "def load_contract(contract_path: Path, workspace: Path) -> WorkUnitContract:"
+        }
+      ],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/run_spec_workunit.py",
+      "checkpoint_blob": "473e849b2f3523ceb27a00c12b2a8c49b011dac5",
+      "merge_blob": "473e849b2f3523ceb27a00c12b2a8c49b011dac5",
+      "current_blob": "ae9575fbfa25858e08b65c9a06d41074c4b6ab86",
+      "current_sha256": "65e6f5bb695a30546e050ba092af2c252453b4df7541287a85dac60eb346ff0a",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [
+        {
+          "line": 460,
+          "text": "def project_browser_uat(contract: WorkUnitContract, run_id: str, receipts: list[dict[str, Any]],"
+        },
+        {
+          "line": 565,
+          "text": "def reconcile_interrupted_write_intents(store: DurableRunStore, contract: WorkUnitContract) -> list[dict[str, Any]]:"
+        }
+      ],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/harness/browser_uat.cjs",
+      "checkpoint_blob": "3895dc8a4b917b6332756cea7963f440b0049d4b",
+      "merge_blob": "3895dc8a4b917b6332756cea7963f440b0049d4b",
+      "current_blob": "3895dc8a4b917b6332756cea7963f440b0049d4b",
+      "current_sha256": "cebc0ab133948b0f920e2e3b0d6dd0b5f3766be7bcdfa66323282c59a948d91f",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": true,
+      "current_source_anchors": [
+        {
+          "line": 15,
+          "text": "async function main() {"
+        }
+      ],
+      "later_changes": "Exact same blob at inspected current source."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/tests/test_developer_workunit.py",
+      "checkpoint_blob": "bbefcf1b4decb8512ad185a2dcc123d77b4b978d",
+      "merge_blob": "bbefcf1b4decb8512ad185a2dcc123d77b4b978d",
+      "current_blob": "160d28c6529c0631094c2047be78f903ce186ef6",
+      "current_sha256": "eeff54bece064093f7a18918a902a4470a15f69420584c120ef333c4b7c50a6c",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/tests/test_spec_workunit_contract.py",
+      "checkpoint_blob": "b82654d70a966dc3a19ce477d3b20ebd43698cd4",
+      "merge_blob": "b82654d70a966dc3a19ce477d3b20ebd43698cd4",
+      "current_blob": "a3d45428df9db6145b9ab7edabbb95f8f18de797",
+      "current_sha256": "1a986288c47f229faede04bd6398339a9738cc75c95ea00f453ea8d341e4cbe8",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "experiments/agents-sdk-codex-subscription/tests/test_spec_workunit_continuation.py",
+      "checkpoint_blob": "f352a4e53e11b4261a4086fadc2811cbf61fb74f",
+      "merge_blob": "f352a4e53e11b4261a4086fadc2811cbf61fb74f",
+      "current_blob": "3b40c90e4fed6043fc5598fd524c3acdabe0a001",
+      "current_sha256": "a901efedfdb223a7291f553aecec4b2f2bb11abc4c00a864f2c7b90aa006a265",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "scripts/development-lifecycle/workspace_authority.py",
+      "checkpoint_blob": "bf94951ad7d4bb2eeee87315dfbef5ec4d8e4070",
+      "merge_blob": "bf94951ad7d4bb2eeee87315dfbef5ec4d8e4070",
+      "current_blob": "fdd4741eeb8a74346d0b35de91c3ab2b89aeb89d",
+      "current_sha256": "3e7cd6c9b34ae52e15c8f5d99f3a87f9493105a8d28d5baf82bcdda6087805c0",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [
+        {
+          "line": 1098,
+          "text": "def claim_registered_workspace("
+        }
+      ],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    },
+    {
+      "path": "scripts/development-lifecycle/test_workspace_authority.py",
+      "checkpoint_blob": "e653f8298417aa2e0effa7138200aec98df96f00",
+      "merge_blob": "e653f8298417aa2e0effa7138200aec98df96f00",
+      "current_blob": "2f9ec465dbd062f8fe557a31d2217ff7f623af4a",
+      "current_sha256": "828631ff73ecbd4455603ec28f8638145a5ebc4e1c78ee31cc56d5c20a9aa770",
+      "checkpoint_implementation_matches_merge": true,
+      "unchanged_since_merge": false,
+      "current_source_anchors": [],
+      "later_changes": "Preserved later owner changes; fresh focused tests check named assertions only, not whole-program equivalence."
+    }
+  ],
+  "historical_runs": [
+    {
+      "state_path": "/home/dev/.cache/codex/canonical-sources/developer-fast-lane-evidence/m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6/run-state.json",
+      "state_sha256": "c1d87e188b3a09d439451bb56c85448e624d9edaeb179eee41998f6462d7c136",
+      "runId": "65b217cf-414c-47d3-b14f-5800ac96b4dc",
+      "sourceRevision": "2a762faf2d1f66b46eaa5027be6047c5f0730e9c",
+      "status": "IMPLEMENTED_READY_FOR_USER_TEST",
+      "readyForUserTest": true,
+      "modelAcceptance": false,
+      "pendingToolReceiptCount": 0,
+      "restartCount": 2,
+      "finishedAt": "2026-10-14T11:32:41.717651+00:00",
+      "stored_browser_projection_status": "PENDING",
+      "browser_receipt_count": 15,
+      "browser_pass_receipts": 14,
+      "last_browser_receipt": {
+        "operationId": "39fb09885f5d1fd3",
+        "result": "PASS",
+        "sourceSha256": "7d2aeb49d600ec3810dadbf1bac2f447dab084de00468f52759df7c046f279d0",
+        "contractSourceSha256": "7d2aeb49d600ec3810dadbf1bac2f447dab084de00468f52759df7c046f279d0",
+        "taskId": "m2-miniapp-a17f91f7-af5a-422b-a581-9f7e7a79b3c6",
+        "workspaceId": "workspace:08d1af3d-a420-4d95-856d-5ccffcebf6f9",
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unexpectedConsoleErrors": []
+      },
+      "acceptance_findings": [
+        "The normative requirement covers general cents conservation and invalid-input rejection; the scoped examples provide only partial runtime coverage. The usable slice passes focused checks, and source inspection identifies no known code defect.",
+        "Remaining runtime evidence gaps include boundary amounts/counts, precision-sensitive people input 1.0000000000000001, correction clearing validation state, and Reset after an error clearing error text and ARIA attributes. The seven pytest cases check HTML structure rather than application behavior.",
+        "The limits of 10000 people and 90071992547409.91 dollars are implementation assumptions without explicit acceptance confirmation.",
+        "The test-file narrative understates current browser evidence and cumulative allowlist evidence. The baseline diff records three newly added files, so a pre-existing cents bug's root cause is not established."
+      ],
+      "limit": "Historical local experiment only; no current served runtime or Protected Runner acceptance."
+    },
+    {
+      "state_path": "/mnt/SmartSpecDev/evidence/spec224-browser-projection-20261015/live-final/b48e8bcd-dea9-4909-91cc-c6ab7ec984e4/run-state.json",
+      "state_sha256": "65cda1790c68c6baeb62fa4799d31bc8b2189adae43b77c4978c1173696f1120",
+      "runId": "c26fd841-cdb0-485d-bc43-c6ecf904ef4a",
+      "sourceRevision": "b06e292939d468c64508ae460a04dd0900155cbb",
+      "status": "IMPLEMENTED_READY_FOR_USER_TEST",
+      "readyForUserTest": true,
+      "modelAcceptance": false,
+      "pendingToolReceiptCount": 0,
+      "restartCount": 0,
+      "finishedAt": "2026-10-14T16:26:13.056367+00:00",
+      "stored_browser_projection_status": "PASS",
+      "browser_receipt_count": 7,
+      "browser_pass_receipts": 7,
+      "last_browser_receipt": {
+        "operationId": "7dfc10bbd7deac96",
+        "result": "PASS",
+        "sourceSha256": "5984657efb7bff8cbdfdc4292701eb4ab56b48a7feffd2ccb22d03ddeb2be974",
+        "contractSourceSha256": "5984657efb7bff8cbdfdc4292701eb4ab56b48a7feffd2ccb22d03ddeb2be974",
+        "taskId": "b48e8bcd-dea9-4909-91cc-c6ab7ec984e4",
+        "workspaceId": "workspace:a85eae47-604e-4c96-aa83-72748bd4a417",
+        "pageErrors": [],
+        "consoleErrors": [],
+        "unexpectedConsoleErrors": []
+      },
+      "acceptance_findings": [
+        "The acceptance criteria omit explicit checks for positive totals, people >= 1, general deterministic integer-cent allocation, visible-list semantics, and isolation/local assets. The supplied cumulative source and focused tests address these requirements within the four authorized files.",
+        "Full acceptance remains unproven: configured UAT confirms fractional-people rejection but does not explicitly establish its visible role=alert and aria-describedby association. Reset is checked before validation, so clearing displayed errors lacks browser evidence.",
+        "The supplemental browser test is skipped; its skip reason is absent from the receipt. Browser verification of validation/reset, pagination, keyboard navigation, and bounded rendering remains outstanding.",
+        "No concrete implementation defect or unsafe behavior was identified. Passing focused checks and configured UAT support user testing with the stated acceptance gaps."
+      ],
+      "limit": "Historical local experiment only; no current served runtime or Protected Runner acceptance."
+    }
+  ],
+  "checks": {
+    "source_sha": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+    "profile": "package",
+    "observed_at": "2026-10-21T00:01:16.473262+00:00",
+    "resource_evidence": {
+      "MemAvailable": "MemAvailable:   25581028 kB",
+      "disk_free_bytes": 44184276992
+    },
+    "checks": [
+      {
+        "command": [
+          "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "experiments/agents-sdk-codex-subscription/tests",
+          "-p",
+          "test_developer_workunit.py",
+          "-v"
+        ],
+        "started_at": "2026-10-21T00:01:16.473385+00:00",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "test_contract_binds_identity_source_paths_tools_and_expiry (test_developer_workunit.DeveloperWorkUnitProvisioningTests.test_contract_binds_identity_source_paths_tools_and_expiry) ... ok\ntest_contract_requires_explicit_paths_tests_and_acceptance (test_developer_workunit.DeveloperWorkUnitProvisioningTests.test_contract_requires_explicit_paths_tests_and_acceptance) ... ok\ntest_default_fast_lane_resume_after_three_day_scope_expiry_keeps_baseline_and_applies_bounded_continuation (test_developer_workunit.DeveloperWorkUnitProvisioningTests.test_default_fast_lane_resume_after_three_day_scope_expiry_keeps_baseline_and_applies_bounded_continuation) ... ok\ntest_resume_keeps_original_scope_receipt_and_accepts_only_server_bounded_continuation (test_developer_workunit.DeveloperWorkUnitProvisioningTests.test_resume_keeps_original_scope_receipt_and_accepts_only_server_bounded_continuation) ... ok\ntest_resume_scope_rejects_widened_request_and_expired_scope_without_grant (test_developer_workunit.DeveloperWorkUnitProvisioningTests.test_resume_scope_rejects_widened_request_and_expired_scope_without_grant) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.010s\n\nOK\n",
+        "outcome": "PASS"
+      },
+      {
+        "command": [
+          "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "experiments/agents-sdk-codex-subscription/tests",
+          "-p",
+          "test_spec_workunit_contract.py",
+          "-v"
+        ],
+        "started_at": "2026-10-21T00:01:26.207970+00:00",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "test_accepts_contract_bound_to_canonical_requirement_and_owned_workspace (test_spec_workunit_contract.WorkUnitContractTests.test_accepts_contract_bound_to_canonical_requirement_and_owned_workspace) ... ok\ntest_accepts_developer_fast_lane_only_with_authenticated_identity_and_live_registered_lease (test_spec_workunit_contract.WorkUnitContractTests.test_accepts_developer_fast_lane_only_with_authenticated_identity_and_live_registered_lease) ... ok\ntest_pytest_command_prefers_the_worktree_python_backend_environment (test_spec_workunit_contract.WorkUnitContractTests.test_pytest_command_prefers_the_worktree_python_backend_environment) ... ok\ntest_pytest_command_uses_the_active_runtime_interpreter (test_spec_workunit_contract.WorkUnitContractTests.test_pytest_command_uses_the_active_runtime_interpreter) ... ok\ntest_rejects_requirement_text_or_digest_not_matching_canonical_ledger (test_spec_workunit_contract.WorkUnitContractTests.test_rejects_requirement_text_or_digest_not_matching_canonical_ledger) ... ok\ntest_rejects_stale_revision (test_spec_workunit_contract.WorkUnitContractTests.test_rejects_stale_revision) ... ok\ntest_rejects_unowned_or_wrong_task_worktree (test_spec_workunit_contract.WorkUnitContractTests.test_rejects_unowned_or_wrong_task_worktree) ... ok\ntest_rejects_widened_authority_and_path_traversal (test_spec_workunit_contract.WorkUnitContractTests.test_rejects_widened_authority_and_path_traversal) ... ok\n\n----------------------------------------------------------------------\nRan 8 tests in 0.429s\n\nOK\n",
+        "outcome": "PASS",
+        "scope": "disposable local fixtures; no provider calls or production runtime"
+      },
+      {
+        "command": [
+          "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "experiments/agents-sdk-codex-subscription/tests",
+          "-p",
+          "test_spec_workunit_continuation.py",
+          "-v"
+        ],
+        "started_at": "2026-10-21T00:01:26.713846+00:00",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "test_distinct_rejections_and_successful_tools_do_not_trigger_replan (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_distinct_rejections_and_successful_tools_do_not_trigger_replan) ... ok\ntest_executed_patch_receipt_and_different_action_reset_dispatch_streak (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_executed_patch_receipt_and_different_action_reset_dispatch_streak) ... ok\ntest_identical_rejections_request_a_new_development_plan (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_identical_rejections_request_a_new_development_plan) ... ok\ntest_interrupted_write_reconciliation_records_exact_effect_without_rewriting (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_interrupted_write_reconciliation_records_exact_effect_without_rewriting) ... ok\ntest_legacy_contract_scope_is_recovered_from_durable_planner_request (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_legacy_contract_scope_is_recovered_from_durable_planner_request) ... ok\ntest_numbered_context_rejections_are_grouped_across_line_shifts (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_numbered_context_rejections_are_grouped_across_line_shifts) ... ok\ntest_rejection_scan_uses_tool_phase_identity_not_agents_runstate_uuid (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_rejection_scan_uses_tool_phase_identity_not_agents_runstate_uuid) ... ok\ntest_replanner_distinguishes_its_read_only_tools_from_implementer_tools (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_replanner_distinguishes_its_read_only_tools_from_implementer_tools) ... ok\ntest_review_evidence_includes_prior_iteration_source_and_test_receipts (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_review_evidence_includes_prior_iteration_source_and_test_receipts) ... ok\ntest_source_diff_includes_allowlisted_untracked_files (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_source_diff_includes_allowlisted_untracked_files) ... ok\ntest_successful_patch_resets_the_consecutive_rejection_streak (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_successful_patch_resets_the_consecutive_rejection_streak) ... ok\ntest_unexecuted_patch_dispatches_are_counted_separately_from_tool_receipts (test_spec_workunit_continuation.DeveloperRecoveryEvidenceTests.test_unexecuted_patch_dispatches_are_counted_separately_from_tool_receipts) ... ok\ntest_contract_scope_snapshot_allows_guidance_refresh_but_binds_authority (test_spec_workunit_continuation.RepeatedPatchRejectionTests.test_contract_scope_snapshot_allows_guidance_refresh_but_binds_authority) ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.170s\n\nOK\n",
+        "outcome": "PASS",
+        "scope": "disposable local fixtures; no provider calls or production runtime"
+      },
+      {
+        "command": [
+          "/tmp/agents-sdk-codex-subscription-venv/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "experiments/agents-sdk-codex-subscription/tests",
+          "-p",
+          "test_browser_completion.py",
+          "-v"
+        ],
+        "started_at": "2026-10-21T00:01:28.683307+00:00",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "test_browser_failed_receipt_stays_failed (test_browser_completion.BrowserCompletionTests.test_browser_failed_receipt_stays_failed) ... ok\ntest_browser_pass_and_independent_verification_complete (test_browser_completion.BrowserCompletionTests.test_browser_pass_and_independent_verification_complete) ... ok\ntest_browser_pass_does_not_complete_normative_acceptance (test_browser_completion.BrowserCompletionTests.test_browser_pass_does_not_complete_normative_acceptance) ... ok\ntest_missing_browser_receipt_is_pending (test_browser_completion.BrowserCompletionTests.test_missing_browser_receipt_is_pending) ... ok\ntest_pending_tool_receipt_prevents_browser_pass_projection (test_browser_completion.BrowserCompletionTests.test_pending_tool_receipt_prevents_browser_pass_projection) ... ok\ntest_receipt_for_old_workspace_is_rejected (test_browser_completion.BrowserCompletionTests.test_receipt_for_old_workspace_is_rejected) ... ok\ntest_resume_does_not_reuse_receipt_from_another_run (test_browser_completion.BrowserCompletionTests.test_resume_does_not_reuse_receipt_from_another_run) ... ok\ntest_tool_operation_id_must_match_durable_receipt (test_browser_completion.BrowserCompletionTests.test_tool_operation_id_must_match_durable_receipt) ... ok\ntest_wrong_source_receipt_is_rejected (test_browser_completion.BrowserCompletionTests.test_wrong_source_receipt_is_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 0.003s\n\nOK\n",
+        "outcome": "PASS",
+        "scope": "disposable local fixtures; no provider calls or production runtime"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "test_workspace_authority.WorkspaceAuthorityTests.test_authorized_local_claim_fences_stale_owner_and_records_receipt",
+          "test_workspace_authority.WorkspaceAuthorityTests.test_concurrent_local_reclaim_has_one_winner_and_one_transfer_receipt",
+          "-v"
+        ],
+        "started_at": "2026-10-21T00:01:30.261343+00:00",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "test_authorized_local_claim_fences_stale_owner_and_records_receipt (test_workspace_authority.WorkspaceAuthorityTests.test_authorized_local_claim_fences_stale_owner_and_records_receipt) ... ok\ntest_concurrent_local_reclaim_has_one_winner_and_one_transfer_receipt (test_workspace_authority.WorkspaceAuthorityTests.test_concurrent_local_reclaim_has_one_winner_and_one_transfer_receipt) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.343s\n\nOK\n",
+        "outcome": "PASS",
+        "scope": "disposable local fixtures; no provider calls or production runtime"
+      }
+    ]
+  },
+  "git_lineage": {
+    "original_resolved_after_exact_pr_head_fetch": "6b88efc57d1013a19c98e377b50714d6e218796b",
+    "checkpoint_in_pr_commits": true,
+    "pr_head_tree": "d0f8e476dad52d8db1cc5107992eb57bf68dae48",
+    "merged_tree": "d0f8e476dad52d8db1cc5107992eb57bf68dae48",
+    "pr_head_and_merge_trees_identical": true,
+    "original_checkpoint_is_main_ancestor": false,
+    "squash_merge_is_main_ancestor": true,
+    "checkpoint_to_pr_head_changed_paths": [
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl"
+    ],
+    "pr_head_to_merge_diff": [],
+    "fetch_command": [
+      "git",
+      "fetch",
+      "--no-tags",
+      "origin",
+      "f157a6c92bcdc384e1adbd7f28a4658baf26ed42"
+    ]
+  },
+  "sections": [
+    {
+      "section": "section-01-local-fast-lane",
+      "result": "SOURCE_INTEGRATED; scoped current tests pass; overall acceptance PARTIAL",
+      "reuse": "Existing authenticated Developer WorkUnit source/path/tool/budget contract and workspace provisioning; PR945 squash is canonical.",
+      "remaining": "Keep exact current primary DB/Runner/source-trust lane. Validate only changed local source/lease and remaining admission assertions; never reopen PR945 or rebuild Fast Lane."
+    },
+    {
+      "section": "section-02-atomic-continuation",
+      "result": "SOURCE_INTEGRATED; scoped current tests pass; extended recovery acceptance PARTIAL",
+      "reuse": "Atomic BEGIN IMMEDIATE ownership/fence claim; one-winner race test; write guard and exact-effect interrupted-write reconciliation.",
+      "remaining": "Historical section explicitly left extended stale-owner/replay vectors pending. Current 37 tests do not certify every live cross-host/process-crash vector, transport or full protected recovery."
+    },
+    {
+      "section": "section-04-working-ui-acceptance",
+      "result": "HARNESS_INTEGRATED; historical local browser PASS; normative acceptance NOT_COMPLETE",
+      "reuse": "Original run has actual PASS browser receipts and independent ready-for-user-test result. PR950/951 fixed run/workspace/source/tool receipt projection; PR952 integrated later local proof.",
+      "remaining": "Original run-state projection says PENDING while browser receipts pass; preserve as historical projection mismatch, not a fresh failure. Original and later runs keep modelAcceptance=false. Expanded browser criteria and current rendered/device evidence remain unverified; do not infer production acceptance or live preview."
+    }
+  ],
+  "separate_section03": {
+    "section": "section-03-ci-candidate-binding",
+    "pr": 944,
+    "observed_state": "OPEN",
+    "head_sha": "d826f71bde6c995260e7dbb9ae6925aef29b08a9",
+    "merged_sha": null,
+    "action": "Remains separate pending work; no change to branch/checks; do not mark complete from PR945/952."
+  },
+  "test_total": 37,
+  "conclusion": "All three checkpoint markers resolve through exact PR945 squash lineage. Reuse integrated source; recover merge-state metadata without replay. Keep checkpointed/nonaccepted state and preserve current primary blocker/action. Current scoped tests are local fixtures; browser evidence remains historical and normative acceptance partial.",
+  "closure_verification": {
+    "source_revision": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+    "checked_at": "2026-10-21T00:04:23.576740+00:00",
+    "outcome": "PASS",
+    "checks": [
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "validate",
+          "--spec-dir",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "checked_at": "2026-10-21T00:04:22.349162+00:00"
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "tools.spec_handoff",
+          "index",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "checked_at": "2026-10-21T00:04:23.398871+00:00"
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "checked_at": "2026-10-21T00:04:23.415480+00:00"
+      },
+      {
+        "command": [
+          "python3",
+          "skills/development-lifecycle/git_capabilities.py",
+          "inspect"
+        ],
+        "exit_code": 0,
+        "outcome": "PASS",
+        "checked_at": "2026-10-21T00:04:23.493894+00:00"
+      }
+    ],
+    "invariants": [
+      "3 historical checkpoint SHA/status retained; verified merged_main_sha recorded",
+      "Section03 still pending; primary WorkUnit/action/wait/reactivation unchanged",
+      "Every canonical requirement row and overall acceptance/deployment/verification status unchanged",
+      "No runtime implementation changed; old browser/run files never written",
+      "10 explicit task-owned files; no accidental secret/conflict"
+    ],
+    "test_total": 37,
+    "not_run": [
+      "fresh browser UAT",
+      "provider/model calls",
+      "Protected Runner execution",
+      "build/deploy",
+      "DB mutation",
+      "repository-wide typecheck"
+    ]
+  }
+}
