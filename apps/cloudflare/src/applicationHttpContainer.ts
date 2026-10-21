@@ -186,9 +186,13 @@ export class ApplicationHttpContainerController {
     if (request.headers.has("upgrade")) throw new Error("APPLICATION_HTTP_REALTIME_OWNER_REQUIRED");
     const port = this.container.getTcpPort(this.profile.runtime === "node-http" ? 3000 : 8000);
     const readinessPath = this.profile.runtime === "node-http" ? "/healthz" : "/health/live";
-    const readyUntil = Math.min(deadline, this.now() + 30_000);
+    // Registry placement plus the request-only API startup can exceed 30s.
+    // Count attempts from the bounded wait rather than cutting off after 100
+    // immediate connection refusals (only about 20s at the retry interval).
+    const readyUntil = Math.min(deadline, this.now() + 90_000);
+    const maxAttempts = Math.max(0, Math.ceil((readyUntil - this.now()) / 200));
     let ready = false;
-    for (let attempt = 0; attempt < 100 && this.now() < readyUntil; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts && this.now() < readyUntil; attempt++) {
       if (request.signal.aborted) throw new Error("APPLICATION_HTTP_CALLER_CANCELLED");
       try {
         const response = await port.fetch(`http://application.internal${readinessPath}`, {

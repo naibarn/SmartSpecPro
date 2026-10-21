@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "in_progress",
-      "next_action": "Actual namespace baseline c84/config05 and2apps qualified; real Node VM started/stopped but health timeout/503, Python never started. Canonical canaryc679 succeeded; rollbackca1 restoredcf66534d baseline, policy revoked. Integrate protected no-start status RPC + sanitized failure-phase diagnostics (43 Worker/scoped tsc PASS), build latest canonical Worker once with fresh31GiB scratch, use existing bounded owner policy/deploy to inspect actual spent budget and failure, then repair/requalify API/DB/auth/teardown. No prewarm, quota bypass, unrelated job cancellation or production cutover. Full origin exit NOT_ACCEPTED.",
+      "next_action": "Actual f820 diagnostics deployment589d succeeded and protected status200/no prewarm proved. Node readiness503 after22.265s persisted phase readiness, 100x200ms cutoff confirmed; API/DB startup not yet accepted. Canonical rollback6487 restoredf119d910 c84/config05 and policy revoked. Integrate90s bounded readiness/attempt correction (45 Worker/scoped tsc PASS), build canonical on existing approved home fallback, then new one-start180s profile and actual API/DB/auth/idle proof. fd8 expiry/Python path fixes91 real-PG/scoped +7Worker PASS; f820 full artifact/Worker PUBLISHED, readiness39555373677 SUCCESS. Production Linux and original DB preserved; full origin exit NOT_ACCEPTED.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "430947bbf",
-      "merged_main_sha": "430947bbf"
+      "checkpoint_sha": "f820cb7c9b4398a73bc288df1b1557a8b772195f",
+      "merged_main_sha": "f820cb7c9b4398a73bc288df1b1557a8b772195f"
     }
   },
   "pre_commit": {
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 69,
-  "updated_at": "2026-10-21T02:16:23.423946+00:00",
+  "generation": 70,
+  "updated_at": "2026-10-21T06:39:36.257030+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Actual namespace baseline c84/config05 and2apps qualified; real Node VM started/stopped but health timeout/503, Python never started. Canonical canaryc679 succeeded; rollbackca1 restoredcf66534d baseline, policy revoked. Integrate protected no-start status RPC + sanitized failure-phase diagnostics (43 Worker/scoped tsc PASS), build latest canonical Worker once with fresh31GiB scratch, use existing bounded owner policy/deploy to inspect actual spent budget and failure, then repair/requalify API/DB/auth/teardown. No prewarm, quota bypass, unrelated job cancellation or production cutover. Full origin exit NOT_ACCEPTED.",
+    "next_action": "Actual f820 diagnostics deployment589d succeeded and protected status200/no prewarm proved. Node readiness503 after22.265s persisted phase readiness, 100x200ms cutoff confirmed; API/DB startup not yet accepted. Canonical rollback6487 restoredf119d910 c84/config05 and policy revoked. Integrate90s bounded readiness/attempt correction (45 Worker/scoped tsc PASS), build canonical on existing approved home fallback, then new one-start180s profile and actual API/DB/auth/idle proof. fd8 expiry/Python path fixes91 real-PG/scoped +7Worker PASS; f820 full artifact/Worker PUBLISHED, readiness39555373677 SUCCESS. Production Linux and original DB preserved; full origin exit NOT_ACCEPTED.",
     "merged_main_sha": "e68c57ce38067f83b1b8d4ad846a2b264cfb024b",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

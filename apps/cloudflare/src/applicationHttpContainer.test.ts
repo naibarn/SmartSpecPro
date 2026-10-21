@@ -30,6 +30,28 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it("waits for a cold API beyond 100 immediate refusals without replaying the request or booting again", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture(), deadline = await f.controller.ensureRunning(); let probes = 0;
+      f.fetch.mockImplementation(async input => {
+        if (input instanceof Request) return new Response("actual API response");
+        probes++; f.advance(200);
+        if (probes < 200) throw new Error("port not ready");
+        return new Response(null, { status: 200 });
+      });
+      const response = f.controller.forward(new Request("http://application.internal/healthz"), deadline);
+      await vi.runAllTimersAsync();
+      expect(await (await response).text()).toBe("actual API response");
+      expect(probes).toBe(200); expect(f.container.start).toHaveBeenCalledOnce();
+      expect(f.fetch.mock.calls.filter(([input]) => input instanceof Request)).toHaveLength(1);
+    } finally { vi.useRealTimers(); }
+  });
+  it("never probes or forwards past the absolute application deadline", async () => {
+    const f = fixture(), deadline = await f.controller.ensureRunning(); f.advance(61000);
+    await expect(f.controller.forward(new Request("http://application.internal/healthz"), deadline)).rejects.toThrow("READINESS_UNAVAILABLE");
+    expect(f.fetch).not.toHaveBeenCalled(); expect(f.container.start).toHaveBeenCalledOnce();
+  });
   it("reports spent budget and safe failures without booting, inspecting processes or returning secrets", async () => {
     const f = fixture();
     expect(await f.controller.diagnostics()).toMatchObject({ running: false, starts: 0, failure: null });
