@@ -41,11 +41,11 @@
       "merged_main_sha": "e15f72f70b50bca1ebc902ac80826a91d4886a95"
     },
     "section-05-acceptance": {
-      "status": "in_progress",
-      "next_action": "Fix Python provider readiness from actual root cause: Python now reads encrypted enabled llm_providers Admin rows with shared AES-GCM and keeps provider_configs fallback; 17 focused Python tests pass. Run fast gate and integrate source to origin/main, publish paired exact-source images, then one bounded staging canary to verify provider readiness and DB/auth/idle. Production remains Linux; no database writes.",
+      "status": "checkpointed",
+      "next_action": "Provider readiness fix 9bdc429e8 is canonical on origin/main; 17 focused Python tests pass. Build canonical Node and Python HTTP images at exact source 9bdc429, publish through owned bounded image authority, then prepare one-start/180s staging canary and run verifier to prove Admin provider init, API/auth, original PostgreSQL and idle teardown. Always rollback/revoke afterward; no production ingress cutover.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "466ae31623b7ddfc0dbce7dd3d22f08996340a31",
-      "merged_main_sha": "466ae31623b7ddfc0dbce7dd3d22f08996340a31",
+      "checkpoint_sha": "9bdc429e8c7cfe9eee044e1b18e946822c9d94cb",
+      "merged_main_sha": "9bdc429e8c7cfe9eee044e1b18e946822c9d94cb",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 74,
-  "updated_at": "2026-10-21T09:18:55.274357+00:00",
+  "generation": 75,
+  "updated_at": "2026-10-21T09:20:10.501619+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Fix Python provider readiness from actual root cause: Python now reads encrypted enabled llm_providers Admin rows with shared AES-GCM and keeps provider_configs fallback; 17 focused Python tests pass. Run fast gate and integrate source to origin/main, publish paired exact-source images, then one bounded staging canary to verify provider readiness and DB/auth/idle. Production remains Linux; no database writes.",
-    "merged_main_sha": "466ae31623b7ddfc0dbce7dd3d22f08996340a31",
+    "next_action": "Provider readiness fix 9bdc429e8 is canonical on origin/main; 17 focused Python tests pass. Build canonical Node and Python HTTP images at exact source 9bdc429, publish through owned bounded image authority, then prepare one-start/180s staging canary and run verifier to prove Admin provider init, API/auth, original PostgreSQL and idle teardown. Always rollback/revoke afterward; no production ingress cutover.",
+    "merged_main_sha": "9bdc429e8c7cfe9eee044e1b18e946822c9d94cb",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -72,7 +72,8 @@
       "Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.",
       "Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion.",
       "Node application API/auth/real PostgreSQL and Python hosted API/auth/DB/idle teardown are not yet accepted; latest valid full API probe absent after canary rollback.",
-      "Hosted Node/Python user/auth and PostgreSQL checks passed, but aggregate Python health returned 503 because enabled Admin providers were not loaded; exact provider adapter fix is ready for image rebuild and canary verification."
+      "Hosted Node/Python user/auth and PostgreSQL checks passed, but aggregate Python health returned 503 because enabled Admin providers were not loaded; exact provider adapter fix is ready for image rebuild and canary verification.",
+      "The 503 provider-readiness repair is source integrated but still requires rebuilt Python image and hosted canary; full production cutover and non-HTTP workflows remain unaccepted."
     ],
     "outcome": "NOT_ACCEPTED"
   }
