@@ -446,6 +446,7 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(prepare).toHaveBeenCalledOnce();
     if (namespaceOnly) {
       expect(ensure).not.toHaveBeenCalled();
+      expect(f.metadata().limits).toBeUndefined();
       expect(f.metadata().observability).toBeUndefined();
       expect(f.metadata().bindings.some((b: any) => /^(?:NODE_HTTP|PYTHON_HTTP|CLOUDFLARE_(?:NODE|PYTHON)_HTTP_|CLOUDFLARE_APPLICATION_CANARY_TOKEN|CLOUDFLARE_CONTAINER_POLICY)/.test(b.name))).toBe(false);
       expect(f.metadata().exports.StagingNodeHttpContainer.container).toBe(`${namespace}-node-http`);
@@ -457,6 +458,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       expect(cloudflareOriginDescriptorDigest(changed)).not.toBe(f.config.configurationDigest);
     } else {
       expect(ensure).toHaveBeenCalledOnce();
+      expect(f.metadata().limits).toEqual({ cpu_ms: 300_000 });
       expect(f.metadata().observability).toMatchObject({ enabled: true, logs: { enabled: true, invocation_logs: false } });
       expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
     }

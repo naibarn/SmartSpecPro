@@ -251,6 +251,10 @@ export function createCloudflareStagingApiTransport(input: {
       main_module: bundle.mainModule,
       compatibility_date: bundle.compatibilityDate,
       compatibility_flags: ["nodejs_compat"],
+      // Container cold starts are performed inside the still-open Worker
+      // request. Workers Paid defaults CPU to 30s, which can terminate the
+      // readiness bridge before the separately bounded container deadline.
+      ...(http && !origin?.descriptor.applicationHttpPhase ? { limits: { cpu_ms: 300_000 } } : {}),
       ...(http ? { exports: http.exports, containers: http.containers } : {}),
       ...(origin?.descriptor.applicationHttp?.startupDiagnostics === "container-logs" && !origin.descriptor.applicationHttpPhase ? {
         observability: { enabled: true, head_sampling_rate: 1, logs: { enabled: true, invocation_logs: false, head_sampling_rate: 1 } },
