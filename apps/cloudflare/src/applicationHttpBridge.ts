@@ -9,6 +9,8 @@ export type ApplicationHttpBindings = {
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_CONTAINER_POLICY?: string;
   CLOUDFLARE_APPLICATION_CANARY_TOKEN?: string;
+  /** Default-off switch for staging full HTTP ingress to the bounded app Container. */
+  CLOUDFLARE_APPLICATION_HTTP_TRAFFIC?: string;
   /** Explicit, default-off migration switch for the three Node WebSocket routes. */
   CLOUDFLARE_CONTAINER_REALTIME_ROUTES?: string;
   AUTH_ORIGIN_TOKEN?: string;

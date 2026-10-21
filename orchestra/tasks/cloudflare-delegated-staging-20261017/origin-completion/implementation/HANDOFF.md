@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `102`
-- Updated (UTC): `2026-10-21T17:06:38.825197+00:00`
+- State generation: `103`
+- Updated (UTC): `2026-10-21T17:42:54.161401+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `8705685f0004794889a500d5af69c9203ab80480`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified.
+- Next action: Implement default-off staging full HTTP ingress to the existing bounded Node Container for manifest-classified origin routes, with exact public-origin attestation and no fallback replay; run focused runtime tests.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 8705685f0004794889a500d5af69c9203ab80480 | 8705685f0004794889a500d5af69c9203ab80480 | Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 8705685f0004794889a500d5af69c9203ab80480 | 8705685f0004794889a500d5af69c9203ab80480 | Implement default-off staging full HTTP ingress to the existing bounded Node Container for manifest-classified origin routes, with exact public-origin attestation and no fallback replay; run focused runtime tests. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

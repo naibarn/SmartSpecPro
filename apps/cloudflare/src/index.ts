@@ -24,6 +24,7 @@ import { dispatchManifestRoute } from "./nativeApi";
 import { handleCanonicalWorkflowRequest, isCanonicalWorkflowEnabled } from "./workflowRuntime";
 import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
 import { isCanonicalIntakeTransportEnabled } from "./canonicalIntakeTransport";
+import { dispatchApplicationHttpIngress } from "./applicationHttpIngress";
 
 const failClosedConsumer = createFailClosedConsumer();
 const MAX_PUBLISH_BODY_BYTES = 16 * 1024;
@@ -200,7 +201,12 @@ export function createCloudflareWorker(
       const manifestResponse = await dispatchManifestRoute(request, env);
       if (manifestResponse) return manifestResponse;
       const apiRoute = classifyApiRoute(request.method, url.pathname);
-      if (apiRoute.classification === "ORIGIN_PROXY" ||
+      if (apiRoute.classification === "ORIGIN_PROXY") {
+        const applicationResponse = await dispatchApplicationHttpIngress(request, apiRoute, env);
+        if (applicationResponse) return applicationResponse;
+        return proxyAuthToOrigin(request, env);
+      }
+      if (
           (apiRoute.classification === "NATIVE_RUNTIME_ONLY" && apiRoute.id !== "unmatched" &&
             !apiRoute.id.startsWith("websocket"))) {
         return proxyAuthToOrigin(request, env);

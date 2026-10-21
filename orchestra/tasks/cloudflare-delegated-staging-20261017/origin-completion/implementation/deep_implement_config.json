@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified.",
+      "next_action": "Implement default-off staging full HTTP ingress to the existing bounded Node Container for manifest-classified origin routes, with exact public-origin attestation and no fallback replay; run focused runtime tests.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "8705685f0004794889a500d5af69c9203ab80480",
       "merged_main_sha": "8705685f0004794889a500d5af69c9203ab80480",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 102,
-  "updated_at": "2026-10-21T17:06:38.825197+00:00",
+  "generation": 103,
+  "updated_at": "2026-10-21T17:42:54.161401+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Current expanded migration inventory is integrated at 8705685f0004794889a500d5af69c9203ab80480. Next implement or prove a secure retained-PostgreSQL data path for app Containers, migrate job families one at a time with single-owner settlement, and live-qualify the default-off realtime Container bridge. Overall migration not accepted and production remains unmodified.",
+    "next_action": "Implement default-off staging full HTTP ingress to the existing bounded Node Container for manifest-classified origin routes, with exact public-origin attestation and no fallback replay; run focused runtime tests.",
     "merged_main_sha": "8705685f0004794889a500d5af69c9203ab80480",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
