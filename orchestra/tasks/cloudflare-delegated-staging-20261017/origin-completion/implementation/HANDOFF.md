@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `81`
-- Updated (UTC): `2026-10-21T11:48:19.399958+00:00`
+- State generation: `83`
+- Updated (UTC): `2026-10-21T12:17:45.038520+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `d25102b0f9ccce9a1334e1988023bad189840573`
+- Latest recorded merged Main SHA: `aac6d9069195d222fc01f690947a94219e1fd5ab`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback.
+- Next action: Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | d25102b0f9ccce9a1334e1988023bad189840573 | d25102b0f9ccce9a1334e1988023bad189840573 | Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | aac6d9069195d222fc01f690947a94219e1fd5ab | aac6d9069195d222fc01f690947a94219e1fd5ab | Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -38,6 +38,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Canary preparation found the same workspace-package TS import boundary in origin and media contracts; 04c5dda6f moves these contracts inside the backend artifact and adds parity coverage. A temporary image policy/grant was revoked before any image build or container start.
 - 36b3a273 staging Node canary returned 503 after 30.37s; health not accepted. Container log query returned zero rows, while the prior failure diagnostic timestamp was stale. Need current Container runtime state/exit code to distinguish process exit from unresolved startup/readiness.
 - 97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary.
+- Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.
+- aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.
 
 ## Resume
 

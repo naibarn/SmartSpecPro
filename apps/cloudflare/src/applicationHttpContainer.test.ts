@@ -77,6 +77,12 @@ describe("bounded private application HTTP compute", () => {
     f.container.getState.mockResolvedValue({ status: "unsafe-provider-detail" } as never);
     expect(await f.controller.diagnostics()).toMatchObject({ containerState: null });
   });
+  it("bounds a stalled provider getState call without blocking lifecycle diagnostics", async () => {
+    const f = fixture();
+    f.container.getState.mockReturnValue(new Promise(() => {}) as never);
+    await expect(f.controller.diagnostics()).resolves.toMatchObject({ running: false, starts: 0, containerState: null, failure: null });
+    expect(f.container.start).not.toHaveBeenCalled();
+  });
   it("reports spent budget and safe failures without booting, inspecting processes or returning secrets", async () => {
     const f = fixture();
     expect(await f.controller.diagnostics()).toMatchObject({ running: false, starts: 0, failure: null });

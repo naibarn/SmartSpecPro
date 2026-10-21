@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback.",
+      "next_action": "Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
-      "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
+      "checkpoint_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
+      "merged_main_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
       "session_id": "codex-cloudflare-native-completion-20261021"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 81,
-  "updated_at": "2026-10-21T11:48:19.399958+00:00",
+  "generation": 83,
+  "updated_at": "2026-10-21T12:17:45.038520+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback.",
-    "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
+    "next_action": "Bound Container.getState diagnostics to one second so a stalled provider RPC cannot hang the protected status route; focused Cloudflare tests/check pass. Integrate, rebuild exact revision and image pair using TMPDIR=/tmp, deploy staging, then perform a single Node canary with concurrent status and request evidence; rollback immediately and record final instance inventory.",
+    "merged_main_sha": "aac6d9069195d222fc01f690947a94219e1fd5ab",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -78,7 +78,9 @@
       "Initial runtime fix exposed a packaging boundary: shared workspace source cannot be imported from the standalone Linux artifact. ad08ef098 adds a backend-local contract with parity coverage; exact current-main build and runtime validation remain pending.",
       "Canary preparation found the same workspace-package TS import boundary in origin and media contracts; 04c5dda6f moves these contracts inside the backend artifact and adds parity coverage. A temporary image policy/grant was revoked before any image build or container start.",
       "36b3a273 staging Node canary returned 503 after 30.37s; health not accepted. Container log query returned zero rows, while the prior failure diagnostic timestamp was stale. Need current Container runtime state/exit code to distinguish process exit from unresolved startup/readiness.",
-      "97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary."
+      "97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary.",
+      "Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.",
+      "aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start."
     ],
     "outcome": "NOT_ACCEPTED"
   }

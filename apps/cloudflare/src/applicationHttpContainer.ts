@@ -108,8 +108,14 @@ export class ApplicationHttpContainerController {
 
   private async readContainerState(): Promise<ContainerRuntimeState | null> {
     if (typeof this.container.getState !== "function") return null;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const raw = await this.container.getState();
+      const raw = await Promise.race([
+        this.container.getState(),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error("APPLICATION_HTTP_CONTAINER_STATE_TIMEOUT")), 1_000);
+        }),
+      ]);
       const statuses = new Set(["provisioning", "running", "healthy", "stopping", "stopped", "stopped_with_code", "failed", "unhealthy", "inactive", "unknown"]);
       if (!raw || typeof raw !== "object") return null;
       const value = raw as Record<string, unknown>;
@@ -123,6 +129,8 @@ export class ApplicationHttpContainerController {
       };
     } catch {
       return null;
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
   }
 
