@@ -54,12 +54,16 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
           if (!bridge || typeof bridge.fetch !== "function") throw Error();
           await ctx.container!.interceptOutboundHttp(applicationHttpHostname(target), bridge);
         }
-        await this.controller.restore();
+        await this.controller.restore({ deferInactivityTimeout: true });
       } catch (error) {
         await this.controller.recordFailure(error).catch(() => undefined);
         if (ctx.container?.running) await ctx.container.destroy("application private bridge unavailable");
         throw new Error("APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED");
       }
+    }).then(async () => {
+      if (!ctx.container?.running) return;
+      try { await this.controller.applyInactivityTimeout(); }
+      catch (error) { await this.controller.recordFailure(error).catch(() => undefined); }
     });
   }
 
@@ -67,9 +71,10 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
     if (request.headers.has("upgrade")) return new Response(null, { status: 426 });
     if (request.signal.aborted) return new Response(null, { status: 499 });
     try {
-      const deadline = await this.ctx.blockConcurrencyWhile(() => this.controller.ensureRunning());
+      const deadline = await this.ctx.blockConcurrencyWhile(() => this.controller.ensureRunning({ deferInactivityTimeout: true }));
       // HTTP I/O stays outside the 30-second concurrency gate. Cleanup alarms
       // and the image's independent supervisor remain able to enforce expiry.
+      await this.controller.applyInactivityTimeout();
       return await this.controller.forward(request, deadline);
     } catch (error) {
       await this.controller.recordFailure(error).catch(() => undefined);

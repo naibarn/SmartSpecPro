@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Integrate safe runtime-verification diagnostics; rebuild exact canonical source and paired Node/Python images. Retry bounded Node-only staging verification and capture whether /healthz (with HTTP status), SPA, or origin auth fails. Roll back and inspect state if failure; do not start Python until Node passes.",
+      "next_action": "Integrate bounded Container idle-timeout control-plane call outside Durable Object critical section; canonical-build exact Main SHA and run a single bounded Node-only staging canary. Keep Python and production untouched until Node health passes.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "pending",
       "merged_main_sha": "pending",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 87,
-  "updated_at": "2026-10-21T14:20:00+00:00",
+  "generation": 88,
+  "updated_at": "2026-10-21T14:52:33.420921+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Integrate safe runtime-verification diagnostics; rebuild exact canonical source and paired Node/Python images. Retry bounded Node-only staging verification and capture whether /healthz (with HTTP status), SPA, or origin auth fails. Roll back and inspect state if failure; do not start Python until Node passes.",
+    "next_action": "Integrate bounded Container idle-timeout control-plane call outside Durable Object critical section; canonical-build exact Main SHA and run a single bounded Node-only staging canary. Keep Python and production untouched until Node health passes.",
     "merged_main_sha": "pending",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [

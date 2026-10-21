@@ -111,6 +111,33 @@ describe("bounded private application HTTP compute", () => {
     });
   });
 
+  it("keeps Container control-plane idle-bound calls outside the DO critical-section path", async () => {
+    const f = fixture();
+    let finishIdleBound!: () => void;
+    f.container.setInactivityTimeout.mockReturnValue(new Promise<void>(resolve => { finishIdleBound = resolve; }));
+    const deadline = await f.controller.ensureRunning({ deferInactivityTimeout: true });
+    expect(f.container.start).toHaveBeenCalledOnce();
+    expect(f.container.setInactivityTimeout).not.toHaveBeenCalled();
+    const setting = f.controller.applyInactivityTimeout();
+    await Promise.resolve();
+    expect(f.container.setInactivityTimeout).toHaveBeenCalledWith(10_000);
+    let completed = false;
+    void setting.then(() => { completed = true; });
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    finishIdleBound();
+    await setting;
+    expect(await f.controller.forward(new Request("http://application.internal/healthz"), deadline)).toBeInstanceOf(Response);
+  });
+
+  it("destroys the instance when the deferred idle bound cannot be installed", async () => {
+    const f = fixture();
+    await f.controller.ensureRunning({ deferInactivityTimeout: true });
+    f.container.setInactivityTimeout.mockRejectedValueOnce(new Error("idle unavailable"));
+    await expect(f.controller.applyInactivityTimeout()).rejects.toThrow("idle unavailable");
+    expect(f.container.destroy).toHaveBeenCalledOnce();
+  });
+
   it("restores idle and absolute bounds across DO restarts without extending or booting twice", async () => {
     const f = fixture();
     const deadline = await f.controller.ensureRunning();

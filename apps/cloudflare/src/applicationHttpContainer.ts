@@ -98,6 +98,7 @@ export class ApplicationHttpContainerController {
   private phase = "initializing";
   private containerExitOutcome: ContainerExit | null = null;
   private containerMonitorStarted = false;
+  private inactivityTimeoutPromise: Promise<void> | null = null;
   constructor(
     private readonly container: NativeContainer, private readonly storage: Storage,
     private readonly profile: ApplicationHttpProfile, private readonly environment: Record<string, string>,
@@ -190,7 +191,7 @@ export class ApplicationHttpContainerController {
 
   /** Call under the DO concurrency gate. Reserve worst-case compute and persist
    * the cleanup alarm BEFORE boot, including a boot with an uncertain response. */
-  async ensureRunning() {
+  async ensureRunning(options: { deferInactivityTimeout?: boolean } = {}) {
     this.phase = "scope";
     let scope: string;
     try { scope = await this.scope(); }
@@ -224,7 +225,7 @@ export class ApplicationHttpContainerController {
       try {
         this.phase = "restore-bounds";
         await this.storage.setAlarm(previous.activeUntil);
-        await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000);
+        if (!options.deferInactivityTimeout) await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000);
         this.watchContainerExit();
       } catch (error) {
         await this.container.destroy("application cleanup bounds unavailable");
@@ -241,14 +242,29 @@ export class ApplicationHttpContainerController {
     const env = applicationEnvironment(this.profile, this.environment, deadline);
     await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline });
     await this.storage.setAlarm(deadline);
+    this.inactivityTimeoutPromise = null;
     this.phase = "start";
     this.container.start({ image: this.profile.image, instance: this.profile.instance, env,
       enableInternet: true, labels: { scope } });
     this.watchContainerExit();
     this.phase = "idle-bound";
-    try { await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000); }
-    catch (error) { await this.container.destroy("application idle bound unavailable"); throw error; }
+    if (!options.deferInactivityTimeout) await this.applyInactivityTimeout();
     return deadline;
+  }
+
+  /** Provider calls that can wait on Container control plane must stay outside
+   * DurableObjectState.blockConcurrencyWhile's 30-second critical section. */
+  async applyInactivityTimeout() {
+    if (!this.inactivityTimeoutPromise) {
+      this.inactivityTimeoutPromise = Promise.resolve().then(() => this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000))
+        .then(() => undefined)
+        .catch(async error => {
+          await this.container.destroy("application idle bound unavailable");
+          this.inactivityTimeoutPromise = null;
+          throw error;
+        });
+    }
+    await this.inactivityTimeoutPromise;
   }
 
   async forward(request: Request, deadline: number) {
@@ -295,8 +311,8 @@ export class ApplicationHttpContainerController {
   }
 
   /** Constructor recovery restores bounds for existing compute and never boots. */
-  async restore() {
-    if (this.container.running) await this.ensureRunning();
+  async restore(options: { deferInactivityTimeout?: boolean } = {}) {
+    if (this.container.running) await this.ensureRunning(options);
   }
 
   async expire() {

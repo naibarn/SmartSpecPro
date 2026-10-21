@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `87`
-- Updated (UTC): `2026-10-21T14:20:00+00:00`
+- State generation: `88`
+- Updated (UTC): `2026-10-21T14:52:33.420921+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `d8f43a2b3e3929f86d227f6911a9fe8192a1eb9f`
+- Latest recorded merged Main SHA: `pending`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Build and stage the safe runtime-verification diagnostic improvement in this checkpoint. Exact d8f43a2b canonical build and both digest-pinned images are ready; Cloudflare prepared both images and accepted the Worker version, but deployment verification returned generic `CLOUDFLARE_STAGING_RUNTIME_VERIFICATION_FAILED`. Automatic rollback to baseline deployment `de3fb538-aef0-4064-bd74-2efebe901792` passed and temporary policy was revoked; staging `/healthz` is 200. New transport diagnostics distinguish health/SPA/origin-auth failure and preserve the health HTTP status. Rebuild exact integrated source, then perform one bounded Node-only staging validation; do not start Python until Node health/status passes.
+- Next action: Integrate bounded Container idle-timeout control-plane call outside Durable Object critical section; canonical-build exact Main SHA and run a single bounded Node-only staging canary. Keep Python and production untouched until Node health passes.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | pending | pending | d8f43a2b canonical artifact and paired images passed registry verification and Cloudflare image preparation. Worker deployment was accepted but runtime verification failed with a generic error; automatic rollback to baseline deployment de3fb538-aef0-4064-bd74-2efebe901792 passed, policy revoked, staging `/healthz` returned 200. Added safe health/SPA/origin-auth diagnostic classification with HTTP status capture; 58 focused tests pass. Integrate this checkpoint, rebuild exact main and paired images, then rerun bounded Node-only staging verification. Python was not started. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261021 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | pending | pending | Integrate bounded Container idle-timeout control-plane call outside Durable Object critical section; canonical-build exact Main SHA and run a single bounded Node-only staging canary. Keep Python and production untouched until Node health passes. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -41,8 +41,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Retry fix is integrated and covered by 37 transport tests; canonical build and staging proof remain pending. ESLint was unavailable because no repository ESLint configuration exists and pnpm resolved system ESLint 6.4.
 - aac6d906 deployed and then rolled back to baseline after protected node/status timed out; Cloudflare instance inventory showed no new container start and worker healthz remained 200. Telemetry query returned zero container events. Root cause is inferred to be unbounded Container.getState in diagnostics; bound it and retest before any further paid start.
 - dbefac6a deployment was safely rolled back; the fixed runtime-only Durable Object name reused old persisted lifecycle state/configuration across immutable deployments. Versioned DO identity fix 13943dfd1 is integrated and tested, but exact-SHA build/image/staging proof remains pending.
-- 5ce4a0f7 exact canonical build/artifact and both digest-pinned HTTP images were published; image preparation and Worker deploy each reported zero Container starts. Status proved the new configRef-derived Node DO began with starts=0 and matching configuration. One authorized Node health probe reserved the 180-second/one-start budget but returned 503 in 476ms; status then showed starts=1, running=false, containerState=null, failure=null. Provider app readback showed active=0/starting=0 and inventory contained only old stopped images, so the actual placement/image/runtime versus private bridge failure remains unproven. Cloudflare Logs Explorer dataset listing returned an empty list; app observability logs are enabled. No Python start was attempted. Rollback deployment c17e1176-7357-4cca-bc29-fee210114fc5 to baseline config 05b032... completed and revoked the temporary policy; staging `/healthz` returned 200 afterward. Production DNS/cutover was not touched.
-- Diagnostic retry build for current main `fe59aecd7ae0d458a2e49f5e0afa7a9817d7505d` was classified RESOURCE_BLOCKED after pnpm failed with ENOSPC: approved canonical source volume had 38 MB free at failure and 1.1 GB after removing only the failed partial workspace and verified disposable prior 5ce build workspace. Do not remove unrelated canonical source workspaces or shared pnpm cache to force this build; resume when approved source volume has adequate free capacity.
+- d8f43a2b staging deployment auto-rolled back after generic runtime verification failure; root diagnostic gap is being fixed by preserving safe check category/status. Current staging healthz 200; production untouched; Python unstarted.
 
 ## Resume
 
@@ -50,5 +49,3 @@ on resume, reconcile recorded SHA values with Git/PR state.
 2. Check current Git HEAD, actual commits, worktree ownership and PR merge status.
 3. Recover any committed-but-unrecorded or merged-but-unrecorded work before replaying.
 4. Continue the next incomplete step; do not reset dirty files or re-open merged PRs.
-
-- 2026-10-21 d8f43a2b staging retry: free-space issue was avoided by using `/mnt/SmartSpecDev/tmp` (52 GB available). The exact canonical artifact and both image receipts are valid. Cloudflare image preparation stayed pending for several minutes, then both Node and Python returned ready. Worker upload and deployment API calls succeeded; application-level runtime verification failed generically. Automated rollback to baseline `de3fb538-aef0-4064-bd74-2efebe901792` was verified and policy revoked. Public staging healthz returned 200. Root cause was not observable because `verifyRuntime` collapsed health, SPA, and origin-auth failures into one boolean. Added safe diagnostic categories and health HTTP status; focused transport/executor tests pass (58). No explicit container canary probe was made; Python was not started. Production remains untouched.
