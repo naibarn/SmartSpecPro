@@ -4,7 +4,7 @@ import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 
 /** One fixed canonical image recipe/publication, never VM activation or
  * arbitrary commands. Uses the existing staging policy and worker_jobs. */
-export const HTTP_IMAGE_PROVISION_CONTRACT = "cloudflare-staging-http-image-provision-v1";
+export const HTTP_IMAGE_PROVISION_CONTRACT = "cloudflare-staging-http-image-v1";
 export const HTTP_IMAGE_PROVISION_JOB = "cloudflare.staging.http.image.provision";
 export const HTTP_IMAGE_PROVISION_GRANT = "cloudflare.staging-http-image-provision-grant.v1";
 export const HTTP_IMAGE_BASES = {

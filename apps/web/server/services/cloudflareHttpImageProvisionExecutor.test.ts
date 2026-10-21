@@ -14,7 +14,7 @@ function fixture() {
   const runtime = { resolveGrant: vi.fn(async () => grant), verifyExecutor: vi.fn(async () => grant.executorId),
     resolveAccount: vi.fn(async () => grant.accountRef), withCredential: vi.fn(async (_scope, operation) => operation("private-fixture")),
     loadCheckpoint: vi.fn(async () => null), saveCheckpoint: vi.fn(), createPorts: vi.fn() };
-  const contractVersion = "cloudflare-staging-http-image-provision-v1";
+  const contractVersion = "cloudflare-staging-http-image-v1";
   const input = { context: { jobType: "cloudflare.staging.http.image.provision", contractVersion, jobId: grant.jobId,
     tenantId: grant.tenantId, requestedByUserId: 1, attempt: 1, createdAt: new Date().toISOString(),
     retryPolicy: { deadlineMode: "fixed", deadlineMs: 600_000 },

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "../cloudflareHttpImageProvisionContract";
+import { validateJobDefinition } from "../jobCanonicalization";
 
 import {
   CloudflareQueueHttpJobTransportAdapter,
@@ -7,6 +9,15 @@ import {
 } from "../jobTransportAdapters";
 
 describe("job transport adapters", () => {
+  it("admits HTTP image jobs into the real canonical envelope and PostgreSQL-only transport", () => {
+    const input = { jobType: HTTP_IMAGE_PROVISION_JOB, executionClass: "long" as const, contractVersion: HTTP_IMAGE_PROVISION_CONTRACT };
+    expect(() => validateJobDefinition({ ...input, tenantId: "tenant-test", requestedByUserId: 1, input: {},
+      retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 5000, jitter: "none", deadlineMs: 600000, allowedErrorClasses: ["retryable"] },
+      timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 600000 } })).not.toThrow();
+    expect(new PostgresPullJobTransportAdapter().supports(input)).toBe(true);
+    expect(new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "fixture").supports(input)).toBe(false);
+    expect(new PostgresPullJobTransportAdapter().supports({ ...input, contractVersion: HTTP_IMAGE_PROVISION_CONTRACT + "-unknown" })).toBe(false);
+  });
   it("admits protected database provisioning on PostgreSQL pull and rejects Cloudflare queue execution", () => {
     const postgres = new PostgresPullJobTransportAdapter();
     const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
