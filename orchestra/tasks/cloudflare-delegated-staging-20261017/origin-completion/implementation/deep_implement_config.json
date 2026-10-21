@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "HTTP staging qualification for exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 is complete and rolled back cleanly. Continue independent implementation for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance. No production target/policy exists today; do not attempt production rollout outside an exact existing platform/provider authority decision.",
+      "next_action": "Expanded objective is full Debian-to-Cloudflare application/runtime migration with PostgreSQL retained. Inventory and migration waves are recorded in implementation-plan.md. Next: resolve the Container-to-retained-PostgreSQL data path and service-family ownership, then implement/qualify staging runtime slices; production target/policy/DNS authority remains absent.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "ae269ee025a806b2bdc58bc7a0737a79065bafee",
       "merged_main_sha": "c44a51b5c",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 94,
-  "updated_at": "2026-10-21T15:40:54.145205+00:00",
+  "generation": 96,
+  "updated_at": "2026-10-21T16:58:08.113876+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "HTTP staging qualification for exact integrated SHA dbcaa592a8f402569360c811c78a1ddc563c6a54 is complete and rolled back cleanly. Continue independent implementation for public ingress, durable storage/audit, canonical non-HTTP jobs, realtime, and full tenant/OAuth/2FA acceptance. No production target/policy exists today; do not attempt production rollout outside an exact existing platform/provider authority decision.",
+    "next_action": "Expanded objective is full Debian-to-Cloudflare application/runtime migration with PostgreSQL retained. Inventory and migration waves are recorded in implementation-plan.md. Next: resolve the Container-to-retained-PostgreSQL data path and service-family ownership, then implement/qualify staging runtime slices; production target/policy/DNS authority remains absent.",
     "merged_main_sha": "c44a51b5c",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
@@ -70,7 +70,11 @@
       "Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.",
       "Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.",
       "Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion.",
-      "No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority."
+      "No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority.",
+      "Current app HTTP Container and profile are staging-only with short bounded canary lifecycle; no production container runtime admission or full route activation.",
+      "Node/Python Container profiles do not receive Worker Hyperdrive bindings; only one bounded Python database health request was proven, not application-wide SQL semantics/load or a private end-to-end DB path.",
+      "Auth/tRPC/general REST still route to origin; Container bridge rejects upgrades; Socket.IO and /ws remain native-only; scheduled/business job ownership is not comprehensively transferred.",
+      "Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence."
     ],
     "outcome": "NOT_ACCEPTED"
   }
