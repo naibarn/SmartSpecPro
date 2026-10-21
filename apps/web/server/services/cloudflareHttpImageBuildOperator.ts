@@ -101,7 +101,8 @@ export function createHttpImageBuildOperator(assertAuthorized: () => Promise<voi
       try {
         const result = await command("python3", [join(workspace, "apps/web/scripts/build_cloudflare_http_image.py"),
           "--build-result", path, "--output", join(output, "build"), "--runtime", g.plan.runtime,
-          "--tag", httpImageLocalTag(g), "--source-sha", g.plan.sourceSha, "--job-id", g.jobId, "--plan-digest", g.planDigest],
+          "--tag", httpImageLocalTag(g), "--source-sha", g.plan.sourceSha, "--job-id", g.jobId, "--plan-digest", g.planDigest,
+          "--build-budget-seconds", String(g.plan.buildBudgetSeconds)],
           { cwd: workspace, timeoutMs: g.plan.buildBudgetSeconds * 1000 });
         return assertHttpImageBuild(g, JSON.parse(result));
       } finally {

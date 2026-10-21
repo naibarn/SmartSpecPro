@@ -70,7 +70,9 @@ def validate_build_metadata(value: dict, observed: dict) -> dict:
     return {"configDigest": config_digest, "manifestDigest": manifest_digest}
 
 
-def build_image(build_result: Path, output: Path, runtime: str, tag: str, source_sha: str, job_id: str, plan_digest: str) -> dict:
+def build_image(build_result: Path, output: Path, runtime: str, tag: str, source_sha: str, job_id: str, plan_digest: str, build_budget_seconds: int = 180) -> dict:
+    if build_budget_seconds not in (180, 360):
+        raise ReleaseError("HTTP_IMAGE_BUILD_BUDGET_DENIED")
     started = time.monotonic()
     output.parent.mkdir(parents=True, exist_ok=True)
     available = os.statvfs(output.parent)
@@ -101,7 +103,7 @@ def build_image(build_result: Path, output: Path, runtime: str, tag: str, source
             raise SystemExit(128 + signum)
         previous_handlers = {sig: signal.signal(sig, terminate_owned_build) for sig in (signal.SIGTERM, signal.SIGINT)}
         try:
-            status = child.wait(timeout=max(1, 180 - (time.monotonic() - started)))
+            status = child.wait(timeout=max(1, build_budget_seconds - (time.monotonic() - started)))
         except subprocess.TimeoutExpired:
             try:
                 os.killpg(child.pid, signal.SIGKILL)
@@ -132,9 +134,10 @@ if __name__ == "__main__":
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--job-id", required=True)
     parser.add_argument("--plan-digest", required=True)
+    parser.add_argument("--build-budget-seconds", type=int, choices=(180, 360), default=180)
     args = parser.parse_args()
     try:
-        print(json.dumps(build_image(args.build_result, args.output.absolute(), args.runtime, args.tag, args.source_sha, args.job_id, args.plan_digest)))
+        print(json.dumps(build_image(args.build_result, args.output.absolute(), args.runtime, args.tag, args.source_sha, args.job_id, args.plan_digest, args.build_budget_seconds)))
     except ReleaseError as exc:
         # Only a fixed public diagnostic may cross into job error output.
         code = str(exc)

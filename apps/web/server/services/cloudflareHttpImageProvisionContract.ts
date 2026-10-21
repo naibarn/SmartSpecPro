@@ -18,7 +18,7 @@ export const httpImageProvisionPlanSchema = z.object({
   runtime: z.enum(["node-http", "python-http"]), sourceSha: z.string().regex(/^[a-f0-9]{40}$/),
   buildId: z.string().regex(/^[a-f0-9]{40}-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/),
   configurationExpiresAt: z.string().datetime({ offset: true }),
-  buildBudgetSeconds: z.literal(180), maxImageBytes: z.literal(1_073_741_824), maxPublishedImages: z.literal(1),
+  buildBudgetSeconds: z.union([z.literal(180), z.literal(360)]), maxImageBytes: z.literal(1_073_741_824), maxPublishedImages: z.literal(1),
 }).strict().refine(value => value.buildId.startsWith(value.sourceSha + "-"));
 export type HttpImageProvisionPlan = z.infer<typeof httpImageProvisionPlanSchema>;
 export const httpImageProvisionPlanDigest = (plan: HttpImageProvisionPlan) => createHash("sha256")

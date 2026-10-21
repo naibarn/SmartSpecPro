@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { httpImageProvisionPlanDigest } from "./cloudflareHttpImageProvisionContract";
+import { httpImageProvisionPlanDigest, httpImageProvisionPlanSchema } from "./cloudflareHttpImageProvisionContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { publishHttpImage, createHttpImageRegistryTransport, httpImageLocalTag, type HttpImageBuild } from "./cloudflareHttpImagePublication";
 export function fixture() {
@@ -28,6 +28,11 @@ export function fixture() {
   return { grant, built, observed, credential, states, ports };
 }
 describe("bounded canonical HTTP image publication", () => {
+  it("permits only the fixed longer budget needed by the CPU Python image build", () => {
+    const f = fixture();
+    expect(httpImageProvisionPlanSchema.parse({ ...f.grant.plan, buildBudgetSeconds: 360 }).buildBudgetSeconds).toBe(360);
+    expect(httpImageProvisionPlanSchema.safeParse({ ...f.grant.plan, buildBudgetSeconds: 361 }).success).toBe(false);
+  });
   it("persists intent before one push and returns remote digest without app activation", async () => {
     const f = fixture();
     f.ports.push.mockImplementation(async () => {
