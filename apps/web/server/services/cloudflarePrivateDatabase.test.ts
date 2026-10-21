@@ -13,6 +13,10 @@ import { validateJobDefinition } from "./jobCanonicalization";
 import { assertPrivateDatabaseProvisionReceipt, validatePrivateDatabaseBinding, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
 import { nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
+import { PUBLIC_RUNNER_RELEASE_PREDICATE as backendPredicate, PUBLIC_RUNNER_RELEASE_SELECT as backendSelect,
+  publicRunnerReleaseView as backendView } from "./cloudflarePublicReleases";
+import { PUBLIC_RUNNER_RELEASE_PREDICATE as sharedPredicate, PUBLIC_RUNNER_RELEASE_SELECT as sharedSelect,
+  publicRunnerReleaseView as sharedView } from "../../../../packages/shared/src/cloudflarePublicReleases";
 
 let caCertificate: string, certDirectory: string;
 beforeAll(() => {
@@ -61,6 +65,12 @@ function fixture() {
 }
 
 describe("private PostgreSQL staging provisioning", () => {
+  it("keeps the standalone runtime public release SQL contract aligned with shared Cloudflare readers", () => {
+    expect([backendSelect, backendPredicate, backendView("smartspec-staging-aaaaaaaaaaaa")])
+      .toEqual([sharedSelect, sharedPredicate, sharedView("smartspec-staging-aaaaaaaaaaaa")]);
+    expect(() => backendView("untrusted-namespace")).toThrow("PUBLIC_RUNNER_RELEASE_NAMESPACE_INVALID");
+  });
+
   it("creates dedicated CA/Access/DNS/Hyperdrive metadata with strict TLS, disabled query cache and bounded connections", async () => {
     const f = fixture(), output = await provisionCloudflarePrivateDatabase(f.input);
     expect(output).toMatchObject({ providerConfigurationVerified: true, workerBound: false, activation: "disabled", sslmode: "verify-full", databaseAccess: "read_only_connection_probe" });
