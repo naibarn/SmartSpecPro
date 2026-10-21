@@ -1,5 +1,14 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Canonical HTTP image publication implementation — 2026-10-21 07:57 Asia/Bangkok
+
+- Integrated65c940e42 owner-policy/signature branch and5abb547ac exact HTTP image publisher. Reuses existing ApprovalDBService, registered executor, worker_jobs/outbox/lease/fence/deadline; separate encrypted image-purpose credential profile, no provider IAM broadening. One fixed canonical source/recipe/runtime, one namespaced job tag,180s build/1GiB image/short registry JWT; no app creation or VM start. Durable push intent precedes mutation; uncertain retry reconciles manifest read-only and cannot republish/adopt preexisting tags. Credentials are passed through stdin into an owned temporary Docker config and removed; no Docker workload execution.
+- Real Docker29 inspection exposed containerd imageId=manifest/index, unlike classic config ID. Fixed recipe emits Buildx metadata and verifies separate config/manifest digests, single linux/amd64 manifest with provenance/SBOM index disabled. Registry readback must match both exact build digests and response content hash.
+- Quick profile:134 scoped publisher/contract/canonical job tests PASS; Python image packaging/build10 PASS. Policy48 and identity/contracts18 PASS before authority integration. Only affected checks; no local repository typecheck.65 readiness CI39523573098 SUCCESS;5abb readiness CI39524220242 and canonical full build are pending. General CI850 has pre-existing broad Python/web/typecheck failures (separate from successful dedicated readiness39521139490); no global PASS or production-readiness claim.
+- Private bridge850 full canonical build artifact3586d0bd... and Worker d1833ac... BUILD_PASSED/PUBLISHED; actual local workerd WorkerEntrypoint/named-DO two-way/body/auth/header-boundary fixture PASS, API response target explicitly a stub. Latest149 fixed Node healthz probe prevents Python startup health recursion. Neither private bridge nor API images has a hosted VM qualification yet.
+- Current canonical5abb build in progress at private http-image-publisher-canonical-build.log. Prepared owner-authenticated execute-http-image-provision.mjs uses the existing policy authority and canonical jobs, not raw provider push. Next read exact build result and publish a single Node image, verify remote manifest/receipt and revoke temporary policy; then Python and bounded app/namespace/profile provisioning. Original production remains Debian, DB unchanged; no API VM, Cron or Queue consumer activated. Catalog staging capability expires08:01BKK; expiry must fail closed and is not extended by these source checkpoints.
+
+
 
 ## Final application image and bounded HTTP lifecycle checkpoint — 2026-10-21 07:10 Asia/Bangkok
 
