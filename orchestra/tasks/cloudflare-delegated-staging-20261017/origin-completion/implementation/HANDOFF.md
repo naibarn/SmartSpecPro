@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `125`
-- Updated (UTC): `2026-10-21T18:41:05.872275+00:00`
+- State generation: `127`
+- Updated (UTC): `2026-10-21T18:50:49.619224+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `4309f4b1ec2d65111a7b7f576125a0b1effa965c`
+- Latest recorded merged Main SHA: `efb4cb8b2af221cc37518f39b1045770950c5fef`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Use the newly published canonical artifact 48ed0442794cb95db491c1a0ebb7ee550369fa7017e71bb4f349dc515eeb6388 for an exact, bounded staging deployment only after the existing owner/admin authority issues an active target-scoped grant; continue independent implementation of remaining Cloudflare app/runtime gaps meanwhile. Do not activate production traffic without an existing production target and authorization.
+- Next action: Implement production-specific deployment/grant support as a separate fail-closed path; preserve existing staging contract, resolve only exact production target/approval/credential authorities, and do not issue grants or call production APIs. Then implement production Worker asset/API/Container composition with activation disabled.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 4309f4b1ec2d65111a7b7f576125a0b1effa965c | 4309f4b1ec2d65111a7b7f576125a0b1effa965c | Use the newly published canonical artifact 48ed0442794cb95db491c1a0ebb7ee550369fa7017e71bb4f349dc515eeb6388 for an exact, bounded staging deployment only after the existing owner/admin authority issues an active target-scoped grant; continue independent implementation of remaining Cloudflare app/runtime gaps meanwhile. Do not activate production traffic without an existing production target and authorization. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | efb4cb8b2af221cc37518f39b1045770950c5fef | efb4cb8b2af221cc37518f39b1045770950c5fef | Implement production-specific deployment/grant support as a separate fail-closed path; preserve existing staging contract, resolve only exact production target/approval/credential authorities, and do not issue grants or call production APIs. Then implement production Worker asset/API/Container composition with activation disabled. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -46,6 +46,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Linux canonical workspace path in .development-repository.toml was stale (/home/dev/projects/SmartSpecPro), preventing publisher dotenv fallback in this checkout; corrected to /mnt/SmartSpecDev/projects/SmartSpecPro. Canonical publisher fallback selects that repo's apps/web/.env without copying secret values.
 - Private DB transport is implemented in the Node/Python HTTP image via a bounded cloudflared Access TCP connector, separate service-token credentials, and verify-full TLS CA; saved full-runtime config contains connector settings. The active origin remains namespace-only, so no live Container SELECT 1, full SQL compatibility, or load evidence exists yet.
 - Canonical main 4309f4b1e built successfully and artifact 48ed0442794cb95db491c1a0ebb7ee550369fa7017e71bb4f349dc515eeb6388 is PUBLISHED in immutable storage; it has not been deployed. Re-read-only DB inventory still shows zero active approval_rules; the authenticated tenant has only a staging target, and no deployment executor is connected in this shell.
+- Read-only live Cloudflare inventory: production Worker smartspec-cloudflare-runtime is activation=disabled with Search Result Cache only; smartaihub.app has no Worker Routes; only two smartspec-staging-* Container applications exist. Target deployment credential gets HTTP 403 on Containers list; separate audit credential can read it. Production target/approval policy is absent. No provider mutation occurred.
 
 ## Resume
 
