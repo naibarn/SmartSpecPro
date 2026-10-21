@@ -19,10 +19,13 @@ from app.services.cloudflare_native_provision_contract import (CONTRACT as NATIV
     GRANT_SCHEMA as NATIVE_GRANT, validate_plan as validate_native_plan, namespace as native_namespace)
 from app.services.cloudflare_private_database_contract import (CONTRACT as DATABASE_CONTRACT, POLICY_SCHEMA as DATABASE_SCHEMA,
     GRANT_SCHEMA as DATABASE_GRANT, validate_plan as validate_database_plan)
+from app.services.cloudflare_http_image_provision_contract import (CONTRACT as HTTP_IMAGE_CONTRACT, POLICY_SCHEMA as HTTP_IMAGE_SCHEMA,
+    GRANT_SCHEMA as HTTP_IMAGE_GRANT, validate_plan as validate_http_image_plan)
 
 PROVISION_CONTRACTS = {PROVISION_CONTRACT: (PROVISION_SCHEMA, validate_plan), NATIVE_CONTRACT: (NATIVE_SCHEMA, validate_native_plan),
-    DATABASE_CONTRACT: (DATABASE_SCHEMA, validate_database_plan)}
-PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT, DATABASE_GRANT: DATABASE_CONTRACT}
+    DATABASE_CONTRACT: (DATABASE_SCHEMA, validate_database_plan), HTTP_IMAGE_CONTRACT: (HTTP_IMAGE_SCHEMA, validate_http_image_plan)}
+PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT, DATABASE_GRANT: DATABASE_CONTRACT,
+    HTTP_IMAGE_GRANT: HTTP_IMAGE_CONTRACT}
 
 SCHEMA = "cloudflare.staging-policy.v1"
 ORIGIN_SCHEMA = "cloudflare.staging-origin-policy.v2"
@@ -65,6 +68,8 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
         expiry = datetime.fromisoformat(plan["configurationExpiresAt"].replace("Z", "+00:00"))
         if value["maxOperations"] != 1 or value["planDigest"] != plan_digest(plan) or not now < expiry <= now + timedelta(days=30):
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_POLICY_INVALID")
+        if value["contractVersion"] == HTTP_IMAGE_CONTRACT and expiry > now + timedelta(hours=1):
+            raise ValueError("CLOUDFLARE_HTTP_IMAGE_POLICY_EXPIRY_INVALID")
     artifacts = [] if provision else value["releases"] if origin else value["artifacts"]
     if not provision and (not isinstance(artifacts, list) or not 1 <= len(artifacts) <= 2):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_ARTIFACT_INVALID")
@@ -115,7 +120,7 @@ class CloudflareStagingPolicyAuthority:
             'AND r.profile = \'cloudflare_staging_executor\' AND r."snapshotExpiresAt" >= :expiry'
         ), {"tenant": tenant_id, "project": project_id, "executor": policy["executorId"], "account": policy["accountRef"],
             "target": TARGET, "principal": f"user:{policy['actorUserId']}", "actor": policy["actorUserId"], "expiry": expires_at})
-        if policy.get("contractVersion") in (NATIVE_CONTRACT, DATABASE_CONTRACT) and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
+        if policy.get("contractVersion") in (NATIVE_CONTRACT, DATABASE_CONTRACT, HTTP_IMAGE_CONTRACT) and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
             raise PermissionError("CLOUDFLARE_NATIVE_PROVISION_SCOPE_DENIED")
         binding = result.mappings().first()
         if binding is None:

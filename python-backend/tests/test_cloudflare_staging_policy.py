@@ -365,3 +365,36 @@ async def test_native_policy_admission_rechecks_budget_schema_and_revocation():
     rule.is_active = False
     with pytest.raises(PermissionError, match="UNAVAILABLE"):
         await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_http_image_policy_reuses_owner_job_budget_and_live_revocation():
+    from app.services.cloudflare_http_image_provision_contract import CONTRACT, GRANT_SCHEMA, POLICY_SCHEMA
+    from app.services.cloudflare_origin_provision_contract import plan_digest
+    service, rule, prior, _ = service_fixture()
+    policy = native_definition()
+    plan = {"namespace": policy["plan"]["namespace"], "runtime": "python-http", "sourceSha": "c" * 40,
+            "buildId": "c" * 40 + "-" + str(uuid4()), "buildBudgetSeconds": 180,
+            "maxImageBytes": 1073741824, "maxPublishedImages": 1,
+            "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(minutes=50)).isoformat()}
+    policy.update(contractVersion=CONTRACT, plan=plan, planDigest=plan_digest(plan))
+    rule.conditions = {"schemaVersion": POLICY_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}
+    grant = {**native_grant(policy), "schemaVersion": GRANT_SCHEMA}
+    assert normalize_cloudflare_staging_grant_payload(grant) == grant
+    decision = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    service._require_cloudflare_policy_owner.assert_awaited_once_with("tenant-1", 17)
+    request = SimpleNamespace(payload=grant, extra_data={"cloudflareStagingPolicyDecisionV1": decision})
+    assert await service.validate_cloudflare_staging_policy_decision(request, datetime.now(timezone.utc))
+    for changes in [{"maxOperations": 2}, {"planDigest": "f" * 64}, {"environment": "production"}]:
+        with pytest.raises(ValueError):
+            validate_staging_policy({**policy, **changes}, datetime.now(timezone.utc))
+    extended = {**plan, "configurationExpiresAt": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()}
+    with pytest.raises(ValueError, match="HTTP_IMAGE_POLICY_EXPIRY"):
+        validate_staging_policy({**policy, "plan": extended, "planDigest": plan_digest(extended)}, datetime.now(timezone.utc))
+    prior.append(SimpleNamespace(id=str(uuid4()), payload={"jobId": str(uuid4())}, extra_data={"cloudflareStagingPolicyDecisionV1": decision}))
+    with pytest.raises(PermissionError, match="BUDGET_EXHAUSTED"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    prior.clear()
+    rule.is_active = False
+    assert not await service.validate_cloudflare_staging_policy_decision(request, datetime.now(timezone.utc))
