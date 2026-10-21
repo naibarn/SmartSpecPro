@@ -12,7 +12,15 @@ const CATEGORY = "cloudflare_http_application_credentials";
 export function httpApplicationCredentialRef(scope: Pick<Scope, "tenantId" | "projectId">) {
   return `cloudflare:http-application:${encodeURIComponent(scope.tenantId)}:${encodeURIComponent(scope.projectId)}:staging`;
 }
-function fail(code: string): never { throw new Error(`CLOUDFLARE_HTTP_APPLICATION_${code}`); }
+class HttpApplicationProvisionError extends Error {
+  readonly diagnosticCode: string;
+  constructor(code: string) {
+    const diagnosticCode = `CLOUDFLARE_HTTP_APPLICATION_${code}`;
+    super(diagnosticCode);
+    this.diagnosticCode = diagnosticCode;
+  }
+}
+function fail(code: string): never { throw new HttpApplicationProvisionError(code); }
 const key = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /** Separate encrypted setup purpose. This does not change provider IAM or

@@ -30,6 +30,15 @@ function fixture() {
   return { settings, scope, version, ports, states, applications };
 }
 describe("private HTTP application metadata preparation", () => {
+  it("preserves a safe preparation diagnostic through the canonical executor boundary", async () => {
+    const f = fixture();
+    f.ports.request.mockResolvedValue({ status: "error", error: "untrusted provider detail" });
+    await expect(prepareHttpApplicationImages(f.settings, f.scope, f.ports)).rejects.toMatchObject({
+      message: "CLOUDFLARE_HTTP_APPLICATION_IMAGE_PREPARATION_DENIED",
+      diagnosticCode: "CLOUDFLARE_HTTP_APPLICATION_IMAGE_PREPARATION_DENIED",
+    });
+    expect(f.ports.request).toHaveBeenCalledOnce();
+  });
   it("uses the documented provider image-preparations URI with an encrypted purpose credential", async () => {
     const f = fixture(), oldKey = process.env.LLM_ENCRYPTION_KEY;
     process.env.LLM_ENCRYPTION_KEY = "disposable-http-application-test-key";
