@@ -1097,6 +1097,7 @@ export type VerticalDramaCharacterPortraitMap = Record<
     characterId: string;
     name: string;
     portraitUrl: string | null;
+    primaryPortraitMediaAssetId?: string;
     /** Additive (planning/vertical-drama-twin-variant-completeness/plan.md,
      *  W6) — present only for a variant (outfit/age-stage) row: the DB row
      *  id (as a string, NOT a characterKey) of the base character this
@@ -1488,7 +1489,8 @@ interface VerticalDramaStoryboardPanelProps {
   onChangeCharacterReference?: (characterId: string) => void;
   /** Applies one selected character look to every episode shot that uses this character family. */
   onSetCharacterLookForShots?: (
-    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>,
+    primaryPortrait?: { characterId: string; mediaAssetId: string }
   ) => void;
   savingCharacterLookForAllShots?: boolean;
   /** Dragging an image (Library/History/grid-cutter tile, same unified drag contract used across the app) directly onto a shot's character chip replaces that character's reference image immediately — no need to open the swap panel first. */
@@ -4125,8 +4127,19 @@ export function VerticalDramaStoryboardPanel({
                                     return [{ shotNumber, characterRefs }];
                                   }
                                 );
-                                if (changes.length > 0)
-                                  onSetCharacterLookForShots(changes);
+                                const mediaAssetId =
+                                  characterPortraits[option.key]
+                                    ?.primaryPortraitMediaAssetId;
+                                if (changes.length > 0 || mediaAssetId)
+                                  onSetCharacterLookForShots(
+                                    changes,
+                                    mediaAssetId
+                                      ? {
+                                          characterId: portrait.characterId,
+                                          mediaAssetId,
+                                        }
+                                      : undefined
+                                  );
                               }}
                               data-testid={`vd-storyboard-character-review-look-option-${portrait.characterId}-${option.key}`}
                             >

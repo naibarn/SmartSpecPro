@@ -2128,7 +2128,10 @@ export class VerticalDramaCharacterStockService {
       .from(verticalDramaCharacterAssets)
       .innerJoin(
         mediaAssets,
-        eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+        and(
+          eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id),
+          ne(mediaAssets.status, "expired")
+        )
       )
       .where(
         and(
