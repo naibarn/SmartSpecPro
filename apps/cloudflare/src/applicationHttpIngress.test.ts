@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { dispatchApplicationHttpIngress } from "./applicationHttpIngress";
 import { classifyApiRoute } from "./apiRouteManifest";
+import { createCloudflareWorker } from "./index";
 
 function fixture() {
   const profile = { configurationRef: `cf-origin:${"c".repeat(64)}`, sourceSha: "d".repeat(40), targetId: "smartspec-cloudflare-staging",
@@ -44,6 +45,13 @@ describe("staging full HTTP application ingress", () => {
     expect(forwarded.headers.get("x-smartaihub-public-origin")).toBe("https://staging.smartaihub.app");
     expect(forwarded.headers.get("x-forwarded-host")).toBe("staging.smartaihub.app");
     for (const name of ["cf-access-client-secret", "x-internal-token"]) expect(forwarded.headers.has(name)).toBe(false);
+  });
+
+  it("connects the origin route manifest to the Container ingress switch", async () => {
+    const f = fixture();
+    const response = await createCloudflareWorker().fetch(new Request("https://staging.smartaihub.app/trpc/auth.me"), f.env as never);
+    expect(response.status).toBe(200);
+    expect(new URL((f.fetch.mock.calls[0][0] as Request).url).hostname).toBe("node.application.internal");
   });
 
   it("fails closed outside staging, for unapproved routes/origins, and on Container errors", async () => {

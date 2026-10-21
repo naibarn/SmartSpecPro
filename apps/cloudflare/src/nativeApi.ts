@@ -5,6 +5,7 @@ import type { ApiRouteManifestEntry } from "./apiRouteManifest";
 import type { CloudflareEnvironment } from "./contracts";
 import { API_ROUTE_MANIFEST } from "./apiRouteManifest";
 import { proxyAuthToOrigin } from "./authOriginProxy";
+import { dispatchApplicationHttpIngress } from "./applicationHttpIngress";
 
 export const PUBLIC_EVIDENCE_KEYS_PATH = "/.well-known/smartaihub-evidence-keys.json";
 const MAX_PUBLIC_KEYS_REQUEST_BYTES = 1024;
@@ -87,6 +88,10 @@ export async function dispatchManifestRoute(
         status: 501,
         headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
       });
+    }
+    if (route.classification === "ORIGIN_PROXY") {
+      const applicationResponse = await dispatchApplicationHttpIngress(request, route, env);
+      if (applicationResponse) return applicationResponse;
     }
     return (options.originProxy ?? ((proxyRequest, proxyEnv) => proxyAuthToOrigin(proxyRequest, proxyEnv)))(request, env);
   }
