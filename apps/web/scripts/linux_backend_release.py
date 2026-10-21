@@ -601,6 +601,99 @@ def _next_generation(receipt_root: Path, service: str, additional_roots: tuple[P
     return max(values, default=0) + 1
 
 
+def prune_old_releases(
+    release_root: Path,
+    current_link: Path,
+    *,
+    keep_previous: int = 2,
+) -> dict[str, Any]:
+    """Keep the active release and two newest verified predecessors."""
+    if keep_previous < 0:
+        raise ValueError("keep_previous cannot be negative")
+
+    root = release_root.resolve()
+    try:
+        current = current_link.resolve(strict=True)
+    except OSError:
+        return {"status": "SKIPPED_CURRENT_UNAVAILABLE", "removed": [], "kept": []}
+    if current.parent != root:
+        return {"status": "SKIPPED_CURRENT_OUTSIDE_RELEASE_ROOT", "removed": [], "kept": []}
+
+    verified: list[tuple[int, Path]] = []
+    skipped: list[dict[str, str]] = []
+    for path in root.iterdir():
+        if path.is_symlink() or not path.is_dir() or os.path.ismount(path):
+            continue
+        match = re.fullmatch(r"(?P<release_id>.+)-g(?P<generation>\d+)", path.name)
+        if match is None:
+            continue
+        try:
+            manifest = json.loads((path / "release-manifest.json").read_text(encoding="utf-8"))
+            generation = int(manifest["generation"])
+            if (
+                manifest.get("release_id") != match.group("release_id")
+                or generation != int(match.group("generation"))
+            ):
+                raise ValueError("release manifest does not match its directory name")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            skipped.append({"release": path.name, "reason": f"invalid_manifest: {exc}"})
+            continue
+        verified.append((generation, path))
+
+    if current not in {path for _, path in verified}:
+        return {
+            "status": "SKIPPED_CURRENT_UNVERIFIED",
+            "removed": [],
+            "kept": [],
+            "skipped": skipped,
+        }
+
+    previous = sorted(
+        ((generation, path) for generation, path in verified if path != current),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    keep = {current, *(path for _, path in previous[:keep_previous])}
+    remove = [path for _, path in verified if path not in keep]
+
+    for path in remove:
+        for proc in Path("/proc").glob("[0-9]*/cwd"):
+            try:
+                cwd = Path(os.path.realpath(proc))
+            except OSError:
+                continue
+            if cwd == path or path in cwd.parents:
+                return {
+                    "status": "SKIPPED_RELEASE_IN_USE",
+                    "removed": [],
+                    "kept": sorted(p.name for p in keep | set(remove)),
+                    "skipped": [*skipped, {"release": path.name, "reason": "process_working_directory"}],
+                }
+
+    removed: list[str] = []
+    for path in remove:
+        try:
+            shutil.rmtree(path)
+            removed.append(path.name)
+        except OSError as exc:
+            skipped.append({"release": path.name, "reason": f"remove_failed: {exc}"})
+
+    return {
+        "status": "PRUNED" if not skipped else "PARTIAL",
+        "keep_previous": keep_previous,
+        "kept": sorted(p.name for p in keep),
+        "removed": removed,
+        "skipped": skipped,
+    }
+
+
+def _release_retention_result(release_root: Path, current_link: Path) -> dict[str, Any]:
+    try:
+        return prune_old_releases(release_root, current_link)
+    except Exception as exc:
+        return {"status": "FAILED", "removed": [], "kept": [], "error": str(exc)}
+
+
 def _record_stale_release_attempt(
     receipt_root: Path,
     manifest: dict[str, Any],
@@ -693,11 +786,14 @@ def promote_artifact(
             try:
                 active_manifest = json.loads((active_target / "release-manifest.json").read_text(encoding="utf-8"))
                 if active_manifest.get("release_id") == release_id and active_manifest.get("source_revision") == source_sha:
+                    runtime_result = runtime.verify(active_target, source_sha)
+                    retention = _release_retention_result(release_root, current_link)
                     return {
                         "status": "ALREADY_PROMOTED",
                         "release_id": release_id,
                         "source_sha": source_sha,
-                        "runtime": runtime.verify(active_target, source_sha),
+                        "runtime": runtime_result,
+                        "release_retention": retention,
                     }
             except (OSError, ValueError, ReleaseError):
                 pass
@@ -806,6 +902,7 @@ def promote_artifact(
             }
             write_json_atomic(current_status_path, release_status)
             write_json_atomic(receipt_path, receipt)
+            receipt["release_retention"] = _release_retention_result(release_root, current_link)
             return receipt
         except Exception as exc:
             rollback_errors: list[str] = []
