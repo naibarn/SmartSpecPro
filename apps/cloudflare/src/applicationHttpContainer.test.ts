@@ -20,6 +20,7 @@ function fixture() {
   const container = {
     running: false, images: { node: profile.image }, inspect: vi.fn(),
     start: vi.fn(() => { container.running = true; }),
+    monitor: vi.fn(() => new Promise<void>(() => {})),
     destroy: vi.fn(async () => { container.running = false; }),
     setInactivityTimeout: vi.fn(async () => {}), getTcpPort: vi.fn(() => ({ fetch })),
   };
@@ -51,6 +52,20 @@ describe("bounded private application HTTP compute", () => {
     const f = fixture(), deadline = await f.controller.ensureRunning(); f.advance(61000);
     await expect(f.controller.forward(new Request("http://application.internal/healthz"), deadline)).rejects.toThrow("READINESS_UNAVAILABLE");
     expect(f.fetch).not.toHaveBeenCalled(); expect(f.container.start).toHaveBeenCalledOnce();
+  });
+  it("records a bounded container exit code when the VM stops before readiness", async () => {
+    const f = fixture();
+    const exit = Object.assign(new Error("provider detail must not be persisted"), { exitCode: 137 });
+    f.container.monitor.mockImplementation(() => Promise.reject(exit));
+    const deadline = await f.controller.ensureRunning();
+    await Promise.resolve();
+    await expect(f.controller.forward(new Request("http://application.internal/healthz"), deadline))
+      .rejects.toThrow("APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY");
+    await f.controller.recordFailure(Object.assign(new Error("APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY"), { exitCode: 137 }));
+    expect(await f.controller.diagnostics()).toMatchObject({ failure: {
+      code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", phase: "readiness", exitCode: 137,
+    } });
+    expect(JSON.stringify(await f.controller.diagnostics())).not.toContain("provider detail");
   });
   it("reports spent budget and safe failures without booting, inspecting processes or returning secrets", async () => {
     const f = fixture();

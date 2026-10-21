@@ -30,7 +30,8 @@ type Storage = {
   put(key: string, value: unknown): Promise<void>;
   setAlarm(time: number): Promise<void>;
 };
-type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout">;
+type NativeContainer = Pick<Container, "running" | "images" | "inspect" | "start" | "destroy" | "getTcpPort" | "setInactivityTimeout" | "monitor">;
+type ContainerExit = { state: "exited" | "failed"; exitCode?: number };
 const KEY = "application-http-lifecycle-v1";
 const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
@@ -84,6 +85,8 @@ function applicationEnvironment(profile: ApplicationHttpProfile, values: Record<
 
 export class ApplicationHttpContainerController {
   private phase = "initializing";
+  private containerExitOutcome: ContainerExit | null = null;
+  private containerMonitorStarted = false;
   constructor(
     private readonly container: NativeContainer, private readonly storage: Storage,
     private readonly profile: ApplicationHttpProfile, private readonly environment: Record<string, string>,
@@ -94,7 +97,32 @@ export class ApplicationHttpContainerController {
     const message = error instanceof Error ? error.message : "";
     const code = /^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/.test(message) ? message : "APPLICATION_HTTP_RUNTIME_FAILURE";
     const kind = error instanceof Error && ["Error", "TypeError", "RangeError", "TimeoutError", "AbortError"].includes(error.name) ? error.name : "Error";
-    await this.storage.put(DIAGNOSTIC_KEY, { code, kind, phase: this.phase, at: this.now() });
+    const exitCode = error && typeof error === "object" && "exitCode" in error &&
+      Number.isSafeInteger(error.exitCode) ? error.exitCode : undefined;
+    await this.storage.put(DIAGNOSTIC_KEY, { code, kind, phase: this.phase, at: this.now(), ...(exitCode === undefined ? {} : { exitCode }) });
+  }
+
+  private watchContainerExit() {
+    // `start()` only accepts the request; the separate monitor reports an
+    // asynchronous VM startup failure or a process exit without exposing raw
+    // provider/container output in the durable diagnostic record.
+    if (this.containerMonitorStarted) return;
+    this.containerMonitorStarted = true;
+    this.containerExitOutcome = null;
+    let monitor: Promise<void>;
+    try { monitor = this.container.monitor(); }
+    catch {
+      this.containerExitOutcome = { state: "failed" };
+      return;
+    }
+    void monitor.then(
+      () => ({ state: "exited" as const, exitCode: 0 }),
+      error => {
+        const exitCode = error && typeof error === "object" && "exitCode" in error &&
+          Number.isSafeInteger(error.exitCode) ? error.exitCode : undefined;
+        return { state: "failed" as const, ...(exitCode === undefined ? {} : { exitCode }) };
+      },
+    ).then(outcome => { this.containerExitOutcome = outcome; return outcome; });
   }
 
   /** No start, forwarding, secret, command or environment inspection. */
@@ -157,6 +185,7 @@ export class ApplicationHttpContainerController {
         this.phase = "restore-bounds";
         await this.storage.setAlarm(previous.activeUntil);
         await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000);
+        this.watchContainerExit();
       } catch (error) {
         await this.container.destroy("application cleanup bounds unavailable");
         throw error;
@@ -175,6 +204,7 @@ export class ApplicationHttpContainerController {
     this.phase = "start";
     this.container.start({ image: this.profile.image, instance: this.profile.instance, env,
       enableInternet: true, labels: { scope } });
+    this.watchContainerExit();
     this.phase = "idle-bound";
     try { await this.container.setInactivityTimeout(this.profile.idleTimeoutSeconds * 1000); }
     catch (error) { await this.container.destroy("application idle bound unavailable"); throw error; }
@@ -194,6 +224,11 @@ export class ApplicationHttpContainerController {
     let ready = false;
     for (let attempt = 0; attempt < maxAttempts && this.now() < readyUntil; attempt++) {
       if (request.signal.aborted) throw new Error("APPLICATION_HTTP_CALLER_CANCELLED");
+      if (this.containerExitOutcome) {
+        const error = new Error("APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY");
+        if (this.containerExitOutcome.exitCode !== undefined) Object.assign(error, { exitCode: this.containerExitOutcome.exitCode });
+        throw error;
+      }
       try {
         const response = await port.fetch(`http://application.internal${readinessPath}`, {
           signal: AbortSignal.timeout(Math.max(1, Math.min(1000, readyUntil - this.now()))),
