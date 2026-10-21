@@ -8,7 +8,7 @@ import { createCanonicalControlPlaneHandler } from "./controlPlaneHandler";
 import { createCanonicalControlPlaneProxyRepository } from "./canonicalControlPlaneProxy";
 import { executeCanonicalJob } from "./canonicalExecution";
 export { CanonicalRunnerContainer } from "./runnerContainerEntrypoint";
-export { StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
+export { ApplicationHttpBridge, StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
 
 export class CanonicalJobWorkflow extends WorkflowEntrypoint<CloudflareEnvironment, CanonicalJobEnvelope> {
   async run(event: Readonly<WorkflowEvent<CanonicalJobEnvelope>>, step: WorkflowStep) {

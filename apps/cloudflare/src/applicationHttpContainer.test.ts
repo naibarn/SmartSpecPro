@@ -40,6 +40,10 @@ describe("bounded private application HTTP compute", () => {
     expect(JSON.stringify([...f.records.values()])).not.toContain(f.environment.JWT_SECRET);
     expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image, instance: "lite", enableInternet: true }));
     expect(f.container.setInactivityTimeout).toHaveBeenCalledWith(10_000);
+    expect(f.container.start.mock.calls[0][0].env).toMatchObject({
+      CLOUDFLARE_APPLICATION_BRIDGE: "private-http-v1", PYTHON_BACKEND_URL: "http://python.application.internal",
+      NODE_SERVER_URL: "http://127.0.0.1:3000",
+    });
   });
 
   it("restores idle and absolute bounds across DO restarts without extending or booting twice", async () => {

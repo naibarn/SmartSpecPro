@@ -241,7 +241,7 @@ jobs:
       - name: Run Cloudflare runtime contract tests
         run: npm --workspace @smartspec/cloudflare-runtime test
       - name: Verify application HTTP ownership and database trust policy
-        run: pnpm --filter @smartspec/web exec vitest run server/_core/applicationRuntime.test.ts server/_core/sharedProductionDebug.test.ts server/_core/applicationDatabaseTls.test.ts server/services/skillRegistry.requestRuntime.test.ts
+        run: pnpm --filter @smartspec/web exec vitest run server/_core/applicationRuntime.test.ts server/_core/sharedProductionDebug.test.ts server/_core/applicationDatabaseTls.test.ts server/services/skillRegistry.requestRuntime.test.ts server/services/appRuntimeConfig.requestRuntime.test.ts
       - name: Verify session cookies on staging and production hostnames
         run: pnpm --filter @smartspec/web exec vitest run server/__tests__/auth-cookies.test.ts server/__tests__/cloudflare-origin-attestation.test.ts server/__tests__/cloudflare-origin-middleware.test.ts server/__tests__/cloudflare-origin-upgrade.test.ts server/__tests__/cloudflare-public-origin.test.ts server/__tests__/csrf-protection.test.ts server/__tests__/csrf-middleware.test.ts
       - name: Verify OAuth readiness and callbacks on verified public origins

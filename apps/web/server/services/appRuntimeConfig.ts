@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { systemSettings } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { decrypt } from "./crypto";
+import { applyApplicationRuntimeConnections } from "../_core/applicationRuntime";
 
 const CATEGORY = "infrastructure" as const;
 
@@ -64,7 +65,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   llmGatewayServiceAccountId: normalizeInteger(process.env.LLM_GATEWAY_SERVICE_ACCOUNT_ID || "1", 1),
 };
 
-let runtimeConfigCache: RuntimeConfig = { ...DEFAULT_RUNTIME_CONFIG };
+let runtimeConfigCache: RuntimeConfig = applyApplicationRuntimeConnections({ ...DEFAULT_RUNTIME_CONFIG });
 let runtimeConfigRefreshPromise: Promise<RuntimeConfig> | null = null;
 
 function readRowValue(row?: { value: string | null; isSensitive: boolean | null }) {
@@ -111,15 +112,19 @@ function mapRowsToRuntimeConfig(rows: Array<{ key: string; value: string | null;
 }
 
 async function loadAppRuntimeConfig(): Promise<RuntimeConfig> {
+  let config: RuntimeConfig;
   try {
     const db = await getDb();
     const rows = db
       ? await db.select().from(systemSettings).where(eq(systemSettings.category, CATEGORY))
       : [];
-    return mapRowsToRuntimeConfig(rows);
+    config = mapRowsToRuntimeConfig(rows);
   } catch {
-    return { ...DEFAULT_RUNTIME_CONFIG };
+    config = { ...DEFAULT_RUNTIME_CONFIG };
   }
+  // Apply after the DB fallback too: a cache/settings failure must never send
+  // a private Cloudflare request back to a saved Linux service address.
+  return applyApplicationRuntimeConnections(config);
 }
 
 export async function refreshAppRuntimeConfigCache(): Promise<RuntimeConfig> {

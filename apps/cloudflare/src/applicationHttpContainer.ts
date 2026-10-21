@@ -56,8 +56,15 @@ function applicationEnvironment(profile: ApplicationHttpProfile, values: Record<
     !/^[A-Z][A-Z0-9_]*$/.test(key) || typeof value !== "string" || value.includes("\0") ||
     /^(?:NODE_OPTIONS|NODE_PATH|TSX_TSCONFIG_PATH|PYTHONPATH|PYTHONHOME|LD_.*|PATH)$/.test(key)
   )) throw new Error(DENIED);
+  const nodeOrigin = profile.runtime === "node-http" ? "http://127.0.0.1:3000" : "http://node.application.internal";
+  const pythonOrigin = profile.runtime === "python-http" ? "http://127.0.0.1:8000" : "http://python.application.internal";
   return { ...values, NODE_ENV: "production", ENVIRONMENT: "production", DEBUG: "false",
     SMARTAIHUB_APPLICATION_RUNTIME: "cloudflare-http", CLOUDFLARE_CONTAINER_POLICY: "on-demand",
+    CLOUDFLARE_APPLICATION_BRIDGE: "private-http-v1", PYTHON_BACKEND_URL: pythonOrigin, BACKEND_URL: pythonOrigin,
+    NODE_SERVER_INTERNAL_URL: nodeOrigin, NODEJS_INTERNAL_URL: nodeOrigin, NODE_SERVER_URL: nodeOrigin,
+    SMARTSPEC_INTERNAL_URL: nodeOrigin, SMARTSPEC_WEB_GATEWAY_URL: nodeOrigin,
+    SMARTSPEC_MCP_BASE_URL: !values.SMARTSPEC_MCP_BASE_URL || values.SMARTSPEC_MCP_BASE_URL === values.SMARTSPEC_WEB_GATEWAY_URL
+      ? nodeOrigin : values.SMARTSPEC_MCP_BASE_URL,
     CLOUDFLARE_APPLICATION_EXPIRES_AT: new Date(deadline).toISOString(),
     HOST: "0.0.0.0", PORT: profile.runtime === "node-http" ? "3000" : "8000" };
 }
@@ -142,6 +149,7 @@ export class ApplicationHttpContainerController {
     const readyUntil = Math.min(deadline, this.now() + 30_000);
     let ready = false;
     for (let attempt = 0; attempt < 100 && this.now() < readyUntil; attempt++) {
+      if (request.signal.aborted) throw new Error("APPLICATION_HTTP_CALLER_CANCELLED");
       try {
         const response = await port.fetch(`http://application.internal${readinessPath}`, {
           signal: AbortSignal.timeout(Math.max(1, Math.min(1000, readyUntil - this.now()))),
