@@ -354,11 +354,12 @@ describe("Cloudflare version-scoped origin transport", () => {
     return { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
       secrets: { token: "t".repeat(32), clientId: "id-" + "i".repeat(20), secret: "s".repeat(32) } };
   }
-  function fixture(options: { message?: string; prior?: boolean; auth?: () => Response; native?: CloudflareNativeBindingDescriptor; versionBindings?: unknown } = {}) {
+  function fixture(options: { message?: string; prior?: boolean; auth?: () => Response; native?: CloudflareNativeBindingDescriptor; versionBindings?: unknown; transientVersionNotFound?: number } = {}) {
     const config = configuration(options.native ? { nativeResources: options.native } : {});
     const originTarget = { ...target, runtimePolicy: config.configurationRef };
     const mutations: Array<{ url: string; init: RequestInit }> = [];
     let metadata: any;
+    let transientVersionFailures = options.transientVersionNotFound ?? 0;
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
       const url = String(input);
       if (init.method && init.method !== "GET") mutations.push({ url, init });
@@ -372,6 +373,10 @@ describe("Cloudflare version-scoped origin transport", () => {
       if (url.endsWith("/deployments")) return json({ deployments: [{ id: deploymentId,
         annotations: { "workers/message": options.prior ? "SmartAIHub staging idempotency cloudflare-staging:origin-job" : "other-job" } }] });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
+      if (url.endsWith(`/versions/${versionId}`) && transientVersionFailures > 0) {
+        transientVersionFailures--;
+        return new Response(JSON.stringify({ success: false, errors: [{ code: 100146 }] }), { status: 404 });
+      }
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
         resources: { script_runtime: { containers: metadata?.containers }, bindings: options.versionBindings ?? metadata?.bindings ?? (options.native ? [
           ...nativeWorkerBindings(options.native), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
@@ -411,6 +416,18 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(versionRead).toBeGreaterThan(-1);
     expect(activation).toBeGreaterThan(versionRead);
     expect(f.mutations.every(call => !/\/queues|\/r2|\/vectorize|\/routes|\/schedules/.test(call.url))).toBe(true);
+  });
+
+  it("retries only Cloudflare's transient post-upload version-not-found response and rechecks authority", async () => {
+    const f = fixture({ native: nativeDescriptor(), transientVersionNotFound: 1 });
+    const assertMutationAuthorized = vi.fn(async () => {});
+    await deploy(f, assertMutationAuthorized);
+    const calls = vi.mocked(f.fetchImpl).mock.calls;
+    const versionReads = calls.filter(([url]) => String(url).endsWith(`/versions/${versionId}`));
+    const activation = calls.findIndex(([url, init]) => String(url).endsWith("/deployments") && init?.method === "POST");
+    expect(versionReads).toHaveLength(2);
+    expect(activation).toBeGreaterThan(calls.map(([url]) => String(url)).lastIndexOf(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${target.workerRef}/versions/${versionId}`));
+    expect(assertMutationAuthorized.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it.each([false, true])("prepares paired HTTP images with namespace-only phase=%s", async namespaceOnly => {

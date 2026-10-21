@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Build exact canonical main at d25102b0f with the registered canonical builder; re-publish exact Node/Python images, deploy only staging, and run one Node canary with concurrent getState/instance inventory. Roll back immediately and diagnose before any further start; preserve production DNS and existing database.",
+      "next_action": "Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
       "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 80,
-  "updated_at": "2026-10-21T11:30:34.074468+00:00",
+  "generation": 81,
+  "updated_at": "2026-10-21T11:48:19.399958+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Build exact canonical main at d25102b0f with the registered canonical builder; re-publish exact Node/Python images, deploy only staging, and run one Node canary with concurrent getState/instance inventory. Roll back immediately and diagnose before any further start; preserve production DNS and existing database.",
+    "next_action": "Repair staging deployment read-after-upload consistency: retry only exact Cloudflare HTTP 404/API 100146 for the immutable uploaded version ID, revalidate the active grant on each bounded retry, cover in transport tests, integrate, rebuild and publish exact image pair, deploy staging, and run one diagnostic Node canary with rollback.",
     "merged_main_sha": "d25102b0f9ccce9a1334e1988023bad189840573",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
@@ -77,7 +77,8 @@
       "The previous source build passed, but the staging operator exposed a Node 22/tsx runtime import failure in Cloudflare private database binding; fix integrated as fe347f2fe and requires a fresh exact-SHA build.",
       "Initial runtime fix exposed a packaging boundary: shared workspace source cannot be imported from the standalone Linux artifact. ad08ef098 adds a backend-local contract with parity coverage; exact current-main build and runtime validation remain pending.",
       "Canary preparation found the same workspace-package TS import boundary in origin and media contracts; 04c5dda6f moves these contracts inside the backend artifact and adds parity coverage. A temporary image policy/grant was revoked before any image build or container start.",
-      "36b3a273 staging Node canary returned 503 after 30.37s; health not accepted. Container log query returned zero rows, while the prior failure diagnostic timestamp was stale. Need current Container runtime state/exit code to distinguish process exit from unresolved startup/readiness."
+      "36b3a273 staging Node canary returned 503 after 30.37s; health not accepted. Container log query returned zero rows, while the prior failure diagnostic timestamp was stale. Need current Container runtime state/exit code to distinguish process exit from unresolved startup/readiness.",
+      "97918a54 staging deployment safely rolled back before any canary: Cloudflare POST /versions succeeded but immediate GET of that exact version returned transient 404/API 100146; read-only repeat later returned exact source annotation and Node/Python container bindings. Deployment transport needs bounded read-after-upload retry before canary."
     ],
     "outcome": "NOT_ACCEPTED"
   }

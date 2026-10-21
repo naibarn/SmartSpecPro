@@ -361,6 +361,24 @@ export function createCloudflareStagingApiTransport(input: {
     return { versionId: primary.version_id, deployment };
   }
 
+  async function readUploadedVersion(token: string, target: CloudflareStagingTarget, versionId: string) {
+    const url = `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(versionId)}`;
+    const retryDelaysMs = [200, 400, 800, 1_600, 3_200];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await api<Version>(token, url);
+      } catch (error) {
+        // Cloudflare can accept a version upload before its version-read endpoint
+        // has propagated it. Retry only that immutable, read-only receipt lookup.
+        if (!(error instanceof CloudflareStagingTransportError) || error.status !== 404 || error.apiCode !== 100146 || attempt >= retryDelaysMs.length) {
+          throw error;
+        }
+        await mutationAuthority.getStore()?.();
+        await new Promise(resolve => setTimeout(resolve, retryDelaysMs[attempt]!));
+      }
+    }
+  }
+
   function bootstrapTag(key: string) {
     return createHash("sha256").update(`smartaihub-staging:${key}`).digest("hex").slice(0, 32);
   }
@@ -491,7 +509,7 @@ export function createCloudflareStagingApiTransport(input: {
         if (origin?.descriptor.applicationHttp) await input.prepareHttpApplications!(origin, target, assertHttpAuthorized);
         const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
         if (origin?.descriptor.nativeResources || origin?.descriptor.applicationHttp) {
-          const uploaded = await api<Version>(token, `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/versions/${versionId}`);
+          const uploaded = await readUploadedVersion(token, target, versionId);
           if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest))
             throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
           if (origin.descriptor.nativeResources) assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
