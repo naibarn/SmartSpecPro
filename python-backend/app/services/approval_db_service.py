@@ -56,7 +56,7 @@ _CF_STAGING_ACTIONS = {"deploy", "rollback", "bootstrap"}
 _CF_STAGING_SHA = re.compile(r"^[0-9a-f]{40}$")
 _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
-_CF_PRODUCTION_GRANT_SCHEMA = "cloudflare.production-deployment-grant.v1"
+_CF_PRODUCTION_GRANT_SCHEMA = "cloudflare.production-deployment-grant.v2"
 _CF_PRODUCTION_TARGET = "smartspec-cloudflare-runtime"
 
 
@@ -64,7 +64,8 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
     """Validate a bounded production deployment grant without authorizing it."""
     required = {
         "schemaVersion", "grantRef", "tenantId", "requesterUserId", "projectId", "executorId",
-        "targetId", "environment", "accountRef", "jobId", "artifactRef", "sourceSha", "buildDigest",
+        "targetId", "environment", "accountRef", "zoneId", "routePattern", "expectedRouteId",
+        "expectedRouteScript", "rolloutStage", "jobId", "artifactRef", "sourceSha", "buildDigest",
         "configurationRef", "configurationDigest", "actions", "rollbackDeploymentId",
         "rollbackArtifactRef", "rollbackSourceSha", "rollbackBuildDigest", "rollbackConfigurationRef",
         "rollbackConfigurationDigest", "canaryRequired", "maxDurationSeconds", "expiresAt", "revokedAt",
@@ -81,6 +82,7 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
         ("grantRef", _SPEC224_CANONICAL_UUID), ("jobId", _SPEC224_CANONICAL_UUID),
         ("rollbackDeploymentId", _SPEC224_CANONICAL_UUID),
         ("accountRef", re.compile(r"^[a-f0-9]{32}$")),
+        ("zoneId", re.compile(r"^[a-f0-9]{32}$")),
         ("sourceSha", _CF_STAGING_SHA), ("rollbackSourceSha", _CF_STAGING_SHA),
         ("buildDigest", _CF_STAGING_DIGEST), ("rollbackBuildDigest", _CF_STAGING_DIGEST),
         ("configurationDigest", _CF_STAGING_DIGEST), ("rollbackConfigurationDigest", _CF_STAGING_DIGEST),
@@ -93,6 +95,15 @@ def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_FIELD_INVALID")
     if value["actions"] not in (["deploy"], ["rollback"]):
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ACTION_INVALID")
+    if (value["routePattern"] != "smartaihub.app/*" or
+            value["rolloutStage"] not in ("canary", "promote", "rollback") or
+            (value["expectedRouteId"] is not None and
+             (not isinstance(value["expectedRouteId"], str) or not 1 <= len(value["expectedRouteId"]) <= 32)) or
+            (value["expectedRouteId"] is None) != (value["expectedRouteScript"] is None) or
+            (value["expectedRouteScript"] is not None and value["expectedRouteScript"] != _CF_PRODUCTION_TARGET) or
+            (value["rolloutStage"] == "rollback") != (value["actions"] == ["rollback"]) or
+            (value["rolloutStage"] in ("canary", "promote")) != (value["actions"] == ["deploy"])):
+        raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ROUTE_OR_STAGE_INVALID")
     if value["artifactRef"] != f"sha256:{value['buildDigest']}" or value["rollbackArtifactRef"] != f"sha256:{value['rollbackBuildDigest']}":
         raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_ARTIFACT_BINDING_INVALID")
     validate_origin_configuration_pair(value["configurationRef"], value["configurationDigest"])

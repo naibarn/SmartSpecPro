@@ -298,6 +298,11 @@ class CloudflareProductionGrantIssue(BaseModel):
     target_id: Literal["smartspec-cloudflare-runtime"] = Field(..., alias="targetId")
     environment: Literal["production"]
     account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+    zone_id: StrictStr = Field(..., alias="zoneId", pattern=r"^[a-f0-9]{32}$")
+    route_pattern: Literal["smartaihub.app/*"] = Field(..., alias="routePattern")
+    expected_route_id: StrictStr | None = Field(..., alias="expectedRouteId", max_length=32)
+    expected_route_script: Literal["smartspec-cloudflare-runtime"] | None = Field(..., alias="expectedRouteScript")
+    rollout_stage: Literal["canary", "promote", "rollback"] = Field(..., alias="rolloutStage")
     job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
     artifact_ref: StrictStr = Field(..., alias="artifactRef", pattern=r"^sha256:[a-f0-9]{64}$")
     source_sha: StrictStr = Field(..., alias="sourceSha", pattern=r"^[a-f0-9]{40}$")
@@ -1639,11 +1644,13 @@ async def create_cloudflare_production_grant_request(
         raise HTTPException(status_code=422, detail="CLOUDFLARE_PRODUCTION_GRANT_EXPIRY_INVALID")
     tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
     grant_payload = {
-        "schemaVersion": "cloudflare.production-deployment-grant.v1",
+        "schemaVersion": "cloudflare.production-deployment-grant.v2",
         "grantRef": "pending-idempotency-binding", "tenantId": tenant_id,
         "requesterUserId": int(current_user.id), "projectId": data.project_id,
         "executorId": data.executor_id, "targetId": data.target_id, "environment": data.environment,
-        "accountRef": data.account_ref, "jobId": data.job_id, "artifactRef": data.artifact_ref,
+        "accountRef": data.account_ref, "zoneId": data.zone_id, "routePattern": data.route_pattern,
+        "expectedRouteId": data.expected_route_id, "expectedRouteScript": data.expected_route_script,
+        "rolloutStage": data.rollout_stage, "jobId": data.job_id, "artifactRef": data.artifact_ref,
         "sourceSha": data.source_sha, "buildDigest": data.build_digest,
         "configurationRef": data.configuration_ref, "configurationDigest": data.configuration_digest,
         "actions": data.actions, "rollbackDeploymentId": data.rollback_deployment_id,

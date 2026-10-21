@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Implement the production worker_jobs executor and route-cutover authority consuming only the approved production grant; keep worker/routes inactive until exact target/route/credential/canary checks pass, then add zero-provider-call denial tests and positive mocked lifecycle.",
+      "next_action": "Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
       "merged_main_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 132,
-  "updated_at": "2026-10-21T19:05:36.187179+00:00",
+  "generation": 133,
+  "updated_at": "2026-10-21T19:11:12.982658+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Implement the production worker_jobs executor and route-cutover authority consuming only the approved production grant; keep worker/routes inactive until exact target/route/credential/canary checks pass, then add zero-provider-call denial tests and positive mocked lifecycle.",
+    "next_action": "Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution.",
     "merged_main_sha": "9c3deae585ff5149cbf0344662b65f9a38048275",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
@@ -92,7 +92,9 @@
       "Current production remains on origin: runtime Worker disabled/cache-only, smartaihub.app has no Worker route, production deployment target/grant is absent; current deployment credential does not read route/container inventory.",
       "Staging UI and immutable artifact publication focused tests passed (2 files, 29 tests); full Cloudflare app journey and production cutover remain unverified.",
       "A production grant request/resolver is now implemented and independently approved only; no production worker_jobs executor consumes it yet, and no production policy/approved grant exists.",
-      "The published production artifact is from source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9; after executor/runtime integration, rebuild and publish from the final canonical main SHA before any authorized deploy."
+      "The published production artifact is from source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9; after executor/runtime integration, rebuild and publish from the final canonical main SHA before any authorized deploy.",
+      "Production worker_jobs execution and route/canary cutover are not yet implemented; production ingress remains on Debian.",
+      "Production grant and exact approved production policy do not yet exist; no production provider mutation is authorized by current evidence."
     ],
     "outcome": "NOT_ACCEPTED"
   }

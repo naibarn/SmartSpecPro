@@ -24,12 +24,14 @@ def _grant_payload(**overrides):
     digest = "a" * 64
     rollback_digest = "b" * 64
     payload = {
-        "schemaVersion": "cloudflare.production-deployment-grant.v1",
+        "schemaVersion": "cloudflare.production-deployment-grant.v2",
         "grantRef": "11111111-1111-4111-8111-111111111111",
         "tenantId": "tenant-1", "requesterUserId": 17, "projectId": "project-1",
         "executorId": "cloudflare-production-executor",
         "targetId": "smartspec-cloudflare-runtime", "environment": "production",
-        "accountRef": "c" * 32, "jobId": "22222222-2222-4222-8222-222222222222",
+        "accountRef": "c" * 32, "zoneId": "9" * 32, "routePattern": "smartaihub.app/*",
+        "expectedRouteId": None, "expectedRouteScript": None, "rolloutStage": "canary",
+        "jobId": "22222222-2222-4222-8222-222222222222",
         "artifactRef": f"sha256:{digest}", "sourceSha": "d" * 40, "buildDigest": digest,
         "configurationRef": f"cf-origin:{digest}", "configurationDigest": digest,
         "actions": ["deploy"], "rollbackDeploymentId": "33333333-3333-4333-8333-333333333333",
@@ -58,6 +60,10 @@ def test_production_grant_payload_is_exact_bounded_and_separate_from_staging():
         normalize_cloudflare_production_grant_payload(_grant_payload(maxDurationSeconds=901))
     with pytest.raises(ValueError, match="FIELDS_INVALID"):
         normalize_cloudflare_production_grant_payload(_grant_payload(unbounded=True))
+    with pytest.raises(ValueError, match="ROUTE_OR_STAGE_INVALID"):
+        normalize_cloudflare_production_grant_payload(_grant_payload(routePattern="*.smartaihub.app/*"))
+    with pytest.raises(ValueError, match="ROUTE_OR_STAGE_INVALID"):
+        normalize_cloudflare_production_grant_payload(_grant_payload(rolloutStage="promote", expectedRouteId="route-a"))
 
 
 @pytest.mark.unit
@@ -67,6 +73,8 @@ async def test_production_grant_api_is_admin_only_and_never_auto_approves(monkey
         "idempotencyKey": "production-grant-001", "projectId": "project-1",
         "executorId": "cloudflare-production-executor", "targetId": "smartspec-cloudflare-runtime",
         "environment": "production", "accountRef": "c" * 32,
+        "zoneId": "9" * 32, "routePattern": "smartaihub.app/*",
+        "expectedRouteId": None, "expectedRouteScript": None, "rolloutStage": "canary",
         "jobId": "22222222-2222-4222-8222-222222222222",
         "artifactRef": "sha256:" + "a" * 64, "sourceSha": "d" * 40, "buildDigest": "a" * 64,
         "configurationRef": "cf-origin:" + "a" * 64, "configurationDigest": "a" * 64,

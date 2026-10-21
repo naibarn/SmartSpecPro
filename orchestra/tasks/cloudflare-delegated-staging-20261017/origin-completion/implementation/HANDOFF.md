@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `132`
-- Updated (UTC): `2026-10-21T19:05:36.187179+00:00`
+- State generation: `133`
+- Updated (UTC): `2026-10-21T19:11:12.982658+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `9c3deae585ff5149cbf0344662b65f9a38048275`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Implement the production worker_jobs executor and route-cutover authority consuming only the approved production grant; keep worker/routes inactive until exact target/route/credential/canary checks pass, then add zero-provider-call denial tests and positive mocked lifecycle.
+- Next action: Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 9c3deae585ff5149cbf0344662b65f9a38048275 | 9c3deae585ff5149cbf0344662b65f9a38048275 | Implement the production worker_jobs executor and route-cutover authority consuming only the approved production grant; keep worker/routes inactive until exact target/route/credential/canary checks pass, then add zero-provider-call denial tests and positive mocked lifecycle. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 9c3deae585ff5149cbf0344662b65f9a38048275 | 9c3deae585ff5149cbf0344662b65f9a38048275 | Implement production-only worker_jobs executor admission and canary-safe route authority using the independent production grant; add mocked lifecycle and denial tests before provider execution. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -52,6 +52,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Staging UI and immutable artifact publication focused tests passed (2 files, 29 tests); full Cloudflare app journey and production cutover remain unverified.
 - A production grant request/resolver is now implemented and independently approved only; no production worker_jobs executor consumes it yet, and no production policy/approved grant exists.
 - The published production artifact is from source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9; after executor/runtime integration, rebuild and publish from the final canonical main SHA before any authorized deploy.
+- Production worker_jobs execution and route/canary cutover are not yet implemented; production ingress remains on Debian.
+- Production grant and exact approved production policy do not yet exist; no production provider mutation is authorized by current evidence.
 
 ## Resume
 
