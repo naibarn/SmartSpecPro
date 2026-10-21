@@ -419,13 +419,13 @@ describe("Cloudflare version-scoped origin transport", () => {
       node: { provisionJobId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-node-http@sha256:${"b".repeat(64)}` },
       python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${accountId}/${namespace}-python-http@sha256:${"d".repeat(64)}` },
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: f.config.descriptor.expiresAt,
-      maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10, instance: "basic" };
+      maxStarts: 1, maxComputeSeconds: 60, hardLifetimeSeconds: 60, idleTimeoutSeconds: 10, instance: "basic", startupDiagnostics: "container-logs" };
     if (namespaceOnly) {
       f.config.descriptor.applicationHttpPhase = "namespace-only";
       f.config.descriptor.applicationHttp.issuedAt = new Date(Date.now() - 120000).toISOString();
       f.config.descriptor.applicationHttp.expiresAt = new Date(Date.now() - 60000).toISOString();
     }
-    else Object.assign(f.config.secrets, { applicationCanaryToken: "disposable-canary-token-12345678901234567890", applicationHttp: { node: { JWT_SECRET: "fixture-private-node" }, python: { SECRET_KEY: "fixture-private-python" } } });
+    else Object.assign(f.config.secrets, { applicationCanaryToken: "disposable-canary-token-12345678901234567890", applicationHttp: { node: { JWT_SECRET: "fixture-private-node", CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "fixture-private-python" } } });
     f.config.configurationDigest = cloudflareOriginDescriptorDigest(f.config.descriptor);
     f.config.configurationRef = `cf-origin:${f.config.configurationDigest}`;
     f.originTarget.runtimePolicy = f.config.configurationRef;
@@ -446,6 +446,7 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(prepare).toHaveBeenCalledOnce();
     if (namespaceOnly) {
       expect(ensure).not.toHaveBeenCalled();
+      expect(f.metadata().observability).toBeUndefined();
       expect(f.metadata().bindings.some((b: any) => /^(?:NODE_HTTP|PYTHON_HTTP|CLOUDFLARE_(?:NODE|PYTHON)_HTTP_|CLOUDFLARE_APPLICATION_CANARY_TOKEN|CLOUDFLARE_CONTAINER_POLICY)/.test(b.name))).toBe(false);
       expect(f.metadata().exports.StagingNodeHttpContainer.container).toBe(`${namespace}-node-http`);
       expect(f.metadata().containers).toHaveLength(2);
@@ -456,6 +457,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       expect(cloudflareOriginDescriptorDigest(changed)).not.toBe(f.config.configurationDigest);
     } else {
       expect(ensure).toHaveBeenCalledOnce();
+      expect(f.metadata().observability).toMatchObject({ enabled: true, logs: { enabled: true, invocation_logs: false } });
       expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
     }
     expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_ACTIVATION").text).toBe("disabled");

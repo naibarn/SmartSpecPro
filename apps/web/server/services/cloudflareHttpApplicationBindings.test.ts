@@ -32,11 +32,18 @@ describe("paired HTTP API deployment capabilities", () => {
     expect(metadata.exports.StagingNodeHttpContainer).toMatchObject({ type: "durable-object", storage: "sqlite" });
     expect(metadata.bindings.map(b => b.name)).toEqual(["NODE_HTTP", "PYTHON_HTTP"]);
     const bindings = httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
-      { node: { JWT_SECRET: "app-fixture" }, python: { SECRET_KEY: "app-fixture" } });
+      { node: { JWT_SECRET: "app-fixture", CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "app-fixture" } });
     expect(bindings.find(b => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS")?.type).toBe("secret_text");
     const node = JSON.parse(bindings.find(b => b.name === "CLOUDFLARE_NODE_HTTP_PROFILE")!.text);
     expect(node).toMatchObject({ runtime: "node-http", namespace: f.settings.namespace, image: f.settings.node.image, instance: "basic", maxStarts: 1 });
     expect(node).not.toHaveProperty("JWT_SECRET"); expect(JSON.stringify(metadata)).not.toContain("app-fixture");
+    expect(node).not.toHaveProperty("CONTROL_PLANE_API_KEY");
+    expect(bindings.filter(binding => binding.type !== "secret_text").some(binding => binding.text.includes("bootstrap-fixture"))).toBe(false);
+  });
+  it.each([undefined, "short-bootstrap-key"])("rejects a missing or short server bootstrap key before API binding creation", key => {
+    const f = fixture();
+    expect(() => httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
+      { node: key === undefined ? {} : { CONTROL_PLANE_API_KEY: key }, python: {} })).toThrow("BOOTSTRAP_REQUIRED");
   });
   it.each(["namespace", "image-account", "image-runtime", "unbounded-time", "starts", "compute", "idle", "one-job"])("rejects %s before metadata creation", mode => {
     const f = fixture();

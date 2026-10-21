@@ -252,6 +252,9 @@ export function createCloudflareStagingApiTransport(input: {
       compatibility_date: bundle.compatibilityDate,
       compatibility_flags: ["nodejs_compat"],
       ...(http ? { exports: http.exports, containers: http.containers } : {}),
+      ...(origin?.descriptor.applicationHttp?.startupDiagnostics === "container-logs" && !origin.descriptor.applicationHttpPhase ? {
+        observability: { enabled: true, head_sampling_rate: 1, logs: { enabled: true, invocation_logs: false, head_sampling_rate: 1 } },
+      } : {}),
       bindings: [
         { name: "ASSETS", type: "assets" },
         { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },

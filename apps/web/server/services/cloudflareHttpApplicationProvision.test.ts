@@ -17,7 +17,7 @@ function fixture() {
   const ports = { assertAuthorized: vi.fn(async () => undefined), wait: vi.fn(async () => undefined),
     load: vi.fn(async runtime => states.get(runtime) ?? null),
     save: vi.fn(async (state, previous) => { expect(states.get(state.runtime) ?? null).toEqual(previous); states.set(state.runtime, structuredClone(state)); }),
-    request: vi.fn(async (path: string, body?: any): Promise<any> => {
+    request: vi.fn(async (path: string, body?: any, method?: "PATCH"): Promise<any> => {
       if (path === "/image-preparations") return { status: "ready" };
       if (path === "/applications" && !body) return applications;
       if (path === "/applications" && body) {
@@ -25,11 +25,36 @@ function fixture() {
         expect(states.get(runtime).pending).toBe(true);
         const app = { ...body, id: `${applications.length + 1}`.repeat(32) }; applications.push(app); return app;
       }
-      return applications.find(app => path.endsWith(app.id));
+      const app = applications.find(app => path.endsWith(app.id));
+      if (method === "PATCH") Object.assign(app, body);
+      return app;
     }) };
   return { settings, scope, version, ports, states, applications };
 }
 describe("private HTTP application metadata preparation", () => {
+  it("changes logging only on verified owned applications, reads it back, and disables it for the next ordinary API profile", async () => {
+    const f = fixture();
+    await ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports);
+    f.settings.startupDiagnostics = "container-logs";
+    await ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports);
+    expect(f.applications).toHaveLength(2);
+    expect(f.applications.every(app => app.observability.logs.enabled === true)).toBe(true);
+    expect(f.ports.request.mock.calls.filter(([, , method]) => method === "PATCH")).toHaveLength(2);
+    const calls = f.ports.request.mock.calls.length;
+    await ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports);
+    expect(f.ports.request.mock.calls.slice(calls).every(([, , method]) => method !== "PATCH")).toBe(true);
+    delete f.settings.startupDiagnostics;
+    await ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports);
+    expect(f.applications.every(app => app.observability.logs.enabled === false)).toBe(true);
+  });
+  it("rejects ignored logging writes without claiming successful diagnostic setup", async () => {
+    const f = fixture();
+    await ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports);
+    f.settings.startupDiagnostics = "container-logs";
+    const request = f.ports.request.getMockImplementation()!;
+    f.ports.request.mockImplementation(async (path, body, method) => method === "PATCH" ? {} : request(path, body, method));
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, "e".repeat(64), f.ports)).rejects.toThrow("DIAGNOSTICS_READBACK_MISMATCH");
+  });
   it("retains namespace recovery after API expiry without granting any API execution", async () => {
     const f = fixture();
     f.settings.issuedAt = new Date(Date.now() - 120000).toISOString();
@@ -67,16 +92,24 @@ describe("private HTTP application metadata preparation", () => {
         credentialRef: httpApplicationCredentialRef(f.scope), token: "fixture-api-token", revokedAt: null })) };
       const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => [row] }) }) }) };
       const fetchImpl = vi.fn(async (url: any, init: any) => {
-        expect(String(url)).toBe(`https://api.cloudflare.com/client/v4/accounts/${f.scope.accountRef}/containers/image-preparations`);
-        expect(init.method).toBe("POST"); expect(init.redirect).toBe("error");
+        const patch = init.method === "PATCH";
+        expect(String(url)).toBe(`https://api.cloudflare.com/client/v4/accounts/${f.scope.accountRef}/containers${patch ? `/applications/${"1".repeat(32)}` : "/image-preparations"}`);
+        expect(init.method).toBe(patch ? "PATCH" : "POST"); expect(init.redirect).toBe("error");
         expect(init.headers.Authorization).toBe("Bearer fixture-api-token");
-        expect(JSON.parse(init.body)).toEqual({ image: f.settings.node.image });
+        expect(JSON.parse(init.body)).toEqual(patch ? { observability: { logs: { enabled: true } } } : { image: f.settings.node.image });
         return Response.json({ success: true, result: { image: f.settings.node.image, status: "ready" } });
       });
       const ports = createHttpApplicationProvisionPorts(db as never, f.scope, f.ports.assertAuthorized, fetchImpl as never);
       await expect(ports.request("/image-preparations", { image: f.settings.node.image })).resolves.toMatchObject({ status: "ready" });
       await expect(ports.request("/images/prepare", { image: f.settings.node.image })).rejects.toThrow("ENDPOINT_DENIED");
-      expect(fetchImpl).toHaveBeenCalledOnce(); expect(row.value).not.toContain("fixture-api-token");
+      const path = `/applications/${"1".repeat(32)}`;
+      await expect(ports.request(path, { observability: { logs: { enabled: true } } }, "PATCH")).resolves.toMatchObject({ status: "ready" });
+      expect(fetchImpl.mock.calls.at(-1)?.[1]).toMatchObject({ method: "PATCH", body: JSON.stringify({ observability: { logs: { enabled: true } } }) });
+      await expect(ports.request(path, { observability: { logs: { enabled: true } }, instances: 5 }, "PATCH")).rejects.toThrow("ENDPOINT_DENIED");
+      await expect(ports.request("/applications", { observability: { logs: { enabled: true } } }, "PATCH")).rejects.toThrow("ENDPOINT_DENIED");
+      f.ports.assertAuthorized.mockRejectedValueOnce(Error("revoked"));
+      await expect(ports.request(path, { observability: { logs: { enabled: false } } }, "PATCH")).rejects.toThrow("revoked");
+      expect(fetchImpl).toHaveBeenCalledTimes(2); expect(row.value).not.toContain("fixture-api-token");
     } finally { if (oldKey === undefined) delete process.env.LLM_ENCRYPTION_KEY; else process.env.LLM_ENCRYPTION_KEY = oldKey; }
   });
   it("prepares only the two exact registry images and creates two DO-managed applications without VM starts", async () => {

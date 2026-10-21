@@ -13,6 +13,7 @@ export const cloudflareHttpApplicationSettingsSchema = z.object({
   maxStarts: z.number().int().min(1).max(2), maxComputeSeconds: z.number().int().min(1).max(1200),
   hardLifetimeSeconds: z.number().int().min(1).max(600), idleTimeoutSeconds: z.number().int().min(1).max(30),
   instance: z.enum(["basic", "standard-1"]),
+  startupDiagnostics: z.literal("container-logs").optional(),
 }).strict();
 export type HttpApplicationSettings = z.infer<typeof cloudflareHttpApplicationSettingsSchema>;
 const environment = z.record(z.string().regex(/^[A-Z][A-Z0-9_]*$/), z.string().max(16_384)).refine(value =>
@@ -79,6 +80,12 @@ export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, sc
 export function httpApplicationVersionBindings(value: HttpApplicationSettings, scope: Scope & { configurationRef: string }, secrets: z.infer<typeof cloudflareHttpApplicationSecretsSchema>) {
   validateHttpApplicationSettings(value, scope);
   const secret = cloudflareHttpApplicationSecretsSchema.parse(secrets);
+  // The packaged server validates this bootstrap setting during module load.
+  // Reject an incomplete API deployment before it can consume a paid VM start;
+  // namespace-only preparation never injects application secrets.
+  if ((secret.node.CONTROL_PLANE_API_KEY?.length ?? 0) < 24) {
+    throw new Error("CLOUDFLARE_HTTP_APPLICATION_BOOTSTRAP_REQUIRED");
+  }
   if (!/^cf-origin:[a-f0-9]{64}$/.test(scope.configurationRef)) throw new Error("CLOUDFLARE_HTTP_APPLICATION_SCOPE_DENIED");
   const profile = (runtime: "node" | "python") => ({ configurationRef: scope.configurationRef, sourceSha: value.sourceSha,
     targetId: "smartspec-cloudflare-staging", runtime: `${runtime}-http`, accountRef: scope.accountRef, namespace: value.namespace,

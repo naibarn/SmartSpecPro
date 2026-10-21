@@ -43,7 +43,7 @@ export async function saveHttpApplicationCredential(db: DrizzleDB, scope: Scope,
 
 type Ports = {
   assertAuthorized(): Promise<void>;
-  request(path: string, body?: object): Promise<any>;
+  request(path: string, body?: object, method?: "PATCH"): Promise<any>;
   load(runtime: "node" | "python", namespaceId: string): Promise<Checkpoint | null>;
   save(value: Checkpoint, previous: Checkpoint | null): Promise<void>;
   wait?: () => Promise<void>;
@@ -108,7 +108,8 @@ export async function ensureHttpApplications(settings: HttpApplicationSettings, 
       if (inventory.some(item => item.name === name || item.durable_objects?.namespace_id === namespaceId)) fail("UNOWNED_APPLICATION_COLLISION");
       const pending: Checkpoint = { ...scope, runtime, namespaceId, name, operationRef, pending: true };
       await ports.assertAuthorized(); await ports.save(pending, state);
-      const created = await ports.request("/applications", { name, scheduling_policy: "durable_object", durable_objects: { namespace_id: namespaceId } });
+      const created = await ports.request("/applications", { name, scheduling_policy: "durable_object", durable_objects: { namespace_id: namespaceId },
+        ...(settings.startupDiagnostics ? { observability: { logs: { enabled: true } } } : {}) });
       if (!created || typeof created.id !== "string" || !/^[a-f0-9-]{32,36}$/.test(created.id) || created.name !== name ||
           created.scheduling_policy !== "durable_object" || created.durable_objects?.namespace_id !== namespaceId) fail("CREATE_RECEIPT_INVALID");
       state = { ...pending, pending: false, applicationId: created.id };
@@ -117,6 +118,16 @@ export async function ensureHttpApplications(settings: HttpApplicationSettings, 
     const readback = await ports.request(`/applications/${state.applicationId}`);
     if (readback?.id !== state.applicationId || readback.name !== name || readback.scheduling_policy !== "durable_object" ||
         readback.durable_objects?.namespace_id !== namespaceId) fail("PROVIDER_READBACK_MISMATCH");
+    const logsEnabled = settings.startupDiagnostics === "container-logs";
+    if (Boolean(readback.observability?.logs?.enabled) !== logsEnabled) {
+      // Only a verified, actor-owned application can change this setting. It
+      // updates metadata without creating a placement or granting another start.
+      await ports.assertAuthorized(); validateHttpApplicationSettings(settings, scope);
+      await ports.request(`/applications/${state.applicationId}`, { observability: { logs: { enabled: logsEnabled } } }, "PATCH");
+      const verified = await ports.request(`/applications/${state.applicationId}`);
+      if (verified?.id !== state.applicationId || verified.name !== name || verified.scheduling_policy !== "durable_object" ||
+          verified.durable_objects?.namespace_id !== namespaceId || verified.observability?.logs?.enabled !== logsEnabled) fail("DIAGNOSTICS_READBACK_MISMATCH");
+    }
     output.push({ runtime, name, applicationId: state.applicationId!, namespaceId });
   }
   return { applications: output, containerStarts: 0, publicIngressEnabled: false };
@@ -144,12 +155,14 @@ export function createHttpApplicationProvisionPorts(db: DrizzleDB, scope: Scope,
   };
   return {
     assertAuthorized,
-    async request(path, body) {
+    async request(path, body, method) {
       if (!(path === "/image-preparations" || path === "/applications" || /^\/applications\/[a-f0-9-]{32,36}$/.test(path)) ||
-          body && path !== "/image-preparations" && path !== "/applications") fail("ENDPOINT_DENIED");
+          body && path !== "/image-preparations" && path !== "/applications" && method !== "PATCH") fail("ENDPOINT_DENIED");
+      if (method !== undefined && (method !== "PATCH" || !/^\/applications\/[a-f0-9-]{32,36}$/.test(path) ||
+          !body || ![true, false].some(enabled => JSON.stringify(body) === JSON.stringify({ observability: { logs: { enabled } } })))) fail("ENDPOINT_DENIED");
       return withToken(async token => {
         const response = await fetchImpl(`https://api.cloudflare.com/client/v4/accounts/${scope.accountRef}/containers${path}`, {
-          method: body ? "POST" : "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          method: method ?? (body ? "POST" : "GET"), headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           ...(body ? { body: JSON.stringify(body) } : {}), redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15000),
         });
         if (!response.ok) { await response.body?.cancel(); fail(`PROVIDER_HTTP_${response.status}`); }

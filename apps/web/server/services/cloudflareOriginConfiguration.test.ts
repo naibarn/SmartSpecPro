@@ -152,8 +152,8 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
       image: `registry.cloudflare.com/${accountRef}/${namespace}-${runtime}-http@sha256:${"c".repeat(64)}` });
     const applicationHttp = { mode: "private-canary" as const, namespace, sourceSha: "d".repeat(40), node: descriptor("node"), python: descriptor("python"),
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString(),
-      maxStarts: 1, maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic" as const };
-    const httpSecrets = { node: { JWT_SECRET: "disposable-node-secret" }, python: { SECRET_KEY: "disposable-python-secret" } };
+      maxStarts: 1, maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic" as const, startupDiagnostics: "container-logs" as const };
+    const httpSecrets = { node: { JWT_SECRET: "disposable-node-secret", CONTROL_PLANE_API_KEY: "disposable-bootstrap-key-1234567890" }, python: { SECRET_KEY: "disposable-python-secret" } };
     const input = { identity, settings: { ...settings(), applicationHttp }, secrets: { ...secrets, applicationHttp: httpSecrets, applicationCanaryToken: "disposable-canary-token-12345678901234567890" }, actorUserId };
     for (const runtime of ["node", "python"] as const) {
       const expected = applicationHttp[runtime];
@@ -169,12 +169,14 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
     const saved = await saveCloudflareOriginConfiguration(db, input);
     const metadata = await getCloudflareOriginConfiguration(db, { identity, configurationRef: saved.configurationRef });
     expect(metadata.descriptor.applicationHttp?.node.image).toBe(applicationHttp.node.image);
+    expect(metadata.descriptor.applicationHttp?.startupDiagnostics).toBe("container-logs");
     expect(JSON.stringify(metadata)).not.toContain("disposable-node-secret");
     const [stored] = await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.key, saved.configurationRef));
     expect(stored!.value).not.toContain("disposable-python-secret"); expect(stored!.valueJson).toBeNull();
     await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: saved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
     const request = { identity, configurationRef: saved.configurationRef, configurationDigest: saved.configurationDigest };
     await expect(withCloudflareOriginConfiguration(db, request, async value => value.secrets.applicationHttp?.node.JWT_SECRET)).resolves.toBe("disposable-node-secret");
+    await expect(withCloudflareOriginConfiguration(db, request, async value => value.secrets.applicationHttp?.node.CONTROL_PLANE_API_KEY)).resolves.toBe("disposable-bootstrap-key-1234567890");
     const expiredApplicationHttp = { ...applicationHttp, issuedAt: new Date(Date.now() - 120000).toISOString(), expiresAt: new Date(Date.now() - 60000).toISOString() };
     await expect(saveCloudflareOriginConfiguration(db, { ...input, settings: { ...input.settings, applicationHttp: expiredApplicationHttp } })).rejects.toThrow("SCOPE_DENIED");
     const namespaceSaved = await saveCloudflareOriginConfiguration(db, {
