@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched.",
+      "next_action": "Default-off Cloudflare Container WebSocket bridge for voice, runner-control and widget is integrated at b4d489df81fcbcd2ed4e579a8406fd4050f57c45; package check/build and 295 tests pass. Next perform exact staging live auth/upgrade/reconnect/idle-deadline proof when the existing staging grant/profile is available, then close the Container-to-retained-PostgreSQL path and continue the other runtime families. No production activation.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
-      "merged_main_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
+      "checkpoint_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
+      "merged_main_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 99,
-  "updated_at": "2026-10-21T17:04:23.301135+00:00",
+  "generation": 100,
+  "updated_at": "2026-10-21T17:05:06.209599+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Default-off staging bridge code for voice, runner-control and widget WebSockets is implemented and package checks pass. Next qualify a real staging upgrade/reconnect/auth/expiry flow using exact existing staging target and approved grant; then proceed to retained-PostgreSQL Container access and remaining job/storage/runtime families. Production remains untouched.",
-    "merged_main_sha": "e4a7445df615b51ab60f1094b1e2ee6c5bbbf817",
+    "next_action": "Default-off Cloudflare Container WebSocket bridge for voice, runner-control and widget is integrated at b4d489df81fcbcd2ed4e579a8406fd4050f57c45; package check/build and 295 tests pass. Next perform exact staging live auth/upgrade/reconnect/idle-deadline proof when the existing staging grant/profile is available, then close the Container-to-retained-PostgreSQL path and continue the other runtime families. No production activation.",
+    "merged_main_sha": "b4d489df81fcbcd2ed4e579a8406fd4050f57c45",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
