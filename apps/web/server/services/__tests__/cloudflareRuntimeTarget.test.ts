@@ -30,9 +30,12 @@ describe("Cloudflare hard-cutover runtime target", () => {
   });
 
   it("separates canonical hard cutover from Cloudflare transport activation", () => {
-    expect(isFeature186HardCutoverEnabled()).toBe(false);
+    // Canonical worker_jobs/outbox is now the fixed runtime contract. The
+    // reversible migration switch controls only whether jobs leave Postgres
+    // for the Cloudflare transport.
+    expect(isFeature186HardCutoverEnabled()).toBe(true);
     expect(isCloudflareHardCutoverEnabled()).toBe(false);
-    process.env.FEATURE_186_HARD_CUTOVER = "true";
+    process.env.FEATURE_186_HARD_CUTOVER = "false";
     expect(isFeature186HardCutoverEnabled()).toBe(true);
     expect(isCloudflareHardCutoverEnabled()).toBe(false);
     process.env.FEATURE_186_CLOUDFLARE_HARD_CUTOVER = "true";
