@@ -99,7 +99,8 @@ export type CloudflareStagingDeploymentRuntime = Readonly<{
   }) => Promise<CloudflareStagingTarget | null>;
   resolveGrant: (grantRef: string) => Promise<CloudflareStagingGrant | null>;
   resolveArtifact: (
-    artifactRef: string
+    artifactRef: string,
+    expectedSourceSha?: string,
   ) => Promise<CloudflareStagingArtifact | null>;
   withCredential: <T>(input: {
     target: CloudflareStagingTarget;
@@ -453,7 +454,7 @@ export function createCloudflareStagingDeploymentExecutor(
 
     const [grant, artifact] = await Promise.all([
       activeRuntime.resolveGrant(job.grantRef),
-      activeRuntime.resolveArtifact(job.artifactRef),
+      activeRuntime.resolveArtifact(job.artifactRef, job.sourceSha),
     ]);
     if (!grant)
       throw new CloudflareStagingDeploymentError(
@@ -527,7 +528,7 @@ export function createCloudflareStagingDeploymentExecutor(
     const validateOriginTransition = async () => {
       if (!originGrant) return;
       if (!activeRuntime.withOriginConfiguration) throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_RUNTIME_REQUIRED");
-      const baseline = await activeRuntime.resolveArtifact(originGrant.rollbackArtifactRef);
+      const baseline = await activeRuntime.resolveArtifact(originGrant.rollbackArtifactRef, originGrant.rollbackSourceSha);
       if (!baseline?.immutable || baseline.artifactRef !== originGrant.rollbackArtifactRef ||
           baseline.sourceSha !== originGrant.rollbackSourceSha || baseline.buildDigest !== originGrant.rollbackBuildDigest) {
         throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_ARTIFACT_INVALID");

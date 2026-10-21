@@ -29,6 +29,7 @@ export type CloudflareStagingBundle = Readonly<{
 
 export type CloudflareStagingBundleResolver = (
   artifactRef: string,
+  expectedSourceSha?: string,
 ) => Promise<CloudflareStagingBundle | null>;
 
 type Envelope<T> = { success?: boolean; result?: T; errors?: Array<{ code?: number }> };
@@ -221,7 +222,7 @@ export function createCloudflareStagingApiTransport(input: {
     if (!SOURCE_SHA.test(artifact.sourceSha) || !SHA256.test(artifact.buildDigest) || artifact.immutable !== true) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ARTIFACT_INVALID");
     }
-    const bundle = await input.resolveBundle(artifact.artifactRef);
+    const bundle = await input.resolveBundle(artifact.artifactRef, artifact.sourceSha);
     if (!bundle || bundle.sourceSha.toLowerCase() !== artifact.sourceSha.toLowerCase() ||
         bundle.buildDigest.toLowerCase() !== artifact.buildDigest.toLowerCase() ||
         canonicalBundleDigest(bundle) !== artifact.buildDigest.toLowerCase() ||

@@ -96,24 +96,24 @@ describe("Cloudflare staging artifact authority", () => {
     });
     const published = await authority.publish({ receipt, bundle });
     reads.length = 0;
-    expect(await authority.resolveArtifact(published.artifactRef)).toEqual(published);
+    expect(await authority.resolveArtifact(published.artifactRef, sourceSha)).toEqual(published);
     expect(reads).toHaveLength(1);
     expect(reads[0]).toMatch(/manifest\.json$/);
     authorized = false;
-    expect(await authority.resolveArtifact(published.artifactRef)).toBeNull();
+    expect(await authority.resolveArtifact(published.artifactRef, sourceSha)).toBeNull();
     authorized = true;
     const manifestKey = reads[0]!;
     const original = objects.get(manifestKey)!;
     const manifest = JSON.parse(original.toString());
     manifest.assets["assets/app.js"].sha256 = "f".repeat(64);
     objects.set(manifestKey, Buffer.from(JSON.stringify(manifest)));
-    expect(await authority.resolveArtifact(published.artifactRef)).toBeNull();
+    expect(await authority.resolveArtifact(published.artifactRef, sourceSha)).toBeNull();
     objects.set(manifestKey, original);
     const blobKey = [...objects.keys()].find(key => key.endsWith(sha256(jsBytes)))!;
     objects.set(blobKey, Buffer.from("corrupted"));
     // A metadata receipt does not claim that every remote byte is reachable.
-    expect(await authority.resolveArtifact(published.artifactRef)).toEqual(published);
-    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    expect(await authority.resolveArtifact(published.artifactRef, sourceSha)).toEqual(published);
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
   });
 
   it("rejects a valid manifest substituted under a different content address", async () => {
@@ -122,7 +122,7 @@ describe("Cloudflare staging artifact authority", () => {
     const manifestKey = [...objects.keys()].find(key => key.endsWith("manifest.json"))!;
     const otherDigest = "a".repeat(64);
     objects.set(manifestKey.replace(buildDigest, otherDigest), objects.get(manifestKey)!);
-    expect(await authority.resolveBundle(`sha256:${otherDigest}`)).toBeNull();
+    expect(await authority.resolveBundle(`sha256:${otherDigest}`, sourceSha)).toBeNull();
   });
 
   it("round-trips a large release asset using bounded immutable chunks and rejects tampering", async () => {
@@ -131,18 +131,18 @@ describe("Cloudflare staging artifact authority", () => {
     const largeBundle = { ...bundle, assets: { ...bundle.assets, "releases/worker.exe": { contentType: "application/octet-stream", bytes } } };
     const published = await authority.publish({ receipt: bundleReceipt(largeBundle), bundle: largeBundle });
     expect([...objects.values()].every(object => object.byteLength <= 10 * 1024 * 1024)).toBe(true);
-    const resolved = await authority.resolveBundle(published.artifactRef);
+    const resolved = await authority.resolveBundle(published.artifactRef, sourceSha);
     expect(Buffer.from(resolved!.assets["releases/worker.exe"]!.bytes).equals(bytes)).toBe(true);
     const manifestKey = [...objects.keys()].find(key => key.endsWith("manifest.json"))!;
     const originalManifest = objects.get(manifestKey)!;
     const malformed = JSON.parse(originalManifest.toString());
     malformed.assets["releases/worker.exe"].chunks[0].size++;
     objects.set(manifestKey, Buffer.from(JSON.stringify(malformed)));
-    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
     objects.set(manifestKey, originalManifest);
     const chunkKey = [...objects.keys()].find(key => key.endsWith(sha256(bytes.subarray(0, 10 * 1024 * 1024))))!;
     objects.set(chunkKey, Buffer.alloc(10 * 1024 * 1024, 8));
-    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
   });
 
   it("rejects an oversized file before writing any remote objects", async () => {
@@ -239,7 +239,7 @@ describe("Cloudflare staging artifact authority", () => {
     )).toBe(false);
   });
 
-  it("publishes immutable content-addressed modules/assets and resolves only by digest", async () => {
+  it("publishes immutable content-addressed modules/assets and resolves by digest plus source attestation", async () => {
     const { authority, objects } = fixture();
     const published = await authority.publish({ receipt, bundle });
     expect(published).toEqual({
@@ -249,11 +249,62 @@ describe("Cloudflare staging artifact authority", () => {
       immutable: true,
     });
     expect(objects.size).toBe(5);
-    const resolved = await authority.resolveBundle(published.artifactRef);
+    const resolved = await authority.resolveBundle(published.artifactRef, sourceSha);
     expect(resolved).toMatchObject({ sourceSha, buildDigest, mainModule: "index.js", compatibilityDate: "2026-10-17" });
     expect(Buffer.from(resolved!.moduleFiles["index.js"]!.bytes).equals(moduleBytes)).toBe(true);
     expect(await authority.resolveBundle("../../etc/passwd")).toBeNull();
     expect(await authority.resolveBundle("sha256:" + "f".repeat(64))).toBeNull();
+  });
+
+  it("keeps identical bundles immutable across source revisions and makes same-source publication idempotent", async () => {
+    const { authority, objects } = fixture();
+    const first = await authority.publish({ receipt, bundle });
+    const secondReceipt: CloudflareStagingBuildReceipt = {
+      ...receipt,
+      buildId: "build-20261017-2",
+      sourceSha: "d".repeat(40),
+      canonicalTipAfterBuild: "d".repeat(40),
+      completedAt: "2026-10-17T12:00:00.000Z",
+    };
+    const second = await authority.publish({ receipt: secondReceipt, bundle });
+
+    expect(second.artifactRef).toBe(first.artifactRef);
+    expect(await authority.resolveArtifact(first.artifactRef, sourceSha)).toMatchObject({ sourceSha });
+    expect(await authority.resolveArtifact(second.artifactRef, secondReceipt.sourceSha)).toMatchObject({ sourceSha: secondReceipt.sourceSha });
+    expect((await authority.resolveBundle(second.artifactRef, secondReceipt.sourceSha))?.sourceSha).toBe(secondReceipt.sourceSha);
+    expect([...objects.keys()].filter(key => key.endsWith("manifest.json"))).toHaveLength(2);
+
+    const repeatReceipt = { ...receipt, buildId: "build-20261017-3", completedAt: "2026-10-17T13:00:00.000Z" };
+    await expect(authority.publish({ receipt: repeatReceipt, bundle })).resolves.toEqual(first);
+    expect([...objects.keys()].filter(key => key.endsWith("manifest.json"))).toHaveLength(2);
+  });
+
+  it("collapses concurrent same-source publications onto the first verified immutable manifest", async () => {
+    const base = fixture();
+    let manifestWrites = 0;
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const authority = createCloudflareStagingArtifactAuthority({
+      buildReceipts: { verify: async () => true },
+      storage: {
+        readBuffer: base.storage.readBuffer,
+        async putIfAbsent(key, bytes, contentType) {
+          if (key.endsWith("manifest.json")) {
+            manifestWrites++;
+            if (manifestWrites === 2) release();
+            await gate;
+          }
+          return base.storage.putIfAbsent(key, bytes, contentType);
+        },
+      },
+    });
+    const laterReceipt = { ...receipt, buildId: "build-20261017-4", completedAt: "2026-10-17T14:00:00.000Z" };
+    const results = await Promise.all([
+      authority.publish({ receipt, bundle }),
+      authority.publish({ receipt: laterReceipt, bundle }),
+    ]);
+    expect(results[0]).toEqual(results[1]);
+    expect(await authority.resolveArtifact(results[0]!.artifactRef, sourceSha)).toEqual(results[0]);
   });
 
   it("rejects publication when the canonical build authority denies the receipt", async () => {
@@ -274,7 +325,7 @@ describe("Cloudflare staging artifact authority", () => {
     const published = await authority.publish({ receipt, bundle });
     const blob = [...objects.keys()].find(key => key.endsWith(sha256(moduleBytes)))!;
     objects.set(blob, Buffer.from("tampered"));
-    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
   });
 
   it("revalidates build provenance when resolving an already published digest", async () => {
@@ -282,7 +333,7 @@ describe("Cloudflare staging artifact authority", () => {
     const { authority } = fixture(async () => trusted);
     const published = await authority.publish({ receipt, bundle });
     trusted = false;
-    expect(await authority.resolveBundle(published.artifactRef)).toBeNull();
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
   });
 
   it("rejects unsafe module and asset paths", async () => {

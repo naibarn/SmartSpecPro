@@ -147,8 +147,9 @@ function validateReceiptShape(receipt: CloudflareStagingBuildReceipt) {
     Number.isFinite(Date.parse(receipt.completedAt));
 }
 
-function artifactKey(digest: string) {
-  return `${STORAGE_ROOT}/sha256/${digest}/manifest.json`;
+function artifactKey(digest: string, sourceSha?: string) {
+  const source = sourceSha ? `/${sourceSha.toLowerCase()}` : "";
+  return `${STORAGE_ROOT}/sha256/${digest}${source}/manifest.json`;
 }
 
 function blobKey(digest: string) {
@@ -237,6 +238,32 @@ export function createCloudflareStagingArtifactAuthority(input: {
     const buildDigest = sortedFileDigest(bundle.moduleFiles, bundle.assets);
     if (buildDigest !== receipt.cloudflareBundleDigest.toLowerCase()) throw new Error("CLOUDFLARE_ARTIFACT_BUILD_DIGEST_MISMATCH");
 
+    // The bundle digest intentionally covers bytes, while its canonical source
+    // attestation is a separate dimension. Reuse a verified same-source
+    // artifact, but keep different source revisions in separate immutable
+    // manifests even when their built bytes happen to be identical.
+    const artifactRef = `sha256:${buildDigest}`;
+    const reuseExistingArtifact = async (): Promise<PublishedCloudflareStagingArtifact | null> => {
+      const existing = await resolveManifest(artifactRef, receipt.sourceSha);
+      if (!existing) return null;
+      if (existing.mainModule !== bundle.mainModule || existing.compatibilityDate !== bundle.compatibilityDate) {
+        throw new Error("CLOUDFLARE_ARTIFACT_METADATA_CONFLICT");
+      }
+      const existingBundle = await resolveBundle(artifactRef, receipt.sourceSha);
+      const sameFiles = (prior: Record<string, { contentType: string; bytes: Uint8Array }>,
+        next: Record<string, { contentType: string; bytes: Uint8Array }>) =>
+        Object.keys(prior).length === Object.keys(next).length && Object.entries(next).every(([name, file]) => {
+          const previous = prior[name];
+          return previous?.contentType === file.contentType && Buffer.from(previous.bytes).equals(Buffer.from(file.bytes));
+        });
+      if (!existingBundle || !sameFiles(existingBundle.moduleFiles, bundle.moduleFiles) || !sameFiles(existingBundle.assets, bundle.assets)) {
+        throw new Error("CLOUDFLARE_ARTIFACT_CONTENT_METADATA_CONFLICT");
+      }
+      return { artifactRef, sourceSha: receipt.sourceSha.toLowerCase(), buildDigest, immutable: true };
+    };
+    const existing = await reuseExistingArtifact();
+    if (existing) return existing;
+
     for (const file of [...Object.values(bundle.moduleFiles), ...Object.values(bundle.assets)]) {
       if (file.bytes.byteLength < 1 || file.bytes.byteLength > MAX_FILE_BYTES) throw new Error("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
     }
@@ -271,21 +298,34 @@ export function createCloudflareStagingArtifactAuthority(input: {
       assets,
     };
     const manifestBytes = Buffer.from(JSON.stringify(manifest));
-    await input.storage.putIfAbsent(artifactKey(buildDigest), manifestBytes, "application/json");
-    return { artifactRef: `sha256:${buildDigest}`, sourceSha: receipt.sourceSha.toLowerCase(), buildDigest, immutable: true };
+    try {
+      await input.storage.putIfAbsent(artifactKey(buildDigest, receipt.sourceSha), manifestBytes, "application/json");
+    } catch (error) {
+      // Two canonical builders can finish the same source/bundle at once. The
+      // first immutable manifest remains authoritative if its receipt and
+      // bytes still resolve; unrelated storage errors fail closed as before.
+      try {
+        const concurrent = await reuseExistingArtifact();
+        if (concurrent) return concurrent;
+      } catch { /* preserve the original conditional-create failure */ }
+      throw error;
+    }
+    return { artifactRef, sourceSha: receipt.sourceSha.toLowerCase(), buildDigest, immutable: true };
   }
 
-  async function resolveManifest(artifactRef: string): Promise<ArtifactManifest | null> {
+  async function resolveManifest(artifactRef: string, expectedSourceSha?: string): Promise<ArtifactManifest | null> {
     const match = ARTIFACT_REF.exec(artifactRef);
-    if (!match) return null;
+    if (!match || (expectedSourceSha !== undefined && !SOURCE_SHA.test(expectedSourceSha))) return null;
     const artifactDigest = match[1]!.toLowerCase();
-    const manifestBytes = await input.storage.readBuffer(artifactKey(artifactDigest));
+    const manifestBytes = (expectedSourceSha
+      ? await input.storage.readBuffer(artifactKey(artifactDigest, expectedSourceSha))
+      : null) ?? await input.storage.readBuffer(artifactKey(artifactDigest));
     if (!manifestBytes) return null;
     let decoded: unknown;
     try { decoded = JSON.parse(Buffer.from(manifestBytes).toString("utf8")); }
     catch { return null; }
     const manifest = validateManifest(decoded, artifactDigest);
-    if (!manifest) return null;
+    if (!manifest || (expectedSourceSha && manifest.sourceSha.toLowerCase() !== expectedSourceSha.toLowerCase())) return null;
     if (!validateReceiptShape(manifest.buildReceipt) ||
         receiptDigest(manifest.buildReceipt) !== manifest.buildReceiptDigest ||
         manifest.buildReceipt.sourceSha.toLowerCase() !== manifest.sourceSha.toLowerCase() ||
@@ -303,13 +343,13 @@ export function createCloudflareStagingArtifactAuthority(input: {
   }
 
   /** Metadata authority only; byte availability/integrity is checked by resolveBundle before upload. */
-  async function resolveArtifact(artifactRef: string): Promise<PublishedCloudflareStagingArtifact | null> {
-    const manifest = await resolveManifest(artifactRef);
+  async function resolveArtifact(artifactRef: string, expectedSourceSha?: string): Promise<PublishedCloudflareStagingArtifact | null> {
+    const manifest = await resolveManifest(artifactRef, expectedSourceSha);
     return manifest ? { artifactRef, sourceSha: manifest.sourceSha, buildDigest: manifest.buildDigest, immutable: true } : null;
   }
 
-  async function resolveBundle(artifactRef: string): Promise<CloudflareStagingBundle | null> {
-    const manifest = await resolveManifest(artifactRef);
+  async function resolveBundle(artifactRef: string, expectedSourceSha?: string): Promise<CloudflareStagingBundle | null> {
+    const manifest = await resolveManifest(artifactRef, expectedSourceSha);
     if (!manifest) return null;
     const moduleFiles: Record<string, { contentType: string; bytes: Uint8Array }> = {};
     const assets: Record<string, { contentType: string; bytes: Uint8Array }> = {};
@@ -357,13 +397,15 @@ function getRuntimeAuthority() {
 
 /** Runtime resolvers use only server-owned storage and canonical build receipts. */
 export async function resolveCloudflareStagingBundle(
-  artifactRef: string
+  artifactRef: string,
+  expectedSourceSha?: string,
 ): Promise<CloudflareStagingBundle | null> {
-  return (await getRuntimeAuthority()?.resolveBundle(artifactRef)) ?? null;
+  return (await getRuntimeAuthority()?.resolveBundle(artifactRef, expectedSourceSha)) ?? null;
 }
 
 export async function resolveCloudflareStagingArtifact(
-  artifactRef: string
+  artifactRef: string,
+  expectedSourceSha?: string,
 ): Promise<PublishedCloudflareStagingArtifact | null> {
-  return (await getRuntimeAuthority()?.resolveArtifact(artifactRef)) ?? null;
+  return (await getRuntimeAuthority()?.resolveArtifact(artifactRef, expectedSourceSha)) ?? null;
 }
