@@ -139,6 +139,29 @@ describe("Node.js Storage Abstraction - R2 Env Var Fallback", () => {
     expect(config.provider).toBe("local");
   });
 
+  it("fails closed instead of selecting ephemeral local disk in a Cloudflare application Container", async () => {
+    delete process.env.R2_ACCESS_KEY;
+    delete process.env.R2_SECRET_KEY;
+    delete process.env.R2_ACCOUNT_ID;
+    delete process.env.R2_BUCKET_NAME;
+    process.env.SMARTAIHUB_APPLICATION_RUNTIME = "cloudflare-http";
+
+    const { getActiveStorageConfig } = await import("../storage");
+    await expect(getActiveStorageConfig()).rejects.toThrow("STORAGE_DURABLE_PROVIDER_REQUIRED_FOR_CLOUDFLARE");
+  });
+
+  it("rejects an explicitly configured local provider for Cloudflare while preserving native local behavior", async () => {
+    process.env.SMARTAIHUB_APPLICATION_RUNTIME = "cloudflare-http";
+    mockLimit.mockResolvedValueOnce([{ providerType: "local" }]);
+    const { getActiveStorageConfig } = await import("../storage");
+    await expect(getActiveStorageConfig()).rejects.toThrow("STORAGE_DURABLE_PROVIDER_REQUIRED_FOR_CLOUDFLARE");
+
+    delete process.env.SMARTAIHUB_APPLICATION_RUNTIME;
+    invalidateStorageCache();
+    mockLimit.mockResolvedValueOnce([{ providerType: "local" }]);
+    await expect(getActiveStorageConfig()).resolves.toMatchObject({ provider: "local" });
+  });
+
   it("should upload an object to R2 and return the proxy URL", async () => {
     // Set env vars for R2 fallback
     process.env.R2_ACCESS_KEY = "env-access-key";

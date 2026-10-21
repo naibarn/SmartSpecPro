@@ -68,6 +68,13 @@ interface ConfigCache {
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes, matches Python
 let _configCache: ConfigCache | null = null;
 
+function requireDurableStorage(config: ResolvedConfig): ResolvedConfig {
+  if (process.env.SMARTAIHUB_APPLICATION_RUNTIME === "cloudflare-http" && config.provider === "local") {
+    throw new Error("STORAGE_DURABLE_PROVIDER_REQUIRED_FOR_CLOUDFLARE");
+  }
+  return config;
+}
+
 export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
   // Priority 1: Legacy Forge ENV vars (backward compatibility)
   const runtimeConfig = getCachedAppRuntimeConfig();
@@ -86,7 +93,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
     _configCache &&
     Date.now() - _configCache.fetchedAt < CONFIG_CACHE_TTL_MS
   ) {
-    return _configCache.config;
+    return requireDurableStorage(_configCache.config);
   }
 
   // Priority 3: Query DB for active storage_settings
@@ -106,6 +113,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
     if (setting && setting.providerType === "local") {
       // Explicit local provider in DB — honor it
       const config: LocalConfig = { provider: "local" };
+      requireDurableStorage(config);
       _configCache = { config, fetchedAt: Date.now() };
       return config;
     }
@@ -156,7 +164,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
       error.message
     );
     // Use stale cache if available
-    if (_configCache) return _configCache.config;
+    if (_configCache) return requireDurableStorage(_configCache.config);
   }
 
   // Priority 4: Environment variable fallback (for Cloud Run)
@@ -186,6 +194,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
 
   // Priority 5: Local fallback (cached to avoid repeated DB queries)
   const localConfig: LocalConfig = { provider: "local" };
+  requireDurableStorage(localConfig);
   _configCache = { config: localConfig, fetchedAt: Date.now() };
   return localConfig;
 }
