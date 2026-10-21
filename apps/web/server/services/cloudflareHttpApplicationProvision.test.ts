@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { prepareHttpApplicationImages, ensureHttpApplications } from "./cloudflareHttpApplicationProvision";
+import { prepareHttpApplicationImages, ensureHttpApplications, createHttpApplicationProvisionPorts, httpApplicationCredentialRef } from "./cloudflareHttpApplicationProvision";
+import { encrypt } from "./crypto";
 import { httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 function fixture() {
@@ -29,6 +30,26 @@ function fixture() {
   return { settings, scope, version, ports, states, applications };
 }
 describe("private HTTP application metadata preparation", () => {
+  it("uses the documented provider image-preparations URI with an encrypted purpose credential", async () => {
+    const f = fixture(), oldKey = process.env.LLM_ENCRYPTION_KEY;
+    process.env.LLM_ENCRYPTION_KEY = "disposable-http-application-test-key";
+    try {
+      const row = { isSensitive: true, updatedBy: f.scope.actorUserId, value: encrypt(JSON.stringify({ ...f.scope,
+        credentialRef: httpApplicationCredentialRef(f.scope), token: "fixture-api-token", revokedAt: null })) };
+      const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => [row] }) }) }) };
+      const fetchImpl = vi.fn(async (url: any, init: any) => {
+        expect(String(url)).toBe(`https://api.cloudflare.com/client/v4/accounts/${f.scope.accountRef}/containers/image-preparations`);
+        expect(init.method).toBe("POST"); expect(init.redirect).toBe("error");
+        expect(init.headers.Authorization).toBe("Bearer fixture-api-token");
+        expect(JSON.parse(init.body)).toEqual({ image: f.settings.node.image });
+        return Response.json({ success: true, result: { image: f.settings.node.image, status: "ready" } });
+      });
+      const ports = createHttpApplicationProvisionPorts(db as never, f.scope, f.ports.assertAuthorized, fetchImpl as never);
+      await expect(ports.request("/image-preparations", { image: f.settings.node.image })).resolves.toMatchObject({ status: "ready" });
+      await expect(ports.request("/images/prepare", { image: f.settings.node.image })).rejects.toThrow("ENDPOINT_DENIED");
+      expect(fetchImpl).toHaveBeenCalledOnce(); expect(row.value).not.toContain("fixture-api-token");
+    } finally { if (oldKey === undefined) delete process.env.LLM_ENCRYPTION_KEY; else process.env.LLM_ENCRYPTION_KEY = oldKey; }
+  });
   it("prepares only the two exact registry images and creates two DO-managed applications without VM starts", async () => {
     const f = fixture(); await prepareHttpApplicationImages(f.settings, f.scope, f.ports);
     expect(f.ports.request.mock.calls.filter(([p]) => p === "/image-preparations").map(([, body]) => body.image)).toEqual([f.settings.node.image, f.settings.python.image]);
