@@ -1,4 +1,4 @@
-import { publicRunnerReleaseView } from "@smartspec/shared/src/cloudflarePublicReleases";
+import { publicRunnerReleaseView } from "../../../../packages/shared/src/cloudflarePublicReleases.ts";
 import { X509Certificate } from "node:crypto";
 import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
