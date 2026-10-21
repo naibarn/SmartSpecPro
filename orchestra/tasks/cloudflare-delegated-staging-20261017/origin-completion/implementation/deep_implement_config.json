@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Implement broader media/storage and job-family parity while maintaining one execution owner; live-qualify this staging ingress capability when the exact current staging authority and source artifact are available. Do not expand production routing until production target authority and DB path are proven.",
+      "next_action": "Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "d9d9c80c70b265114cae50d8fc3a92a357b1f229",
-      "merged_main_sha": "d9d9c80c70b265114cae50d8fc3a92a357b1f229",
+      "checkpoint_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
+      "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 106,
-  "updated_at": "2026-10-21T17:47:01.578458+00:00",
+  "generation": 108,
+  "updated_at": "2026-10-21T17:50:19.729753+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Implement broader media/storage and job-family parity while maintaining one execution owner; live-qualify this staging ingress capability when the exact current staging authority and source artifact are available. Do not expand production routing until production target authority and DB path are proven.",
-    "merged_main_sha": "d9d9c80c70b265114cae50d8fc3a92a357b1f229",
+    "next_action": "Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout.",
+    "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
