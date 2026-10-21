@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `120`
-- Updated (UTC): `2026-10-21T18:20:35.999186+00:00`
+- State generation: `121`
+- Updated (UTC): `2026-10-21T18:24:04.151371+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `019428815`
+- Latest recorded merged Main SHA: `cee7e97f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Use the fresh published b79cfba4 artifact only through an exact new origin-v2 config and active owner/admin grant authority; activate bounded full-HTTP staging settings, authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist.
+- Next action: Use the fresh published b79cfba4 artifact through an exact new origin-v2 config and active owner/admin grant authority. Activate bounded full-HTTP staging, run the node/database canary through the short-lived cloudflared Access TCP + TLS connector, then prove full HTTP, storage, realtime and rollback before expanding canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 019428815 | 019428815 | Use the fresh published b79cfba4 artifact only through an exact new origin-v2 config and active owner/admin grant authority; activate bounded full-HTTP staging settings, authorize a policy-bounded deployment, then prove node/database, full HTTP, storage, realtime, rollback, and progressively expand canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | cee7e97f | cee7e97f | Use the fresh published b79cfba4 artifact through an exact new origin-v2 config and active owner/admin grant authority. Activate bounded full-HTTP staging, run the node/database canary through the short-lived cloudflared Access TCP + TLS connector, then prove full HTTP, storage, realtime and rollback before expanding canonical jobs. Keep production and the retained PostgreSQL untouched until exact production authority and end-to-end evidence exist. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -31,13 +31,11 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion.
 - No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority.
 - Current app HTTP Container and profile are staging-only with short bounded canary lifecycle; no production container runtime admission or full route activation.
-- Node/Python Container profiles do not receive Worker Hyperdrive bindings; only one bounded Python database health request was proven, not application-wide SQL semantics/load or a private end-to-end DB path.
 - Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence.
 - Optional default-off Container bridge source now covers voice, runner-control and widget upgrades; real staging handshake/reconnect/expiry and browser auth are still unverified, and Socket.IO plus /ws remain on the existing runtime.
 - Cloudflare Queue/Workflow/Container/Worker App transport is implemented more broadly than execution support: canonical runtime currently admits emergency.report.intake and one bounded python.legacy_task media-probe path; other job families remain on their existing worker owner.
 - Manifest-owned HTTP route dispatch bypassed the new Container ingress switch; fixed and integrated in 928e9496, covered by worker-level integration test.
 - Current integrated staging traffic/realtime selectors and complete app journeys are not qualified against a fresh deployment; need authorized current staging artifact/transport and bounded runtime evidence.
-- Containerized Node/Python cannot inherit Worker Hyperdrive bindings; no end-to-end private path to retained PostgreSQL or full SQL compatibility proof exists.
 - The current task worktree has no Wrangler CLI or Cloudflare deployment executor credentials in its process environment; fresh staging deployment must use the existing Admin-backed authority, which is not connected in this shell.
 - Previous liveness-only probes allowed traffic before retained PostgreSQL was ready; now Node uses /readyz and Python /health before forwarding, covered by tests, but no current live staging DB probe has yet exercised this gate.
 - A read-only node/database Admin canary now maps to Node /readyz and Container forwarding is gated on DB readiness; live staging execution has not occurred because no current staging deployment transport/authority is connected in this shell.
@@ -46,6 +44,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Current staging DB config still points to namespace-only; HTTP traffic/realtime are off. Latest successful deployment on 2026-10-21 was a rollback and runtime verification scope was origin-auth; it does not prove full app traffic.
 - No current deployment approval authority: all 104 approval_rules are inactive; the latest approved origin-v2 deploy/rollback grants expired 2026-10-21T09:21:39Z. Need a fresh exact staging origin-v2 config and owner/admin policy grant before executing the staging deploy job.
 - Linux canonical workspace path in .development-repository.toml was stale (/home/dev/projects/SmartSpecPro), preventing publisher dotenv fallback in this checkout; corrected to /mnt/SmartSpecDev/projects/SmartSpecPro. Canonical publisher fallback selects that repo's apps/web/.env without copying secret values.
+- Private DB transport is implemented in the Node/Python HTTP image via a bounded cloudflared Access TCP connector, separate service-token credentials, and verify-full TLS CA; saved full-runtime config contains connector settings. The active origin remains namespace-only, so no live Container SELECT 1, full SQL compatibility, or load evidence exists yet.
 
 ## Resume
 
