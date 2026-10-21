@@ -70,7 +70,7 @@ export default { async fetch(request, bindings) {
     r2_buckets: [{ binding: "MEDIA_BUCKET", bucket_name: "disposable-media-probe-fixture" }],
     durable_objects: { bindings: [{ name: "DISABLED_CONTAINER", class_name: "CanonicalRunnerContainer" }] },
     migrations: [{ tag: "fixture-v1", new_sqlite_classes: ["CanonicalRunnerContainer"] }] }));
-  const child = spawn("pnpm", ["dlx", "wrangler@4.151.1", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--persist-to", join(directory, "state")], {
+  const child = spawn("pnpm", ["dlx", "wrangler@4.151.1", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--inspector-port", "0", "--persist-to", join(directory, "state")], {
     detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
   });
   let log = ""; for (const stream of [child.stdout, child.stderr]) stream.on("data", data => { log = (log + data).slice(-6000); });
