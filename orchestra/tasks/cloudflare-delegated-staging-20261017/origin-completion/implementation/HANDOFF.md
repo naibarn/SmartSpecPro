@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `137`
-- Updated (UTC): `2026-10-21T19:33:17.240819+00:00`
+- State generation: `138`
+- Updated (UTC): `2026-10-21T19:35:36.943503+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Latest recorded merged Main SHA: `0ebb4d534`
+- Latest recorded merged Main SHA: `d9ac2b876`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Implement production Node/Python HTTP Container admission and deployment with the retained PostgreSQL path; then qualify safe baseline routing, canary, realtime, canonical jobs, media, storage and rollback.
+- Next action: Implement production Node/Python HTTP Container admission with a bounded 24-hour compute/start budget and the retained PostgreSQL path; stage a proxy-safe baseline and separately granted route attachment, then qualify 1% canary and rollback.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 0ebb4d534 | 0ebb4d534 | Implement production Node/Python HTTP Container admission and deployment with the retained PostgreSQL path; then qualify safe baseline routing, canary, realtime, canonical jobs, media, storage and rollback. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | d9ac2b876 | d9ac2b876 | Implement production Node/Python HTTP Container admission with a bounded 24-hour compute/start budget and the retained PostgreSQL path; stage a proxy-safe baseline and separately granted route attachment, then qualify 1% canary and rollback. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -29,7 +29,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.
 - Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.
 - Preserve original .env, image archives and rollback sources; home2GiB/project3GiB resource headroom is limited. No Stripe requirement or macOS archive deletion.
-- No production deployment target or approved policy exists for the authenticated tenant/project. Production origin-version configuration is supported, but the current production Worker remains disabled/cache-only and no production route grant has been approved.
+- No production provider deployment target exists for the authenticated tenant/project: metadata inventory returned only the enabled staging target. Cloudflare origin-configuration persistence and canary grant contracts explicitly require environment=staging, so production deployment is not admitted by the existing authority. Keep production untouched; production enablement needs a separately scoped existing platform/provider authority.
 - Current app HTTP Container and profile are staging-only with short bounded canary lifecycle; no production container runtime admission or full route activation.
 - Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence.
 - Optional default-off Container bridge source now covers voice, runner-control and widget upgrades; real staging handshake/reconnect/expiry and browser auth are still unverified, and Socket.IO plus /ws remain on the existing runtime.
@@ -46,17 +46,21 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Linux canonical workspace path in .development-repository.toml was stale (/home/dev/projects/SmartSpecPro), preventing publisher dotenv fallback in this checkout; corrected to /mnt/SmartSpecDev/projects/SmartSpecPro. Canonical publisher fallback selects that repo's apps/web/.env without copying secret values.
 - Private DB transport is implemented in the Node/Python HTTP image via a bounded cloudflared Access TCP connector, separate service-token credentials, and verify-full TLS CA; saved full-runtime config contains connector settings. The active origin remains namespace-only, so no live Container SELECT 1, full SQL compatibility, or load evidence exists yet.
 - Canonical main 4309f4b1e built successfully and artifact 48ed0442794cb95db491c1a0ebb7ee550369fa7017e71bb4f349dc515eeb6388 is PUBLISHED in immutable storage; it has not been deployed. Re-read-only DB inventory still shows zero active approval_rules; the authenticated tenant has only a staging target, and no deployment executor is connected in this shell.
-- Read-only live Cloudflare inventory (2026-10-21 19:34 UTC): `smartaihub.app` resolves to Cloudflare but its `/healthz` and `/readyz` responses are still from the Node/Linux origin (`/readyz` reports PostgreSQL `ok`); `runtime.smartaihub.app/healthz` is the Cloudflare Worker. The Worker `/readyz` returns 503 with activation disabled and all seven runtime bindings absent, and its root returns 404. The production Worker is not attached to `smartaihub.app`; no provider mutation occurred.
+- Read-only live Cloudflare inventory: production Worker smartspec-cloudflare-runtime is activation=disabled with Search Result Cache only; smartaihub.app has no Worker Routes; only two smartspec-staging-* Container applications exist. Target deployment credential gets HTTP 403 on Containers list; separate audit credential can read it. Production target/approval policy is absent. No provider mutation occurred.
 - Canonical production artifact built and published for source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9 (sha256:2c25fade21d1b4086e347fcc2b10c060985f73ce65922498a13f89d9ae1038c7); artifact-only, not deployed.
 - Current production remains on origin: runtime Worker disabled/cache-only, smartaihub.app has no Worker route, production deployment target/grant is absent; current deployment credential does not read route/container inventory.
 - Staging UI and immutable artifact publication focused tests passed (2 files, 29 tests); full Cloudflare app journey and production cutover remain unverified.
-- A production grant request/resolver and guarded `worker_jobs` executor are implemented; no production target/approval policy or approved grant exists.
+- A production grant request/resolver is now implemented and independently approved only; no production worker_jobs executor consumes it yet, and no production policy/approved grant exists.
 - The published production artifact is from source 1b0ef4899f11ba4b89e3fac653d3ca9597e58fe9; after executor/runtime integration, rebuild and publish from the final canonical main SHA before any authorized deploy.
-- Production ingress remains on Debian; route attachment, baseline qualification, canary and promotion remain unimplemented, and no production provider mutation is authorized by current evidence.
+- Production worker_jobs execution and route/canary cutover are not yet implemented; production ingress remains on Debian.
+- Production grant and exact approved production policy do not yet exist; no production provider mutation is authorized by current evidence.
+- No production job executor consumes v2 grant; production route is still absent and no production Worker deployment target/policy has been admitted.
+- Production job executor and full origin/version uploader are not yet connected to the v2 grant; current release path stops before Cloudflare mutation.
 - No production route or verified active rollback baseline exists; canary remains correctly denied until a proxy-compatible baseline Worker is attached to smartaihub.app with exact zone/route authority.
 - Current production origin descriptor still rejects Container and background/job bindings, so Node/Python service cutover parity remains unimplemented.
 - Production executor and stage-bound version upload are integrated; production target/grant/route are still absent, current production Worker is cache-only, and production HTTP Container parity plus end-to-end live evidence remain unimplemented.
 - Production executor/version upload integrated and retired legacy ingress paths are blocked. Production target/grant/route are still absent, runtime Worker remains cache-only, production app Container admission/parity and live end-to-end evidence remain open.
+- Production executor and origin version upload are integrated, retired ingress is blocked, but live checks confirm main domain still runs on Linux; production Worker is disabled and missing all seven required bindings. No production target/grant/route or production Container admission exists yet.
 
 ## Resume
 
