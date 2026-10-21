@@ -62,7 +62,7 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       (namespaceOnly && !settings.applicationHttp) ||
       Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationHttp) ||
       Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationCanaryToken) ||
-      (settings.applicationHttpPhase && settings.applicationHttp?.traffic !== undefined) ||
+      (settings.applicationHttpPhase && (settings.applicationHttp?.traffic !== undefined || settings.applicationHttp?.realtime !== undefined)) ||
       (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
@@ -119,6 +119,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
     binding?.name === "CLOUDFLARE_APPLICATION_CANARY_TOKEN" ||
     binding?.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC" ||
+    binding?.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `108`
-- Updated (UTC): `2026-10-21T17:50:19.729753+00:00`
+- State generation: `109`
+- Updated (UTC): `2026-10-21T17:52:24.573282+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Latest recorded merged Main SHA: `cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout.
+- Next action: Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.
 
 ## Sections
 
@@ -21,12 +21,10 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout. |
+| section-05-acceptance | checkpointed | codex-cloudflare-native-completion-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88 | Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- A default-off `staging-full-http-v1` traffic capability is wired through the existing immutable Admin origin descriptor. It routes manifest-classified HTTP API/auth/tRPC/upload traffic to the staging Node Container, signs public-origin context at the Worker, filters spoofed headers, preserves cookies, and never falls back/replays writes on Container errors. Focused suites passed (75 Web tests, 299 Cloudflare runtime tests, Worker package check); no live rollout or browser auth/tenant acceptance has been performed. The Container retains its 20-minute total compute/10-minute hard-lifetime ceiling, so this is a bounded qualification path rather than production serving capacity.
-- Cloudflare application storage now rejects explicit and fallback `local` providers with `STORAGE_DURABLE_PROVIDER_REQUIRED_FOR_CLOUDFLARE`; R2/S3/Forge and Debian/local behavior remain intact. `r2-storage-abstraction.test.ts` passes 16 tests. Staging still needs actual durable-provider and tenant-ACL verification.
 - Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.
 - Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.
 - Dedicated466 Cloudflare readiness SUCCESS;82scoped/real-PG and17private-media/runtime cases PASS. Broader media has7independently reproduced baseline failures. Full acceptance still includes OAuth/2FA, independent tenants, public ingress, durable audit/storage, canonical jobs and realtime.

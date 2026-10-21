@@ -11,6 +11,8 @@ export const cloudflareHttpApplicationSettingsSchema = z.object({
   mode: z.literal("private-canary"), namespace: z.string().regex(/^smartspec-staging-[a-f0-9]{12}$/), sourceSha: sha,
   /** Explicitly route API/auth/REST HTTP traffic to the paired Node Container in staging. */
   traffic: z.literal("staging-full-http-v1").optional(),
+  /** Explicitly route the currently supported WebSocket paths to the paired Node Container. */
+  realtime: z.literal("staging-allowlisted-v1").optional(),
   node: image, python: image, issuedAt: z.string().datetime({ offset: true }), expiresAt: z.string().datetime({ offset: true }),
   maxStarts: z.number().int().min(1).max(2), maxComputeSeconds: z.number().int().min(1).max(1200),
   hardLifetimeSeconds: z.number().int().min(1).max(600), idleTimeoutSeconds: z.number().int().min(1).max(30),
@@ -101,5 +103,6 @@ export function httpApplicationVersionBindings(value: HttpApplicationSettings, s
     { name: "CLOUDFLARE_NODE_HTTP_SECRETS", type: "secret_text", text: JSON.stringify(secret.node) },
     { name: "CLOUDFLARE_PYTHON_HTTP_SECRETS", type: "secret_text", text: JSON.stringify(secret.python) },
     ...(value.traffic ? [{ name: "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", type: "plain_text", text: value.traffic }] : []),
+    ...(value.realtime ? [{ name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "enabled" }] : []),
   ];
 }

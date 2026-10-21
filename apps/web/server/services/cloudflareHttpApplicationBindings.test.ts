@@ -40,6 +40,7 @@ describe("paired HTTP API deployment capabilities", () => {
     expect(node).not.toHaveProperty("CONTROL_PLANE_API_KEY");
     expect(bindings.filter(binding => binding.type !== "secret_text").some(binding => binding.text.includes("bootstrap-fixture"))).toBe(false);
     expect(bindings.some(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")).toBe(false);
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES")).toBe(false);
   });
   it("emits full staging HTTP traffic only from the exact immutable application capability", () => {
     const f = fixture();
@@ -48,6 +49,15 @@ describe("paired HTTP API deployment capabilities", () => {
       { node: { JWT_SECRET: "app-fixture", CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "app-fixture" } });
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")).toEqual({
       name: "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", type: "plain_text", text: "staging-full-http-v1",
+    });
+  });
+  it("emits the default-off allowlisted realtime binding only from its immutable staging capability", () => {
+    const f = fixture();
+    f.settings.realtime = "staging-allowlisted-v1";
+    const bindings = httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
+      { node: { JWT_SECRET: "app-fixture", CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: { SECRET_KEY: "app-fixture" } });
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES")).toEqual({
+      name: "CLOUDFLARE_CONTAINER_REALTIME_ROUTES", type: "plain_text", text: "enabled",
     });
   });
   it.each([undefined, "short-bootstrap-key"])("rejects a missing or short server bootstrap key before API binding creation", key => {

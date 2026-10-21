@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout.",
+      "next_action": "Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
       "checkpoint_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
       "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 108,
-  "updated_at": "2026-10-21T17:50:19.729753+00:00",
+  "generation": 109,
+  "updated_at": "2026-10-21T17:52:24.573282+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Continue storage/media parity from the now fail-closed Cloudflare durable-storage boundary; verify active R2 configuration and tenant ACL behavior in staging, then migrate or prove the next independent worker family. Live staging credentials/target evidence remains unavailable in this checkout.",
+    "next_action": "Wire the existing bounded realtime selector through the same immutable staging application descriptor; keep the three existing allowlisted WebSocket paths default-off and preserve the separate HTTP traffic flag.",
     "merged_main_sha": "cc5bd9cbdd0ca93ee9bce77b726c3ff341d4ab88",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
