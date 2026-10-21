@@ -1920,6 +1920,8 @@ function EpisodeWorkspaceShell({
       },
       onError: err => toast.error(err.message),
     });
+  const linkCharacterLookPortraitMutation =
+    trpc.verticalDramaCharacters.linkAsset.useMutation();
   // Start-frame image generation is async (shows in Media History like every
   // other real generation) — submit returns a taskId, then poll `media.getTask`
   // until it completes, then finalize via the same already-tested
@@ -4560,9 +4562,14 @@ function EpisodeWorkspaceShell({
   }
 
   async function handleSetCharacterLookForShots(
-    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>,
+    primaryPortrait?: { characterId: string; mediaAssetId: string }
   ) {
-    if (changes.length === 0 || applyingCharacterLookBatchRef.current) return;
+    if (
+      (changes.length === 0 && !primaryPortrait) ||
+      applyingCharacterLookBatchRef.current
+    )
+      return;
     applyingCharacterLookBatchRef.current = true;
     setSavingCharacterLookForAllShots(true);
     let completed = 0;
@@ -4579,10 +4586,20 @@ function EpisodeWorkspaceShell({
         });
         completed += 1;
       }
+      if (primaryPortrait) {
+        await linkCharacterLookPortraitMutation.mutateAsync({
+          seriesId,
+          characterId: primaryPortrait.characterId,
+          mediaAssetId: primaryPortrait.mediaAssetId,
+          assetType: "character_reference",
+          role: "primary_portrait",
+          source: "imported",
+        });
+      }
       toast.success(
         lang === "th"
-          ? `เปลี่ยนลุคตัวละครใน ${completed} ช็อตแล้ว`
-          : `Changed this character's look in ${completed} shots.`
+          ? `เปลี่ยนลุคตัวละครใน ${completed} ช็อตและอัปเดตภาพหลักแล้ว`
+          : `Changed this character's look in ${completed} shots and updated the main portrait.`
       );
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

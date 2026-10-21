@@ -4882,6 +4882,7 @@ async function resolveSeriesCharacterPortraits(
       characterId: string;
       name: string;
       portraitUrl: string | null;
+      primaryPortraitMediaAssetId?: string;
       parentCharacterId?: string;
       variantLabel?: string;
       variantType?: "outfit" | "age_stage";
@@ -4913,13 +4914,20 @@ async function resolveSeriesCharacterPortraits(
       )
     );
 
-  const portraitUrls = await Promise.all(
-    characterRows.map((c: { id: number }) =>
-      verticalDramaCharacterStockService.getPrimaryPortraitUrl(
-        { tenantId, userId, seriesId },
-        c.id
-      )
-    )
+  const portraits = await Promise.all(
+    characterRows.map(async (c: { id: number }) => {
+      const [portraitUrl, mediaAssetId] = await Promise.all([
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+          { tenantId, userId, seriesId },
+          c.id
+        ),
+        verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+          { tenantId, userId, seriesId },
+          c.id
+        ),
+      ]);
+      return { portraitUrl, mediaAssetId };
+    })
   );
 
   const result: Record<
@@ -4928,6 +4936,7 @@ async function resolveSeriesCharacterPortraits(
       characterId: string;
       name: string;
       portraitUrl: string | null;
+      primaryPortraitMediaAssetId?: string;
       parentCharacterId?: string;
       variantLabel?: string;
       variantType?: "outfit" | "age_stage";
@@ -4953,7 +4962,11 @@ async function resolveSeriesCharacterPortraits(
       result[c.characterKey] = {
         characterId: String(c.id),
         name: c.name,
-        portraitUrl: portraitUrls[i],
+        portraitUrl: portraits[i].portraitUrl,
+        primaryPortraitMediaAssetId:
+          portraits[i].mediaAssetId != null
+            ? String(portraits[i].mediaAssetId)
+            : undefined,
         parentCharacterId:
           c.parentCharacterId != null ? String(c.parentCharacterId) : undefined,
         variantLabel: c.variantLabel ?? undefined,

@@ -550,7 +550,8 @@ export interface VerticalDramaStoryboardPanelData {
   onChangeCharacterReference?: (characterId: string) => void;
   /** Applies the selected character look to every episode shot that uses it. */
   onSetCharacterLookForShots?: (
-    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>,
+    primaryPortrait?: { characterId: string; mediaAssetId: string }
   ) => void;
   savingCharacterLookForAllShots?: boolean;
   onDropCharacterReference?: (characterId: string, url: string) => void;
