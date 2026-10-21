@@ -40,8 +40,8 @@ export const CLOUDFLARE_CREDENTIAL_PROFILES = [
   {
     id: "deployment",
     title: "Deployment / provisioning",
-    owner: "Cloudflare deployment secret store / CI",
-    purpose: "Used by the approved deployment pipeline. Configure the secret at its real deployment destination; read probes cannot validate write access.",
+    owner: "Admin → Infrastructure → Cloudflare credential center",
+    purpose: "This profile is used by read-only permission probes and inventory. The in-app deployment pipeline resolves a separate credential scoped to the exact tenant, project, and environment under Deployment Targets; saving this profile alone does not authorize a deployment.",
     readPermissions: ["Workers Scripts Read", "Account Settings Read"],
     writePermissions: [
       "Workers Scripts Write (also required for Workflows, dispatch namespaces, and Cron; dispatch API also accepts Workers Tail Read)",
