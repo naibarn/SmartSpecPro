@@ -548,6 +548,11 @@ export interface VerticalDramaStoryboardPanelData {
   onSaveShotProductReferences?: (shotNumber: number, urls: string[]) => void;
   savingProductReferencesForShot?: number | null;
   onChangeCharacterReference?: (characterId: string) => void;
+  /** Applies the selected character look to every episode shot that uses it. */
+  onSetCharacterLookForShots?: (
+    changes: Array<{ shotNumber: number; characterRefs: string[] }>
+  ) => void;
+  savingCharacterLookForAllShots?: boolean;
   onDropCharacterReference?: (characterId: string, url: string) => void;
   /** See `VerticalDramaStoryboardPanelProps.onSetShotCharacterReferences`
    *  (W6 frontend) — per-shot character/variant reference override, distinct
@@ -1762,6 +1767,12 @@ export function VerticalDramaEpisodeWorkspace({
           }
           onChangeCharacterReference={
             storyboardPanel?.onChangeCharacterReference
+          }
+          onSetCharacterLookForShots={
+            storyboardPanel?.onSetCharacterLookForShots
+          }
+          savingCharacterLookForAllShots={
+            storyboardPanel?.savingCharacterLookForAllShots
           }
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
           onSetShotCharacterReferences={
