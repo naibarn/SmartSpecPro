@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available.",
+      "next_action": "Continue from current Main: implement the next concrete app/job/storage migration slice; obtain a fresh authorized staging artifact and live Container/DB proof through the existing Admin authority; do not activate production without its target/grant and an approved private PostgreSQL path.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
-      "checkpoint_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
-      "merged_main_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
+      "checkpoint_sha": "ed40e72122425b67c67e7ad3abf451522904fb5b",
+      "merged_main_sha": "ed40e72122425b67c67e7ad3abf451522904fb5b",
       "session_id": "codex-cloudflare-native-completion-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 110,
-  "updated_at": "2026-10-21T17:53:23.262191+00:00",
+  "generation": 112,
+  "updated_at": "2026-10-21T17:59:51.045678+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Implement supported S3/R2 staging object journeys and tenant ACL checks, then expand canonical job families one at a time. Live qualification of full HTTP and realtime selectors still needs current staging artifact/authority; production remains untouched until its target and DB connectivity path are available.",
-    "merged_main_sha": "c9ab17860fae1b3996a3ae8d3a7a4ed24e3b044f",
+    "next_action": "Continue from current Main: implement the next concrete app/job/storage migration slice; obtain a fresh authorized staging artifact and live Container/DB proof through the existing Admin authority; do not activate production without its target/grant and an approved private PostgreSQL path.",
+    "merged_main_sha": "ed40e72122425b67c67e7ad3abf451522904fb5b",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -75,7 +75,11 @@
       "Node/Python Container profiles do not receive Worker Hyperdrive bindings; only one bounded Python database health request was proven, not application-wide SQL semantics/load or a private end-to-end DB path.",
       "Expanded full-runtime objective supersedes the original staging-origin-only acceptance scope; section-05 is still validation-pending until supported app, worker, media, storage, realtime and recovery journeys have staging evidence.",
       "Optional default-off Container bridge source now covers voice, runner-control and widget upgrades; real staging handshake/reconnect/expiry and browser auth are still unverified, and Socket.IO plus /ws remain on the existing runtime.",
-      "Cloudflare Queue/Workflow/Container/Worker App transport is implemented more broadly than execution support: canonical runtime currently admits emergency.report.intake and one bounded python.legacy_task media-probe path; other job families remain on their existing worker owner."
+      "Cloudflare Queue/Workflow/Container/Worker App transport is implemented more broadly than execution support: canonical runtime currently admits emergency.report.intake and one bounded python.legacy_task media-probe path; other job families remain on their existing worker owner.",
+      "Manifest-owned HTTP route dispatch bypassed the new Container ingress switch; fixed and integrated in 928e9496, covered by worker-level integration test.",
+      "Current integrated staging traffic/realtime selectors and complete app journeys are not qualified against a fresh deployment; need authorized current staging artifact/transport and bounded runtime evidence.",
+      "Containerized Node/Python cannot inherit Worker Hyperdrive bindings; no end-to-end private path to retained PostgreSQL or full SQL compatibility proof exists.",
+      "The current task worktree has no Wrangler CLI or Cloudflare deployment executor credentials in its process environment; fresh staging deployment must use the existing Admin-backed authority, which is not connected in this shell."
     ],
     "outcome": "NOT_ACCEPTED"
   }
