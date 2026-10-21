@@ -53,7 +53,17 @@ export async function runHttpImageOperatorCommand(input: {
       if (failure || error) reject(failure ?? error); else accept(output);
     };
     child.once("error", () => finish(new HttpImageError("HTTP_IMAGE_OPERATOR_UNAVAILABLE")));
-    child.once("close", code => finish(code === 0 ? undefined : new HttpImageError("HTTP_IMAGE_OPERATOR_FAILED")));
+    child.once("close", code => {
+      let diagnostic = "HTTP_IMAGE_OPERATOR_FAILED";
+      if (input.command === "python3") {
+        try {
+          const value = JSON.parse(output);
+          if (value.schemaVersion === "cloudflare-http-image-build-error-v1" &&
+              /^HTTP_IMAGE_[A-Z_]{4,100}$/.test(value.diagnosticCode)) diagnostic = value.diagnosticCode;
+        } catch { /* Never expose tool stderr or arbitrary stdout as a diagnostic. */ }
+      }
+      finish(code === 0 ? undefined : new HttpImageError(diagnostic));
+    });
   });
 }
 

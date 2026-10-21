@@ -133,4 +133,12 @@ if __name__ == "__main__":
     parser.add_argument("--job-id", required=True)
     parser.add_argument("--plan-digest", required=True)
     args = parser.parse_args()
-    print(json.dumps(build_image(args.build_result, args.output.absolute(), args.runtime, args.tag, args.source_sha, args.job_id, args.plan_digest)))
+    try:
+        print(json.dumps(build_image(args.build_result, args.output.absolute(), args.runtime, args.tag, args.source_sha, args.job_id, args.plan_digest)))
+    except ReleaseError as exc:
+        # Only a fixed public diagnostic may cross into job error output.
+        code = str(exc)
+        if not re.fullmatch(r"HTTP_IMAGE_[A-Z_]{4,100}", code):
+            code = "HTTP_IMAGE_BUILD_FAILED"
+        print(json.dumps({"schemaVersion": "cloudflare-http-image-build-error-v1", "diagnosticCode": code}))
+        raise SystemExit(1) from None
