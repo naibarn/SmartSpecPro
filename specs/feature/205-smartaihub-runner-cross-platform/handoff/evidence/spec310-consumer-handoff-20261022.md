@@ -8,7 +8,9 @@ multi-agent, or non-Git workspace behavior in the WP1/WP2 branches.
 
 - Reconciled `origin/main`: `0ebbd075ca4f71af1ffb8ce4f1e095e9d1f76de6`.
 - Candidate WP1 head: `27200602c527335dbd4385af84a01e55c4ffe89b` (PR #1161).
-- Candidate WP2C2 head: `cb4ac107250036dba7571a61b07a6e10cbea63c6` (PR #1167).
+- Candidate WP2C0 head: `192bd1c0c922446e7a2d4bc51909ac711e2c87ab` (PR #1164).
+- Candidate WP2C1 head: `9e0234a41805167896d874f2834654015880be1b` (PR #1166).
+- Candidate WP2C2 head: `f4e8ee0dadd4543a46e9606a0f56b9686be890f2` (PR #1167).
 - The Runner candidate source is not merged into `main` at this handoff.
 - Companion projection: `runner-companion.v1`.
 - Runner control protocol: `sah-runner-v1`.
