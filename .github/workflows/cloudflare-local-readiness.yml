@@ -305,6 +305,8 @@ jobs:
         run: cargo test --manifest-path apps/runner-app/Cargo.toml --locked --lib container -- --include-ignored
       - name: Build standalone Runner for the private HTTP fixture
         run: cargo build --manifest-path apps/runner-app/Cargo.toml --locked --bin smartaihub-runner
+      - name: Warm pinned Wrangler CLI cache for workerd fixture
+        run: pnpm dlx wrangler@4.151.1 --version
       - name: Verify real workerd R2 and Rust media execution
         env:
           SAH_TEST_FFPROBE: /usr/bin/ffprobe
