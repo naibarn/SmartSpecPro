@@ -1088,6 +1088,15 @@ Quick profile,24GiB available:38 focused Node tests across new native transport/
 - Remaining whole-application work: actual bounded Node/Python API images and purpose-bound deployment/network/DB capability, persistent audit/artifacts, scheduler ownership evacuation through canonical worker_jobs/outbox, realtime and authenticated full-flow acceptance, production routing/canary and Debian application retirement. Production DB remains in place; no Stripe enablement or rendering macOS archive deletion.
 
 
+## Admin tenant selection follow-up — 2026-10-22
+
+- Root cause confirmed from production HTML/asset and tenant metadata: current `smartaihub.app` serves the older non-searchable tenant `<select>`. The actual tenant label is `Smart AI Hub` (with spaces), domain `smartaihub.app`; typing `smartaihub` in that old UI does not match. The production bundle did not contain the later searchable-picker strings.
+- Fixed the picker to search tenant name, domain, and ID; added a regression test that selects the target by domain. Focused Vitest: `pnpm --dir apps/web exec vitest run client/src/components/admin/AdminDeploymentTargets.test.tsx` — 8/8 PASS. Integrated commit `ee5547ccd9e039be186707d48d8772ce574bb649`; canonical build at `35d92f1eff37a877ea56babe18fa5d25a021bab7` passed and published artifact, including updated Admin bundle.
+- Production release status still reports serving revision `57fcb31aaff713494291e8acdc033964a28a29f5`, so this fix is not live yet. The candidate from that release spans 166 paths and includes backend/runtime/migration changes; do not promote it as a UI-only update. Existing read-only DB audit found active `projectWikiPagesService.ts` depends on absent table from migration 0394. Establish exact release DB compatibility/receipt and rollback evidence before using the full-stack Linux release controller. No production deployment or database mutation was performed.
+- Immediate manual workaround on the old picker: search/type the displayed name `Smart AI Hub` (include spaces). After a safe production release, search `smartaihub.app` in the tenant picker; scrolling the long list will no longer be necessary.
+- Next action: resolve candidate-to-serving release/database compatibility and required migration authority, then publish only through the existing release controller and verify the deployed Admin asset. Cloudflare production cutover remains independently gated by staging deployment authority and runtime acceptance.
+
+
 ## Canonical API image preparation — 2026-10-21 06:17 Asia/Bangkok
 
 - TLSc27b0023db7377cadb66b830940d9f94b296859b is integrated into origin/main; new canonical build uses approved home source/scratch, no forced source checkout sync. Node HTTP artifact50e has actual loopback health/auth/no-SPA evidence. Latest live Worker remains4539 deployment895a64fd.

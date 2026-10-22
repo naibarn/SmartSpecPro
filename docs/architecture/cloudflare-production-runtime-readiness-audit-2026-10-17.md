@@ -307,6 +307,31 @@ Main cost/resource risks:
 | P1 | Production deploy/rollback pipeline plan for Worker and assets | Platform/release owner; exact account scopes needed | Secret-safe environment injection, pinned SHA, deploy receipt, health gates, canary route and rollback rehearsal |
 | P2 | Job-family owner map and Cloudflare Queue selection | Feature 186/195 + SPEC-267 + SPEC-277 owners | Inventory all schedules/producers/consumers; choose one low-risk family; prove fencing/idempotency and exactly one consumer before activation |
 
+## 15. Deployment-target tenant picker follow-up — 2026-10-22
+
+The production Admin page could not locate the SmartAIHub tenant because the
+currently served selector is the older non-searchable native select. The live
+tenant record is named `Smart AI Hub` and has domain `smartaihub.app`; searching
+for the unspaced text `smartaihub` in the old UI therefore does not find it.
+The selector has been changed to search tenant name, domain, and ID, with a
+focused regression test for the domain case. Commit
+`ee5547ccd9e039be186707d48d8772ce574bb649` is integrated into `origin/main`,
+and canonical artifact from `35d92f1eff37a877ea56babe18fa5d25a021bab7`
+contains the updated picker. The production release still serves source
+revision `57fcb31aaff713494291e8acdc033964a28a29f5`; the updated artifact has
+not been activated there.
+
+Do not use the Linux full-stack release as a shortcut for this UI fix. The
+candidate range since the serving revision contains 166 changed paths across
+the web client, server, runtime and migration journal, so this is not a
+frontend-only promotion. The live-schema audit already identified the active
+`projectWikiPagesService.ts` callsite whose `0394_project_wiki_pages_mini_app`
+table is absent. First establish exact candidate-to-serving DB compatibility
+and required migration receipts through the existing authority, then use the
+normal release controller with its rollback proof. Until a safe release path
+is established, the UI change is integrated and built but not available on
+production.
+
 ### Required human authorization
 
 No authorization was needed for this read-only repository audit. Future staging work needs a Cloudflare staging account/token with only the required Worker/Assets, Hyperdrive, VPC/Tunnel, KV/R2/Queue permissions, plus a non-production DB/network role. Production pilot/cutover requires explicit platform/SRE and DB owner approval, a scoped audience/traffic decision, approved budget, on-call/rollback owner, and current backup/restore evidence. The 2026-09-29 permission probe was read-only, incomplete, and reported a 403 for Workers for Platforms dispatch namespace access; do not treat it as deployment approval.
