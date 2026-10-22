@@ -4,14 +4,14 @@ Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
 - State generation: `147`
-- Updated (UTC): `2026-10-22T02:12:21.181336+00:00`
+- Updated (UTC): `2026-10-22T02:22:03+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022`
 - Latest recorded merged Main SHA: `4965a998abe3671565db6e77d1ea8f63e703b5a6`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job.
+- Next action: close the Admin workflow gap for a one-operation origin-v2 staging policy/grant and canonical job, or use an authenticated tenant-owner session to create the exact policy/grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 with recorded rollback artifact sha256:12d50081336bf86807690b1c87dcff67c55c639270243cae666c3cef2fe7e8ea, deployment 7a7d2671-03f4-4f28-9b01-a639d359dfd6 and configuration digest 05b032fed7654a771293e9047b747b6aa531f9dc863a414d02e689ddee3a234c; then submit and verify the canonical staging job. Current DB audit found 0/50 active staging policies; target, credential and trusted executor are present.
 
 ## Sections
 
@@ -60,7 +60,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.
 - Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.
 - The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes.
-- No owner-authenticated policy/grant operation is available to this shell; staging target and credential are configured but no deploy grant or live Cloudflare runtime proof exists.
+- Fresh read-only DB audit (2026-10-22 09:22 Asia/Bangkok): staging target is enabled with account, credential ref and origin binding; matching staging executor remains trusted through 2026-11-18; 0 of 50 staging policies are active and no grant matches artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4. Existing successful rollback job 21518c53-e612-4f4f-b23a-93c93e35fd27 reports runtimeVerified=true and records baseline deployment 7a7d2671-03f4-4f28-9b01-a639d359dfd6 / artifact sha256:12d50081336bf86807690b1c87dcff67c55c639270243cae666c3cef2fe7e8ea / config digest 05b032fed7654a771293e9047b747b6aa531f9dc863a414d02e689ddee3a234c. Admin UI has no staging policy/grant/job creation controls; backend owner-authorized endpoints are present. No DB writes were performed.
 
 ## Resume
 
