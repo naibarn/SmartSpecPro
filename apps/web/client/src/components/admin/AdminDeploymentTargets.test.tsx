@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   disable: vi.fn(),
+  queueStagingDeploy: vi.fn(),
+  refetchStagingPreflight: vi.fn(),
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
@@ -22,6 +24,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({ infrastructure: {
       listProviderDeploymentTargets: { invalidate: mocks.invalidate },
       getDeploymentCredentialState: { invalidate: mocks.invalidate },
+      getCloudflareStagingDeployPreflight: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System" },
@@ -32,10 +35,12 @@ vi.mock("@/lib/trpc", () => ({
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: () => ({ data: mocks.targets, isLoading: false, isError: mocks.targetsError, isFetching: false }) },
+      getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE" }, isLoading: false, isError: false, refetch: mocks.refetchStagingPreflight }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
+      queueCloudflareStagingDeploy: { useMutation: () => ({ mutate: mocks.queueStagingDeploy, isPending: false, error: null }) },
       saveDeploymentCredential: { useMutation: () => ({ mutate: mocks.saveCredential, isPending: false, error: null }) },
       revokeDeploymentCredential: { useMutation: () => ({ mutate: mocks.revokeCredential, isPending: false, error: null }) },
     },

@@ -42,8 +42,8 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Provide a bounded Admin workflow that issues the exact owner-authorized staging policy/grant and creates its canonical worker_jobs job, then diagnose the staging /readyz HTTP 503 after the fresh artifact is deployed. Keep production routes unchanged until app readiness and full staging acceptance pass.",
-      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
+      "next_action": "Integrate the exact owner-bound staging policy/grant and worker_jobs Admin action on canonical main; rerun focused proof, build a fresh canonical artifact, then use an authenticated existing owner session to queue and verify staging. Continue production-only gaps after staging acceptance.",
+      "worktree": "/mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/e93ce5c1aa90949c22ef56847ead07cb9d7a2697-test",
       "checkpoint_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
       "merged_main_sha": "3cb938a2cc7a52858a6a9fb90bcaf64d3b5ba798",
       "session_id": "codex-cloudflare-cutover-20261022"
@@ -58,13 +58,13 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 151,
-  "updated_at": "2026-10-22T02:28:50.309446+00:00",
+  "generation": 152,
+  "updated_at": "2026-10-22T02:48:14.621734+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Provide a bounded Admin workflow that issues the exact owner-authorized staging policy/grant and creates its canonical worker_jobs job, then diagnose the staging /readyz HTTP 503 after the fresh artifact is deployed. Keep production routes unchanged until app readiness and full staging acceptance pass.",
+    "next_action": "Integrate the exact owner-bound staging policy/grant and worker_jobs Admin action on canonical main; rerun focused proof, build a fresh canonical artifact, then use an authenticated existing owner session to queue and verify staging. Continue production-only gaps after staging acceptance.",
     "merged_main_sha": "3cb938a2cc7a52858a6a9fb90bcaf64d3b5ba798",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
+    "worktree": "/mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/e93ce5c1aa90949c22ef56847ead07cb9d7a2697-test",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
       "Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.",

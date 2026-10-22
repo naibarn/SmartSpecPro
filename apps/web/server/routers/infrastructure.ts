@@ -12,8 +12,8 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
-import { canonicalProjects, systemSettings } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { canonicalProjects, systemSettings, workerJobs } from "../../drizzle/schema";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
   getAllQueueMetrics,
@@ -71,6 +71,9 @@ import {
 } from "../services/projectWikiReleaseCandidate";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { projectWikiProvisioningIntentMatchesTenant, projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
+import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagingArtifact } from "../services/cloudflareStagingArtifactAuthority";
+import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -371,6 +374,52 @@ const originIdentitySchema = z.object({ tenantId: deploymentTenantIdSchema, proj
   environment: z.enum(["staging", "production"]), provider: z.literal("cloudflare") }).strict();
 const originReferenceSchema = originIdentitySchema.extend({ configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/) });
 
+type CloudflareStagingPreflight = {
+  ready: boolean;
+  reason: string | null;
+  artifact: { artifactRef: string; sourceSha: string; buildDigest: string } | null;
+  baseline: { deploymentId: string; artifactRef: string; sourceSha: string; buildDigest: string; configurationRef: string; configurationDigest: string } | null;
+  configurationRef: string | null;
+  configurationDigest: string | null;
+  accountRef: string | null;
+};
+
+async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, identity: { tenantId: string; projectId: string }): Promise<CloudflareStagingPreflight> {
+  const unavailable = (reason: string): CloudflareStagingPreflight => ({ ready: false, reason, artifact: null, baseline: null, configurationRef: null, configurationDigest: null, accountRef: null });
+  const rows = await listProviderDeploymentTargets(db, { ...identity, environment: "staging" });
+  const enabledTargets = rows.filter(row => row.provider === "cloudflare" && row.enabled);
+  if (enabledTargets.length > 1) return unavailable("STAGING_TARGET_AUTHORITY_CONFLICT");
+  const target = enabledTargets[0];
+  if (!target?.enabled || target.workerRef !== CLOUDFLARE_STAGING_TARGET_ID || target.containerApplicationRef) return unavailable("STAGING_TARGET_NOT_READY");
+  if (target.deploymentTargetId !== CLOUDFLARE_STAGING_TARGET_ID || target.credentialRef !== deploymentCredentialRef({ ...identity, environment: "staging", provider: "cloudflare" })) return unavailable("STAGING_TARGET_AUTHORITY_CONFLICT");
+  if (!target.accountRef || !/^([a-f0-9]{32})$/.test(target.accountRef)) return unavailable("STAGING_ACCOUNT_NOT_CONFIGURED");
+  const configurationRef = target.runtimePolicy;
+  const configurationDigest = configurationRef?.match(/^cf-origin:([a-f0-9]{64})$/)?.[1] ?? null;
+  if (!configurationRef || !configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_REQUIRED");
+  const originConfiguration = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef }).catch(() => null);
+  if (!originConfiguration || originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE");
+  const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
+  if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
+  const jobs = await db.select({ input: workerJobs.inputJson, output: workerJobs.outputJson, createdAt: workerJobs.createdAt })
+    .from(workerJobs).where(and(eq(workerJobs.tenantId, identity.tenantId), eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB), eq(workerJobs.status, "succeeded")))
+    .orderBy(desc(workerJobs.createdAt)).limit(100);
+  for (const row of jobs) {
+    const input = row.input ?? {};
+    const output = row.output ?? {};
+    if (input.projectId !== identity.projectId || input.environment !== "staging" || input.contractVersion !== "cloudflare-staging-origin-v2" ||
+        output.runtimeVerified !== true || output.configurationRef !== configurationRef || typeof output.deploymentId !== "string" ||
+        typeof input.artifactRef !== "string" || typeof input.sourceSha !== "string" || typeof input.buildDigest !== "string") continue;
+    const baselineArtifact = await resolveCloudflareStagingArtifact(input.artifactRef, input.sourceSha);
+    const rollbackDigest = typeof output.configurationDigest === "string" ? output.configurationDigest : configurationDigest;
+    if (!baselineArtifact?.immutable || baselineArtifact.buildDigest !== input.buildDigest || rollbackDigest !== input.configurationRef.slice("cf-origin:".length)) continue;
+    return { ready: true, reason: null, artifact: { artifactRef: artifact.artifactRef, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest },
+      baseline: { deploymentId: output.deploymentId, artifactRef: input.artifactRef, sourceSha: input.sourceSha, buildDigest: input.buildDigest,
+        configurationRef: input.configurationRef ?? configurationRef, configurationDigest: rollbackDigest },
+      configurationRef, configurationDigest, accountRef: target.accountRef };
+  }
+  return unavailable("VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE");
+}
+
 export const infrastructureRouter = router({
   listDeploymentTargetProjects: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema }))
@@ -475,6 +524,111 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       return listProviderDeploymentTargets(db, input);
+    }),
+
+  getCloudflareStagingDeployPreflight: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return getCloudflareStagingPreflight(db, input);
+    }),
+
+  queueCloudflareStagingDeploy: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match staging target" });
+      if (!ctx.user?.id || !ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Authenticated owner session required" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const preflight = await getCloudflareStagingPreflight(db, input);
+      if (!preflight.ready || !preflight.artifact || !preflight.baseline || !preflight.accountRef || !preflight.configurationRef || !preflight.configurationDigest) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: preflight.reason ?? "STAGING_DEPLOY_PREFLIGHT_FAILED" });
+      }
+      const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
+      if (!executorId || !/^cf-staging-executor:[a-z0-9][a-z0-9._-]{2,119}$/.test(executorId)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STAGING_EXECUTOR_NOT_CONFIGURED" });
+      }
+      const runtime = await getAppRuntimeConfig();
+      if (!runtime.pythonBackendUrl) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "APPROVAL_AUTHORITY_UNAVAILABLE" });
+      const authHeaders = { Authorization: `Bearer ${ctx.userToken}`, Accept: "application/json", "Content-Type": "application/json" };
+      const postApproval = async (path: string, body: Record<string, unknown>) => {
+        const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
+          method: "POST", headers: authHeaders, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000),
+        });
+        const value = await response.json().catch(() => ({})) as Record<string, unknown>;
+        if (!response.ok) {
+          const detail = typeof value.detail === "string" && /^[A-Z0-9_]+$/.test(value.detail) ? value.detail : "STAGING_APPROVAL_REJECTED";
+          throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY", message: detail });
+        }
+        return value;
+      };
+      const operationId = randomUUID();
+      const policyExpiresAt = new Date(Date.now() + 60 * 60_000).toISOString();
+      const grantExpiresAt = new Date(Date.now() + 45 * 60_000).toISOString();
+      const candidateRelease = { ...preflight.artifact, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest };
+      const baselineRelease = { artifactRef: preflight.baseline.artifactRef, sourceSha: preflight.baseline.sourceSha, buildDigest: preflight.baseline.buildDigest,
+        configurationRef: preflight.baseline.configurationRef, configurationDigest: preflight.baseline.configurationDigest };
+      const releases = candidateRelease.artifactRef === baselineRelease.artifactRef && candidateRelease.configurationRef === baselineRelease.configurationRef
+        ? [candidateRelease] : [candidateRelease, baselineRelease];
+      let policyId: string | null = null;
+      let grantRef: string | null = null;
+      let canonicalJobCreationStarted = false;
+      try {
+        const policy = await postApproval("/api/v1/approvals/cloudflare-staging-policies", {
+          projectId: input.projectId,
+          definition: { contractVersion: "cloudflare-staging-origin-v2", accountRef: preflight.accountRef, executorId, actorUserId: ctx.user.id,
+            targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: 1, expiresAt: policyExpiresAt },
+        });
+        policyId = typeof policy.policyId === "string" ? policy.policyId : null;
+        if (!policyId) throw new Error("STAGING_POLICY_CREATE_FAILED");
+        const grant = await postApproval("/api/v1/approvals/cloudflare-staging-grants/policy", {
+          idempotencyKey: `cf-staging:${operationId}`, policyId, jobId: operationId, projectId: input.projectId, executorId,
+          accountRef: preflight.accountRef, schemaVersion: "cloudflare.staging-origin-grant.v2", targetId: CLOUDFLARE_STAGING_TARGET_ID,
+          environment: "staging", artifactRef: preflight.artifact.artifactRef, sourceSha: preflight.artifact.sourceSha,
+          buildDigest: preflight.artifact.buildDigest, actions: ["deploy"], rollbackDeploymentId: preflight.baseline.deploymentId,
+          rollbackArtifactRef: preflight.baseline.artifactRef, rollbackSourceSha: preflight.baseline.sourceSha,
+          rollbackBuildDigest: preflight.baseline.buildDigest, configurationRef: preflight.configurationRef,
+          configurationDigest: preflight.configurationDigest, rollbackConfigurationRef: preflight.baseline.configurationRef,
+          rollbackConfigurationDigest: preflight.baseline.configurationDigest, expiresAt: grantExpiresAt, revokedAt: null,
+        });
+        grantRef = typeof grant.id === "string" ? grant.id : null;
+        if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");
+        canonicalJobCreationStarted = true;
+        const job = await createControlPlaneJob({
+          context: { tenantId, actorType: "user", actorId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_staging_deploy",
+            correlationId: ctx.req.requestId ?? operationId, idempotencyKey: `cloudflare-staging-deploy:${operationId}` },
+          definition: { contractVersion: "cloudflare-staging-origin-v2", jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB, executionClass: "long", priority: 50,
+            input: { contractVersion: "cloudflare-staging-origin-v2", action: "deploy", targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging",
+              grantRef, projectId: input.projectId, artifactRef: preflight.artifact.artifactRef, sourceSha: preflight.artifact.sourceSha,
+              buildDigest: preflight.artifact.buildDigest, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest },
+            idempotencyKey: `cloudflare-staging-deploy:${operationId}`, activeDedupeKey: `cloudflare-staging-deploy:${preflight.artifact.buildDigest}`,
+            retryPolicy: { maxAttempts: 1, baseDelayMs: 1_000, maxDelayMs: 1_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
+            timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 15 * 60_000 } },
+          createOptions: { runtimeType: "node_job_worker" },
+        });
+        try {
+          auditLogger.log({ eventType: "cloudflare_staging_deploy_queued", userId: ctx.user.id, requestType: "cloudflare_staging_deploy",
+            responsePayload: { tenantId, projectId: input.projectId, jobId: job.jobId, grantRef, sourceSha: preflight.artifact.sourceSha,
+              buildDigest: preflight.artifact.buildDigest, configurationDigest: preflight.configurationDigest }, statusCode: 202 });
+        } catch { /* The canonical job and its outbox remain authoritative if audit projection is temporarily unavailable. */ }
+        return { jobId: job.jobId, grantRef, status: "queued" as const, sourceSha: preflight.artifact.sourceSha, artifactRef: preflight.artifact.artifactRef };
+      } catch (error) {
+        // Before the canonical insert starts, unused approval state can be revoked.
+        // Once job creation starts its transaction outcome may be ambiguous; retain
+        // the exact 45-minute, single-job grant so a committed outbox job can run.
+        if (!canonicalJobCreationStarted) {
+          if (grantRef) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-grants/${encodeURIComponent(grantRef)}/revoke`, {
+            method: "POST", headers: authHeaders, body: JSON.stringify({ reason: "Canonical staging job creation did not start" }), signal: AbortSignal.timeout(10_000),
+          }).catch(() => undefined);
+          if (policyId) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-policies/${encodeURIComponent(policyId)}/revoke`, {
+            method: "POST", headers: authHeaders, signal: AbortSignal.timeout(10_000),
+          }).catch(() => undefined);
+        }
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "BAD_GATEWAY", message: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "STAGING_DEPLOY_QUEUE_FAILED" });
+      }
     }),
 
   createProviderDeploymentTarget: exactAdminProcedure

@@ -252,6 +252,10 @@ export default function AdminDeploymentTargets() {
     scope,
     { enabled: validScope },
   );
+  const stagingDeployPreflight = trpc.infrastructure.getCloudflareStagingDeployPreflight.useQuery(
+    { tenantId, projectId, environment: "staging" },
+    { enabled: validScope && environment === "staging" },
+  );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
@@ -272,6 +276,9 @@ export default function AdminDeploymentTargets() {
   });
   const disableMutation = trpc.infrastructure.disableProviderDeploymentTarget.useMutation({
     onSuccess: refreshTargets,
+  });
+  const stagingDeployMutation = trpc.infrastructure.queueCloudflareStagingDeploy.useMutation({
+    onSuccess: async () => { await stagingDeployPreflight.refetch(); },
   });
   const text = useText();
   const setNewField = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
@@ -395,6 +402,26 @@ export default function AdminDeploymentTargets() {
               <Divider />
             </VStack>
           ))}
+        </VStack>
+      ) : null}
+
+      {validScope && environment === "staging" ? (
+        <VStack as="section" gap={2}>
+          <h3>{text("Deploy the latest verified staging artifact", "Deploy artifact ล่าสุดที่ตรวจสอบแล้วไป staging")}</h3>
+          {stagingDeployPreflight.isLoading ? <p role="status">{text("Checking published artifact and rollback baseline…", "กำลังตรวจ artifact และ rollback baseline…")}</p> : null}
+          {stagingDeployPreflight.isError ? <p role="alert">{text("Staging deploy readiness could not be verified.", "ตรวจความพร้อม deploy staging ไม่สำเร็จ")}</p> : null}
+          {stagingDeployPreflight.data ? <>
+            {stagingDeployPreflight.data.ready && stagingDeployPreflight.data.artifact && stagingDeployPreflight.data.baseline ? <>
+              <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
+              <p>{text("Verified rollback baseline", "รุ่น rollback ที่ตรวจสอบแล้ว")}: <code>{stagingDeployPreflight.data.baseline.deploymentId}</code> · <code>{stagingDeployPreflight.data.baseline.sourceSha}</code></p>
+              <p>{text("One action creates an owner-scoped policy and grant for this artifact, config, target, and job, then queues through worker_jobs. It cannot change production DNS or routes.", "คำสั่งนี้สร้าง policy/grant ของ owner ที่ผูกกับ artifact, config, target และ job นี้ แล้วส่งผ่าน worker_jobs เท่านั้น ไม่มีการเปลี่ยน DNS หรือ route ของ production")}</p>
+              <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
+                {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
+              </Button>
+            </> : <p role="status">{stagingDeployPreflight.data.reason ?? text("Staging deploy is not ready.", "staging ยังไม่พร้อม deploy")}</p>}
+          </> : null}
+          {stagingDeployMutation.data ? <p role="status">{text("Staging deployment queued", "ส่งงาน deploy staging แล้ว")}: <code>{stagingDeployMutation.data.jobId}</code></p> : null}
+          {stagingDeployMutation.error ? <p role="alert">{stagingDeployMutation.error.message}</p> : null}
         </VStack>
       ) : null}
 

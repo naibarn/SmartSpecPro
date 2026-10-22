@@ -14,6 +14,14 @@ describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
+  it("requires the authenticated owner session before creating a staging policy or job", async () => {
+    const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s", userToken: null } as any);
+    await expect(caller.queueCloudflareStagingDeploy({ tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" }))
+      .rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("keeps origin versions and secret writes behind the exact-admin guard", async () => {
     const identity = { tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" as const, provider: "cloudflare" as const };
     const reference = { ...identity, configurationRef: `cf-origin:${"a".repeat(64)}` };

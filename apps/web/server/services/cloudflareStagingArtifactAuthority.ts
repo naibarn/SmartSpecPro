@@ -409,3 +409,31 @@ export async function resolveCloudflareStagingArtifact(
 ): Promise<PublishedCloudflareStagingArtifact | null> {
   return (await getRuntimeAuthority()?.resolveArtifact(artifactRef, expectedSourceSha)) ?? null;
 }
+
+/** Resolve the newest immutable artifact that has both a canonical build receipt
+ * and a completed publication receipt. Never selects a pending or local bundle.
+ */
+export async function resolveLatestPublishedCloudflareStagingArtifact(): Promise<PublishedCloudflareStagingArtifact | null> {
+  const root = process.env.SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT?.trim();
+  const authority = getRuntimeAuthority();
+  if (!root || !authority) return null;
+  let names: string[];
+  try { names = await readdir(root); } catch { return null; }
+  const records: Array<{ completedAt: number; artifactRef: string; sourceSha: string }> = [];
+  for (const name of names) {
+    if (!name.endsWith(".json")) continue;
+    try {
+      const value = JSON.parse(await readFile(join(root, name), "utf8")) as Record<string, any>;
+      const artifact = value.cloudflare_staging_artifact;
+      if (value.status !== "BUILD_PASSED" || value.canonical_ref !== "refs/heads/main" || value.source_verified !== true ||
+          artifact?.status !== "PUBLISHED" || typeof artifact.artifact_ref !== "string" || typeof artifact.source_sha !== "string") continue;
+      records.push({ completedAt: Number(value.completed_at) || 0, artifactRef: artifact.artifact_ref, sourceSha: artifact.source_sha });
+    } catch { /* Ignore malformed builder receipts; the authority remains fail-closed. */ }
+  }
+  records.sort((left, right) => right.completedAt - left.completedAt);
+  for (const record of records) {
+    const artifact = await authority.resolveArtifact(record.artifactRef, record.sourceSha);
+    if (artifact?.immutable) return artifact;
+  }
+  return null;
+}
