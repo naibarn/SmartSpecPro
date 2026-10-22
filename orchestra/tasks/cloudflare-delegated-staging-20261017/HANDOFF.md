@@ -1,5 +1,11 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Staging artifact integration regression — 2026-10-22 13:27 Asia/Bangkok
+
+- Root cause of the CI `CLOUDFLARE_STAGING_ARTIFACT_MISMATCH` in both PostgreSQL staging-executor cases: immutable artifact manifests are stored under an artifact digest **and** source SHA, but the integration-test adapter called `resolveBundle(ref)` without the source SHA. The production adapters already pass the expected SHA. The test now mirrors that contract for both executor metadata resolution and provider bundle upload.
+- Added regression assertions that the published artifact resolves before admission, the canonical job input survives PostgreSQL unchanged, and the runtime metadata resolver returns the exact published artifact. Both artifact-v1 and origin-v2 PostgreSQL integration cases pass locally against a disposable PostgreSQL instance. The Python owner-policy probe branch was not exercised locally because this checkout has no SQLAlchemy installed; CI covers that branch when its dependencies are present.
+- Next: integrate this focused test correction, verify the required Cloudflare CI run. This only restores trustworthy staging verification; it does not deploy staging or production. The production Worker still reports 503 with seven missing bindings, and retained-DB private connectivity plus exact production approval and live application acceptance remain open.
+
 ## Production readiness visibility — 2026-10-22 13:14 Asia/Bangkok
 
 - Added a read-only exact production Worker readiness probe at the fixed `https://runtime.smartaihub.app/readyz` endpoint and surfaced its status, activation, missing bindings, and check time in Admin → Deployment targets when `production` is selected. It never creates a grant, provisions a Container, or changes Worker/route/traffic state. The UI explicitly says this is not proof of artifact approval, retained-PostgreSQL reachability, auth acceptance, rollback, or cutover.

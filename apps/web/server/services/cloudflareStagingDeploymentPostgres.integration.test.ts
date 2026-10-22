@@ -277,6 +277,12 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
         },
       },
     });
+    // A successful immutable publish must also resolve through the exact
+    // executor metadata path before any canonical job is admitted.
+    expect(await artifactAuthority.resolveArtifact(publishedArtifact.artifactRef, sourceSha)).toEqual(publishedArtifact);
+    expect(await artifactAuthority.resolveBundle(publishedArtifact.artifactRef, sourceSha)).toMatchObject({
+      sourceSha, buildDigest: publishedArtifact.buildDigest,
+    });
 
     const versionId = "22222222-2222-4222-8222-222222222222";
     const deploymentId = "11111111-1111-4111-8111-111111111111";
@@ -333,7 +339,7 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
       });
     };
     const cloudflare = createCloudflareStagingApiTransport({
-      resolveBundle: ref => artifactAuthority.resolveBundle(ref),
+      resolveBundle: (ref, expectedSourceSha) => artifactAuthority.resolveBundle(ref, expectedSourceSha),
       fetchImpl,
     });
     const rollbackDigest = originMode ? publishedArtifact.buildDigest : "d".repeat(64);
@@ -462,9 +468,9 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
           return null;
         return { ...persisted, revoked: false as const };
       },
-      resolveArtifact: async ref => {
+      resolveArtifact: async (ref, expectedSourceSha) => {
         if (ref !== publishedArtifact.artifactRef) return null;
-        const resolvedBundle = await artifactAuthority.resolveBundle(ref);
+        const resolvedBundle = await artifactAuthority.resolveBundle(ref, expectedSourceSha);
         return resolvedBundle
           ? {
               artifactRef: ref,
@@ -524,6 +530,12 @@ suite("Cloudflare staging canonical PostgreSQL execution", () => {
     };
     const job = await controlPlane.create(definition, (python || originMode) ? { canonicalJobId: policyJobId } : undefined);
     expect(job.created).toBe(true);
+    const [storedJob] = await runtimeDb
+      .select({ inputJson: schema.workerJobs.inputJson })
+      .from(schema.workerJobs)
+      .where((await import("drizzle-orm")).eq(schema.workerJobs.id, job.jobId));
+    expect(storedJob?.inputJson).toEqual(definition.input);
+    expect(await runtime.resolveArtifact(publishedArtifact.artifactRef, sourceSha)).toEqual(publishedArtifact);
     const [outbox] = await runtimeDb
       .select()
       .from(schema.workerJobOutbox)
