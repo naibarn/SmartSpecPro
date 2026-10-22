@@ -363,6 +363,7 @@ export const liveBrowserStreamTokenRequestSchema = z.object({
 export const liveBrowserRunnerExecutionRequestSchema = z.object({
   runnerId: z.string().trim().min(1).max(160),
   idempotencyKey: z.string().trim().min(1).max(200),
+  goal: z.string().trim().min(1).max(2_000).optional(),
   operation: z.enum(["observe", "observe_and_act"]).default("observe"),
   action: z.enum(["none", "click", "type", "refresh"]).default("none"),
   targetId: z.string().trim().min(1).max(160).optional(),

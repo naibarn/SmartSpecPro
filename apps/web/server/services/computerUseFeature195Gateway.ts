@@ -33,6 +33,7 @@ export async function createCanonicalComputerUseBrowserJob(
     certificationDescriptor?: P213CertificationDescriptor;
     fixtureUrlOverride?: string;
     expectedSuccessCondition?: Record<string, unknown>;
+    conversationId?: number;
   } = {},
 ): Promise<{
   jobId: string;
@@ -114,7 +115,7 @@ export async function createCanonicalComputerUseBrowserJob(
   const traceId = randomUUID();
   const computerUseRunId = randomUUID();
   const decisionGoal = input.action === "none"
-    ? "observe page"
+    ? input.goal ?? "observe page"
     : `${input.action} ${input.targetId ?? input.selector ?? "target"}`;
   const requestedActionFamily = input.action === "click"
     ? "click"
@@ -139,6 +140,7 @@ export async function createCanonicalComputerUseBrowserJob(
       input: {
         traceId,
         computerUseRunId,
+        ...(options.conversationId ? { conversationId: options.conversationId } : {}),
         runnerId: input.runnerId,
         runnerSessionId: node.activeSessionId,
         capabilitySnapshotId: snapshot.capabilitySnapshotId,

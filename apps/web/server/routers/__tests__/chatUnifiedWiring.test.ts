@@ -49,6 +49,7 @@ const mockGetSummaries = vi.fn().mockResolvedValue([]);
 const mockUpdateConversation = vi.fn();
 const mockBuildChatContext = vi.fn().mockResolvedValue([]);
 const mockStartSkillTask = vi.fn().mockResolvedValue({ taskId: "queued-task-1" });
+const mockCreateCanonicalComputerUseBrowserJob = vi.fn();
 vi.mock("../../services/chatService", () => ({
   createConversation: (...args: unknown[]) => mockCreateConversation(...args),
   createPersonalConversation: (...args: unknown[]) =>
@@ -119,6 +120,11 @@ vi.mock("../../services/skillExecutor", () => ({
   startPythonSkillTask: vi.fn(),
   estimateSkillCost: vi.fn(),
   canAutoExecute: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock("../../services/computerUseFeature195Gateway", () => ({
+  createCanonicalComputerUseBrowserJob: (...args: unknown[]) =>
+    mockCreateCanonicalComputerUseBrowserJob(...args),
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
@@ -264,6 +270,17 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
     mockGetRecentMessages.mockResolvedValue([]);
     mockGetSummaries.mockResolvedValue([]);
     mockStartSkillTask.mockResolvedValue({ taskId: "queued-task-1" });
+    mockCreateCanonicalComputerUseBrowserJob.mockResolvedValue({
+      jobId: "runner-job-1",
+      created: true,
+      route: "localRunner",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+      capabilitySnapshotId: "snapshot-1",
+      capabilitySnapshotRevision: "revision-1",
+      traceId: "trace-1",
+      computerUseRunId: "run-1",
+    });
     mockDetectSkill.mockResolvedValue({
       detected: false,
       skill: null,
@@ -278,6 +295,94 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
       confidence: 0.5,
       source: "fallback",
     });
+  });
+
+  it("admits a read-only Chat command through the authorized Runner producer", async () => {
+    mockGetConversationById.mockResolvedValue({
+      id: 42,
+      userId: 1,
+      tenantId: "tenant-1",
+    });
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      trustedAppContext: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(caller.runOnRunner({
+      conversationId: 42,
+      runnerId: "runner-1",
+      goal: "Read the current page title",
+      idempotencyKey: "chat-runner-1",
+    })).resolves.toMatchObject({ jobId: "runner-job-1" });
+
+    expect(mockCreateCanonicalComputerUseBrowserJob).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "tenant-1", user: expect.objectContaining({ id: 1 }) }),
+      expect.objectContaining({
+        runnerId: "runner-1",
+        goal: "Read the current page title",
+        operation: "observe",
+        action: "none",
+      }),
+      expect.objectContaining({ conversationId: 42 }),
+    );
+  });
+
+  it("rejects a Chat command when the conversation belongs to another tenant", async () => {
+    mockGetConversationById.mockResolvedValue({
+      id: 42,
+      userId: 1,
+      tenantId: "tenant-other",
+    });
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      trustedAppContext: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(caller.runOnRunner({
+      conversationId: 42,
+      runnerId: "runner-1",
+      goal: "Read the current page title",
+      idempotencyKey: "chat-runner-cross-tenant",
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockCreateCanonicalComputerUseBrowserJob).not.toHaveBeenCalled();
   });
 
   it("queues execution under authenticated tenant and ignores client App/Project identity fields", async () => {
