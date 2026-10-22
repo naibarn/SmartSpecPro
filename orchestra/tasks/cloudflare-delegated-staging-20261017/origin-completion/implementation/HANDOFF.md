@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `147`
-- Updated (UTC): `2026-10-22T02:22:03+00:00`
+- State generation: `149`
+- Updated (UTC): `2026-10-22T02:24:52.301118+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022`
-- Latest recorded merged Main SHA: `4965a998abe3671565db6e77d1ea8f63e703b5a6`
+- Latest recorded merged Main SHA: `21c8f057cea54239ee6f8b02bcf270a80d416077`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: close the Admin workflow gap for a one-operation origin-v2 staging policy/grant and canonical job, or use an authenticated tenant-owner session to create the exact policy/grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 with recorded rollback artifact sha256:12d50081336bf86807690b1c87dcff67c55c639270243cae666c3cef2fe7e8ea, deployment 7a7d2671-03f4-4f28-9b01-a639d359dfd6 and configuration digest 05b032fed7654a771293e9047b747b6aa531f9dc863a414d02e689ddee3a234c; then submit and verify the canonical staging job. Current DB audit found 0/50 active staging policies; target, credential and trusted executor are present.
+- Next action: Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022 | 0f8925977ba86014413b6dd80322faacf44f4d79 | 4965a998abe3671565db6e77d1ea8f63e703b5a6 | Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022 | 0f8925977ba86014413b6dd80322faacf44f4d79 | 21c8f057cea54239ee6f8b02bcf270a80d416077 | Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -60,7 +60,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.
 - Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.
 - The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes.
-- Fresh read-only DB audit (2026-10-22 09:22 Asia/Bangkok): staging target is enabled with account, credential ref and origin binding; matching staging executor remains trusted through 2026-11-18; 0 of 50 staging policies are active and no grant matches artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4. Existing successful rollback job 21518c53-e612-4f4f-b23a-93c93e35fd27 reports runtimeVerified=true and records baseline deployment 7a7d2671-03f4-4f28-9b01-a639d359dfd6 / artifact sha256:12d50081336bf86807690b1c87dcff67c55c639270243cae666c3cef2fe7e8ea / config digest 05b032fed7654a771293e9047b747b6aa531f9dc863a414d02e689ddee3a234c. Admin UI has no staging policy/grant/job creation controls; backend owner-authorized endpoints are present. No DB writes were performed.
+- No active staging origin-v2 policy/grant exists for the current artifact; current Admin UI lacks policy/grant/job workflow, and this shell cannot act as authenticated tenant owner.
 
 ## Resume
 

@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job.",
+      "next_action": "Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
       "checkpoint_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
-      "merged_main_sha": "4965a998abe3671565db6e77d1ea8f63e703b5a6",
+      "merged_main_sha": "21c8f057cea54239ee6f8b02bcf270a80d416077",
       "session_id": "codex-cloudflare-cutover-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 147,
-  "updated_at": "2026-10-22T02:12:21.181336+00:00",
+  "generation": 149,
+  "updated_at": "2026-10-22T02:24:52.301118+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job.",
-    "merged_main_sha": "4965a998abe3671565db6e77d1ea8f63e703b5a6",
+    "next_action": "Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls.",
+    "merged_main_sha": "21c8f057cea54239ee6f8b02bcf270a80d416077",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -101,7 +101,7 @@
       "Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.",
       "Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.",
       "The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes.",
-      "No owner-authenticated policy/grant operation is available to this shell; staging target and credential are configured but no deploy grant or live Cloudflare runtime proof exists."
+      "No active staging origin-v2 policy/grant exists for the current artifact; current Admin UI lacks policy/grant/job workflow, and this shell cannot act as authenticated tenant owner."
     ],
     "outcome": "NOT_ACCEPTED"
   }
