@@ -256,6 +256,10 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "staging" },
     { enabled: validScope && environment === "staging" },
   );
+  const stagingRuntimeReadiness = trpc.infrastructure.getCloudflareStagingRuntimeReadiness.useQuery(
+    { tenantId, projectId, environment: "staging" },
+    { enabled: validScope && environment === "staging" },
+  );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
@@ -407,6 +411,33 @@ export default function AdminDeploymentTargets() {
 
       {validScope && environment === "staging" ? (
         <VStack as="section" gap={2}>
+          <HStack gap={2} wrap="wrap">
+            <h3>{text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}</h3>
+            <Button type="button" variant="outline" size="sm" onClick={() => void stagingRuntimeReadiness.refetch()} disabled={stagingRuntimeReadiness.isFetching}>
+              {text("Check now", "ตรวจสอบตอนนี้")}
+            </Button>
+          </HStack>
+          {stagingRuntimeReadiness.isLoading ? <p role="status">{text("Checking the exact staging Worker’s /readyz endpoint…", "กำลังตรวจ /readyz ของ staging Worker เป้าหมาย…")}</p> : null}
+          {stagingRuntimeReadiness.isError ? <p role="alert">{text("Live runtime readiness could not be checked. Artifact deploy readiness does not prove Worker readiness.", "ตรวจความพร้อม runtime ไม่สำเร็จ การพร้อม deploy artifact ไม่ได้ยืนยันว่า Worker พร้อมใช้งาน")}</p> : null}
+          {stagingRuntimeReadiness.data ? (() => {
+            const runtime = stagingRuntimeReadiness.data;
+            const ready = runtime.status === "READY";
+            return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}>
+              <HStack gap={2} wrap="wrap">
+                <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
+                {runtime.activation ? <Badge variant="outline">activation: {runtime.activation}</Badge> : null}
+                {runtime.transport ? <Badge variant="outline">transport: {runtime.transport}</Badge> : null}
+                {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
+                {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
+              </HStack>
+              {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
+              {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
+              {runtime.transport === "all" ? <p>{text("No job transport has been selected yet. The missing list reflects the Worker’s current all-transports profile; Containers are only needed for workloads that require isolated execution.", "ยังไม่ได้เลือก transport สำหรับงาน รายการที่ขาดอ้างอิง profile ที่เปิดตรวจทุก transport ในขณะนี้ และต้องใช้ Containers เฉพาะงานที่ต้องแยก runtime เท่านั้น")}</p> : null}
+              <p>{text("This live probe is separate from the deploy preflight below. A successful artifact deployment does not mean app traffic has moved from the Linux origin.", "ผลตรวจ runtime นี้แยกจาก preflight ด้านล่าง การ deploy artifact ผ่านไม่ได้แปลว่า traffic ของแอปย้ายจาก Linux origin แล้ว")}</p>
+              <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(runtime.checkedAt).toLocaleString()}</p>
+            </VStack>;
+          })() : null}
+          <Divider />
           <h3>{text("Deploy the latest verified staging artifact", "Deploy artifact ล่าสุดที่ตรวจสอบแล้วไป staging")}</h3>
           {stagingDeployPreflight.isLoading ? <p role="status">{text("Checking published artifact and rollback baseline…", "กำลังตรวจ artifact และ rollback baseline…")}</p> : null}
           {stagingDeployPreflight.isError ? <p role="alert">{text("Staging deploy readiness could not be verified.", "ตรวจความพร้อม deploy staging ไม่สำเร็จ")}</p> : null}
