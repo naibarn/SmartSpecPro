@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
@@ -399,13 +399,17 @@
   "implementation": {
     "checkpoint_shas": [
       "f072ec8448884b88970310fab954c97a465fc6b9",
-      "5ce718f36f8f05c80350dcf511d1ded9ed95ef97"
+      "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+      "96e1ce9f1"
     ],
     "mapping": [],
     "source_paths": [
       "apps/runner-app/src/diagnostics.rs",
       "apps/runner-app/src/adapters.rs",
-      "apps/runner-desktop/ui/app.js"
+      "apps/runner-desktop/ui/app.js",
+      "apps/web/shared/runnerCompanion.ts",
+      "apps/web/server/services/runnerCompanionViewState.ts",
+      "apps/web/server/routers/runnerNodes.ts"
     ],
     "started": true,
     "status": "PARTIAL"
@@ -1597,7 +1601,7 @@
     "unresolved": 189
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.027937Z",
+  "updated_at": "2026-10-22T04:22:20.480369Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1608,12 +1612,13 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "79805356f9252e1ba6858d993dbcc42476788745",
-    "status": "PENDING",
+    "sha": "96e1ce9f1",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
