@@ -741,6 +741,8 @@ class CanonicalSourceTests(unittest.TestCase):
 
         def evidence(path: Path) -> dict[str, object]:
             result = original_evidence(path)
+            if path in {self.source_root, self.fallback_root}:
+                result["available_bytes"] = 2 * 1024**3
             if path == self.source_root:
                 result["available_inodes"] = 0
             return result
@@ -748,6 +750,40 @@ class CanonicalSourceTests(unittest.TestCase):
         with mock.patch.object(canonical_source, "_filesystem_evidence", side_effect=evidence):
             lease = canonical_source.prepare_source(self.shared, purpose="build", source_revision=self.revision, policy_path=self.policy)
         self.assertTrue(str(lease["isolated_workspace"]).startswith(str(self.fallback_root)))
+        self.assertEqual(lease["workspace_recovery_attempts"], [])
+
+    def test_filesystem_without_inode_counter_is_not_treated_as_exhausted(self) -> None:
+        import canonical_source
+        from types import SimpleNamespace
+
+        stats = SimpleNamespace(f_files=0, f_favail=0, f_frsize=4096, f_bavail=1024)
+        usage = SimpleNamespace(total=10 * 1024**3, used=1 * 1024**3, free=9 * 1024**3)
+        with mock.patch.object(canonical_source.os, "statvfs", return_value=stats), mock.patch.object(
+            canonical_source.shutil, "disk_usage", return_value=usage
+        ):
+            evidence = canonical_source._filesystem_evidence(self.source_root)
+
+        self.assertIsNone(evidence["available_inodes"])
+        self.assertTrue(evidence["inode_capacity_not_applicable"])
+
+    def test_unavailable_inode_counter_keeps_primary_filesystem_admissible(self) -> None:
+        import canonical_source
+
+        original_evidence = canonical_source._filesystem_evidence
+
+        def evidence(path: Path) -> dict[str, object]:
+            result = original_evidence(path)
+            if path in {self.source_root, self.fallback_root}:
+                result["available_bytes"] = 2 * 1024**3
+            if path == self.source_root:
+                result["available_inodes"] = None
+                result["inode_capacity_not_applicable"] = True
+            return result
+
+        with mock.patch.object(canonical_source, "_filesystem_evidence", side_effect=evidence):
+            lease = canonical_source.prepare_source(self.shared, purpose="verify", source_revision=self.revision, policy_path=self.policy)
+
+        self.assertTrue(str(lease["isolated_workspace"]).startswith(str(self.source_root)))
         self.assertEqual(lease["workspace_recovery_attempts"], [])
 
     def test_no_admissible_filesystem_returns_resource_blocked_evidence(self) -> None:

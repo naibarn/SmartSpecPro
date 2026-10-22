@@ -193,18 +193,23 @@ def _filesystem_evidence(path: Path) -> dict[str, Any]:
             mount = Path(probe.anchor)
             available_bytes = usage.free
             available_inodes = None  # NTFS allocates file records dynamically; no POSIX inode counter exists.
+            inode_capacity_not_applicable = True
         else:
             stats = os.statvfs(probe)
             mount = probe
             while mount.parent != mount and mount.parent.stat().st_dev == device:
                 mount = mount.parent
             available_bytes = stats.f_bavail * stats.f_frsize
-            available_inodes = stats.f_favail
+            # Some Linux NTFS3 mounts report all three inode counters as zero
+            # because the filesystem does not expose a POSIX inode capacity.
+            # Treat that as unavailable evidence, not exhausted capacity.
+            inode_capacity_not_applicable = stats.f_files == 0
+            available_inodes = None if inode_capacity_not_applicable else stats.f_favail
         return {
             "path": str(path), "mount_path": str(mount), "device": device,
             "available_bytes": available_bytes,
             "available_inodes": available_inodes,
-            "inode_capacity_not_applicable": os.name == "nt",
+            "inode_capacity_not_applicable": inode_capacity_not_applicable,
             "total_bytes": usage.total,
             "writable": os.access(probe, os.W_OK | os.X_OK),
         }
