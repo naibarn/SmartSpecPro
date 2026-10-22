@@ -27,6 +27,7 @@ vi.mock("@/lib/trpc", () => ({
       { id: "tenant-system", name: "System" },
       { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant" },
       { id: "tenant-ZCSKEM9s", name: "Tenant One" },
+      { id: "tenant-smartaihub", name: "Production tenant", domain: "smartaihub.app" },
     ] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
@@ -67,7 +68,7 @@ const existingTarget = {
 
 async function chooseScope(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
-  await user.type(screen.getByPlaceholderText("Search tenant name or ID…"), "Tenant One");
+  await user.type(screen.getByPlaceholderText("Search tenant name, domain, or ID…"), "Tenant One");
   await user.click(await screen.findByRole("option", { name: /Tenant One/ }));
   await user.click(screen.getByRole("combobox", { name: "Canonical project" }));
   await user.type(screen.getByPlaceholderText("Search project name or ID…"), "Wiki");
@@ -78,7 +79,7 @@ async function chooseScope(user: ReturnType<typeof userEvent.setup>) {
 
 async function chooseProductionScope(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
-  await user.type(screen.getByPlaceholderText("Search tenant name or ID…"), "Tenant One");
+  await user.type(screen.getByPlaceholderText("Search tenant name, domain, or ID…"), "Tenant One");
   await user.click(await screen.findByRole("option", { name: /Tenant One/ }));
   await user.click(screen.getByRole("combobox", { name: "Canonical project" }));
   await user.type(screen.getByPlaceholderText("Search project name or ID…"), "Wiki");
@@ -99,13 +100,27 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
 
     await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
-    const search = screen.getByPlaceholderText("Search tenant name or ID…");
+    const search = screen.getByPlaceholderText("Search tenant name, domain, or ID…");
     await user.type(search, "tenant-ZCSKEM9s");
 
     expect(await screen.findByRole("option", { name: /Tenant One/ })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Codex UAT/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: /Tenant One/ }));
     expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toHaveTextContent("Tenant One");
+  });
+
+  it("finds a tenant by its domain when the display name and ID differ", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+
+    await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+    await user.type(screen.getByPlaceholderText("Search tenant name, domain, or ID…"), "smartaihub.app");
+
+    const option = await screen.findByRole("option", { name: /Production tenant/ });
+    expect(option).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Codex UAT/ })).not.toBeInTheDocument();
+    await user.click(option);
+    expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toHaveTextContent("Production tenant");
   });
 
   it("requires an explicit selection and displays scoped target and credential readiness", async () => {

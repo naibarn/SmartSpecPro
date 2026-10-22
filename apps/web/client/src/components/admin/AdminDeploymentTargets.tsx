@@ -54,7 +54,7 @@ function useText() {
   return (en: string, th: string) => isThai ? th : en;
 }
 
-type ScopeOption = { value: string; label: string };
+type ScopeOption = { value: string; label: string; searchValue?: string };
 
 function SearchableScopeSelect({
   label,
@@ -103,7 +103,7 @@ function SearchableScopeSelect({
               {options.map(option => (
                 <CommandItem
                   key={option.value}
-                  value={`${option.label} ${option.value}`}
+                  value={option.searchValue ?? `${option.label} ${option.value}`}
                   onSelect={() => {
                     onValueChange(option.value);
                     setOpen(false);
@@ -298,9 +298,17 @@ export default function AdminDeploymentTargets() {
           <SearchableScopeSelect
             label={text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}
             placeholder={text("Select tenant", "เลือก tenant")}
-            searchPlaceholder={text("Search tenant name or ID…", "ค้นหาชื่อหรือ ID ของ tenant…")}
+            searchPlaceholder={text("Search tenant name, domain, or ID…", "ค้นหาชื่อ domain หรือ ID ของ tenant…")}
             emptyMessage={text("No tenant matches this search.", "ไม่พบ tenant ที่ตรงกับคำค้น")}
-            options={(tenantsQuery.data ?? []).map(tenant => ({ value: String(tenant.id), label: `${tenant.name} · ${String(tenant.id)}` }))}
+            options={(tenantsQuery.data ?? []).map(tenant => {
+              const id = String(tenant.id);
+              const domain = typeof tenant.domain === "string" ? tenant.domain : "";
+              return {
+                value: id,
+                label: `${tenant.name} · ${id}`,
+                searchValue: `${tenant.name} ${domain} ${id}`,
+              };
+            })}
             value={tenantId}
             onValueChange={value => { setTenantId(value); setProjectId(""); }}
           />
