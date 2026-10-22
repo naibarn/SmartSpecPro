@@ -93,6 +93,7 @@
     "db:audit-ledger": "tsx scripts/audit-drizzle-ledger.ts",
     "db:migrate:spec224-0395": "node --import tsx scripts/spec224-targeted-0395-migration.ts",
     "db:repair:cloudflare-deployment": "node --import tsx scripts/cloudflare-deployment-schema.ts",
+    "db:repair:content-composer-schema": "node --import tsx scripts/content-composer-schema-repair.ts",
     "db:repair:desktop-devices": "node --import tsx scripts/desktop-device-schema.ts",
     "db:push": "node --import tsx scripts/db-migrate-with-receipt.ts push",
     "test:research-notes-migration": "python3 scripts/test-research-notes-migration.py",
