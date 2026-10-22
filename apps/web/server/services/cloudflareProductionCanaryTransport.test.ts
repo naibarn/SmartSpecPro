@@ -62,6 +62,48 @@ describe("Cloudflare production canary transport", () => {
     expect(assertMutationAuthorized).toHaveBeenCalledTimes(1);
   });
 
+  it("attaches only the grant-bound first route after verifying the 100% baseline", async () => {
+    const firstRouteGrant = { ...grant, expectedRouteId: null, expectedRouteScript: null } as CloudflareProductionDeploymentGrant;
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId,
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: "route-new", pattern: grant.routePattern, script: grant.targetId }))
+      .mockResolvedValueOnce(response([{ id: "route-new", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
+        { version_id: baseline.versionId, percentage: 99 }, { version_id: candidate.versionId, percentage: 1 },
+      ], annotations: { "workers/message": `SmartAIHub production canary grant ${grant.grantRef}` } }))
+      .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
+        { version_id: baseline.versionId, percentage: 99 }, { version_id: candidate.versionId, percentage: 1 },
+      ], annotations: { "workers/message": `SmartAIHub production canary grant ${grant.grantRef}` } }));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    const assertMutationAuthorized = vi.fn(async () => undefined);
+
+    await expect(transport.canary({ token: "test-token", target, grant: firstRouteGrant, candidate, assertMutationAuthorized }))
+      .resolves.toMatchObject({ deploymentId: canaryDeploymentId });
+    const writes = fetchImpl.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(writes.map(([request]) => new URL(String(request)).pathname)).toEqual([
+      `/client/v4/zones/${grant.zoneId}/workers/routes`,
+      `/client/v4/accounts/${grant.accountRef}/workers/scripts/${grant.targetId}/deployments`,
+    ]);
+    expect(JSON.parse(String(writes[0]?.[1]?.body))).toEqual({ pattern: grant.routePattern, script: grant.targetId });
+    expect(assertMutationAuthorized).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not attach the first route unless the exact baseline and candidate versions were verified", async () => {
+    const firstRouteGrant = { ...grant, expectedRouteId: null, expectedRouteScript: null } as CloudflareProductionDeploymentGrant;
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: "77777777-7777-4777-8777-777777777777",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant: firstRouteGrant, candidate,
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_BASELINE_NOT_ACTIVE");
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+  });
+
   it("performs no provider write when the live route differs from the approved snapshot", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(response([
       { id: "route-1", pattern: grant.routePattern, script: "smartspec-cloudflare-staging" },

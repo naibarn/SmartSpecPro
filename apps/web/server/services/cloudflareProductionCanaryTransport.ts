@@ -81,13 +81,32 @@ export function createCloudflareProductionCanaryTransport(input: {
       `/zones/${encodeURIComponent(grant.zoneId)}/workers/routes`, "GET");
     const matches = routes.map(route => normalizeRoute(route, grant.zoneId))
       .filter(route => route.pattern === grant.routePattern);
-    if (matches.length !== 1) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_NOT_EXACT");
+    if (matches.length > 1) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_NOT_EXACT");
+    const current = matches[0] ?? { zoneId: grant.zoneId, routeId: null, pattern: grant.routePattern, script: null };
     try {
       return assertProductionRouteMatchesGrant({ expectedZoneId: grant.zoneId,
         expectedScript: grant.targetId, expectedRouteId: grant.expectedRouteId,
-        expectedRouteScript: grant.expectedRouteScript, current: matches[0]! });
+        expectedRouteScript: grant.expectedRouteScript, current });
     } catch {
       throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_STATE_MISMATCH");
+    }
+  }
+
+  async function attachInitialProductionRoute(token: string, grant: CloudflareProductionDeploymentGrant,
+    assertMutationAuthorized: () => Promise<void>) {
+    // A first route starts serving the already-active, digest-verified 100% baseline.
+    // The same exact, stage-specific production grant also authorizes the following
+    // 1% version deployment; no broader hostname or route is ever created here.
+    const created = await api<{ id?: unknown; pattern?: unknown; script?: unknown }>(token,
+      `/zones/${encodeURIComponent(grant.zoneId)}/workers/routes`, "POST",
+      { pattern: grant.routePattern, script: grant.targetId }, assertMutationAuthorized);
+    const route = normalizeRoute(created, grant.zoneId);
+    if (typeof created.id !== "string" || route.pattern !== grant.routePattern || route.script !== grant.targetId) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_CREATE_RECEIPT_INVALID");
+    }
+    const persisted = await exactRoute(token, { ...grant, expectedRouteId: route.routeId, expectedRouteScript: grant.targetId });
+    if (persisted.routeId !== route.routeId || persisted.script !== grant.targetId) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_CREATE_READBACK_MISMATCH");
     }
   }
 
@@ -150,7 +169,6 @@ export function createCloudflareProductionCanaryTransport(input: {
         throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_GRANT_TARGET_DENIED");
       }
       const route = await exactRoute(token, grant);
-      if (!route.routeId || route.script !== grant.targetId) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_NOT_ATTACHED");
       const current = await activeDeployments(token, target);
       const active = current[0];
       if (!active?.id || active.id !== grant.rollbackDeploymentId || active.versions?.length !== 1 ||
@@ -162,6 +180,14 @@ export function createCloudflareProductionCanaryTransport(input: {
         configurationDigest: grant.rollbackConfigurationDigest, deploymentId: grant.rollbackDeploymentId };
       await checkedVersion(token, target, baseline);
       await checkedVersion(token, target, candidate);
+      if (!route.routeId) {
+        if (grant.expectedRouteId !== null || grant.expectedRouteScript !== null) {
+          throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_STATE_MISMATCH");
+        }
+        await attachInitialProductionRoute(token, grant, input.assertMutationAuthorized);
+      } else if (route.script !== grant.targetId) {
+        throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_NOT_ATTACHED");
+      }
       const weights = buildProductionCanaryWeights({ baseline, expectedBaseline: {
         sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
         configurationDigest: grant.rollbackConfigurationDigest }, candidate, expectedCandidate: {
