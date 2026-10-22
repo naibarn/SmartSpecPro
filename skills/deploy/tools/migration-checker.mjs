@@ -74,18 +74,25 @@ function checkDrizzle(dir) {
         const entries = Array.isArray(journal.entries) ? journal.entries : [];
         const tags = entries.map(entry => entry?.tag).filter(tag => typeof tag === 'string');
         const duplicateTags = tags.filter((tag, index) => tags.indexOf(tag) !== index);
+        const indices = entries.map(entry => entry?.idx).filter(index => Number.isInteger(index));
+        const duplicateIndices = indices.filter((index, position) => indices.indexOf(index) !== position);
         const migrationFiles = new Set(files.map(file => file.replace(/\.sql$/, '')));
         const missingFiles = [...new Set(tags)].filter(tag => !migrationFiles.has(tag));
         const unjournaledFiles = files.filter(file => !tags.includes(file.replace(/\.sql$/, '')));
         info.journaled_migration_count = tags.length;
         info.missing_journal_files = missingFiles;
         info.unjournaled_sql_files = unjournaledFiles;
+        info.duplicate_journal_indices = [...new Set(duplicateIndices)];
         if (duplicateTags.length) {
           findings.push({
             severity: 'critical',
             message: `Drizzle journal contains duplicate migration tags: ${[...new Set(duplicateTags)].join(', ')}`,
           });
         }
+        if (duplicateIndices.length) findings.push({
+          severity: 'critical',
+          message: `Drizzle journal contains duplicate indices: ${[...new Set(duplicateIndices)].join(', ')}`,
+        });
         if (missingFiles.length) findings.push({
           severity: 'critical',
           message: `Drizzle journal references missing SQL files: ${missingFiles.join(', ')}`,

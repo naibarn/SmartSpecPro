@@ -19,7 +19,7 @@ function fixture() {
   writeFileSync(join(root, 'drizzle/0001_initial.sql'), 'SELECT 1;');
   writeFileSync(join(root, 'drizzle/0002_manual.sql'), 'SELECT 2;');
   writeFileSync(join(root, 'drizzle/helper.ts'), 'export const helper = true;');
-  writeFileSync(join(root, 'drizzle/meta/_journal.json'), JSON.stringify({ entries: [{ tag: '0001_initial' }] }));
+  writeFileSync(join(root, 'drizzle/meta/_journal.json'), JSON.stringify({ entries: [{ idx: 0, tag: '0001_initial' }] }));
   return root;
 }
 
@@ -38,6 +38,22 @@ for (const checker of checkers) {
       assert.deepEqual(drizzle.unjournaled_sql_files, ['0002_manual.sql']);
       assert.equal(drizzle.migrations.some(item => item.name === 'helper.ts'), false);
       assert.equal(result.findings.some(item => /pending migrations not yet applied/.test(item.message)), false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test(`${checker} rejects duplicate Drizzle journal indices`, () => {
+    const root = fixture();
+    try {
+      writeFileSync(join(root, 'drizzle/meta/_journal.json'), JSON.stringify({ entries: [
+        { idx: 0, tag: '0001_initial' },
+        { idx: 0, tag: '0002_manual' },
+      ] }));
+      const result = JSON.parse(execFileSync(process.execPath, [checker, root], { encoding: 'utf8' }));
+      assert.equal(result.static_config_valid, false);
+      assert.equal(result.deploy_safe, null);
+      assert.ok(result.findings.some(item => item.message.includes('duplicate indices: 0')));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
