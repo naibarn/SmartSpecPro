@@ -163,6 +163,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Guard standalone Linux runtime import boundaries
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
+      - name: Verify production Worker transport remains scoped and disabled by default
+        run: node --test apps/cloudflare/wrangler.production.config.test.mjs
       - name: Verify canonical on-demand HTTP image preparation
         run: |
           python3 -m unittest discover -s apps/web/scripts -p 'test_package_cloudflare*http_image.py'
@@ -266,7 +268,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y postgresql
       - name: Exercise staging executor through disposable PostgreSQL
-        run: npm --workspace @smartspec/web run test -- server/_core/applicationDatabaseTls.postgres.integration.test.ts server/services/cloudflareRunnerReleaseCatalog.postgres.integration.test.ts server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
+        run: npm --workspace @smartspec/web run test -- --maxWorkers=1 server/_core/applicationDatabaseTls.postgres.integration.test.ts server/services/cloudflareRunnerReleaseCatalog.postgres.integration.test.ts server/services/cloudflareMediaProbe.postgres.integration.test.ts server/services/cloudflareStagingDeploymentPostgres.integration.test.ts server/services/cloudflareHyperdriveIntake.postgres.integration.test.ts server/services/registeredWorkerAppBinding.postgres.integration.test.ts server/services/cloudflareRetentionSchedule.postgres.integration.test.ts server/services/cloudflarePrivateDatabasePostgres.integration.test.ts server/services/cloudflareOriginConfiguration.test.ts scripts/__tests__/cloudflare-deployment-schema.test.ts scripts/__tests__/desktop-device-schema.test.ts drizzle/desktopHost.schema.test.ts server/services/__tests__/cloudflarePermissionCatalog.test.ts
         env:
           CLOUDFLARE_TEST_PYTHON: python
           RUN_CLOUDFLARE_STAGING_DB_INTEGRATION: "true"

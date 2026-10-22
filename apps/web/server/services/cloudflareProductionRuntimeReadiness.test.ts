@@ -22,6 +22,20 @@ describe("probeCloudflareProductionRuntimeReadiness", () => {
     expect(String(vi.mocked(fetchImpl).mock.calls[0]?.[0])).toBe("https://runtime.smartaihub.app/readyz");
   });
 
+  it("separates selected-transport blockers from other unconfigured capabilities", async () => {
+    const allBindings = ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"];
+    await expect(probeCloudflareProductionRuntimeReadiness({
+      fetchImpl: vi.fn(async () => response(503, {
+        ok: false, readiness: {
+          activation: "enabled", environment: "production", transport: "queues",
+          selectedMissing: ["HYPERDRIVE", "JOB_QUEUE"], missing: allBindings, ready: false,
+        },
+      })) as unknown as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "NOT_READY", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: allBindings,
+    });
+  });
+
   it("accepts only an explicitly ready production response with no missing bindings", async () => {
     await expect(probeCloudflareProductionRuntimeReadiness({
       fetchImpl: vi.fn(async () => response(200, { ok: true, environment: "production", activation: "enabled", missing: [] })) as unknown as typeof fetch,
