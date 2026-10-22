@@ -6,17 +6,18 @@ function response(status: number, body: unknown, contentType = "application/json
 }
 
 describe("probeCloudflareProductionRuntimeReadiness", () => {
-  it("reports production activation and missing bindings from the fixed Worker endpoint", async () => {
+  it("infers the pinned Queue profile when an older Worker reports only its full binding inventory", async () => {
+    const allBindings = ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"];
     const fetchImpl = vi.fn(async () => response(503, {
       ok: false, readiness: {
         activation: "disabled", environment: "production",
-        missing: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"],
+        missing: allBindings,
         ready: false, jobHandlerConfigured: false,
       },
     })) as unknown as typeof fetch;
     await expect(probeCloudflareProductionRuntimeReadiness({ fetchImpl })).resolves.toMatchObject({
-      status: "NOT_READY", environment: "production", activation: "disabled", httpStatus: 503,
-      missing: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"],
+      status: "NOT_READY", environment: "production", activation: "disabled", transport: "queues", httpStatus: 503,
+      missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: allBindings,
       jobHandlerConfigured: false,
     });
     expect(String(vi.mocked(fetchImpl).mock.calls[0]?.[0])).toBe("https://runtime.smartaihub.app/readyz");

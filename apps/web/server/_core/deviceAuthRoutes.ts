@@ -11,7 +11,7 @@ import { SignJWT, jwtVerify, compactVerify } from "jose";
 import { ENV } from "./env";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
-import { revokeJti } from "./revocation";
+import { claimJti, revokeJti } from "./revocation";
 import {
   authorizeDeviceByUserCode,
   consumeDeviceAuthorization,
@@ -33,6 +33,8 @@ const DEVICE_CODE_EXPIRY = 10 * 60 * 1000; // 10 minutes
 const POLLING_INTERVAL = 5; // seconds
 const ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes in seconds
 const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days in seconds
+export const RUNNER_COMPANION_CLIENT_ID = "smartaihub-runner-companion";
+export const RUNNER_COMPANION_SCOPE = "runner:companion:read";
 
 // User code characters (no ambiguous chars: 0/O, 1/l/I)
 const USER_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -73,21 +75,31 @@ async function mintAccessToken(params: {
   userId: number;
   openId: string;
   scopes: string[];
+  clientId?: string;
+  deviceIdHash?: string | null;
+  sessionId?: string | null;
+  tenantId?: string | null;
 }): Promise<{ token: string; expiresAt: number }> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + ACCESS_TOKEN_EXPIRY;
 
-  const token = await new SignJWT({
+  const builder = new SignJWT({
     sub: params.openId,
     userId: params.userId,
     scopes: params.scopes,
     type: "access",
+    ...(params.clientId === RUNNER_COMPANION_CLIENT_ID ? { tokenUse: "desktop_session" } : {}),
+    ...(params.clientId ? { clientId: params.clientId } : {}),
+    ...(params.deviceIdHash ? { deviceIdHash: params.deviceIdHash } : {}),
+    ...(params.sessionId ? { sessionId: params.sessionId } : {}),
+    ...(params.tenantId ? { tenantId: params.tenantId } : {}),
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt(now)
     .setExpirationTime(exp)
-    .setJti(crypto.randomUUID())
-    .sign(getSigningKey());
+    .setJti(crypto.randomUUID());
+  if (params.clientId === RUNNER_COMPANION_CLIENT_ID) builder.setAudience(params.clientId);
+  const token = await builder.sign(getSigningKey());
 
   return { token, expiresAt: exp * 1000 };
 }
@@ -99,21 +111,31 @@ async function mintRefreshToken(params: {
   userId: number;
   openId: string;
   scopes: string[];
+  clientId?: string;
+  deviceIdHash?: string | null;
+  sessionId?: string | null;
+  tenantId?: string | null;
 }): Promise<{ token: string; expiresAt: number }> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + REFRESH_TOKEN_EXPIRY;
 
-  const token = await new SignJWT({
+  const builder = new SignJWT({
     sub: params.openId,
     userId: params.userId,
     scopes: params.scopes,
     type: "refresh",
+    ...(params.clientId === RUNNER_COMPANION_CLIENT_ID ? { tokenUse: "desktop_session" } : {}),
+    ...(params.clientId ? { clientId: params.clientId } : {}),
+    ...(params.deviceIdHash ? { deviceIdHash: params.deviceIdHash } : {}),
+    ...(params.sessionId ? { sessionId: params.sessionId } : {}),
+    ...(params.tenantId ? { tenantId: params.tenantId } : {}),
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt(now)
     .setExpirationTime(exp)
-    .setJti(crypto.randomUUID())
-    .sign(getSigningKey());
+    .setJti(crypto.randomUUID());
+  if (params.clientId === RUNNER_COMPANION_CLIENT_ID) builder.setAudience(params.clientId);
+  const token = await builder.sign(getSigningKey());
 
   return { token, expiresAt: exp * 1000 };
 }
@@ -127,6 +149,10 @@ async function verifyRefreshToken(token: string): Promise<{
   scopes: string[];
   jti?: string;
   issuedAt?: number;
+  clientId?: string;
+  deviceIdHash?: string;
+  sessionId?: string;
+  tenantId?: string;
 } | null> {
   try {
     const { payload } = await jwtVerify(token, getSigningKey(), {
@@ -152,6 +178,10 @@ async function verifyRefreshToken(token: string): Promise<{
       scopes: payload.scopes as string[],
       jti,
       issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
+      clientId: typeof payload.clientId === "string" ? payload.clientId : undefined,
+      deviceIdHash: typeof payload.deviceIdHash === "string" ? payload.deviceIdHash : undefined,
+      sessionId: typeof payload.sessionId === "string" ? payload.sessionId : undefined,
+      tenantId: typeof payload.tenantId === "string" ? payload.tenantId : undefined,
     };
   } catch {
     return null;
@@ -179,6 +209,40 @@ async function revokeDesktopToken(token: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export function refreshTenantBindingMatches(
+  user: { id: number; currentTenantId?: string | null },
+  tokenData: { userId: number; clientId?: string; tenantId?: string },
+): boolean {
+  if (user.id !== tokenData.userId) return false;
+  if (tokenData.clientId !== RUNNER_COMPANION_CLIENT_ID) return true;
+  return Boolean(tokenData.tenantId && user.currentTenantId === tokenData.tenantId);
+}
+
+const refreshRotationTails = new Map<string, Promise<void>>();
+
+async function verifyAndClaimRefreshToken(token: string): Promise<Awaited<ReturnType<typeof verifyRefreshToken>>> {
+  const key = crypto.createHash("sha256").update(token).digest("hex");
+  const previous = refreshRotationTails.get(key);
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  refreshRotationTails.set(key, current);
+  if (previous) await previous;
+  try {
+    const tokenData = await verifyRefreshToken(token);
+    if (!tokenData) return null;
+    if (tokenData.jti) {
+      const claimed = await claimJti(tokenData.jti, Date.now() + REFRESH_TOKEN_EXPIRY * 1000);
+      if (!claimed) return null;
+    }
+    return tokenData;
+  } finally {
+    release();
+    if (refreshRotationTails.get(key) === current) refreshRotationTails.delete(key);
   }
 }
 
@@ -356,10 +420,23 @@ export function registerDeviceAuthRoutes(app: Express) {
     const userCode = generateUserCode();
     const expiresAt = Date.now() + DEVICE_CODE_EXPIRY;
 
-    // Get requested scopes or use defaults
+    const clientId = typeof req.body?.client_id === "string"
+      ? req.body.client_id.trim()
+      : "smartaihub-web";
+    const isRunnerCompanion = clientId === RUNNER_COMPANION_CLIENT_ID;
+    if (isRunnerCompanion && typeof req.body?.device_id !== "string") {
+      res.status(400).json({ error: "invalid_request", error_description: "device_id is required" });
+      return;
+    }
+    if (!isRunnerCompanion && clientId !== "smartaihub-web") {
+      res.status(400).json({ error: "invalid_client", error_description: "Unsupported device client" });
+      return;
+    }
+
+    // Get requested scopes or use defaults. Runner Companion is read-only.
     const requestedScopes = Array.isArray(req.body?.scopes)
       ? req.body.scopes.map(String)
-      : ["llm:chat", "mcp:read"];
+      : isRunnerCompanion ? [RUNNER_COMPANION_SCOPE] : ["llm:chat", "mcp:read"];
 
     // Filter to allowed scopes
     const allowedScopes = new Set([
@@ -379,11 +456,24 @@ export function registerDeviceAuthRoutes(app: Express) {
       "media:read",
       "media:download",
     ]);
-    const scopes = requestedScopes.filter((s: string) => allowedScopes.has(s));
+    const scopes = isRunnerCompanion
+      ? requestedScopes.filter((scope: string) => scope === RUNNER_COMPANION_SCOPE)
+      : requestedScopes.filter((s: string) => allowedScopes.has(s));
+    if (isRunnerCompanion && scopes.length !== 1) {
+      res.status(400).json({ error: "invalid_scope", error_description: "Runner Companion requires runner:companion:read" });
+      return;
+    }
+    const deviceIdHash = isRunnerCompanion
+      ? crypto.createHash("sha256").update(String(req.body.device_id)).digest("hex")
+      : null;
+    const sessionId = isRunnerCompanion ? crypto.randomUUID().replaceAll("-", "") : null;
 
     await issueDeviceAuthorization({
       deviceCode,
       userCode,
+      clientId,
+      deviceIdHash,
+      sessionId,
       scopes,
       intervalSeconds: POLLING_INTERVAL,
       expiresAt: new Date(expiresAt),
@@ -401,6 +491,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       verification_uri_complete: `${verificationUri}?user_code=${userCode}`,
       expires_in: Math.floor(DEVICE_CODE_EXPIRY / 1000),
       interval: POLLING_INTERVAL,
+      client_id: clientId,
     });
   });
 
@@ -471,10 +562,19 @@ export function registerDeviceAuthRoutes(app: Express) {
 
     // Format user code with dash
     const formattedCode = `${userCode.slice(0, 4)}-${userCode.slice(4)}`;
+    const pendingEntry = await findDeviceAuthorizationByUserCode(formattedCode);
+    const authorizedTenantId = String(
+      auth.user.currentTenantId ?? (req as any).tenantId ?? ""
+    ).trim();
+    if (pendingEntry?.clientId === RUNNER_COMPANION_CLIENT_ID && !authorizedTenantId) {
+      res.status(409).json({ error: { message: "Runner Companion authorization requires an active tenant" } });
+      return;
+    }
     const authorizationStatus = await authorizeDeviceByUserCode({
       userCode: formattedCode,
       userId: auth.user.id,
       openId: auth.user.openId,
+      tenantId: authorizedTenantId || null,
     });
 
     if (authorizationStatus === "not_found") {
@@ -516,7 +616,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
-      const tokenData = await verifyRefreshToken(refreshToken);
+      const tokenData = await verifyAndClaimRefreshToken(refreshToken);
       if (!tokenData) {
         res.status(400).json({
           error: "invalid_grant",
@@ -525,17 +625,20 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
-      // Revoke the old refresh token JTI to prevent reuse
-      if (tokenData.jti) {
-        await revokeJti(tokenData.jti, Date.now() + REFRESH_TOKEN_EXPIRY * 1000);
-      }
-
       // Get user info
       const user = await getUserByOpenId(tokenData.openId);
       if (!user) {
         res.status(400).json({
           error: "invalid_grant",
           error_description: "User not found",
+        });
+        return;
+      }
+
+      if (!refreshTenantBindingMatches(user, tokenData)) {
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Desktop session tenant membership is no longer active",
         });
         return;
       }
@@ -559,12 +662,20 @@ export function registerDeviceAuthRoutes(app: Express) {
         userId: user.id,
         openId: user.openId,
         scopes: tokenData.scopes,
+        clientId: tokenData.clientId,
+        deviceIdHash: tokenData.deviceIdHash,
+        sessionId: tokenData.sessionId,
+        tenantId: tokenData.tenantId,
       });
 
       const newRefreshToken = await mintRefreshToken({
         userId: user.id,
         openId: user.openId,
         scopes: tokenData.scopes,
+        clientId: tokenData.clientId,
+        deviceIdHash: tokenData.deviceIdHash,
+        sessionId: tokenData.sessionId,
+        tenantId: tokenData.tenantId,
       });
 
       res.json({
@@ -662,12 +773,20 @@ export function registerDeviceAuthRoutes(app: Express) {
       userId: user.id,
       openId: user.openId,
       scopes: entry.scopes,
+      clientId: entry.clientId,
+      deviceIdHash: entry.deviceIdHash,
+      sessionId: entry.sessionId,
+      tenantId: entry.authorizedTenantId,
     });
 
     const refreshToken = await mintRefreshToken({
       userId: user.id,
       openId: user.openId,
       scopes: entry.scopes,
+      clientId: entry.clientId,
+      deviceIdHash: entry.deviceIdHash,
+      sessionId: entry.sessionId,
+      tenantId: entry.authorizedTenantId,
     });
 
     // Atomically consume only after all token prerequisites succeed. Concurrent

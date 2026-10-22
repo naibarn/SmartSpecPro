@@ -49,6 +49,11 @@ for (const command of [
   "open_runner_settings",
   "snap_companion_to_edge",
   "notify_companion",
+  "companion_auth_status",
+  "start_companion_auth",
+  "poll_companion_auth",
+  "companion_state",
+  "logout_companion",
 ]) {
   assert.match(rust, new RegExp(`\\b${command}\\b`));
 }

@@ -53,6 +53,16 @@ device visibility. Task status, progress, approvals, and evidence remain
 hidden until an authenticated user-scoped desktop projection transport is
 implemented server-side.
 
+The companion installation ID is a stable identifier and its hash in a desktop
+token binds that token to the requested installation identity; it is not proof
+of possession. A stolen bearer session plus the identifier remains a replay
+threat, so the current projection is read-only, tokens are kept in the native
+protected store, and every request still requires the server-issued user,
+tenant, session, audience, and scope bindings. Stronger proof-of-possession
+(for example a separately managed signing key and replay-resistant request
+proof) is a follow-up transport requirement before any sensitive control scope
+is added. Runner device credentials are not substituted for that user session.
+
 ## CLI
 
 The standalone CLI remains available on Windows, macOS, and Linux. For example:
