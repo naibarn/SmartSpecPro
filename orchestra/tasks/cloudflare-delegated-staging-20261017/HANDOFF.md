@@ -1,5 +1,13 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Latest continuation checkpoint — 2026-10-22
+
+- Canonical main was `7c576f947c626d5fbf143dbd742362b98992c030`. `pnpm run build:canonical` completed `BUILD_PASSED` and published the current staging artifact to immutable storage: `sha256:445191cd8ce0b678deedefb6b3784c8188791a4ed5960a7ca3f01b14afe70e5f` (1,593 assets, 2 Worker modules). The full web artifact digest is `sha256:9aeb3254233d2f7a2e1d4fa53cde1d7e9738e83eb24688c2bb015e30074ff775`. This did not deploy or activate the Worker.
+- Fresh read-only probes: `smartaihub.app/`, `api.smartaihub.app/health`, and `runtime.smartaihub.app/healthz` returned 200; `runtime.smartaihub.app/readyz` returned 503, activation disabled, all seven production bindings absent. The existing web/API origin remains the serving path.
+- Scoped checks passed: Cloudflare runtime TS check and 309 tests; migration-ledger tests 2/2, migration checker 4/4, migration manifest 6/6. Repository-wide local typecheck was not run.
+- Deployment cannot be executed from this session yet: `orca-ide computer` failed because its computer sidecar exited with code 1, and local Wrangler has no authenticated Cloudflare account. The read-only Admin approval-state audit from this continuation found no active staging policy/grant for this artifact. Do not bypass the existing grant-bound deployment executor or extract the encrypted Admin credential to deploy directly.
+- Next action: from the authenticated Admin authority, issue an exact staging grant for artifact `445191cd…` and its retained rollback target, deploy through the existing canonical job executor, then run the staging route/auth/DB/rollback acceptance. Production remains on the current runtime; do not activate the production Worker while `/readyz` is 503. Existing PostgreSQL stays on its current host.
+
 ## Hosted startup root cause now observed — 2026-10-21 14:26 Asia/Bangkok
 
 - Bootstrap/logging source466ae31623b7ddfc0dbce7dd3d22f08996340a31 is verified on origin/main;82 scoped including8real disposable-PG tests PASS; dedicated Cloudflare readiness39560521383 SUCCESS. Actual runtime env manifest10/10 PASS using the explicitly selected original .env paths (isolated source checkout intentionally has no env files). Original Python .env hash1796ce1f... unchanged.
