@@ -42,8 +42,8 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Update the scoped Cloudflare credential to include account Containers Write and zone-limited Workers Routes Write for smartaihub.app, verify through Admin, then configure the production target, qualify staging against the retained PostgreSQL tunnel, and proceed through independently approved canary/promotion grants.",
-      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
+      "next_action": "Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning.",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
       "checkpoint_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
       "merged_main_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
       "session_id": "codex-cloudflare-cutover-20261022"
@@ -58,13 +58,13 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 145,
-  "updated_at": "2026-10-21T19:59:23.825094+00:00",
+  "generation": 146,
+  "updated_at": "2026-10-22T02:11:30.719428+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Update the scoped Cloudflare credential to include account Containers Write and zone-limited Workers Routes Write for smartaihub.app, verify through Admin, then configure the production target, qualify staging against the retained PostgreSQL tunnel, and proceed through independently approved canary/promotion grants.",
+    "next_action": "Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning.",
     "merged_main_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
-    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
       "Use existing owner credentials, canonical worker_jobs/outbox/grant/lease authority and compatible namespace baseline05; no raw deployment bypass, credential invention, prewarm or unbounded compute.",
@@ -100,7 +100,8 @@
       "Source now has bounded production Node/Python Containers and version preparation, but no live production target, route/Container IAM grant, promotion authority, or verified rollback baseline is recorded; production activation remains unperformed.",
       "Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.",
       "Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.",
-      "The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes."
+      "The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes.",
+      "No owner-authenticated policy/grant operation is available to this shell; staging target and credential are configured but no deploy grant or live Cloudflare runtime proof exists."
     ],
     "outcome": "NOT_ACCEPTED"
   }

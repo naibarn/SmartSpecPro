@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `145`
-- Updated (UTC): `2026-10-21T19:59:23.825094+00:00`
+- State generation: `146`
+- Updated (UTC): `2026-10-22T02:11:30.719428+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
+- Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022`
 - Latest recorded merged Main SHA: `0f8925977ba86014413b6dd80322faacf44f4d79`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Update the scoped Cloudflare credential to include account Containers Write and zone-limited Workers Routes Write for smartaihub.app, verify through Admin, then configure the production target, qualify staging against the retained PostgreSQL tunnel, and proceed through independently approved canary/promotion grants.
+- Next action: Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | 0f8925977ba86014413b6dd80322faacf44f4d79 | 0f8925977ba86014413b6dd80322faacf44f4d79 | Update the scoped Cloudflare credential to include account Containers Write and zone-limited Workers Routes Write for smartaihub.app, verify through Admin, then configure the production target, qualify staging against the retained PostgreSQL tunnel, and proceed through independently approved canary/promotion grants. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022 | 0f8925977ba86014413b6dd80322faacf44f4d79 | 0f8925977ba86014413b6dd80322faacf44f4d79 | Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -60,6 +60,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Fresh read-only inventory on 2026-10-22 found 0 production Cloudflare deployment targets, 0 pending or currently approved production grants, and 0 cloudflare.production.deploy jobs; no production mutation was attempted.
 - Fresh read-only live checks on 2026-10-22: apex smartaihub.app/readyz returned HTTP 200 and reports db=ok; runtime.smartaihub.app/readyz returned HTTP 503, activation=disabled, all seven required bindings missing. Apex application remains active while Cloudflare runtime Worker is not ready.
 - The provided token setup screenshot shows Workers Scripts Edit and Account Settings Read only. This deployment path also POSTs /applications and manages /zones/{zone_id}/workers/routes, so production credentials need Containers Write and Workers Routes Write scoped to the smartaihub.app zone; read probes do not verify those write scopes.
+- No owner-authenticated policy/grant operation is available to this shell; staging target and credential are configured but no deploy grant or live Cloudflare runtime proof exists.
 
 ## Resume
 
