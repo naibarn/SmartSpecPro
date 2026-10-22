@@ -76,7 +76,10 @@ export default { async fetch(request, bindings) {
   let log = ""; for (const stream of [child.stdout, child.stderr]) stream.on("data", data => { log = (log + data).slice(-6000); });
   try {
     let ready = false;
-    for (let attempt = 0; attempt < 60; attempt++) {
+    // The first pnpm dlx invocation may cold-install the pinned Wrangler
+    // package on a fresh CI runner. Keep readiness bounded, but do not turn a
+    // missing/crashed workerd into a pass.
+    for (let attempt = 0; attempt < 180; attempt++) {
       try { ready = (await fetch(`http://127.0.0.1:${port}/healthz`, { signal: AbortSignal.timeout(500) })).ok; } catch {}
       if (ready || child.exitCode !== null) break; await new Promise(resolve => setTimeout(resolve, 300));
     }
