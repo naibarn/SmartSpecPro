@@ -1,7 +1,7 @@
 # SmartAIHub Runner Companion WP2B — native floating shell
 
-Date: 2026-10-22  
-Source commit: `c022847a4` (`feat(runner): add native floating companion shell`)  
+Date: 2026-10-22
+Source commit: `c022847a4` (`feat(runner): add native floating companion shell`)
 PR: `https://github.com/naibarn/SmartSpecPro/pull/1163`
 
 ## Implemented native shell

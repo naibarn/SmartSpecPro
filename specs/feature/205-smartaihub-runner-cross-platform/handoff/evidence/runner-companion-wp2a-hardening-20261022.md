@@ -1,7 +1,7 @@
 # SmartAIHub Runner Companion WP2A — projection hardening
 
-Date: 2026-10-22  
-Source commit: `9f8234844` (`fix(runner): harden companion terminal and evidence projection`)  
+Date: 2026-10-22
+Source commit: `9f8234844` (`fix(runner): harden companion terminal and evidence projection`)
 Reconciled base: `324c19475c5d64eb91095a670b20e8eb7135e87c`
 
 ## Hardened boundaries
