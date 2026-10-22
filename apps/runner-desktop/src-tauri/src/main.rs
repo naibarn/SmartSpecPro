@@ -432,7 +432,9 @@ async fn companion_chat(
 }
 
 #[tauri::command]
-async fn logout_companion(state: State<'_, RunnerState>) -> Result<(), String> {
+async fn logout_companion(
+    state: State<'_, RunnerState>,
+) -> Result<companion_auth::CompanionLogoutResult, String> {
     let data_root = state.config.data_root.clone();
     tauri::async_runtime::spawn_blocking(move || companion_auth::logout(&data_root))
         .await
