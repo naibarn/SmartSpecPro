@@ -1,5 +1,28 @@
 # SPEC-310 G0 Discovery Record
 
+## 2026-10-22 continuation refresh
+
+This refresh supersedes older snapshot dates and SHA values below for current
+ownership and integration decisions. The configured `origin/main` was fetched
+and confirmed at `a3d615c11b814db8d2d2529211a3b560e54d01a2` (2026-10-22
+19:30:20 +07:00). PR #1170 is merged at `a6a57aadb8483ed02c702d1da40569c526cbd6ce`;
+PR #1171 is merged at `e6e98b479f02f66f24fbf65ffe95e28750529466`. Their G0/G1
+evidence remains preserved and is reconciled by the new crosswalk and review
+packet rather than replayed.
+
+| Surface | Current evidence at refreshed main | Result |
+|---|---|---|
+| Canonical number | `specs/_config/spec-id-registry.json` has no reservation rows; generated `specs/_status/spec-id-registry.json` lists 310 as occupied/next-safe beginning at 311; canonical feature tree contains this SPEC-310 path. | SPEC-310 is the requested replacement and canonical identity of this feature. No registry mutation is needed. |
+| SPEC-309 ownership | Canonical config/status contain no 309 reservation/occupied entry; targeted local branch/worktree scans found no SPEC-309 branch or path in the scanned SmartSpecPro roots. The user-provided separate 309 ownership claim is preserved; this scan cannot establish an external/unpublished owner source. | Do not alter or reassign 309. Record the outside ownership evidence as unavailable rather than infer it. |
+| Runner/Chat PRs | #1161 `27200602c527335dbd4385af84a01e55c4ffe89b` is OPEN, base `main`; `local-contract` checks fail, and it remains read-only observation. #1162 `7d3af710b72ac4731fc2f0217d55b45b823aaf76`, #1163 `25121c3d57d026401627c1c34cead0acd5ab47bf`, #1164 `eda4361224ca9ff6d2af009a0e93e7413c316cce`, #1166 `d45ed787850327fdae4600166f2860df069e3dae`, and #1167 `b736c6d396a4fccd17eb530091d191f6b4b8bd83` are also OPEN stacked PRs. | No stable merged Runner/Chat Native-work ingress contract. Do not consume these heads as authority. |
+| SPEC-310 branch/worktrees | Historical branches/worktrees `spec310-g0-g1-20261022`, `spec310-handoff-20261022`, `spec310-impl-20261022`, and `spec310-registry-projection-20261022` remain registered/preserved. This continuation has a separate registered worktree at the exact refreshed SHA; workspace authority selected `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022` after filesystem admission reported `ENOSPC` under `/mnt/SmartSpecDev`. | No prior SPEC-310 checkout was reset, overwritten, or repurposed. |
+| Production/runtime | Runtime flag remains off. No real Native Gateway, credit-settlement, execution-grant, Windows Runner, cloud, or independent acceptance receipt was supplied by this refresh. | Documentation and offline fakes only; no runtime acceptance or production use. |
+
+The source attachment search did not locate the original R1.0 A01–A20 excerpt
+in the canonical tree, scanned SPEC-310 worktrees, or the mounted attachment
+locations. `A01–A20` therefore remain explicitly unmapped; the exact-source
+crosswalk records the missing evidence and does not reconstruct those criteria.
+
 **Observed source:** `origin/main` at `5cb2d07f91fd5da7fd486c317760be199cf03336`, fetched 2026-10-22 (Asia/Bangkok).
 **Work area:** registered task worktree `spec310-impl-20261022`, branch `codex/spec310-deep-implement-20261022`.
 **Purpose:** establish number ownership, current cross-SPEC boundaries and a safe G1 contract scope. This is a design record, not runtime or acceptance evidence.
