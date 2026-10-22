@@ -14,6 +14,8 @@ assert.match(panel, /companion_chat/);
 assert.match(panel, /document\.hidden/);
 assert.match(panel, /companion_preferences/);
 assert.match(panel, /logout_companion/);
+assert.match(panel, /serverRevocation === "confirmed"/);
+assert.match(panel, /server revocation is unconfirmed/);
 assert.match(panel, /visibilitychange/);
 assert.match(panel, /projection-details/);
 assert.doesNotMatch(panel, /companionInvoke\("(?:approve|cancel)/);

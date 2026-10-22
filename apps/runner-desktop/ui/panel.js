@@ -40,11 +40,17 @@ function renderAuth() {
     logout.addEventListener("click", async () => {
       logout.disabled = true;
       try {
-        await companionInvoke("logout_companion");
+        const result = await companionInvoke("logout_companion");
         state.auth = null;
         state.projection = null;
         renderProjection();
-        setText("notice", "Desktop session revoked and cleared.");
+        if (result?.serverRevocation === "confirmed") {
+          setText("notice", "Local sign-out complete; server revocation confirmed.");
+        } else if (result?.pendingRevocation) {
+          setText("notice", "Local sign-out complete; server revocation is unconfirmed and queued for retry.");
+        } else {
+          setText("notice", "Local sign-out complete; server revocation is unconfirmed.");
+        }
       } catch (error) {
         setText("notice", `Sign out unavailable: ${String(error)}`);
       } finally {
