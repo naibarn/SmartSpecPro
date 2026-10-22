@@ -65,6 +65,34 @@ Focused validation passed:
   exceeding the former 18-second readiness loop while the Rust probe itself
   passed. The bounded loop was extended and the workflow now warms the pinned
   Wrangler cache; workerd readiness still fails closed.
+
+CI references: MCP gate `39751060721` (scope passed; focused contract failure
+is the documented mainline baseline; live-contract failed closed for missing
+credentials), C0 local readiness `39751060791` (running at capture), C1 media
+probe `39751102101` (passed), and C2 progressive gate `39751140581` (passed).
+These are CI evidence, not device acceptance.
+
+## Targeted gap-review passes
+
+The correction pass reviewed and retested these boundaries independently:
+
+1. logout result certainty and UI wording;
+2. offline, timeout and server-rejection revocation paths;
+3. pending-revocation expiry, retry and protected retention;
+4. fail-closed behavior for missing/corrupt local session state;
+5. Unix `0600` creation, parent `0700`, atomic rename and concurrent writers;
+6. immutable user, tenant, installation and session refresh bindings;
+7. serialized client refresh rotation;
+8. server refresh replay/JTI claim and revoked tenant membership;
+9. installation-ID replay threat and proof-of-possession boundary;
+10. browser-cookie versus Runner-device credential separation;
+11. exact least-privilege scopes and no UI-derived approval authority;
+12. stale/offline/unknown status and no fabricated progress or evidence;
+13. reconnect, missed updates, logout and revocation recovery;
+14. absence of a second scheduler, task store or approval authority;
+15. MCP package readiness, pinned pnpm setup and credential-gated live evidence;
+16. native Windows/real-device evidence separation from mocks and unit tests.
+
 - Real Windows installer/UI acceptance: **BLOCKED** in this environment.
 - Real device Chat-to-Runner receipt/dispatch E2E: **UNVERIFIED**. No
   `chat.runOnRunner` canonical admission API exists in the inspected source;
