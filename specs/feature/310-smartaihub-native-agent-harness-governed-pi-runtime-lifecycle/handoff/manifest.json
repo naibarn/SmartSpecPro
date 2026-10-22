@@ -1,0 +1,397 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md"
+      },
+      {
+        "digest": "91ac50927e10d974acd7050b28558e8a570d6cd8b6eaec2899d36407db6c84bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-plan.md"
+      },
+      {
+        "digest": "71a4f7d423ae1273dc35ca590d9e9f74c237df8850b37347c1e55daa68ef62d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-spec.md"
+      },
+      {
+        "digest": "6599f82a8a0d46cf69ec43398b38f034881515524a87ce6277a998a3102ace70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/index.md"
+      },
+      {
+        "digest": "e92512102f4d6c47f968139c2b27d922c4f3bb87e1bf5f55042835f068c4617b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-01-g0-owner-audit.md"
+      },
+      {
+        "digest": "65fde027f95ad57f12aabdd48aa81dcbb2fc34a687b71f2b8a7354cd4828c2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md"
+      },
+      {
+        "digest": "db603b1ad46577aa1ab3896e503e1c10ef92898457a7d037149f784a2f3c36bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-03-managed-pi-isolated-spike.md"
+      },
+      {
+        "digest": "ba58d5403100a9d376370808e3def4483e34423f437815f13ee1d3bfaa7dc694",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-04-non-git-general-work.md"
+      },
+      {
+        "digest": "003c958956e5f11d696fcddaf79e9225a188fd73939725998304b44dc0fe4fe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-05-chat-native-bridge-gate.md"
+      },
+      {
+        "digest": "009b09935fcead92ac378d85f901984b0e22fcc1e899e386ea601fbcb182b11f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-06-team-runtime-acceptance.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": "138ceb19ab805d3a8a45a262292eef0936603f93",
+    "expected_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243"
+  },
+  "continuation": {
+    "next_action": "Prepare owner-reviewed G1 contracts and resolve original R1.0 source provenance.",
+    "next_ready_workunit": "section-02-g1-contracts",
+    "reactivation_predicate": "Re-fetch main, confirm producer contract merge SHA and owner acknowledgement, then revalidate G1 fixtures.",
+    "resume_point": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md",
+    "waiting_predicate": "Do not implement section-05 until a stable, owner-approved Runner/Chat ingress contract is merged and exact SHA/version are recorded."
+  },
+  "continuation_assessment": {
+    "confidence": "MEDIUM",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "PR #1168 merged at 138ceb19ab805d3a8a45a262292eef0936603f93",
+      "g0-discovery.md",
+      "claude-plan.md",
+      "sections/index.md"
+    ],
+    "next_action": "Continue with section-02-g1-contracts; gather producer owner review while keeping section-05 gated.",
+    "rationale": "The user requested SPEC-310 G0 discovery and G1 contracts. Planning is integrated; implementation remains gated by existing owners and live authority evidence.",
+    "residual_requirements": [
+      "Reconcile original R1.0 A01-A20 source before freezing acceptance coverage",
+      "Obtain owner acknowledgement for G1 producer contracts",
+      "Wait for stable approved Runner/Chat integration contract before dispatch bridge"
+    ]
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md"
+      },
+      {
+        "digest": "91ac50927e10d974acd7050b28558e8a570d6cd8b6eaec2899d36407db6c84bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-plan.md"
+      },
+      {
+        "digest": "71a4f7d423ae1273dc35ca590d9e9f74c237df8850b37347c1e55daa68ef62d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-spec.md"
+      },
+      {
+        "digest": "6599f82a8a0d46cf69ec43398b38f034881515524a87ce6277a998a3102ace70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/index.md"
+      },
+      {
+        "digest": "e92512102f4d6c47f968139c2b27d922c4f3bb87e1bf5f55042835f068c4617b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-01-g0-owner-audit.md"
+      },
+      {
+        "digest": "65fde027f95ad57f12aabdd48aa81dcbb2fc34a687b71f2b8a7354cd4828c2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md"
+      },
+      {
+        "digest": "db603b1ad46577aa1ab3896e503e1c10ef92898457a7d037149f784a2f3c36bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-03-managed-pi-isolated-spike.md"
+      },
+      {
+        "digest": "ba58d5403100a9d376370808e3def4483e34423f437815f13ee1d3bfaa7dc694",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-04-non-git-general-work.md"
+      },
+      {
+        "digest": "003c958956e5f11d696fcddaf79e9225a188fd73939725998304b44dc0fe4fe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-05-chat-native-bridge-gate.md"
+      },
+      {
+        "digest": "009b09935fcead92ac378d85f901984b0e22fcc1e899e386ea601fbcb182b11f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-06-team-runtime-acceptance.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
+    "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-22T10:41:27.958599Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-22T17:39:07+07:00",
+      "spec_last_changed_at": "2026-10-22T17:39:07+07:00"
+    },
+    "revision": "1.3",
+    "slug": "310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+    "spec_id": "310",
+    "title": "SPEC-310 R1.3 — SmartAIHub Native Harness, Chat-First Workspaces & Multi-Agent: Parallel-Session Integration Protocol"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "138ceb19ab805d3a8a45a262292eef0936603f93",
+    "integrated": true,
+    "integrated_at": "2026-10-22T10:39:08Z"
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-22T10:41:27.958599Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "PR #1168 merged at 138ceb19ab805d3a8a45a262292eef0936603f93",
+        "g0-discovery.md",
+        "claude-plan.md",
+        "sections/index.md"
+      ],
+      "next_action": "Continue with section-02-g1-contracts; gather producer owner review while keeping section-05 gated.",
+      "rationale": "The user requested SPEC-310 G0 discovery and G1 contracts. Planning is integrated; implementation remains gated by existing owners and live authority evidence.",
+      "residual_requirements": [
+        "Reconcile original R1.0 A01-A20 source before freezing acceptance coverage",
+        "Obtain owner acknowledgement for G1 producer contracts",
+        "Wait for stable approved Runner/Chat integration contract before dispatch bridge"
+      ]
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-22T10:41:27.958599Z",
+    "sources": [
+      {
+        "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md"
+      },
+      {
+        "digest": "91ac50927e10d974acd7050b28558e8a570d6cd8b6eaec2899d36407db6c84bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-plan.md"
+      },
+      {
+        "digest": "71a4f7d423ae1273dc35ca590d9e9f74c237df8850b37347c1e55daa68ef62d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-spec.md"
+      },
+      {
+        "digest": "6599f82a8a0d46cf69ec43398b38f034881515524a87ce6277a998a3102ace70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/index.md"
+      },
+      {
+        "digest": "e92512102f4d6c47f968139c2b27d922c4f3bb87e1bf5f55042835f068c4617b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-01-g0-owner-audit.md"
+      },
+      {
+        "digest": "65fde027f95ad57f12aabdd48aa81dcbb2fc34a687b71f2b8a7354cd4828c2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md"
+      },
+      {
+        "digest": "db603b1ad46577aa1ab3896e503e1c10ef92898457a7d037149f784a2f3c36bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-03-managed-pi-isolated-spike.md"
+      },
+      {
+        "digest": "ba58d5403100a9d376370808e3def4483e34423f437815f13ee1d3bfaa7dc694",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-04-non-git-general-work.md"
+      },
+      {
+        "digest": "003c958956e5f11d696fcddaf79e9225a188fd73939725998304b44dc0fe4fe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-05-chat-native-bridge-gate.md"
+      },
+      {
+        "digest": "009b09935fcead92ac378d85f901984b0e22fcc1e899e386ea601fbcb182b11f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-06-team-runtime-acceptance.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
+        "source_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "value": "PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED",
+        "line": 6,
+        "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
+        "source_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "value": "PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md"
+      },
+      {
+        "digest": "91ac50927e10d974acd7050b28558e8a570d6cd8b6eaec2899d36407db6c84bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-plan.md"
+      },
+      {
+        "digest": "71a4f7d423ae1273dc35ca590d9e9f74c237df8850b37347c1e55daa68ef62d7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-spec.md"
+      },
+      {
+        "digest": "6599f82a8a0d46cf69ec43398b38f034881515524a87ce6277a998a3102ace70",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/index.md"
+      },
+      {
+        "digest": "e92512102f4d6c47f968139c2b27d922c4f3bb87e1bf5f55042835f068c4617b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-01-g0-owner-audit.md"
+      },
+      {
+        "digest": "65fde027f95ad57f12aabdd48aa81dcbb2fc34a687b71f2b8a7354cd4828c2c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md"
+      },
+      {
+        "digest": "db603b1ad46577aa1ab3896e503e1c10ef92898457a7d037149f784a2f3c36bd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-03-managed-pi-isolated-spike.md"
+      },
+      {
+        "digest": "ba58d5403100a9d376370808e3def4483e34423f437815f13ee1d3bfaa7dc694",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-04-non-git-general-work.md"
+      },
+      {
+        "digest": "003c958956e5f11d696fcddaf79e9225a188fd73939725998304b44dc0fe4fe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-05-chat-native-bridge-gate.md"
+      },
+      {
+        "digest": "009b09935fcead92ac378d85f901984b0e22fcc1e899e386ea601fbcb182b11f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-06-team-runtime-acceptance.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 101,
+    "unresolved": 101
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-22T10:42:55.747218Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -17,6 +17,10 @@
 
 **Allocation conclusion:** SPEC-310 is the requested replacement identity and was unoccupied in the checked canonical registry, canonical feature tree, observed open PRs, remote branches and other registered worktrees. SPEC-309 has a separate local/unpublished assignment and must remain untouched. Because the canonical generated registry still lists 309 as the first next-safe ID and has no reservation record for the local 309 assignment, the first docs PR must state this evidence and must not silently claim that canonical registry state already contains the local reservation. Re-run these checks immediately before any later merge or registry mutation.
 
+### Post-merge projection repair
+
+PR #1168 added the canonical SPEC-310 document at merge SHA `138ceb19ab805d3a8a45a262292eef0936603f93`. A follow-up read on current main `b46e5e910a44d276b25ce0371739086737afbce1` found the generated `_status/spec-id-registry.json` had not yet advanced and still advertised 310 as available. The official `tools.spec_handoff.index.build_views()` projection now reports 310 occupied and next-safe IDs starting at 311; the follow-up PR updates only this generated registry projection plus the canonical Spec handoff files. The distinct local 309 assignment remains untouched and is still not recorded as a canonical reservation.
+
 ## Open Runner PR dependency chain
 
 Observed with `gh pr list` on 2026-10-22:
