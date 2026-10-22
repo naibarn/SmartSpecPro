@@ -5,7 +5,11 @@ description: Check common JavaScript ORM migration state before deploys. Use whe
 
 # migration-checker
 
-Codex wrapper for bundled tool `migration-checker.mjs`.
+Codex wrapper for bundled tool `migration-checker.mjs`. The static Drizzle check
+validates configured schema and journal-to-SQL file consistency only. It does not
+connect to a database and must not infer applied or pending migrations from file
+counts; use the repository's read-only database ledger / migration receipt path
+for live applied state.
 
 ## Source
 

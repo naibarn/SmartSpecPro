@@ -62,11 +62,15 @@ If `deploy_ready: false` → STOP. Show missing vars. Do not deploy.
 ```bash
 node ${CODEX_HOME:-$HOME/.codex}/skills/deploy/tools/migration-checker.mjs <project-directory>
 ```
-If `deploy_safe: false` → classify the cause, repair safe project-owned issues,
-or isolate/queue unrelated baseline issues. Do not deploy until the migration
-has a verified recovery path. Ask only when a destructive migration has no
-reliable backup/rollback or the required data decision exceeds the granted
-authority.
+The checker is a static layout check; it does not connect to the database. For
+Drizzle, `database_state: "not_checked"` and `deploy_safe: null` mean the applied
+database ledger must be verified separately through the repository's migration
+receipt workflow. Never infer pending/applied state by comparing SQL file counts
+to journal entries. If `static_config_valid: false`, repair missing/duplicate
+journal references before proceeding. Do not deploy until database compatibility
+and any required migration have a verified recovery path. Ask only when a
+destructive migration has no reliable backup/rollback or the required data
+decision exceeds the granted authority.
 
 If there are pending migrations, verify they are reversible:
 - For Drizzle: check that corresponding `down` SQL or rollback logic exists

@@ -30,7 +30,7 @@ function detectOrm(dir) {
 
 function checkDrizzle(dir) {
   const findings = [];
-  const info = { orm: 'drizzle', migration_dir: null, schema_files: [], migrations: [] };
+  const info = { orm: 'drizzle', migration_dir: null, schema_files: [], migrations: [], database_state: 'not_checked' };
 
   // Find drizzle config
   const configNames = ['drizzle.config.ts', 'drizzle.config.js', 'drizzle.config.mjs'];
@@ -59,25 +59,41 @@ function checkDrizzle(dir) {
 
   if (migDir) {
     // List migration files
-    const files = readdirSync(migDir).filter(f => f.endsWith('.sql') || f.endsWith('.ts') || f.endsWith('.js'));
+    const files = readdirSync(migDir).filter(f => f.endsWith('.sql'));
     info.migrations = files.map(f => {
       const s = statSync(join(migDir, f));
       return { name: f, modified: s.mtime.toISOString().split('T')[0] };
     });
-    info.migration_count = files.length;
+    info.sql_file_count = files.length;
 
-    // Check for journal (Drizzle tracks applied migrations)
+    // The journal is the source migration manifest, not the database's applied ledger.
     const journalPath = join(migDir, 'meta', '_journal.json');
     if (existsSync(journalPath)) {
       try {
         const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
-        info.applied_count = journal.entries ? journal.entries.length : 0;
-        if (info.migration_count > info.applied_count) {
+        const entries = Array.isArray(journal.entries) ? journal.entries : [];
+        const tags = entries.map(entry => entry?.tag).filter(tag => typeof tag === 'string');
+        const duplicateTags = tags.filter((tag, index) => tags.indexOf(tag) !== index);
+        const migrationFiles = new Set(files.map(file => file.replace(/\.sql$/, '')));
+        const missingFiles = [...new Set(tags)].filter(tag => !migrationFiles.has(tag));
+        const unjournaledFiles = files.filter(file => !tags.includes(file.replace(/\.sql$/, '')));
+        info.journaled_migration_count = tags.length;
+        info.missing_journal_files = missingFiles;
+        info.unjournaled_sql_files = unjournaledFiles;
+        if (duplicateTags.length) {
           findings.push({
             severity: 'critical',
-            message: `${info.migration_count - info.applied_count} pending migrations not yet applied — run: npx drizzle-kit push`,
+            message: `Drizzle journal contains duplicate migration tags: ${[...new Set(duplicateTags)].join(', ')}`,
           });
         }
+        if (missingFiles.length) findings.push({
+          severity: 'critical',
+          message: `Drizzle journal references missing SQL files: ${missingFiles.join(', ')}`,
+        });
+        if (unjournaledFiles.length) findings.push({
+          severity: 'medium',
+          message: `SQL files are not referenced by the Drizzle journal; review whether they are intentional manual migrations: ${unjournaledFiles.join(', ')}`,
+        });
       } catch { /* ignore */ }
     }
   } else {
@@ -89,6 +105,16 @@ function checkDrizzle(dir) {
   for (const pattern of schemaPatterns) {
     const p = join(dir, pattern);
     if (existsSync(p)) info.schema_files.push(pattern);
+  }
+  if (configPath) {
+    const config = readFileSync(configPath, 'utf8');
+    const schemaMatch = config.match(/schema\s*:\s*['"]([^'"]+)['"]/);
+    if (schemaMatch) {
+      const configuredSchema = schemaMatch[1].replace(/^\.\//, '');
+      if (existsSync(join(dir, configuredSchema)) && !info.schema_files.includes(configuredSchema)) {
+        info.schema_files.push(configuredSchema);
+      }
+    }
   }
   // Also search for schema directory
   const schemaDirs = ['src/db', 'db', 'src/schema'];
@@ -229,12 +255,14 @@ function main() {
   }
 
   const allFindings = results.flatMap(r => r.findings.map(f => ({ ...f, package: r.package })));
-  const deploy_safe = allFindings.filter(f => f.severity === 'critical').length === 0;
+  const static_config_valid = allFindings.filter(f => f.severity === 'critical').length === 0;
 
   output({
     success: true,
     packages_with_orm: results.length,
-    deploy_safe,
+    static_config_valid,
+    database_state: 'not_checked',
+    deploy_safe: null,
     results,
     findings: allFindings,
   });
