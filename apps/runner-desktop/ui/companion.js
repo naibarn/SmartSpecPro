@@ -110,12 +110,21 @@ async function savePreferences(next) {
   elements.topmostButton.textContent = preferences.alwaysOnTop ? "On top ✓" : "Stay on top";
 }
 
-elements.collapseButton.addEventListener("click", () => {
+elements.collapseButton.addEventListener("click", async () => {
   const expanded = elements.expandedPanel.hidden;
   elements.expandedPanel.hidden = !expanded;
   elements.collapseButton.setAttribute("aria-expanded", String(expanded));
   elements.collapseButton.setAttribute("aria-label", expanded ? "Collapse companion details" : "Expand companion details");
   elements.collapseButton.textContent = expanded ? "⌃" : "⌄";
+  try {
+    await invoke("set_companion_expanded", { expanded });
+  } catch (error) {
+    elements.expandedPanel.hidden = expanded;
+    elements.collapseButton.setAttribute("aria-expanded", String(!expanded));
+    elements.collapseButton.setAttribute("aria-label", expanded ? "Expand companion details" : "Collapse companion details");
+    elements.collapseButton.textContent = expanded ? "⌄" : "⌃";
+    setNotice(`Unable to resize companion: ${String(error)}`);
+  }
 });
 
 elements.refreshButton.addEventListener("click", async () => {

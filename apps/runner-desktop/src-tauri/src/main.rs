@@ -39,6 +39,8 @@ const COMPANION_MIN_WIDTH: u32 = 320;
 const COMPANION_MAX_WIDTH: u32 = 560;
 const COMPANION_MIN_HEIGHT: u32 = 150;
 const COMPANION_MAX_HEIGHT: u32 = 420;
+const COMPANION_COMPACT_HEIGHT: u32 = 178;
+const COMPANION_EXPANDED_HEIGHT: u32 = COMPANION_MAX_HEIGHT;
 const COMPANION_EDGE_GUTTER: i32 = 12;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -325,6 +327,26 @@ fn snap_bounds_to_nearest_edge(
     snapped.fit_work_area(work_area)
 }
 
+fn companion_height_for_expanded(expanded: bool) -> u32 {
+    if expanded {
+        COMPANION_EXPANDED_HEIGHT
+    } else {
+        COMPANION_COMPACT_HEIGHT
+    }
+}
+
+fn resize_companion_bounds(
+    current: CompanionBounds,
+    expanded: bool,
+    work_area: &PhysicalRect<i32, u32>,
+) -> CompanionBounds {
+    CompanionBounds {
+        height: companion_height_for_expanded(expanded),
+        ..current
+    }
+    .fit_work_area(work_area)
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CompanionProjectionStatus {
@@ -470,6 +492,39 @@ fn snap_companion_to_edge(
     settings.companion.edge_dock = true;
     write_settings(&state.settings_path, &settings)?;
     Ok(snapped)
+}
+
+#[tauri::command]
+fn set_companion_expanded(
+    expanded: bool,
+    app: tauri::AppHandle,
+    state: State<'_, RunnerState>,
+) -> Result<CompanionBounds, String> {
+    let window = companion_window(&app)?;
+    let work_area = current_work_area(&window)?;
+    let position = window
+        .outer_position()
+        .map_err(|_| "RUNNER_COMPANION_POSITION_UNAVAILABLE".to_string())?;
+    let size = window
+        .outer_size()
+        .map_err(|_| "RUNNER_COMPANION_SIZE_UNAVAILABLE".to_string())?;
+    let current = CompanionBounds {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+    };
+    let next = resize_companion_bounds(current, expanded, &work_area);
+    window
+        .set_position(PhysicalPosition::new(next.x, next.y))
+        .map_err(|_| "RUNNER_COMPANION_POSITION_FAILED".to_string())?;
+    window
+        .set_size(PhysicalSize::new(next.width, next.height))
+        .map_err(|_| "RUNNER_COMPANION_SIZE_FAILED".to_string())?;
+    let mut settings = setting_lock(&state)?;
+    settings.companion.bounds = next.clone();
+    write_settings(&state.settings_path, &settings)?;
+    Ok(next)
 }
 
 #[tauri::command]
@@ -1266,6 +1321,7 @@ fn main() {
             toggle_companion,
             open_runner_settings,
             snap_companion_to_edge,
+            set_companion_expanded,
             notify_companion,
             retry_runner_credentials,
             connect_runner,
@@ -1356,8 +1412,9 @@ mod credential_retry_tests {
 #[cfg(test)]
 mod companion_preference_tests {
     use super::{
-        default_companion_theme, snap_bounds_to_nearest_edge, valid_companion_theme,
-        CompanionBounds, CompanionPreferences, PhysicalPosition, PhysicalRect, PhysicalSize,
+        companion_height_for_expanded, default_companion_theme, resize_companion_bounds,
+        snap_bounds_to_nearest_edge, valid_companion_theme, CompanionBounds, CompanionPreferences,
+        PhysicalPosition, PhysicalRect, PhysicalSize,
     };
 
     #[test]
@@ -1420,5 +1477,31 @@ mod companion_preference_tests {
             status.reason_code,
             "RUNNER_COMPANION_USER_PROJECTION_AUTH_REQUIRED"
         );
+    }
+
+    #[test]
+    fn expansion_uses_bounded_heights_and_preserves_monitor_docking() {
+        let work_area = PhysicalRect {
+            position: PhysicalPosition::new(1920, 0),
+            size: PhysicalSize::new(1280, 720),
+        };
+        let compact = resize_companion_bounds(
+            CompanionBounds {
+                x: 2800,
+                y: 500,
+                width: 380,
+                height: 178,
+            },
+            false,
+            &work_area,
+        );
+        let expanded = resize_companion_bounds(compact.clone(), true, &work_area);
+        assert_eq!(companion_height_for_expanded(false), 178);
+        assert_eq!(companion_height_for_expanded(true), 420);
+        assert_eq!(compact.width, expanded.width);
+        assert_eq!(expanded.height, 420);
+        assert!(expanded.x >= work_area.position.x);
+        assert!(expanded.y >= work_area.position.y);
+        assert!(expanded.y + expanded.height as i32 <= 720);
     }
 }
