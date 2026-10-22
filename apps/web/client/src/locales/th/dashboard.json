@@ -490,7 +490,7 @@
   "desktopReleases.workerAppMacSource.installHint": "นำ ZIP ไปแตกบน Mac แล้วติดตั้ง dependency จากนั้นทำงานต่อจากไฟล์ MAC_BUILD.md",
   "desktopReleases.workerAppMacSource.whatItIs": "ไฟล์นี้คือ source code สำหรับพัฒนาต่อ ไม่ใช่ไฟล์ติดตั้ง Mac สำเร็จรูป เช่น DMG, PKG หรือแอปพร้อมใช้",
   "desktopReleases.workerAppMacSource.requirementsTitle": "สิ่งที่ต้องเตรียมบน Mac",
-  "desktopReleases.workerAppMacSource.requirements": "เตรียม macOS ที่มี Xcode หรือ Command Line Tools, Node.js 22.22.3, Rust พร้อม Apple target, Python/zip/file tools และพื้นที่ว่างเพียงพอสำหรับ npm dependencies กับ native runtime inputs",
+  "desktopReleases.workerAppMacSource.requirements": "เตรียม macOS ที่มี Xcode หรือ Command Line Tools, Node.js 22.23.4 ขึ้นไปในสาย Node 22, Rust พร้อม Apple target, Python/zip/file tools และพื้นที่ว่างเพียงพอสำหรับ npm dependencies กับ native runtime inputs",
   "desktopReleases.workerAppMacSource.stepsTitle": "วิธีนำไปใช้",
   "desktopReleases.workerAppMacSource.step1": "ดาวน์โหลด ZIP นี้แล้วแตกไฟล์ ห้ามเปิดหรือรัน ZIP โดยตรง",
   "desktopReleases.workerAppMacSource.step2": "เปิด Terminal แล้วเข้าไปยังโฟลเดอร์ source ที่แตกไฟล์ไว้",

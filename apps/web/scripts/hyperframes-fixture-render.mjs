@@ -20,7 +20,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
 const outputPath = join(resultsDir, "marketplace-hyperframes-fixture.mp4");
 const manifestPath = join(resultsDir, "fixture-render-manifest.json");
-const officialNodeRequirement = ">=22.22.0";
+const officialNodeRequirement = "22.23.4+, 24.22.1+, or 26.12.1+";
 const requireFromFixture = createRequire(import.meta.url);
 
 function stableFixtureHash(value) {

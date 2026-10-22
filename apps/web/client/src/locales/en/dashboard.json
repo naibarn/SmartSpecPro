@@ -490,7 +490,7 @@
   "desktopReleases.workerAppMacSource.installHint": "Extract on a Mac, install dependencies, then continue the native runtime and Tauri build work from MAC_BUILD.md.",
   "desktopReleases.workerAppMacSource.whatItIs": "This is source code for development, not a ready-to-install DMG, PKG, or Mac app.",
   "desktopReleases.workerAppMacSource.requirementsTitle": "Before you start on the Mac",
-  "desktopReleases.workerAppMacSource.requirements": "Prepare macOS with Xcode or Command Line Tools, Node.js 22.22.3, Rust with an Apple target, Python/zip/file tools, and enough free disk space for npm dependencies and native runtime inputs.",
+  "desktopReleases.workerAppMacSource.requirements": "Prepare macOS with Xcode or Command Line Tools, Node.js 22.23.4 or newer in Node 22, Rust with an Apple target, Python/zip/file tools, and enough free disk space for npm dependencies and native runtime inputs.",
   "desktopReleases.workerAppMacSource.stepsTitle": "How to use it",
   "desktopReleases.workerAppMacSource.step1": "Download this ZIP and extract it; do not run the ZIP directly.",
   "desktopReleases.workerAppMacSource.step2": "Open Terminal and change into the extracted source folder.",

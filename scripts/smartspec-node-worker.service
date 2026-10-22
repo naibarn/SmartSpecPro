@@ -13,13 +13,13 @@ User=dev
 Group=dev
 WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
 
-Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/dev/.nvm/versions/node/v22.23.4/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
 Environment="NODE_OPTIONS=--max-old-space-size=4096"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
-ExecStartPre=/home/dev/.nvm/versions/node/v22.22.3/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs
-ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/node --import tsx server/jobs/postgresNodeJobWorker.ts
+ExecStartPre=/home/dev/.nvm/versions/node/v22.23.4/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs
+ExecStart=/home/dev/.nvm/versions/node/v22.23.4/bin/node --import tsx server/jobs/postgresNodeJobWorker.ts
 
 KillMode=control-group
 KillSignal=SIGTERM

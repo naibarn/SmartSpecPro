@@ -25,7 +25,8 @@ describe("hyperframesDependencyAudit", () => {
     const doctor = runHyperframesDoctorCheck();
 
     expect(doctor.node.version).toBe(process.version);
-    expect(doctor.node.requirement).toBe(">=22.22.0 <23");
+    expect(doctor.node.requirement).toBe(">=22.23.4 <23");
+    expect(doctor.officialHyperframesNode.requirement).toBe("22.23.4+, 24.22.1+, or 26.12.1+");
     expect(doctor.node.ok).toBe(isSupportedHyperframesNodeVersion(process.version));
     expect(doctor.officialHyperframesNode.ok).toBe(
       isSupportedOfficialHyperframesNodeVersion(process.version)
@@ -45,8 +46,17 @@ describe("hyperframesDependencyAudit", () => {
     expect(isSupportedHyperframesNodeVersion("v20.19.2")).toBe(false);
     expect(isSupportedHyperframesNodeVersion("v20.20.0")).toBe(false);
     expect(isSupportedHyperframesNodeVersion("v22.21.9")).toBe(false);
-    expect(isSupportedHyperframesNodeVersion("v22.22.0")).toBe(true);
-    expect(isSupportedHyperframesNodeVersion("v22.22.3")).toBe(true);
+    expect(isSupportedHyperframesNodeVersion("v22.23.3")).toBe(false);
+    expect(isSupportedHyperframesNodeVersion("v22.23.4")).toBe(true);
     expect(isSupportedHyperframesNodeVersion("v24.13.0")).toBe(false);
+  });
+
+  it("applies the fixed runtime floor to each supported Node release line", () => {
+    expect(isSupportedOfficialHyperframesNodeVersion("v22.23.3")).toBe(false);
+    expect(isSupportedOfficialHyperframesNodeVersion("v22.23.4")).toBe(true);
+    expect(isSupportedOfficialHyperframesNodeVersion("v24.22.0")).toBe(false);
+    expect(isSupportedOfficialHyperframesNodeVersion("v24.22.1")).toBe(true);
+    expect(isSupportedOfficialHyperframesNodeVersion("v26.12.0")).toBe(false);
+    expect(isSupportedOfficialHyperframesNodeVersion("v26.12.1")).toBe(true);
   });
 });

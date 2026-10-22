@@ -42,7 +42,7 @@ RUN apt-get update && apt-get install -y \
     python3.11-dev \
     python3-pip \
     # Node.js (via NodeSource)
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     # Database clients
     postgresql-client \
@@ -59,6 +59,10 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     # Cleanup
     && rm -rf /var/lib/apt/lists/*
+
+# Fail the image build if the NodeSource repository serves a patch below the
+# October 2026 security release floor for the Node 22 line.
+RUN node -e 'const [major, minor, patch] = process.versions.node.split(".").map(Number); if (major !== 22 || minor < 23 || (minor === 23 && patch < 4)) process.exit(1)'
 
 # Install pnpm globally
 RUN npm install -g pnpm@latest

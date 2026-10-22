@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { resolveWhisperExecutable } from "./hyperframesTranscriptionService";
 
-const SMARTSPEC_NODE_ENGINE_REQUIREMENT = ">=22.22.0 <23";
-const HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT = ">=22.22.0";
+const SMARTSPEC_NODE_ENGINE_REQUIREMENT = ">=22.23.4 <23";
+const HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT = "22.23.4+, 24.22.1+, or 26.12.1+";
 
 export interface HyperframesDependencyAuditResult {
   featureFlagsDefaultOff: boolean;
@@ -63,7 +63,7 @@ export function isSupportedHyperframesNodeVersion(
   const parsed = parseNodeVersion(version);
   if (!parsed) return false;
   if (parsed.major === 22) {
-    return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
+    return parsed.minor > 23 || (parsed.minor === 23 && parsed.patch >= 4);
   }
   return false;
 }
@@ -73,7 +73,10 @@ export function isSupportedOfficialHyperframesNodeVersion(
 ): boolean {
   const parsed = parseNodeVersion(version);
   if (!parsed) return false;
-  return parsed.major > 22 || (parsed.major === 22 && parsed.minor >= 22);
+  if (parsed.major === 22) return parsed.minor > 23 || (parsed.minor === 23 && parsed.patch >= 4);
+  if (parsed.major === 24) return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 1);
+  if (parsed.major === 26) return parsed.minor > 12 || (parsed.minor === 12 && parsed.patch >= 1);
+  return false;
 }
 
 function getHyperframesFontStatus() {
@@ -137,7 +140,7 @@ export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResul
       "HyperFrames CLI package is pinned as hyperframes@0.6.95; producer is pinned as @hyperframes/producer@0.6.95.",
       "Marketplace HyperFrames tenant feature flags default off and must be enabled through Admin Tenant Feature Flags.",
       "Diagnostic fallback may verify worker plumbing but cannot complete user-facing render jobs.",
-      "Official HyperFrames runtime requires a dedicated Node 22.22.x worker image before rollout.",
+      "Official HyperFrames runtime requires a worker image with a patched supported Node release line before rollout.",
     ],
   };
 }
@@ -170,7 +173,7 @@ export function runHyperframesDoctorCheck() {
       cliPackage: "hyperframes@0.6.95",
       producerPackage: "@hyperframes/producer@0.6.95",
       message: hyperframesCliAvailable
-        ? "Official HyperFrames packages are pinned; production readiness still depends on Node 22.22.x worker execution evidence."
+        ? "Official HyperFrames packages are pinned; production readiness still depends on patched Node 22 worker execution evidence."
         : "HyperFrames CLI is not available on PATH; use the pinned package in the worker image.",
     },
     chrome: {

@@ -3,7 +3,7 @@
 # Multi-stage build for optimized image size
 
 # Stage 1: Dependencies
-FROM node:22.22.3-alpine AS deps
+FROM node:22.23.4-alpine AS deps
 WORKDIR /app
 
 # Copy the root pnpm workspace and local package sources used by Web.
@@ -18,7 +18,7 @@ RUN corepack enable && corepack prepare pnpm@10.4.1 --activate && \
     pnpm install --frozen-lockfile --filter @smartspec/web...
 
 # Stage 2: Builder
-FROM node:22.22.3-alpine AS builder
+FROM node:22.23.4-alpine AS builder
 WORKDIR /app
 
 # Copy deps
@@ -35,7 +35,7 @@ COPY package.json turbo.json tsconfig.base.json ./
 RUN cd apps/web && npm run build
 
 # Stage 3: Development
-FROM node:22.22.3-alpine AS development
+FROM node:22.23.4-alpine AS development
 WORKDIR /app
 
 ENV NODE_ENV=development
@@ -59,7 +59,7 @@ WORKDIR /app/apps/web
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # Stage 4: Production
-FROM node:22.22.3-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

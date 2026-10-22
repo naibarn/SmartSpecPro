@@ -158,7 +158,7 @@ export default function WorkerAppMacBuildGuide() {
               <li>macOS 13 Ventura or newer.</li>
               <li>Apple Silicon arm64: M1, M2, M3, M4 or newer.</li>
               <li>Intel Macs are not supported by this release.</li>
-              <li>Use Node 22.22.3, npm, Xcode, Rust, and the native Rust target <code>aarch64-apple-darwin</code>.</li>
+              <li>Use Node 22.23.4 or newer in Node 22, npm, Xcode, Rust, and the native Rust target <code>aarch64-apple-darwin</code>.</li>
             </ul>
             <p>Install the tools on the Mac itself:</p>
             <CodeBlock>{`xcode-select --install

@@ -7,7 +7,7 @@
     "theme": "./node_modules/@astryxdesign/theme-neutral"
   },
   "engines": {
-    "node": ">=22.22.0 <23"
+    "node": ">=22.23.4 <23"
   },
   "scripts": {
     "dev": "node scripts/dev-web.mjs",

@@ -38,7 +38,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.3
+          node-version: 22.23.4
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - name: Install only the web package dependency graph
@@ -82,7 +82,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22.23.4"
       - name: Validate version and install Tauri CLI
         shell: pwsh
         env:
@@ -145,7 +145,7 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22.23.4"
       - name: Validate version and install Tauri CLI
         env:
           RELEASE_VERSION: ${{ inputs.version }}

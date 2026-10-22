@@ -7,7 +7,7 @@ export PORT=3000
 export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
     source "$NVM_DIR/nvm.sh"
-    nvm use 22.22.3 >/dev/null
+    nvm use 22.23.4 >/dev/null
 fi
 
 cd "$(dirname "$0")/apps/web"

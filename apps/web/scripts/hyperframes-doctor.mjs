@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const nodeRequirement = ">=22.22.0 <23";
-const officialHyperframesNodeRequirement = ">=22.22.0";
+const nodeRequirement = ">=22.23.4 <23";
+const officialHyperframesNodeRequirement = "22.23.4+, 24.22.1+, or 26.12.1+";
 const here = dirname(fileURLToPath(import.meta.url));
 const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
 const outputPath = join(resultsDir, "doctor-report.json");
@@ -87,7 +87,7 @@ function isSupportedNodeVersion(version = process.version) {
   const parsed = parseNodeVersion(version);
   if (!parsed) return false;
   if (parsed.major === 22) {
-    return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
+    return parsed.minor > 23 || (parsed.minor === 23 && parsed.patch >= 4);
   }
   return false;
 }
@@ -95,7 +95,10 @@ function isSupportedNodeVersion(version = process.version) {
 function isSupportedOfficialHyperframesNodeVersion(version = process.version) {
   const parsed = parseNodeVersion(version);
   if (!parsed) return false;
-  return parsed.major > 22 || (parsed.major === 22 && parsed.minor >= 22);
+  if (parsed.major === 22) return parsed.minor > 23 || (parsed.minor === 23 && parsed.patch >= 4);
+  if (parsed.major === 24) return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 1);
+  if (parsed.major === 26) return parsed.minor > 12 || (parsed.minor === 12 && parsed.patch >= 1);
+  return false;
 }
 
 function getFontStatus() {
@@ -208,7 +211,7 @@ const result = {
     productionReady: officialRuntimeReady,
     message: officialRuntimeReady
       ? "Official HyperFrames runtime prerequisites are visible in this environment."
-      : "Official HyperFrames runtime remains blocked until Node 22.22.x worker evidence and all runtime dependencies pass.",
+      : "Official HyperFrames runtime remains blocked until patched Node 22 worker evidence and all runtime dependencies pass.",
   },
   chrome: {
     ok: chromeOk,

@@ -62,7 +62,7 @@ jobs:
           version: 10.4.1
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.3
+          node-version: 22.23.4
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --ignore-scripts
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.3
+          node-version: 22.23.4
       - name: MCP Inspector-style protocol smoke
         env:
           MCP_SMOKE_TOOL: ${{ vars.MCP_SMOKE_TOOL }}

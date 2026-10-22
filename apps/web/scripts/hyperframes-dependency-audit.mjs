@@ -86,7 +86,7 @@ const result = {
   provenanceReviewed,
   mainBundleExcluded: true,
   diagnosticFallbackOnly: true,
-  officialRuntimeNodeRequirement: ">=22.22.0",
+  officialRuntimeNodeRequirement: "22.23.4+, 24.22.1+, or 26.12.1+",
   packageLockHash: hashFile(packageLockPath),
   packageJsonHash: hashFile(packageJsonPath),
   packages,

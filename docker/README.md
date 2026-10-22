@@ -56,7 +56,7 @@ This will:
 │  │ Docker Container (smartspec-dev)                     │   │
 │  │  ┌─────────────────────────────────────────────┐    │   │
 │  │  │ Ubuntu 22.04                                 │    │   │
-│  │  │ - Node.js 20                                 │    │   │
+│  │  │ - Node.js 22                                 │    │   │
 │  │  │ - Python 3.11                                │    │   │
 │  │  │ - Git, npm, pnpm                             │    │   │
 │  │  │ - Project files mounted at /workspace        │    │   │

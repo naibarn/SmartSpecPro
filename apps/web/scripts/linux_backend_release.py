@@ -41,10 +41,37 @@ SYSTEMD_DROPIN = Path("/etc/systemd/system/smartspec-web.service.d/96-canonical-
 NODE_WORKER_SYSTEMD_DROPIN = Path(
     "/etc/systemd/system/smartspec-node-worker.service.d/95-runtime-artifact.conf"
 )
+NODE_VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
 
 class ReleaseError(RuntimeError):
     pass
+
+
+def node_runtime_evidence(pid: int, proc_root: Path = Path("/proc")) -> dict[str, str]:
+    """Read the exact executable used by a running process and enforce the patched Node 22 floor."""
+    process_exe = proc_root / str(pid) / "exe"
+    try:
+        executable = os.readlink(process_exe)
+        result = subprocess.run(
+            [str(process_exe), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=3,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ReleaseError(f"Cannot inspect Node executable for PID {pid}: {exc}") from exc
+    version = result.stdout.strip()
+    match = NODE_VERSION_RE.fullmatch(version)
+    if result.returncode != 0 or not match:
+        raise ReleaseError(f"PID {pid} did not report a valid Node version: {version or result.stderr.strip()}")
+    major, minor, patch = (int(part) for part in match.groups())
+    if major != 22 or (minor, patch) < (23, 4):
+        raise ReleaseError(f"PID {pid} is using vulnerable Node {version}; require Node 22.23.4 or newer in Node 22")
+    if executable.endswith(" (deleted)"):
+        raise ReleaseError(f"PID {pid} is running a deleted Node executable: {executable}")
+    return {"executable": executable, "version": version}
 
 
 def sha256(path: Path) -> str:
@@ -342,6 +369,7 @@ class SystemdRuntime:
             raise ReleaseError("smartspec-web.service must be active before promotion")
         if self._run("show", self.service, "--property=User", "--value") != "dev":
             raise ReleaseError("smartspec-web.service owner differs from the approved Linux runtime")
+        node_runtime_evidence(self._main_pid())
         exec_start = self._run("show", self.service, "--property=ExecStart", "--value")
         if "--import tsx" not in exec_start or "server/_core/index.ts" not in exec_start:
             raise ReleaseError("smartspec-web.service entrypoint differs from the approved Node runtime")
@@ -349,6 +377,8 @@ class SystemdRuntime:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} must be active before promotion")
         if self._run("show", NODE_WORKER_SERVICE, "--property=User", "--value") != "dev":
             raise ReleaseError(f"{NODE_WORKER_SERVICE} owner differs from the approved Linux runtime")
+        worker_pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
+        node_runtime_evidence(worker_pid)
         worker_exec = self._run("show", NODE_WORKER_SERVICE, "--property=ExecStart", "--value")
         if "--import tsx" not in worker_exec or "server/jobs/postgresNodeJobWorker.ts" not in worker_exec:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} entrypoint differs from the approved Node runtime")
@@ -387,6 +417,7 @@ class SystemdRuntime:
                 if self._run("is-active", self.service) != "active":
                     raise ReleaseError("systemd service is not active")
                 pid = self._main_pid()
+                node_runtime = node_runtime_evidence(pid)
                 process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
                 if process_cwd != release_path.resolve():
                     raise ReleaseError("serving process cwd does not match promoted release")
@@ -412,6 +443,7 @@ class SystemdRuntime:
                     "status": "HEALTHY",
                     "service": self.service,
                     "pid": pid,
+                    "nodeRuntime": node_runtime,
                     "workingDirectory": str(process_cwd),
                     "runtimeRevision": runtime_release,
                     "healthHttp": 200,
@@ -427,6 +459,7 @@ class SystemdRuntime:
         if self._run("is-active", NODE_WORKER_SERVICE) != "active":
             raise ReleaseError(f"{NODE_WORKER_SERVICE} is not active")
         pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
+        node_runtime = node_runtime_evidence(pid)
         process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
         if process_cwd != release_path.resolve():
             raise ReleaseError(f"{NODE_WORKER_SERVICE} cwd does not match promoted release")
@@ -446,7 +479,7 @@ class SystemdRuntime:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat does not match its process")
         if time.time() - int(fields[0]) / 1000 > 30:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat is stale")
-        return {"service": NODE_WORKER_SERVICE, "pid": pid, "workingDirectory": str(process_cwd), "runtimeRevision": source_sha}
+        return {"service": NODE_WORKER_SERVICE, "pid": pid, "nodeRuntime": node_runtime, "workingDirectory": str(process_cwd), "runtimeRevision": source_sha}
 
     def verify_rollback(
         self,
@@ -458,11 +491,13 @@ class SystemdRuntime:
             try:
                 if self._run("is-active", self.service) == "active":
                     pid = self._main_pid()
+                    node_runtime = node_runtime_evidence(pid)
                     process_cwd = Path(f"/proc/{pid}/cwd").resolve(strict=True)
                     expected_cwd = Path(previous_working_directory).resolve(strict=False)
                     if process_cwd != expected_cwd:
                         raise ReleaseError("rollback process cwd does not match the previous runtime")
                     worker_pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
+                    worker_node_runtime = node_runtime_evidence(worker_pid)
                     worker_cwd = Path(f"/proc/{worker_pid}/cwd").resolve(strict=True)
                     expected_worker_cwd = Path(previous_node_worker_directory).resolve(strict=False)
                     if worker_cwd != expected_worker_cwd:
@@ -471,7 +506,9 @@ class SystemdRuntime:
                         if response.status == 200:
                             return {
                                 "status": "ROLLED_BACK_HEALTHY",
+                                "nodeRuntime": node_runtime,
                                 "workingDirectory": str(process_cwd),
+                                "nodeWorkerRuntime": worker_node_runtime,
                                 "nodeWorkerWorkingDirectory": str(worker_cwd),
                             }
             except (OSError, ValueError, urllib.error.URLError, ReleaseError):

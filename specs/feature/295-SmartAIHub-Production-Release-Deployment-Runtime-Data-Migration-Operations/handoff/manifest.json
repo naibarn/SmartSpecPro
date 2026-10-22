@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "43336e21ce5d2c25d6d5f1f1fe0a0392d5717877",
-    "expected_spec_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f"
+    "expected_spec_digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5"
   },
   "continuation": {
     "next_action": "Owner hard-refreshes Episode 281 in authenticated browser and runs one Enhanced prompt generation on production generation 13. Confirm prompt is generated and inspect for new material service errors. If successful, record fresh verification against source 43336e21 and close only the Enhanced release acceptance; then continue unrelated SPEC-295 control-plane gaps. If it fails, record exact safe diagnostic and resume from that concrete mismatch. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-295, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep the existing source-scoped functional smoke as pending until fresh authorized evidence; reuse builder/release guards and add only missing remote/local provenance compatibility. Never repeat a deployment or infer current production from historical evidence.",
@@ -161,13 +161,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 83,
+  "generation": 84,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-    "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+    "digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-20T23:27:53.935975Z",
+      "last_evidence_at": "2026-10-22T01:02:59.060441Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -627,40 +627,12 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-20T23:27:53.935975Z",
+    "reconciled_at": "2026-10-22T01:02:59.060441Z",
     "sources": [
       {
-        "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
-      },
-      {
-        "excerpt": "else {\"status\": \"UNKNOWN\", \"reason\": \"SPEC-295 runtime evidence was not supplied\"}",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 558,
-        "path": "scripts/development-lifecycle/workspace_authority.py"
-      },
-      {
-        "excerpt": "parser.add_argument(\"--production-evidence\", type=Path, help=\"SPEC-295 evidence JSON for Mission Control projection\")",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 1267,
-        "path": "scripts/development-lifecycle/workspace_authority.py"
-      },
-      {
-        "excerpt": "\"production_projection\": \"SPEC-295\",",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 5,
-        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
-      },
-      {
-        "excerpt": "\"assert\": \"authority-backed aggregation reports only explicit live owner facts as active sessions and leaves production unknown without SPEC-295 evidence\",",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 248,
-        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -670,7 +642,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "source_digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
@@ -688,36 +660,7 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "else {\"status\": \"UNKNOWN\", \"reason\": \"SPEC-295 runtime evidence was not supplied\"}",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 558,
-        "path": "scripts/development-lifecycle/workspace_authority.py"
-      },
-      {
-        "excerpt": "parser.add_argument(\"--production-evidence\", type=Path, help=\"SPEC-295 evidence JSON for Mission Control projection\")",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 1267,
-        "path": "scripts/development-lifecycle/workspace_authority.py"
-      },
-      {
-        "excerpt": "\"production_projection\": \"SPEC-295\",",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 5,
-        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
-      },
-      {
-        "excerpt": "\"assert\": \"authority-backed aggregation reports only explicit live owner facts as active sessions and leaves production unknown without SPEC-295 evidence\",",
-        "identity_ambiguous": false,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 248,
-        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
-      }
-    ],
+    "active_references": [],
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
@@ -730,14 +673,14 @@
         "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "source_digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "716de5f36267a5f64c48f78aa3785a447256d3dfaa35779c0e9909af8ab0392f",
+        "digest": "091d4d24408b672016a841f9a8091f28f9cc1d57c5136f48f52fb8706873e4a5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       }
@@ -748,16 +691,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 168,
-    "unresolved": 168
+    "total": 171,
+    "unresolved": 171
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.340821Z",
+  "updated_at": "2026-10-22T01:02:59.060441Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

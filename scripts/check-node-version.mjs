@@ -1,5 +1,5 @@
 const allowedRanges = [
-  { min: [22, 22, 0], maxExclusive: [23, 0, 0], label: "22.22.0 <= Node < 23" },
+  { min: [22, 23, 4], maxExclusive: [23, 0, 0], label: "22.23.4 <= Node < 23" },
 ];
 
 function parseVersion(raw) {
@@ -26,6 +26,6 @@ const version = parseVersion(process.version);
 if (!version || !isAllowed(version)) {
   console.error(`SmartSpecPro requires Node ${allowedRanges.map((range) => range.label).join(" or ")}.`);
   console.error(`Current Node is ${process.version}.`);
-  console.error("Use the repo version file: nvm use, fnm use, mise install, asdf install, or install Node 22.22.3.");
+  console.error("Use the repo version file: nvm use, fnm use, mise install, asdf install, or install Node 22.23.4 or newer in Node 22.");
   process.exit(1);
 }

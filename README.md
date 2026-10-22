@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Release Stage](https://img.shields.io/badge/Release%20Stage-Alpha-orange)](#alpha-release-notice)
 [![Monorepo](https://img.shields.io/badge/Monorepo-Turbo-blue)](https://turbo.build/repo)
-[![Node](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/Node.js-22+-green)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 
 Today this alpha codebase spans:
@@ -308,7 +308,7 @@ SmartSpecPro/
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - npm and pnpm
 - Python 3.11+
 - Docker + Docker Compose

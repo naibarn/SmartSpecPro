@@ -1,4 +1,4 @@
-const SUPPORTED_NODE_MIN = [22, 22, 0] as const;
+const SUPPORTED_NODE_MIN = [22, 23, 4] as const;
 const SUPPORTED_NODE_MAX_EXCLUSIVE = [23, 0, 0] as const;
 
 export function parseNodeVersion(raw: string): [number, number, number] | null {
@@ -29,8 +29,8 @@ export function isSupportedSmartSpecNodeVersion(raw: string): boolean {
 export function assertSupportedNodeRuntime(raw = process.version): void {
   if (isSupportedSmartSpecNodeVersion(raw)) return;
   throw new Error(
-    `SmartSpecPro web server requires Node >=22.22.0 <23. Current Node is ${raw}. ` +
-      "Use /home/dev/.nvm/versions/node/v22.22.3/bin/node or run nvm use 22.22.3 before starting the service."
+    `SmartSpecPro web server requires Node >=22.23.4 <23. Current Node is ${raw}. ` +
+      "Run nvm use to select the version pinned by the repository before starting the service."
   );
 }
 

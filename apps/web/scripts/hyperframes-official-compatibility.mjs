@@ -81,7 +81,7 @@ const report = {
   node: {
     version: process.version,
     officialRuntimeReady: nodeSupportsOfficialRuntime(),
-    requirement: ">=22.22.0",
+    requirement: "22.23.4+, 24.22.1+, or 26.12.1+",
   },
   packages: {
     pinned,

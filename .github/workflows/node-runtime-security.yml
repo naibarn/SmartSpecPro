@@ -1,0 +1,29 @@
+name: Node.js runtime security
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/check-node-security-advisories.mjs"
+      - "scripts/check-node-version.mjs"
+      - ".node-version"
+      - ".github/workflows/node-runtime-security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  advisory-and-runtime-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Enforce patched Node.js runtime floor
+        run: node scripts/check-node-version.mjs
+      - name: Detect newer official Node.js vulnerability advisories
+        run: node scripts/check-node-security-advisories.mjs
