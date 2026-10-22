@@ -76,6 +76,28 @@ describe("bounded private application HTTP compute", () => {
       expect(f.fetch.mock.calls.filter(([input]) => input instanceof Request)).toHaveLength(1);
     } finally { vi.useRealTimers(); }
   });
+  it("keeps the admitted request alive for a real cold start observed after 108 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture();
+      f.profile.hardLifetimeSeconds = 180;
+      f.profile.maxComputeSeconds = 360;
+      const deadline = await f.controller.ensureRunning(); let probes = 0;
+      f.fetch.mockImplementation(async input => {
+        if (input instanceof Request) return new Response("actual API response");
+        probes++; f.advance(200);
+        if (probes < 541) throw new Error("port not ready");
+        return new Response(null, { status: 200 });
+      });
+      const response = f.controller.forward(new Request("http://application.internal/trpc/auth.me"), deadline);
+      await vi.runAllTimersAsync();
+      expect(await (await response).text()).toBe("actual API response");
+      expect(probes).toBe(541);
+      expect(f.container.start).toHaveBeenCalledOnce();
+      expect(f.fetch.mock.calls.filter(([input]) => input instanceof Request)).toHaveLength(1);
+      expect(f.records.get("application-http-lifecycle-v1")).toMatchObject({ starts: 1, reservedSeconds: 180 });
+    } finally { vi.useRealTimers(); }
+  });
   it("never probes or forwards past the absolute application deadline", async () => {
     const f = fixture(), deadline = await f.controller.ensureRunning(); f.advance(61000);
     await expect(f.controller.forward(new Request("http://application.internal/healthz"), deadline)).rejects.toThrow("READINESS_UNAVAILABLE");

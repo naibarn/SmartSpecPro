@@ -39,4 +39,14 @@ describe("cloudflareApprovalFailureCode", () => {
       )
     ).toBe("STAGING_APPROVAL_REJECTED_HTTP_502");
   });
+
+  it("identifies the failed approval stage and status without reflecting rejected values", () => {
+    expect(
+      cloudflareApprovalFailureCode(
+        { detail: [{ loc: ["body", "expiresAt"], input: "private-value" }] },
+        422,
+        "GRANT_CREATE",
+      )
+    ).toBe("STAGING_GRANT_CREATE_HTTP_422:STAGING_APPROVAL_VALIDATION_FAILED:expiresAt");
+  });
 });
