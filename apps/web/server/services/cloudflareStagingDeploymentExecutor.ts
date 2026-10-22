@@ -10,6 +10,7 @@ import {
 import { withCloudflareOriginConfigurationForTransition } from "./cloudflareOriginConfiguration";
 import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
+import type { RetryPolicy } from "./jobControlPlaneTypes";
 import {
   authorizeDeploymentTarget,
   deploymentCredentialRef,
@@ -20,6 +21,14 @@ export const CLOUDFLARE_STAGING_DEPLOYMENT_JOB = "cloudflare.staging.deploy";
 export const CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT =
   "cloudflare-staging-deploy-v1";
 export const CLOUDFLARE_STAGING_TARGET_ID = "smartspec-cloudflare-staging";
+export const CLOUDFLARE_STAGING_RETRY_POLICY: RetryPolicy = {
+  maxAttempts: 2,
+  baseDelayMs: 2_000,
+  maxDelayMs: 5_000,
+  jitter: "bounded",
+  deadlineMs: 15 * 60_000,
+  allowedErrorClasses: ["retryable"],
+};
 
 const SHA = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;
@@ -253,12 +262,13 @@ export type CloudflareStagingApi = Readonly<{
 
 export class CloudflareStagingDeploymentError extends Error {
   readonly diagnosticCode: string;
-  readonly class = "permanent" as const;
+  readonly class: "permanent" | "retryable";
 
-  constructor(code: string) {
+  constructor(code: string, failureClass: "permanent" | "retryable" = "permanent") {
     super(code);
     this.name = "CloudflareStagingDeploymentError";
     this.diagnosticCode = code;
+    this.class = failureClass;
   }
 }
 
@@ -762,6 +772,9 @@ export function createCloudflareStagingDeploymentExecutor(
                 error instanceof Error && "diagnosticCode" in error && typeof error.diagnosticCode === "string" && /^CLOUDFLARE_[A-Z0-9_]+$/.test(error.diagnosticCode)
                   ? error.diagnosticCode
                   : "CLOUDFLARE_STAGING_API_ERROR",
+              failureClass: error instanceof Error && "class" in error && error.class === "retryable"
+                ? "retryable" as const
+                : "permanent" as const,
             };
           }
         };
@@ -780,7 +793,8 @@ export function createCloudflareStagingDeploymentExecutor(
     }
     if (!credential.value.ok)
       throw new CloudflareStagingDeploymentError(
-        credential.value.diagnosticCode
+        credential.value.diagnosticCode,
+        credential.value.failureClass,
       );
     await reporter.assertActive(lease);
     return { output: credential.value.receipt };

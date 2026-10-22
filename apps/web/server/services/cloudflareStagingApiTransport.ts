@@ -32,6 +32,8 @@ export type CloudflareStagingBundleResolver = (
   expectedSourceSha?: string,
 ) => Promise<CloudflareStagingBundle | null>;
 
+type CloudflareStagingFailureClass = "permanent" | "retryable";
+
 type Envelope<T> = { success?: boolean; result?: T; errors?: Array<{ code?: number }> };
 type Deployment = {
   id?: string;
@@ -46,13 +48,28 @@ type Version = {
 };
 
 export class CloudflareStagingTransportError extends Error {
-  readonly class = "permanent" as const;
+  readonly class: CloudflareStagingFailureClass;
   readonly diagnosticCode: string;
-  constructor(diagnosticCode: string, readonly status?: number, readonly apiCode?: number) {
+  constructor(
+    diagnosticCode: string,
+    readonly status?: number,
+    readonly apiCode?: number,
+    failureClass: CloudflareStagingFailureClass = "permanent",
+  ) {
     super(diagnosticCode);
     this.name = "CloudflareStagingTransportError";
     this.diagnosticCode = diagnosticCode;
+    this.class = failureClass;
   }
+}
+
+function isRetryableCloudflareStatus(status: number) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+function isRetryableFetchFailure(error: unknown) {
+  return error instanceof TypeError ||
+    (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError"));
 }
 
 function assertTarget(target: CloudflareStagingTarget) {
@@ -147,21 +164,39 @@ export function createCloudflareStagingApiTransport(input: {
   async function api<T>(token: string, url: string, init: RequestInit = {}): Promise<T> {
     assertSafeApiUrl(url);
     if (init.method && init.method !== "GET" && init.method !== "HEAD") await mutationAuthority.getStore()?.();
-    const response = await fetchImpl(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.headers ?? {}),
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(init.headers ?? {}),
+        },
+      });
+    } catch (error) {
+      if (isRetryableFetchFailure(error)) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_API_TRANSPORT_UNAVAILABLE", undefined, undefined, "retryable");
+      }
+      throw error;
+    }
     if (!response.ok) {
       let code: number | undefined;
       try { const body = await response.json() as Envelope<unknown>; code = body.errors?.[0]?.code; } catch { /* Retain bounded HTTP diagnostic. */ }
-      throw new CloudflareStagingTransportError(`CLOUDFLARE_HTTP_${response.status}${Number.isSafeInteger(code) ? `_API_${code}` : ""}`, response.status, code);
+      throw new CloudflareStagingTransportError(
+        `CLOUDFLARE_HTTP_${response.status}${Number.isSafeInteger(code) ? `_API_${code}` : ""}`,
+        response.status,
+        code,
+        isRetryableCloudflareStatus(response.status) ? "retryable" : "permanent",
+      );
     }
     let envelope: Envelope<T>;
     try { envelope = await response.json() as Envelope<T>; }
-    catch { throw new CloudflareStagingTransportError("CLOUDFLARE_RESPONSE_INVALID"); }
+    catch (error) {
+      if (isRetryableFetchFailure(error)) {
+        throw new CloudflareStagingTransportError("CLOUDFLARE_API_RESPONSE_UNAVAILABLE", undefined, undefined, "retryable");
+      }
+      throw new CloudflareStagingTransportError("CLOUDFLARE_RESPONSE_INVALID");
+    }
     if (envelope.success === false || !envelope.result) {
       const code = envelope.errors?.[0]?.code;
       throw new CloudflareStagingTransportError(Number.isSafeInteger(code)

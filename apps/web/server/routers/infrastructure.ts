@@ -73,7 +73,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { projectWikiProvisioningIntentMatchesTenant, projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
 import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagingArtifact } from "../services/cloudflareStagingArtifactAuthority";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
-import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
+import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_RETRY_POLICY, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
@@ -659,7 +659,7 @@ export const infrastructureRouter = router({
               grantRef, projectId: input.projectId, artifactRef: preflight.artifact.artifactRef, sourceSha: preflight.artifact.sourceSha,
               buildDigest: preflight.artifact.buildDigest, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest },
             idempotencyKey: `cloudflare-staging-deploy:${operationId}`, activeDedupeKey: `cloudflare-staging-deploy:${preflight.artifact.buildDigest}`,
-            retryPolicy: { maxAttempts: 1, baseDelayMs: 1_000, maxDelayMs: 1_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
+            retryPolicy: CLOUDFLARE_STAGING_RETRY_POLICY,
             timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 15 * 60_000 } },
           createOptions: { runtimeType: "node_job_worker" },
         });

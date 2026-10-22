@@ -73,12 +73,12 @@ describe("ControlPlaneJobGateway", () => {
     },
     idempotencyKey: "unstable-client-key",
     retryPolicy: {
-      maxAttempts: 1,
-      baseDelayMs: 0,
-      maxDelayMs: 0,
-      jitter: "none" as const,
+      maxAttempts: 2,
+      baseDelayMs: 2_000,
+      maxDelayMs: 5_000,
+      jitter: "bounded" as const,
       deadlineMs: 10 * 60 * 1000,
-      allowedErrorClasses: [] as string[],
+      allowedErrorClasses: ["retryable"] as string[],
     },
     timeoutPolicy: { softTimeoutMs: 0, hardTimeoutMs: 10 * 60 * 1000 },
   };
@@ -147,8 +147,51 @@ describe("ControlPlaneJobGateway", () => {
         idempotencyKey: `cloudflare-staging-grant:${stagingGrant.grantRef}`,
         retryPolicy: expect.objectContaining({
           maxAttempts: 2,
-          allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+          baseDelayMs: 2_000,
+          maxDelayMs: 5_000,
+          deadlineMs: 10 * 60_000,
+          allowedErrorClasses: ["retryable"],
         }),
+      }),
+      expect.objectContaining({ canonicalJobId: stagingJobId }),
+    );
+  });
+
+  it("never widens an owner-bound retry budget or deadline", async () => {
+    const create = vi.fn().mockResolvedValue({ jobId: stagingJobId, created: true });
+    await createControlPlaneJob({
+      executorRegistry: stagingRegistry,
+      controlPlane: { create } as any,
+      resolveCloudflareStagingGrant: vi.fn().mockResolvedValue(stagingGrant),
+      context: {
+        tenantId: stagingGrant.tenantId,
+        actorType: "system",
+        authorizationScope: "cloudflare.staging.grant.execute",
+        correlationId: "staging-grant-restrictive-policy",
+      },
+      definition: {
+        ...stagingDefinition,
+        retryPolicy: {
+          maxAttempts: 1,
+          baseDelayMs: 60_000,
+          maxDelayMs: 120_000,
+          jitter: "recorded",
+          deadlineMs: 5 * 60_000,
+          allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+        },
+      },
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retryPolicy: {
+          maxAttempts: 1,
+          baseDelayMs: 2_000,
+          maxDelayMs: 5_000,
+          jitter: "bounded",
+          deadlineMs: 5 * 60_000,
+          allowedErrorClasses: ["retryable"],
+        },
       }),
       expect.objectContaining({ canonicalJobId: stagingJobId }),
     );

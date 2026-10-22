@@ -301,6 +301,25 @@ describe("Cloudflare staging API transport", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
+  it.each([408, 429, 503])("classifies Cloudflare HTTP %i as retryable", async status => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ success: false, errors: [{ code: 1234 }] }), { status })) as typeof fetch;
+    const cloudflare = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
+    await expect(cloudflare.deploy({ token: "secret-token", target, artifact, idempotencyKey: "cloudflare-staging:retry" }))
+      .rejects.toMatchObject({ class: "retryable", status, diagnosticCode: `CLOUDFLARE_HTTP_${status}_API_1234` });
+  });
+
+  it("keeps permission failures permanent and marks network failures retryable", async () => {
+    const permissionFetch = vi.fn(async () => new Response(JSON.stringify({ success: false, errors: [{ code: 10000 }] }), { status: 403 })) as typeof fetch;
+    const permissionTransport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: permissionFetch });
+    await expect(permissionTransport.deploy({ token: "secret-token", target, artifact, idempotencyKey: "cloudflare-staging:permission" }))
+      .rejects.toMatchObject({ class: "permanent", status: 403, diagnosticCode: "CLOUDFLARE_HTTP_403_API_10000" });
+
+    const networkFetch = vi.fn(async () => { throw new TypeError("fetch failed"); }) as typeof fetch;
+    const networkTransport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl: networkFetch });
+    await expect(networkTransport.deploy({ token: "secret-token", target, artifact, idempotencyKey: "cloudflare-staging:network" }))
+      .rejects.toMatchObject({ class: "retryable", diagnosticCode: "CLOUDFLARE_API_TRANSPORT_UNAVAILABLE" });
+  });
+
   it("rejects a mismatched bundle digest and any target other than the exact staging worker before API mutation", async () => {
     const fetchImpl = vi.fn() as typeof fetch;
     const cloudflare = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });

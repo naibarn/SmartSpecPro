@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
   CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+  CLOUDFLARE_STAGING_RETRY_POLICY,
   CLOUDFLARE_STAGING_TARGET_ID,
   CloudflareStagingDeploymentError,
   createCloudflareStagingDeploymentExecutor,
@@ -152,6 +153,17 @@ function invocation(
 }
 
 describe("Cloudflare staging deployment executor", () => {
+  it("allows only one bounded retry for explicitly transient failures", () => {
+    expect(CLOUDFLARE_STAGING_RETRY_POLICY).toEqual({
+      maxAttempts: 2,
+      baseDelayMs: 2_000,
+      maxDelayMs: 5_000,
+      jitter: "bounded",
+      deadlineMs: 15 * 60_000,
+      allowedErrorClasses: ["retryable"],
+    });
+  });
+
   it("refuses an origin-configured target under an artifact-only v1 grant before resolving credentials", async () => {
     const withCredential = vi.fn();
     const state = runtime({ resolveTarget: async () => ({ ...target, runtimePolicy: `cf-origin:${"e".repeat(64)}` }), withCredential });
@@ -315,6 +327,18 @@ describe("Cloudflare staging deployment executor", () => {
     });
     expect(JSON.stringify(result)).not.toContain("secret-token-for-test");
     expect(JSON.stringify(result)).not.toContain(grant.grantRef);
+  });
+
+  it("preserves explicit transient Cloudflare transport classification for the job control plane", async () => {
+    const state = runtime();
+    const error = Object.assign(new Error("Cloudflare temporarily unavailable"), {
+      class: "retryable",
+      diagnosticCode: "CLOUDFLARE_HTTP_503",
+    });
+    state.cloudflare.deploy.mockRejectedValue(error);
+
+    await expect(createCloudflareStagingDeploymentExecutor(state.dependencies)(invocation().payload))
+      .rejects.toMatchObject({ class: "retryable", diagnosticCode: "CLOUDFLARE_HTTP_503" });
   });
 
   it("fails closed when runtime, authority, or grant is unavailable, expired, unauthorized, or scoped to another target", async () => {

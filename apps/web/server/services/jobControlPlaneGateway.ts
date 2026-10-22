@@ -112,10 +112,24 @@ async function bindApprovedCloudflareStagingJob(input: CreateControlPlaneJobInpu
   }
 
   const grantRemainingMs = Date.parse(grant.expiresAt) - Date.now();
-  const deadlineMs = Math.min(CLOUDFLARE_STAGING_JOB_DEADLINE_CAP_MS, grantRemainingMs);
+  const requestedDeadlineMs = Number.isSafeInteger(definition.retryPolicy.deadlineMs) && definition.retryPolicy.deadlineMs > 0
+    ? definition.retryPolicy.deadlineMs
+    : 0;
+  const deadlineMs = Math.min(CLOUDFLARE_STAGING_JOB_DEADLINE_CAP_MS, grantRemainingMs, requestedDeadlineMs);
   if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 30_000) {
     throw new JobControlPlaneError("CLOUDFLARE_STAGING_GRANT_EXPIRING", "Staging grant expires too soon to start a safe deployment");
   }
+  const requestedAttempts = Number.isSafeInteger(definition.retryPolicy.maxAttempts)
+    ? definition.retryPolicy.maxAttempts
+    : 1;
+  const requestedBaseDelayMs = Number.isSafeInteger(definition.retryPolicy.baseDelayMs) && definition.retryPolicy.baseDelayMs >= 0
+    ? definition.retryPolicy.baseDelayMs
+    : 2_000;
+  const requestedMaxDelayMs = Number.isSafeInteger(definition.retryPolicy.maxDelayMs) && definition.retryPolicy.maxDelayMs >= 0
+    ? definition.retryPolicy.maxDelayMs
+    : 5_000;
+  const baseDelayMs = Math.min(2_000, requestedBaseDelayMs);
+  const maxDelayMs = Math.max(baseDelayMs, Math.min(5_000, requestedMaxDelayMs));
   const boundDefinition: JobDefinition = {
     ...definition,
     input: parsedJob.data,
@@ -125,12 +139,12 @@ async function bindApprovedCloudflareStagingJob(input: CreateControlPlaneJobInpu
     requestedByUserId: grant.requesterUserId,
     retryPolicy: {
       ...definition.retryPolicy,
-      maxAttempts: 2,
-      baseDelayMs: 1_000,
-      maxDelayMs: 10_000,
+      maxAttempts: Math.max(1, Math.min(2, requestedAttempts)),
+      baseDelayMs,
+      maxDelayMs,
       jitter: "bounded",
       deadlineMs,
-      allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+      allowedErrorClasses: definition.retryPolicy.allowedErrorClasses.includes("retryable") ? ["retryable"] : [],
     },
     timeoutPolicy: {
       ...definition.timeoutPolicy,
