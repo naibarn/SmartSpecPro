@@ -22,6 +22,7 @@ const SESSION_FILE: &str = "runner-companion-session.json";
 const PENDING_FILE: &str = "runner-companion-device.json";
 const MAX_RESPONSE_BYTES: u64 = 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
+const PENDING_REVOCATION_MAX_AGE_MS: u64 = 31 * 24 * 60 * 60 * 1000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PendingAuthorization {
@@ -550,6 +551,7 @@ pub fn status(data_root: &str) -> CompanionAuthStatus {
 }
 
 pub fn begin_auth(control_url: &str, data_root: &str) -> Result<CompanionAuthStart, String> {
+    retry_pending_revocation(data_root);
     let server_url = server_base_url(control_url)?;
     let mut random = [0_u8; 16];
     fill(&mut random).map_err(|_| "RUNNER_COMPANION_ID_GENERATION_FAILED")?;
@@ -821,6 +823,34 @@ fn pending_revocation(data_root: &str, session: &CompanionSession) -> bool {
         },
     )
     .is_ok()
+}
+
+fn retry_pending_revocation(data_root: &str) {
+    let path = revocation_path(data_root);
+    let Ok(Some(pending)) = read_protected::<PendingRevocation>(&path) else {
+        return;
+    };
+    if now_ms().saturating_sub(pending.created_at_ms) > PENDING_REVOCATION_MAX_AGE_MS {
+        let _ = fs::remove_file(path);
+        return;
+    }
+    let response = request_json::<serde_json::Value>(
+        "POST",
+        &format!("{}/auth/device/revoke", pending.session.server_url),
+        json!({
+            "access_token": pending.session.access_token,
+            "refresh_token": pending.session.refresh_token
+        }),
+        None,
+        None,
+    );
+    if response
+        .as_ref()
+        .ok()
+        .is_some_and(|value| revocation_confirmed(value))
+    {
+        let _ = fs::remove_file(path);
+    }
 }
 
 pub fn logout(data_root: &str) -> Result<CompanionLogoutResult, String> {
