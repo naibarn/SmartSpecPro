@@ -163,6 +163,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Guard standalone Linux runtime import boundaries
         run: node --test apps/web/scripts/verify-linux-runtime-dependencies.test.mjs
+      - name: Verify production Worker transport remains scoped and disabled by default
+        run: node --test apps/cloudflare/wrangler.production.config.test.mjs
       - name: Verify canonical on-demand HTTP image preparation
         run: |
           python3 -m unittest discover -s apps/web/scripts -p 'test_package_cloudflare*http_image.py'

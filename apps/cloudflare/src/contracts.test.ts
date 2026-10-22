@@ -64,12 +64,30 @@ describe("Cloudflare local runtime contracts", () => {
     expect(execute).not.toHaveBeenCalled(); expect(repository.complete).not.toHaveBeenCalled();
     expect(repository.retry).not.toHaveBeenCalled();
   });
-  it("fails closed until all account bindings are injected and activation is enabled", () => {
+  it("fails closed until the selected account bindings are injected and activation is enabled", () => {
     const disabled = inspectBindingReadiness({ CLOUDFLARE_ACTIVATION: "disabled" });
     expect(disabled.ready).toBe(false);
     expect(disabled.missing).toHaveLength(7);
     const enabled = inspectBindingReadiness({ CLOUDFLARE_ACTIVATION: "enabled", HYPERDRIVE: { connectionString: "postgres://target-placeholder" }, JOB_QUEUE: { send: vi.fn() }, JOB_WORKFLOW: { get: vi.fn(), create: vi.fn() }, JOB_CONTAINERS: { start: vi.fn() }, WORKER_APP: { dispatch: vi.fn() }, MEDIA_BUCKET: { put: vi.fn(), head: vi.fn(), delete: vi.fn() }, VECTOR_INDEX: { upsert: vi.fn(), query: vi.fn(), getByIds: vi.fn(), deleteByIds: vi.fn() } });
     expect(enabled.ready).toBe(true);
+  });
+
+  it("accepts the production Queue profile without provisioning unrelated Container bindings", () => {
+    const queueProfile = inspectBindingReadiness({
+      CLOUDFLARE_ACTIVATION: "enabled",
+      CLOUDFLARE_ENVIRONMENT: "production",
+      CLOUDFLARE_JOB_TRANSPORT: "queues",
+      HYPERDRIVE: { connectionString: "postgres://target-placeholder" },
+      JOB_QUEUE: { send: vi.fn() },
+    });
+    expect(queueProfile).toMatchObject({
+      activation: "enabled",
+      transport: "queues",
+      ready: true,
+      selectedMissing: [],
+    });
+    expect(queueProfile.missing).toContain("JOB_CONTAINERS");
+    expect(queueProfile.missing).toContain("JOB_WORKFLOW");
   });
 
   it("parses only bounded canonical envelopes", () => {
