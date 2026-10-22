@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   disable: vi.fn(),
   queueStagingDeploy: vi.fn(),
   refetchStagingPreflight: vi.fn(),
+  refetchStagingRuntimeReadiness: vi.fn(),
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
@@ -25,6 +26,7 @@ vi.mock("@/lib/trpc", () => ({
       listProviderDeploymentTargets: { invalidate: mocks.invalidate },
       getDeploymentCredentialState: { invalidate: mocks.invalidate },
       getCloudflareStagingDeployPreflight: { invalidate: mocks.invalidate },
+      getCloudflareStagingRuntimeReadiness: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System" },
@@ -36,6 +38,7 @@ vi.mock("@/lib/trpc", () => ({
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: () => ({ data: mocks.targets, isLoading: false, isError: mocks.targetsError, isFetching: false }) },
       getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE" }, isLoading: false, isError: false, refetch: mocks.refetchStagingPreflight }) },
+      getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
@@ -183,6 +186,18 @@ describe("AdminDeploymentTargets", () => {
       provider: "cloudflare",
       targetRowId: "target-row-1",
     });
+  });
+
+  it("shows live runtime blockers separately from artifact deploy readiness and marks containers optional", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText("NOT_READY")).toBeInTheDocument();
+    expect(screen.getByText(/JOB_WORKFLOW, WORKER_APP/)).toBeInTheDocument();
+    expect(screen.getByText(/Containers are only needed for workloads/)).toBeInTheDocument();
+    expect(screen.getByText(/does not mean app traffic has moved from the Linux origin/)).toBeInTheDocument();
+    expect(screen.queryByText(/JOB_CONTAINERS/)).not.toBeInTheDocument();
   });
 
   it("records a new target only after an explicit owner-entered submission", async () => {

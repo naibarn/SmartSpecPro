@@ -1,5 +1,12 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Production canary continuation — 2026-10-22 13:10 Asia/Bangkok
+
+- Fixed a production canary dead end: the production grant contract allowed an initially absent `smartaihub.app/*` route, but the canary transport rejected an absent route and had no exact route-creation path. Under the same stage-specific production grant, the executor now verifies the active 100% rollback deployment and both immutable version digests first, creates only the grant-bound `smartaihub.app/*` → `smartspec-cloudflare-runtime` route, verifies provider readback, then creates the 99/1 canary. The mutation authorization/lease is rechecked before each provider write. A mismatched or duplicate route and an invalid baseline fail before route creation.
+- Focused production contract/executor/canary verification: 4 test files, 17 tests PASS; `git diff --check` PASS. Cloudflare’s official API specifies `POST /zones/{zone_id}/workers/routes` with `pattern` and optional `script`, requiring Workers Routes Write; implementation matches that contract. No provider write was performed.
+- Integrated `1e715d4812185c3a0cef90a852bef4ef6484341e` directly into `origin/main` from the clean canonical source checkout. No production deployment, route/DNS change, database migration, or change to the existing PostgreSQL host was made.
+- Still open: staging `/readyz` remains 503 with the previously observed missing bindings and the currently published source has not completed a fresh owner-authorized staging deploy. Production has no verified live target/grant/canary; `/readyz` is not production application/database acceptance. The app remains on Linux. Next: qualify and deploy staging through the existing owner policy/grant, then verify the production Worker/app/retained-DB composition and use the independent production approval workflow before any production route mutation.
+
 ## Latest continuation checkpoint — 2026-10-22 09:22 Asia/Bangkok
 
 - Read-only inspection of the original PostgreSQL confirmed the screenshot's staging target is registered and enabled for `tenant-ZCSKEM9s` / project `44fb79ed-8d65-41b0-b04e-97f4b139430b`; its Cloudflare account, Worker reference, deployment credential reference and origin binding are present. The matching executor `cf-staging-executor:smartaihub-app-staging` is still trusted, with its capability snapshot valid through 2026-11-18. No target or credential mutation is needed.

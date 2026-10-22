@@ -74,6 +74,8 @@ import { projectWikiProvisioningIntentMatchesTenant, projectWikiStagingProvision
 import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagingArtifact } from "../services/cloudflareStagingArtifactAuthority";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
+import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
+import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -534,6 +536,54 @@ export const infrastructureRouter = router({
       return getCloudflareStagingPreflight(db, input);
     }),
 
+  getCloudflareStagingRuntimeReadiness: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const targets = await listProviderDeploymentTargets(db, input);
+      const target = targets.find(row => row.provider === "cloudflare" && row.enabled);
+      if (
+        !target ||
+        target.workerRef !== CLOUDFLARE_STAGING_TARGET_ID ||
+        target.deploymentTargetId !== CLOUDFLARE_STAGING_TARGET_ID ||
+        !/^cf-origin:[a-f0-9]{64}$/.test(target.runtimePolicy ?? "")
+      ) {
+        return {
+          status: "UNAVAILABLE" as const,
+          checkedAt: new Date().toISOString(),
+          missing: [],
+          reason: "STAGING_TARGET_NOT_READY",
+        };
+      }
+      const jobs = await db
+        .select({ input: workerJobs.inputJson, output: workerJobs.outputJson })
+        .from(workerJobs)
+        .where(and(
+          eq(workerJobs.tenantId, input.tenantId),
+          eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB),
+          eq(workerJobs.status, "succeeded")
+        ))
+        .orderBy(desc(workerJobs.createdAt))
+        .limit(100);
+      const deployment = jobs.find(row => {
+        const jobInput = row.input ?? {};
+        const output = row.output ?? {};
+        return jobInput.projectId === input.projectId &&
+          jobInput.environment === "staging" &&
+          jobInput.contractVersion === "cloudflare-staging-origin-v2" &&
+          jobInput.configurationRef === target.runtimePolicy &&
+          output.configurationRef === target.runtimePolicy &&
+          output.runtimeVerified === true &&
+          typeof output.deploymentId === "string" &&
+          typeof output.url === "string";
+      })?.output;
+      return probeCloudflareStagingRuntimeReadiness({
+        url: typeof deployment?.url === "string" ? deployment.url : undefined,
+        deploymentId: typeof deployment?.deploymentId === "string" ? deployment.deploymentId : undefined,
+      });
+    }),
+
   queueCloudflareStagingDeploy: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())
     .mutation(async ({ input, ctx }) => {
@@ -559,7 +609,7 @@ export const infrastructureRouter = router({
         });
         const value = await response.json().catch(() => ({})) as Record<string, unknown>;
         if (!response.ok) {
-          const detail = typeof value.detail === "string" && /^[A-Z0-9_]+$/.test(value.detail) ? value.detail : "STAGING_APPROVAL_REJECTED";
+          const detail = cloudflareApprovalFailureCode(value, response.status);
           throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY", message: detail });
         }
         return value;
