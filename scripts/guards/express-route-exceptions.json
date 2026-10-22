@@ -7,6 +7,14 @@
       "owner": "platform-canonical-job-control-plane",
       "reason": "Private, dedicated-token hybrid execution port alongside the existing canonical dispatch/claim/settlement authority. It permits only the registered short emergency intake executor with persisted Workflow dispatch, tenant and lease checks; domain transactions remain on the existing Node authority during Cloudflare migration.",
       "expires": "2026-11-20"
+    },
+    {
+      "file": "apps/web/server/routes/runnerCompanion.ts",
+      "method": "get",
+      "path": "/api/runner-companion/v1/state",
+      "owner": "smartaihub-runner-companion",
+      "reason": "Authenticated, tenant-scoped read-only desktop projection transport for runner-companion.v1. It accepts only the dedicated desktop session binding and delegates state to the canonical Task Control and runner read models; control and approval decisions remain on existing authorities.",
+      "expires": "2026-11-20"
     }
   ]
 }
