@@ -1,0 +1,82 @@
+{
+  "plugin_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections",
+  "target_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+  "state_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation",
+  "git_root": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-g0-owner-audit",
+    "section-02-g1-contracts",
+    "section-03-managed-pi-isolated-spike",
+    "section-04-non-git-general-work",
+    "section-05-chat-native-bridge-gate",
+    "section-06-team-runtime-acceptance"
+  ],
+  "sections_state": {
+    "section-01-g0-owner-audit": {
+      "status": "checkpointed",
+      "next_action": "G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06.",
+      "checkpoint_sha": "91161ab7510104b7537a9b6cc90b362b95ffb92a",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022",
+      "session_id": "codex-spec310-handoff-20261022",
+      "merged_main_sha": "a6a57aadb8483ed02c702d1da40569c526cbd6ce"
+    },
+    "section-02-g1-contracts": {
+      "status": "checkpointed",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022",
+      "session_id": "codex-spec310-handoff-20261022",
+      "next_action": "G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06.",
+      "checkpoint_sha": "91161ab7510104b7537a9b6cc90b362b95ffb92a",
+      "merged_main_sha": "a6a57aadb8483ed02c702d1da40569c526cbd6ce"
+    },
+    "section-03-managed-pi-isolated-spike": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+      "session_id": "codex-spec310-deep-implement-20261022",
+      "next_action": "Resume only after runtime/Gateway owner review, verified immutable Pi source and isolated Gateway authority are evidenced; then implement isolated adapter only."
+    },
+    "section-04-non-git-general-work": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+      "session_id": "codex-spec310-deep-implement-20261022",
+      "next_action": "Resume after accepted G1 plus existing authorized executor and real correlated job/attempt, Gateway, settled-credit, workspace ACL, and artifact provenance receipts."
+    },
+    "section-05-chat-native-bridge-gate": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+      "session_id": "codex-spec310-deep-implement-20261022",
+      "next_action": "Do not implement Chat dispatch until stable approved producer contract is merged and acknowledged with exact SHA/version and canonical execution/capability/Gateway grants."
+    },
+    "section-06-team-runtime-acceptance": {
+      "status": "in_progress",
+      "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022",
+      "session_id": "codex-spec310-deep-implement-20261022",
+      "next_action": "Resume after applicable sections and owners supply bounded parent/child grants, real multi-target update/rollback and usage receipts, and independent SPEC-271 acceptance; preserve SPEC-224 E2E priority."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-22T10:58:50.953855+00:00",
+  "generation": 11,
+  "updated_at": "2026-10-22T11:08:26.377481+00:00",
+  "progress": {
+    "active_section": "section-02-g1-contracts",
+    "next_action": "G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06.",
+    "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022",
+    "gaps": [
+      "WAITING_G1_RUNTIME_GATEWAY_OWNER_REVIEW; managed Pi release/digest and ABI provenance; authorized isolated non-production environment; Gateway credentials and receipt bound to non-production attempt",
+      "WAITING_ACCEPTED_G1_AND_LIVE_AUTHORITY; existing executor/Artifact ACL and real non-production Gateway, credit settlement, and execution authority evidence are unavailable",
+      "WAITING_STABLE_APPROVED_RUNNER_CHAT_CONTRACT; PR #1161 is open/read-only and local-contract currently fails; exact merged SHA/version/owner ACK and canonical per-run grants are absent",
+      "WAITING_PRIOR_RUNTIME_AND_OWNER_GATES; SPEC-269/207/280/278/224/271 contract/evidence, signed package provenance, authorized target environment, and independent acceptance are not present"
+    ],
+    "merged_main_sha": "a6a57aadb8483ed02c702d1da40569c526cbd6ce"
+  }
+}
