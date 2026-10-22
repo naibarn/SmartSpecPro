@@ -5,8 +5,8 @@
 - Lifecycle: `DISCOVERING`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 101 unresolved of 101
-- Next action: Continue with section-02-g1-contracts; gather producer owner review while keeping section-05 gated.
-- Manifest generation: 2
+- Next action: Submit the scoped G0/G1 documentation checkpoint; obtain owner review and reconcile R1.0 source before resuming runtime-dependent sections.
+- Manifest generation: 3
 
 ## Source-declared status and relationship claims
 
