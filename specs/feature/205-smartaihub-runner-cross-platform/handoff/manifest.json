@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 36,
+  "generation": 37,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
@@ -400,7 +400,9 @@
     "checkpoint_shas": [
       "f072ec8448884b88970310fab954c97a465fc6b9",
       "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
-      "96e1ce9f190148627bc5c9d84252e19da8323d85"
+      "96e1ce9f190148627bc5c9d84252e19da8323d85",
+      "9f8234844",
+      "c022847a4"
     ],
     "mapping": [],
     "source_paths": [
@@ -409,7 +411,11 @@
       "apps/runner-desktop/ui/app.js",
       "apps/web/shared/runnerCompanion.ts",
       "apps/web/server/services/runnerCompanionViewState.ts",
-      "apps/web/server/routers/runnerNodes.ts"
+      "apps/web/server/routers/runnerNodes.ts",
+      "apps/runner-desktop/src-tauri/src/main.rs",
+      "apps/runner-desktop/src-tauri/tauri.conf.json",
+      "apps/runner-desktop/ui/companion.html",
+      "apps/runner-desktop/ui/companion.js"
     ],
     "started": true,
     "status": "PARTIAL"
@@ -1601,7 +1607,7 @@
     "unresolved": 189
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T04:26:55.051734Z",
+  "updated_at": "2026-10-22T06:22:28.448920Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1613,11 +1619,13 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-hardening-20261022.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2b-native-shell-20261022.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+    "sha": "c022847a4",
     "status": "PARTIAL",
     "task_regressions": []
   }
