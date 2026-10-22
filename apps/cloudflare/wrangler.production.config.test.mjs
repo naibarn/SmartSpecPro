@@ -16,6 +16,7 @@ test("production uses the configured Queue transport without enabling activation
   ]);
   assert.equal(config.queues.consumers.length, 1);
   assert.equal(config.queues.consumers[0].queue, "smartspec-canonical-job-queue-production");
+  assert.equal(Object.hasOwn(config, "triggers"), false);
   assert.equal(Object.hasOwn(config, "workflows"), false);
   assert.equal(Object.hasOwn(config, "containers"), false);
 });
