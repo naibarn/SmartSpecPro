@@ -578,18 +578,52 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(manifest["source_revision"], result["source_revision"])
         self.assertEqual(manifest["artifact"], result["artifact"])
 
-    def test_central_build_marks_result_stale_if_canonical_advances_during_build(self) -> None:
+    def test_central_build_rejects_required_fix_not_in_canonical_history(self) -> None:
+        from canonical_source import LifecycleError, build_canonical
+
+        (self.shared / "unintegrated-fix.txt").write_text("required fix\n", encoding="utf-8")
+        command("git", "-C", str(self.shared), "add", "unintegrated-fix.txt")
+        command("git", "-C", str(self.shared), "commit", "-m", "unintegrated required fix")
+        required_fix = command("git", "-C", str(self.shared), "rev-parse", "HEAD")
+        with self.assertRaisesRegex(LifecycleError, "REQUIRED_REVISION_NOT_INCLUDED"):
+            build_canonical(
+                self.shared,
+                command=[sys.executable, "-c", "raise SystemExit('build must not start')"],
+                required_revisions=[required_fix],
+                build_target="fixture",
+                policy_path=self.policy,
+            )
+
+    def test_central_build_preserves_failure_as_failure_without_artifact(self) -> None:
         from canonical_source import build_canonical
+
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", "raise SystemExit(19)"],
+            build_target="fixture",
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "BUILD_FAILED")
+        self.assertEqual(result["exit_code"], 19)
+        self.assertIsNone(result["artifact"])
+        manifest = json.loads(Path(result["result_file"]).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["status"], "BUILD_FAILED")
+        self.assertIsNone(manifest["artifact"])
+
+    def test_central_build_marks_result_stale_if_canonical_advances_during_build(self) -> None:
+        from canonical_source import build_latest_canonical
 
         publish_new_tip = (
             "from pathlib import Path; import subprocess; "
+            "artifact=Path('apps/web/dist/public'); artifact.mkdir(parents=True); "
+            "(artifact/'index.html').write_text('<main>built pinned source</main>', encoding='utf-8'); "
             f"root={str(self.seed)!r}; "
             "Path(root, 'app.txt').write_text('canonical v2\\n'); "
             "subprocess.run(['git','-C',root,'add','app.txt'],check=True); "
             "subprocess.run(['git','-C',root,'commit','-m','canonical v2'],check=True); "
             "subprocess.run(['git','-C',root,'push','origin','trunk'],check=True)"
         )
-        result = build_canonical(
+        result = build_latest_canonical(
             self.shared,
             command=[sys.executable, "-c", publish_new_tip],
             build_target="fixture",
@@ -598,6 +632,34 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["status"], "STALE_CANONICAL_ADVANCED")
         self.assertNotEqual(result["source_revision"], result["canonical_tip_after_build"])
         self.assertEqual(result["primary_workspace_sync"]["status"], "SKIPPED_CANONICAL_ADVANCED")
+        self.assertEqual(result["build_attempts"], 1)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["artifact"]["artifact_file_count"], 1)
+        self.assertRegex(result["artifact"]["artifact_digest"], r"^sha256:[a-f0-9]{64}$")
+        artifact = Path(result["artifact"]["artifact_path"]) / "public/index.html"
+        self.assertEqual(artifact.read_text(encoding="utf-8"), "<main>built pinned source</main>")
+        manifest = json.loads(Path(result["result_file"]).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["status"], "STALE_CANONICAL_ADVANCED")
+        self.assertEqual(manifest["source_revision"], result["source_revision"])
+        self.assertEqual(manifest["artifact"], result["artifact"])
+
+    def test_build_cli_returns_success_for_completed_pinned_stale_artifact(self) -> None:
+        from canonical_source import main
+
+        result = {
+            "status": "STALE_CANONICAL_ADVANCED",
+            "source_revision": self.revision,
+            "canonical_tip_after_build": "newer-source",
+            "artifact": {"artifact_digest": "sha256:" + "a" * 64},
+            "exit_code": 0,
+        }
+        with mock.patch("canonical_source.build_latest_canonical", return_value=result) as build:
+            exit_code = main([
+                "build", "--repository", str(self.shared), "--policy", str(self.policy),
+                "--build-target", "fixture",
+            ])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(build.call_args.kwargs["max_stale_rebuilds"], 0)
 
     def test_central_build_fast_forwards_clean_main_workspace_to_built_revision(self) -> None:
         from canonical_source import build_canonical

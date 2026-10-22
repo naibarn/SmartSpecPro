@@ -144,7 +144,7 @@ For an older checkout that does not yet contain these package scripts, use the i
   <repository-root>
 ```
 
-The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, invokes the repository's configured build target in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. `STALE_CANONICAL_ADVANCED` means another merge landed during the build; rerun to build the newer tip.
+The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, invokes the repository's configured build target in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. A completed development build that returns `STALE_CANONICAL_ADVANCED` keeps its artifact and digest bound to the recorded source SHA; report the newer canonical SHA separately. It is not a build failure and must not be described as the latest main. Production promotion keeps its latest-source recheck and rebuild behavior.
 
 After a passing build, the command fast-forwards the invoking checkout only when it is clean and already on the configured canonical branch. A dirty or feature-branch checkout is left untouched and reports `primary_workspace_sync` as blocked with the reason and a sample of dirty paths. Resolve/preserve that work, then run the command from a clean canonical checkout to make all integrated files visible there. The build output remains at the reported isolated workspace path.
 

@@ -21,7 +21,7 @@ class CanonicalBuildRetryTests(unittest.TestCase):
         result, calls = self.run_sequence([
             {"status": "STALE_CANONICAL_ADVANCED", "source_revision": "old", "exit_code": 0},
             {"status": "BUILD_PASSED", "source_revision": "latest", "exit_code": 0},
-        ])
+        ], max_stale_rebuilds=1)
         self.assertEqual((result["status"], result["source_revision"], result["build_attempts"], calls),
                          ("BUILD_PASSED", "latest", 2, 2))
 
@@ -29,7 +29,7 @@ class CanonicalBuildRetryTests(unittest.TestCase):
         result, calls = self.run_sequence([
             {"status": "STALE_CANONICAL_ADVANCED", "source_revision": str(i), "exit_code": 0}
             for i in range(3)
-        ])
+        ], max_stale_rebuilds=2)
         self.assertEqual((result["status"], result["build_attempts"], calls),
                          ("STALE_CANONICAL_ADVANCED", 3, 3))
 
@@ -46,6 +46,17 @@ class CanonicalBuildRetryTests(unittest.TestCase):
             max_stale_rebuilds=0,
         )
         self.assertEqual((result["status"], calls), ("STALE_CANONICAL_ADVANCED", 1))
+
+    def test_development_default_preserves_the_first_successful_stale_artifact(self):
+        result, calls = self.run_sequence([
+            {"status": "STALE_CANONICAL_ADVANCED", "source_revision": "built-sha",
+             "canonical_tip_after_build": "newer-sha", "artifact": {"artifact_digest": "sha256:test"},
+             "exit_code": 0},
+            {"status": "BUILD_PASSED", "source_revision": "newer-sha", "exit_code": 0},
+        ])
+        self.assertEqual((result["status"], result["source_revision"], result["build_attempts"], calls),
+                         ("STALE_CANONICAL_ADVANCED", "built-sha", 1, 1))
+        self.assertEqual(result["artifact"]["artifact_digest"], "sha256:test")
 
     def test_budget_is_bounded(self):
         with self.assertRaises(LifecycleError):

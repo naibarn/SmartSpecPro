@@ -1126,12 +1126,14 @@ def build_latest_canonical(
     build_target: str | None = None,
     policy_path: Path | None = None,
     lease_seconds: int = 900,
-    max_stale_rebuilds: int = 2,
+    max_stale_rebuilds: int = 0,
 ) -> dict[str, Any]:
-    """Coalesce main advances into bounded retries; never deliver a stale success.
+    """Build the pinned canonical tip and preserve a valid artifact if main advances.
 
-    Each retry takes the latest canonical SHA under the existing repository
-    build lock. Resource or code failures are returned immediately, not retried.
+    Development builds default to no stale-source retries: the result keeps its
+    exact source SHA and artifact digest and reports a newer canonical tip.
+    Callers that must publish the latest revision can opt into bounded retries.
+    Resource or code failures are returned immediately, not retried.
     """
     if not 0 <= max_stale_rebuilds <= 3:
         raise LifecycleError("MAX_STALE_REBUILDS_OUT_OF_RANGE")
@@ -1184,7 +1186,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--required-integrated-revision", action="append", default=[])
     build.add_argument("--build-target")
     build.add_argument("--lease-seconds", type=int, default=900)
-    build.add_argument("--max-stale-rebuilds", type=int, default=2)
+    build.add_argument("--max-stale-rebuilds", type=int, default=0)
     build.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     try:
@@ -1222,8 +1224,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 lease_seconds=args.lease_seconds,
                 max_stale_rebuilds=args.max_stale_rebuilds,
             )
-            if result["status"] == "STALE_CANONICAL_ADVANCED":
-                return 75
             return int(result["exit_code"])
         command = args.command[1:] if args.command and args.command[0] == "--" else args.command
         return run_with_lease(args.lease_file, args.lease_id, args.fencing_generation, command)

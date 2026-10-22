@@ -214,7 +214,9 @@ class CanonicalBuildArtifactEvidenceProvider:
                 item = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            if item.get("source_revision") == source_sha and item.get("status") == "BUILD_PASSED":
+            if item.get("source_revision") == source_sha and item.get("status") in {
+                "BUILD_PASSED", "STALE_CANONICAL_ADVANCED",
+            }:
                 candidates.append((float(item.get("completed_at", 0)), item, path))
         if not candidates:
             return EvidenceResult("UNAVAILABLE", "canonical-build-ledger", reason="successful_build_for_source_not_found")
@@ -227,7 +229,10 @@ class CanonicalBuildArtifactEvidenceProvider:
                 "artifact_digest": artifact["artifact_digest"], "source_sha": source_sha,
                 "build_timestamp": timestamp, "environment": item.get("build_target"),
                 "target": item.get("build_target"), "provenance": "canonical-build-result-ledger",
-                "artifact_file_count": artifact.get("artifact_file_count")}
+                "artifact_file_count": artifact.get("artifact_file_count"),
+                "build_status": item.get("status"),
+                "canonical_tip_after_build": item.get("canonical_tip_after_build"),
+                "canonical_advanced": item.get("canonical_tip_after_build") not in (None, source_sha)}
         if self.now() - completed > self.max_age_seconds:
             return EvidenceResult("STALE", "canonical-build-ledger", timestamp, data, "build_evidence_expired")
         return EvidenceResult("OBSERVED", "canonical-build-ledger", timestamp, data)

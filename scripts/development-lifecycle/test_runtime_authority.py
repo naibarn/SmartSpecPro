@@ -248,6 +248,26 @@ class RuntimeAuthorityTests(unittest.TestCase):
         self.assertEqual("abc", result.data["source_sha"])
         self.assertEqual(3, result.data["artifact_file_count"])
 
+    def test_canonical_build_artifact_provider_keeps_stale_main_artifact_source_bound(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / ".development-build-results" / "repo-key"
+            root.mkdir(parents=True)
+            (root / "run.json").write_text(json.dumps({
+                "status": "STALE_CANONICAL_ADVANCED", "source_revision": "abc",
+                "canonical_tip_after_build": "newer-sha", "completed_at": self.now,
+                "build_target": "web",
+                "artifact": {"artifact_digest": "sha256:" + "b" * 64, "artifact_file_count": 2},
+            }), encoding="utf-8")
+            provider = CanonicalBuildArtifactEvidenceProvider(root.parent, now=lambda: self.now)
+            result = provider.observe("abc")
+            unrelated = provider.observe("newer-sha")
+        self.assertEqual("OBSERVED", result.status)
+        self.assertEqual("abc", result.data["source_sha"])
+        self.assertTrue(result.data["canonical_advanced"])
+        self.assertEqual("newer-sha", result.data["canonical_tip_after_build"])
+        self.assertEqual("STALE_CANONICAL_ADVANCED", result.data["build_status"])
+        self.assertEqual("UNAVAILABLE", unrelated.status)
+
     def test_canonical_build_artifact_provider_marks_stale_receipt(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / ".development-build-results" / "repo-key"
