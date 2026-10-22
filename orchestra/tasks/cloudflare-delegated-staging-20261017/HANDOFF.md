@@ -20,6 +20,11 @@
 - Integrated the concurrency adjustment in `8b574eb458e1ce8cdfc1c17d0661266b2ccb7bde`. Cloudflare local-readiness workflow `39735290303` passed, including the full 13-file PostgreSQL batch, production transport template guard, and existing runtime checks. This is a CI resource stability change, not a production runtime fix.
 - Isolated the new queue-profile readiness assertion in `apps/cloudflare/src/bindings.test.ts` so it can run without importing the full Worker/Hono graph; that focused test passes locally. The regular Cloudflare CI also runs the full runtime package.
 
+## Production readiness profile clarity — 2026-10-22 13:49 Asia/Bangkok
+
+- Production `/readyz` distinguishes `selectedMissing` (the active transport's blockers) from `missing` (the full runtime capability inventory). The Admin probe now preserves both fields and labels them separately, so the Queue transport does not tell operators to provision unused job Workflow/Container bindings. For older Worker payloads without `selectedMissing`, it continues to fail closed using the full missing list.
+- Focused production readiness + Admin UI verification: 2 files, 14 tests PASS; `git diff --check` PASS. This only clarifies status and does not provision or mark other app features ready. Live production remains activation-disabled with no bindings; latest broad CI result is still being checked.
+
 ## Production readiness visibility — 2026-10-22 13:14 Asia/Bangkok
 
 - Added a read-only exact production Worker readiness probe at the fixed `https://runtime.smartaihub.app/readyz` endpoint and surfaced its status, activation, missing bindings, and check time in Admin → Deployment targets when `production` is selected. It never creates a grant, provisions a Container, or changes Worker/route/traffic state. The UI explicitly says this is not proof of artifact approval, retained-PostgreSQL reachability, auth acceptance, rollback, or cutover.

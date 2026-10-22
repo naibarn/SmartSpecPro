@@ -369,6 +369,7 @@ export default function AdminDeploymentTargets() {
           {productionRuntimeReadiness.data ? (() => {
             const runtime = productionRuntimeReadiness.data;
             const ready = runtime.status === "READY";
+            const otherUnconfigured = runtime.unconfigured.filter(binding => !runtime.missing.includes(binding));
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}>
               <HStack gap={2} wrap="wrap">
                 <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
@@ -377,7 +378,8 @@ export default function AdminDeploymentTargets() {
                 {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
                 {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
               </HStack>
-              {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
+              {runtime.missing.length > 0 ? <p>{text("Bindings blocking the selected job transport", "binding ที่ขาดและบล็อก job transport ที่เลือก")}: <code>{runtime.missing.join(", ")}</code></p> : null}
+              {otherUnconfigured.length > 0 ? <p>{text("Other bindings are not configured and are outside the selected job transport; add them only for workloads that use those capabilities", "binding อื่นที่ยังไม่ได้ตั้งค่าอยู่นอก job transport ที่เลือก ให้เพิ่มเฉพาะ workload ที่ใช้ความสามารถเหล่านั้น")}: <code>{otherUnconfigured.join(", ")}</code></p> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
               {runtime.transport === "all" ? <p>{text("No production job transport has been selected. Containers should be provisioned only for workloads that require isolated application execution.", "ยังไม่ได้เลือก job transport สำหรับ production ให้ provision Container เฉพาะ workload ที่ต้องแยก application runtime")}</p> : null}
               <p>{text("This checks the fixed production Worker endpoint only. A healthy response does not prove the approved artifact, retained-database access, authentication flows, rollback, or production traffic cutover.", "การตรวจนี้ดูเฉพาะ production Worker endpoint ที่กำหนดไว้ ผล healthy ไม่ได้ยืนยัน artifact ที่อนุมัติ การเข้าถึงฐานข้อมูลเดิม ระบบยืนยันตัวตน rollback หรือการย้าย production traffic")}</p>
