@@ -69,14 +69,36 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
         self.assertEqual("READY", result["status"])
         self.assertEqual([], result["blockers"])
 
-    def test_draft_or_unstable_pr_is_blocked(self):
-        checks = [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}]
-        for pr in (pull_request(isDraft=True), pull_request(mergeStateStatus="UNSTABLE")):
+    def test_draft_blocks_but_optional_unstable_state_does_not(self):
+        self.assertEqual("BLOCKED", PROMOTER.evaluate_pull_request(
+            pull_request(isDraft=True), [], expected_head=None)["status"])
+        optional_failure = PROMOTER.evaluate_pull_request(
+            pull_request(mergeStateStatus="UNSTABLE"),
+            [{"name": "optional-preview", "state": "FAILURE", "bucket": "fail"}],
+            expected_head=None,
+        )
+        self.assertEqual("READY", optional_failure["status"])
+
+    def test_unknown_and_behind_merge_states_defer_to_normal_github_merge(self):
+        for pr in (
+            pull_request(mergeable="UNKNOWN", mergeStateStatus="UNKNOWN"),
+            pull_request(mergeStateStatus="BEHIND"),
+        ):
             with self.subTest(pr=pr):
-                self.assertEqual(
-                    "BLOCKED",
-                    PROMOTER.evaluate_pull_request(pr, checks, expected_head=None)["status"],
+                result = PROMOTER.evaluate_pull_request(
+                    pr, [{"name": "optional", "state": "IN_PROGRESS"}], expected_head="a" * 40,
                 )
+                self.assertEqual("READY", result["status"])
+
+    def test_github_reported_conflicts_remain_blocked(self):
+        for pr in (
+            pull_request(mergeable="CONFLICTING"),
+            pull_request(mergeStateStatus="DIRTY"),
+        ):
+            with self.subTest(pr=pr):
+                result = PROMOTER.evaluate_pull_request(pr, [], expected_head="a" * 40)
+                self.assertEqual("BLOCKED", result["status"])
+                self.assertIn("PR_HAS_MERGE_CONFLICTS", result["blockers"])
 
     def test_optional_failed_pending_or_missing_checks_do_not_invent_a_gate(self):
         for checks in (
@@ -134,7 +156,7 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
         )
         self.assertEqual("READY", ready["status"])
         for pr, expected_head, evidence in (
-            (pull_request(mergeStateStatus="BEHIND"), "a" * 40, checks),
+            (pull_request(mergeStateStatus="DIRTY"), "a" * 40, checks),
             (pull_request(reviewDecision="REVIEW_REQUIRED"), "a" * 40, checks),
             (pull_request(), "b" * 40, checks),
             (pull_request(mergeStateStatus="BLOCKED"), "a" * 40,
@@ -239,6 +261,45 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
         self.assertIn("a" * 40, merge_command)
         self.assertNotIn("--admin", merge_command)
         self.assertNotIn("--delete-branch", merge_command)
+
+    def test_unknown_preflight_uses_normal_merge_and_records_github_refusal(self):
+        commands = []
+        merge_attempted = False
+
+        def runner(command, *, cwd, check=True):
+            nonlocal merge_attempted
+            commands.append(command)
+            if command[:2] == ["git", "rev-parse"]:
+                return subprocess.CompletedProcess(command, 0, "c" * 40 + "\n", "")
+            if command[:3] == ["gh", "pr", "view"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps(pull_request(
+                    mergeStateStatus="BLOCKED" if merge_attempted else "UNKNOWN",
+                )), "")
+            if command[:3] == ["gh", "pr", "checks"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([
+                    {"name": "optional-preview", "state": "FAILURE", "bucket": "fail"},
+                ]), "")
+            if command[:3] == ["gh", "pr", "merge"]:
+                merge_attempted = True
+                return subprocess.CompletedProcess(command, 1, "", "Protected branch requires required-security")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        plan = PROMOTER.evaluate_pull_request(
+            pull_request(mergeStateStatus="UNKNOWN"),
+            [{"name": "optional-preview", "state": "FAILURE"}],
+            expected_head="a" * 40,
+        )
+        result = PROMOTER.execute_merge(
+            self.isolated_git_repo(), 7, plan,
+            {"remote": "origin", "canonical_ref": "refs/heads/main"}, runner=runner,
+        )
+
+        self.assertEqual("MERGE_REFUSED_BY_GITHUB", result["status"])
+        self.assertEqual("AUTHORITY", result["failure_class"])
+        self.assertIn("Protected branch requires required-security", result["merge_error"])
+        merge_command = next(command for command in commands if command[:3] == ["gh", "pr", "merge"])
+        self.assertIn("--match-head-commit", merge_command)
+        self.assertNotIn("--admin", merge_command)
 
     def test_pr_merged_by_another_session_is_reconciled_without_second_merge(self):
         merge_sha = "d" * 40

@@ -239,10 +239,8 @@ def evaluate_pull_request(
         blockers.append("PR_IS_DRAFT")
     if pull_request.get("baseRefName") != canonical_branch:
         blockers.append("BASE_IS_NOT_CONFIGURED_CANONICAL_REF")
-    if pull_request.get("mergeable") != "MERGEABLE":
-        blockers.append("PR_NOT_MERGEABLE")
-    if pull_request.get("mergeStateStatus") != "CLEAN":
-        blockers.append("GITHUB_MERGE_STATE_NOT_CLEAN")
+    if pull_request.get("mergeable") == "CONFLICTING" or pull_request.get("mergeStateStatus") == "DIRTY":
+        blockers.append("PR_HAS_MERGE_CONFLICTS")
     if pull_request.get("reviewDecision") in {"REVIEW_REQUIRED", "CHANGES_REQUESTED"}:
         blockers.append("REVIEW_REQUIREMENT_UNSATISFIED")
 
@@ -495,6 +493,7 @@ def _execute_merge(
             "status": "MERGE_REFUSED_BY_GITHUB",
             "failure_class": failure,
             "merge_error_observed": True,
+            "merge_error": _diagnostic_excerpt(f"{merge.stdout}\n{merge.stderr}"),
         }
 
     refreshed = _json_command(
