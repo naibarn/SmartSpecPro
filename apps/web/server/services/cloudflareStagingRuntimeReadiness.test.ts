@@ -16,7 +16,7 @@ function response(
 }
 
 describe("probeCloudflareStagingRuntimeReadiness", () => {
-  it("reports missing bindings from the exact staging Worker's ready endpoint", async () => {
+  it("distinguishes an intentionally disabled staging Worker from readiness failure", async () => {
     const fetchImpl = vi.fn(async () =>
       response(503, {
         ok: false,
@@ -44,17 +44,44 @@ describe("probeCloudflareStagingRuntimeReadiness", () => {
         fetchImpl,
       })
     ).resolves.toMatchObject({
-      status: "NOT_READY",
+      status: "ACTIVATION_DISABLED",
       activation: "disabled",
       transport: "all",
       missing: ["JOB_WORKFLOW", "WORKER_APP"],
       jobHandlerConfigured: true,
       controlPlaneConfigured: false,
       httpStatus: 503,
+      reason: "CLOUDFLARE_WORKER_ACTIVATION_DISABLED",
     });
     expect(String(vi.mocked(fetchImpl).mock.calls[0]?.[0])).toBe(
       `${url}/readyz`
     );
+  });
+
+  it("reports an enabled Worker with missing bindings as a real readiness failure", async () => {
+    const fetchImpl = vi.fn(async () =>
+      response(503, {
+        ok: false,
+        readiness: {
+          ready: false,
+          activation: "enabled",
+          transport: "queues",
+          selectedMissing: ["JOB_QUEUE"],
+          missing: ["JOB_QUEUE"],
+        },
+      })
+    ) as unknown as typeof fetch;
+
+    await expect(
+      probeCloudflareStagingRuntimeReadiness({ url, deploymentId: "deploy-2", fetchImpl })
+    ).resolves.toMatchObject({
+      status: "NOT_READY",
+      activation: "enabled",
+      transport: "queues",
+      missing: ["JOB_QUEUE"],
+      httpStatus: 503,
+      reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY",
+    });
   });
 
   it("accepts a healthy readiness response", async () => {

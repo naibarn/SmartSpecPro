@@ -10,7 +10,7 @@ const REQUIRED_BINDINGS = [
 ] as const;
 
 export type CloudflareStagingRuntimeReadiness = {
-  status: "READY" | "NOT_READY" | "NOT_DEPLOYED" | "UNAVAILABLE";
+  status: "READY" | "ACTIVATION_DISABLED" | "NOT_READY" | "NOT_DEPLOYED" | "UNAVAILABLE";
   checkedAt: string;
   activation?: string;
   transport?: string;
@@ -112,13 +112,18 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
       response.status === 200 &&
       body.ok === true &&
       body.readiness?.ready === true;
+    const activation =
+      typeof body.readiness?.activation === "string"
+        ? body.readiness.activation
+        : "unknown";
+    const activationDisabled = !ready && activation === "disabled";
     return {
-      status: ready ? "READY" : "NOT_READY",
+      // Staging deployments intentionally ship inactive until a separately
+      // authorized activation. Keep that state distinct from failed probes or
+      // enabled runtimes with missing required bindings; it is still not READY.
+      status: ready ? "READY" : activationDisabled ? "ACTIVATION_DISABLED" : "NOT_READY",
       checkedAt,
-      activation:
-        typeof body.readiness?.activation === "string"
-          ? body.readiness.activation
-          : "unknown",
+      activation,
       transport:
         typeof body.readiness?.transport === "string"
           ? body.readiness.transport
@@ -134,7 +139,7 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
           : undefined,
       httpStatus: response.status,
       deploymentId: input.deploymentId,
-      ...(!ready ? { reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" } : {}),
+      ...(!ready ? { reason: activationDisabled ? "CLOUDFLARE_WORKER_ACTIVATION_DISABLED" : "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" } : {}),
     };
   } catch {
     return {
