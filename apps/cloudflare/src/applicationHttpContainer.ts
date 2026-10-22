@@ -40,6 +40,7 @@ type ContainerRuntimeState = { status: string; lastChange?: number; exitCode?: n
 const KEY = "application-http-lifecycle-v1";
 const DIAGNOSTIC_KEY = "application-http-diagnostic-v1";
 const DENIED = "APPLICATION_HTTP_PROFILE_DENIED";
+const APPLICATION_HTTP_READINESS_WINDOW_MS = 150_000;
 /** Keep one durable budget ledger per environment, runtime and tenant/project.
  * Configuration revisions must not create a fresh paid-usage allowance. */
 export const applicationHttpInstanceName = (runtime: ApplicationHttpProfile["runtime"], namespace: string,
@@ -289,10 +290,10 @@ export class ApplicationHttpContainerController {
     // Liveness only proves that the process responds; the application route
     // must not go live until its retained PostgreSQL control plane is ready.
     const readinessPath = this.profile.runtime === "node-http" ? "/readyz" : "/health";
-    // Registry placement plus the request-only API startup can exceed 30s.
-    // Count attempts from the bounded wait rather than cutting off after 100
-    // immediate connection refusals (only about 20s at the retry interval).
-    const readyUntil = Math.min(deadline, this.now() + 90_000);
+    // A live staging boot reached HTTP-ready at about 108 seconds. Keep enough
+    // of the existing hard lifetime for that cold start while still bounding
+    // readiness and reserving no compute beyond the already-approved profile.
+    const readyUntil = Math.min(deadline, this.now() + APPLICATION_HTTP_READINESS_WINDOW_MS);
     const maxAttempts = Math.max(0, Math.ceil((readyUntil - this.now()) / 200));
     let ready = false;
     for (let attempt = 0; attempt < maxAttempts && this.now() < readyUntil; attempt++) {

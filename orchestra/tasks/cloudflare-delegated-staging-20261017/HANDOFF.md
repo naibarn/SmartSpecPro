@@ -1,5 +1,12 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Container cold-start cutoff repaired in source — 2026-10-22 15:45 Asia/Bangkok
+
+- A retained staging provider log showed the Node API bound its HTTP port about 108 seconds after the first request, while `ApplicationHttpContainerController.forward()` stopped readiness polling at 90 seconds. The request therefore returned readiness-unavailable and rollback ran before the API was ready. This evidence does not indicate IAM denial or OOM.
+- Increased only the bounded readiness window to 150 seconds, still clamped by the existing per-start hard deadline. The start count, reserved compute, 180-second hard profile, 30-second idle stop, retry/no-replay behavior, and no-prewarm policy are unchanged. A fake-timer regression proves an API becoming ready after 108 seconds receives the original request once after a single Container start.
+- Focused Container lifecycle test: 30/30 PASS; Admin/readiness/grant diagnostic tests from the previous checkpoint: 22/22 PASS; production Wrangler template tests: 2/2 PASS; `git diff --check` PASS. This is local source proof only; no app start/provider write occurred this turn.
+- Next: integrate the fix, then qualify a fresh owner-authorized staging deployment and verify the real 108-second startup within the unchanged hard budget. `orca-ide computer capabilities/list-apps` cannot currently access the visible browser: both report `accessibility_error` with `computer sidecar exited with code 1`. Do not use raw Wrangler or mutate approval rows as a workaround. Production route/activation remains disabled until staging API/database/auth/rollback and independent production grant evidence pass.
+
 ## Live production readiness and staging grant diagnostics — 2026-10-22 15:35 Asia/Bangkok
 
 - Fresh public GET checks: `smartaihub.app` and `api.smartaihub.app/openapi.json` return HTTP 200; `runtime.smartaihub.app/readyz` returns HTTP 503 with production activation disabled and no runtime bindings configured. The production Wrangler profile selects Queues, so only `HYPERDRIVE` and `JOB_QUEUE` block that transport; the other five capabilities remain separately reported as unconfigured. Production traffic is still served via the existing Linux-origin path; no route, DNS, Worker activation, credential, or database mutation occurred.
