@@ -19,6 +19,16 @@ import {
   assertGoogleRuntimeDisabled,
   isFeature186HardCutoverEnabled,
 } from "./cloudflareRuntimeTarget";
+import {
+  CLOUDFLARE_STAGING_ORIGIN_CONTRACT,
+  cloudflareStagingOriginGrantSchema,
+  cloudflareStagingOriginJobSchema,
+} from "./cloudflareStagingOriginContract";
+import type { CloudflareStagingGrant } from "./cloudflareStagingDeploymentExecutor";
+
+const CLOUDFLARE_STAGING_JOB_TYPE = "cloudflare.staging.deploy";
+const CLOUDFLARE_STAGING_SYSTEM_AUTHORITY = "cloudflare.staging.grant.execute";
+const CLOUDFLARE_STAGING_JOB_DEADLINE_CAP_MS = 30 * 60 * 1000;
 
 export type JobServerContext = {
   tenantId: string;
@@ -49,7 +59,90 @@ export type CreateControlPlaneJobInput = {
   controlPlane?: ReturnType<typeof createJobControlPlane>;
   executorRegistry?: JobExecutorRegistry;
   createOptions?: Omit<CreateJobOptions, "requestedBySystemComponent">;
+  /** Test seam for the existing approval authority; never read from a request body. */
+  resolveCloudflareStagingGrant?: (grantRef: string) => Promise<CloudflareStagingGrant | null>;
 };
+
+async function bindApprovedCloudflareStagingJob(input: CreateControlPlaneJobInput) {
+  const { context, definition } = input;
+  if (definition.jobType !== CLOUDFLARE_STAGING_JOB_TYPE || definition.contractVersion !== CLOUDFLARE_STAGING_ORIGIN_CONTRACT) {
+    return null;
+  }
+  if (definition.executionClass !== "long") {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_JOB_INVALID", "Staging deployment must use the long job class");
+  }
+  if (context.actorType === "system" && context.authorizationScope !== CLOUDFLARE_STAGING_SYSTEM_AUTHORITY) {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_SYSTEM_SCOPE_DENIED", "System staging submission requires its exact grant scope");
+  }
+
+  const parsedJob = cloudflareStagingOriginJobSchema.safeParse(definition.input);
+  if (!parsedJob.success) {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_JOB_INVALID", "Staging job input is invalid");
+  }
+  const resolver = input.resolveCloudflareStagingGrant ?? (async (grantRef: string) => {
+    const runtime = await import("./cloudflareStagingDeploymentRuntime");
+    return runtime.resolveCloudflareStagingGrantForJobCreation(grantRef);
+  });
+  const grantValue = await resolver(parsedJob.data.grantRef);
+  const resolvedGrant = grantValue as (CloudflareStagingGrant & { revoked?: boolean }) | null;
+  const revokedStateValid = resolvedGrant?.revoked === false;
+  const grantDocument: Record<string, unknown> = resolvedGrant ? { ...resolvedGrant } : {};
+  delete grantDocument.revoked;
+  const parsedGrant = cloudflareStagingOriginGrantSchema.safeParse(grantDocument);
+  if (!revokedStateValid || !parsedGrant.success || parsedGrant.data.grantRef !== parsedJob.data.grantRef) {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_GRANT_UNAVAILABLE", "An active owner-approved staging grant is required");
+  }
+  const grant = parsedGrant.data;
+  const requesterMatches = context.actorType === "system"
+    ? true
+    : context.actorId === grant.requesterUserId;
+  const exactActionMatch = parsedJob.data.action === grant.actions[0];
+  const exactArtifactMatch = parsedJob.data.projectId === grant.projectId &&
+    parsedJob.data.targetId === grant.targetId && parsedJob.data.environment === grant.environment &&
+    parsedJob.data.artifactRef === grant.artifactRef && parsedJob.data.sourceSha === grant.sourceSha &&
+    parsedJob.data.buildDigest === grant.buildDigest &&
+    parsedJob.data.configurationRef === grant.configurationRef &&
+    parsedJob.data.configurationDigest === grant.configurationDigest;
+  if (
+    !grant.jobId || !requesterMatches || grant.tenantId !== context.tenantId || !exactActionMatch || !exactArtifactMatch ||
+    grant.revokedAt !== null || Date.parse(grant.expiresAt) <= Date.now() ||
+    (input.createOptions?.canonicalJobId && input.createOptions.canonicalJobId !== grant.jobId)
+  ) {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_GRANT_SCOPE_DENIED", "Staging job does not match its active owner grant");
+  }
+
+  const grantRemainingMs = Date.parse(grant.expiresAt) - Date.now();
+  const deadlineMs = Math.min(CLOUDFLARE_STAGING_JOB_DEADLINE_CAP_MS, grantRemainingMs);
+  if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 30_000) {
+    throw new JobControlPlaneError("CLOUDFLARE_STAGING_GRANT_EXPIRING", "Staging grant expires too soon to start a safe deployment");
+  }
+  const boundDefinition: JobDefinition = {
+    ...definition,
+    input: parsedJob.data,
+    // One stable key and canonical ID per owner grant make repeated submits
+    // idempotent and keep executor identity, lease, and provider receipt bound.
+    idempotencyKey: `cloudflare-staging-grant:${grant.grantRef}`,
+    requestedByUserId: grant.requesterUserId,
+    retryPolicy: {
+      ...definition.retryPolicy,
+      maxAttempts: 2,
+      baseDelayMs: 1_000,
+      maxDelayMs: 10_000,
+      jitter: "bounded",
+      deadlineMs,
+      allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+    },
+    timeoutPolicy: {
+      ...definition.timeoutPolicy,
+      softTimeoutMs: Math.min(definition.timeoutPolicy.softTimeoutMs, deadlineMs),
+      hardTimeoutMs: deadlineMs,
+    },
+  };
+  return {
+    definition: boundDefinition,
+    createOptions: { ...input.createOptions, canonicalJobId: grant.jobId },
+  };
+}
 
 /**
  * The only producer-facing job creation boundary. Tenant, actor, adapter, and
@@ -108,6 +201,7 @@ export async function createControlPlaneJob(
       "Job type is not registered for this contract version"
     );
   }
+  const stagingBinding = await bindApprovedCloudflareStagingJob(input);
   if (isFeature186HardCutoverEnabled()) {
     // Runtime readiness controls publication, not canonical admission. The
     // job and its outbox must be durable before a temporarily unavailable
@@ -118,20 +212,26 @@ export async function createControlPlaneJob(
   // A producer context may provide the request key, but definitions that are
   // part of a multi-step plan own a stable per-step key. Never erase the
   // definition key when the caller has no context-level override.
-  const idempotencyKey = context.idempotencyKey ?? definition.idempotencyKey;
+  const effectiveDefinition = stagingBinding?.definition ?? definition;
+  const idempotencyKey = stagingBinding
+    ? stagingBinding.definition.idempotencyKey
+    : context.idempotencyKey ?? effectiveDefinition.idempotencyKey;
   const canonicalDefinition: JobDefinition = {
-    ...definition,
+    ...effectiveDefinition,
     tenantId,
     requestedByUserId:
-      context.actorType === "user" || context.actorType === "admin"
-        ? context.actorId
-        : undefined,
+      stagingBinding?.definition.requestedByUserId ?? (
+        context.actorType === "user" || context.actorType === "admin"
+          ? context.actorId
+          : undefined
+      ),
     idempotencyKey,
   };
   return (input.controlPlane ?? createJobControlPlane()).create(
     canonicalDefinition,
     {
       ...input.createOptions,
+      ...(stagingBinding ? stagingBinding.createOptions : {}),
       requestedBySystemComponent:
         context.actorType === "system" ? authorizationScope : undefined,
     }

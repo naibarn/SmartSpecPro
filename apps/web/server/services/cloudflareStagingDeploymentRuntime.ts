@@ -92,6 +92,36 @@ function assertGrantRef(grantRef: string): string {
   return grantRef;
 }
 
+/** Resolve a grant through the existing approval authority before creating its
+ * canonical job. The approval service revalidates owner policy, expiry,
+ * revocation and the exact staging scope on every read. */
+export async function resolveCloudflareStagingGrantForJobCreation(
+  rawGrantRef: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CloudflareStagingGrant | null> {
+  const grantRef = assertGrantRef(rawGrantRef);
+  const config = await getAppRuntimeConfig();
+  if (!config.webGatewayToken) throw new Error("CLOUDFLARE_STAGING_GRANT_AUTH_UNAVAILABLE");
+  const url = `${config.pythonBackendUrl}/api/v1/approvals/internal/cloudflare-staging-grants/${encodeURIComponent(grantRef)}`;
+  const response = await fetchImpl(url, {
+    method: "GET",
+    headers: { "x-internal-token": config.webGatewayToken, Accept: "application/json" },
+    cache: "no-store",
+    redirect: "error",
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("CLOUDFLARE_STAGING_GRANT_RESOLVER_FAILED");
+  let envelope: unknown;
+  try {
+    envelope = await response.json();
+  } catch {
+    throw new Error("CLOUDFLARE_STAGING_GRANT_RESPONSE_INVALID");
+  }
+  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
+  const grant = parseGrant((envelope as { grant?: unknown }).grant);
+  return grant?.grantRef === grantRef ? grant : null;
+}
+
 /**
  * Compose the existing grant, target/credential, artifact, executor identity,
  * and Cloudflare transport authorities. All external inputs are server-side;
@@ -138,31 +168,7 @@ export function createCloudflareStagingDeploymentRuntime(input: {
     db: getDb(),
     cloudflare,
     resolveArtifact: resolveCloudflareStagingArtifact,
-    resolveGrant: async rawGrantRef => {
-      const grantRef = assertGrantRef(rawGrantRef);
-      const config = await getAppRuntimeConfig();
-      const token = config.webGatewayToken;
-      if (!token) throw new Error("CLOUDFLARE_STAGING_GRANT_AUTH_UNAVAILABLE");
-      const url = `${config.pythonBackendUrl}/api/v1/approvals/internal/cloudflare-staging-grants/${encodeURIComponent(grantRef)}`;
-      const response = await fetchImpl(url, {
-        method: "GET",
-        headers: { "x-internal-token": token, Accept: "application/json" },
-        cache: "no-store",
-        redirect: "error",
-      });
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error("CLOUDFLARE_STAGING_GRANT_RESOLVER_FAILED");
-      let envelope: unknown;
-      try {
-        envelope = await response.json();
-      } catch {
-        throw new Error("CLOUDFLARE_STAGING_GRANT_RESPONSE_INVALID");
-      }
-      if (!envelope || typeof envelope !== "object" || Array.isArray(envelope))
-        return null;
-      const grant = parseGrant((envelope as { grant?: unknown }).grant);
-      return grant?.grantRef === grantRef ? grant : null;
-    },
+    resolveGrant: rawGrantRef => resolveCloudflareStagingGrantForJobCreation(rawGrantRef, fetchImpl),
     executorIdentity: async binding => {
       const attempt: CloudflareStagingExecutorAttemptBinding = {
         jobId: binding.jobId,
