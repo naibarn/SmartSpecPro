@@ -1,0 +1,82 @@
+{
+  "status": "PROPOSED_NOT_APPROVED",
+  "schemaVersion": 1,
+  "notice": "Review fixtures only. Placeholder refs are not credentials or grants. No runtime acceptance is implied.",
+  "fixtures": [
+    {
+      "id": "chat-scope-does-not-execute",
+      "intent": { "actorScopes": ["llm:chat"], "attemptGrantRef": null },
+      "expected": { "decision": "DENY", "code": "EXECUTION_GRANT_REQUIRED", "sideEffects": [] }
+    },
+    {
+      "id": "runner-device-is-not-desktop-actor",
+      "intent": { "desktopActorRef": null, "runnerDeviceRef": "ref:device-a", "actorCredentialKind": "runner-device" },
+      "expected": { "decision": "DENY", "code": "UNAUTHENTICATED_ACTOR", "sideEffects": [] }
+    },
+    {
+      "id": "unregistered-runner-device-is-denied",
+      "intent": { "runnerDeviceRef": "ref:device-unknown", "enrollmentStatus": "not-found" },
+      "expected": { "decision": "DENY", "code": "UNENROLLED_DEVICE", "sideEffects": [] }
+    },
+    {
+      "id": "cross-tenant-attempt-grant",
+      "intent": { "tenantRef": "ref:tenant-a", "attemptGrantTenantRef": "ref:tenant-b" },
+      "expected": { "decision": "DENY", "code": "TENANT_SCOPE_MISMATCH", "sideEffects": [] }
+    },
+    {
+      "id": "expired-or-revoked-grant",
+      "intent": { "attemptGrantRef": "ref:grant-a", "grantStatus": "revoked" },
+      "expected": { "decision": "DENY", "code": "GRANT_REVOKED_OR_EXPIRED", "sideEffects": [] }
+    },
+    {
+      "id": "attempt-fence-mismatch",
+      "intent": { "attemptRef": "ref:attempt-a", "grantAttemptRef": "ref:attempt-b", "leaseFenceRef": "ref:fence-a" },
+      "expected": { "decision": "DENY", "code": "ATTEMPT_OR_FENCE_MISMATCH", "sideEffects": [] }
+    },
+    {
+      "id": "same-key-same-request-is-idempotent",
+      "intent": { "idempotencyKey": "key-a", "canonicalRequestDigest": "sha256:a", "priorCanonicalRequestDigest": "sha256:a" },
+      "expected": { "decision": "REPLAY_EXISTING_ADMISSION", "jobCount": 1 }
+    },
+    {
+      "id": "same-key-different-request-conflicts",
+      "intent": { "idempotencyKey": "key-a", "canonicalRequestDigest": "sha256:b", "priorCanonicalRequestDigest": "sha256:a" },
+      "expected": { "decision": "DENY", "code": "IDEMPOTENCY_CONFLICT", "jobCount": 1 }
+    },
+    {
+      "id": "unknown-major-version-fails-closed",
+      "intent": { "contract": "native-run-intent.v99" },
+      "expected": { "decision": "DENY", "code": "UNSUPPORTED_CONTRACT", "sideEffects": [] }
+    },
+    {
+      "id": "read-only-report-without-workspace-is-valid-request",
+      "intent": { "workspaceRef": null, "requestedOperationClass": "read-only-analysis-report" },
+      "expected": { "decision": "REQUIRES_CANONICAL_POLICY_ADMISSION", "gitRequired": false }
+    },
+    {
+      "id": "filesystem-work-without-workspace-is-denied",
+      "intent": { "workspaceRef": null, "requestedOperationClass": "filesystem-or-repository" },
+      "expected": { "decision": "DENY", "code": "WORKSPACE_DENIED", "sideEffects": [] }
+    },
+    {
+      "id": "ungranted-capability-is-denied",
+      "intent": { "requestedCapabilityRefs": ["ref:capability-a"], "effectiveCapabilityGrantRefs": [] },
+      "expected": { "decision": "DENY", "code": "CAPABILITY_DENIED", "sideEffects": [] }
+    },
+    {
+      "id": "gateway-outage-has-no-direct-provider-fallback",
+      "intent": { "gatewayStatus": "unavailable", "directProviderFallbackConfigured": true },
+      "expected": { "decision": "DENY", "code": "GATEWAY_UNAVAILABLE", "providerCalls": 0 }
+    },
+    {
+      "id": "cancel-request-is-not-terminal-proof",
+      "intent": { "cancelRequested": true, "processTerminationObserved": false },
+      "expected": { "attemptTerminal": false, "action": "RECONCILE_CANONICAL_ATTEMPT" }
+    },
+    {
+      "id": "artifact-digest-mismatch-is-not-published",
+      "intent": { "artifactRef": "ref:artifact-a", "claimedDigest": "sha256:a", "verifiedDigest": "sha256:b" },
+      "expected": { "decision": "DENY", "code": "ARTIFACT_INTEGRITY_MISMATCH", "published": false }
+    }
+  ]
+}

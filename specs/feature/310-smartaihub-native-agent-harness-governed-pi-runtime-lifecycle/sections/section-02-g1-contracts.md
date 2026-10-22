@@ -18,11 +18,11 @@ Section 01 current at the review SHA. Identify producer/consumer owner for each 
 
 ## Deliverable and completion predicate
 
-Contracts are versioned, deny by default, avoid physical implementation details in public product APIs, and define three separate identities: desktop user, Runner device and per-attempt execution credential. Native LLM requests use only the SmartAIHub Gateway grant. Non-Git workspace absence is valid. `llm:chat` grants no execution.
+Produce a versioned contract proposal and deterministic negative fixtures that deny by default, avoid physical implementation details in public product APIs, and define three separate identities: desktop user, Runner device and per-attempt execution credential. Native LLM requests use only the SmartAIHub Gateway grant. Non-Git workspace absence is valid. `llm:chat` grants no execution. Owner acceptance remains a separate status; unreviewed proposals do not satisfy a stable producer/consumer contract prerequisite.
 
 ## Verification and evidence
 
-Schema fixtures cover version negotiation, missing/revoked grant, cross-tenant refs, replay conflict, no-workspace read-only intent, direct-provider denial contract, stale contract rejection and status freshness. Record owner ACK or `WAITING_OWNER` per interface.
+Fixtures cover version negotiation, missing/revoked grant, cross-tenant refs, replay conflict, no-workspace read-only intent, direct-provider denial contract, stale contract rejection and cancellation observation. Record owner ACK or `WAITING_OWNER` per interface. Current G1 evidence is in `../g1-contract-proposal.md` and `../contracts/g1-negative-fixtures.proposal.json`; exact owner ACKs are not yet present.
 
 ## Blocker challenge
 
